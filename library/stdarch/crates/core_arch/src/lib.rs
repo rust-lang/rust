@@ -32,7 +32,9 @@
     allow_internal_unstable,
     decl_macro,
     asm_const,
-    target_feature_11
+    target_feature_11,
+    inline_const,
+    generic_arg_infer
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall))]
 #![deny(clippy::missing_inline_in_public_items)]

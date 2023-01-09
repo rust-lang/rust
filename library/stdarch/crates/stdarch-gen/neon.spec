@@ -218,8 +218,8 @@ generate int32x2_t:int32x2_t:int64x2_t
 /// Unsigned Absolute difference Long
 name = vabdl_high
 no-q
-multi_fn = simd_shuffle8!, c:uint8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
-multi_fn = simd_shuffle8!, d:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, c:uint8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, d:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = simd_cast, {vabd_u8, c, d}
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 b = 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
@@ -231,8 +231,8 @@ generate uint8x16_t:uint8x16_t:uint16x8_t
 /// Unsigned Absolute difference Long
 name = vabdl_high
 no-q
-multi_fn = simd_shuffle4!, c:uint16x4_t, a, a, [4, 5, 6, 7]
-multi_fn = simd_shuffle4!, d:uint16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, c:uint16x4_t, a, a, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, d:uint16x4_t, b, b, [4, 5, 6, 7]
 multi_fn = simd_cast, {vabd_u16, c, d}
 a = 1, 2, 3, 4, 8, 9, 11, 12
 b = 10, 10, 10, 10, 10, 10, 10, 10
@@ -244,8 +244,8 @@ generate uint16x8_t:uint16x8_t:uint32x4_t
 /// Unsigned Absolute difference Long
 name = vabdl_high
 no-q
-multi_fn = simd_shuffle2!, c:uint32x2_t, a, a, [2, 3]
-multi_fn = simd_shuffle2!, d:uint32x2_t, b, b, [2, 3]
+multi_fn = simd_shuffle!, c:uint32x2_t, a, a, [2, 3]
+multi_fn = simd_shuffle!, d:uint32x2_t, b, b, [2, 3]
 multi_fn = simd_cast, {vabd_u32, c, d}
 a = 1, 2, 3, 4
 b = 10, 10, 10, 10
@@ -257,8 +257,8 @@ generate uint32x4_t:uint32x4_t:uint64x2_t
 /// Signed Absolute difference Long
 name = vabdl_high
 no-q
-multi_fn = simd_shuffle8!, c:int8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
-multi_fn = simd_shuffle8!, d:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, c:int8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, d:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = simd_cast, e:uint8x8_t, {vabd_s8, c, d}
 multi_fn = simd_cast, e
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
@@ -271,8 +271,8 @@ generate int8x16_t:int8x16_t:int16x8_t
 /// Signed Absolute difference Long
 name = vabdl_high
 no-q
-multi_fn = simd_shuffle4!, c:int16x4_t, a, a, [4, 5, 6, 7]
-multi_fn = simd_shuffle4!, d:int16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, c:int16x4_t, a, a, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, d:int16x4_t, b, b, [4, 5, 6, 7]
 multi_fn = simd_cast, e:uint16x4_t, {vabd_s16, c, d}
 multi_fn = simd_cast, e
 a = 1, 2, 3, 4, 9, 10, 11, 12
@@ -285,8 +285,8 @@ generate int16x8_t:int16x8_t:int32x4_t
 /// Signed Absolute difference Long
 name = vabdl_high
 no-q
-multi_fn = simd_shuffle2!, c:int32x2_t, a, a, [2, 3]
-multi_fn = simd_shuffle2!, d:int32x2_t, b, b, [2, 3]
+multi_fn = simd_shuffle!, c:int32x2_t, a, a, [2, 3]
+multi_fn = simd_shuffle!, d:int32x2_t, b, b, [2, 3]
 multi_fn = simd_cast, e:uint32x2_t, {vabd_s32, c, d}
 multi_fn = simd_cast, e
 a = 1, 2, 3, 4
@@ -978,7 +978,7 @@ lane-suffixes
 constn = LANE1:LANE2
 multi_fn = static_assert_imm-in0_exp_len-LANE1
 multi_fn = static_assert_imm-in_exp_len-LANE2
-multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-!, a, b, {ins-in0_len-in0_len-LANE2}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle!, a, b, {ins-in0_len-in0_len-LANE2}
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 b = 0, MAX, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 n = 0:1
@@ -995,7 +995,7 @@ lane-suffixes
 constn = LANE1:LANE2
 multi_fn = static_assert_imm-in0_exp_len-LANE1
 multi_fn = static_assert_imm-in_exp_len-LANE2
-multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-!, a, b, {ins-in0_len-in0_len-LANE2}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle!, a, b, {ins-in0_len-in0_len-LANE2}
 a = 1., 2., 3., 4.
 b = 0., 0.5, 0., 0.
 n = 0:1
@@ -1010,8 +1010,8 @@ lane-suffixes
 constn = LANE1:LANE2
 multi_fn = static_assert_imm-in0_exp_len-LANE1
 multi_fn = static_assert_imm-in_exp_len-LANE2
-multi_fn = simd_shuffle-in_len-!, a:in_t, a, a, {asc-0-in_len}
-multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-!, a, b, {ins-in0_len-in_len-LANE2}
+multi_fn = simd_shuffle!, a:in_t, a, a, {asc-0-in_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle!, a, b, {ins-in0_len-in_len-LANE2}
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 b = 0, MAX, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 n = 0:1
@@ -1028,8 +1028,8 @@ lane-suffixes
 constn = LANE1:LANE2
 multi_fn = static_assert_imm-in0_exp_len-LANE1
 multi_fn = static_assert_imm-in_exp_len-LANE2
-multi_fn = simd_shuffle-in_len-!, a:in_t, a, a, {asc-0-in_len}
-multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-!, a, b, {ins-in0_len-in_len-LANE2}
+multi_fn = simd_shuffle!, a:in_t, a, a, {asc-0-in_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle!, a, b, {ins-in0_len-in_len-LANE2}
 a = 1., 2., 3., 4.
 b = 0., 0.5, 0., 0.
 n = 0:1
@@ -1044,8 +1044,8 @@ lane-suffixes
 constn = LANE1:LANE2
 multi_fn = static_assert_imm-in0_exp_len-LANE1
 multi_fn = static_assert_imm-in_exp_len-LANE2
-multi_fn = simd_shuffle-in0_len-!, b:in_t0, b, b, {asc-0-in0_len}
-multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-!, a, b, {ins-in0_len-in0_len-LANE2}
+multi_fn = simd_shuffle!, b:in_t0, b, b, {asc-0-in0_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle!, a, b, {ins-in0_len-in0_len-LANE2}
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 b = 0, MAX, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 n = 0:1
@@ -1062,8 +1062,8 @@ lane-suffixes
 constn = LANE1:LANE2
 multi_fn = static_assert_imm-in0_exp_len-LANE1
 multi_fn = static_assert_imm-in_exp_len-LANE2
-multi_fn = simd_shuffle-in0_len-!, b:in_t0, b, b, {asc-0-in0_len}
-multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-!, a, b, {ins-in0_len-in0_len-LANE2}
+multi_fn = simd_shuffle!, b:in_t0, b, b, {asc-0-in0_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle!, a, b, {ins-in0_len-in0_len-LANE2}
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 b = MAX, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 n = 1:0
@@ -1078,8 +1078,8 @@ lane-suffixes
 constn = LANE1:LANE2
 multi_fn = static_assert_imm-in0_exp_len-LANE1
 multi_fn = static_assert_imm-in_exp_len-LANE2
-multi_fn = simd_shuffle-in0_len-!, b:in_t0, b, b, {asc-0-in0_len}
-multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-!, a, b, {ins-in0_len-in0_len-LANE2}
+multi_fn = simd_shuffle!, b:in_t0, b, b, {asc-0-in0_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle!, a, b, {ins-in0_len-in0_len-LANE2}
 a = 1., 2., 3., 4.
 b = 0.5, 0., 0., 0.
 n = 1:0
@@ -1148,7 +1148,7 @@ generate float32x2_t:float64x2_t
 /// Floating-point convert to higher precision long
 name = vcvt_high
 noq-double-suffixes
-multi_fn = simd_shuffle2!, b:float32x2_t, a, a, [2, 3]
+multi_fn = simd_shuffle!, b:float32x2_t, a, a, [2, 3]
 multi_fn = simd_cast, b
 a = -1.2, 1.2, 2.3, 3.4
 validate 2.3f32 as f64, 3.4f32 as f64
@@ -1169,7 +1169,7 @@ generate float64x2_t:float32x2_t
 /// Floating-point convert to lower precision narrow
 name = vcvt_high
 noq-double-suffixes
-multi_fn = simd_shuffle4!, a, {simd_cast, b}, [0, 1, 2, 3]
+multi_fn = simd_shuffle!, a, {simd_cast, b}, [0, 1, 2, 3]
 a = -1.2, 1.2
 b = -2.3, 3.4
 validate -1.2, 1.2, -2.3f64 as f32, 3.4f64 as f32
@@ -1200,7 +1200,7 @@ generate f64:f32
 /// Floating-point convert to lower precision narrow, rounding to odd
 name = vcvtx_high
 noq-double-suffixes
-multi_fn = simd_shuffle4!, a, {vcvtx-noq_doubleself-noext, b}, [0, 1, 2, 3]
+multi_fn = simd_shuffle!, a, {vcvtx-noq_doubleself-noext, b}, [0, 1, 2, 3]
 a = -1.0, 2.0
 b = -3.0, 4.0
 validate -1.0, 2.0, -3.0, 4.0
@@ -1428,7 +1428,7 @@ name = vdup
 lane-suffixes
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_shuffle-out_len-!, a, a, {dup-out_len-N as u32}
+multi_fn = simd_shuffle!, a, a, {dup-out_len-N as u32}
 a = 1, 1, 1, 4, 1, 6, 7, 8, 1, 10, 11, 12, 13, 14, 15, 16
 n = HFLEN
 validate 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
@@ -1454,7 +1454,7 @@ name = vdup
 lane-suffixes
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_shuffle-out_len-!, a, a, {dup-out_len-N as u32}
+multi_fn = simd_shuffle!, a, a, {dup-out_len-N as u32}
 a = 1, 1, 1, 4, 1, 6, 7, 8, 1, 10, 11, 12, 13, 14, 15, 16
 n = HFLEN
 validate 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
@@ -1468,7 +1468,7 @@ name = vdup
 lane-suffixes
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_shuffle-out_len-!, a, a, {dup-out_len-N as u32}
+multi_fn = simd_shuffle!, a, a, {dup-out_len-N as u32}
 a = 1., 1., 1., 4.
 n = HFLEN
 validate 1., 1., 1., 1.
@@ -1569,7 +1569,7 @@ generate float32x2_t:f32, float32x4_t:f32, float64x1_t:f64, float64x2_t:f64
 name = vext
 constn = N
 multi_fn = static_assert_imm-out_exp_len-N
-multi_fn = matchn-out_exp_len-N, simd_shuffle-out_len-!, a, b, {asc-n-out_len}
+multi_fn = matchn-out_exp_len-N, simd_shuffle!, a, b, {asc-n-out_len}
 a = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 n = LEN_M1
@@ -1583,7 +1583,7 @@ generate int*_t, uint*_t, poly8x8_t, poly8x16_t, poly16x4_t, poly16x8_t
 name = vext
 constn = N
 multi_fn = static_assert_imm-out_exp_len-N
-multi_fn = matchn-out_exp_len-N, simd_shuffle-out_len-!, a, b, {asc-n-out_len}
+multi_fn = matchn-out_exp_len-N, simd_shuffle!, a, b, {asc-n-out_len}
 a = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 n = LEN_M1
@@ -1599,7 +1599,7 @@ generate int64x2_t, uint64x2_t
 name = vext
 constn = N
 multi_fn = static_assert_imm-out_exp_len-N
-multi_fn = matchn-out_exp_len-N, simd_shuffle-out_len-!, a, b, {asc-n-out_len}
+multi_fn = matchn-out_exp_len-N, simd_shuffle!, a, b, {asc-n-out_len}
 a = 1., 1., 1., 1.
 b = 2., 2., 2., 2.,
 n = LEN_M1
@@ -1669,7 +1669,7 @@ name = vmla
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vmla-self-noext, a, b, {simd_shuffle-in_len-!, c, c, {dup-in_len-LANE as u32}}
+multi_fn = vmla-self-noext, a, b, {simd_shuffle!, c, c, {dup-in_len-LANE as u32}}
 a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 c = 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -1688,7 +1688,7 @@ name = vmla
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vmla-self-noext, a, b, {simd_shuffle-in_len-!, c, c, {dup-in_len-LANE as u32}}
+multi_fn = vmla-self-noext, a, b, {simd_shuffle!, c, c, {dup-in_len-LANE as u32}}
 a = 0., 1., 2., 3.
 b = 2., 2., 2., 2.
 c = 0., 3., 0., 0.
@@ -1743,7 +1743,7 @@ name = vmlal_lane
 in2-suffix
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vmlal-self-noext, a, b, {simd_shuffle-in_len-!, c, c, {dup-in_len-LANE as u32}}
+multi_fn = vmlal-self-noext, a, b, {simd_shuffle!, c, c, {dup-in_len-LANE as u32}}
 a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 c = 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -1761,8 +1761,8 @@ generate uint64x2_t:uint32x2_t:uint32x2_t:uint64x2_t, uint64x2_t:uint32x2_t:uint
 /// Signed multiply-add long
 name = vmlal_high
 no-q
-multi_fn = simd_shuffle-out_len-!, b:half, b, b, {fixed-half-right}
-multi_fn = simd_shuffle-out_len-!, c:half, c, c, {fixed-half-right}
+multi_fn = simd_shuffle!, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle!, c:half, c, c, {fixed-half-right}
 multi_fn = vmlal-noqself-noext, a, b, c
 a = 8, 7, 6, 5, 4, 3, 2, 1
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
@@ -1776,8 +1776,8 @@ generate int16x8_t:int8x16_t:int8x16_t:int16x8_t, int32x4_t:int16x8_t:int16x8_t:
 /// Unsigned multiply-add long
 name = vmlal_high
 no-q
-multi_fn = simd_shuffle-out_len-!, b:half, b, b, {fixed-half-right}
-multi_fn = simd_shuffle-out_len-!, c:half, c, c, {fixed-half-right}
+multi_fn = simd_shuffle!, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle!, c:half, c, c, {fixed-half-right}
 multi_fn = vmlal-noqself-noext, a, b, c
 a = 8, 7, 6, 5, 4, 3, 2, 1
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
@@ -1807,7 +1807,7 @@ name = vmlal_high_lane
 in2-suffix
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vmlal_high-noqself-noext, a, b, {simd_shuffle-in_len-!, c, c, {dup-in_len-LANE as u32}}
+multi_fn = vmlal_high-noqself-noext, a, b, {simd_shuffle!, c, c, {dup-in_len-LANE as u32}}
 a = 8, 7, 6, 5, 4, 3, 2, 1
 b = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
 c = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -1879,7 +1879,7 @@ name = vmls
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vmls-self-noext, a, b, {simd_shuffle-in_len-!, c, c, {dup-in_len-LANE as u32}}
+multi_fn = vmls-self-noext, a, b, {simd_shuffle!, c, c, {dup-in_len-LANE as u32}}
 a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 c = 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -1898,7 +1898,7 @@ name = vmls
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vmls-self-noext, a, b, {simd_shuffle-in_len-!, c, c, {dup-in_len-LANE as u32}}
+multi_fn = vmls-self-noext, a, b, {simd_shuffle!, c, c, {dup-in_len-LANE as u32}}
 a = 6., 7., 8., 9.
 b = 2., 2., 2., 2.
 c = 0., 3., 0., 0.
@@ -1953,7 +1953,7 @@ name = vmlsl_lane
 in2-suffix
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vmlsl-self-noext, a, b, {simd_shuffle-in_len-!, c, c, {dup-in_len-LANE as u32}}
+multi_fn = vmlsl-self-noext, a, b, {simd_shuffle!, c, c, {dup-in_len-LANE as u32}}
 a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 c = 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -1971,8 +1971,8 @@ generate uint64x2_t:uint32x2_t:uint32x2_t:uint64x2_t, uint64x2_t:uint32x2_t:uint
 /// Signed multiply-subtract long
 name = vmlsl_high
 no-q
-multi_fn = simd_shuffle-out_len-!, b:half, b, b, {fixed-half-right}
-multi_fn = simd_shuffle-out_len-!, c:half, c, c, {fixed-half-right}
+multi_fn = simd_shuffle!, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle!, c:half, c, c, {fixed-half-right}
 multi_fn = vmlsl-noqself-noext, a, b, c
 a = 14, 15, 16, 17, 18, 19, 20, 21
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
@@ -1986,8 +1986,8 @@ generate int16x8_t:int8x16_t:int8x16_t:int16x8_t, int32x4_t:int16x8_t:int16x8_t:
 /// Unsigned multiply-subtract long
 name = vmlsl_high
 no-q
-multi_fn = simd_shuffle-out_len-!, b:half, b, b, {fixed-half-right}
-multi_fn = simd_shuffle-out_len-!, c:half, c, c, {fixed-half-right}
+multi_fn = simd_shuffle!, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle!, c:half, c, c, {fixed-half-right}
 multi_fn = vmlsl-noqself-noext, a, b, c
 a = 14, 15, 16, 17, 18, 19, 20, 21
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
@@ -2017,7 +2017,7 @@ name = vmlsl_high_lane
 in2-suffix
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vmlsl_high-noqself-noext, a, b, {simd_shuffle-in_len-!, c, c, {dup-in_len-LANE as u32}}
+multi_fn = vmlsl_high-noqself-noext, a, b, {simd_shuffle!, c, c, {dup-in_len-LANE as u32}}
 a = 14, 15, 16, 17, 18, 19, 20, 21
 b = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
 c = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -2035,7 +2035,7 @@ generate uint64x2_t:uint32x4_t:uint32x2_t:uint64x2_t, uint64x2_t:uint32x4_t:uint
 name = vmovn_high
 no-q
 multi_fn = simd_cast, c:in_t0, b
-multi_fn = simd_shuffle-out_len-!, a, c, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, c, {asc-0-out_len}
 a = 0, 1, 2, 3, 2, 3, 4, 5
 b = 2, 3, 4, 5, 12, 13, 14, 15
 validate 0, 1, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 12, 13, 14, 15
@@ -3483,7 +3483,7 @@ name = vsudot
 out-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_dot-LANE
-multi_fn = simd_shuffle-in_len-!, c:unsigned, c, c, {base-4-LANE}
+multi_fn = simd_shuffle!, c:unsigned, c, c, {base-4-LANE}
 multi_fn = vsudot-outlane-_, a, b, c
 a = 1, 2, 1, 2
 b = 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
@@ -3567,7 +3567,7 @@ name = vmul
 lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_mul, a, {simd_shuffle-out_len-!, b, b, {dup-out_len-LANE as u32}}
+multi_fn = simd_mul, a, {simd_shuffle!, b, b, {dup-out_len-LANE as u32}}
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 b = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 n = 1
@@ -3599,7 +3599,7 @@ name = vmul
 lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_mul, a, {simd_shuffle-out_len-!, b, b, {dup-out_len-LANE as u32}}
+multi_fn = simd_mul, a, {simd_shuffle!, b, b, {dup-out_len-LANE as u32}}
 a = 1., 2., 3., 4.
 b = 2., 0., 0., 0.
 n = 0
@@ -3652,8 +3652,8 @@ generate int8x8_t:int8x8_t:int16x8_t, int16x4_t:int16x4_t:int32x4_t, int32x2_t:i
 /// Signed multiply long
 name = vmull_high
 no-q
-multi_fn = simd_shuffle-out_len-!, a:half, a, a, {fixed-half-right}
-multi_fn = simd_shuffle-out_len-!, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle!, a:half, a, a, {fixed-half-right}
+multi_fn = simd_shuffle!, b:half, b, b, {fixed-half-right}
 multi_fn = vmull-noqself-noext, a, b
 a = 1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16
 b = 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
@@ -3678,8 +3678,8 @@ generate uint8x8_t:uint8x8_t:uint16x8_t, uint16x4_t:uint16x4_t:uint32x4_t, uint3
 /// Unsigned multiply long
 name = vmull_high
 no-q
-multi_fn = simd_shuffle-out_len-!, a:half, a, a, {fixed-half-right}
-multi_fn = simd_shuffle-out_len-!, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle!, a:half, a, a, {fixed-half-right}
+multi_fn = simd_shuffle!, b:half, b, b, {fixed-half-right}
 multi_fn = vmull-noqself-noext, a, b
 a = 1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16
 b = 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
@@ -3720,8 +3720,8 @@ generate p64:p64:p128
 /// Polynomial multiply long
 name = vmull_high
 no-q
-multi_fn = simd_shuffle-out_len-!, a:half, a, a, {fixed-half-right}
-multi_fn = simd_shuffle-out_len-!, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle!, a:half, a, a, {fixed-half-right}
+multi_fn = simd_shuffle!, b:half, b, b, {fixed-half-right}
 multi_fn = vmull-noqself-noext, a, b
 a = 1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16
 b = 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3
@@ -3761,7 +3761,7 @@ generate uint16x4_t:u16:uint32x4_t, uint32x2_t:u32:uint64x2_t
 name = vmull_lane
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = vmull-in0-noext, a, {simd_shuffle-in0_len-!, b, b, {dup-in0_len-LANE as u32}}
+multi_fn = vmull-in0-noext, a, {simd_shuffle!, b, b, {dup-in0_len-LANE as u32}}
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 b = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 n = 1
@@ -3792,7 +3792,7 @@ generate uint16x8_t:u16:uint32x4_t, uint32x4_t:u32:uint64x2_t
 name = vmull_high_lane
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = vmull_high-noqself-noext, a, {simd_shuffle-in0_len-!, b, b, {dup-in0_len-LANE as u32}}
+multi_fn = vmull_high-noqself-noext, a, {simd_shuffle!, b, b, {dup-in0_len-LANE as u32}}
 a = 1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16
 b = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 n = 1
@@ -3834,7 +3834,7 @@ name = vmulx
 lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = vmulx-in0-noext, a, {simd_shuffle-in0_len-!, b, b, {dup-in0_len-LANE as u32}}
+multi_fn = vmulx-in0-noext, a, {simd_shuffle!, b, b, {dup-in0_len-LANE as u32}}
 a = 1., 2., 3., 4.
 b = 2., 0., 0., 0.
 n = 0
@@ -4196,7 +4196,7 @@ generate uint16x8_t:uint8x8_t, uint32x4_t:uint16x4_t, uint64x2_t:uint32x2_t
 name = vsubhn_high
 no-q
 multi_fn = vsubhn-noqself-noext, d:in_t0, b, c
-multi_fn = simd_shuffle-out_len-!, a, d, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, d, {asc-0-out_len}
 a = MAX, 0, MAX, 0, MAX, 0, MAX, 0
 b = MAX, 1, MAX, 1, MAX, 1, MAX, 1
 c = 1, 0, 1, 0, 1, 0, 1, 0
@@ -4252,7 +4252,7 @@ generate uint16x8_t:uint8x8_t:uint16x8_t, uint32x4_t:uint16x4_t:uint32x4_t, uint
 /// Signed Subtract Wide
 name = vsubw_high
 no-q
-multi_fn = simd_shuffle8!, c:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, c:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = simd_sub, a, {simd_cast, c}
 a = 8, 9, 10, 12, 13, 14, 15, 16
 b = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16
@@ -4264,7 +4264,7 @@ generate int16x8_t:int8x16_t:int16x8_t
 /// Signed Subtract Wide
 name = vsubw_high
 no-q
-multi_fn = simd_shuffle4!, c:int16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, c:int16x4_t, b, b, [4, 5, 6, 7]
 multi_fn = simd_sub, a, {simd_cast, c}
 a = 8, 9, 10, 11
 b = 0, 1, 2, 3, 8, 9, 10, 11
@@ -4276,7 +4276,7 @@ generate int32x4_t:int16x8_t:int32x4_t
 /// Signed Subtract Wide
 name = vsubw_high
 no-q
-multi_fn = simd_shuffle2!, c:int32x2_t, b, b, [2, 3]
+multi_fn = simd_shuffle!, c:int32x2_t, b, b, [2, 3]
 multi_fn = simd_sub, a, {simd_cast, c}
 a = 8, 9
 b = 6, 7, 8, 9
@@ -4288,7 +4288,7 @@ generate int64x2_t:int32x4_t:int64x2_t
 /// Unsigned Subtract Wide
 name = vsubw_high
 no-q
-multi_fn = simd_shuffle8!, c:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, c:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = simd_sub, a, {simd_cast, c}
 a = 8, 9, 10, 11, 12, 13, 14, 15
 b = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
@@ -4300,7 +4300,7 @@ generate uint16x8_t:uint8x16_t:uint16x8_t
 /// Unsigned Subtract Wide
 name = vsubw_high
 no-q
-multi_fn = simd_shuffle4!, c:uint16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, c:uint16x4_t, b, b, [4, 5, 6, 7]
 multi_fn = simd_sub, a, {simd_cast, c}
 a = 8, 9, 10, 11
 b = 0, 1, 2, 3, 8, 9, 10, 11
@@ -4312,7 +4312,7 @@ generate uint32x4_t:uint16x8_t:uint32x4_t
 /// Unsigned Subtract Wide
 name = vsubw_high
 no-q
-multi_fn = simd_shuffle2!, c:uint32x2_t, b, b, [2, 3]
+multi_fn = simd_shuffle!, c:uint32x2_t, b, b, [2, 3]
 multi_fn = simd_sub, a, {simd_cast, c}
 a = 8, 9
 b = 6, 7, 8, 9
@@ -4354,9 +4354,9 @@ generate uint8x8_t:uint8x8_t:uint16x8_t, uint16x4_t:uint16x4_t:uint32x4_t, uint3
 /// Signed Subtract Long
 name = vsubl_high
 no-q
-multi_fn = simd_shuffle8!, c:int8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, c:int8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = simd_cast, d:out_t, c
-multi_fn = simd_shuffle8!, e:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, e:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = simd_cast, f:out_t, e
 multi_fn = simd_sub, d, f
 
@@ -4370,9 +4370,9 @@ generate int8x16_t:int8x16_t:int16x8_t
 /// Signed Subtract Long
 name = vsubl_high
 no-q
-multi_fn = simd_shuffle4!, c:int16x4_t, a, a, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, c:int16x4_t, a, a, [4, 5, 6, 7]
 multi_fn = simd_cast, d:out_t, c
-multi_fn = simd_shuffle4!, e:int16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, e:int16x4_t, b, b, [4, 5, 6, 7]
 multi_fn = simd_cast, f:out_t, e
 multi_fn = simd_sub, d, f
 
@@ -4386,9 +4386,9 @@ generate int16x8_t:int16x8_t:int32x4_t
 /// Signed Subtract Long
 name = vsubl_high
 no-q
-multi_fn = simd_shuffle2!, c:int32x2_t, a, a, [2, 3]
+multi_fn = simd_shuffle!, c:int32x2_t, a, a, [2, 3]
 multi_fn = simd_cast, d:out_t, c
-multi_fn = simd_shuffle2!, e:int32x2_t, b, b, [2, 3]
+multi_fn = simd_shuffle!, e:int32x2_t, b, b, [2, 3]
 multi_fn = simd_cast, f:out_t, e
 multi_fn = simd_sub, d, f
 
@@ -4402,9 +4402,9 @@ generate int32x4_t:int32x4_t:int64x2_t
 /// Unsigned Subtract Long
 name = vsubl_high
 no-q
-multi_fn = simd_shuffle8!, c:uint8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, c:uint8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = simd_cast, d:out_t, c
-multi_fn = simd_shuffle8!, e:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, e:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = simd_cast, f:out_t, e
 multi_fn = simd_sub, d, f
 
@@ -4418,9 +4418,9 @@ generate uint8x16_t:uint8x16_t:uint16x8_t
 /// Unsigned Subtract Long
 name = vsubl_high
 no-q
-multi_fn = simd_shuffle4!, c:uint16x4_t, a, a, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, c:uint16x4_t, a, a, [4, 5, 6, 7]
 multi_fn = simd_cast, d:out_t, c
-multi_fn = simd_shuffle4!, e:uint16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, e:uint16x4_t, b, b, [4, 5, 6, 7]
 multi_fn = simd_cast, f:out_t, e
 multi_fn = simd_sub, d, f
 
@@ -4434,9 +4434,9 @@ generate uint16x8_t:uint16x8_t:uint32x4_t
 /// Unsigned Subtract Long
 name = vsubl_high
 no-q
-multi_fn = simd_shuffle2!, c:uint32x2_t, a, a, [2, 3]
+multi_fn = simd_shuffle!, c:uint32x2_t, a, a, [2, 3]
 multi_fn = simd_cast, d:out_t, c
-multi_fn = simd_shuffle2!, e:uint32x2_t, b, b, [2, 3]
+multi_fn = simd_shuffle!, e:uint32x2_t, b, b, [2, 3]
 multi_fn = simd_cast, f:out_t, e
 multi_fn = simd_sub, d, f
 
@@ -4545,7 +4545,7 @@ name = vcmla
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_rot-LANE
-multi_fn = simd_shuffle-out_len-!, c:out_t, c, c, {base-2-LANE}
+multi_fn = simd_shuffle!, c:out_t, c, c, {base-2-LANE}
 multi_fn = vcmla-self-noext, a, b, c
 a = 1., -1., 1., -1.
 b = -1., 1., -1., 1.
@@ -4563,7 +4563,7 @@ name = vcmla_rot90
 rot-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_rot-LANE
-multi_fn = simd_shuffle-out_len-!, c:out_t, c, c, {base-2-LANE}
+multi_fn = simd_shuffle!, c:out_t, c, c, {base-2-LANE}
 multi_fn = vcmla_rot90-rot-noext, a, b, c
 a = 1., -1., 1., -1.
 b = -1., 1., -1., 1.
@@ -4581,7 +4581,7 @@ name = vcmla_rot180
 rot-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_rot-LANE
-multi_fn = simd_shuffle-out_len-!, c:out_t, c, c, {base-2-LANE}
+multi_fn = simd_shuffle!, c:out_t, c, c, {base-2-LANE}
 multi_fn = vcmla_rot180-rot-noext, a, b, c
 a = 1., -1., 1., -1.
 b = -1., 1., -1., 1.
@@ -4599,7 +4599,7 @@ name = vcmla_rot270
 rot-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_rot-LANE
-multi_fn = simd_shuffle-out_len-!, c:out_t, c, c, {base-2-LANE}
+multi_fn = simd_shuffle!, c:out_t, c, c, {base-2-LANE}
 multi_fn = vcmla_rot270-rot-noext, a, b, c
 a = 1., -1., 1., -1.
 b = -1., 1., -1., 1.
@@ -4634,7 +4634,7 @@ name = vdot
 out-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_dot-LANE
-multi_fn = simd_shuffle-in_len-!, c:in_t, c, c, {base-4-LANE}
+multi_fn = simd_shuffle!, c:in_t, c, c, {base-4-LANE}
 multi_fn = vdot-out-noext, a, b, c
 a = 1, 2, 1, 2
 b = 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
@@ -4820,7 +4820,7 @@ generate float32x4_t:f32
 /// Vector move
 name = vmovl_high
 no-q
-multi_fn = simd_shuffle-out_len-!, a:half, a, a, {asc-halflen-halflen}
+multi_fn = simd_shuffle!, a:half, a, a, {asc-halflen-halflen}
 multi_fn = vmovl-noqself-noext, a
 a = 1, 2, 3, 4, 3, 4, 5, 6, 3, 4, 5, 6, 7, 8, 9, 10
 validate 3, 4, 5, 6, 7, 8, 9, 10
@@ -4949,8 +4949,8 @@ generate int16x4_t:i16:int32x4_t, int32x2_t:i32:int64x2_t
 /// Signed saturating doubling multiply long
 name = vqdmull_high
 no-q
-multi_fn = simd_shuffle-out_len-!, a:half, a, a, {asc-halflen-halflen}
-multi_fn = simd_shuffle-out_len-!, b:half, b, b, {asc-halflen-halflen}
+multi_fn = simd_shuffle!, a:half, a, a, {asc-halflen-halflen}
+multi_fn = simd_shuffle!, b:half, b, b, {asc-halflen-halflen}
 multi_fn = vqdmull-noqself-noext, a, b
 a = 0, 1, 4, 5, 4, 5, 6, 7
 b = 1, 2, 5, 6, 5, 6, 7, 8
@@ -4962,7 +4962,7 @@ generate int16x8_t:int16x8_t:int32x4_t, int32x4_t:int32x4_t:int64x2_t
 /// Signed saturating doubling multiply long
 name = vqdmull_high_n
 no-q
-multi_fn = simd_shuffle-out_len-!, a:in_ntt, a, a, {asc-out_len-out_len}
+multi_fn = simd_shuffle!, a:in_ntt, a, a, {asc-out_len-out_len}
 multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
 multi_fn = vqdmull-in_ntt-noext, a, b
 a = 0, 2, 8, 10, 8, 10, 12, 14
@@ -4976,7 +4976,7 @@ generate int16x8_t:i16:int32x4_t, int32x4_t:i32:int64x2_t
 name = vqdmull_lane
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_shuffle-out_len-!, b:in_t0, b, b, {dup-out_len-N as u32}
+multi_fn = simd_shuffle!, b:in_t0, b, b, {dup-out_len-N as u32}
 multi_fn = vqdmull-noqself-noext, a, b
 a = 1, 2, 3, 4
 b = 0, 2, 2, 0, 2, 0, 0, 0
@@ -5021,8 +5021,8 @@ generate i32:int32x2_t:i64, i32:int32x4_t:i64
 name = vqdmull_high_lane
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_shuffle-out_len-!, a:in_t, a, a, {asc-out_len-out_len}
-multi_fn = simd_shuffle-out_len-!, b:in_t, b, b, {dup-out_len-N as u32}
+multi_fn = simd_shuffle!, a:in_t, a, a, {asc-out_len-out_len}
+multi_fn = simd_shuffle!, b:in_t, b, b, {dup-out_len-N as u32}
 multi_fn = vqdmull-self-noext, a, b
 a = 0, 1, 4, 5, 4, 5, 6, 7
 b = 0, 2, 2, 0, 2, 0, 0, 0
@@ -5036,8 +5036,8 @@ generate int16x8_t:int16x4_t:int32x4_t, int32x4_t:int32x2_t:int64x2_t
 name = vqdmull_high_lane
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_shuffle-out_len-!, a:half, a, a, {asc-out_len-out_len}
-multi_fn = simd_shuffle-out_len-!, b:half, b, b, {dup-out_len-N as u32}
+multi_fn = simd_shuffle!, a:half, a, a, {asc-out_len-out_len}
+multi_fn = simd_shuffle!, b:half, b, b, {dup-out_len-N as u32}
 multi_fn = vqdmull-noqself-noext, a, b
 a = 0, 1, 4, 5, 4, 5, 6, 7
 b = 0, 2, 2, 0, 2, 0, 0, 0
@@ -5418,7 +5418,7 @@ generate u64:u32
 /// Signed saturating extract narrow
 name = vqmovn_high
 no-q
-multi_fn = simd_shuffle-out_len-!, a, {vqmovn-noqself-noext, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vqmovn-noqself-noext, b}, {asc-0-out_len}
 a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
 b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
 validate MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
@@ -5452,7 +5452,7 @@ generate i16:u8, i32:u16, i64:u32
 /// Signed saturating extract unsigned narrow
 name = vqmovun_high
 no-q
-multi_fn = simd_shuffle-out_len-!, a, {vqmovun-noqself-noext, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vqmovun-noqself-noext, b}, {asc-0-out_len}
 a = 0, 0, 0, 0, 0, 0, 0, 0
 b = -1, -1, -1, -1, -1, -1, -1, -1
 validate 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -5499,7 +5499,7 @@ name = vqrdmulh
 lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_shuffle-out_len-!, b:out_t, b, b, {dup-out_len-LANE as u32}
+multi_fn = simd_shuffle!, b:out_t, b, b, {dup-out_len-LANE as u32}
 multi_fn = vqrdmulh-out-noext, a, b
 a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
 b = 0, 2, 0, 0, 0, 0, 0, 0,
@@ -5557,7 +5557,7 @@ name = vqrdmlah
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = simd_shuffle-out_len-!, c:out_t, c, c, {dup-out_len-LANE as u32}
+multi_fn = simd_shuffle!, c:out_t, c, c, {dup-out_len-LANE as u32}
 multi_fn = vqrdmlah-out-noext, a, b, c
 a = 1, 1, 1, 1, 1, 1, 1, 1
 b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
@@ -5618,7 +5618,7 @@ name = vqrdmlsh
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = simd_shuffle-out_len-!, c:out_t, c, c, {dup-out_len-LANE as u32}
+multi_fn = simd_shuffle!, c:out_t, c, c, {dup-out_len-LANE as u32}
 multi_fn = vqrdmlsh-out-noext, a, b, c
 a = 1, 1, 1, 1, 1, 1, 1, 1
 b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
@@ -5740,7 +5740,7 @@ name = vqrshrn_high
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_shuffle-out_len-!, a, {vqrshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vqrshrn_n-noqself-::<N>, b}, {asc-0-out_len}
 a = 0, 1, 2, 3, 2, 3, 6, 7
 b = 8, 12, 24, 28, 48, 52, 56, 60
 n = 2
@@ -5787,7 +5787,7 @@ name = vqrshrn_high
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_shuffle-out_len-!, a, {vqrshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vqrshrn_n-noqself-::<N>, b}, {asc-0-out_len}
 a = 0, 1, 2, 3, 2, 3, 6, 7
 b = 8, 12, 24, 28, 48, 52, 56, 60
 n = 2
@@ -5834,7 +5834,7 @@ name = vqrshrun_high
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_shuffle-out_len-!, a, {vqrshrun_n-noqself-::<N>, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vqrshrun_n-noqself-::<N>, b}, {asc-0-out_len}
 a = 0, 1, 2, 3, 2, 3, 6, 7
 b = 8, 12, 24, 28, 48, 52, 56, 60
 n = 2
@@ -6020,7 +6020,7 @@ name = vqshrn_high
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_shuffle-out_len-!, a, {vqshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vqshrn_n-noqself-::<N>, b}, {asc-0-out_len}
 a = 0, 1, 8, 9, 8, 9, 10, 11
 b = 32, 36, 40, 44, 48, 52, 56, 60
 n = 2
@@ -6067,7 +6067,7 @@ name = vqshrn_high
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_shuffle-out_len-!, a, {vqshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vqshrn_n-noqself-::<N>, b}, {asc-0-out_len}
 a = 0, 1, 8, 9, 8, 9, 10, 11
 b = 32, 36, 40, 44, 48, 52, 56, 60
 n = 2
@@ -6113,7 +6113,7 @@ name = vqshrun_high
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_shuffle-out_len-!, a, {vqshrun_n-noqself-::<N>, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vqshrun_n-noqself-::<N>, b}, {asc-0-out_len}
 a = 0, 1, 8, 9, 8, 9, 10, 11
 b = 32, 36, 40, 44, 48, 52, 56, 60
 n = 2
@@ -6574,7 +6574,7 @@ name = vrshrn_high
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_shuffle-out_len-!, a, {vrshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vrshrn_n-noqself-::<N>, b}, {asc-0-out_len}
 a = 0, 1, 8, 9, 8, 9, 10, 11
 b = 32, 36, 40, 44, 48, 52, 56, 60
 n = 2
@@ -6673,7 +6673,7 @@ generate uint16x8_t:uint16x8_t:uint8x8_t, uint32x4_t:uint32x4_t:uint16x4_t, uint
 name = vrsubhn_high
 no-q
 multi_fn = vrsubhn-noqself-noext, x:in_t0, b, c
-multi_fn = simd_shuffle-out_len-!, a, x, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, x, {asc-0-out_len}
 a = 1, 2, 0, 0, 0, 0, 0, 0
 b = 1, 2, 3, 4, 5, 6, 7, 8
 c = 1, 2, 3, 4, 5, 6, 7, 8
@@ -6841,7 +6841,7 @@ name = vshll_high_n
 no-q
 constn = N
 multi_fn = static_assert-N-0-bits
-multi_fn = simd_shuffle-out_len-!, b:half, a, a, {asc-halflen-halflen}
+multi_fn = simd_shuffle!, b:half, a, a, {asc-halflen-halflen}
 multi_fn = vshll_n-noqself-::<N>, b
 a = 0, 0, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8
 n = 2
@@ -6889,7 +6889,7 @@ name = vshrn_high_n
 no-q
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_shuffle-out_len-!, a, {vshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+multi_fn = simd_shuffle!, a, {vshrn_n-noqself-::<N>, b}, {asc-0-out_len}
 a = 1, 2, 5, 6, 5, 6, 7, 8
 b = 20, 24, 28, 32, 52, 56, 60, 64
 n = 2
@@ -7087,8 +7087,8 @@ generate float32x2_t, float32x4_t
 
 /// Transpose elements
 name = vtrn
-multi_fn = simd_shuffle-in_len-!, a1:in_t, a, b, {transpose-1-in_len}
-multi_fn = simd_shuffle-in_len-!, b1:in_t, a, b, {transpose-2-in_len}
+multi_fn = simd_shuffle!, a1:in_t, a, b, {transpose-1-in_len}
+multi_fn = simd_shuffle!, b1:in_t, a, b, {transpose-2-in_len}
 multi_fn = transmute, (a1, b1)
 a = 0, 2, 2, 6, 2, 10, 6, 14, 2, 18, 6, 22, 10, 26, 14, 30
 b = 1, 3, 3, 7, 3, 1, 7, 15, 3, 19, 7, 23, 1, 27, 15, 31
@@ -7104,8 +7104,8 @@ generate int32x2_t:int32x2_t:int32x2x2_t, uint32x2_t:uint32x2_t:uint32x2x2_t
 
 /// Transpose elements
 name = vtrn
-multi_fn = simd_shuffle-in_len-!, a1:in_t, a, b, {transpose-1-in_len}
-multi_fn = simd_shuffle-in_len-!, b1:in_t, a, b, {transpose-2-in_len}
+multi_fn = simd_shuffle!, a1:in_t, a, b, {transpose-1-in_len}
+multi_fn = simd_shuffle!, b1:in_t, a, b, {transpose-2-in_len}
 multi_fn = transmute, (a1, b1)
 a = 0., 2., 2., 6.
 b = 1., 3., 3., 7.
@@ -7119,7 +7119,7 @@ generate float32x4_t:float32x4_t:float32x4x2_t
 
 /// Transpose vectors
 name = vtrn1
-multi_fn = simd_shuffle-in_len-!, a, b, {transpose-1-in_len}
+multi_fn = simd_shuffle!, a, b, {transpose-1-in_len}
 a = 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
 b = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
 validate 0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20, 21, 24, 25, 28, 29
@@ -7132,7 +7132,7 @@ generate int32x2_t, int64x2_t, uint32x2_t, uint64x2_t, poly64x2_t
 
 /// Transpose vectors
 name = vtrn1
-multi_fn = simd_shuffle-in_len-!, a, b, {transpose-1-in_len}
+multi_fn = simd_shuffle!, a, b, {transpose-1-in_len}
 a = 0., 2., 4., 6., 8., 10., 12., 14.
 b = 1., 3., 5., 7., 9., 11., 13., 15.
 validate 0., 1., 4., 5., 8., 9., 12., 13.
@@ -7145,7 +7145,7 @@ generate float32x2_t, float64x2_t
 
 /// Transpose vectors
 name = vtrn2
-multi_fn = simd_shuffle-in_len-!, a, b, {transpose-2-in_len}
+multi_fn = simd_shuffle!, a, b, {transpose-2-in_len}
 a = 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
 b = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
 validate 2, 3, 6, 7, 10, 11, 14, 15, 18, 19, 22, 23, 26, 27, 30, 31
@@ -7158,7 +7158,7 @@ generate int32x2_t, int64x2_t, uint32x2_t, uint64x2_t, poly64x2_t
 
 /// Transpose vectors
 name = vtrn2
-multi_fn = simd_shuffle-in_len-!, a, b, {transpose-2-in_len}
+multi_fn = simd_shuffle!, a, b, {transpose-2-in_len}
 a = 0., 2., 4., 6., 8., 10., 12., 14.
 b = 1., 3., 5., 7., 9., 11., 13., 15.
 validate 2., 3., 6., 7., 10., 11., 14., 15.
@@ -7171,8 +7171,8 @@ generate float32x2_t, float64x2_t
 
 /// Zip vectors
 name = vzip
-multi_fn = simd_shuffle-in_len-!, a0:in_t, a, b, {zip-1-in_len}
-multi_fn = simd_shuffle-in_len-!, b0:in_t, a, b, {zip-2-in_len}
+multi_fn = simd_shuffle!, a0:in_t, a, b, {zip-1-in_len}
+multi_fn = simd_shuffle!, b0:in_t, a, b, {zip-2-in_len}
 multi_fn = transmute, (a0, b0)
 a = 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
 b = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
@@ -7193,8 +7193,8 @@ generate poly8x16_t:poly8x16_t:poly8x16x2_t, poly16x8_t:poly16x8_t:poly16x8x2_t
 
 /// Zip vectors
 name = vzip
-multi_fn = simd_shuffle-in_len-!, a0:in_t, a, b, {zip-1-in_len}
-multi_fn = simd_shuffle-in_len-!, b0:in_t, a, b, {zip-2-in_len}
+multi_fn = simd_shuffle!, a0:in_t, a, b, {zip-1-in_len}
+multi_fn = simd_shuffle!, b0:in_t, a, b, {zip-2-in_len}
 multi_fn = transmute, (a0, b0)
 a = 1., 2., 3., 4.
 b = 5., 6., 7., 8.
@@ -7209,7 +7209,7 @@ generate float32x4_t:float32x4_t:float32x4x2_t
 
 /// Zip vectors
 name = vzip1
-multi_fn = simd_shuffle-in_len-!, a, b, {zip-1-in_len}
+multi_fn = simd_shuffle!, a, b, {zip-1-in_len}
 a = 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
 b = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
 validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
@@ -7219,7 +7219,7 @@ generate int*_t, int64x2_t, uint*_t, uint64x2_t, poly8x8_t, poly8x16_t, poly16x4
 
 /// Zip vectors
 name = vzip1
-multi_fn = simd_shuffle-in_len-!, a, b, {zip-1-in_len}
+multi_fn = simd_shuffle!, a, b, {zip-1-in_len}
 a = 0., 2., 4., 6., 8., 10., 12., 14.
 b = 1., 3., 5., 7., 9., 11., 13., 15.
 validate 0., 1., 2., 3., 4., 5., 6., 7.
@@ -7229,7 +7229,7 @@ generate float32x2_t, float32x4_t, float64x2_t
 
 /// Zip vectors
 name = vzip2
-multi_fn = simd_shuffle-in_len-!, a, b, {zip-2-in_len}
+multi_fn = simd_shuffle!, a, b, {zip-2-in_len}
 a = 0, 16, 16, 18, 16, 18, 20, 22, 16, 18, 20, 22, 24, 26, 28, 30
 b = 1, 17, 17, 19, 17, 19, 21, 23, 17, 19, 21, 23, 25, 27, 29, 31
 validate 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
@@ -7239,7 +7239,7 @@ generate int*_t, int64x2_t, uint*_t, uint64x2_t, poly8x8_t, poly8x16_t, poly16x4
 
 /// Zip vectors
 name = vzip2
-multi_fn = simd_shuffle-in_len-!, a, b, {zip-2-in_len}
+multi_fn = simd_shuffle!, a, b, {zip-2-in_len}
 a = 0., 8., 8., 10., 8., 10., 12., 14.
 b = 1., 9., 9., 11., 9., 11., 13., 15.
 validate 8., 9., 10., 11., 12., 13., 14., 15.
@@ -7249,8 +7249,8 @@ generate float32x2_t, float32x4_t, float64x2_t
 
 /// Unzip vectors
 name = vuzp
-multi_fn = simd_shuffle-in_len-!, a0:in_t, a, b, {unzip-1-in_len}
-multi_fn = simd_shuffle-in_len-!, b0:in_t, a, b, {unzip-2-in_len}
+multi_fn = simd_shuffle!, a0:in_t, a, b, {unzip-1-in_len}
+multi_fn = simd_shuffle!, b0:in_t, a, b, {unzip-2-in_len}
 multi_fn = transmute, (a0, b0)
 a = 1, 2, 2, 3, 2, 3, 3, 8, 2, 3, 3, 8, 3, 15, 8, 16
 b = 2, 3, 3, 8, 3, 15, 8, 16, 3, 29, 8, 30, 15, 31, 16, 32
@@ -7267,8 +7267,8 @@ generate int32x2_t:int32x2_t:int32x2x2_t, uint32x2_t:uint32x2_t:uint32x2x2_t
 
 /// Unzip vectors
 name = vuzp
-multi_fn = simd_shuffle-in_len-!, a0:in_t, a, b, {unzip-1-in_len}
-multi_fn = simd_shuffle-in_len-!, b0:in_t, a, b, {unzip-2-in_len}
+multi_fn = simd_shuffle!, a0:in_t, a, b, {unzip-1-in_len}
+multi_fn = simd_shuffle!, b0:in_t, a, b, {unzip-2-in_len}
 multi_fn = transmute, (a0, b0)
 a = 1., 2., 2., 4.
 b = 2., 6., 6., 8.
@@ -7283,7 +7283,7 @@ generate float32x4_t:float32x4_t:float32x4x2_t
 
 /// Unzip vectors
 name = vuzp1
-multi_fn = simd_shuffle-in_len-!, a, b, {unzip-1-in_len}
+multi_fn = simd_shuffle!, a, b, {unzip-1-in_len}
 a = 1, 0, 2, 0, 2, 0, 3, 0, 2, 0, 3, 0, 7, 0, 8, 0
 b = 2, 0, 3, 0, 7, 0, 8, 0, 13, 0, 14, 0, 15, 0, 16, 0
 validate 1, 2, 2, 3, 2, 3, 7, 8, 2, 3, 7, 8, 13, 14, 15, 16
@@ -7296,7 +7296,7 @@ generate int32x2_t, int64x2_t, uint32x2_t, uint64x2_t, poly64x2_t
 
 /// Unzip vectors
 name = vuzp1
-multi_fn = simd_shuffle-in_len-!, a, b, {unzip-1-in_len}
+multi_fn = simd_shuffle!, a, b, {unzip-1-in_len}
 a = 0., 8., 1., 9., 4., 12., 5., 13.
 b = 1., 10., 3., 11., 6., 14., 7., 15.
 validate 0., 1., 1., 3., 4., 5., 6., 7.
@@ -7309,7 +7309,7 @@ generate float32x2_t, float64x2_t
 
 /// Unzip vectors
 name = vuzp2
-multi_fn = simd_shuffle-in_len-!, a, b, {unzip-2-in_len}
+multi_fn = simd_shuffle!, a, b, {unzip-2-in_len}
 a = 0, 17, 0, 18, 0, 18, 0, 19, 0, 18, 0, 19, 0, 23, 0, 24
 b = 0, 18, 0, 19, 0, 23, 0, 24, 0, 29, 0, 30, 0, 31, 0, 32
 validate 17, 18, 18, 19, 18, 19, 23, 24, 18, 19, 23, 24, 29, 30, 31, 32
@@ -7322,7 +7322,7 @@ generate int32x2_t, int64x2_t, uint32x2_t, uint64x2_t, poly64x2_t
 
 /// Unzip vectors
 name = vuzp2
-multi_fn = simd_shuffle-in_len-!, a, b, {unzip-2-in_len}
+multi_fn = simd_shuffle!, a, b, {unzip-2-in_len}
 a = 0., 8., 1., 9., 4., 12., 5., 13.
 b = 2., 9., 3., 11., 6., 14., 7., 15.
 validate 8., 9., 9., 11., 12., 13., 14., 15.
@@ -7353,8 +7353,8 @@ generate uint16x8_t:uint8x8_t:uint8x8_t:uint16x8_t, uint32x4_t:uint16x4_t:uint16
 /// Unsigned Absolute difference and Accumulate Long
 name = vabal_high
 no-q
-multi_fn = simd_shuffle8!, d:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
-multi_fn = simd_shuffle8!, e:uint8x8_t, c, c, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, d:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, e:uint8x8_t, c, c, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = vabd_u8, d, e, f:uint8x8_t
 multi_fn = simd_add, a, {simd_cast, f}
 a = 9, 10, 11, 12, 13, 14, 15, 16
@@ -7368,8 +7368,8 @@ generate uint16x8_t:uint8x16_t:uint8x16_t:uint16x8_t
 /// Unsigned Absolute difference and Accumulate Long
 name = vabal_high
 no-q
-multi_fn = simd_shuffle4!, d:uint16x4_t, b, b, [4, 5, 6, 7]
-multi_fn = simd_shuffle4!, e:uint16x4_t, c, c, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, d:uint16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, e:uint16x4_t, c, c, [4, 5, 6, 7]
 multi_fn = vabd_u16, d, e, f:uint16x4_t
 multi_fn = simd_add, a, {simd_cast, f}
 a = 9, 10, 11, 12
@@ -7383,8 +7383,8 @@ generate uint32x4_t:uint16x8_t:uint16x8_t:uint32x4_t
 /// Unsigned Absolute difference and Accumulate Long
 name = vabal_high
 no-q
-multi_fn = simd_shuffle2!, d:uint32x2_t, b, b, [2, 3]
-multi_fn = simd_shuffle2!, e:uint32x2_t, c, c, [2, 3]
+multi_fn = simd_shuffle!, d:uint32x2_t, b, b, [2, 3]
+multi_fn = simd_shuffle!, e:uint32x2_t, c, c, [2, 3]
 multi_fn = vabd_u32, d, e, f:uint32x2_t
 multi_fn = simd_add, a, {simd_cast, f}
 a = 15, 16
@@ -7444,8 +7444,8 @@ generate int64x2_t:int32x2_t:int32x2_t:int64x2_t
 /// Signed Absolute difference and Accumulate Long
 name = vabal_high
 no-q
-multi_fn = simd_shuffle8!, d:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
-multi_fn = simd_shuffle8!, e:int8x8_t, c, c, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, d:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle!, e:int8x8_t, c, c, [8, 9, 10, 11, 12, 13, 14, 15]
 multi_fn = vabd_s8, d, e, f:int8x8_t
 multi_fn = simd_cast, f:uint8x8_t, f
 multi_fn = simd_add, a, {simd_cast, f}
@@ -7460,8 +7460,8 @@ generate int16x8_t:int8x16_t:int8x16_t:int16x8_t
 /// Signed Absolute difference and Accumulate Long
 name = vabal_high
 no-q
-multi_fn = simd_shuffle4!, d:int16x4_t, b, b, [4, 5, 6, 7]
-multi_fn = simd_shuffle4!, e:int16x4_t, c, c, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, d:int16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_shuffle!, e:int16x4_t, c, c, [4, 5, 6, 7]
 multi_fn = vabd_s16, d, e, f:int16x4_t
 multi_fn = simd_cast, f:uint16x4_t, f
 multi_fn = simd_add, a, {simd_cast, f}
@@ -7476,8 +7476,8 @@ generate int32x4_t:int16x8_t:int16x8_t:int32x4_t
 /// Signed Absolute difference and Accumulate Long
 name = vabal_high
 no-q
-multi_fn = simd_shuffle2!, d:int32x2_t, b, b, [2, 3]
-multi_fn = simd_shuffle2!, e:int32x2_t, c, c, [2, 3]
+multi_fn = simd_shuffle!, d:int32x2_t, b, b, [2, 3]
+multi_fn = simd_shuffle!, e:int32x2_t, c, c, [2, 3]
 multi_fn = vabd_s32, d, e, f:int32x2_t
 multi_fn = simd_cast, f:uint32x2_t, f
 multi_fn = simd_add, a, {simd_cast, f}

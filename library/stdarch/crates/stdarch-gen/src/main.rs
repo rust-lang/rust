@@ -1447,7 +1447,6 @@ fn gen_aarch64(
             calls.push_str(&get_call(
                 &multi_fn[i],
                 current_name,
-                &const_declare,
                 in_t,
                 out_t,
                 fixed,
@@ -2313,7 +2312,6 @@ fn gen_arm(
             calls.push_str(&get_call(
                 &multi_fn[i],
                 current_name,
-                &const_declare,
                 in_t,
                 out_t,
                 fixed,
@@ -2707,7 +2705,6 @@ fn expand_intrinsic(intr: &str, t: &str) -> String {
 fn get_call(
     in_str: &str,
     current_name: &str,
-    const_declare: &str,
     in_t: &[&str; 3],
     out_t: &str,
     fixed: &Vec<String>,
@@ -2747,7 +2744,7 @@ fn get_call(
             "halflen" => type_len(in_t[1]) / 2,
             _ => 0,
         };
-        let mut s = format!("{const_declare} [");
+        let mut s = format!("[");
         for i in 0..len {
             if i != 0 {
                 s.push_str(", ");
@@ -2778,7 +2775,7 @@ fn get_call(
     if fn_name.starts_with("base") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         assert_eq!(fn_format.len(), 3);
-        let mut s = format!("<const {}: i32> [", &fn_format[2]);
+        let mut s = format!("[");
         let base_len = fn_format[1].parse::<usize>().unwrap();
         for i in 0..type_len(in_t[1]) / base_len {
             for j in 0..base_len {
@@ -2818,7 +2815,7 @@ fn get_call(
             "in0_len" => type_len(in_t[0]),
             _ => 0,
         };
-        let mut s = format!("{const_declare} [");
+        let mut s = format!("[");
         for i in 0..len {
             if i != 0 {
                 s.push_str(", ");
@@ -2928,7 +2925,6 @@ fn get_call(
                 get_call(
                     &sub_call,
                     current_name,
-                    const_declare,
                     in_t,
                     out_t,
                     fixed,
@@ -2977,7 +2973,6 @@ fn get_call(
             let sub_call = get_call(
                 &sub_fn[1..sub_fn.len() - 1],
                 current_name,
-                const_declare,
                 in_t,
                 out_t,
                 fixed,

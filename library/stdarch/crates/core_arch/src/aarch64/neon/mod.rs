@@ -737,7 +737,7 @@ pub unsafe fn vld1_dup_f64(ptr: *const f64) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld1q_dup_f64(ptr: *const f64) -> float64x2_t {
     let x = vld1q_lane_f64::<0>(ptr, transmute(f64x2::splat(0.)));
-    simd_shuffle2!(x, x, [0, 0])
+    simd_shuffle!(x, x, [0, 0])
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -2101,7 +2101,7 @@ pub unsafe fn vgetq_lane_f64<const IMM5: i32>(v: float64x2_t) -> f64 {
 #[cfg_attr(test, assert_instr(mov))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcombine_f64(low: float64x1_t, high: float64x1_t) -> float64x2_t {
-    simd_shuffle2!(low, high, [0, 1])
+    simd_shuffle!(low, high, [0, 1])
 }
 
 /// Table look-up

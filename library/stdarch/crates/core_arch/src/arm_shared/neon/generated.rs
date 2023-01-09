@@ -3250,7 +3250,7 @@ vcvtq_u32_f32_(a)
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3265,7 +3265,7 @@ pub unsafe fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert_imm4!(N);
-    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3280,7 +3280,7 @@ pub unsafe fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3295,7 +3295,7 @@ pub unsafe fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3310,7 +3310,7 @@ pub unsafe fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_lane_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3325,7 +3325,7 @@ pub unsafe fn vdup_lane_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3340,7 +3340,7 @@ pub unsafe fn vdupq_laneq_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
     static_assert_imm4!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3355,7 +3355,7 @@ pub unsafe fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
     static_assert_imm3!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3370,7 +3370,7 @@ pub unsafe fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_laneq_s32<const N: i32>(a: int32x4_t) -> int32x2_t {
     static_assert_imm2!(N);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3385,7 +3385,7 @@ pub unsafe fn vdup_laneq_s32<const N: i32>(a: int32x4_t) -> int32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
     static_assert_imm3!(N);
-    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3400,7 +3400,7 @@ pub unsafe fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
     static_assert_imm2!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3415,7 +3415,7 @@ pub unsafe fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_s32<const N: i32>(a: int32x2_t) -> int32x4_t {
     static_assert_imm1!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3430,7 +3430,7 @@ pub unsafe fn vdupq_lane_s32<const N: i32>(a: int32x2_t) -> int32x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3445,7 +3445,7 @@ pub unsafe fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert_imm4!(N);
-    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3460,7 +3460,7 @@ pub unsafe fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3475,7 +3475,7 @@ pub unsafe fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3490,7 +3490,7 @@ pub unsafe fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3505,7 +3505,7 @@ pub unsafe fn vdup_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3520,7 +3520,7 @@ pub unsafe fn vdupq_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
     static_assert_imm4!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3535,7 +3535,7 @@ pub unsafe fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
     static_assert_imm3!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3550,7 +3550,7 @@ pub unsafe fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x2_t {
     static_assert_imm2!(N);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3565,7 +3565,7 @@ pub unsafe fn vdup_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x16_t {
     static_assert_imm3!(N);
-    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3580,7 +3580,7 @@ pub unsafe fn vdupq_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x16_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
     static_assert_imm2!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3595,7 +3595,7 @@ pub unsafe fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x4_t {
     static_assert_imm1!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3610,7 +3610,7 @@ pub unsafe fn vdupq_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3625,7 +3625,7 @@ pub unsafe fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
     static_assert_imm4!(N);
-    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3640,7 +3640,7 @@ pub unsafe fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3655,7 +3655,7 @@ pub unsafe fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3670,7 +3670,7 @@ pub unsafe fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
     static_assert_imm4!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3685,7 +3685,7 @@ pub unsafe fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
     static_assert_imm3!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3700,7 +3700,7 @@ pub unsafe fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
     static_assert_imm3!(N);
-    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3715,7 +3715,7 @@ pub unsafe fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
     static_assert_imm2!(N);
-    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3730,7 +3730,7 @@ pub unsafe fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3745,7 +3745,7 @@ pub unsafe fn vdupq_laneq_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_s64<const N: i32>(a: int64x1_t) -> int64x2_t {
     static_assert!(N : i32 where N == 0);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3760,7 +3760,7 @@ pub unsafe fn vdupq_lane_s64<const N: i32>(a: int64x1_t) -> int64x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3775,7 +3775,7 @@ pub unsafe fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x2_t {
     static_assert!(N : i32 where N == 0);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3790,7 +3790,7 @@ pub unsafe fn vdupq_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_lane_f32<const N: i32>(a: float32x2_t) -> float32x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3805,7 +3805,7 @@ pub unsafe fn vdup_lane_f32<const N: i32>(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_laneq_f32<const N: i32>(a: float32x4_t) -> float32x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3820,7 +3820,7 @@ pub unsafe fn vdupq_laneq_f32<const N: i32>(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdup_laneq_f32<const N: i32>(a: float32x4_t) -> float32x2_t {
     static_assert_imm2!(N);
-    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3835,7 +3835,7 @@ pub unsafe fn vdup_laneq_f32<const N: i32>(a: float32x4_t) -> float32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vdupq_lane_f32<const N: i32>(a: float32x2_t) -> float32x4_t {
     static_assert_imm1!(N);
-    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3911,14 +3911,14 @@ pub unsafe fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
 pub unsafe fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3936,22 +3936,22 @@ pub unsafe fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     static_assert_imm4!(N);
     match N & 0b1111 {
-        0 => simd_shuffle16!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
-        2 => simd_shuffle16!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
-        3 => simd_shuffle16!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
-        4 => simd_shuffle16!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
-        5 => simd_shuffle16!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        6 => simd_shuffle16!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
-        7 => simd_shuffle16!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
-        8 => simd_shuffle16!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
-        9 => simd_shuffle16!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
-        10 => simd_shuffle16!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
-        11 => simd_shuffle16!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
-        12 => simd_shuffle16!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
-        13 => simd_shuffle16!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
-        14 => simd_shuffle16!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
-        15 => simd_shuffle16!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+        4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+        5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+        6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+        7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+        8 => simd_shuffle!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+        9 => simd_shuffle!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+        10 => simd_shuffle!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+        11 => simd_shuffle!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+        12 => simd_shuffle!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
+        13 => simd_shuffle!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
+        14 => simd_shuffle!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
+        15 => simd_shuffle!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3969,10 +3969,10 @@ pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 pub unsafe fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3990,14 +3990,14 @@ pub unsafe fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 pub unsafe fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4015,8 +4015,8 @@ pub unsafe fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 pub unsafe fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2!(a, b, [0, 1]),
-        1 => simd_shuffle2!(a, b, [1, 2]),
+        0 => simd_shuffle!(a, b, [0, 1]),
+        1 => simd_shuffle!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4034,10 +4034,10 @@ pub unsafe fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 pub unsafe fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4055,14 +4055,14 @@ pub unsafe fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 pub unsafe fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4080,22 +4080,22 @@ pub unsafe fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     static_assert_imm4!(N);
     match N & 0b1111 {
-        0 => simd_shuffle16!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
-        2 => simd_shuffle16!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
-        3 => simd_shuffle16!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
-        4 => simd_shuffle16!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
-        5 => simd_shuffle16!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        6 => simd_shuffle16!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
-        7 => simd_shuffle16!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
-        8 => simd_shuffle16!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
-        9 => simd_shuffle16!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
-        10 => simd_shuffle16!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
-        11 => simd_shuffle16!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
-        12 => simd_shuffle16!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
-        13 => simd_shuffle16!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
-        14 => simd_shuffle16!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
-        15 => simd_shuffle16!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+        4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+        5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+        6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+        7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+        8 => simd_shuffle!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+        9 => simd_shuffle!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+        10 => simd_shuffle!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+        11 => simd_shuffle!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+        12 => simd_shuffle!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
+        13 => simd_shuffle!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
+        14 => simd_shuffle!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
+        15 => simd_shuffle!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4113,10 +4113,10 @@ pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t
 pub unsafe fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4134,14 +4134,14 @@ pub unsafe fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t
 pub unsafe fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4159,8 +4159,8 @@ pub unsafe fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_
 pub unsafe fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2!(a, b, [0, 1]),
-        1 => simd_shuffle2!(a, b, [1, 2]),
+        0 => simd_shuffle!(a, b, [0, 1]),
+        1 => simd_shuffle!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4178,10 +4178,10 @@ pub unsafe fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t
 pub unsafe fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4199,14 +4199,14 @@ pub unsafe fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_
 pub unsafe fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4224,22 +4224,22 @@ pub unsafe fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 pub unsafe fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     static_assert_imm4!(N);
     match N & 0b1111 {
-        0 => simd_shuffle16!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
-        2 => simd_shuffle16!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
-        3 => simd_shuffle16!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
-        4 => simd_shuffle16!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
-        5 => simd_shuffle16!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        6 => simd_shuffle16!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
-        7 => simd_shuffle16!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
-        8 => simd_shuffle16!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
-        9 => simd_shuffle16!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
-        10 => simd_shuffle16!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
-        11 => simd_shuffle16!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
-        12 => simd_shuffle16!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
-        13 => simd_shuffle16!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
-        14 => simd_shuffle16!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
-        15 => simd_shuffle16!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+        4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+        5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+        6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+        7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+        8 => simd_shuffle!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+        9 => simd_shuffle!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+        10 => simd_shuffle!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+        11 => simd_shuffle!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+        12 => simd_shuffle!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
+        13 => simd_shuffle!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
+        14 => simd_shuffle!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
+        15 => simd_shuffle!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4257,10 +4257,10 @@ pub unsafe fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t
 pub unsafe fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4278,14 +4278,14 @@ pub unsafe fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t
 pub unsafe fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4303,8 +4303,8 @@ pub unsafe fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_
 pub unsafe fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2!(a, b, [0, 1]),
-        1 => simd_shuffle2!(a, b, [1, 2]),
+        0 => simd_shuffle!(a, b, [0, 1]),
+        1 => simd_shuffle!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4322,8 +4322,8 @@ pub unsafe fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 pub unsafe fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2!(a, b, [0, 1]),
-        1 => simd_shuffle2!(a, b, [1, 2]),
+        0 => simd_shuffle!(a, b, [0, 1]),
+        1 => simd_shuffle!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4341,8 +4341,8 @@ pub unsafe fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_
 pub unsafe fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2!(a, b, [0, 1]),
-        1 => simd_shuffle2!(a, b, [1, 2]),
+        0 => simd_shuffle!(a, b, [0, 1]),
+        1 => simd_shuffle!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4360,10 +4360,10 @@ pub unsafe fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x
 pub unsafe fn vextq_f32<const N: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -4692,7 +4692,7 @@ pub unsafe fn vmlaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_imm2!(LANE);
-    vmla_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmla_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4707,7 +4707,7 @@ pub unsafe fn vmla_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int1
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_imm3!(LANE);
-    vmla_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmla_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4722,7 +4722,7 @@ pub unsafe fn vmla_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_imm2!(LANE);
-    vmlaq_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4737,7 +4737,7 @@ pub unsafe fn vmlaq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_imm3!(LANE);
-    vmlaq_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4752,7 +4752,7 @@ pub unsafe fn vmlaq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_imm1!(LANE);
-    vmla_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmla_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4767,7 +4767,7 @@ pub unsafe fn vmla_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int3
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_imm2!(LANE);
-    vmla_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmla_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4782,7 +4782,7 @@ pub unsafe fn vmla_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_imm1!(LANE);
-    vmlaq_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4797,7 +4797,7 @@ pub unsafe fn vmlaq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlaq_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4812,7 +4812,7 @@ pub unsafe fn vmlaq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(LANE);
-    vmla_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmla_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4827,7 +4827,7 @@ pub unsafe fn vmla_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: ui
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x8_t) -> uint16x4_t {
     static_assert_imm3!(LANE);
-    vmla_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmla_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4842,7 +4842,7 @@ pub unsafe fn vmla_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x4_t) -> uint16x8_t {
     static_assert_imm2!(LANE);
-    vmlaq_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4857,7 +4857,7 @@ pub unsafe fn vmlaq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(LANE);
-    vmlaq_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4872,7 +4872,7 @@ pub unsafe fn vmlaq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(LANE);
-    vmla_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmla_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4887,7 +4887,7 @@ pub unsafe fn vmla_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: ui
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x4_t) -> uint32x2_t {
     static_assert_imm2!(LANE);
-    vmla_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmla_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4902,7 +4902,7 @@ pub unsafe fn vmla_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x2_t) -> uint32x4_t {
     static_assert_imm1!(LANE);
-    vmlaq_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4917,7 +4917,7 @@ pub unsafe fn vmlaq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlaq_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4932,7 +4932,7 @@ pub unsafe fn vmlaq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     static_assert_imm1!(LANE);
-    vmla_f32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmla_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4947,7 +4947,7 @@ pub unsafe fn vmla_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmla_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
     static_assert_imm2!(LANE);
-    vmla_f32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmla_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4962,7 +4962,7 @@ pub unsafe fn vmla_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
     static_assert_imm1!(LANE);
-    vmlaq_f32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -4977,7 +4977,7 @@ pub unsafe fn vmlaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlaq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     static_assert_imm2!(LANE);
-    vmlaq_f32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Signed multiply-add long
@@ -5122,7 +5122,7 @@ pub unsafe fn vmlal_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlal_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlal_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -5137,7 +5137,7 @@ pub unsafe fn vmlal_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlal_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x8_t) -> int32x4_t {
     static_assert_imm3!(LANE);
-    vmlal_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -5152,7 +5152,7 @@ pub unsafe fn vmlal_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlal_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     static_assert_imm1!(LANE);
-    vmlal_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmlal_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -5167,7 +5167,7 @@ pub unsafe fn vmlal_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlal_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x4_t) -> int64x2_t {
     static_assert_imm2!(LANE);
-    vmlal_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmlal_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -5182,7 +5182,7 @@ pub unsafe fn vmlal_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlal_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlal_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -5197,7 +5197,7 @@ pub unsafe fn vmlal_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlal_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x8_t) -> uint32x4_t {
     static_assert_imm3!(LANE);
-    vmlal_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -5212,7 +5212,7 @@ pub unsafe fn vmlal_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlal_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     static_assert_imm1!(LANE);
-    vmlal_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmlal_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -5227,7 +5227,7 @@ pub unsafe fn vmlal_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlal_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x4_t) -> uint64x2_t {
     static_assert_imm2!(LANE);
-    vmlal_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmlal_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Multiply-subtract from accumulator
@@ -5554,7 +5554,7 @@ pub unsafe fn vmlsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_imm2!(LANE);
-    vmls_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmls_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5569,7 +5569,7 @@ pub unsafe fn vmls_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int1
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_imm3!(LANE);
-    vmls_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmls_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5584,7 +5584,7 @@ pub unsafe fn vmls_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_imm2!(LANE);
-    vmlsq_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5599,7 +5599,7 @@ pub unsafe fn vmlsq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_imm3!(LANE);
-    vmlsq_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5614,7 +5614,7 @@ pub unsafe fn vmlsq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_imm1!(LANE);
-    vmls_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmls_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5629,7 +5629,7 @@ pub unsafe fn vmls_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int3
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_imm2!(LANE);
-    vmls_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmls_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5644,7 +5644,7 @@ pub unsafe fn vmls_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_imm1!(LANE);
-    vmlsq_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5659,7 +5659,7 @@ pub unsafe fn vmlsq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlsq_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5674,7 +5674,7 @@ pub unsafe fn vmlsq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(LANE);
-    vmls_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmls_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5689,7 +5689,7 @@ pub unsafe fn vmls_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: ui
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x8_t) -> uint16x4_t {
     static_assert_imm3!(LANE);
-    vmls_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmls_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5704,7 +5704,7 @@ pub unsafe fn vmls_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x4_t) -> uint16x8_t {
     static_assert_imm2!(LANE);
-    vmlsq_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5719,7 +5719,7 @@ pub unsafe fn vmlsq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(LANE);
-    vmlsq_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5734,7 +5734,7 @@ pub unsafe fn vmlsq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(LANE);
-    vmls_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmls_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5749,7 +5749,7 @@ pub unsafe fn vmls_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: ui
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x4_t) -> uint32x2_t {
     static_assert_imm2!(LANE);
-    vmls_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmls_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5764,7 +5764,7 @@ pub unsafe fn vmls_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x2_t) -> uint32x4_t {
     static_assert_imm1!(LANE);
-    vmlsq_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5779,7 +5779,7 @@ pub unsafe fn vmlsq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlsq_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5794,7 +5794,7 @@ pub unsafe fn vmlsq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     static_assert_imm1!(LANE);
-    vmls_f32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmls_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5809,7 +5809,7 @@ pub unsafe fn vmls_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmls_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
     static_assert_imm2!(LANE);
-    vmls_f32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmls_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5824,7 +5824,7 @@ pub unsafe fn vmls_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
     static_assert_imm1!(LANE);
-    vmlsq_f32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -5839,7 +5839,7 @@ pub unsafe fn vmlsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     static_assert_imm2!(LANE);
-    vmlsq_f32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Signed multiply-subtract long
@@ -5984,7 +5984,7 @@ pub unsafe fn vmlsl_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsl_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlsl_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -5999,7 +5999,7 @@ pub unsafe fn vmlsl_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsl_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x8_t) -> int32x4_t {
     static_assert_imm3!(LANE);
-    vmlsl_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -6014,7 +6014,7 @@ pub unsafe fn vmlsl_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsl_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     static_assert_imm1!(LANE);
-    vmlsl_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmlsl_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -6029,7 +6029,7 @@ pub unsafe fn vmlsl_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsl_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x4_t) -> int64x2_t {
     static_assert_imm2!(LANE);
-    vmlsl_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmlsl_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -6044,7 +6044,7 @@ pub unsafe fn vmlsl_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsl_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlsl_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -6059,7 +6059,7 @@ pub unsafe fn vmlsl_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsl_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x8_t) -> uint32x4_t {
     static_assert_imm3!(LANE);
-    vmlsl_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -6074,7 +6074,7 @@ pub unsafe fn vmlsl_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsl_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     static_assert_imm1!(LANE);
-    vmlsl_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmlsl_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -6089,7 +6089,7 @@ pub unsafe fn vmlsl_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmlsl_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x4_t) -> uint64x2_t {
     static_assert_imm2!(LANE);
-    vmlsl_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmlsl_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
 
 /// Negate
@@ -17137,7 +17137,7 @@ pub unsafe fn vmulq_n_f32(a: float32x4_t, b: f32) -> float32x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17152,7 +17152,7 @@ pub unsafe fn vmul_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int1
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_imm3!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17167,7 +17167,7 @@ pub unsafe fn vmul_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17182,7 +17182,7 @@ pub unsafe fn vmulq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_imm3!(LANE);
-    simd_mul(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17197,7 +17197,7 @@ pub unsafe fn vmulq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17212,7 +17212,7 @@ pub unsafe fn vmul_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int3
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17227,7 +17227,7 @@ pub unsafe fn vmul_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17242,7 +17242,7 @@ pub unsafe fn vmulq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17257,7 +17257,7 @@ pub unsafe fn vmulq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17272,7 +17272,7 @@ pub unsafe fn vmul_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> ui
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> uint16x4_t {
     static_assert_imm3!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17287,7 +17287,7 @@ pub unsafe fn vmul_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uint16x8_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17302,7 +17302,7 @@ pub unsafe fn vmulq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(LANE);
-    simd_mul(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17317,7 +17317,7 @@ pub unsafe fn vmulq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17332,7 +17332,7 @@ pub unsafe fn vmul_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> ui
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> uint32x2_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17347,7 +17347,7 @@ pub unsafe fn vmul_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uint32x4_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -17362,7 +17362,7 @@ pub unsafe fn vmulq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -17377,7 +17377,7 @@ pub unsafe fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -17392,7 +17392,7 @@ pub unsafe fn vmul_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmul_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float32x2_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -17407,7 +17407,7 @@ pub unsafe fn vmul_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) ->
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float32x4_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -17422,7 +17422,7 @@ pub unsafe fn vmulq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) ->
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmulq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Signed multiply long
@@ -17622,7 +17622,7 @@ pub unsafe fn vmull_n_u32(a: uint32x2_t, b: u32) -> uint64x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmull_s16(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_s16(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -17637,7 +17637,7 @@ pub unsafe fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int32x4_t {
     static_assert_imm3!(LANE);
-    vmull_s16(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_s16(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -17652,7 +17652,7 @@ pub unsafe fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     static_assert_imm1!(LANE);
-    vmull_s32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmull_s32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -17667,7 +17667,7 @@ pub unsafe fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int64x2_t {
     static_assert_imm2!(LANE);
-    vmull_s32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmull_s32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -17682,7 +17682,7 @@ pub unsafe fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> in
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmull_u16(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_u16(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -17697,7 +17697,7 @@ pub unsafe fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> uint32x4_t {
     static_assert_imm3!(LANE);
-    vmull_u16(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_u16(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -17712,7 +17712,7 @@ pub unsafe fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     static_assert_imm1!(LANE);
-    vmull_u32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmull_u32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -17727,7 +17727,7 @@ pub unsafe fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> u
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> uint64x2_t {
     static_assert_imm2!(LANE);
-    vmull_u32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
+    vmull_u32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
@@ -18268,7 +18268,7 @@ pub unsafe fn vsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
     let d: int8x8_t = vsubhn_s16(b, c);
-    simd_shuffle16!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Subtract returning high narrow
@@ -18282,7 +18282,7 @@ pub unsafe fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x1
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
     let d: int16x4_t = vsubhn_s32(b, c);
-    simd_shuffle8!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Subtract returning high narrow
@@ -18296,7 +18296,7 @@ pub unsafe fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
     let d: int32x2_t = vsubhn_s64(b, c);
-    simd_shuffle4!(a, d, [0, 1, 2, 3])
+    simd_shuffle!(a, d, [0, 1, 2, 3])
 }
 
 /// Subtract returning high narrow
@@ -18310,7 +18310,7 @@ pub unsafe fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_t {
     let d: uint8x8_t = vsubhn_u16(b, c);
-    simd_shuffle16!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Subtract returning high narrow
@@ -18324,7 +18324,7 @@ pub unsafe fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uin
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8_t {
     let d: uint16x4_t = vsubhn_u32(b, c);
-    simd_shuffle8!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Subtract returning high narrow
@@ -18338,7 +18338,7 @@ pub unsafe fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> ui
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4_t {
     let d: uint32x2_t = vsubhn_u64(b, c);
-    simd_shuffle4!(a, d, [0, 1, 2, 3])
+    simd_shuffle!(a, d, [0, 1, 2, 3])
 }
 
 /// Signed halving subtract
@@ -19440,7 +19440,7 @@ pub unsafe fn vqdmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     static_assert_imm2!(N);
-    let b: int16x4_t = simd_shuffle4!(b, b, <const N: i32> [N as u32, N as u32, N as u32, N as u32]);
+    let b: int16x4_t = simd_shuffle!(b, b, [N as u32, N as u32, N as u32, N as u32]);
     vqdmull_s16(a, b)
 }
 
@@ -19456,7 +19456,7 @@ pub unsafe fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int3
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqdmull_lane_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     static_assert_imm1!(N);
-    let b: int32x2_t = simd_shuffle2!(b, b, <const N: i32> [N as u32, N as u32]);
+    let b: int32x2_t = simd_shuffle!(b, b, [N as u32, N as u32]);
     vqdmull_s32(a, b)
 }
 
@@ -20127,7 +20127,7 @@ pub unsafe fn vqrdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_imm2!(LANE);
-    let b: int16x4_t = simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int16x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulh_s16(a, b)
 }
 
@@ -20143,7 +20143,7 @@ pub unsafe fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_imm3!(LANE);
-    let b: int16x4_t = simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int16x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulh_s16(a, b)
 }
 
@@ -20159,7 +20159,7 @@ pub unsafe fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) ->
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_imm2!(LANE);
-    let b: int16x8_t = simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int16x8_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s16(a, b)
 }
 
@@ -20175,7 +20175,7 @@ pub unsafe fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) ->
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_imm3!(LANE);
-    let b: int16x8_t = simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int16x8_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s16(a, b)
 }
 
@@ -20191,7 +20191,7 @@ pub unsafe fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_imm1!(LANE);
-    let b: int32x2_t = simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]);
+    let b: int32x2_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32]);
     vqrdmulh_s32(a, b)
 }
 
@@ -20207,7 +20207,7 @@ pub unsafe fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> 
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_imm2!(LANE);
-    let b: int32x2_t = simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]);
+    let b: int32x2_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32]);
     vqrdmulh_s32(a, b)
 }
 
@@ -20223,7 +20223,7 @@ pub unsafe fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) ->
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_imm1!(LANE);
-    let b: int32x4_t = simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int32x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s32(a, b)
 }
 
@@ -20239,7 +20239,7 @@ pub unsafe fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) ->
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vqrdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    let b: int32x4_t = simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int32x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s32(a, b)
 }
 
@@ -28495,8 +28495,8 @@ pub unsafe fn vsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrn_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
-    let a1: int8x8_t = simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
-    let b1: int8x8_t = simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
+    let a1: int8x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
+    let b1: int8x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
 
@@ -28510,8 +28510,8 @@ pub unsafe fn vtrn_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrn_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
-    let a1: int16x4_t = simd_shuffle4!(a, b, [0, 4, 2, 6]);
-    let b1: int16x4_t = simd_shuffle4!(a, b, [1, 5, 3, 7]);
+    let a1: int16x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
+    let b1: int16x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
 
@@ -28525,8 +28525,8 @@ pub unsafe fn vtrn_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrnq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
-    let a1: int8x16_t = simd_shuffle16!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]);
-    let b1: int8x16_t = simd_shuffle16!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]);
+    let a1: int8x16_t = simd_shuffle!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]);
+    let b1: int8x16_t = simd_shuffle!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]);
     transmute((a1, b1))
 }
 
@@ -28540,8 +28540,8 @@ pub unsafe fn vtrnq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrnq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
-    let a1: int16x8_t = simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
-    let b1: int16x8_t = simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
+    let a1: int16x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
+    let b1: int16x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
 
@@ -28555,8 +28555,8 @@ pub unsafe fn vtrnq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrnq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
-    let a1: int32x4_t = simd_shuffle4!(a, b, [0, 4, 2, 6]);
-    let b1: int32x4_t = simd_shuffle4!(a, b, [1, 5, 3, 7]);
+    let a1: int32x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
+    let b1: int32x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
 
@@ -28570,8 +28570,8 @@ pub unsafe fn vtrnq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrn_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
-    let a1: uint8x8_t = simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
-    let b1: uint8x8_t = simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
+    let a1: uint8x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
+    let b1: uint8x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
 
@@ -28585,8 +28585,8 @@ pub unsafe fn vtrn_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrn_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
-    let a1: uint16x4_t = simd_shuffle4!(a, b, [0, 4, 2, 6]);
-    let b1: uint16x4_t = simd_shuffle4!(a, b, [1, 5, 3, 7]);
+    let a1: uint16x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
+    let b1: uint16x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
 
@@ -28600,8 +28600,8 @@ pub unsafe fn vtrn_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrnq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
-    let a1: uint8x16_t = simd_shuffle16!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]);
-    let b1: uint8x16_t = simd_shuffle16!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]);
+    let a1: uint8x16_t = simd_shuffle!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]);
+    let b1: uint8x16_t = simd_shuffle!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]);
     transmute((a1, b1))
 }
 
@@ -28615,8 +28615,8 @@ pub unsafe fn vtrnq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrnq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
-    let a1: uint16x8_t = simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
-    let b1: uint16x8_t = simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
+    let a1: uint16x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
+    let b1: uint16x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
 
@@ -28630,8 +28630,8 @@ pub unsafe fn vtrnq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrnq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
-    let a1: uint32x4_t = simd_shuffle4!(a, b, [0, 4, 2, 6]);
-    let b1: uint32x4_t = simd_shuffle4!(a, b, [1, 5, 3, 7]);
+    let a1: uint32x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
+    let b1: uint32x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
 
@@ -28645,8 +28645,8 @@ pub unsafe fn vtrnq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrn_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
-    let a1: poly8x8_t = simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
-    let b1: poly8x8_t = simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
+    let a1: poly8x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
+    let b1: poly8x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
 
@@ -28660,8 +28660,8 @@ pub unsafe fn vtrn_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrn_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
-    let a1: poly16x4_t = simd_shuffle4!(a, b, [0, 4, 2, 6]);
-    let b1: poly16x4_t = simd_shuffle4!(a, b, [1, 5, 3, 7]);
+    let a1: poly16x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
+    let b1: poly16x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
 
@@ -28675,8 +28675,8 @@ pub unsafe fn vtrn_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrnq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
-    let a1: poly8x16_t = simd_shuffle16!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]);
-    let b1: poly8x16_t = simd_shuffle16!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]);
+    let a1: poly8x16_t = simd_shuffle!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]);
+    let b1: poly8x16_t = simd_shuffle!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]);
     transmute((a1, b1))
 }
 
@@ -28690,8 +28690,8 @@ pub unsafe fn vtrnq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrnq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
-    let a1: poly16x8_t = simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
-    let b1: poly16x8_t = simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
+    let a1: poly16x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
+    let b1: poly16x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
 
@@ -28705,8 +28705,8 @@ pub unsafe fn vtrnq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrn_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
-    let a1: int32x2_t = simd_shuffle2!(a, b, [0, 2]);
-    let b1: int32x2_t = simd_shuffle2!(a, b, [1, 3]);
+    let a1: int32x2_t = simd_shuffle!(a, b, [0, 2]);
+    let b1: int32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a1, b1))
 }
 
@@ -28720,8 +28720,8 @@ pub unsafe fn vtrn_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrn_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
-    let a1: uint32x2_t = simd_shuffle2!(a, b, [0, 2]);
-    let b1: uint32x2_t = simd_shuffle2!(a, b, [1, 3]);
+    let a1: uint32x2_t = simd_shuffle!(a, b, [0, 2]);
+    let b1: uint32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a1, b1))
 }
 
@@ -28735,8 +28735,8 @@ pub unsafe fn vtrn_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrn_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
-    let a1: float32x2_t = simd_shuffle2!(a, b, [0, 2]);
-    let b1: float32x2_t = simd_shuffle2!(a, b, [1, 3]);
+    let a1: float32x2_t = simd_shuffle!(a, b, [0, 2]);
+    let b1: float32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a1, b1))
 }
 
@@ -28750,8 +28750,8 @@ pub unsafe fn vtrn_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vtrnq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
-    let a1: float32x4_t = simd_shuffle4!(a, b, [0, 4, 2, 6]);
-    let b1: float32x4_t = simd_shuffle4!(a, b, [1, 5, 3, 7]);
+    let a1: float32x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
+    let b1: float32x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
 
@@ -28765,8 +28765,8 @@ pub unsafe fn vtrnq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzip_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
-    let a0: int8x8_t = simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
-    let b0: int8x8_t = simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
+    let a0: int8x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
+    let b0: int8x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
 
@@ -28780,8 +28780,8 @@ pub unsafe fn vzip_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzip_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
-    let a0: int16x4_t = simd_shuffle4!(a, b, [0, 4, 1, 5]);
-    let b0: int16x4_t = simd_shuffle4!(a, b, [2, 6, 3, 7]);
+    let a0: int16x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
+    let b0: int16x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
 
@@ -28795,8 +28795,8 @@ pub unsafe fn vzip_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzip_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
-    let a0: uint8x8_t = simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
-    let b0: uint8x8_t = simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
+    let a0: uint8x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
+    let b0: uint8x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
 
@@ -28810,8 +28810,8 @@ pub unsafe fn vzip_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzip_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
-    let a0: uint16x4_t = simd_shuffle4!(a, b, [0, 4, 1, 5]);
-    let b0: uint16x4_t = simd_shuffle4!(a, b, [2, 6, 3, 7]);
+    let a0: uint16x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
+    let b0: uint16x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
 
@@ -28825,8 +28825,8 @@ pub unsafe fn vzip_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzip_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
-    let a0: poly8x8_t = simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
-    let b0: poly8x8_t = simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
+    let a0: poly8x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
+    let b0: poly8x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
 
@@ -28840,8 +28840,8 @@ pub unsafe fn vzip_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzip_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
-    let a0: poly16x4_t = simd_shuffle4!(a, b, [0, 4, 1, 5]);
-    let b0: poly16x4_t = simd_shuffle4!(a, b, [2, 6, 3, 7]);
+    let a0: poly16x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
+    let b0: poly16x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
 
@@ -28855,8 +28855,8 @@ pub unsafe fn vzip_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzip_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
-    let a0: int32x2_t = simd_shuffle2!(a, b, [0, 2]);
-    let b0: int32x2_t = simd_shuffle2!(a, b, [1, 3]);
+    let a0: int32x2_t = simd_shuffle!(a, b, [0, 2]);
+    let b0: int32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
 
@@ -28870,8 +28870,8 @@ pub unsafe fn vzip_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzip_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
-    let a0: uint32x2_t = simd_shuffle2!(a, b, [0, 2]);
-    let b0: uint32x2_t = simd_shuffle2!(a, b, [1, 3]);
+    let a0: uint32x2_t = simd_shuffle!(a, b, [0, 2]);
+    let b0: uint32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
 
@@ -28885,8 +28885,8 @@ pub unsafe fn vzip_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
-    let a0: int8x16_t = simd_shuffle16!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
-    let b0: int8x16_t = simd_shuffle16!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]);
+    let a0: int8x16_t = simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
+    let b0: int8x16_t = simd_shuffle!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]);
     transmute((a0, b0))
 }
 
@@ -28900,8 +28900,8 @@ pub unsafe fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
-    let a0: int16x8_t = simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
-    let b0: int16x8_t = simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
+    let a0: int16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
+    let b0: int16x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
 
@@ -28915,8 +28915,8 @@ pub unsafe fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
-    let a0: int32x4_t = simd_shuffle4!(a, b, [0, 4, 1, 5]);
-    let b0: int32x4_t = simd_shuffle4!(a, b, [2, 6, 3, 7]);
+    let a0: int32x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
+    let b0: int32x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
 
@@ -28930,8 +28930,8 @@ pub unsafe fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
-    let a0: uint8x16_t = simd_shuffle16!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
-    let b0: uint8x16_t = simd_shuffle16!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]);
+    let a0: uint8x16_t = simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
+    let b0: uint8x16_t = simd_shuffle!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]);
     transmute((a0, b0))
 }
 
@@ -28945,8 +28945,8 @@ pub unsafe fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
-    let a0: uint16x8_t = simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
-    let b0: uint16x8_t = simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
+    let a0: uint16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
+    let b0: uint16x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
 
@@ -28960,8 +28960,8 @@ pub unsafe fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
-    let a0: uint32x4_t = simd_shuffle4!(a, b, [0, 4, 1, 5]);
-    let b0: uint32x4_t = simd_shuffle4!(a, b, [2, 6, 3, 7]);
+    let a0: uint32x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
+    let b0: uint32x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
 
@@ -28975,8 +28975,8 @@ pub unsafe fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
-    let a0: poly8x16_t = simd_shuffle16!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
-    let b0: poly8x16_t = simd_shuffle16!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]);
+    let a0: poly8x16_t = simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
+    let b0: poly8x16_t = simd_shuffle!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]);
     transmute((a0, b0))
 }
 
@@ -28990,8 +28990,8 @@ pub unsafe fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
-    let a0: poly16x8_t = simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
-    let b0: poly16x8_t = simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
+    let a0: poly16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
+    let b0: poly16x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
 
@@ -29005,8 +29005,8 @@ pub unsafe fn vzipq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzip_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
-    let a0: float32x2_t = simd_shuffle2!(a, b, [0, 2]);
-    let b0: float32x2_t = simd_shuffle2!(a, b, [1, 3]);
+    let a0: float32x2_t = simd_shuffle!(a, b, [0, 2]);
+    let b0: float32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
 
@@ -29020,8 +29020,8 @@ pub unsafe fn vzip_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vzipq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
-    let a0: float32x4_t = simd_shuffle4!(a, b, [0, 4, 1, 5]);
-    let b0: float32x4_t = simd_shuffle4!(a, b, [2, 6, 3, 7]);
+    let a0: float32x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
+    let b0: float32x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
 
@@ -29035,8 +29035,8 @@ pub unsafe fn vzipq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzp_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
-    let a0: int8x8_t = simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
-    let b0: int8x8_t = simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
+    let a0: int8x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
+    let b0: int8x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
 
@@ -29050,8 +29050,8 @@ pub unsafe fn vuzp_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzp_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
-    let a0: int16x4_t = simd_shuffle4!(a, b, [0, 2, 4, 6]);
-    let b0: int16x4_t = simd_shuffle4!(a, b, [1, 3, 5, 7]);
+    let a0: int16x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
+    let b0: int16x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
 
@@ -29065,8 +29065,8 @@ pub unsafe fn vuzp_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzpq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
-    let a0: int8x16_t = simd_shuffle16!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
-    let b0: int8x16_t = simd_shuffle16!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]);
+    let a0: int8x16_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
+    let b0: int8x16_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]);
     transmute((a0, b0))
 }
 
@@ -29080,8 +29080,8 @@ pub unsafe fn vuzpq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzpq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
-    let a0: int16x8_t = simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
-    let b0: int16x8_t = simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
+    let a0: int16x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
+    let b0: int16x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
 
@@ -29095,8 +29095,8 @@ pub unsafe fn vuzpq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzpq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
-    let a0: int32x4_t = simd_shuffle4!(a, b, [0, 2, 4, 6]);
-    let b0: int32x4_t = simd_shuffle4!(a, b, [1, 3, 5, 7]);
+    let a0: int32x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
+    let b0: int32x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
 
@@ -29110,8 +29110,8 @@ pub unsafe fn vuzpq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzp_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
-    let a0: uint8x8_t = simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
-    let b0: uint8x8_t = simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
+    let a0: uint8x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
+    let b0: uint8x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
 
@@ -29125,8 +29125,8 @@ pub unsafe fn vuzp_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzp_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
-    let a0: uint16x4_t = simd_shuffle4!(a, b, [0, 2, 4, 6]);
-    let b0: uint16x4_t = simd_shuffle4!(a, b, [1, 3, 5, 7]);
+    let a0: uint16x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
+    let b0: uint16x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
 
@@ -29140,8 +29140,8 @@ pub unsafe fn vuzp_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzpq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
-    let a0: uint8x16_t = simd_shuffle16!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
-    let b0: uint8x16_t = simd_shuffle16!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]);
+    let a0: uint8x16_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
+    let b0: uint8x16_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]);
     transmute((a0, b0))
 }
 
@@ -29155,8 +29155,8 @@ pub unsafe fn vuzpq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzpq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
-    let a0: uint16x8_t = simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
-    let b0: uint16x8_t = simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
+    let a0: uint16x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
+    let b0: uint16x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
 
@@ -29170,8 +29170,8 @@ pub unsafe fn vuzpq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzpq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
-    let a0: uint32x4_t = simd_shuffle4!(a, b, [0, 2, 4, 6]);
-    let b0: uint32x4_t = simd_shuffle4!(a, b, [1, 3, 5, 7]);
+    let a0: uint32x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
+    let b0: uint32x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
 
@@ -29185,8 +29185,8 @@ pub unsafe fn vuzpq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzp_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
-    let a0: poly8x8_t = simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
-    let b0: poly8x8_t = simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
+    let a0: poly8x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
+    let b0: poly8x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
 
@@ -29200,8 +29200,8 @@ pub unsafe fn vuzp_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzp_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
-    let a0: poly16x4_t = simd_shuffle4!(a, b, [0, 2, 4, 6]);
-    let b0: poly16x4_t = simd_shuffle4!(a, b, [1, 3, 5, 7]);
+    let a0: poly16x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
+    let b0: poly16x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
 
@@ -29215,8 +29215,8 @@ pub unsafe fn vuzp_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzpq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
-    let a0: poly8x16_t = simd_shuffle16!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
-    let b0: poly8x16_t = simd_shuffle16!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]);
+    let a0: poly8x16_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
+    let b0: poly8x16_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]);
     transmute((a0, b0))
 }
 
@@ -29230,8 +29230,8 @@ pub unsafe fn vuzpq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzpq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
-    let a0: poly16x8_t = simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
-    let b0: poly16x8_t = simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
+    let a0: poly16x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
+    let b0: poly16x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
 
@@ -29245,8 +29245,8 @@ pub unsafe fn vuzpq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzp_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
-    let a0: int32x2_t = simd_shuffle2!(a, b, [0, 2]);
-    let b0: int32x2_t = simd_shuffle2!(a, b, [1, 3]);
+    let a0: int32x2_t = simd_shuffle!(a, b, [0, 2]);
+    let b0: int32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
 
@@ -29260,8 +29260,8 @@ pub unsafe fn vuzp_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzp_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
-    let a0: uint32x2_t = simd_shuffle2!(a, b, [0, 2]);
-    let b0: uint32x2_t = simd_shuffle2!(a, b, [1, 3]);
+    let a0: uint32x2_t = simd_shuffle!(a, b, [0, 2]);
+    let b0: uint32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
 
@@ -29275,8 +29275,8 @@ pub unsafe fn vuzp_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzp_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
-    let a0: float32x2_t = simd_shuffle2!(a, b, [0, 2]);
-    let b0: float32x2_t = simd_shuffle2!(a, b, [1, 3]);
+    let a0: float32x2_t = simd_shuffle!(a, b, [0, 2]);
+    let b0: float32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
 
@@ -29290,8 +29290,8 @@ pub unsafe fn vuzp_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vuzpq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
-    let a0: float32x4_t = simd_shuffle4!(a, b, [0, 2, 4, 6]);
-    let b0: float32x4_t = simd_shuffle4!(a, b, [1, 3, 5, 7]);
+    let a0: float32x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
+    let b0: float32x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
 

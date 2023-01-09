@@ -416,7 +416,7 @@ pub unsafe fn _mm_cmpeq_epi64(a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepi8_epi16(a: __m128i) -> __m128i {
     let a = a.as_i8x16();
-    let a: i8x8 = simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let a: i8x8 = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
     transmute(simd_cast::<_, i16x8>(a))
 }
 
@@ -429,7 +429,7 @@ pub unsafe fn _mm_cvtepi8_epi16(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepi8_epi32(a: __m128i) -> __m128i {
     let a = a.as_i8x16();
-    let a: i8x4 = simd_shuffle4!(a, a, [0, 1, 2, 3]);
+    let a: i8x4 = simd_shuffle!(a, a, [0, 1, 2, 3]);
     transmute(simd_cast::<_, i32x4>(a))
 }
 
@@ -443,7 +443,7 @@ pub unsafe fn _mm_cvtepi8_epi32(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepi8_epi64(a: __m128i) -> __m128i {
     let a = a.as_i8x16();
-    let a: i8x2 = simd_shuffle2!(a, a, [0, 1]);
+    let a: i8x2 = simd_shuffle!(a, a, [0, 1]);
     transmute(simd_cast::<_, i64x2>(a))
 }
 
@@ -456,7 +456,7 @@ pub unsafe fn _mm_cvtepi8_epi64(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepi16_epi32(a: __m128i) -> __m128i {
     let a = a.as_i16x8();
-    let a: i16x4 = simd_shuffle4!(a, a, [0, 1, 2, 3]);
+    let a: i16x4 = simd_shuffle!(a, a, [0, 1, 2, 3]);
     transmute(simd_cast::<_, i32x4>(a))
 }
 
@@ -469,7 +469,7 @@ pub unsafe fn _mm_cvtepi16_epi32(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepi16_epi64(a: __m128i) -> __m128i {
     let a = a.as_i16x8();
-    let a: i16x2 = simd_shuffle2!(a, a, [0, 1]);
+    let a: i16x2 = simd_shuffle!(a, a, [0, 1]);
     transmute(simd_cast::<_, i64x2>(a))
 }
 
@@ -482,7 +482,7 @@ pub unsafe fn _mm_cvtepi16_epi64(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepi32_epi64(a: __m128i) -> __m128i {
     let a = a.as_i32x4();
-    let a: i32x2 = simd_shuffle2!(a, a, [0, 1]);
+    let a: i32x2 = simd_shuffle!(a, a, [0, 1]);
     transmute(simd_cast::<_, i64x2>(a))
 }
 
@@ -495,7 +495,7 @@ pub unsafe fn _mm_cvtepi32_epi64(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepu8_epi16(a: __m128i) -> __m128i {
     let a = a.as_u8x16();
-    let a: u8x8 = simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let a: u8x8 = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
     transmute(simd_cast::<_, i16x8>(a))
 }
 
@@ -508,7 +508,7 @@ pub unsafe fn _mm_cvtepu8_epi16(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepu8_epi32(a: __m128i) -> __m128i {
     let a = a.as_u8x16();
-    let a: u8x4 = simd_shuffle4!(a, a, [0, 1, 2, 3]);
+    let a: u8x4 = simd_shuffle!(a, a, [0, 1, 2, 3]);
     transmute(simd_cast::<_, i32x4>(a))
 }
 
@@ -521,7 +521,7 @@ pub unsafe fn _mm_cvtepu8_epi32(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepu8_epi64(a: __m128i) -> __m128i {
     let a = a.as_u8x16();
-    let a: u8x2 = simd_shuffle2!(a, a, [0, 1]);
+    let a: u8x2 = simd_shuffle!(a, a, [0, 1]);
     transmute(simd_cast::<_, i64x2>(a))
 }
 
@@ -535,7 +535,7 @@ pub unsafe fn _mm_cvtepu8_epi64(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepu16_epi32(a: __m128i) -> __m128i {
     let a = a.as_u16x8();
-    let a: u16x4 = simd_shuffle4!(a, a, [0, 1, 2, 3]);
+    let a: u16x4 = simd_shuffle!(a, a, [0, 1, 2, 3]);
     transmute(simd_cast::<_, i32x4>(a))
 }
 
@@ -549,7 +549,7 @@ pub unsafe fn _mm_cvtepu16_epi32(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepu16_epi64(a: __m128i) -> __m128i {
     let a = a.as_u16x8();
-    let a: u16x2 = simd_shuffle2!(a, a, [0, 1]);
+    let a: u16x2 = simd_shuffle!(a, a, [0, 1]);
     transmute(simd_cast::<_, i64x2>(a))
 }
 
@@ -563,7 +563,7 @@ pub unsafe fn _mm_cvtepu16_epi64(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepu32_epi64(a: __m128i) -> __m128i {
     let a = a.as_u32x4();
-    let a: u32x2 = simd_shuffle2!(a, a, [0, 1]);
+    let a: u32x2 = simd_shuffle!(a, a, [0, 1]);
     transmute(simd_cast::<_, i64x2>(a))
 }
 
