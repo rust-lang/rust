@@ -97,21 +97,22 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
 
-    let assumed_wf_types = ocx.assumed_wf_types(param_env, span, body_def_id);
-
     let mut wfcx = WfCheckingCtxt { ocx, span, body_id, param_env };
 
     if !tcx.features().trivial_bounds {
         wfcx.check_false_global_bounds()
     }
     f(&mut wfcx);
+
+    let assumed_wf_types = wfcx.ocx.assumed_wf_types(param_env, span, body_def_id);
+    let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
+
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
         infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return;
     }
 
-    let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
     let outlives_environment =
         OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
 
@@ -1489,53 +1490,37 @@ fn check_fn_or_method<'tcx>(
     def_id: LocalDefId,
 ) {
     let tcx = wfcx.tcx();
-    let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
+    let mut sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
 
     // Normalize the input and output types one at a time, using a different
     // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
     // on the entire `FnSig`, since this would use the same `WellFormedLoc`
     // for each type, preventing the HIR wf check from generating
     // a nice error message.
-    let ty::FnSig { mut inputs_and_output, c_variadic, unsafety, abi } = sig;
-    inputs_and_output = tcx.mk_type_list(inputs_and_output.iter().enumerate().map(|(i, ty)| {
-        wfcx.normalize(
-            span,
-            Some(WellFormedLoc::Param {
-                function: def_id,
-                // Note that the `param_idx` of the output type is
-                // one greater than the index of the last input type.
-                param_idx: i.try_into().unwrap(),
-            }),
-            ty,
-        )
-    }));
-    // Manually call `normalize_associated_types_in` on the other types
-    // in `FnSig`. This ensures that if the types of these fields
-    // ever change to include projections, we will start normalizing
-    // them automatically.
-    let sig = ty::FnSig {
-        inputs_and_output,
-        c_variadic: wfcx.normalize(span, None, c_variadic),
-        unsafety: wfcx.normalize(span, None, unsafety),
-        abi: wfcx.normalize(span, None, abi),
-    };
+    let arg_span =
+        |idx| hir_decl.inputs.get(idx).map_or(hir_decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
 
-    for (i, (&input_ty, ty)) in iter::zip(sig.inputs(), hir_decl.inputs).enumerate() {
+    sig.inputs_and_output =
+        tcx.mk_type_list(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
+            wfcx.normalize(
+                arg_span(idx),
+                Some(WellFormedLoc::Param {
+                    function: def_id,
+                    // Note that the `param_idx` of the output type is
+                    // one greater than the index of the last input type.
+                    param_idx: idx.try_into().unwrap(),
+                }),
+                ty,
+            )
+        }));
+
+    for (idx, ty) in sig.inputs_and_output.iter().enumerate() {
         wfcx.register_wf_obligation(
-            ty.span,
-            Some(WellFormedLoc::Param { function: def_id, param_idx: i.try_into().unwrap() }),
-            input_ty.into(),
+            arg_span(idx),
+            Some(WellFormedLoc::Param { function: def_id, param_idx: idx.try_into().unwrap() }),
+            ty.into(),
         );
     }
-
-    wfcx.register_wf_obligation(
-        hir_decl.output.span(),
-        Some(WellFormedLoc::Param {
-            function: def_id,
-            param_idx: sig.inputs().len().try_into().unwrap(),
-        }),
-        sig.output().into(),
-    );
 
     check_where_clauses(wfcx, span, def_id);
 
