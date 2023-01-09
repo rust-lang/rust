@@ -46,7 +46,6 @@ pub fn main_inner(profile: Profile) {
                 &format!("-Zcodegen-backend={}/target/debug/librustc_codegen_gcc.so", current_dir),
                 "--sysroot", &format!("{}/build_sysroot/sysroot/", current_dir),
                 "-Zno-parallel-llvm",
-                "-C", "panic=abort",
                 "-C", "link-arg=-lc",
                 "-o", exe.to_str().expect("to_str"),
                 path.to_str().expect("to_str"),
