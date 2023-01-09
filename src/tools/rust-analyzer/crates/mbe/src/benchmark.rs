@@ -101,7 +101,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
                     }
                     try_cnt += 1;
                     if try_cnt > 100 {
-                        panic!("invocaton fixture {} cannot be generated.\n", name);
+                        panic!("invocaton fixture {name} cannot be generated.\n");
                     }
                 }
             }
@@ -139,9 +139,15 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
                 }
 
                 None => (),
-                Some(kind) => panic!("Unhandled kind {:?}", kind),
+                Some(kind) => panic!("Unhandled kind {kind:?}"),
             },
-            Op::Leaf(leaf) => parent.token_trees.push(leaf.clone().into()),
+            Op::Literal(it) => parent.token_trees.push(tt::Leaf::from(it.clone()).into()),
+            Op::Ident(it) => parent.token_trees.push(tt::Leaf::from(it.clone()).into()),
+            Op::Punct(puncts) => {
+                for punct in puncts {
+                    parent.token_trees.push(tt::Leaf::from(punct.clone()).into());
+                }
+            }
             Op::Repeat { tokens, kind, separator } => {
                 let max = 10;
                 let cnt = match kind {

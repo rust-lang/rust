@@ -173,7 +173,8 @@ pub fn walk_pat(pat: &ast::Pat, cb: &mut dyn FnMut(ast::Pat)) {
 }
 
 /// Preorder walk all the type's sub types.
-pub fn walk_ty(ty: &ast::Type, cb: &mut dyn FnMut(ast::Type)) {
+// FIXME: Make the control flow more proper
+pub fn walk_ty(ty: &ast::Type, cb: &mut dyn FnMut(ast::Type) -> bool) {
     let mut preorder = ty.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
@@ -184,10 +185,12 @@ pub fn walk_ty(ty: &ast::Type, cb: &mut dyn FnMut(ast::Type)) {
         match ast::Type::cast(node) {
             Some(ty @ ast::Type::MacroType(_)) => {
                 preorder.skip_subtree();
-                cb(ty)
+                cb(ty);
             }
             Some(ty) => {
-                cb(ty);
+                if cb(ty) {
+                    preorder.skip_subtree();
+                }
             }
             // skip const args
             None if ast::ConstArg::can_cast(kind) => {
@@ -252,6 +255,11 @@ pub fn is_pattern_cond(expr: ast::Expr) -> bool {
 /// Note that modifying the tree while iterating it will cause undefined iteration which might
 /// potentially results in an out of bounds panic.
 pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
+    let walk_loop = |cb: &mut dyn FnMut(&ast::Expr), label, body: Option<ast::BlockExpr>| {
+        for_each_break_expr(label, body.and_then(|it| it.stmt_list()), &mut |b| {
+            cb(&ast::Expr::BreakExpr(b))
+        })
+    };
     match expr {
         ast::Expr::BlockExpr(b) => {
             match b.modifier() {
@@ -291,11 +299,9 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
                 }
             }
         }
-        ast::Expr::LoopExpr(l) => {
-            for_each_break_expr(l.label(), l.loop_body().and_then(|it| it.stmt_list()), &mut |b| {
-                cb(&ast::Expr::BreakExpr(b))
-            })
-        }
+        ast::Expr::LoopExpr(l) => walk_loop(cb, l.label(), l.loop_body()),
+        ast::Expr::WhileExpr(w) => walk_loop(cb, w.label(), w.loop_body()),
+        ast::Expr::ForExpr(f) => walk_loop(cb, f.label(), f.loop_body()),
         ast::Expr::MatchExpr(m) => {
             if let Some(arms) = m.match_arm_list() {
                 arms.arms().filter_map(|arm| arm.expr()).for_each(|e| for_each_tail_expr(&e, cb));
@@ -311,7 +317,6 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         | ast::Expr::ClosureExpr(_)
         | ast::Expr::ContinueExpr(_)
         | ast::Expr::FieldExpr(_)
-        | ast::Expr::ForExpr(_)
         | ast::Expr::IndexExpr(_)
         | ast::Expr::Literal(_)
         | ast::Expr::MacroExpr(_)
@@ -325,10 +330,10 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         | ast::Expr::ReturnExpr(_)
         | ast::Expr::TryExpr(_)
         | ast::Expr::TupleExpr(_)
-        | ast::Expr::WhileExpr(_)
         | ast::Expr::LetExpr(_)
         | ast::Expr::UnderscoreExpr(_)
-        | ast::Expr::YieldExpr(_) => cb(expr),
+        | ast::Expr::YieldExpr(_)
+        | ast::Expr::YeetExpr(_) => cb(expr),
     }
 }
 
@@ -447,7 +452,7 @@ pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Pat
     let input_expressions = tokens.group_by(|tok| tok.kind() == T![,]);
     let paths = input_expressions
         .into_iter()
-        .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
+        .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
         .filter_map(|mut tokens| {
             syntax::hacks::parse_expr_from_str(&tokens.join("")).and_then(|expr| match expr {
                 ast::Expr::PathExpr(it) => it.path(),

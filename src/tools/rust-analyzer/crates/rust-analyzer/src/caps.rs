@@ -42,7 +42,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
                 "(".to_string(),
             ]),
             all_commit_characters: None,
-            completion_item: completion_item(&config),
+            completion_item: completion_item(config),
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
         signature_help_provider: Some(SignatureHelpOptions {
@@ -67,7 +67,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         },
         document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
             first_trigger_character: "=".to_string(),
-            more_trigger_character: Some(more_trigger_character(&config)),
+            more_trigger_character: Some(more_trigger_character(config)),
         }),
         selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
         folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),

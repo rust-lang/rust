@@ -10,6 +10,8 @@ use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, SearchScope},
 };
+use itertools::Itertools;
+use smallvec::SmallVec;
 use stdx::format_to;
 use syntax::{
     algo::find_node_at_range,
@@ -116,13 +118,13 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
             let mut body_items: Vec<String> = Vec::new();
             let mut items_to_be_processed: Vec<ast::Item> = module.body_items.clone();
-            let mut new_item_indent = old_item_indent + 1;
 
-            if impl_parent.is_some() {
-                new_item_indent = old_item_indent + 2;
+            let new_item_indent = if impl_parent.is_some() {
+                old_item_indent + 2
             } else {
                 items_to_be_processed = [module.use_items.clone(), items_to_be_processed].concat();
-            }
+                old_item_indent + 1
+            };
 
             for item in items_to_be_processed {
                 let item = item.indent(IndentLevel(1));
@@ -657,28 +659,23 @@ impl Module {
 
 fn check_intersection_and_push(
     import_paths_to_be_removed: &mut Vec<TextRange>,
-    import_path: TextRange,
+    mut import_path: TextRange,
 ) {
-    if import_paths_to_be_removed.len() > 0 {
-        // Text ranges received here for imports are extended to the
-        // next/previous comma which can cause intersections among them
-        // and later deletion of these can cause panics similar
-        // to reported in #11766. So to mitigate it, we
-        // check for intersection between all current members
-        // and if it exists we combine both text ranges into
-        // one
-        let r = import_paths_to_be_removed
-            .into_iter()
-            .position(|it| it.intersect(import_path).is_some());
-        match r {
-            Some(it) => {
-                import_paths_to_be_removed[it] = import_paths_to_be_removed[it].cover(import_path)
-            }
-            None => import_paths_to_be_removed.push(import_path),
-        }
-    } else {
-        import_paths_to_be_removed.push(import_path);
+    // Text ranges received here for imports are extended to the
+    // next/previous comma which can cause intersections among them
+    // and later deletion of these can cause panics similar
+    // to reported in #11766. So to mitigate it, we
+    // check for intersection between all current members
+    // and combine all such ranges into one.
+    let s: SmallVec<[_; 2]> = import_paths_to_be_removed
+        .into_iter()
+        .positions(|it| it.intersect(import_path).is_some())
+        .collect();
+    for pos in s.into_iter().rev() {
+        let intersecting_path = import_paths_to_be_removed.swap_remove(pos);
+        import_path = import_path.cover(intersecting_path);
     }
+    import_paths_to_be_removed.push(import_path);
 }
 
 fn does_source_exists_outside_sel_in_same_mod(
@@ -1765,5 +1762,50 @@ mod modname {
             }
         ",
         )
+    }
+
+    #[test]
+    fn test_merge_multiple_intersections() {
+        check_assist(
+            extract_module,
+            r#"
+mod dep {
+    pub struct A;
+    pub struct B;
+    pub struct C;
+}
+
+use dep::{A, B, C};
+
+$0struct S {
+    inner: A,
+    state: C,
+    condvar: B,
+}$0
+"#,
+            r#"
+mod dep {
+    pub struct A;
+    pub struct B;
+    pub struct C;
+}
+
+use dep::{};
+
+mod modname {
+    use super::dep::B;
+
+    use super::dep::C;
+
+    use super::dep::A;
+
+    pub(crate) struct S {
+        pub(crate) inner: A,
+        pub(crate) state: C,
+        pub(crate) condvar: B,
+    }
+}
+"#,
+        );
     }
 }

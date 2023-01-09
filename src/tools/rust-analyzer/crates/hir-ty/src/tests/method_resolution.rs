@@ -1867,3 +1867,53 @@ fn g<T: Trait>(a: T) {
         "#,
     );
 }
+
+#[test]
+fn incoherent_impls() {
+    check(
+        r#"
+//- minicore: error, send
+pub struct Box<T>(T);
+use core::error::Error;
+
+#[rustc_allow_incoherent_impl]
+impl dyn Error {
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
+        loop {}
+    }
+}
+#[rustc_allow_incoherent_impl]
+impl dyn Error + Send {
+    /// Attempts to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
+        let err: Box<dyn Error> = self;
+                               // ^^^^ expected Box<dyn Error>, got Box<dyn Error + Send>
+                               // FIXME, type mismatch should not occur
+        <dyn Error>::downcast(err).map_err(|_| loop {})
+      //^^^^^^^^^^^^^^^^^^^^^ type: fn downcast<{unknown}>(Box<dyn Error>) -> Result<Box<{unknown}>, Box<dyn Error>>
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn fallback_private_methods() {
+    check(
+        r#"
+mod module {
+    pub struct Struct;
+
+    impl Struct {
+        fn func(&self) {}
+    }
+}
+
+fn foo() {
+    let s = module::Struct;
+    s.func();
+  //^^^^^^^^ type: ()
+}
+"#,
+    );
+}

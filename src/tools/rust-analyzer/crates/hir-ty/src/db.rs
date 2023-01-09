@@ -3,20 +3,23 @@
 
 use std::sync::Arc;
 
-use arrayvec::ArrayVec;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
-    db::DefDatabase, expr::ExprId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId,
-    FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,
+    db::DefDatabase,
+    expr::ExprId,
+    layout::{Layout, LayoutError, TargetDataLayout},
+    AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GenericDefId,
+    ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
+use smallvec::SmallVec;
 
 use crate::{
     chalk_db,
     consteval::{ComputedExpr, ConstEvalError},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     Binders, CallableDefId, FnDefId, GenericArg, ImplTraitId, InferenceResult, Interner, PolyFnSig,
-    QuantifiedWhereClause, ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
+    QuantifiedWhereClause, ReturnTypeImplTraits, Substitution, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -57,6 +60,13 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::lower::field_types_query)]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
+    #[salsa::invoke(crate::layout::layout_of_adt_query)]
+    #[salsa::cycle(crate::layout::layout_of_adt_recover)]
+    fn layout_of_adt(&self, def: AdtId, subst: Substitution) -> Result<Layout, LayoutError>;
+
+    #[salsa::invoke(crate::layout::target_data_layout_query)]
+    fn target_data_layout(&self, krate: CrateId) -> Arc<TargetDataLayout>;
+
     #[salsa::invoke(crate::lower::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;
 
@@ -92,10 +102,15 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn inherent_impls_in_block(&self, block: BlockId) -> Option<Arc<InherentImpls>>;
 
     /// Collects all crates in the dependency graph that have impls for the
-    /// given fingerprint. This is only used for primitive types; for
-    /// user-defined types we just look at the crate where the type is defined.
-    #[salsa::invoke(crate::method_resolution::inherent_impl_crates_query)]
-    fn inherent_impl_crates(&self, krate: CrateId, fp: TyFingerprint) -> ArrayVec<CrateId, 2>;
+    /// given fingerprint. This is only used for primitive types and types
+    /// annotated with `rustc_has_incoherent_inherent_impls`; for other types
+    /// we just look at the crate where the type is defined.
+    #[salsa::invoke(crate::method_resolution::incoherent_inherent_impl_crates)]
+    fn incoherent_inherent_impl_crates(
+        &self,
+        krate: CrateId,
+        fp: TyFingerprint,
+    ) -> SmallVec<[CrateId; 2]>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_crate_query)]
     fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;

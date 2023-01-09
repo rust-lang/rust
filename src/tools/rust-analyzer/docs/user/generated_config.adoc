@@ -109,33 +109,33 @@ Compilation target override (target triple).
 --
 Unsets `#[cfg(test)]` for the specified crates.
 --
-[[rust-analyzer.checkOnSave.allTargets]]rust-analyzer.checkOnSave.allTargets (default: `true`)::
+[[rust-analyzer.checkOnSave]]rust-analyzer.checkOnSave (default: `true`)::
++
+--
+Run the check command for diagnostics on save.
+--
+[[rust-analyzer.check.allTargets]]rust-analyzer.check.allTargets (default: `true`)::
 +
 --
 Check all targets and tests (`--all-targets`).
 --
-[[rust-analyzer.checkOnSave.command]]rust-analyzer.checkOnSave.command (default: `"check"`)::
+[[rust-analyzer.check.command]]rust-analyzer.check.command (default: `"check"`)::
 +
 --
 Cargo command to use for `cargo check`.
 --
-[[rust-analyzer.checkOnSave.enable]]rust-analyzer.checkOnSave.enable (default: `true`)::
-+
---
-Run specified `cargo check` command for diagnostics on save.
---
-[[rust-analyzer.checkOnSave.extraArgs]]rust-analyzer.checkOnSave.extraArgs (default: `[]`)::
+[[rust-analyzer.check.extraArgs]]rust-analyzer.check.extraArgs (default: `[]`)::
 +
 --
 Extra arguments for `cargo check`.
 --
-[[rust-analyzer.checkOnSave.extraEnv]]rust-analyzer.checkOnSave.extraEnv (default: `{}`)::
+[[rust-analyzer.check.extraEnv]]rust-analyzer.check.extraEnv (default: `{}`)::
 +
 --
 Extra environment variables that will be set when running `cargo check`.
 Extends `#rust-analyzer.cargo.extraEnv#`.
 --
-[[rust-analyzer.checkOnSave.features]]rust-analyzer.checkOnSave.features (default: `null`)::
+[[rust-analyzer.check.features]]rust-analyzer.check.features (default: `null`)::
 +
 --
 List of features to activate. Defaults to
@@ -143,7 +143,7 @@ List of features to activate. Defaults to
 
 Set to `"all"` to pass `--all-features` to Cargo.
 --
-[[rust-analyzer.checkOnSave.invocationLocation]]rust-analyzer.checkOnSave.invocationLocation (default: `"workspace"`)::
+[[rust-analyzer.check.invocationLocation]]rust-analyzer.check.invocationLocation (default: `"workspace"`)::
 +
 --
 Specifies the working directory for running checks.
@@ -153,7 +153,7 @@ Specifies the working directory for running checks.
 This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
 is set.
 --
-[[rust-analyzer.checkOnSave.invocationStrategy]]rust-analyzer.checkOnSave.invocationStrategy (default: `"per_workspace"`)::
+[[rust-analyzer.check.invocationStrategy]]rust-analyzer.check.invocationStrategy (default: `"per_workspace"`)::
 +
 --
 Specifies the invocation strategy to use when running the checkOnSave command.
@@ -162,18 +162,20 @@ If `once` is set, the command will be executed once.
 This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
 is set.
 --
-[[rust-analyzer.checkOnSave.noDefaultFeatures]]rust-analyzer.checkOnSave.noDefaultFeatures (default: `null`)::
+[[rust-analyzer.check.noDefaultFeatures]]rust-analyzer.check.noDefaultFeatures (default: `null`)::
 +
 --
 Whether to pass `--no-default-features` to Cargo. Defaults to
 `#rust-analyzer.cargo.noDefaultFeatures#`.
 --
-[[rust-analyzer.checkOnSave.overrideCommand]]rust-analyzer.checkOnSave.overrideCommand (default: `null`)::
+[[rust-analyzer.check.overrideCommand]]rust-analyzer.check.overrideCommand (default: `null`)::
 +
 --
 Override the command rust-analyzer uses instead of `cargo check` for
 diagnostics on save. The command is required to output json and
-should therefore include `--message-format=json` or a similar option.
+should therefore include `--message-format=json` or a similar option
+(if your client supports the `colorDiagnosticOutput` experimental
+capability, you can use `--message-format=json-diagnostic-rendered-ansi`).
 
 If you're changing this because you're using some tool wrapping
 Cargo, you might also want to change
@@ -190,7 +192,7 @@ cargo check --workspace --message-format=json --all-targets
 ```
 .
 --
-[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `[]`)::
+[[rust-analyzer.check.targets]]rust-analyzer.check.targets (default: `null`)::
 +
 --
 Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
@@ -454,10 +456,25 @@ to always show them).
 --
 Whether to show inlay type hints for return types of closures.
 --
+[[rust-analyzer.inlayHints.discriminantHints.enable]]rust-analyzer.inlayHints.discriminantHints.enable (default: `"never"`)::
++
+--
+Whether to show enum variant discriminant hints.
+--
 [[rust-analyzer.inlayHints.expressionAdjustmentHints.enable]]rust-analyzer.inlayHints.expressionAdjustmentHints.enable (default: `"never"`)::
 +
 --
 Whether to show inlay hints for type adjustments.
+--
+[[rust-analyzer.inlayHints.expressionAdjustmentHints.hideOutsideUnsafe]]rust-analyzer.inlayHints.expressionAdjustmentHints.hideOutsideUnsafe (default: `false`)::
++
+--
+Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
+--
+[[rust-analyzer.inlayHints.expressionAdjustmentHints.mode]]rust-analyzer.inlayHints.expressionAdjustmentHints.mode (default: `"prefix"`)::
++
+--
+Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
 --
 [[rust-analyzer.inlayHints.lifetimeElisionHints.enable]]rust-analyzer.inlayHints.lifetimeElisionHints.enable (default: `"never"`)::
 +
@@ -468,6 +485,11 @@ Whether to show inlay type hints for elided lifetimes in function signatures.
 +
 --
 Whether to prefer using parameter names as the name for elided lifetime hints if possible.
+--
+[[rust-analyzer.inlayHints.locationLinks]]rust-analyzer.inlayHints.locationLinks (default: `true`)::
++
+--
+Whether to use location links for parts of type mentioned in inlay hints.
 --
 [[rust-analyzer.inlayHints.maxLength]]rust-analyzer.inlayHints.maxLength (default: `25`)::
 +
@@ -603,6 +625,11 @@ Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
 +
 --
 Whether to show `can't find Cargo.toml` error message.
+--
+[[rust-analyzer.numThreads]]rust-analyzer.numThreads (default: `null`)::
++
+--
+How many worker threads in the main loop. The default `null` means to pick automatically.
 --
 [[rust-analyzer.procMacro.attributes.enable]]rust-analyzer.procMacro.attributes.enable (default: `true`)::
 +

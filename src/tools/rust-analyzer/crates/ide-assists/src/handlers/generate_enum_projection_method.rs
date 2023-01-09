@@ -157,7 +157,7 @@ fn generate_enum_projection_method(
         assist_description,
         target,
         |builder| {
-            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
+            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{v} "));
 
             let field_type_syntax = field_type.syntax();
 

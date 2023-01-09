@@ -40,7 +40,7 @@ impl ops::Deref for ManifestPath {
     type Target = AbsPath;
 
     fn deref(&self) -> &Self::Target {
-        &*self.file
+        &self.file
     }
 }
 

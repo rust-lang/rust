@@ -134,7 +134,7 @@ impl GlobalState {
 
         let task_pool = {
             let (sender, receiver) = unbounded();
-            let handle = TaskPool::new(sender);
+            let handle = TaskPool::new_with_threads(sender, config.main_loop_num_threads());
             Handle { handle, receiver }
         };
 
@@ -429,6 +429,6 @@ pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
 
 pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> Result<FileId> {
     let path = from_proto::vfs_path(url)?;
-    let res = vfs.file_id(&path).ok_or_else(|| format!("file not found: {}", path))?;
+    let res = vfs.file_id(&path).ok_or_else(|| format!("file not found: {path}"))?;
     Ok(res)
 }

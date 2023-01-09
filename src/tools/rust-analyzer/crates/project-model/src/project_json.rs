@@ -197,5 +197,5 @@ where
     D: de::Deserializer<'de>,
 {
     let name = String::deserialize(de)?;
-    CrateName::new(&name).map_err(|err| de::Error::custom(format!("invalid crate name: {:?}", err)))
+    CrateName::new(&name).map_err(|err| de::Error::custom(format!("invalid crate name: {err:?}")))
 }

@@ -216,7 +216,7 @@ fn validate_method_call_expr(
     let krate = module.krate();
 
     let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
-    it_type.impls_trait(sema.db, iter_trait, &[]).then(|| (expr, receiver))
+    it_type.impls_trait(sema.db, iter_trait, &[]).then_some((expr, receiver))
 }
 
 #[cfg(test)]

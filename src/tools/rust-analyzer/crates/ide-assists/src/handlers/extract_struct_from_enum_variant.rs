@@ -178,7 +178,7 @@ fn extract_generic_params(
             .fold(false, |tagged, ty| tag_generics_in_variant(&ty, &mut generics) || tagged),
     };
 
-    let generics = generics.into_iter().filter_map(|(param, tag)| tag.then(|| param));
+    let generics = generics.into_iter().filter_map(|(param, tag)| tag.then_some(param));
     tagged_one.then(|| make::generic_param_list(generics))
 }
 

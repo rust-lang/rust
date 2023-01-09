@@ -30,12 +30,12 @@ fn assert_expand_impl(macro_name: &str, input: &str, attr: Option<&str>, expect:
     let attr = attr.map(|attr| parse_string(attr).unwrap().into_subtree());
 
     let res = expander.expand(macro_name, &fixture.into_subtree(), attr.as_ref()).unwrap();
-    expect.assert_eq(&format!("{:?}", res));
+    expect.assert_eq(&format!("{res:?}"));
 }
 
 pub(crate) fn list() -> Vec<String> {
     let dylib_path = proc_macro_test_dylib_path();
     let mut srv = ProcMacroSrv::default();
     let res = srv.list_macros(&dylib_path).unwrap();
-    res.into_iter().map(|(name, kind)| format!("{} [{:?}]", name, kind)).collect()
+    res.into_iter().map(|(name, kind)| format!("{name} [{kind:?}]")).collect()
 }

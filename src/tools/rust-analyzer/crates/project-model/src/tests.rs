@@ -29,6 +29,7 @@ fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> CrateGr
         rustc_cfg: Vec::new(),
         cfg_overrides,
         toolchain: None,
+        target_layout: None,
     };
     to_crate_graph(project_workspace)
 }
@@ -106,7 +107,7 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> CrateGraph {
 }
 
 fn check_crate_graph(crate_graph: CrateGraph, expect: Expect) {
-    let mut crate_graph = format!("{:#?}", crate_graph);
+    let mut crate_graph = format!("{crate_graph:#?}");
     replace_root(&mut crate_graph, false);
     expect.assert_eq(&crate_graph);
 }
@@ -150,6 +151,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -219,6 +221,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -297,6 +300,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -375,6 +379,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -462,6 +467,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "feature=use_std",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -547,6 +553,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -618,6 +625,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -698,6 +706,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -778,6 +787,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -865,6 +875,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "feature=use_std",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -941,6 +952,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1012,6 +1024,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1092,6 +1105,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1172,6 +1186,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1259,6 +1274,7 @@ fn cargo_hello_world_project_model() {
                                 "feature=use_std",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1327,6 +1343,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1371,6 +1388,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1405,6 +1423,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1439,6 +1458,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1473,6 +1493,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1517,6 +1538,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1551,6 +1573,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1658,6 +1681,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1692,6 +1716,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1726,6 +1751,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1760,6 +1786,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },

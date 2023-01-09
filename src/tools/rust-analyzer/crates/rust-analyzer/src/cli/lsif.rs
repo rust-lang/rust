@@ -83,7 +83,7 @@ impl LsifManager<'_> {
 
     // FIXME: support file in addition to stdout here
     fn emit(&self, data: &str) {
-        println!("{}", data);
+        println!("{data}");
     }
 
     fn get_token_id(&mut self, id: TokenId) -> Id {
@@ -253,7 +253,7 @@ impl LsifManager<'_> {
         };
         let result = folds
             .into_iter()
-            .map(|it| to_proto::folding_range(&*text, &line_index, false, it))
+            .map(|it| to_proto::folding_range(&text, &line_index, false, it))
             .collect();
         let folding_id = self.add_vertex(lsif::Vertex::FoldingRangeResult { result });
         self.add_edge(lsif::Edge::FoldingRange(lsif::EdgeData {

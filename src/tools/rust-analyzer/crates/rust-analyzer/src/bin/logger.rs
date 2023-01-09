@@ -81,9 +81,9 @@ impl Logger {
                 Registry::default()
                     .with(
                         self.filter
-                            .add_directive(format!("chalk_solve={}", val).parse()?)
-                            .add_directive(format!("chalk_ir={}", val).parse()?)
-                            .add_directive(format!("chalk_recursive={}", val).parse()?),
+                            .add_directive(format!("chalk_solve={val}").parse()?)
+                            .add_directive(format!("chalk_ir={val}").parse()?)
+                            .add_directive(format!("chalk_recursive={val}").parse()?),
                     )
                     .with(ra_fmt_layer)
                     .with(chalk_layer)
@@ -124,7 +124,7 @@ where
             Some(log) => log.target(),
             None => event.metadata().target(),
         };
-        write!(writer, "[{} {}] ", level, target)?;
+        write!(writer, "[{level} {target}] ")?;
 
         // Write spans and fields of each span
         ctx.visit_spans(|span| {
@@ -140,7 +140,7 @@ where
             let fields = &ext.get::<FormattedFields<N>>().expect("will never be `None`");
 
             if !fields.is_empty() {
-                write!(writer, "{{{}}}", fields)?;
+                write!(writer, "{{{fields}}}")?;
             }
             write!(writer, ": ")?;
 

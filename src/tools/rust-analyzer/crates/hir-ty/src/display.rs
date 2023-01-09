@@ -16,7 +16,7 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{ConstScalar, TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    HasModule, ItemContainerId, Lookup, ModuleId, TraitId,
+    HasModule, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use itertools::Itertools;
@@ -35,14 +35,42 @@ use crate::{
     TraitRefExt, Ty, TyExt, TyKind, WhereClause,
 };
 
+pub trait HirWrite: fmt::Write {
+    fn start_location_link(&mut self, location: ModuleDefId);
+    fn end_location_link(&mut self);
+}
+
+// String will ignore link metadata
+impl HirWrite for String {
+    fn start_location_link(&mut self, _: ModuleDefId) {}
+
+    fn end_location_link(&mut self) {}
+}
+
+// `core::Formatter` will ignore metadata
+impl HirWrite for fmt::Formatter<'_> {
+    fn start_location_link(&mut self, _: ModuleDefId) {}
+    fn end_location_link(&mut self) {}
+}
+
 pub struct HirFormatter<'a> {
     pub db: &'a dyn HirDatabase,
-    fmt: &'a mut dyn fmt::Write,
+    fmt: &'a mut dyn HirWrite,
     buf: String,
     curr_size: usize,
     pub(crate) max_size: Option<usize>,
     omit_verbose_types: bool,
     display_target: DisplayTarget,
+}
+
+impl HirFormatter<'_> {
+    fn start_location_link(&mut self, location: ModuleDefId) {
+        self.fmt.start_location_link(location);
+    }
+
+    fn end_location_link(&mut self) {
+        self.fmt.end_location_link();
+    }
 }
 
 pub trait HirDisplay {
@@ -148,13 +176,13 @@ impl<'a> HirFormatter<'a> {
         let mut first = true;
         for e in iter {
             if !first {
-                write!(self, "{}", sep)?;
+                write!(self, "{sep}")?;
             }
             first = false;
 
             // Abbreviate multiple omitted types with a single ellipsis.
             if self.should_truncate() {
-                return write!(self, "{}", TYPE_HINT_TRUNCATION);
+                return write!(self, "{TYPE_HINT_TRUNCATION}");
             }
 
             e.hir_fmt(self)?;
@@ -245,12 +273,9 @@ pub struct HirDisplayWrapper<'a, T> {
     display_target: DisplayTarget,
 }
 
-impl<'a, T> fmt::Display for HirDisplayWrapper<'a, T>
-where
-    T: HirDisplay,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.t.hir_fmt(&mut HirFormatter {
+impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
+    pub fn write_to<F: HirWrite>(&self, f: &mut F) -> Result<(), HirDisplayError> {
+        self.t.hir_fmt(&mut HirFormatter {
             db: self.db,
             fmt: f,
             buf: String::with_capacity(20),
@@ -258,7 +283,16 @@ where
             max_size: self.max_size,
             omit_verbose_types: self.omit_verbose_types,
             display_target: self.display_target,
-        }) {
+        })
+    }
+}
+
+impl<'a, T> fmt::Display for HirDisplayWrapper<'a, T>
+where
+    T: HirDisplay,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.write_to(f) {
             Ok(()) => Ok(()),
             Err(HirDisplayError::FmtError) => Err(fmt::Error),
             Err(HirDisplayError::DisplaySourceCodeError(_)) => {
@@ -286,7 +320,7 @@ impl<T: HirDisplay + Internable> HirDisplay for Interned<T> {
 impl HirDisplay for ProjectionTy {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
-            return write!(f, "{}", TYPE_HINT_TRUNCATION);
+            return write!(f, "{TYPE_HINT_TRUNCATION}");
         }
 
         let trait_ref = self.trait_ref(f.db);
@@ -308,7 +342,7 @@ impl HirDisplay for ProjectionTy {
 impl HirDisplay for OpaqueTy {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
-            return write!(f, "{}", TYPE_HINT_TRUNCATION);
+            return write!(f, "{TYPE_HINT_TRUNCATION}");
         }
 
         self.substitution.at(Interner, 0).hir_fmt(f)
@@ -351,7 +385,7 @@ impl HirDisplay for BoundVar {
 impl HirDisplay for Ty {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
-            return write!(f, "{}", TYPE_HINT_TRUNCATION);
+            return write!(f, "{TYPE_HINT_TRUNCATION}");
         }
 
         match self.kind(Interner) {
@@ -530,6 +564,7 @@ impl HirDisplay for Ty {
                 }
             }
             TyKind::Adt(AdtId(def_id), parameters) => {
+                f.start_location_link((*def_id).into());
                 match f.display_target {
                     DisplayTarget::Diagnostics | DisplayTarget::Test => {
                         let name = match *def_id {
@@ -537,7 +572,7 @@ impl HirDisplay for Ty {
                             hir_def::AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
                             hir_def::AdtId::EnumId(it) => f.db.enum_data(it).name.clone(),
                         };
-                        write!(f, "{}", name)?;
+                        write!(f, "{name}")?;
                     }
                     DisplayTarget::SourceCode { module_id } => {
                         if let Some(path) = find_path::find_path(
@@ -546,7 +581,7 @@ impl HirDisplay for Ty {
                             module_id,
                             false,
                         ) {
-                            write!(f, "{}", path)?;
+                            write!(f, "{path}")?;
                         } else {
                             return Err(HirDisplayError::DisplaySourceCodeError(
                                 DisplaySourceCodeError::PathNotFound,
@@ -554,6 +589,7 @@ impl HirDisplay for Ty {
                         }
                     }
                 }
+                f.end_location_link();
 
                 if parameters.len(Interner) > 0 {
                     let parameters_to_write = if f.display_target.is_source_code()
@@ -701,7 +737,7 @@ impl HirDisplay for Ty {
                     if sig.params().is_empty() {
                         write!(f, "||")?;
                     } else if f.should_truncate() {
-                        write!(f, "|{}|", TYPE_HINT_TRUNCATION)?;
+                        write!(f, "|{TYPE_HINT_TRUNCATION}|")?;
                     } else {
                         write!(f, "|")?;
                         f.write_joined(sig.params(), ", ")?;
@@ -892,7 +928,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
     default_sized: SizedByDefault,
     f: &mut HirFormatter<'_>,
 ) -> Result<(), HirDisplayError> {
-    write!(f, "{}", prefix)?;
+    write!(f, "{prefix}")?;
     if !predicates.is_empty()
         || predicates.is_empty() && matches!(default_sized, SizedByDefault::Sized { .. })
     {
@@ -1020,7 +1056,7 @@ fn fmt_trait_ref(
     use_as: bool,
 ) -> Result<(), HirDisplayError> {
     if f.should_truncate() {
-        return write!(f, "{}", TYPE_HINT_TRUNCATION);
+        return write!(f, "{TYPE_HINT_TRUNCATION}");
     }
 
     tr.self_type_parameter(Interner).hir_fmt(f)?;
@@ -1047,7 +1083,7 @@ impl HirDisplay for TraitRef {
 impl HirDisplay for WhereClause {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
-            return write!(f, "{}", TYPE_HINT_TRUNCATION);
+            return write!(f, "{TYPE_HINT_TRUNCATION}");
         }
 
         match self {
@@ -1098,7 +1134,6 @@ impl HirDisplay for LifetimeData {
                 write!(f, "{}", param_data.name)
             }
             LifetimeData::Static => write!(f, "'static"),
-            LifetimeData::Empty(_) => Ok(()),
             LifetimeData::Erased => Ok(()),
             LifetimeData::Phantom(_, _) => Ok(()),
         }
@@ -1162,7 +1197,7 @@ impl HirDisplay for TypeRef {
                     hir_def::type_ref::Mutability::Shared => "*const ",
                     hir_def::type_ref::Mutability::Mut => "*mut ",
                 };
-                write!(f, "{}", mutability)?;
+                write!(f, "{mutability}")?;
                 inner.hir_fmt(f)?;
             }
             TypeRef::Reference(inner, lifetime, mutability) => {
@@ -1174,13 +1209,13 @@ impl HirDisplay for TypeRef {
                 if let Some(lifetime) = lifetime {
                     write!(f, "{} ", lifetime.name)?;
                 }
-                write!(f, "{}", mutability)?;
+                write!(f, "{mutability}")?;
                 inner.hir_fmt(f)?;
             }
             TypeRef::Array(inner, len) => {
                 write!(f, "[")?;
                 inner.hir_fmt(f)?;
-                write!(f, "; {}]", len)?;
+                write!(f, "; {len}]")?;
             }
             TypeRef::Slice(inner) => {
                 write!(f, "[")?;
@@ -1197,7 +1232,7 @@ impl HirDisplay for TypeRef {
                     for index in 0..function_parameters.len() {
                         let (param_name, param_type) = &function_parameters[index];
                         if let Some(name) = param_name {
-                            write!(f, "{}: ", name)?;
+                            write!(f, "{name}: ")?;
                         }
 
                         param_type.hir_fmt(f)?;
@@ -1373,7 +1408,7 @@ impl HirDisplay for hir_def::path::GenericArg {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self {
             hir_def::path::GenericArg::Type(ty) => ty.hir_fmt(f),
-            hir_def::path::GenericArg::Const(c) => write!(f, "{}", c),
+            hir_def::path::GenericArg::Const(c) => write!(f, "{c}"),
             hir_def::path::GenericArg::Lifetime(lifetime) => write!(f, "{}", lifetime.name),
         }
     }

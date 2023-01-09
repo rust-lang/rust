@@ -170,8 +170,8 @@ impl DefMap {
     ) -> ResolvePathResult {
         let graph = db.crate_graph();
         let _cx = stdx::panic_context::enter(format!(
-            "DefMap {:?} crate_name={:?} block={:?} path={}",
-            self.krate, graph[self.krate].display_name, self.block, path
+            "DefMap {:?} crate_name={:?} block={:?} path={path}",
+            self.krate, graph[self.krate].display_name, self.block
         ));
 
         let mut segments = path.segments().iter().enumerate();
@@ -390,7 +390,7 @@ impl DefMap {
             .get_legacy_macro(name)
             // FIXME: shadowing
             .and_then(|it| it.last())
-            .map_or_else(PerNs::none, |&m| PerNs::macros(m.into(), Visibility::Public));
+            .map_or_else(PerNs::none, |&m| PerNs::macros(m, Visibility::Public));
         let from_scope = self[module].scope.get(name);
         let from_builtin = match self.block {
             Some(_) => {

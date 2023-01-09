@@ -339,10 +339,10 @@ pub fn tail_only_block_expr(tail_expr: ast::Expr) -> ast::BlockExpr {
 }
 
 /// Ideally this function wouldn't exist since it involves manual indenting.
-/// It differs from `make::block_expr` by also supporting comments.
+/// It differs from `make::block_expr` by also supporting comments and whitespace.
 ///
 /// FIXME: replace usages of this with the mutable syntax tree API
-pub fn hacky_block_expr_with_comments(
+pub fn hacky_block_expr(
     elements: impl IntoIterator<Item = crate::SyntaxElement>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
@@ -350,10 +350,17 @@ pub fn hacky_block_expr_with_comments(
     for node_or_token in elements.into_iter() {
         match node_or_token {
             rowan::NodeOrToken::Node(n) => format_to!(buf, "    {n}\n"),
-            rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::COMMENT => {
-                format_to!(buf, "    {t}\n")
+            rowan::NodeOrToken::Token(t) => {
+                let kind = t.kind();
+                if kind == SyntaxKind::COMMENT {
+                    format_to!(buf, "    {t}\n")
+                } else if kind == SyntaxKind::WHITESPACE {
+                    let content = t.text().trim_matches(|c| c != '\n');
+                    if content.len() >= 1 {
+                        format_to!(buf, "{}", &content[1..])
+                    }
+                }
             }
-            _ => (),
         }
     }
     if let Some(tail_expr) = tail_expr {
@@ -719,12 +726,23 @@ pub fn param_list(
     ast_from_text(&list)
 }
 
-pub fn type_param(name: ast::Name, ty: Option<ast::TypeBoundList>) -> ast::TypeParam {
-    let bound = match ty {
-        Some(it) => format!(": {it}"),
-        None => String::new(),
-    };
-    ast_from_text(&format!("fn f<{name}{bound}>() {{ }}"))
+pub fn type_bound(bound: &str) -> ast::TypeBound {
+    ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
+}
+
+pub fn type_bound_list(
+    bounds: impl IntoIterator<Item = ast::TypeBound>,
+) -> Option<ast::TypeBoundList> {
+    let bounds = bounds.into_iter().map(|it| it.to_string()).unique().join(" + ");
+    if bounds.is_empty() {
+        return None;
+    }
+    Some(ast_from_text(&format!("fn f<T: {bounds}>() {{ }}")))
+}
+
+pub fn type_param(name: ast::Name, bounds: Option<ast::TypeBoundList>) -> ast::TypeParam {
+    let bounds = bounds.map_or_else(String::new, |it| format!(": {it}"));
+    ast_from_text(&format!("fn f<{name}{bounds}>() {{ }}"))
 }
 
 pub fn lifetime_param(lifetime: ast::Lifetime) -> ast::LifetimeParam {

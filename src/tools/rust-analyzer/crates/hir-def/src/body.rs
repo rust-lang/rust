@@ -372,7 +372,7 @@ impl Body {
     /// Retrieves all ident patterns this pattern shares the ident with.
     pub fn ident_patterns_for<'slf>(&'slf self, pat: &'slf PatId) -> &'slf [PatId] {
         match self.or_pats.get(pat) {
-            Some(pats) => &**pats,
+            Some(pats) => pats,
             None => std::slice::from_ref(pat),
         }
     }

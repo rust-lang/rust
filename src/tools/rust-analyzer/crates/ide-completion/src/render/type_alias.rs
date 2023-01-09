@@ -40,7 +40,7 @@ fn render(
     };
     let detail = type_alias.display(db).to_string();
 
-    let mut item = CompletionItem::new(SymbolKind::TypeAlias, ctx.source_range(), name.clone());
+    let mut item = CompletionItem::new(SymbolKind::TypeAlias, ctx.source_range(), name);
     item.set_documentation(ctx.docs(type_alias))
         .set_deprecated(ctx.is_deprecated(type_alias) || ctx.is_deprecated_assoc_item(type_alias))
         .detail(detail)

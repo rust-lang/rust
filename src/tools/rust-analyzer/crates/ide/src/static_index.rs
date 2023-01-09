@@ -13,6 +13,7 @@ use syntax::{AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
 
 use crate::{
     hover::hover_for_definition,
+    inlay_hints::AdjustmentHintsMode,
     moniker::{def_to_moniker, MonikerResult},
     parent_module::crates_for,
     Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult, InlayHint, InlayHintsConfig,
@@ -106,13 +107,17 @@ impl StaticIndex<'_> {
             .analysis
             .inlay_hints(
                 &InlayHintsConfig {
+                    location_links: true,
                     render_colons: true,
+                    discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
                     parameter_hints: true,
                     chaining_hints: true,
                     closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
                     adjustment_hints: crate::AdjustmentHints::Never,
+                    adjustment_hints_mode: AdjustmentHintsMode::Prefix,
+                    adjustment_hints_hide_outside_unsafe: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
                     param_names_for_lifetime_elision_hints: false,
@@ -231,13 +236,13 @@ mod tests {
             for (range, _) in f.tokens {
                 let x = FileRange { file_id: f.file_id, range };
                 if !range_set.contains(&x) {
-                    panic!("additional range {:?}", x);
+                    panic!("additional range {x:?}");
                 }
                 range_set.remove(&x);
             }
         }
         if !range_set.is_empty() {
-            panic!("unfound ranges {:?}", range_set);
+            panic!("unfound ranges {range_set:?}");
         }
     }
 
@@ -252,13 +257,13 @@ mod tests {
                     continue;
                 }
                 if !range_set.contains(&x) {
-                    panic!("additional definition {:?}", x);
+                    panic!("additional definition {x:?}");
                 }
                 range_set.remove(&x);
             }
         }
         if !range_set.is_empty() {
-            panic!("unfound definitions {:?}", range_set);
+            panic!("unfound definitions {range_set:?}");
         }
     }
 

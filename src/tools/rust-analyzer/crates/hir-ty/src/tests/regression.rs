@@ -1723,3 +1723,24 @@ fn bar() -> ControlFlow<(), ()> {
 "#,
     );
 }
+
+#[test]
+fn assoc_type_shorthand_with_gats_in_binders() {
+    // c.f. test `issue_4885()`
+    check_no_mismatches(
+        r#"
+trait Gats {
+    type Assoc<T>;
+}
+trait Foo<T> {}
+
+struct Bar<'a, B: Gats, A> {
+    field: &'a dyn Foo<B::Assoc<A>>,
+}
+
+fn foo(b: Bar) {
+    let _ = b.field;
+}
+"#,
+    );
+}

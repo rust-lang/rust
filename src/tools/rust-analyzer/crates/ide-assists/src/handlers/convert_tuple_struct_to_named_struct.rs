@@ -168,7 +168,7 @@ fn edit_struct_references(
                     let arg_list = call_expr.syntax().descendants().find_map(ast::ArgList::cast)?;
 
                     edit.replace(
-                        call_expr.syntax().text_range(),
+                        ctx.sema.original_range(&node).range,
                         ast::make::record_expr(
                             path,
                             ast::make::record_expr_field_list(arg_list.args().zip(names).map(
@@ -248,6 +248,24 @@ mod tests {
             r#"struct Foo$0 { bar: u32 };"#,
         );
         check_assist_not_applicable(convert_tuple_struct_to_named_struct, r#"struct Foo$0;"#);
+    }
+    #[test]
+    fn convert_in_macro_args() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+macro_rules! foo {($i:expr) => {$i} }
+struct T$0(u8);
+fn test() {
+    foo!(T(1));
+}"#,
+            r#"
+macro_rules! foo {($i:expr) => {$i} }
+struct T { field1: u8 }
+fn test() {
+    foo!(T { field1: 1 });
+}"#,
+        );
     }
 
     #[test]
@@ -551,6 +569,29 @@ where
         check_assist_not_applicable(
             convert_tuple_struct_to_named_struct,
             r#"enum Enum { Variant$0 }"#,
+        );
+    }
+
+    #[test]
+    fn convert_variant_in_macro_args() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+macro_rules! foo {($i:expr) => {$i} }
+enum T {
+  V$0(u8)
+}
+fn test() {
+    foo!(T::V(1));
+}"#,
+            r#"
+macro_rules! foo {($i:expr) => {$i} }
+enum T {
+  V { field1: u8 }
+}
+fn test() {
+    foo!(T::V { field1: 1 });
+}"#,
         );
     }
 
