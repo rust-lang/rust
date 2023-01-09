@@ -475,7 +475,7 @@ fn check_opaque_meets_bounds<'tcx>(
         }
     }
     // Clean up after ourselves
-    let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+    let _ = infcx.take_opaque_types();
 }
 
 fn is_enum_of_nonnullable_ptr<'tcx>(

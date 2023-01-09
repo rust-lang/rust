@@ -209,7 +209,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     );
 
     translate_outlives_facts(&mut checker);
-    let opaque_type_values = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+    let opaque_type_values = infcx.take_opaque_types();
 
     let opaque_type_values = opaque_type_values
         .into_iter()
