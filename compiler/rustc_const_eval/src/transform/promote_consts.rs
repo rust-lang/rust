@@ -847,7 +847,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let local_decls = &mut self.source.local_decls;
             let loc = candidate.location;
             let statement = &mut blocks[loc.block].statements[loc.statement_index];
-            let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place)))= &mut statement.kind else {
+            let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place))) = &mut statement.kind else {
                 bug!()
             };
 

@@ -113,7 +113,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // it is usually better to focus on `the_value` rather
                 // than the entirety of block(s) surrounding it.
-                let adjusted_span = 
+                let adjusted_span =
                     if let ExprKind::Block { block } = expr.kind
                         && let Some(tail_ex) = this.thir[block].expr
                     {
