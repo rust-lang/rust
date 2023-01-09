@@ -76,7 +76,7 @@ pub unsafe fn cmpxchg16b(
         (_, Release) => panic!("there is no such thing as a release failure ordering"),
 
         // `atomic::Ordering` is non_exhaustive. It warns when `core_arch` is built as a part of `core`.
-        #[allow(unreachable_patterns)] 
+        #[allow(unreachable_patterns)]
         (_, _) => unreachable!(),
     };
     val
