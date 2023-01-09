@@ -102,7 +102,7 @@ pub enum TraitQueryMode {
     /// spans etc. passed in and hence can do reasonable
     /// error reporting on their own.
     Standard,
-    /// Canonicalized queries get dummy spans and hence
+    /// Canonical queries get dummy spans and hence
     /// must generally propagate errors to
     /// pre-canonicalization callsites.
     Canonical,
