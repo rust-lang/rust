@@ -106,11 +106,12 @@ pub trait AstConv<'tcx> {
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx>;
 
-    /// Normalize an associated type coming from the user.
-    ///
-    /// This should only be used by astconv. Use `FnCtxt::normalize`
-    /// or `ObligationCtxt::normalize` in downstream crates.
-    fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
+    /// Returns `AdtDef` if `ty` is an ADT.
+    /// Note that `ty` might be a projection type that needs normalization.
+    /// This used to get the enum variants in scope of the type.
+    /// For example, `Self::A` could refer to an associated type
+    /// or to an enum variant depending on the result of this function.
+    fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>>;
 
     /// Invoked when we encounter an error from some prior pass
     /// (e.g., resolve) that is translated into a ty-error. This is
@@ -485,14 +486,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // Avoid ICE #86756 when type error recovery goes awry.
                                 return tcx.ty_error().into();
                             }
-                            self.astconv
-                                .normalize_ty(
-                                    self.span,
-                                    tcx.at(self.span)
-                                        .bound_type_of(param.def_id)
-                                        .subst(tcx, substs),
-                                )
-                                .into()
+                            tcx.at(self.span).bound_type_of(param.def_id).subst(tcx, substs).into()
                         } else if infer_args {
                             self.astconv.ty_infer(Some(param), self.span).into()
                         } else {
@@ -1267,7 +1261,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_segment: &hir::PathSegment<'_>,
     ) -> Ty<'tcx> {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
-        self.normalize_ty(span, self.tcx().at(span).bound_type_of(did).subst(self.tcx(), substs))
+        self.tcx().at(span).bound_type_of(did).subst(self.tcx(), substs)
     }
 
     fn conv_object_ty_poly_trait_ref(
@@ -1832,7 +1826,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         Ok(bound)
     }
 
-    // Create a type from a path to an associated type.
+    // Create a type from a path to an associated type or to an enum variant.
     // For a path `A::B::C::D`, `qself_ty` and `qself_def` are the type and def for `A::B::C`
     // and item_segment is the path segment for `D`. We return a type and a def for
     // the whole path.
@@ -1860,7 +1854,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Check if we have an enum variant.
         let mut variant_resolution = None;
-        if let ty::Adt(adt_def, adt_substs) = qself_ty.kind() {
+        if let Some(adt_def) = self.probe_adt(span, qself_ty) {
             if adt_def.is_enum() {
                 let variant_def = adt_def
                     .variants()
@@ -1962,6 +1956,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, impl_) else {
                     continue;
                 };
+                let ty::Adt(_, adt_substs) = qself_ty.kind() else {
+                    // FIXME(inherent_associated_types)
+                    bug!("unimplemented: non-adt self of inherent assoc ty");
+                };
                 let item_substs = self.create_substs_for_associated_item(
                     span,
                     assoc_ty_did,
@@ -1969,7 +1967,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     adt_substs,
                 );
                 let ty = tcx.bound_type_of(assoc_ty_did).subst(tcx, item_substs);
-                let ty = self.normalize_ty(span, ty);
                 return Ok((ty, DefKind::AssocTy, assoc_ty_did));
             }
         }
@@ -2066,7 +2063,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         let ty = self.projected_ty_from_poly_trait_ref(span, assoc_ty_did, assoc_segment, bound);
-        let ty = self.normalize_ty(span, ty);
 
         if let Some(variant_def_id) = variant_resolution {
             tcx.struct_span_lint_hir(
@@ -2202,7 +2198,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("qpath_to_ty: trait_ref={:?}", trait_ref);
 
-        self.normalize_ty(span, tcx.mk_projection(item_def_id, item_substs))
+        tcx.mk_projection(item_def_id, item_substs)
     }
 
     pub fn prohibit_generics<'a>(
@@ -2319,6 +2315,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Option<Ty<'tcx>>,
         kind: DefKind,
         def_id: DefId,
+        span: Span,
     ) -> Vec<PathSeg> {
         // We need to extract the type parameters supplied by the user in
         // the path `path`. Due to the current setup, this is a bit of a
@@ -2386,8 +2383,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             // Case 2. Reference to a variant constructor.
             DefKind::Ctor(CtorOf::Variant, ..) | DefKind::Variant => {
-                let adt_def = self_ty.map(|t| t.ty_adt_def().unwrap());
-                let (generics_def_id, index) = if let Some(adt_def) = adt_def {
+                let (generics_def_id, index) = if let Some(self_ty) = self_ty {
+                    let adt_def = self.probe_adt(span, self_ty).unwrap();
                     debug_assert!(adt_def.is_enum());
                     (adt_def.did(), last)
                 } else if last >= 1 && segments[last - 1].args.is_some() {
@@ -2463,7 +2460,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     err.note("`impl Trait` types can't have type parameters");
                 });
                 let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
-                self.normalize_ty(span, tcx.mk_opaque(did, substs))
+                tcx.mk_opaque(did, substs)
             }
             Res::Def(
                 DefKind::Enum
@@ -2483,7 +2480,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
 
                 let path_segs =
-                    self.def_ids_for_value_path_segments(path.segments, None, kind, def_id);
+                    self.def_ids_for_value_path_segments(path.segments, None, kind, def_id, span);
                 let generic_segs: FxHashSet<_> =
                     path_segs.iter().map(|PathSeg(_, index)| index).collect();
                 self.prohibit_generics(
@@ -2623,7 +2620,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     tcx.ty_error_with_guaranteed(err.emit())
                 } else {
-                    self.normalize_ty(span, ty)
+                    ty
                 }
             }
             Res::Def(DefKind::AssocTy, def_id) => {
@@ -2766,8 +2763,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     None,
                     ty::BoundConstness::NotConst,
                 );
-                EarlyBinder(self.normalize_ty(span, tcx.at(span).type_of(def_id)))
-                    .subst(tcx, substs)
+                EarlyBinder(tcx.at(span).type_of(def_id)).subst(tcx, substs)
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length = match length {
@@ -2777,8 +2773,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 };
 
-                let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(ty), length));
-                self.normalize_ty(ast_ty.span, array_ty)
+                tcx.mk_ty(ty::Array(self.ast_ty_to_ty(ty), length))
             }
             hir::TyKind::Typeof(ref e) => {
                 let ty_erased = tcx.type_of(e.def_id);

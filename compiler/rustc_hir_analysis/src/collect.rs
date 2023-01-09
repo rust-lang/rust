@@ -505,9 +505,9 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         }
     }
 
-    fn normalize_ty(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        // Types in item signatures are not normalized to avoid undue dependencies.
-        ty
+    fn probe_adt(&self, _span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
+        // FIXME(#103640): Should we handle the case where `ty` is a projection?
+        ty.ty_adt_def()
     }
 
     fn set_tainted_by_errors(&self, _: ErrorGuaranteed) {

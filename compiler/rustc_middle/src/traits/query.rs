@@ -15,22 +15,19 @@ use rustc_span::source_map::Span;
 
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;
-    use crate::ty::subst::UserSubsts;
-    use crate::ty::{Predicate, Ty};
-    use rustc_hir::def_id::DefId;
+    use crate::ty::{Predicate, Ty, UserType};
     use std::fmt;
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
     #[derive(TypeFoldable, TypeVisitable)]
     pub struct AscribeUserType<'tcx> {
         pub mir_ty: Ty<'tcx>,
-        pub def_id: DefId,
-        pub user_substs: UserSubsts<'tcx>,
+        pub user_ty: UserType<'tcx>,
     }
 
     impl<'tcx> AscribeUserType<'tcx> {
-        pub fn new(mir_ty: Ty<'tcx>, def_id: DefId, user_substs: UserSubsts<'tcx>) -> Self {
-            Self { mir_ty, def_id, user_substs }
+        pub fn new(mir_ty: Ty<'tcx>, user_ty: UserType<'tcx>) -> Self {
+            Self { mir_ty, user_ty }
         }
     }
 
