@@ -1104,7 +1104,11 @@ impl<'a> Parser<'a> {
                     return if token::ModSep == self.token.kind {
                         // We have some certainty that this was a bad turbofish at this point.
                         // `foo< bar >::`
-                        err.suggest_turbofish = Some(op.span.shrink_to_lo());
+                        if let ExprKind::Binary(o, ..) = inner_op.kind && o.node == BinOpKind::Lt {
+                            err.suggest_turbofish = Some(op.span.shrink_to_lo());
+                        } else {
+                            err.help_turbofish = Some(());
+                        }
 
                         let snapshot = self.create_snapshot_for_diagnostic();
                         self.bump(); // `::`
@@ -1130,7 +1134,11 @@ impl<'a> Parser<'a> {
                     } else if token::OpenDelim(Delimiter::Parenthesis) == self.token.kind {
                         // We have high certainty that this was a bad turbofish at this point.
                         // `foo< bar >(`
-                        err.suggest_turbofish = Some(op.span.shrink_to_lo());
+                        if let ExprKind::Binary(o, ..) = inner_op.kind && o.node == BinOpKind::Lt {
+                            err.suggest_turbofish = Some(op.span.shrink_to_lo());
+                        } else {
+                            err.help_turbofish = Some(());
+                        }
                         // Consume the fn call arguments.
                         match self.consume_fn_args() {
                             Err(()) => Err(err.into_diagnostic(&self.sess.span_diagnostic)),
