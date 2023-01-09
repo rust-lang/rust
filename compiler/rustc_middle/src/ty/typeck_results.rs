@@ -626,7 +626,7 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub inferred_ty: Ty<'tcx>,
 }
 
-/// Canonicalized user type annotation.
+/// Canonical user type annotation.
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
 impl<'tcx> CanonicalUserType<'tcx> {

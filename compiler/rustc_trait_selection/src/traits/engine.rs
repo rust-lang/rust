@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{
-    Canonical, CanonicalVarValues, CanonicalizedQueryResponse, QueryResponse,
+    Canonical, CanonicalQueryResponse, CanonicalVarValues, QueryResponse,
 };
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::query::Fallible;
@@ -215,7 +215,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, T>>
+    ) -> Fallible<CanonicalQueryResponse<'tcx, T>>
     where
         T: Debug + TypeFoldable<'tcx>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
