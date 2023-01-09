@@ -27,4 +27,8 @@ assert-css-false: (".content .out-of-band .since::before", { "content": "\"Since
 goto: "file://" + |DOC_PATH| + "/settings.html"
 size: (400, 600)
 // Ignored for now https://github.com/rust-lang/rust/issues/93784.
-// compare-elements-position-near-false: ("#preferred-light-theme .setting-name", "#preferred-light-theme .choice", {"y": 16})
+// compare-elements-position-near-false: (
+//     "#preferred-light-theme .setting-name",
+//     "#preferred-light-theme .choice",
+//     {"y": 16},
+// )

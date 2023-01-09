@@ -31,13 +31,28 @@ define-function: (
 
 call-function: (
     "check-logo",
-    ("ayu", "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px 1px 0px) drop-shadow(rgb(255, 255, 255) -1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px -1px 0px)"),
+    {
+        "theme": "ayu",
+        "filter": "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) " +
+            "drop-shadow(rgb(255, 255, 255) 0px 1px 0px) " +
+            "drop-shadow(rgb(255, 255, 255) -1px 0px 0px) " +
+            "drop-shadow(rgb(255, 255, 255) 0px -1px 0px)",
+    },
 )
 call-function: (
     "check-logo",
-    ("dark", "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px 1px 0px) drop-shadow(rgb(255, 255, 255) -1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px -1px 0px)"),
+    {
+        "theme": "dark",
+        "filter": "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) " +
+            "drop-shadow(rgb(255, 255, 255) 0px 1px 0px) " +
+            "drop-shadow(rgb(255, 255, 255) -1px 0px 0px) " +
+            "drop-shadow(rgb(255, 255, 255) 0px -1px 0px)",
+    },
 )
 call-function: (
     "check-logo",
-    ("light", "none"),
+    {
+        "theme": "light",
+        "filter": "none",
+    },
 )
