@@ -1,23 +1,29 @@
 #![feature(mut_restriction)]
 
-pub struct TopLevel {
-    pub mut(self) alpha: u8,
+#[derive(Default)]
+pub struct TopLevelStruct {
+    pub mut(self) field: u8,
 }
 
-impl TopLevel {
-    pub fn new() -> Self {
-        Self { alpha: 0 }
-    }
+#[derive(Default)]
+pub enum TopLevelEnum {
+    #[default]
+    Default,
+    A(mut(self) u8),
+    B { mut(self) field: u8 },
 }
 
 pub mod inner {
-    pub struct Inner {
-        pub mut(self) beta: u8,
+    #[derive(Default)]
+    pub struct InnerStruct {
+        pub mut(self) field: u8,
     }
 
-    impl Inner {
-        pub fn new() -> Self {
-            Self { beta: 0 }
-        }
+    #[derive(Default)]
+    pub enum InnerEnum {
+        #[default]
+        Default,
+        A(mut(self) u8),
+        B { mut(self) field: u8 },
     }
 }

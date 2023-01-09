@@ -1,98 +1,216 @@
-error: field cannot be mutated outside `foo`
-  --> $DIR/mut-restriction.rs:25:5
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:30:5
    |
-LL |         pub mut(self) alpha: u8,
+LL |     pub struct TupleStruct(pub mut(self) u8);
+   |                                --------- mutability restricted here
+...
+LL |     local_tuple_struct.0 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:31:5
+   |
+LL |         pub mut(self) field: u8,
    |             --------- mutability restricted here
 ...
-LL |     foo.alpha = 1;
-   |     ^^^^^^^^^^^^^
+LL |     local_field_struct.field = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: field cannot be mutated outside `foo`
-  --> $DIR/mut-restriction.rs:27:24
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:35:30
    |
-LL |         Beta(mut(self) u8),
-   |              --------- mutability restricted here
+LL |         Field { mut(self) field: u8 },
+   |                 --------- mutability restricted here
 ...
-LL |         foo::Bar::Beta(ref mut beta) => {}
-   |                        ^^^^^^^^^^^^
+LL |         local::Enum::Field { ref mut field } => {}
+   |                              ^^^^^^^^^^^^^
 
-error: field cannot be mutated outside `foo`
-  --> $DIR/mut-restriction.rs:34:9
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:34:28
    |
-LL |         pub mut(self) alpha: u8,
+LL |         Tuple(mut(self) u8),
+   |               --------- mutability restricted here
+...
+LL |         local::Enum::Tuple(ref mut a) => {}
+   |                            ^^^^^^^^^
+
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:42:9
+   |
+LL |     pub struct TupleStruct(pub mut(self) u8);
+   |                                --------- mutability restricted here
+...
+LL |         (*a).0 = 1;
+   |         ^^^^^^^^^^
+
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:43:9
+   |
+LL |         pub mut(self) field: u8,
    |             --------- mutability restricted here
 ...
-LL |         (*foo).alpha = 1;
-   |         ^^^^^^^^^^^^^^^^
+LL |         (*b).field = 1;
+   |         ^^^^^^^^^^^^^^
 
-error: field cannot be mutated outside `foo`
-  --> $DIR/mut-restriction.rs:42:5
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:52:5
    |
-LL |         pub mut(self) alpha: u8,
+LL |     pub struct TupleStruct(pub mut(self) u8);
+   |                                --------- mutability restricted here
+...
+LL |     local_tuple_struct.0 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:53:5
+   |
+LL |         pub mut(self) field: u8,
    |             --------- mutability restricted here
 ...
-LL |     foo.alpha = 1;
-   |     ^^^^^^^^^^^^^
+LL |     local_field_struct.field = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: field cannot be mutated outside `foo`
-  --> $DIR/mut-restriction.rs:44:24
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:57:30
    |
-LL |         Beta(mut(self) u8),
-   |              --------- mutability restricted here
+LL |         Field { mut(self) field: u8 },
+   |                 --------- mutability restricted here
 ...
-LL |         foo::Bar::Beta(ref mut beta) => {}
-   |                        ^^^^^^^^^^^^
+LL |         local::Enum::Field { ref mut field } => {}
+   |                              ^^^^^^^^^^^^^
 
-error: field cannot be mutated outside `foo`
-  --> $DIR/mut-restriction.rs:46:5
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:56:28
    |
-LL |         pub mut(self) alpha: u8,
-   |             --------- mutability restricted here
+LL |         Tuple(mut(self) u8),
+   |               --------- mutability restricted here
 ...
-LL |     std::ptr::addr_of_mut!(foo.alpha);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         local::Enum::Tuple(ref mut a) => {}
+   |                            ^^^^^^^^^
+
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:59:5
+   |
+LL |     pub struct TupleStruct(pub mut(self) u8);
+   |                                --------- mutability restricted here
+...
+LL |     std::ptr::addr_of_mut!(local_tuple_struct.0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: field cannot be mutated outside `foo`
-  --> $DIR/mut-restriction.rs:48:18
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:60:5
    |
-LL |         pub mut(self) alpha: u8,
+LL |         pub mut(self) field: u8,
    |             --------- mutability restricted here
 ...
-LL |     let _alpha = &mut foo.alpha;
-   |                  ^^^^^^^^^^^^^^
+LL |     std::ptr::addr_of_mut!(local_field_struct.field);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: field cannot be mutated outside `external_mut_restriction`
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:62:5
+   |
+LL |     pub struct TupleStruct(pub mut(self) u8);
+   |                                --------- mutability restricted here
+...
+LL |     &mut local_tuple_struct.0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field cannot be mutated outside `local`
   --> $DIR/mut-restriction.rs:63:5
    |
-LL |     external_top_level.alpha = 1;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         pub mut(self) field: u8,
+   |             --------- mutability restricted here
+...
+LL |     &mut local_field_struct.field;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field cannot be mutated outside `external_mut_restriction`
+  --> $DIR/mut-restriction.rs:84:5
    |
-  ::: $DIR/auxiliary/external-mut-restriction.rs:4:9
+LL |     external_top_level_struct.field = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     pub mut(self) alpha: u8,
+  ::: $DIR/auxiliary/external-mut-restriction.rs:5:9
+   |
+LL |     pub mut(self) field: u8,
    |         --------- mutability restricted here
 
 error: field cannot be mutated outside `external_mut_restriction`
-  --> $DIR/mut-restriction.rs:67:5
+  --> $DIR/mut-restriction.rs:90:37
    |
-LL |     external_inner.beta = 1;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+LL |         external::TopLevelEnum::B { ref mut field } => {}
+   |                                     ^^^^^^^^^^^^^
    |
-  ::: $DIR/auxiliary/external-mut-restriction.rs:15:13
+  ::: $DIR/auxiliary/external-mut-restriction.rs:13:9
    |
-LL |         pub mut(self) beta: u8,
+LL |     B { mut(self) field: u8 },
+   |         --------- mutability restricted here
+
+error: field cannot be mutated outside `external_mut_restriction`
+  --> $DIR/mut-restriction.rs:89:35
+   |
+LL |         external::TopLevelEnum::A(ref mut a) => {}
+   |                                   ^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:12:7
+   |
+LL |     A(mut(self) u8),
+   |       --------- mutability restricted here
+
+error: field cannot be mutated outside `external_mut_restriction`
+  --> $DIR/mut-restriction.rs:94:5
+   |
+LL |     external_inner_struct.field = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:19:13
+   |
+LL |         pub mut(self) field: u8,
    |             --------- mutability restricted here
 
-error: field cannot be mutated outside `foo`
-  --> $DIR/mut-restriction.rs:51:9
+error: field cannot be mutated outside `external_mut_restriction`
+  --> $DIR/mut-restriction.rs:100:41
    |
-LL |         pub mut(self) alpha: u8,
+LL |         external::inner::InnerEnum::B { ref mut field } => {}
+   |                                         ^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:27:13
+   |
+LL |         B { mut(self) field: u8 },
+   |             --------- mutability restricted here
+
+error: field cannot be mutated outside `external_mut_restriction`
+  --> $DIR/mut-restriction.rs:99:39
+   |
+LL |         external::inner::InnerEnum::A(ref mut a) => {}
+   |                                       ^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:26:11
+   |
+LL |         A(mut(self) u8),
+   |           --------- mutability restricted here
+
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:66:9
+   |
+LL |     pub struct TupleStruct(pub mut(self) u8);
+   |                                --------- mutability restricted here
+...
+LL |         local_tuple_struct.0 = 1;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field cannot be mutated outside `local`
+  --> $DIR/mut-restriction.rs:67:9
+   |
+LL |         pub mut(self) field: u8,
    |             --------- mutability restricted here
 ...
-LL |         foo.alpha = 1;
-   |         ^^^^^^^^^^^^^
+LL |         local_field_struct.field = 1;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 10 previous errors
+error: aborting due to 22 previous errors
 
