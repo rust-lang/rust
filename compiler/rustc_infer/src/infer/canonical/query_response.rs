@@ -156,10 +156,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// As the new solver does canonicalization slightly differently, this is also used there
     /// for now. This should hopefully change fairly soon.
     pub fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
-        self.inner
-            .borrow_mut()
-            .opaque_type_storage
-            .take_opaque_types()
+        std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
             .into_iter()
             .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
             .collect()

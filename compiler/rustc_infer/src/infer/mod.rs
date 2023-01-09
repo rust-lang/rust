@@ -1338,6 +1338,12 @@ impl<'tcx> InferCtxt<'tcx> {
         var_infos
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
+    pub fn take_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
+        debug_assert_ne!(self.defining_use_anchor, DefiningAnchor::Error);
+        std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
+    }
+
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
         self.resolve_vars_if_possible(t).to_string()
     }
