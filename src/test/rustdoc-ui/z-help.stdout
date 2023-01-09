@@ -1,4 +1,4 @@
-    -Z                          allow-features=val -- only allow the listed language features to be enabled in code (space separated)
+    -Z                          allow-features=val -- only allow the listed language features to be enabled in code (comma separated)
     -Z                       always-encode-mir=val -- encode MIR of all functions into the crate metadata (default: no)
     -Z                            asm-comments=val -- generate comments into the assembly (may change behavior) (default: no)
     -Z                       assert-incr-state=val -- assert that the incremental cache is in given state: either `loaded` or `not-loaded`.
