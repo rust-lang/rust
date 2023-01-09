@@ -126,7 +126,6 @@ mod handlers {
     mod convert_to_guarded_return;
     mod convert_two_arm_bool_match_to_matches_macro;
     mod convert_while_to_loop;
-    mod convert_ufcs_to_method;
     mod destructure_tuple_binding;
     mod expand_glob_import;
     mod extract_expressions_from_format_string;
@@ -202,6 +201,7 @@ mod handlers {
     mod unnecessary_async;
     mod unwrap_block;
     mod unwrap_result_return_type;
+    mod unqualify_method_call;
     mod wrap_return_type_in_result;
 
     pub(crate) fn all() -> &'static [Handler] {
@@ -219,7 +219,6 @@ mod handlers {
             convert_bool_then::convert_bool_then_to_if,
             convert_bool_then::convert_if_to_bool_then,
             convert_comment_block::convert_comment_block,
-            convert_ufcs_to_method::convert_ufcs_to_method,
             convert_integer_literal::convert_integer_literal,
             convert_into_to_from::convert_into_to_from,
             convert_iter_for_each_to_for::convert_iter_for_each_to_for,
@@ -308,6 +307,7 @@ mod handlers {
             unwrap_block::unwrap_block,
             unwrap_result_return_type::unwrap_result_return_type,
             unwrap_tuple::unwrap_tuple,
+            unqualify_method_call::unqualify_method_call,
             wrap_return_type_in_result::wrap_return_type_in_result,
             // These are manually sorted for better priorities. By default,
             // priority is determined by the size of the target range (smaller

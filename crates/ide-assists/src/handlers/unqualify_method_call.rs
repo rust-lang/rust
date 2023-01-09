@@ -5,7 +5,7 @@ use syntax::{
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: convert_ufcs_to_method
+// Assist: unqualify_method_call
 //
 // Transforms universal function call syntax into a method call.
 //
@@ -22,7 +22,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // # mod std { pub mod ops { pub trait Add { fn add(self, _: Self) {} } impl Add for i32 {} } }
 // ```
-pub(crate) fn convert_ufcs_to_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let call = ctx.find_node_at_offset::<ast::CallExpr>()?;
     let ast::Expr::PathExpr(path_expr) = call.expr()? else { return None };
     let path = path_expr.path()?;
@@ -66,8 +66,8 @@ pub(crate) fn convert_ufcs_to_method(acc: &mut Assists, ctx: &AssistContext<'_>)
     );
 
     acc.add(
-        AssistId("convert_ufcs_to_method", AssistKind::RefactorRewrite),
-        "Convert UFCS to a method call",
+        AssistId("unqualify_method_call", AssistKind::RefactorRewrite),
+        "Unqualify method call",
         call.syntax().text_range(),
         |edit| {
             edit.delete(delete_path);
@@ -105,9 +105,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn ufcs2method_simple() {
+    fn unqualify_method_call_simple() {
         check_assist(
-            convert_ufcs_to_method,
+            unqualify_method_call,
             r#"
 struct S;
 impl S { fn f(self, S: S) {} }
@@ -120,9 +120,9 @@ fn f() { S.f(S); }"#,
     }
 
     #[test]
-    fn ufcs2method_trait() {
+    fn unqualify_method_call_trait() {
         check_assist(
-            convert_ufcs_to_method,
+            unqualify_method_call,
             r#"
 //- minicore: add
 fn f() { <u32 as core::ops::Add>::$0add(2, 2); }"#,
@@ -131,7 +131,7 @@ fn f() { 2.add(2); }"#,
         );
 
         check_assist(
-            convert_ufcs_to_method,
+            unqualify_method_call,
             r#"
 //- minicore: add
 fn f() { core::ops::Add::$0add(2, 2); }"#,
@@ -140,7 +140,7 @@ fn f() { 2.add(2); }"#,
         );
 
         check_assist(
-            convert_ufcs_to_method,
+            unqualify_method_call,
             r#"
 //- minicore: add
 use core::ops::Add;
@@ -152,9 +152,9 @@ fn f() { 2.add(2); }"#,
     }
 
     #[test]
-    fn ufcs2method_single_arg() {
+    fn unqualify_method_call_single_arg() {
         check_assist(
-            convert_ufcs_to_method,
+            unqualify_method_call,
             r#"
         struct S;
         impl S { fn f(self) {} }
@@ -167,9 +167,9 @@ fn f() { 2.add(2); }"#,
     }
 
     #[test]
-    fn ufcs2method_parens() {
+    fn unqualify_method_call_parens() {
         check_assist(
-            convert_ufcs_to_method,
+            unqualify_method_call,
             r#"
 //- minicore: deref
 struct S;
@@ -189,9 +189,9 @@ fn f() { (&S).deref(); }"#,
     }
 
     #[test]
-    fn ufcs2method_doesnt_apply_with_cursor_not_on_path() {
+    fn unqualify_method_call_doesnt_apply_with_cursor_not_on_path() {
         check_assist_not_applicable(
-            convert_ufcs_to_method,
+            unqualify_method_call,
             r#"
 //- minicore: add
 fn f() { core::ops::Add::add(2,$0 2); }"#,
@@ -199,9 +199,9 @@ fn f() { core::ops::Add::add(2,$0 2); }"#,
     }
 
     #[test]
-    fn ufcs2method_doesnt_apply_with_no_self() {
+    fn unqualify_method_call_doesnt_apply_with_no_self() {
         check_assist_not_applicable(
-            convert_ufcs_to_method,
+            unqualify_method_call,
             r#"
 struct S;
 impl S { fn assoc(S: S, S: S) {} }
