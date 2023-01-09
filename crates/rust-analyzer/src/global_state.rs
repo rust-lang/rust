@@ -134,7 +134,7 @@ impl GlobalState {
 
         let task_pool = {
             let (sender, receiver) = unbounded();
-            let handle = TaskPool::new(sender);
+            let handle = TaskPool::new_with_threads(sender, config.main_loop_num_threads());
             Handle { handle, receiver }
         };
 
