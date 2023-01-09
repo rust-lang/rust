@@ -161,6 +161,7 @@ impl<'a> Resolver<'a> {
                     found_use,
                     DiagnosticMode::Normal,
                     path,
+                    "",
                 );
                 err.emit();
             } else if let Some((span, msg, sugg, appl)) = suggestion {
@@ -690,6 +691,7 @@ impl<'a> Resolver<'a> {
                         FoundUse::Yes,
                         DiagnosticMode::Pattern,
                         vec![],
+                        "",
                     );
                 }
                 err
@@ -1344,6 +1346,7 @@ impl<'a> Resolver<'a> {
             FoundUse::Yes,
             DiagnosticMode::Normal,
             vec![],
+            "",
         );
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
@@ -2309,7 +2312,7 @@ enum FoundUse {
 }
 
 /// Whether a binding is part of a pattern or a use statement. Used for diagnostics.
-enum DiagnosticMode {
+pub(crate) enum DiagnosticMode {
     Normal,
     /// The binding is part of a pattern
     Pattern,
@@ -2324,6 +2327,8 @@ pub(crate) fn import_candidates(
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
+    mode: DiagnosticMode,
+    append: &str,
 ) {
     show_candidates(
         session,
@@ -2333,8 +2338,9 @@ pub(crate) fn import_candidates(
         candidates,
         Instead::Yes,
         FoundUse::Yes,
-        DiagnosticMode::Import,
+        mode,
         vec![],
+        append,
     );
 }
 
@@ -2352,6 +2358,7 @@ fn show_candidates(
     found_use: FoundUse,
     mode: DiagnosticMode,
     path: Vec<Segment>,
+    append: &str,
 ) {
     if candidates.is_empty() {
         return;
@@ -2416,7 +2423,7 @@ fn show_candidates(
                 // produce an additional newline to separate the new use statement
                 // from the directly following item.
                 let additional_newline = if let FoundUse::Yes = found_use { "" } else { "\n" };
-                candidate.0 = format!("{}{};\n{}", add_use, &candidate.0, additional_newline);
+                candidate.0 = format!("{add_use}{}{append};\n{additional_newline}", &candidate.0);
             }
 
             err.span_suggestions(
