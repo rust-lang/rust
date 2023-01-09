@@ -381,6 +381,46 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.write_scalar(Scalar::from_u32(1), dest)?;
             }
+            "GetModuleFileNameW" => {
+                let [handle, filename, size] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                this.check_no_isolation("`GetModuleFileNameW`")?;
+
+                let handle = this.read_machine_usize(handle)?;
+                let filename = this.read_pointer(filename)?;
+                let size = this.read_scalar(size)?.to_u32()?;
+
+                if handle != 0 {
+                    throw_unsup_format!("`GetModuleFileNameW` only supports the NULL handle");
+                }
+
+                // Using the host current_exe is a bit off, but consistent with Linux
+                // (where stdlib reads /proc/self/exe).
+                // Unfortunately this Windows function has a crazy behavior so we can't just use
+                // `write_path_to_wide_str`...
+                let path = std::env::current_exe().unwrap();
+                let (all_written, size_needed) = this.write_path_to_wide_str(
+                    &path,
+                    filename,
+                    size.into(),
+                    /*truncate*/ true,
+                )?;
+
+                if all_written {
+                    // If the function succeeds, the return value is the length of the string that
+                    // is copied to the buffer, in characters, not including the terminating null
+                    // character.
+                    this.write_int(size_needed.checked_sub(1).unwrap(), dest)?;
+                } else {
+                    // If the buffer is too small to hold the module name, the string is truncated
+                    // to nSize characters including the terminating null character, the function
+                    // returns nSize, and the function sets the last error to
+                    // ERROR_INSUFFICIENT_BUFFER.
+                    this.write_int(size, dest)?;
+                    let insufficient_buffer = this.eval_windows("c", "ERROR_INSUFFICIENT_BUFFER");
+                    this.set_last_error(insufficient_buffer)?;
+                }
+            }
 
             // Threading
             "CreateThread" => {
