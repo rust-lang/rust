@@ -677,15 +677,26 @@ pub struct OverlappingRangeEndpoints<'tcx> {
     #[label(range)]
     pub range: Span,
     #[subdiagnostic]
-    pub overlap: Overlap<'tcx>,
+    pub overlap: Vec<Overlap<'tcx>>,
 }
 
-#[derive(Subdiagnostic)]
-#[label(mir_build_overlapping_range)]
 pub struct Overlap<'tcx> {
-    #[primary_span]
     pub span: Span,
     pub range: Pat<'tcx>,
+}
+
+impl<'tcx> AddToDiagnostic for Overlap<'tcx> {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        let Overlap { span, range } = self;
+
+        // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
+        // does not support `#[subdiagnostic(eager)]`...
+        let message = format!("this range overlaps on `{range}`...");
+        diag.span_label(span, message);
+    }
 }
 
 #[derive(LintDiagnostic)]

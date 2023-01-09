@@ -59,6 +59,7 @@ error: multiple patterns overlap on their endpoints
 LL |         0..=10 => {}
    |         ------ this range overlaps on `10_u8`...
 LL |         20..=30 => {}
+   |         ------- this range overlaps on `20_u8`...
 LL |         10..=20 => {}
    |         ^^^^^^^ ... with this range
    |

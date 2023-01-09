@@ -285,19 +285,16 @@ impl IntRange {
             return;
         }
 
-        // Get the first overlap. We get only the first rather than all of them
-        // because displaying multiple overlaps requires a way to eagerly translate
-        // lintdiagnostics, but that doesn't exist.
-        let overlap = pats
+        let overlap: Vec<_> = pats
             .filter_map(|pat| Some((pat.ctor().as_int_range()?, pat.span())))
             .filter(|(range, _)| self.suspicious_intersection(range))
             .map(|(range, span)| Overlap {
                 range: self.intersection(&range).unwrap().to_pat(pcx.cx.tcx, pcx.ty),
                 span,
             })
-            .next();
+            .collect();
 
-        if let Some(overlap) = overlap {
+        if !overlap.is_empty() {
             pcx.cx.tcx.emit_spanned_lint(
                 lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
                 hir_id,

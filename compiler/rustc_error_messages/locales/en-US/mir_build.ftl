@@ -323,8 +323,6 @@ mir_build_overlapping_range_endpoints = multiple patterns overlap on their endpo
     .range = ... with this range
     .note = you likely meant to write mutually exclusive ranges
 
-mir_build_overlapping_range = this range overlaps on `{$range}`...
-
 mir_build_non_exhaustive_omitted_pattern = some variants are not matched explicitly
     .help = ensure that all variants are matched explicitly by adding the suggested match arms
     .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found
