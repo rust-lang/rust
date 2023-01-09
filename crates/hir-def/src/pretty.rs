@@ -3,10 +3,10 @@
 use std::fmt::{self, Write};
 
 use hir_expand::mod_path::PathKind;
+use intern::Interned;
 use itertools::Itertools;
 
 use crate::{
-    intern::Interned,
     path::{GenericArg, GenericArgs, Path},
     type_ref::{Mutability, TraitBoundModifier, TypeBound, TypeRef},
 };

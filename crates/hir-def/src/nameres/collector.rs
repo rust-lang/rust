@@ -10,6 +10,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
     ast_id_map::FileAstId,
+    attrs::{Attr, AttrId},
     builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
@@ -26,7 +27,7 @@ use stdx::always;
 use syntax::{ast, SmolStr};
 
 use crate::{
-    attr::{Attr, AttrId, Attrs},
+    attr::Attrs,
     attr_macro_as_call_id,
     db::DefDatabase,
     derive_macro_as_call_id,

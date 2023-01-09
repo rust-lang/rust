@@ -2,12 +2,11 @@
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::MacroCallKind;
+use hir_expand::{attrs::AttrId, MacroCallKind};
 use la_arena::Idx;
 use syntax::ast::{self, AnyHasAttrs};
 
 use crate::{
-    attr::AttrId,
     item_tree::{self, ItemTreeId},
     nameres::LocalModuleId,
     path::ModPath,

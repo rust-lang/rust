@@ -7,13 +7,13 @@ use hir_expand::{
     name::{AsName, Name},
     AstId,
 };
+use intern::Interned;
 use syntax::ast::{self, HasName};
 
 use crate::{
     body::LowerCtx,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr::Literal,
-    intern::Interned,
     path::Path,
 };
 

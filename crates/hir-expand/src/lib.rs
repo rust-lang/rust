@@ -17,6 +17,7 @@ pub mod proc_macro;
 pub mod quote;
 pub mod eager;
 pub mod mod_path;
+pub mod attrs;
 mod fixup;
 
 pub use mbe::{Origin, ValueResult};
@@ -1031,3 +1032,5 @@ impl ExpandTo {
 pub struct UnresolvedMacro {
     pub path: ModPath,
 }
+
+intern::impl_internable!(ModPath, attrs::AttrInput);

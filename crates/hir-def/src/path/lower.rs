@@ -1,9 +1,10 @@
 //! Transforms syntax into `Path` objects, ideally with accounting for hygiene
 
-use crate::{intern::Interned, type_ref::ConstScalarOrPath};
+use crate::type_ref::ConstScalarOrPath;
 
 use either::Either;
 use hir_expand::name::{name, AsName};
+use intern::Interned;
 use syntax::ast::{self, AstNode, HasTypeBounds};
 
 use super::AssociatedTypeBinding;

@@ -28,7 +28,6 @@ pub mod dyn_map;
 pub mod keys;
 
 pub mod item_tree;
-pub mod intern;
 
 pub mod adt;
 pub mod data;
@@ -61,10 +60,10 @@ use std::{
     sync::Arc,
 };
 
-use attr::Attr;
 use base_db::{impl_intern_key, salsa, CrateId, ProcMacroKind};
 use hir_expand::{
     ast_id_map::FileAstId,
+    attrs::{Attr, AttrId, AttrInput},
     builtin_attr_macro::BuiltinAttrExpander,
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
@@ -82,7 +81,6 @@ use syntax::ast;
 
 use crate::{
     adt::VariantData,
-    attr::AttrId,
     builtin_type::BuiltinType,
     item_tree::{
         Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, ModItem,
@@ -971,7 +969,7 @@ fn attr_macro_as_call_id(
     is_derive: bool,
 ) -> MacroCallId {
     let mut arg = match macro_attr.input.as_deref() {
-        Some(attr::AttrInput::TokenTree(tt, map)) => (tt.clone(), map.clone()),
+        Some(AttrInput::TokenTree(tt, map)) => (tt.clone(), map.clone()),
         _ => Default::default(),
     };
 
@@ -990,3 +988,10 @@ fn attr_macro_as_call_id(
     );
     res
 }
+intern::impl_internable!(
+    crate::type_ref::TypeRef,
+    crate::type_ref::TraitRef,
+    crate::type_ref::TypeBound,
+    crate::path::GenericArgs,
+    generics::GenericParams,
+);

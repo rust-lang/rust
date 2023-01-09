@@ -1,10 +1,9 @@
 //! Post-nameres attribute resolution.
 
-use hir_expand::MacroCallId;
+use hir_expand::{attrs::Attr, MacroCallId};
 use syntax::{ast, SmolStr};
 
 use crate::{
-    attr::Attr,
     attr_macro_as_call_id, builtin_attr,
     db::DefDatabase,
     item_scope::BuiltinShadowMode,

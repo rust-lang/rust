@@ -8,10 +8,10 @@ use std::{
 
 use crate::{
     body::LowerCtx,
-    intern::Interned,
     type_ref::{ConstScalarOrPath, LifetimeRef},
 };
 use hir_expand::name::Name;
+use intern::Interned;
 use syntax::ast;
 
 use crate::type_ref::{TypeBound, TypeRef};

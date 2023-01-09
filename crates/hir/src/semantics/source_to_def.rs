@@ -87,7 +87,6 @@
 
 use base_db::FileId;
 use hir_def::{
-    attr::AttrId,
     child_by_source::ChildBySource,
     dyn_map::DynMap,
     expr::{LabelId, PatId},
@@ -96,7 +95,7 @@ use hir_def::{
     GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId, StructId,
     TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
 };
-use hir_expand::{name::AsName, HirFileId, MacroCallId};
+use hir_expand::{attrs::AttrId, name::AsName, HirFileId, MacroCallId};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::impl_from;

@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroDefKind};
+use intern::Interned;
 use smallvec::SmallVec;
 use syntax::ast;
 
@@ -10,7 +11,6 @@ use crate::{
     attr::Attrs,
     body::{Expander, Mark},
     db::DefDatabase,
-    intern::Interned,
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, ModItem, Param, TreeId},
     nameres::{
         attr_resolution::ResolvedAttr,

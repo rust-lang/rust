@@ -10,6 +10,7 @@ use hir_expand::{
     name::{name, AsName, Name},
     AstId, ExpandError, HirFileId, InFile,
 };
+use intern::Interned;
 use la_arena::Arena;
 use once_cell::unsync::OnceCell;
 use profile::Count;
@@ -33,7 +34,6 @@ use crate::{
         Label, LabelId, Literal, MatchArm, Movability, Pat, PatId, RecordFieldPat, RecordLitField,
         Statement,
     },
-    intern::Interned,
     item_scope::BuiltinShadowMode,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},

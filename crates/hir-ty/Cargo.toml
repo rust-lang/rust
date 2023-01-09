@@ -29,6 +29,7 @@ typed-arena = "2.0.1"
 rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
 
 stdx = { path = "../stdx", version = "0.0.0" }
+intern = { path = "../intern", version = "0.0.0" }
 hir-def = { path = "../hir-def", version = "0.0.0" }
 hir-expand = { path = "../hir-expand", version = "0.0.0" }
 base-db = { path = "../base-db", version = "0.0.0" }

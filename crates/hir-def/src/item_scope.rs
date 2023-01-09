@@ -4,7 +4,7 @@
 use std::collections::hash_map::Entry;
 
 use base_db::CrateId;
-use hir_expand::{name::Name, AstId, MacroCallId};
+use hir_expand::{attrs::AttrId, name::Name, AstId, MacroCallId};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use profile::Count;
@@ -14,8 +14,8 @@ use stdx::format_to;
 use syntax::ast;
 
 use crate::{
-    attr::AttrId, db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType,
-    ConstId, HasModule, ImplId, LocalModuleId, MacroId, ModuleDefId, ModuleId, TraitId,
+    db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ConstId, HasModule,
+    ImplId, LocalModuleId, MacroId, ModuleDefId, ModuleId, TraitId,
 };
 
 #[derive(Copy, Clone, Debug)]

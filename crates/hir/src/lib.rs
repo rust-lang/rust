@@ -107,7 +107,7 @@ pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
         adt::StructKind,
-        attr::{Attr, Attrs, AttrsWithOwner, Documentation},
+        attr::{Attrs, AttrsWithOwner, Documentation},
         builtin_attr::AttributeTemplate,
         find_path::PrefixKind,
         import_map,
@@ -122,6 +122,7 @@ pub use {
         ModuleDefId,
     },
     hir_expand::{
+        attrs::Attr,
         name::{known, Name},
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
