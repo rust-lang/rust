@@ -156,7 +156,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 err.span_note(
                     MultiSpan::from_spans(reinit_spans),
                     &if reinits <= 3 {
-                        format!("these {} reinitializations might get skipped", reinits)
+                        format!("these {reinits} reinitializations might get skipped")
                     } else {
                         format!(
                             "these 3 reinitializations and {} other{} might get skipped",
@@ -225,9 +225,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 err.span_label(
                     span,
                     format!(
-                        "value {} here after {}move",
+                        "value {} here after {partial_str}move",
                         desired_action.as_verb_in_past_tense(),
-                        partial_str
                     ),
                 );
             }
@@ -257,7 +256,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         &format!(
                             "consider creating a fresh reborrow of {} here",
                             self.describe_place(moved_place)
-                                .map(|n| format!("`{}`", n))
+                                .map(|n| format!("`{n}`"))
                                 .unwrap_or_else(|| "the mutable reference".to_string()),
                         ),
                         "&mut *",
@@ -271,7 +270,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
             );
             let note_msg = match opt_name {
-                Some(name) => format!("`{}`", name),
+                Some(name) => format!("`{name}`"),
                 None => "value".to_owned(),
             };
             if self.suggest_borrow_fn_like(&mut err, ty, &move_site_vec, &note_msg) {
@@ -297,9 +296,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             } = use_spans
             {
                 err.note(&format!(
-                    "{} occurs due to deref coercion to `{}`",
+                    "{} occurs due to deref coercion to `{deref_target_ty}`",
                     desired_action.as_noun(),
-                    deref_target_ty
                 ));
 
                 // Check first whether the source is accessible (issue #87060)

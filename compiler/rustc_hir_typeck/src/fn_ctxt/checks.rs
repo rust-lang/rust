@@ -9,7 +9,7 @@ use crate::{
     TupleArgumentsFlag,
 };
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{pluralize, Applicability, Diagnostic, DiagnosticId, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -1704,7 +1704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // even if their `ObligationCauseCode` isn't an `Expr*Obligation` kind.
         // This is important since if we adjust one span but not the other, then
         // we will have "duplicated" the error on the UI side.
-        let mut remap_cause = FxHashSet::default();
+        let mut remap_cause = FxIndexSet::default();
         let mut not_adjusted = vec![];
 
         for error in errors {
@@ -1732,6 +1732,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        // Adjust any other errors that come from other cause codes, when these
+        // errors are of the same predicate as one we successfully adjusted, and
+        // when their spans overlap (suggesting they're due to the same root cause).
+        //
+        // This is because due to normalization, we often register duplicate
+        // obligations with misc obligations that are basically impossible to
+        // line back up with a useful ExprBindingObligation.
         for error in not_adjusted {
             for (span, predicate, cause) in &remap_cause {
                 if *predicate == error.obligation.predicate

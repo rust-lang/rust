@@ -1,10 +1,10 @@
 use crate::infer::canonical::{
-    Canonicalized, CanonicalizedQueryResponse, OriginalQueryValues, QueryRegionConstraints,
+    Canonical, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
-use rustc_infer::infer::canonical::{Canonical, Certainty};
+use rustc_infer::infer::canonical::Certainty;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -73,8 +73,8 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<'tcx> + 'tcx {
     /// not captured in the return value.
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self::QueryResponse>>;
+        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+    ) -> Fallible<CanonicalQueryResponse<'tcx, Self::QueryResponse>>;
 
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,

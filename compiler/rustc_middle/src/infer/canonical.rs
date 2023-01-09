@@ -213,9 +213,7 @@ impl QueryRegionConstraints<'_> {
     }
 }
 
-pub type Canonicalized<'tcx, V> = Canonical<'tcx, V>;
-
-pub type CanonicalizedQueryResponse<'tcx, T> = &'tcx Canonical<'tcx, QueryResponse<'tcx, T>>;
+pub type CanonicalQueryResponse<'tcx, T> = &'tcx Canonical<'tcx, QueryResponse<'tcx, T>>;
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.

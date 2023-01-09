@@ -77,7 +77,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
                         err.span_label(
                             var_or_use_span,
-                            format!("{}borrow later {}", borrow_desc, message),
+                            format!("{borrow_desc}borrow later {message}"),
                         );
                     }
                 } else {
@@ -90,7 +90,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         let capture_kind_label = message;
                         err.span_label(
                             var_or_use_span,
-                            format!("{}borrow later {}", borrow_desc, capture_kind_label),
+                            format!("{borrow_desc}borrow later {capture_kind_label}"),
                         );
                         err.span_label(path_span, path_label);
                     }
@@ -110,7 +110,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 };
                 // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
                 if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
-                    err.span_label(var_or_use_span, format!("{}{}", borrow_desc, message));
+                    err.span_label(var_or_use_span, format!("{borrow_desc}{message}"));
                 } else {
                     // path_span must be `Some` as otherwise the if condition is true
                     let path_span = path_span.unwrap();
@@ -121,7 +121,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         let capture_kind_label = message;
                         err.span_label(
                             var_or_use_span,
-                            format!("{}borrow later {}", borrow_desc, capture_kind_label),
+                            format!("{borrow_desc}borrow later {capture_kind_label}"),
                         );
                         err.span_label(path_span, path_label);
                     }
@@ -160,12 +160,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 match local_names[dropped_local] {
                     Some(local_name) if !local_decl.from_compiler_desugaring() => {
                         let message = format!(
-                            "{B}borrow might be used here, when `{LOC}` is dropped \
-                             and runs the {DTOR} for {TYPE}",
-                            B = borrow_desc,
-                            LOC = local_name,
-                            TYPE = type_desc,
-                            DTOR = dtor_desc
+                            "{borrow_desc}borrow might be used here, when `{local_name}` is dropped \
+                             and runs the {dtor_desc} for {type_desc}",
                         );
                         err.span_label(body.source_info(drop_loc).span, message);
 
@@ -180,18 +176,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         err.span_label(
                             local_decl.source_info.span,
                             format!(
-                                "a temporary with access to the {B}borrow \
+                                "a temporary with access to the {borrow_desc}borrow \
                                  is created here ...",
-                                B = borrow_desc
                             ),
                         );
                         let message = format!(
-                            "... and the {B}borrow might be used here, \
+                            "... and the {borrow_desc}borrow might be used here, \
                              when that temporary is dropped \
-                             and runs the {DTOR} for {TYPE}",
-                            B = borrow_desc,
-                            TYPE = type_desc,
-                            DTOR = dtor_desc
+                             and runs the {dtor_desc} for {type_desc}",
                         );
                         err.span_label(body.source_info(drop_loc).span, message);
 
@@ -249,20 +241,16 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     err.span_label(
                         span,
                         format!(
-                            "{}requires that `{}` is borrowed for `{}`",
+                            "{}requires that `{desc}` is borrowed for `{region_name}`",
                             category.description(),
-                            desc,
-                            region_name,
                         ),
                     );
                 } else {
                     err.span_label(
                         span,
                         format!(
-                            "{}requires that {}borrow lasts for `{}`",
+                            "{}requires that {borrow_desc}borrow lasts for `{region_name}`",
                             category.description(),
-                            borrow_desc,
-                            region_name,
                         ),
                     );
                 };
@@ -296,15 +284,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 if region_name.was_named() { region_name.name } else { kw::UnderscoreLifetime };
 
             let msg = format!(
-                "you can add a bound to the {}to make it last less than `'static` and match `{}`",
+                "you can add a bound to the {}to make it last less than `'static` and match `{region_name}`",
                 category.description(),
-                region_name,
             );
 
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
                 &msg,
-                format!(" + {}", suggestable_name),
+                format!(" + {suggestable_name}"),
                 Applicability::Unspecified,
             );
         }

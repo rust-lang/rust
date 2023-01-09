@@ -27,7 +27,8 @@ const ERROR_DOCS_PATH: &str = "compiler/rustc_error_codes/src/error_codes/";
 const ERROR_TESTS_PATH: &str = "src/test/ui/error-codes/";
 
 // Error codes that (for some reason) can't have a doctest in their explanation. Error codes are still expected to provide a code example, even if untested.
-const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602"];
+const IGNORE_DOCTEST_CHECK: &[&str] =
+    &["E0208", "E0464", "E0570", "E0601", "E0602", "E0640", "E0717"];
 
 // Error codes that don't yet have a UI test. This list will eventually be removed.
 const IGNORE_UI_TEST_CHECK: &[&str] = &[
@@ -193,6 +194,7 @@ fn check_error_codes_docs(
                 "warning: Error code `{err_code}` doesn't have a code example, all error codes are expected to have one \
                 (even if untested)."
             );
+            return;
         }
 
         let test_ignored = IGNORE_DOCTEST_CHECK.contains(&&err_code);

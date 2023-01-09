@@ -65,6 +65,8 @@ const PROBLEMATIC_CONSTS: &[u32] = &[
     3735927486, 3735932941, 4027431614, 4276992702,
 ];
 
+const INTERNAL_COMPILER_DOCS_LINE: &str = "#### This error code is internal to the compiler and will not be emitted with normal Rust code.";
+
 /// Parser states for `line_is_url`.
 #[derive(Clone, Copy, PartialEq)]
 #[allow(non_camel_case_types)]
@@ -133,6 +135,8 @@ fn long_line_is_ok(extension: &str, is_error_code: bool, max_columns: usize, lin
         "ftl" => true,
         // non-error code markdown is allowed to be any length
         "md" if !is_error_code => true,
+        // HACK(Ezrashaw): there is no way to split a markdown header over multiple lines
+        "md" if line == INTERNAL_COMPILER_DOCS_LINE => true,
         _ => line_is_url(is_error_code, max_columns, line) || should_ignore(line),
     }
 }
