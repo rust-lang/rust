@@ -1519,6 +1519,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
                     if points_at_arg && mutability.is_not() && refs_number > 0 {
+                        // If we have a call like foo(&mut buf), then don't suggest foo(&mut mut buf)
+                        if snippet
+                            .trim_start_matches(|c: char| c.is_whitespace() || c == '&')
+                            .starts_with("mut")
+                        {
+                            return;
+                        }
                         err.span_suggestion_verbose(
                             sp,
                             "consider changing this borrow's mutability",
