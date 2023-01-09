@@ -106,11 +106,11 @@ fn add_missing_ok_or_some(
     }
 
     let mut builder = TextEdit::builder();
-    builder.insert(expr.syntax().text_range().start(), format!("{}(", variant_name));
+    builder.insert(expr.syntax().text_range().start(), format!("{variant_name}("));
     builder.insert(expr.syntax().text_range().end(), ")".to_string());
     let source_change =
         SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), builder.finish());
-    let name = format!("Wrap in {}", variant_name);
+    let name = format!("Wrap in {variant_name}");
     acc.push(fix("wrap_in_constructor", &name, source_change, expr_range));
     Some(())
 }

@@ -125,7 +125,7 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
         _ => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("unsupported metadata version {}", version),
+                format!("unsupported metadata version {version}"),
             ));
         }
     }

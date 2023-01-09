@@ -17,7 +17,7 @@ use hir_def::{
     ConstParamId, FunctionId, GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId,
     TypeOrConstParamId, TypeParamId,
 };
-use hir_expand::name::{known, Name};
+use hir_expand::name::Name;
 use itertools::Either;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
@@ -184,9 +184,7 @@ pub(crate) struct Generics {
 }
 
 impl Generics {
-    pub(crate) fn iter_id<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = Either<TypeParamId, ConstParamId>> + 'a {
+    pub(crate) fn iter_id(&self) -> impl Iterator<Item = Either<TypeParamId, ConstParamId>> + '_ {
         self.iter().map(|(id, data)| match data {
             TypeOrConstParamData::TypeParamData(_) => Either::Left(TypeParamId::from_unchecked(id)),
             TypeOrConstParamData::ConstParamData(_) => {
@@ -216,9 +214,9 @@ impl Generics {
     }
 
     /// Iterator over types and const params of parent.
-    pub(crate) fn iter_parent<'a>(
-        &'a self,
-    ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
+    pub(crate) fn iter_parent(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &TypeOrConstParamData)> {
         self.parent_generics().into_iter().flat_map(|it| {
             let to_toc_id =
                 move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p);
@@ -335,54 +333,18 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
             // Function in an `extern` block are always unsafe to call, except when it has
             // `"rust-intrinsic"` ABI there are a few exceptions.
             let id = block.lookup(db.upcast()).id;
-            !matches!(
-                id.item_tree(db.upcast())[id.value].abi.as_deref(),
-                Some("rust-intrinsic") if !is_intrinsic_fn_unsafe(&data.name)
-            )
+
+            let is_intrinsic =
+                id.item_tree(db.upcast())[id.value].abi.as_deref() == Some("rust-intrinsic");
+
+            if is_intrinsic {
+                // Intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
+                !data.attrs.by_key("rustc_safe_intrinsic").exists()
+            } else {
+                // Extern items are always unsafe
+                true
+            }
         }
         _ => false,
     }
-}
-
-/// Returns `true` if the given intrinsic is unsafe to call, or false otherwise.
-fn is_intrinsic_fn_unsafe(name: &Name) -> bool {
-    // Should be kept in sync with https://github.com/rust-lang/rust/blob/532d2b14c05f9bc20b2d27cbb5f4550d28343a36/compiler/rustc_typeck/src/check/intrinsic.rs#L72-L106
-    ![
-        known::abort,
-        known::add_with_overflow,
-        known::bitreverse,
-        known::black_box,
-        known::bswap,
-        known::caller_location,
-        known::ctlz,
-        known::ctpop,
-        known::cttz,
-        known::discriminant_value,
-        known::forget,
-        known::likely,
-        known::maxnumf32,
-        known::maxnumf64,
-        known::min_align_of,
-        known::minnumf32,
-        known::minnumf64,
-        known::mul_with_overflow,
-        known::needs_drop,
-        known::ptr_guaranteed_eq,
-        known::ptr_guaranteed_ne,
-        known::rotate_left,
-        known::rotate_right,
-        known::rustc_peek,
-        known::saturating_add,
-        known::saturating_sub,
-        known::size_of,
-        known::sub_with_overflow,
-        known::type_id,
-        known::type_name,
-        known::unlikely,
-        known::variant_count,
-        known::wrapping_add,
-        known::wrapping_mul,
-        known::wrapping_sub,
-    ]
-    .contains(name)
 }

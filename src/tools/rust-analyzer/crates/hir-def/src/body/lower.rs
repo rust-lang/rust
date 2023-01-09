@@ -371,6 +371,10 @@ impl ExprCollector<'_> {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Yield { expr }, syntax_ptr)
             }
+            ast::Expr::YeetExpr(e) => {
+                let expr = e.expr().map(|e| self.collect_expr(e));
+                self.alloc_expr(Expr::Yeet { expr }, syntax_ptr)
+            }
             ast::Expr::RecordExpr(e) => {
                 let path =
                     e.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);

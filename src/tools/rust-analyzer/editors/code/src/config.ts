@@ -241,6 +241,10 @@ export class Config {
     get previewRustcOutput() {
         return this.get<boolean>("diagnostics.previewRustcOutput");
     }
+
+    get useRustcErrorCode() {
+        return this.get<boolean>("diagnostics.useRustcErrorCode");
+    }
 }
 
 const VarRegex = new RegExp(/\$\{(.+?)\}/g);

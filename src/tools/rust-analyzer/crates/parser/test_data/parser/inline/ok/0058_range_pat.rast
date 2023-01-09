@@ -93,6 +93,21 @@ SOURCE_FILE
                   L_PAREN "("
                   R_PAREN ")"
                 COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RANGE_PAT
+                  DOT2EQ "..="
+                  WHITESPACE " "
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "303"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
               WHITESPACE "\n    "
               R_CURLY "}"
         WHITESPACE "\n\n    "
@@ -169,6 +184,28 @@ SOURCE_FILE
                 TUPLE_EXPR
                   L_PAREN "("
                   R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                TUPLE_STRUCT_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Some"
+                  L_PAREN "("
+                  RANGE_PAT
+                    DOT2EQ "..="
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "2"
+                  R_PAREN ")"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
               WHITESPACE "\n    "
               R_CURLY "}"
         WHITESPACE "\n\n    "
@@ -240,6 +277,36 @@ SOURCE_FILE
                   L_PAREN "("
                   R_PAREN ")"
                 COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RECORD_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "S"
+                  WHITESPACE " "
+                  RECORD_PAT_FIELD_LIST
+                    L_CURLY "{"
+                    WHITESPACE " "
+                    RECORD_PAT_FIELD
+                      NAME_REF
+                        IDENT "a"
+                      COLON ":"
+                      WHITESPACE " "
+                      RANGE_PAT
+                        DOT2EQ "..="
+                        LITERAL_PAT
+                          LITERAL
+                            INT_NUMBER "2"
+                    WHITESPACE " "
+                    R_CURLY "}"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
               WHITESPACE "\n    "
               R_CURLY "}"
         WHITESPACE "\n\n    "
@@ -277,6 +344,23 @@ SOURCE_FILE
                       LITERAL
                         INT_NUMBER "1"
                     DOT2 ".."
+                  R_BRACK "]"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                SLICE_PAT
+                  L_BRACK "["
+                  RANGE_PAT
+                    DOT2EQ "..="
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "2"
                   R_BRACK "]"
                 WHITESPACE " "
                 FAT_ARROW "=>"
@@ -360,6 +444,28 @@ SOURCE_FILE
               TUPLE_EXPR
                 L_PAREN "("
                 R_PAREN ")"
+              COMMA ","
+            WHITESPACE "\n        "
+            MATCH_ARM
+              TUPLE_PAT
+                L_PAREN "("
+                RANGE_PAT
+                  DOT2EQ "..="
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "2"
+                COMMA ","
+                WHITESPACE " "
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                R_PAREN ")"
+              WHITESPACE " "
+              FAT_ARROW "=>"
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+              COMMA ","
             WHITESPACE "\n    "
             R_CURLY "}"
         WHITESPACE "\n"

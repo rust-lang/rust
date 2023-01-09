@@ -25,6 +25,7 @@ mod sysroot;
 mod workspace;
 mod rustc_cfg;
 mod build_scripts;
+mod target_data_layout;
 
 #[cfg(test)]
 mod tests;
@@ -145,7 +146,7 @@ impl ProjectManifest {
 }
 
 fn utf8_stdout(mut cmd: Command) -> Result<String> {
-    let output = cmd.output().with_context(|| format!("{:?} failed", cmd))?;
+    let output = cmd.output().with_context(|| format!("{cmd:?} failed"))?;
     if !output.status.success() {
         match String::from_utf8(output.stderr) {
             Ok(stderr) if !stderr.is_empty() => {

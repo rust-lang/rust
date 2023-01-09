@@ -104,7 +104,7 @@ impl Sysroot {
 
         for path in SYSROOT_CRATES.trim().lines() {
             let name = path.split('/').last().unwrap();
-            let root = [format!("{}/src/lib.rs", path), format!("lib{}/lib.rs", path)]
+            let root = [format!("{path}/src/lib.rs"), format!("lib{path}/lib.rs")]
                 .into_iter()
                 .map(|it| sysroot.src_root.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())
@@ -171,7 +171,7 @@ fn discover_sysroot_dir(
 ) -> Result<AbsPathBuf> {
     let mut rustc = Command::new(toolchain::rustc());
     rustc.envs(extra_env);
-    rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
+    rustc.current_dir(current_dir).args(["--print", "sysroot"]);
     tracing::debug!("Discovering sysroot by {:?}", rustc);
     let stdout = utf8_stdout(rustc)?;
     Ok(AbsPathBuf::assert(PathBuf::from(stdout)))
@@ -203,7 +203,7 @@ fn discover_sysroot_src_dir_or_add_component(
         .or_else(|| {
             let mut rustup = Command::new(toolchain::rustup());
             rustup.envs(extra_env);
-            rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
+            rustup.current_dir(current_dir).args(["component", "add", "rust-src"]);
             tracing::info!("adding rust-src component by {:?}", rustup);
             utf8_stdout(rustup).ok()?;
             get_rust_src(sysroot_path)

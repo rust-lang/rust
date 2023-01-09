@@ -82,7 +82,7 @@ impl<N: AstNode> AstPtr<N> {
 
     /// Like `SyntaxNodePtr::cast` but the trait bounds work out.
     pub fn try_from_raw(raw: SyntaxNodePtr) -> Option<AstPtr<N>> {
-        N::can_cast(raw.kind()).then(|| AstPtr { raw, _ty: PhantomData })
+        N::can_cast(raw.kind()).then_some(AstPtr { raw, _ty: PhantomData })
     }
 }
 

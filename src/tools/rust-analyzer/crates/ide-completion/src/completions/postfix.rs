@@ -5,7 +5,7 @@ mod format_like;
 use hir::{Documentation, HasAttrs};
 use ide_db::{imports::insert_use::ImportScope, ty_filter::TryEnum, SnippetCap};
 use syntax::{
-    ast::{self, AstNode, AstToken},
+    ast::{self, make, AstNode, AstToken},
     SyntaxKind::{EXPR_STMT, STMT_LIST},
     TextRange, TextSize,
 };
@@ -61,7 +61,7 @@ pub(crate) fn complete_postfix(
                 let mut item = postfix_snippet(
                     "drop",
                     "fn drop(&mut self)",
-                    &format!("drop($0{})", receiver_text),
+                    &format!("drop($0{receiver_text})"),
                 );
                 item.set_documentation(drop_fn.docs(ctx.db));
                 item.add_to(acc);
@@ -76,14 +76,14 @@ pub(crate) fn complete_postfix(
                 postfix_snippet(
                     "ifl",
                     "if let Ok {}",
-                    &format!("if let Ok($1) = {} {{\n    $0\n}}", receiver_text),
+                    &format!("if let Ok($1) = {receiver_text} {{\n    $0\n}}"),
                 )
                 .add_to(acc);
 
                 postfix_snippet(
                     "while",
                     "while let Ok {}",
-                    &format!("while let Ok($1) = {} {{\n    $0\n}}", receiver_text),
+                    &format!("while let Ok($1) = {receiver_text} {{\n    $0\n}}"),
                 )
                 .add_to(acc);
             }
@@ -91,46 +91,44 @@ pub(crate) fn complete_postfix(
                 postfix_snippet(
                     "ifl",
                     "if let Some {}",
-                    &format!("if let Some($1) = {} {{\n    $0\n}}", receiver_text),
+                    &format!("if let Some($1) = {receiver_text} {{\n    $0\n}}"),
                 )
                 .add_to(acc);
 
                 postfix_snippet(
                     "while",
                     "while let Some {}",
-                    &format!("while let Some($1) = {} {{\n    $0\n}}", receiver_text),
+                    &format!("while let Some($1) = {receiver_text} {{\n    $0\n}}"),
                 )
                 .add_to(acc);
             }
         }
     } else if receiver_ty.is_bool() || receiver_ty.is_unknown() {
-        postfix_snippet("if", "if expr {}", &format!("if {} {{\n    $0\n}}", receiver_text))
+        postfix_snippet("if", "if expr {}", &format!("if {receiver_text} {{\n    $0\n}}"))
             .add_to(acc);
-        postfix_snippet(
-            "while",
-            "while expr {}",
-            &format!("while {} {{\n    $0\n}}", receiver_text),
-        )
-        .add_to(acc);
-        postfix_snippet("not", "!expr", &format!("!{}", receiver_text)).add_to(acc);
+        postfix_snippet("while", "while expr {}", &format!("while {receiver_text} {{\n    $0\n}}"))
+            .add_to(acc);
+        postfix_snippet("not", "!expr", &format!("!{receiver_text}")).add_to(acc);
     } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator() {
         if receiver_ty.impls_trait(ctx.db, trait_, &[]) {
             postfix_snippet(
                 "for",
                 "for ele in expr {}",
-                &format!("for ele in {} {{\n    $0\n}}", receiver_text),
+                &format!("for ele in {receiver_text} {{\n    $0\n}}"),
             )
             .add_to(acc);
         }
     }
 
-    postfix_snippet("ref", "&expr", &format!("&{}", receiver_text)).add_to(acc);
-    postfix_snippet("refm", "&mut expr", &format!("&mut {}", receiver_text)).add_to(acc);
+    postfix_snippet("ref", "&expr", &format!("&{receiver_text}")).add_to(acc);
+    postfix_snippet("refm", "&mut expr", &format!("&mut {receiver_text}")).add_to(acc);
 
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
-    let dot_receiver = include_references(dot_receiver);
-    let receiver_text = get_receiver_text(&dot_receiver, receiver_is_ambiguous_float_literal);
+
+    let (dot_receiver, node_to_replace_with) = include_references(dot_receiver);
+    let receiver_text =
+        get_receiver_text(&node_to_replace_with, receiver_is_ambiguous_float_literal);
     let postfix_snippet = match build_postfix_snippet_builder(ctx, cap, &dot_receiver) {
         Some(it) => it,
         None => return,
@@ -146,7 +144,7 @@ pub(crate) fn complete_postfix(
                 postfix_snippet(
                     "match",
                     "match expr {}",
-                    &format!("match {} {{\n    Ok(${{1:_}}) => {{$2}},\n    Err(${{3:_}}) => {{$0}},\n}}", receiver_text),
+                    &format!("match {receiver_text} {{\n    Ok(${{1:_}}) => {{$2}},\n    Err(${{3:_}}) => {{$0}},\n}}"),
                 )
                 .add_to(acc);
             }
@@ -155,8 +153,7 @@ pub(crate) fn complete_postfix(
                     "match",
                     "match expr {}",
                     &format!(
-                        "match {} {{\n    Some(${{1:_}}) => {{$2}},\n    None => {{$0}},\n}}",
-                        receiver_text
+                        "match {receiver_text} {{\n    Some(${{1:_}}) => {{$2}},\n    None => {{$0}},\n}}"
                     ),
                 )
                 .add_to(acc);
@@ -166,21 +163,21 @@ pub(crate) fn complete_postfix(
             postfix_snippet(
                 "match",
                 "match expr {}",
-                &format!("match {} {{\n    ${{1:_}} => {{$0}},\n}}", receiver_text),
+                &format!("match {receiver_text} {{\n    ${{1:_}} => {{$0}},\n}}"),
             )
             .add_to(acc);
         }
     }
 
-    postfix_snippet("box", "Box::new(expr)", &format!("Box::new({})", receiver_text)).add_to(acc);
-    postfix_snippet("dbg", "dbg!(expr)", &format!("dbg!({})", receiver_text)).add_to(acc); // fixme
-    postfix_snippet("dbgr", "dbg!(&expr)", &format!("dbg!(&{})", receiver_text)).add_to(acc);
-    postfix_snippet("call", "function(expr)", &format!("${{1}}({})", receiver_text)).add_to(acc);
+    postfix_snippet("box", "Box::new(expr)", &format!("Box::new({receiver_text})")).add_to(acc);
+    postfix_snippet("dbg", "dbg!(expr)", &format!("dbg!({receiver_text})")).add_to(acc); // fixme
+    postfix_snippet("dbgr", "dbg!(&expr)", &format!("dbg!(&{receiver_text})")).add_to(acc);
+    postfix_snippet("call", "function(expr)", &format!("${{1}}({receiver_text})")).add_to(acc);
 
     if let Some(parent) = dot_receiver.syntax().parent().and_then(|p| p.parent()) {
         if matches!(parent.kind(), STMT_LIST | EXPR_STMT) {
-            postfix_snippet("let", "let", &format!("let $0 = {};", receiver_text)).add_to(acc);
-            postfix_snippet("letm", "let mut", &format!("let mut $0 = {};", receiver_text))
+            postfix_snippet("let", "let", &format!("let $0 = {receiver_text};")).add_to(acc);
+            postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
                 .add_to(acc);
         }
     }
@@ -210,14 +207,35 @@ fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: 
     text.replace('\\', "\\\\").replace('$', "\\$")
 }
 
-fn include_references(initial_element: &ast::Expr) -> ast::Expr {
+fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
     let mut resulting_element = initial_element.clone();
-    while let Some(parent_ref_element) =
-        resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
+
+    while let Some(field_expr) = resulting_element.syntax().parent().and_then(ast::FieldExpr::cast)
     {
-        resulting_element = ast::Expr::from(parent_ref_element);
+        resulting_element = ast::Expr::from(field_expr);
     }
-    resulting_element
+
+    let mut new_element_opt = initial_element.clone();
+
+    if let Some(first_ref_expr) = resulting_element.syntax().parent().and_then(ast::RefExpr::cast) {
+        if let Some(expr) = first_ref_expr.expr() {
+            resulting_element = expr;
+        }
+
+        while let Some(parent_ref_element) =
+            resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
+        {
+            resulting_element = ast::Expr::from(parent_ref_element);
+
+            new_element_opt = make::expr_ref(new_element_opt, false);
+        }
+    } else {
+        // If we do not find any ref expressions, restore
+        // all the progress of tree climbing
+        resulting_element = initial_element.clone();
+    }
+
+    (resulting_element, new_element_opt)
 }
 
 fn build_postfix_snippet_builder<'ctx>(
@@ -225,8 +243,7 @@ fn build_postfix_snippet_builder<'ctx>(
     cap: SnippetCap,
     receiver: &'ctx ast::Expr,
 ) -> Option<impl Fn(&str, &str, &str) -> Builder + 'ctx> {
-    let receiver_syntax = receiver.syntax();
-    let receiver_range = ctx.sema.original_range_opt(receiver_syntax)?.range;
+    let receiver_range = ctx.sema.original_range_opt(receiver.syntax())?.range;
     if ctx.source_range().end() < receiver_range.start() {
         // This shouldn't happen, yet it does. I assume this might be due to an incorrect token mapping.
         return None;
@@ -278,7 +295,7 @@ fn add_custom_postfix_completions(
             let body = snippet.postfix_snippet(receiver_text);
             let mut builder =
                 postfix_snippet(trigger, snippet.description.as_deref().unwrap_or_default(), &body);
-            builder.documentation(Documentation::new(format!("```rust\n{}\n```", body)));
+            builder.documentation(Documentation::new(format!("```rust\n{body}\n```")));
             for import in imports.into_iter() {
                 builder.add_import(import);
             }
@@ -549,7 +566,7 @@ fn main() { ControlFlow::Break('\\\\') }
         );
 
         check_edit_with_config(
-            config.clone(),
+            config,
             "break",
             r#"
 //- minicore: try
@@ -578,12 +595,12 @@ fn main() {
         check_edit(
             "format",
             r#"fn main() { "{some_var:?}".$0 }"#,
-            r#"fn main() { format!("{:?}", some_var) }"#,
+            r#"fn main() { format!("{some_var:?}") }"#,
         );
         check_edit(
             "panic",
             r#"fn main() { "Panic with {a}".$0 }"#,
-            r#"fn main() { panic!("Panic with {}", a) }"#,
+            r#"fn main() { panic!("Panic with {a}") }"#,
         );
         check_edit(
             "println",
@@ -616,22 +633,55 @@ fn main() {
 
     #[test]
     fn postfix_custom_snippets_completion_for_references() {
+        // https://github.com/rust-lang/rust-analyzer/issues/7929
+
+        let snippet = Snippet::new(
+            &[],
+            &["ok".into()],
+            &["Ok(${receiver})".into()],
+            "",
+            &[],
+            crate::SnippetScope::Expr,
+        )
+        .unwrap();
+
         check_edit_with_config(
-            CompletionConfig {
-                snippets: vec![Snippet::new(
-                    &[],
-                    &["ok".into()],
-                    &["Ok(${receiver})".into()],
-                    "",
-                    &[],
-                    crate::SnippetScope::Expr,
-                )
-                .unwrap()],
-                ..TEST_CONFIG
-            },
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "ok",
+            r#"fn main() { &&42.o$0 }"#,
+            r#"fn main() { Ok(&&42) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
             "ok",
             r#"fn main() { &&42.$0 }"#,
             r#"fn main() { Ok(&&42) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet], ..TEST_CONFIG },
+            "ok",
+            r#"
+struct A {
+    a: i32,
+}
+
+fn main() {
+    let a = A {a :1};
+    &a.a.$0
+}
+            "#,
+            r#"
+struct A {
+    a: i32,
+}
+
+fn main() {
+    let a = A {a :1};
+    Ok(&a.a)
+}
+            "#,
         );
     }
 }

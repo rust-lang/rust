@@ -10,7 +10,7 @@ use itertools::Itertools;
 use stdx::format_to;
 use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 
-// Assist: move_format_string_arg
+// Assist: extract_expressions_from_format_string
 //
 // Move an expression out of a format string.
 //
@@ -23,7 +23,7 @@ use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 // }
 //
 // fn main() {
-//     print!("{x + 1}$0");
+//     print!("{var} {x + 1}$0");
 // }
 // ```
 // ->
@@ -36,11 +36,14 @@ use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 // }
 //
 // fn main() {
-//     print!("{}"$0, x + 1);
+//     print!("{var} {}"$0, x + 1);
 // }
 // ```
 
-pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn extract_expressions_from_format_string(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let fmt_string = ctx.find_token_at_offset::<ast::String>()?;
     let tt = fmt_string.syntax().parent().and_then(ast::TokenTree::cast)?;
 
@@ -58,7 +61,7 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     acc.add(
         AssistId(
-            "move_format_string_arg",
+            "extract_expressions_from_format_string",
             // if there aren't any expressions, then make the assist a RefactorExtract
             if extracted_args.iter().filter(|f| matches!(f, Arg::Expr(_))).count() == 0 {
                 AssistKind::RefactorExtract
@@ -66,7 +69,7 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
                 AssistKind::QuickFix
             },
         ),
-        "Extract format args",
+        "Extract format expressions",
         tt.syntax().text_range(),
         |edit| {
             let fmt_range = fmt_string.syntax().text_range();
@@ -118,15 +121,14 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
             let mut placeholder_idx = 1;
 
             for extracted_args in extracted_args {
-                // remove expr from format string
-                args.push_str(", ");
-
                 match extracted_args {
-                    Arg::Ident(s) | Arg::Expr(s) => {
+                    Arg::Expr(s)=> {
+                        args.push_str(", ");
                         // insert arg
                         args.push_str(&s);
                     }
                     Arg::Placeholder => {
+                        args.push_str(", ");
                         // try matching with existing argument
                         match existing_args.next() {
                             Some(ea) => {
@@ -139,6 +141,7 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
                             }
                         }
                     }
+                    Arg::Ident(_s) => (),
                 }
             }
 
@@ -171,7 +174,7 @@ macro_rules! print {
     #[test]
     fn multiple_middle_arg() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -192,7 +195,7 @@ fn main() {
     #[test]
     fn single_arg() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -213,7 +216,7 @@ fn main() {
     #[test]
     fn multiple_middle_placeholders_arg() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -234,7 +237,7 @@ fn main() {
     #[test]
     fn multiple_trailing_args() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -255,7 +258,7 @@ fn main() {
     #[test]
     fn improper_commas() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -276,7 +279,7 @@ fn main() {
     #[test]
     fn nested_tt() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -288,6 +291,29 @@ fn main() {
                 r#"
 fn main() {
     print!("My name is {} {}"$0, stringify!(Paperino), x + x)
+}
+"#,
+            ),
+        );
+    }
+
+    #[test]
+    fn extract_only_expressions() {
+        check_assist(
+            extract_expressions_from_format_string,
+            &add_macro_decl(
+                r#"
+fn main() {
+    let var = 1 + 1;
+    print!("foobar {var} {var:?} {x$0 + x}")
+}
+"#,
+            ),
+            &add_macro_decl(
+                r#"
+fn main() {
+    let var = 1 + 1;
+    print!("foobar {var} {var:?} {}"$0, x + x)
 }
 "#,
             ),

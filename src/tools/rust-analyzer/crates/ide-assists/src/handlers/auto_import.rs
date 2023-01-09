@@ -203,7 +203,7 @@ fn relevance_score(
         // get the distance between the imported path and the current module
         // (prefer items that are more local)
         Some((item_module, current_module)) => {
-            score -= module_distance_hueristic(db, &current_module, &item_module) as i32;
+            score -= module_distance_hueristic(db, current_module, &item_module) as i32;
         }
 
         // could not find relevant modules, so just use the length of the path as an estimate

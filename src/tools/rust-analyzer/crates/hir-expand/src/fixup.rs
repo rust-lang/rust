@@ -366,7 +366,7 @@ mod tests {
             fixups.append,
         );
 
-        let actual = format!("{}\n", tt);
+        let actual = format!("{tt}\n");
 
         expect.indent(false);
         expect.assert_eq(&actual);

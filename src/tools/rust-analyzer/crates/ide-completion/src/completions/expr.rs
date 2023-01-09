@@ -64,7 +64,7 @@ pub(crate) fn complete_expr_path(
                 acc.add_enum_variants(ctx, path_ctx, e);
             }
 
-            ctx.iterate_path_candidates(&ty, |item| {
+            ctx.iterate_path_candidates(ty, |item| {
                 add_assoc_item(acc, item);
             });
 

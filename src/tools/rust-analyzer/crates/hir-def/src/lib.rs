@@ -34,6 +34,7 @@ pub mod adt;
 pub mod data;
 pub mod generics;
 pub mod lang_item;
+pub mod layout;
 
 pub mod expr;
 pub mod body;

@@ -84,7 +84,7 @@ fn render(
         }
         _ => RenderedLiteral {
             literal: escaped_qualified_name.clone(),
-            detail: escaped_qualified_name.clone(),
+            detail: escaped_qualified_name,
         },
     };
 
@@ -96,7 +96,7 @@ fn render(
     if !should_add_parens {
         kind = StructKind::Unit;
     }
-    let label = format_literal_label(&qualified_name, kind);
+    let label = format_literal_label(&qualified_name, kind, snippet_cap);
     let lookup = if qualified {
         format_literal_lookup(&short_qualified_name.to_string(), kind)
     } else {

@@ -1,10 +1,10 @@
 //! Completion tests for item list position.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
+use crate::tests::{check_edit, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{}{}", BASE_ITEMS_FIXTURE, ra_fixture));
+    let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"));
     expect.assert_eq(&actual)
 }
 
@@ -276,4 +276,92 @@ fn after_unit_struct() {
             sn tmod (Test module)
         "#]],
     );
+}
+
+#[test]
+fn type_in_impl_trait() {
+    check_edit(
+        "type O",
+        r"
+struct A;
+trait B {
+type O: ?Sized;
+}
+impl B for A {
+$0
+}
+",
+        r#"
+struct A;
+trait B {
+type O: ?Sized;
+}
+impl B for A {
+type O = $0;
+}
+"#,
+    );
+    check_edit(
+        "type O",
+        r"
+struct A;
+trait B {
+type O;
+}
+impl B for A {
+$0
+}
+",
+        r#"
+struct A;
+trait B {
+type O;
+}
+impl B for A {
+type O = $0;
+}
+"#,
+    );
+    check_edit(
+        "type O",
+        r"
+struct A;
+trait B {
+type O: ?Sized = u32;
+}
+impl B for A {
+$0
+}
+",
+        r#"
+struct A;
+trait B {
+type O: ?Sized = u32;
+}
+impl B for A {
+type O = $0;
+}
+"#,
+    );
+    check_edit(
+        "type O",
+        r"
+struct A;
+trait B {
+type O = u32;
+}
+impl B for A {
+$0
+}
+",
+        r"
+struct A;
+trait B {
+type O = u32;
+}
+impl B for A {
+type O = $0;
+}
+",
+    )
 }

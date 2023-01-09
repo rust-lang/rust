@@ -107,6 +107,14 @@ fn add_missing_impl_members_inner(
 ) -> Option<()> {
     let _p = profile::span("add_missing_impl_members_inner");
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?;
+
+    if ctx.token_at_offset().all(|t| {
+        t.parent_ancestors()
+            .any(|s| ast::BlockExpr::can_cast(s.kind()) || ast::ParamList::can_cast(s.kind()))
+    }) {
+        return None;
+    }
+
     let target_scope = ctx.sema.scope(impl_def.syntax())?;
     let trait_ = resolve_target_trait(&ctx.sema, &impl_def)?;
 
@@ -1342,5 +1350,96 @@ impl PartialEq for SomeStruct {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn test_ignore_function_body() {
+        check_assist_not_applicable(
+            add_missing_default_members,
+            r#"
+trait Trait {
+    type X;
+    fn foo(&self);
+    fn bar(&self) {}
+}
+
+impl Trait for () {
+    type X = u8;
+    fn foo(&self) {$0
+        let x = 5;
+    }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_ignore_param_list() {
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+trait Trait {
+    type X;
+    fn foo(&self);
+    fn bar(&self);
+}
+
+impl Trait for () {
+    type X = u8;
+    fn foo(&self$0) {
+        let x = 5;
+    }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_ignore_scope_inside_function() {
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+trait Trait {
+    type X;
+    fn foo(&self);
+    fn bar(&self);
+}
+
+impl Trait for () {
+    type X = u8;
+    fn foo(&self) {
+        let x = async {$0 5 };
+    }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_apply_outside_function() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+trait Trait {
+    type X;
+    fn foo(&self);
+    fn bar(&self) {}
+}
+
+impl Trait for () {
+    type X = u8;
+    fn foo(&self)$0 {}
+}"#,
+            r#"
+trait Trait {
+    type X;
+    fn foo(&self);
+    fn bar(&self) {}
+}
+
+impl Trait for () {
+    type X = u8;
+    fn foo(&self) {}
+
+    $0fn bar(&self) {}
+}"#,
+        )
     }
 }

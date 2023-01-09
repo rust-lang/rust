@@ -11,7 +11,7 @@ fn sourcegen_diagnostic_docs() {
         diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = sourcegen::add_preamble("sourcegen_diagnostic_docs", contents);
     let dst = project_root().join("docs/user/generated_diagnostic.adoc");
-    fs::write(&dst, &contents).unwrap();
+    fs::write(dst, contents).unwrap();
 }
 
 #[derive(Debug)]
@@ -39,7 +39,7 @@ impl Diagnostic {
             for block in comment_blocks {
                 let id = block.id;
                 if let Err(msg) = is_valid_diagnostic_name(&id) {
-                    panic!("invalid diagnostic name: {:?}:\n  {}", id, msg)
+                    panic!("invalid diagnostic name: {id:?}:\n  {msg}")
                 }
                 let doc = block.contents.join("\n");
                 let location = sourcegen::Location { file: path.clone(), line: block.line };

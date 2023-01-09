@@ -240,7 +240,7 @@ fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
 }
 
 fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
-    match file_id.0 {
+    match file_id.repr() {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
         HirFileIdRepr::MacroFile(macro_file) => {
             // FIXME: Note how we convert from `Parse` to `SyntaxNode` here,
@@ -444,7 +444,7 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
         // be reported at the definition site (when we construct a def map).
         Err(err) => {
             return ExpandResult::only_err(ExpandError::Other(
-                format!("invalid macro definition: {}", err).into(),
+                format!("invalid macro definition: {err}").into(),
             ))
         }
     };

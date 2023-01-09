@@ -187,7 +187,7 @@ mod tests {
         let (analysis, position) = fixture::position(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
-        assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {:?}", navs)
+        assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
     }
 
     #[test]

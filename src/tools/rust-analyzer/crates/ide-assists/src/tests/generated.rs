@@ -625,6 +625,37 @@ fn qux(bar: Bar, baz: Baz) {}
 }
 
 #[test]
+fn doctest_extract_expressions_from_format_string() {
+    check_doc_test(
+        "extract_expressions_from_format_string",
+        r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
+fn main() {
+    print!("{var} {x + 1}$0");
+}
+"#####,
+        r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
+fn main() {
+    print!("{var} {}"$0, x + 1);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_function() {
     check_doc_test(
         "extract_function",
@@ -1249,8 +1280,8 @@ fn doctest_generate_impl() {
     check_doc_test(
         "generate_impl",
         r#####"
-struct Ctx<T: Clone> {
-    data: T,$0
+struct Ctx$0<T: Clone> {
+    data: T,
 }
 "#####,
         r#####"
@@ -1342,6 +1373,27 @@ impl Person {
 }
 
 #[test]
+fn doctest_generate_trait_impl() {
+    check_doc_test(
+        "generate_trait_impl",
+        r#####"
+struct $0Ctx<T: Clone> {
+    data: T,
+}
+"#####,
+        r#####"
+struct Ctx<T: Clone> {
+    data: T,
+}
+
+impl<T: Clone> $0 for Ctx<T> {
+
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_call() {
     check_doc_test(
         "inline_call",
@@ -1412,6 +1464,39 @@ fn main() {
         r#####"
 fn main() {
     (1 + 2) * 4;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_inline_macro() {
+    check_doc_test(
+        "inline_macro",
+        r#####"
+macro_rules! num {
+    (+$($t:tt)+) => (1 + num!($($t )+));
+    (-$($t:tt)+) => (-1 + num!($($t )+));
+    (+) => (1);
+    (-) => (-1);
+}
+
+fn main() {
+    let number = num$0!(+ + + - + +);
+    println!("{number}");
+}
+"#####,
+        r#####"
+macro_rules! num {
+    (+$($t:tt)+) => (1 + num!($($t )+));
+    (-$($t:tt)+) => (-1 + num!($($t )+));
+    (+) => (1);
+    (-) => (-1);
+}
+
+fn main() {
+    let number = 1+num!(+ + - + +);
+    println!("{number}");
 }
 "#####,
     )
@@ -1654,31 +1739,29 @@ fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
 }
 
 #[test]
-fn doctest_move_format_string_arg() {
+fn doctest_move_const_to_impl() {
     check_doc_test(
-        "move_format_string_arg",
+        "move_const_to_impl",
         r#####"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
-macro_rules! print {
-    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
-}
+struct S;
+impl S {
+    fn foo() -> usize {
+        /// The answer.
+        const C$0: usize = 42;
 
-fn main() {
-    print!("{x + 1}$0");
+        C * C
+    }
 }
 "#####,
         r#####"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
-macro_rules! print {
-    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
-}
+struct S;
+impl S {
+    /// The answer.
+    const C: usize = 42;
 
-fn main() {
-    print!("{}"$0, x + 1);
+    fn foo() -> usize {
+        Self::C * Self::C
+    }
 }
 "#####,
     )
@@ -1929,6 +2012,23 @@ impl Walrus {
 }
 
 #[test]
+fn doctest_remove_parentheses() {
+    check_doc_test(
+        "remove_parentheses",
+        r#####"
+fn main() {
+    _ = $0(2) + 2;
+}
+"#####,
+        r#####"
+fn main() {
+    _ = 2 + 2;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_remove_unused_param() {
     check_doc_test(
         "remove_unused_param",
@@ -1994,6 +2094,57 @@ impl Foo for Bar {
     type A = String;
     const B: u8 = 17;
     fn c() {}
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_arith_with_checked() {
+    check_doc_test(
+        "replace_arith_with_checked",
+        r#####"
+fn main() {
+  let x = 1 $0+ 2;
+}
+"#####,
+        r#####"
+fn main() {
+  let x = 1.checked_add(2);
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_arith_with_saturating() {
+    check_doc_test(
+        "replace_arith_with_saturating",
+        r#####"
+fn main() {
+  let x = 1 $0+ 2;
+}
+"#####,
+        r#####"
+fn main() {
+  let x = 1.saturating_add(2);
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_arith_with_wrapping() {
+    check_doc_test(
+        "replace_arith_with_wrapping",
+        r#####"
+fn main() {
+  let x = 1 $0+ 2;
+}
+"#####,
+        r#####"
+fn main() {
+  let x = 1.wrapping_add(2);
 }
 "#####,
     )
@@ -2411,6 +2562,25 @@ pub async fn bar() { foo().await }
         r#####"
 pub fn foo() {}
 pub async fn bar() { foo() }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_unqualify_method_call() {
+    check_doc_test(
+        "unqualify_method_call",
+        r#####"
+fn main() {
+    std::ops::Add::add$0(1, 2);
+}
+mod std { pub mod ops { pub trait Add { fn add(self, _: Self) {} } impl Add for i32 {} } }
+"#####,
+        r#####"
+fn main() {
+    1.add(2);
+}
+mod std { pub mod ops { pub trait Add { fn add(self, _: Self) {} } impl Add for i32 {} } }
 "#####,
     )
 }

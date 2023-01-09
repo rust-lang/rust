@@ -17,7 +17,7 @@ use crate::{
     db::{self, AstDatabase},
     fixup,
     name::{AsName, Name},
-    HirFileId, HirFileIdRepr, InFile, MacroCallKind, MacroCallLoc, MacroDefKind, MacroFile,
+    HirFileId, InFile, MacroCallKind, MacroCallLoc, MacroDefKind, MacroFile,
 };
 
 #[derive(Clone, Debug)]
@@ -216,9 +216,9 @@ fn make_hygiene_info(
 
 impl HygieneFrame {
     pub(crate) fn new(db: &dyn AstDatabase, file_id: HirFileId) -> HygieneFrame {
-        let (info, krate, local_inner) = match file_id.0 {
-            HirFileIdRepr::FileId(_) => (None, None, false),
-            HirFileIdRepr::MacroFile(macro_file) => {
+        let (info, krate, local_inner) = match file_id.macro_file() {
+            None => (None, None, false),
+            Some(macro_file) => {
                 let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 let info =
                     make_hygiene_info(db, macro_file, &loc).map(|info| (loc.kind.file_id(), info));

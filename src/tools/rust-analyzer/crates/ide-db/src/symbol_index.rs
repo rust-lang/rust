@@ -206,7 +206,7 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 }
 
 pub fn crate_symbols(db: &RootDatabase, krate: Crate, query: Query) -> Vec<FileSymbol> {
-    let _p = profile::span("crate_symbols").detail(|| format!("{:?}", query));
+    let _p = profile::span("crate_symbols").detail(|| format!("{query:?}"));
 
     let modules = krate.modules(db);
     let indices: Vec<_> = modules
