@@ -1125,20 +1125,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn build_drop_and_replace(
         &mut self,
         block: BasicBlock,
-        statement_source_info: SourceInfo,
-        span: Span,
+        source_info: SourceInfo,
         place: Place<'tcx>,
         value: Rvalue<'tcx>,
     ) -> BlockAnd<()> {
-        let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
 
         let assign = self.cfg.start_new_cleanup_block();
-        self.cfg.push_assign(assign, statement_source_info, place, value.clone());
+        self.cfg.push_assign(assign, source_info, place, value.clone());
         // We still have to build the scope drops so we don't know which block will follow.
         // This terminator will be overwritten once the unwind drop tree builder runs.
-        self.cfg.terminate(assign, statement_source_info, TerminatorKind::Unreachable);
-
+        self.cfg.terminate(assign, source_info, TerminatorKind::Unreachable);
         self.cfg.terminate(
             block,
             source_info,

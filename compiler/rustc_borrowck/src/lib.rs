@@ -35,7 +35,7 @@ use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
-use rustc_span::{Span, Symbol};
+use rustc_span::{DesugaringKind, Span, Symbol};
 
 use either::Either;
 use smallvec::SmallVec;
@@ -340,7 +340,6 @@ fn do_mir_borrowck<'tcx>(
                 next_region_name: RefCell::new(1),
                 polonius_output: None,
                 errors,
-                replaces: Default::default(),
             };
             promoted_mbcx.report_move_errors(move_errors);
             errors = promoted_mbcx.errors;
@@ -372,7 +371,6 @@ fn do_mir_borrowck<'tcx>(
         next_region_name: RefCell::new(1),
         polonius_output,
         errors,
-        replaces: Default::default(),
     };
 
     // Compute and report region errors, if any.
@@ -555,10 +553,6 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     polonius_output: Option<Rc<PoloniusOutput>>,
 
     errors: error::BorrowckErrors<'tcx>,
-
-    /// Record the places were a replace happens so that we can use the
-    /// correct access depth in the assignment for better diagnostic
-    replaces: FxHashSet<Location>,
 }
 
 // Check that:
@@ -583,10 +577,8 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
         match &stmt.kind {
             StatementKind::Assign(box (lhs, rhs)) => {
                 self.consume_rvalue(location, (rhs, span), flow_state);
-                // In case of a replace the drop access check is skipped for better diagnostic but we need
-                // to use a stricter access depth here
-                let access_depth = if self.replaces.contains(&location) {AccessDepth::Drop} else {Shallow(None)};
-                self.mutate_place(location, (*lhs, span), access_depth, flow_state);
+
+                self.mutate_place(location, (*lhs, span), AccessDepth::Shallow(None), flow_state);
             }
             StatementKind::FakeRead(box (_, place)) => {
                 // Read for match doesn't access any memory and is used to
@@ -652,27 +644,12 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
-            TerminatorKind::Drop { place, target, unwind, is_replace } => {
+            TerminatorKind::Drop { place, target: _, unwind: _, is_replace: _ } => {
                 debug!(
                     "visit_terminator_drop \
                      loc: {:?} term: {:?} place: {:?} span: {:?}",
                     loc, term, place, span
                 );
-
-                // In case of a replace, it's more user friendly to report a problem with the explicit
-                // assignment than the implicit drop.
-                // Simply skip this access and rely on the assignment to report any error.
-                if *is_replace {
-                    // An assignment `x = ...` is usually a shallow access, but in the case of a replace
-                    // the drop could access internal references depending on the drop implementation.
-                    // Since we're skipping the drop access, we need to mark the access depth
-                    // of the assignment as AccessDepth::Drop.
-                    self.replaces.insert(Location { block: *target, statement_index: 0 });
-                    if let Some(unwind) = unwind {
-                        self.replaces.insert(Location { block: *unwind, statement_index: 0 });
-                    }
-                    return;
-                }
 
                 self.access_place(
                     loc,
@@ -1112,13 +1089,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 this.report_conflicting_borrow(location, place_span, bk, borrow);
                             this.buffer_error(err);
                         }
-                        WriteKind::StorageDeadOrDrop => this
-                            .report_borrowed_value_does_not_live_long_enough(
-                                location,
-                                borrow,
-                                place_span,
-                                Some(kind),
-                            ),
+                        WriteKind::StorageDeadOrDrop => {
+                            if let Some(DesugaringKind::Replace) = place_span.1.desugaring_kind() {
+                                // If this is a drop triggered by a reassignment, it's more user friendly
+                                // to report a problem with the explicit assignment than the implicit drop.
+                                this.report_illegal_mutation_of_borrowed(
+                                    location, place_span, borrow,
+                                )
+                            } else {
+                                this.report_borrowed_value_does_not_live_long_enough(
+                                    location,
+                                    borrow,
+                                    place_span,
+                                    Some(kind),
+                                )
+                            }
+                        }
                         WriteKind::Mutate => {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }

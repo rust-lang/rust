@@ -3,6 +3,7 @@ use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_span::DesugaringKind;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds a block of MIR statements to evaluate the THIR `expr`.
@@ -28,7 +29,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Assign { lhs, rhs } => {
                 let lhs = &this.thir[lhs];
                 let rhs = &this.thir[rhs];
-                let lhs_span = lhs.span;
 
                 // Note: we evaluate assignments right-to-left. This
                 // is better for borrowck interaction with overloaded
@@ -42,17 +42,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let needs_drop = lhs.ty.needs_drop(this.tcx, this.param_env);
                 let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                 let lhs = unpack!(block = this.as_place(block, lhs));
-                if needs_drop {
-                    unpack!(
-                        block = this.build_drop_and_replace(
-                            block,
-                            source_info,
-                            lhs_span,
-                            lhs,
-                            rhs.clone()
+
+                let source_info = if needs_drop {
+                    let span = this.tcx.with_stable_hashing_context(|hcx| {
+                        expr_span.mark_with_reason(
+                            None,
+                            DesugaringKind::Replace,
+                            this.tcx.sess.edition(),
+                            hcx,
                         )
+                    });
+                    let source_info = this.source_info(span);
+                    unpack!(
+                        block = this.build_drop_and_replace(block, source_info, lhs, rhs.clone())
                     );
-                }
+                    source_info
+                } else {
+                    source_info
+                };
+
                 this.cfg.push_assign(block, source_info, lhs, rhs);
                 this.block_context.pop();
                 block.unit()
