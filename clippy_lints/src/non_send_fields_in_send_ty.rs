@@ -89,8 +89,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
             if let Some(trait_id) = trait_ref.trait_def_id();
             if send_trait == trait_id;
             if hir_impl.polarity == ImplPolarity::Positive;
-            if let Some(ty_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id);
-            if let self_ty = ty_trait_ref.self_ty();
+            if let Some(ty_trait_ref) = cx.tcx.bound_impl_trait_ref(item.owner_id.to_def_id());
+            if let self_ty = ty_trait_ref.subst_identity().self_ty();
             if let ty::Adt(adt_def, impl_trait_substs) = self_ty.kind();
             then {
                 let mut non_send_fields = Vec::new();
