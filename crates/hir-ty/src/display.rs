@@ -11,7 +11,6 @@ use hir_def::{
     db::DefDatabase,
     find_path,
     generics::{TypeOrConstParamData, TypeParamProvenance},
-    intern::{Internable, Interned},
     item_scope::ItemInNs,
     path::{Path, PathKind},
     type_ref::{ConstScalar, TraitBoundModifier, TypeBound, TypeRef},
@@ -19,6 +18,7 @@ use hir_def::{
     HasModule, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
+use intern::{Internable, Interned};
 use itertools::Itertools;
 use smallvec::SmallVec;
 use syntax::SmolStr;

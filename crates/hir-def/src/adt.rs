@@ -8,6 +8,7 @@ use hir_expand::{
     name::{AsName, Name},
     HirFileId, InFile,
 };
+use intern::Interned;
 use la_arena::{Arena, ArenaMap};
 use rustc_abi::{Integer, IntegerType};
 use syntax::ast::{self, HasName, HasVisibility};
@@ -17,7 +18,6 @@ use crate::{
     body::{CfgExpander, LowerCtx},
     builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
-    intern::Interned,
     item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
     layout::{Align, ReprFlags, ReprOptions},
     nameres::diagnostics::DefDiagnostic,

@@ -29,6 +29,7 @@ smallvec = "1.10.0"
 tracing = "0.1.35"
 
 stdx = { path = "../stdx", version = "0.0.0" }
+intern = { path = "../intern", version = "0.0.0" }
 base-db = { path = "../base-db", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }

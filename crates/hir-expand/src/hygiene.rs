@@ -191,7 +191,7 @@ fn make_hygiene_info(
             let tt = ast_id
                 .to_node(db)
                 .doc_comments_and_attrs()
-                .nth(invoc_attr_index as usize)
+                .nth(invoc_attr_index.ast_index())
                 .and_then(Either::left)?
                 .token_tree()?;
             Some(InFile::new(ast_id.file_id, tt))

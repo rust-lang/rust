@@ -23,7 +23,6 @@ use hir_def::{
     generics::{
         TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
-    intern::Interned,
     lang_item::lang_attr,
     path::{GenericArg, ModPath, Path, PathKind, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
@@ -35,6 +34,7 @@ use hir_def::{
     TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::Name, ExpandResult};
+use intern::Interned;
 use itertools::Either;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashSet;

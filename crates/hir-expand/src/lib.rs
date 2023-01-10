@@ -17,6 +17,7 @@ pub mod proc_macro;
 pub mod quote;
 pub mod eager;
 pub mod mod_path;
+pub mod attrs;
 mod fixup;
 
 pub use mbe::{Origin, ValueResult};
@@ -37,6 +38,7 @@ use syntax::{
 
 use crate::{
     ast_id_map::FileAstId,
+    attrs::AttrId,
     builtin_attr_macro::BuiltinAttrExpander,
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
@@ -145,7 +147,7 @@ pub enum MacroCallKind {
         ///
         /// Outer attributes are counted first, then inner attributes. This does not support
         /// out-of-line modules, which may have attributes spread across 2 files!
-        derive_attr_index: u32,
+        derive_attr_index: AttrId,
         /// Index of the derive macro in the derive attribute
         derive_index: u32,
     },
@@ -156,7 +158,7 @@ pub enum MacroCallKind {
         ///
         /// Outer attributes are counted first, then inner attributes. This does not support
         /// out-of-line modules, which may have attributes spread across 2 files!
-        invoc_attr_index: u32,
+        invoc_attr_index: AttrId,
         /// Whether this attribute is the `#[derive]` attribute.
         is_derive: bool,
     },
@@ -261,10 +263,11 @@ impl HirFileId {
         });
         let attr_input_or_mac_def = def.or_else(|| match loc.kind {
             MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
+                // FIXME: handle `cfg_attr`
                 let tt = ast_id
                     .to_node(db)
                     .doc_comments_and_attrs()
-                    .nth(invoc_attr_index as usize)
+                    .nth(invoc_attr_index.ast_index())
                     .and_then(Either::left)?
                     .token_tree()?;
                 Some(InFile::new(ast_id.file_id, tt))
@@ -397,8 +400,7 @@ impl MacroDefId {
     }
 }
 
-// FIXME: attribute indices do not account for `cfg_attr`, which means that we'll strip the whole
-// `cfg_attr` instead of just one of the attributes it expands to
+// FIXME: attribute indices do not account for nested `cfg_attr`
 
 impl MacroCallKind {
     /// Returns the file containing the macro invocation.
@@ -419,7 +421,7 @@ impl MacroCallKind {
                 // FIXME: handle `cfg_attr`
                 ast_id.with_value(ast_id.to_node(db)).map(|it| {
                     it.doc_comments_and_attrs()
-                        .nth(*derive_attr_index as usize)
+                        .nth(derive_attr_index.ast_index())
                         .and_then(|it| match it {
                             Either::Left(attr) => Some(attr.syntax().clone()),
                             Either::Right(_) => None,
@@ -431,7 +433,7 @@ impl MacroCallKind {
                 // FIXME: handle `cfg_attr`
                 ast_id.with_value(ast_id.to_node(db)).map(|it| {
                     it.doc_comments_and_attrs()
-                        .nth(*invoc_attr_index as usize)
+                        .nth(invoc_attr_index.ast_index())
                         .and_then(|it| match it {
                             Either::Left(attr) => Some(attr.syntax().clone()),
                             Either::Right(_) => None,
@@ -488,19 +490,21 @@ impl MacroCallKind {
             MacroCallKind::FnLike { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
                 // FIXME: should be the range of the macro name, not the whole derive
+                // FIXME: handle `cfg_attr`
                 ast_id
                     .to_node(db)
                     .doc_comments_and_attrs()
-                    .nth(derive_attr_index as usize)
+                    .nth(derive_attr_index.ast_index())
                     .expect("missing derive")
                     .expect_left("derive is a doc comment?")
                     .syntax()
                     .text_range()
             }
+            // FIXME: handle `cfg_attr`
             MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => ast_id
                 .to_node(db)
                 .doc_comments_and_attrs()
-                .nth(invoc_attr_index as usize)
+                .nth(invoc_attr_index.ast_index())
                 .expect("missing attribute")
                 .expect_left("attribute macro is a doc comment?")
                 .syntax()
@@ -592,9 +596,10 @@ impl ExpansionInfo {
             let token_range = token.value.text_range();
             match &loc.kind {
                 MacroCallKind::Attr { attr_args, invoc_attr_index, is_derive, .. } => {
+                    // FIXME: handle `cfg_attr`
                     let attr = item
                         .doc_comments_and_attrs()
-                        .nth(*invoc_attr_index as usize)
+                        .nth(invoc_attr_index.ast_index())
                         .and_then(Either::left)?;
                     match attr.token_tree() {
                         Some(token_tree)
@@ -1031,3 +1036,5 @@ impl ExpandTo {
 pub struct UnresolvedMacro {
     pub path: ModPath,
 }
+
+intern::impl_internable!(ModPath, attrs::AttrInput);

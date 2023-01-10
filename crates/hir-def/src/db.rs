@@ -4,6 +4,7 @@ use std::sync::Arc;
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
 use hir_expand::{db::AstDatabase, HirFileId};
+use intern::Interned;
 use la_arena::ArenaMap;
 use syntax::{ast, AstPtr, SmolStr};
 
@@ -17,7 +18,6 @@ use crate::{
     },
     generics::GenericParams,
     import_map::ImportMap,
-    intern::Interned,
     item_tree::{AttrOwner, ItemTree},
     lang_item::{LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostic, DefMap},

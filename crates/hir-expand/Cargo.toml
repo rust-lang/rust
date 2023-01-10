@@ -22,6 +22,7 @@ hashbrown = { version = "0.12.1", features = [
 smallvec = { version = "1.10.0", features = ["const_new"] }
 
 stdx = { path = "../stdx", version = "0.0.0" }
+intern = { path = "../intern", version = "0.0.0" }
 base-db = { path = "../base-db", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }

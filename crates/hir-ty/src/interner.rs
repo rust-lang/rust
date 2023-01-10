@@ -4,11 +4,8 @@
 use crate::{chalk_db, tls, GenericArg};
 use base_db::salsa::InternId;
 use chalk_ir::{Goal, GoalData};
-use hir_def::{
-    intern::{impl_internable, InternStorage, Internable, Interned},
-    type_ref::ConstScalar,
-    TypeAliasId,
-};
+use hir_def::{type_ref::ConstScalar, TypeAliasId};
+use intern::{impl_internable, Interned};
 use smallvec::SmallVec;
 use std::{fmt, sync::Arc};
 

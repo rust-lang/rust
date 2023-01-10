@@ -3,7 +3,6 @@
 use std::fmt::{self, Write};
 
 use crate::{
-    attr::RawAttrs,
     generics::{TypeOrConstParamData, WherePredicate, WherePredicateTypeTarget},
     pretty::{print_path, print_type_bounds, print_type_ref},
     visibility::RawVisibility,
