@@ -46,7 +46,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub DERIVE_HASH_XOR_EQ,
+    pub DERIVED_HASH_WITH_MANUAL_EQ,
     correctness,
     "deriving `Hash` but implementing `PartialEq` explicitly"
 }
@@ -197,7 +197,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Derive => [
     EXPL_IMPL_CLONE_ON_COPY,
-    DERIVE_HASH_XOR_EQ,
+    DERIVED_HASH_WITH_MANUAL_EQ,
     DERIVE_ORD_XOR_PARTIAL_ORD,
     UNSAFE_DERIVE_DESERIALIZE,
     DERIVE_PARTIAL_EQ_WITHOUT_EQ
@@ -226,7 +226,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
     }
 }
 
-/// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
+/// Implementation of the `DERIVED_HASH_WITH_MANUAL_EQ` lint.
 fn check_hash_peq<'tcx>(
     cx: &LateContext<'tcx>,
     span: Span,
@@ -254,7 +254,7 @@ fn check_hash_peq<'tcx>(
                 if trait_ref.substs.type_at(1) == ty {
                     span_lint_and_then(
                         cx,
-                        DERIVE_HASH_XOR_EQ,
+                        DERIVED_HASH_WITH_MANUAL_EQ,
                         span,
                         "you are deriving `Hash` but have implemented `PartialEq` explicitly",
                         |diag| {
