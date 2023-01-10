@@ -87,3 +87,7 @@ pub struct FailedWritingFile<'a> {
     pub path: &'a Path,
     pub error: io::Error,
 }
+
+#[derive(Diagnostic)]
+#[diag(interface_proc_macro_crate_panic_abort)]
+pub struct ProcMacroCratePanicAbort;
