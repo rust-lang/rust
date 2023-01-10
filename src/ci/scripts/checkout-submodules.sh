@@ -23,8 +23,9 @@ fi
 function fetch_github_commit_archive {
     local module=$1
     local cached="download-${module//\//-}.tar.gz"
-    retry sh -c "rm -f $cached && \
-        curl -f -sSL -o $cached $2"
+    rm -f "${cached}"
+    rm -rf "${module}"
+    curl -f -sSL -o "${cached}" "$2"
     mkdir $module
     touch "$module/.git"
     # On Windows, the default behavior is to emulate symlinks by copying
@@ -32,6 +33,7 @@ function fetch_github_commit_archive {
     # which can cause a failure if the symlink comes first. This env var
     # causes tar to use real symlinks instead, which are allowed to dangle.
     export MSYS=winsymlinks:nativestrict
+    mkdir -p "${module}"
     tar -C $module --strip-components=1 -xf $cached
     rm $cached
 }
@@ -50,7 +52,7 @@ for i in ${!modules[@]}; do
         git rm $module
         url=${urls[$i]}
         url=${url/\.git/}
-        fetch_github_commit_archive $module "$url/archive/$commit.tar.gz" &
+        retry fetch_github_commit_archive $module "$url/archive/$commit.tar.gz" &
         bg_pids[${i}]=$!
         continue
     else
