@@ -204,7 +204,7 @@ fn should_hide_fields(n_fields: usize) -> bool {
 fn toggle_open(w: &mut Buffer, text: impl fmt::Display) {
     write!(
         w,
-        "<details class=\"rustdoc-toggle type-contents-toggle\">\
+        "<details class=\"toggle type-contents-toggle\">\
             <summary class=\"hideme\">\
                 <span>Show {}</span>\
             </summary>",
@@ -733,7 +733,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         let toggled = !content.is_empty();
         if toggled {
             let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
-            write!(w, "<details class=\"rustdoc-toggle{method_toggle_class}\" open><summary>");
+            write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>");
         }
         write!(w, "<section id=\"{}\" class=\"method has-srclink\">", id);
         render_rightside(w, cx, m, t, RenderMode::Normal);
@@ -1840,7 +1840,7 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
     if item.is_non_exhaustive() {
         write!(
             w,
-            "<details class=\"rustdoc-toggle non-exhaustive\">\
+            "<details class=\"toggle non-exhaustive\">\
                  <summary class=\"hideme\"><span>{}</span></summary>\
                  <div class=\"docblock\">",
             {

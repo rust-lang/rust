@@ -20,10 +20,10 @@ assert-text: ("#toggle-all-docs", "[−]")
 goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 // We first check that everything is visible.
 assert-text: ("#toggle-all-docs", "[−]")
-assert-attribute: ("#implementations-list details.rustdoc-toggle", {"open": ""}, ALL)
-assert-attribute: ("#trait-implementations-list details.rustdoc-toggle", {"open": ""}, ALL)
+assert-attribute: ("#implementations-list details.toggle", {"open": ""}, ALL)
+assert-attribute: ("#trait-implementations-list details.toggle", {"open": ""}, ALL)
 assert-attribute-false: (
-    "#blanket-implementations-list > details.rustdoc-toggle",
+    "#blanket-implementations-list > details.toggle",
     {"open": ""},
     ALL,
 )
@@ -32,18 +32,18 @@ assert-attribute-false: (
 click: "#toggle-all-docs"
 wait-for-text: ("#toggle-all-docs", "[+]")
 // We check that all <details> are collapsed (except for the impl block ones).
-assert-attribute-false: ("details.rustdoc-toggle:not(.implementors-toggle)", {"open": ""}, ALL)
+assert-attribute-false: ("details.toggle:not(.implementors-toggle)", {"open": ""}, ALL)
 assert-attribute: ("#implementations-list > details.implementors-toggle", {"open": ""})
 // We now check that the other impl blocks are collapsed.
 assert-attribute-false: (
-    "#blanket-implementations-list > details.rustdoc-toggle.implementors-toggle",
+    "#blanket-implementations-list > details.toggle.implementors-toggle",
     {"open": ""},
     ALL,
 )
 // We open them all again.
 click: "#toggle-all-docs"
 wait-for-text: ("#toggle-all-docs", "[−]")
-assert-attribute: ("details.rustdoc-toggle", {"open": ""}, ALL)
+assert-attribute: ("details.toggle", {"open": ""}, ALL)
 
 // Checking the toggles style.
 show-text: true
@@ -56,12 +56,12 @@ define-function: (
         // We reload the page so the local storage settings are being used.
         reload:
 
-        assert-css: ("details.rustdoc-toggle > summary::before", {
+        assert-css: ("details.toggle > summary::before", {
             "opacity": "0.5",
             "filter": |filter|,
         }, ALL)
-        move-cursor-to: "details.rustdoc-toggle summary"
-        assert-css: ("details.rustdoc-toggle > summary:hover::before", {
+        move-cursor-to: "details.toggle summary"
+        assert-css: ("details.toggle > summary:hover::before", {
             "opacity": "1",
             "filter": |filter|,
         })

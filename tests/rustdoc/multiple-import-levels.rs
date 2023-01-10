@@ -21,14 +21,14 @@ mod c {
 }
 
 // @has 'foo/struct.Type.html'
-// @has - '//*[@class="rustdoc-toggle top-doc"]/*[@class="docblock"]' 'foo 2 1'
+// @has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'foo 2 1'
 /// foo
 pub use b::Type;
 // @has 'foo/struct.Whatever.html'
-// @has - '//*[@class="rustdoc-toggle top-doc"]/*[@class="docblock"]' 'whatever 3 2 1'
+// @has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'whatever 3 2 1'
 /// whatever
 pub use c::Type as Whatever;
 // @has 'foo/struct.Woof.html'
-// @has - '//*[@class="rustdoc-toggle top-doc"]/*[@class="docblock"]' 'a dog 4 2 1'
+// @has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'a dog 4 2 1'
 /// a dog
 pub use c::Woof;
