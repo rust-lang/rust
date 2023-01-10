@@ -1119,6 +1119,12 @@ impl Step for Assemble {
             None
         };
 
+        let enzyme_install = if builder.config.llvm_enzyme {
+            Some(builder.ensure(native::Enzyme { target: target_compiler.host }))
+        } else {
+            None
+        };
+
         let stage = target_compiler.stage;
         let host = target_compiler.host;
         builder.info(&format!("Assembling stage{} compiler ({})", stage, host));
@@ -1150,6 +1156,12 @@ impl Step for Assemble {
         }
 
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
+
+        if let Some(enzyme_install) = enzyme_install {
+            let src_lib = enzyme_install.join("build/...");
+            let dst_lib = rustc_libdir.join("libenzyme-14.so");
+            builder.copy(&src_lib, &dst_lib);
+        }
 
         // We prepend this bin directory to the user PATH when linking Rust binaries. To
         // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.

@@ -647,7 +647,7 @@ impl Step for Enzyme {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/enzyme")
+        run.path("src/tools/enzyme/enzyme")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -673,7 +673,7 @@ impl Step for Enzyme {
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
-        let mut cfg = cmake::Config::new(builder.src.join("src/tools/enzyme"));
+        let mut cfg = cmake::Config::new(builder.src.join("src/tools/enzyme/enzyme/"));
         configure_cmake(builder, target, &mut cfg, true, LdFlags::default());
 
         // Re-use the same flags as llvm to control the level of debug information
