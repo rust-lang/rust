@@ -1,3 +1,8 @@
+Version 1.66.1 (2023-01-10)
+===========================
+
+- Added validation of SSH host keys for git URLs in Cargo ([CVE-2022-46176](https://www.cve.org/CVERecord?id=CVE-2022-46176))
+
 Version 1.66.0 (2022-12-15)
 ==========================
 
