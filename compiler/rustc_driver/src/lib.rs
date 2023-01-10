@@ -8,6 +8,7 @@
 #![feature(is_terminal)]
 #![feature(once_cell)]
 #![feature(decl_macro)]
+#![feature(panic_info_message)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -30,6 +31,8 @@ use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
+use rustc_query_impl::QueryCtxt;
+use rustc_query_system::query::QueryContext;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
@@ -45,7 +48,6 @@ use rustc_target::json::ToJson;
 
 use std::borrow::Cow;
 use std::cmp::max;
-use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, IsTerminal, Read, Write};
@@ -55,6 +57,7 @@ use std::process::{self, Command, Stdio};
 use std::str;
 use std::sync::LazyLock;
 use std::time::Instant;
+use std::{backtrace, env};
 
 pub mod args;
 pub mod pretty;
@@ -1181,6 +1184,102 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
     }
 }
 
+struct IceError;
+impl From<time::error::InvalidFormatDescription> for IceError {
+    fn from(_: time::error::InvalidFormatDescription) -> IceError {
+        IceError
+    }
+}
+impl From<time::error::Format> for IceError {
+    fn from(_: time::error::Format) -> IceError {
+        IceError
+    }
+}
+impl From<std::io::Error> for IceError {
+    fn from(_: std::io::Error) -> IceError {
+        IceError
+    }
+}
+
+fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<String, IceError> {
+    let capture = backtrace::Backtrace::force_capture();
+    let now = time::OffsetDateTime::now_utc();
+    let format = time::format_description::parse("[year]-[month]-[day]_[hour]:[minute]:[second]")?;
+    let file_now = now.format(&format)?;
+    let format = time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]")?;
+    let now = now.format(&format)?;
+    let path = format!("rustc-ice-context-{file_now}.txt");
+    let mut file = std::fs::File::create(&path)?;
+    writeln!(
+        file,
+        "rustc {}{} running on {} at {now}",
+        util::version_str!().unwrap_or("unknown_version"),
+        match (option_env!("CFG_VER_HASH"), option_env!("CFG_VER_DATE")) {
+            (Some(hash), Some(date)) => format!(" ({hash} - {date})"),
+            (Some(val), None) | (None, Some(val)) => format!(" ({val})"),
+            (None, None) => String::new(),
+        },
+        config::host_triple(),
+    )?;
+
+    if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
+        writeln!(file, "compiler flags:")?;
+        for flag in flags {
+            writeln!(file, "    {flag}")?;
+        }
+        if excluded_cargo_defaults {
+            writeln!(file, "some of the compiler flags provided by cargo are hidden")?;
+        }
+    }
+    writeln!(file, "")?;
+    match (info.message(), info.location()) {
+        (Some(message), Some(location)) => {
+            writeln!(file, "panicked at {location}:\n{message}")?;
+        }
+        (None, Some(location)) => {
+            writeln!(file, "panicked at {location}")?;
+        }
+        (Some(message), None) => {
+            writeln!(file, "panicked\n{message}")?;
+        }
+        (None, None) => {
+            writeln!(file, "panicked")?;
+        }
+    }
+
+    writeln!(file, "")?;
+    writeln!(file, "{}", capture)?;
+
+    // Be careful relying on global state here: this code is called from
+    // a panic hook, which means that the global `Handler` may be in a weird
+    // state if it was responsible for triggering the panic.
+    // This the same as `interface::try_print_query_stack` but writing to file.
+    rustc_middle::ty::tls::with_context_opt(|icx| {
+        let Some(icx) = icx else { return Err(IceError); };
+        let qcx = QueryCtxt::from_tcx(icx.tcx);
+        let query_map = qcx.try_collect_active_jobs();
+        let mut i = 0;
+        let mut current_query = icx.query;
+        writeln!(file, "")?;
+        writeln!(file, "query stack during panic:")?;
+        while let Some(query) = current_query {
+            let Some(query_info) = query_map.as_ref().and_then(|map| map.get(&query)) else {
+                break;
+            };
+            writeln!(
+                file,
+                "#{} [{:?}] {}",
+                i, query_info.query.dep_kind, query_info.query.description
+            )?;
+            current_query = query_info.job.parent;
+            i += 1;
+        }
+        writeln!(file, "end of query stack")?;
+        Ok(())
+    })?;
+    Ok(path)
+}
+
 static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
     LazyLock::new(|| {
         let hook = panic::take_hook();
@@ -1196,9 +1295,17 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
                 }
             };
 
+            let is_dev = util::version_str!().map_or_else(
+                || std::env::var("RUSTC_BACKTRACE_FORCE").as_deref() != Ok("1"),
+                |v| {
+                    v.ends_with("-dev")
+                        && std::env::var("RUSTC_BACKTRACE_FORCE").as_deref() != Ok("0")
+                },
+            );
+            let written_ice = if !is_dev { write_ice_to_disk(info) } else { Err(IceError) };
             // Invoke the default handler, which prints the actual panic message and optionally a backtrace
             // Don't do this for delayed bugs, which already emit their own more useful backtrace.
-            if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
+            if !info.payload().is::<rustc_errors::DelayedBugPanic>() && written_ice.is_err() {
                 (*DEFAULT_HOOK)(info);
 
                 // Separate the output with an empty line
@@ -1206,7 +1313,7 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
             }
 
             // Print the ICE message
-            report_ice(info, BUG_REPORT_URL);
+            report_ice(info, BUG_REPORT_URL, written_ice.ok());
         }));
         hook
     });
@@ -1217,7 +1324,7 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 ///
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
-pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
+pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, reported_ice: Option<String>) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
@@ -1238,39 +1345,51 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     if !info.payload().is::<rustc_errors::ExplicitBug>()
         && !info.payload().is::<rustc_errors::DelayedBugPanic>()
     {
-        let mut d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
+        let mut d = rustc_errors::Diagnostic::new(
+            rustc_errors::Level::Bug,
+            "the compiler unexpectedly panicked. this is a bug.",
+        );
         handler.emit_diagnostic(&mut d);
     }
 
-    let mut xs: Vec<Cow<'static, str>> = vec![
-        "the compiler unexpectedly panicked. this is a bug.".into(),
-        format!("we would appreciate a bug report: {bug_report_url}").into(),
-        format!(
-            "rustc {} running on {}",
-            util::version_str!().unwrap_or("unknown_version"),
-            config::host_triple()
-        )
-        .into(),
-    ];
+    let xs: Vec<Cow<'static, str>> = if let Some(path) = &reported_ice {
+        vec![
+            format!("all necessary context about this bug was written to `{path}`").into(),
+            format!("we would appreciate a bug report with this context at <{bug_report_url}>")
+                .into(),
+        ]
+    } else {
+        let mut xs = vec![
+            format!("we would appreciate a bug report at <{bug_report_url}>").into(),
+            format!(
+                "rustc {} running on {}",
+                util::version_str!().unwrap_or("unknown_version"),
+                config::host_triple()
+            )
+            .into(),
+        ];
+        if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
+            xs.push(format!("compiler flags: {}", flags.join(" ")).into());
 
-    if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
-        xs.push(format!("compiler flags: {}", flags.join(" ")).into());
-
-        if excluded_cargo_defaults {
-            xs.push("some of the compiler flags provided by cargo are hidden".into());
+            if excluded_cargo_defaults {
+                xs.push("some of the compiler flags provided by cargo are hidden".into());
+            }
         }
-    }
+        xs
+    };
 
     for note in &xs {
         handler.note_without_error(note.as_ref());
     }
 
-    // If backtraces are enabled, also print the query stack
-    let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
+    if reported_ice.is_none() {
+        // If backtraces are enabled, also print the query stack
+        let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
 
-    let num_frames = if backtrace { None } else { Some(2) };
+        let num_frames = if backtrace { None } else { Some(2) };
 
-    interface::try_print_query_stack(&handler, num_frames);
+        interface::try_print_query_stack(&handler, num_frames);
+    }
 
     #[cfg(windows)]
     unsafe {

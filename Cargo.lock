@@ -3915,6 +3915,7 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
+ "backtrace",
  "libc",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3934,11 +3935,14 @@ dependencies = [
  "rustc_middle",
  "rustc_parse",
  "rustc_plugin_impl",
+ "rustc_query_impl",
+ "rustc_query_system",
  "rustc_save_analysis",
  "rustc_session",
  "rustc_span",
  "rustc_target",
  "serde_json",
+ "time 0.3.17",
  "tracing",
  "winapi",
 ]
