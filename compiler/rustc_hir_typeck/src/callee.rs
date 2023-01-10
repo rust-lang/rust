@@ -1,4 +1,4 @@
-use super::method::probe::{IsSuggestion, Mode, ProbeScope};
+use super::method::probe::ProbeScope;
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
@@ -496,15 +496,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
             let Ok(pick) = self
-            .probe_for_name(
-                Mode::MethodCall,
+            .lookup_probe_for_diagnostic(
                 segment.ident,
-                IsSuggestion(true),
                 callee_ty,
-                call_expr.hir_id,
+                call_expr,
                 // We didn't record the in scope traits during late resolution
                 // so we need to probe AllTraits unfortunately
                 ProbeScope::AllTraits,
+                expected.only_has_type(self),
             ) else {
                 return None;
             };

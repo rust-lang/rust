@@ -303,11 +303,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Get the evaluated type *after* calling the method call, so that the influence
                 // of the arguments can be reflected in the receiver type. The receiver
                 // expression has the type *before* theis analysis is done.
-                let ty = match self.lookup_probe(
+                let ty = match self.lookup_probe_for_diagnostic(
                     segment.ident,
                     rcvr_ty,
                     expr,
                     probe::ProbeScope::TraitsInScope,
+                    None,
                 ) {
                     Ok(pick) => pick.self_ty,
                     Err(_) => rcvr_ty,
@@ -557,19 +558,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(self_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(base) else { return; };
 
         let Ok(pick) = self
-            .probe_for_name(
-                probe::Mode::MethodCall,
+            .lookup_probe_for_diagnostic(
                 path.ident,
-                probe::IsSuggestion(true),
                 self_ty,
-                deref.hir_id,
+                deref,
                 probe::ProbeScope::TraitsInScope,
+                None,
             ) else {
                 return;
             };
         let in_scope_methods = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
+            Some(expected),
             probe::IsSuggestion(true),
             self_ty,
             deref.hir_id,
@@ -581,6 +582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let all_methods = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
+            Some(expected),
             probe::IsSuggestion(true),
             self_ty,
             deref.hir_id,
@@ -1832,7 +1834,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_for_range_as_method_call(
         &self,
         err: &mut Diagnostic,
-        expr: &hir::Expr<'_>,
+        expr: &hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) {
@@ -1850,10 +1852,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
         let mut expr = end.expr;
+        let mut expectation = Some(expected_ty);
         while let hir::ExprKind::MethodCall(_, rcvr, ..) = expr.kind {
             // Getting to the root receiver and asserting it is a fn call let's us ignore cases in
             // `src/test/ui/methods/issues/issue-90315.stderr`.
             expr = rcvr;
+            // If we have more than one layer of calls, then the expected ty
+            // cannot guide the method probe.
+            expectation = None;
         }
         let hir::ExprKind::Call(method_name, _) = expr.kind else { return; };
         let ty::Adt(adt, _) = checked_ty.kind() else { return; };
@@ -1869,13 +1875,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = method_name.kind else { return; };
         let [hir::PathSegment { ident, .. }] = p.segments else { return; };
         let self_ty = self.typeck_results.borrow().expr_ty(start.expr);
-        let Ok(_pick) = self.probe_for_name(
-            probe::Mode::MethodCall,
+        let Ok(_pick) = self.lookup_probe_for_diagnostic(
             *ident,
-            probe::IsSuggestion(true),
             self_ty,
-            expr.hir_id,
+            expr,
             probe::ProbeScope::AllTraits,
+            expectation,
         ) else { return; };
         let mut sugg = ".";
         let mut span = start.expr.span.between(end.expr.span);

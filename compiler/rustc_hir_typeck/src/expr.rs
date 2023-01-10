@@ -351,7 +351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Struct(qpath, fields, ref base_expr) => {
                 self.check_expr_struct(expr, expected, qpath, fields, base_expr)
             }
-            ExprKind::Field(base, field) => self.check_field(expr, &base, field),
+            ExprKind::Field(base, field) => self.check_field(expr, &base, field, expected),
             ExprKind::Index(base, idx) => self.check_expr_index(base, idx, expr),
             ExprKind::Yield(value, ref src) => self.check_expr_yield(value, expr, src),
             hir::ExprKind::Err => tcx.ty_error(),
@@ -1244,6 +1244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         SelfSource::MethodCall(rcvr),
                         error,
                         Some((rcvr, args)),
+                        expected,
                     ) {
                         err.emit();
                     }
@@ -2186,6 +2187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         base: &'tcx hir::Expr<'tcx>,
         field: Ident,
+        expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         debug!("check_field(expr: {:?}, base: {:?}, field: {:?})", expr, base, field);
         let base_ty = self.check_expr(base);
@@ -2244,12 +2246,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // (#90483) apply adjustments to avoid ExprUseVisitor from
             // creating erroneous projection.
             self.apply_adjustments(base, adjustments);
-            self.ban_private_field_access(expr, base_ty, field, did);
+            self.ban_private_field_access(expr, base_ty, field, did, expected.only_has_type(self));
             return self.tcx().ty_error();
         }
 
         if field.name == kw::Empty {
-        } else if self.method_exists(field, base_ty, expr.hir_id, true) {
+        } else if self.method_exists(
+            field,
+            base_ty,
+            expr.hir_id,
+            true,
+            expected.only_has_type(self),
+        ) {
             self.ban_take_value_of_method(expr, base_ty, field);
         } else if !base_ty.is_primitive_ty() {
             self.ban_nonexisting_field(field, base, expr, base_ty);
@@ -2423,10 +2431,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn ban_private_field_access(
         &self,
-        expr: &hir::Expr<'_>,
+        expr: &hir::Expr<'tcx>,
         expr_t: Ty<'tcx>,
         field: Ident,
         base_did: DefId,
+        return_ty: Option<Ty<'tcx>>,
     ) {
         let struct_path = self.tcx().def_path_str(base_did);
         let kind_name = self.tcx().def_kind(base_did).descr(base_did);
@@ -2438,7 +2447,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_label(field.span, "private field");
         // Also check if an accessible method exists, which is often what is meant.
-        if self.method_exists(field, expr_t, expr.hir_id, false) && !self.expr_in_place(expr.hir_id)
+        if self.method_exists(field, expr_t, expr.hir_id, false, return_ty)
+            && !self.expr_in_place(expr.hir_id)
         {
             self.suggest_method_call(
                 &mut err,
@@ -2452,7 +2462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    fn ban_take_value_of_method(&self, expr: &hir::Expr<'_>, expr_t: Ty<'tcx>, field: Ident) {
+    fn ban_take_value_of_method(&self, expr: &hir::Expr<'tcx>, expr_t: Ty<'tcx>, field: Ident) {
         let mut err = type_error_struct!(
             self.tcx().sess,
             field.span,

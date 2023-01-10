@@ -1343,6 +1343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Ok(pick) = self.probe_for_name(
                     Mode::Path,
                     Ident::new(capitalized_name, segment.ident.span),
+                    Some(expected_ty),
                     IsSuggestion(true),
                     self_ty,
                     expr.hir_id,
