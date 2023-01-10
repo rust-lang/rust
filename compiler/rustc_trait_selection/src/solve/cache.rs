@@ -9,11 +9,12 @@
 //! FIXME(@lcnr): Write that section, feel free to ping me if you need help here
 //! before then or if I still haven't done that before January 2023.
 use super::overflow::OverflowData;
-use super::CanonicalGoal;
+use super::{CanonicalGoal, Certainty, MaybeCause, Response};
 use super::{EvalCtxt, QueryResult};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::TyCtxt;
+use rustc_infer::infer::canonical::{Canonical, CanonicalVarKind, CanonicalVarValues};
+use rustc_middle::ty::{self, TyCtxt};
 use std::{cmp::Ordering, collections::hash_map::Entry};
 
 #[derive(Debug, Clone)]
@@ -111,11 +112,11 @@ impl<'tcx> EvalCtxt<'tcx> {
             // No entry, simply push this goal on the stack after dealing with overflow.
             Entry::Vacant(v) => {
                 if self.overflow_data.has_overflow(cache.stack.len()) {
-                    return Err(self.deal_with_overflow());
+                    return Err(self.deal_with_overflow(goal));
                 }
 
                 v.insert(ProvisionalEntry {
-                    response: fixme_response_yes_no_constraints(),
+                    response: response_no_constraints(self.tcx, goal, Certainty::Yes),
                     depth: cache.stack.len(),
                 });
                 cache.stack.push(StackElem { goal, has_been_used: false });
@@ -150,7 +151,11 @@ impl<'tcx> EvalCtxt<'tcx> {
                 {
                     Err(entry.response)
                 } else {
-                    Err(fixme_response_maybe_no_constraints())
+                    Err(response_no_constraints(
+                        self.tcx,
+                        goal,
+                        Certainty::Maybe(MaybeCause::Ambiguity),
+                    ))
                 }
             }
         }
@@ -248,10 +253,39 @@ impl<'tcx> EvalCtxt<'tcx> {
     }
 }
 
-fn fixme_response_yes_no_constraints<'tcx>() -> QueryResult<'tcx> {
-    unimplemented!()
-}
+pub(super) fn response_no_constraints<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    goal: Canonical<'tcx, impl Sized>,
+    certainty: Certainty,
+) -> QueryResult<'tcx> {
+    let var_values = goal
+        .variables
+        .iter()
+        .enumerate()
+        .map(|(i, info)| match info.kind {
+            CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
+                tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into())).into()
+            }
+            CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(i),
+                    kind: ty::BrAnon(i as u32, None),
+                };
+                tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
+            }
+            CanonicalVarKind::Const(_, ty) | CanonicalVarKind::PlaceholderConst(_, ty) => tcx
+                .mk_const(ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i)), ty)
+                .into(),
+        })
+        .collect();
 
-fn fixme_response_maybe_no_constraints<'tcx>() -> QueryResult<'tcx> {
-    unimplemented!()
+    Ok(Canonical {
+        max_universe: goal.max_universe,
+        variables: goal.variables,
+        value: Response {
+            var_values: CanonicalVarValues { var_values },
+            external_constraints: Default::default(),
+            certainty,
+        },
+    })
 }
