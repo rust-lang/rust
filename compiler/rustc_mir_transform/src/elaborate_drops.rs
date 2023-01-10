@@ -358,7 +358,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
             let resume_block = self.patch.resume_block();
             match terminator.kind {
-                TerminatorKind::Drop { mut place, target, unwind, is_replace } => {
+                TerminatorKind::Drop { mut place, target, unwind } => {
                     if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
                         place = new_place;
                     }
@@ -377,17 +377,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                                 Unwind::To(Option::unwrap_or(unwind, resume_block))
                             },
                             bb,
-                            is_replace,
                         ),
                         LookupResult::Parent(..) => {
-                            if !is_replace {
-                                self.tcx.sess.delay_span_bug(
-                                    terminator.source_info.span,
-                                    &format!("drop of untracked value {:?}", bb),
-                                );
-                            }
                             // drop and replace behind a pointer/array/whatever. The location
                             // must be initialized.
+                            // FIXME: should we check that it's actually the case and we did
+                            // not wrongly emit a drop terminator somewhere / missed move data?
                             Elaborator { ctxt: self }.patch().patch_terminator(
                                 bb,
                                 TerminatorKind::Drop {
@@ -398,7 +393,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                                     } else {
                                         Some(Option::unwrap_or(unwind, resume_block))
                                     },
-                                    is_replace,
                                 },
                             );
                         }

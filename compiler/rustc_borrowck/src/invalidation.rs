@@ -109,7 +109,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { place: drop_place, target: _, unwind: _, is_replace: _ } => {
+            TerminatorKind::Drop { place: drop_place, target: _, unwind: _ } => {
                 self.access_place(
                     location,
                     *drop_place,

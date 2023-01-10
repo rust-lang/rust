@@ -486,7 +486,6 @@ macro_rules! make_mir_visitor {
                         place,
                         target: _,
                         unwind: _,
-                        is_replace: _,
                     } => {
                         self.visit_place(
                             place,

@@ -578,7 +578,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             StatementKind::Assign(box (lhs, rhs)) => {
                 self.consume_rvalue(location, (rhs, span), flow_state);
 
-                self.mutate_place(location, (*lhs, span), AccessDepth::Shallow(None), flow_state);
+                self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
             }
             StatementKind::FakeRead(box (_, place)) => {
                 // Read for match doesn't access any memory and is used to
@@ -644,7 +644,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
-            TerminatorKind::Drop { place, target: _, unwind: _, is_replace: _ } => {
+            TerminatorKind::Drop { place, target: _, unwind: _ } => {
                 debug!(
                     "visit_terminator_drop \
                      loc: {:?} term: {:?} place: {:?} span: {:?}",

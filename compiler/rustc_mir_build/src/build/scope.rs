@@ -371,7 +371,6 @@ impl DropTree {
                         // The caller will handle this if needed.
                         unwind: None,
                         place: drop_data.0.local.into(),
-                        is_replace: false,
                     };
                     cfg.terminate(block, drop_data.0.source_info, terminator);
                 }
@@ -1139,12 +1138,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::Drop {
-                place,
-                target: next_target,
-                unwind: Some(assign),
-                is_replace: true,
-            },
+            TerminatorKind::Drop { place, target: next_target, unwind: Some(assign) },
         );
 
         self.diverge_from(block);
@@ -1248,12 +1242,7 @@ fn build_scope_drops<'tcx>(
                 cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Drop {
-                        place: local.into(),
-                        target: next,
-                        unwind: None,
-                        is_replace: false,
-                    },
+                    TerminatorKind::Drop { place: local.into(), target: next, unwind: None },
                 );
                 block = next;
             }

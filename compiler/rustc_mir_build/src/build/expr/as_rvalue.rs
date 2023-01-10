@@ -624,12 +624,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     outer_source_info,
-                    TerminatorKind::Drop {
-                        place: to_drop,
-                        target: success,
-                        unwind: None,
-                        is_replace: false,
-                    },
+                    TerminatorKind::Drop { place: to_drop, target: success, unwind: None },
                 );
                 this.diverge_from(block);
                 block = success;

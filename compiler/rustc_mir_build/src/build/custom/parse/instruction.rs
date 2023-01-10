@@ -47,7 +47,6 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     place: self.parse_place(args[0])?,
                     target: self.parse_block(args[1])?,
                     unwind: None,
-                    is_replace: false
                 })
             },
             @call("mir_call", args) => {
