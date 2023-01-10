@@ -278,7 +278,8 @@ async function main(argv) {
         await runTests(opts, framework_options, files, new_results, status_bar, it + 1 >= NB_RETRY);
         Array.prototype.push.apply(results.successful, new_results.successful);
         // We generate the new list of files with the previously failing tests.
-        files = Array.prototype.concat(new_results.failed, new_results.errored);
+        files = Array.prototype.concat(new_results.failed, new_results.errored).map(
+            f => f['file_name']);
         if (files.length > originalFilesLen / 2) {
             // If we have too many failing tests, it's very likely not flaky failures anymore so
             // no need to retry.
