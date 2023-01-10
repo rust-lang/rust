@@ -47,6 +47,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("dunce", "CC0-1.0"),            // cargo (dev dependency)
     ("similar", "Apache-2.0"),       // cargo (dev dependency)
     ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
+    ("subtle", "BSD-3-Clause"),      // cargo
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
@@ -205,6 +206,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "snap",
     "stable_deref_trait",
     "stacker",
+    "subtle",
     "syn",
     "synstructure",
     "tempfile",
