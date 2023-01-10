@@ -59,3 +59,18 @@ goto: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLon
 compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ("y"))
 goto: "file://" + |DOC_PATH| + "/lib2/index.html"
 compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+
+// Now we will check that the scrolling is working.
+// First on an item with "hidden methods".
+goto: "file://" + |DOC_PATH| + "/lib2/scroll_traits/trait.Iterator.html"
+
+click: ".item-decl .type-contents-toggle"
+assert-property: (".item-decl > pre", {"scrollLeft": 0})
+scroll-to: "//*[@class='item-decl']//details/a[text()='String']"
+assert-property-false: (".item-decl > pre", {"scrollLeft": 0})
+
+// Then on an item without "hidden methods".
+goto: "file://" + |DOC_PATH| + "/lib2/scroll_traits/trait.TraitWithLongItemsName.html"
+assert-property: (".item-decl > pre", {"scrollLeft": 0})
+scroll-to: "//*[@class='item-decl']//code/a[text()='String']"
+assert-property-false: (".item-decl > pre", {"scrollLeft": 0})
