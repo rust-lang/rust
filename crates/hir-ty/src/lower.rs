@@ -1931,7 +1931,7 @@ pub(crate) fn const_or_path_to_chalk(
     debruijn: DebruijnIndex,
 ) -> Const {
     match value {
-        ConstScalarOrPath::Scalar(s) => intern_const_scalar(s.clone(), expected_ty),
+        ConstScalarOrPath::Scalar(s) => intern_const_scalar(*s, expected_ty),
         ConstScalarOrPath::Path(n) => {
             let path = ModPath::from_segments(PathKind::Plain, Some(n.clone()));
             path_to_const(db, resolver, &path, mode, args, debruijn)

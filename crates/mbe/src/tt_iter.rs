@@ -114,7 +114,7 @@ impl<'a> TtIter<'a> {
             ('.', '.', Some('.' | '=')) | ('<', '<', Some('=')) | ('>', '>', Some('=')) => {
                 let _ = self.next().unwrap();
                 let _ = self.next().unwrap();
-                Ok(smallvec![first, second.clone(), third.unwrap().clone()])
+                Ok(smallvec![first, *second, *third.unwrap()])
             }
             ('-' | '!' | '*' | '/' | '&' | '%' | '^' | '+' | '<' | '=' | '>' | '|', '=', _)
             | ('-' | '=' | '>', '>', _)
@@ -125,7 +125,7 @@ impl<'a> TtIter<'a> {
             | ('<', '<', _)
             | ('|', '|', _) => {
                 let _ = self.next().unwrap();
-                Ok(smallvec![first, second.clone()])
+                Ok(smallvec![first, *second])
             }
             _ => Ok(smallvec![first]),
         }

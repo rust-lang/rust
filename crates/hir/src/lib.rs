@@ -923,7 +923,7 @@ impl Struct {
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
-        db.struct_data(self.id).repr.clone()
+        db.struct_data(self.id).repr
     }
 
     pub fn kind(self, db: &dyn HirDatabase) -> StructKind {

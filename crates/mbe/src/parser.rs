@@ -126,7 +126,7 @@ fn next_op(
             src.next().expect("first token already peeked");
             // Note that the '$' itself is a valid token inside macro_rules.
             let second = match src.next() {
-                None => return Ok(Op::Punct(smallvec![p.clone()])),
+                None => return Ok(Op::Punct(smallvec![*p])),
                 Some(it) => it,
             };
             match second {
