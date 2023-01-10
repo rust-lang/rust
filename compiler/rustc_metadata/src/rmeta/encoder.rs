@@ -2070,7 +2070,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 hir::GenericParamKind::Const { ref default, .. } => {
                     let def_id = param.def_id.to_def_id();
                     if default.is_some() {
-                        record!(self.tables.const_param_default[def_id] <- self.tcx.const_param_default(def_id))
+                        record!(self.tables.const_param_default[def_id] <- self.tcx.bound_const_param_default(def_id).subst_identity())
                     }
                 }
             }

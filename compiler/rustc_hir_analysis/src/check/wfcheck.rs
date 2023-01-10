@@ -1350,7 +1350,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     // is incorrect when dealing with unused substs, for example
                     // for `struct Foo<const N: usize, const M: usize = { 1 - 2 }>`
                     // we should eagerly error.
-                    let default_ct = tcx.const_param_default(param.def_id);
+                    let default_ct = tcx.bound_const_param_default(param.def_id).subst_identity();
                     if !default_ct.needs_subst() {
                         wfcx.register_wf_obligation(
                             tcx.def_span(param.def_id),
@@ -1396,7 +1396,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             GenericParamDefKind::Const { .. } => {
                 // If the param has a default, ...
                 if is_our_default(param) {
-                    let default_ct = tcx.const_param_default(param.def_id);
+                    let default_ct = tcx.bound_const_param_default(param.def_id).subst_identity();
                     // ... and it's not a dependent default, ...
                     if !default_ct.needs_subst() {
                         // ... then substitute it with the default.
