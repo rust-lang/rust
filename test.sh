@@ -348,7 +348,7 @@ function test_rustc() {
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
     git checkout src/test/ui/macros/rfc-2011-nicer-assert-messages/auxiliary/common.rs
 
-    RUSTC_ARGS="-Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot"
+    RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot"
 
     if [ $# -eq 0 ]; then
         # No argument supplied to the function. Doing nothing.
