@@ -7,8 +7,8 @@ use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable,
-    TypeVisitor,
+    self, AdtDef, DefIdTree, Discr, FallibleTypeFolder, Term, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;
@@ -1106,6 +1106,17 @@ impl<'tcx, T> Binder<'tcx, T> {
         if self.0.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
 
+    pub fn no_bound_vars_ignoring_escaping(self, tcx: TyCtxt<'tcx>) -> Option<T>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        if !self.0.has_escaping_bound_vars() {
+            Some(self.skip_binder())
+        } else {
+            self.0.try_fold_with(&mut SkipBindersAt { index: ty::INNERMOST, tcx }).ok()
+        }
+    }
+
     /// Splits the contents into two things that share the same binder
     /// level as the original, returning two distinct binders.
     ///
@@ -1132,6 +1143,81 @@ impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
     pub fn iter(self) -> impl Iterator<Item = ty::Binder<'tcx, T::Item>> {
         let bound_vars = self.1;
         self.0.into_iter().map(|v| Binder(v, bound_vars))
+    }
+}
+
+struct SkipBindersAt<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    index: ty::DebruijnIndex,
+}
+
+impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
+    type Error = ();
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
+    where
+        T: ty::TypeFoldable<'tcx>,
+    {
+        self.index.shift_in(1);
+        let value = t.try_map_bound(|t| t.try_fold_with(self));
+        self.index.shift_out(1);
+        value
+    }
+
+    fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        if !ty.has_escaping_bound_vars() {
+            Ok(ty)
+        } else if let ty::Bound(index, bv) = *ty.kind() {
+            if index == self.index {
+                Err(())
+            } else {
+                Ok(self.tcx().mk_ty(ty::Bound(index.shifted_out(1), bv)))
+            }
+        } else {
+            ty.try_super_fold_with(self)
+        }
+    }
+
+    fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
+        if !r.has_escaping_bound_vars() {
+            Ok(r)
+        } else if let ty::ReLateBound(index, bv) = r.kind() {
+            if index == self.index {
+                Err(())
+            } else {
+                Ok(self.tcx().mk_region(ty::ReLateBound(index.shifted_out(1), bv)))
+            }
+        } else {
+            r.try_super_fold_with(self)
+        }
+    }
+
+    fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        if !ct.has_escaping_bound_vars() {
+            Ok(ct)
+        } else if let ty::ConstKind::Bound(index, bv) = ct.kind() {
+            if index == self.index {
+                Err(())
+            } else {
+                Ok(self.tcx().mk_const(
+                    ty::ConstKind::Bound(index.shifted_out(1), bv),
+                    ct.ty().try_fold_with(self)?,
+                ))
+            }
+        } else {
+            ct.try_super_fold_with(self)
+        }
+    }
+
+    fn try_fold_predicate(
+        &mut self,
+        p: ty::Predicate<'tcx>,
+    ) -> Result<ty::Predicate<'tcx>, Self::Error> {
+        if !p.has_escaping_bound_vars() { Ok(p) } else { p.try_super_fold_with(self) }
     }
 }
 
