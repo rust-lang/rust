@@ -22,3 +22,12 @@ src/test/ui/simd/intrinsic/inlining-issue67557.rs
 src/test/ui/simd/monomorphize-shuffle-index.rs
 src/test/ui/simd/shuffle.rs
 src/test/ui/simd/simd-bitmask.rs
+src/test/ui/binding/fn-arg-incomplete-pattern-drop-order.rs
+src/test/ui/drop/dynamic-drop.rs
+src/test/ui/generator/resume-after-return.rs
+src/test/ui/iterators/iter-step-overflow-debug.rs
+src/test/ui/macros/rfc-2011-nicer-assert-messages/all-expr-kinds.rs
+src/test/ui/numbers-arithmetic/next-power-of-two-overflow-debug.rs
+src/test/ui/panic-while-printing.rs
+src/test/ui/privacy/reachable-unnameable-items.rs
+src/test/ui/rfc-1937-termination-trait/termination-trait-in-test.rs
