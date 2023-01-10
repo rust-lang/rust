@@ -2488,6 +2488,10 @@ pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
     comments_buf.join("\n")
 }
 
+pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
+    sm.span_take_while(span, |&ch| ch == ' ' || ch == ';')
+}
+
 macro_rules! op_utils {
     ($($name:ident $assign:ident)*) => {
         /// Binary operation traits like `LangItem::Add`
