@@ -307,10 +307,10 @@ impl GlobalState {
                 }
             }
 
-            if !was_quiescent || state_changed || memdocs_added_or_removed {
-                if self.config.publish_diagnostics() {
-                    self.update_diagnostics()
-                }
+            if (!was_quiescent || state_changed || memdocs_added_or_removed)
+                && self.config.publish_diagnostics()
+            {
+                self.update_diagnostics()
             }
         }
 

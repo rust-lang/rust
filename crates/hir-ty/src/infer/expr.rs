@@ -1136,18 +1136,16 @@ impl<'a> InferenceContext<'a> {
             if self.diverges.is_always() {
                 // we don't even make an attempt at coercion
                 self.table.new_maybe_never_var()
-            } else {
-                if let Some(t) = expected.only_has_type(&mut self.table) {
-                    if self.coerce(Some(expr), &TyBuilder::unit(), &t).is_err() {
-                        self.result.type_mismatches.insert(
-                            expr.into(),
-                            TypeMismatch { expected: t.clone(), actual: TyBuilder::unit() },
-                        );
-                    }
-                    t
-                } else {
-                    TyBuilder::unit()
+            } else if let Some(t) = expected.only_has_type(&mut self.table) {
+                if self.coerce(Some(expr), &TyBuilder::unit(), &t).is_err() {
+                    self.result.type_mismatches.insert(
+                        expr.into(),
+                        TypeMismatch { expected: t.clone(), actual: TyBuilder::unit() },
+                    );
                 }
+                t
+            } else {
+                TyBuilder::unit()
             }
         }
     }
@@ -1314,13 +1312,13 @@ impl<'a> InferenceContext<'a> {
                 } else {
                     param_ty
                 };
-                if !coercion_target.is_unknown() {
-                    if self.coerce(Some(arg), &ty, &coercion_target).is_err() {
-                        self.result.type_mismatches.insert(
-                            arg.into(),
-                            TypeMismatch { expected: coercion_target, actual: ty.clone() },
-                        );
-                    }
+                if !coercion_target.is_unknown()
+                    && self.coerce(Some(arg), &ty, &coercion_target).is_err()
+                {
+                    self.result.type_mismatches.insert(
+                        arg.into(),
+                        TypeMismatch { expected: coercion_target, actual: ty.clone() },
+                    );
                 }
             }
         }

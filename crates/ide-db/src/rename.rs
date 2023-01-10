@@ -389,19 +389,17 @@ fn source_edit_from_name_ref(
                         edit.delete(TextRange::new(s, e));
                         return true;
                     }
-                } else if init == name_ref {
-                    if field_name.text() == new_name {
-                        cov_mark::hit!(test_rename_local_put_init_shorthand);
-                        // Foo { field: local } -> Foo { field }
-                        //            ^^^^^^^ delete this
+                } else if init == name_ref && field_name.text() == new_name {
+                    cov_mark::hit!(test_rename_local_put_init_shorthand);
+                    // Foo { field: local } -> Foo { field }
+                    //            ^^^^^^^ delete this
 
-                        // same names, we can use a shorthand here instead.
-                        // we do not want to erase attributes hence this range start
-                        let s = field_name.syntax().text_range().end();
-                        let e = init.syntax().text_range().end();
-                        edit.delete(TextRange::new(s, e));
-                        return true;
-                    }
+                    // same names, we can use a shorthand here instead.
+                    // we do not want to erase attributes hence this range start
+                    let s = field_name.syntax().text_range().end();
+                    let e = init.syntax().text_range().end();
+                    edit.delete(TextRange::new(s, e));
+                    return true;
                 }
             }
             // init shorthand
