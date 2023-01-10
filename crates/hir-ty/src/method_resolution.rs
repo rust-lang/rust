@@ -1094,13 +1094,13 @@ fn iterate_inherent_methods(
         None => return ControlFlow::Continue(()),
     };
 
-    let (module, block) = match visible_from_module {
+    let (module, mut block) = match visible_from_module {
         VisibleFromModule::Filter(module) => (Some(module), module.containing_block()),
         VisibleFromModule::IncludeBlock(block) => (None, Some(block)),
         VisibleFromModule::None => (None, None),
     };
 
-    if let Some(block_id) = block {
+    while let Some(block_id) = block {
         if let Some(impls) = db.inherent_impls_in_block(block_id) {
             impls_for_self_ty(
                 &impls,
@@ -1113,6 +1113,11 @@ fn iterate_inherent_methods(
                 callback,
             )?;
         }
+
+        block = db
+            .block_def_map(block_id)
+            .and_then(|map| map.parent())
+            .and_then(|module| module.containing_block());
     }
 
     for krate in def_crates {
