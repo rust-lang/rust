@@ -13,7 +13,8 @@ use crate::mem;
     target_os = "solaris",
     target_os = "fuchsia",
     target_os = "redox",
-    target_os = "illumos"
+    target_os = "illumos",
+    target_os = "nto",
 ))]
 use crate::mem::MaybeUninit;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
@@ -54,7 +55,8 @@ use libc::fstatat64;
     target_os = "solaris",
     target_os = "fuchsia",
     target_os = "redox",
-    target_os = "illumos"
+    target_os = "illumos",
+    target_os = "nto",
 ))]
 use libc::readdir as readdir64;
 #[cfg(target_os = "linux")]
@@ -69,7 +71,8 @@ use libc::readdir64_r;
     target_os = "illumos",
     target_os = "l4re",
     target_os = "fuchsia",
-    target_os = "redox"
+    target_os = "redox",
+    target_os = "nto",
 )))]
 use libc::readdir_r as readdir64_r;
 #[cfg(target_os = "android")]
@@ -277,7 +280,8 @@ unsafe impl Sync for Dir {}
     target_os = "solaris",
     target_os = "illumos",
     target_os = "fuchsia",
-    target_os = "redox"
+    target_os = "redox",
+    target_os = "nto",
 ))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -297,11 +301,12 @@ pub struct DirEntry {
     target_os = "solaris",
     target_os = "illumos",
     target_os = "fuchsia",
-    target_os = "redox"
+    target_os = "redox",
+    target_os = "nto",
 ))]
 struct dirent64_min {
     d_ino: u64,
-    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+    #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "nto")))]
     d_type: u8,
 }
 
@@ -311,7 +316,8 @@ struct dirent64_min {
     target_os = "solaris",
     target_os = "illumos",
     target_os = "fuchsia",
-    target_os = "redox"
+    target_os = "redox",
+    target_os = "nto",
 )))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -438,7 +444,7 @@ impl FileAttr {
     }
 }
 
-#[cfg(not(target_os = "netbsd"))]
+#[cfg(not(any(target_os = "netbsd", target_os = "nto")))]
 impl FileAttr {
     #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
     pub fn modified(&self) -> io::Result<SystemTime> {
@@ -524,6 +530,21 @@ impl FileAttr {
     }
 }
 
+#[cfg(target_os = "nto")]
+impl FileAttr {
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec))
+    }
+
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::new(self.stat.st_atim.tv_sec, self.stat.st_atim.tv_nsec))
+    }
+
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::new(self.stat.st_ctim.tv_sec, self.stat.st_ctim.tv_nsec))
+    }
+}
+
 impl AsInner<stat64> for FileAttr {
     fn as_inner(&self) -> &stat64 {
         &self.stat
@@ -603,7 +624,8 @@ impl Iterator for ReadDir {
         target_os = "solaris",
         target_os = "fuchsia",
         target_os = "redox",
-        target_os = "illumos"
+        target_os = "illumos",
+        target_os = "nto",
     ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
@@ -686,7 +708,11 @@ impl Iterator for ReadDir {
 
                 let entry = dirent64_min {
                     d_ino: *offset_ptr!(entry_ptr, d_ino) as u64,
-                    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+                    #[cfg(not(any(
+                        target_os = "solaris",
+                        target_os = "illumos",
+                        target_os = "nto",
+                    )))]
                     d_type: *offset_ptr!(entry_ptr, d_type) as u8,
                 };
 
@@ -705,7 +731,8 @@ impl Iterator for ReadDir {
         target_os = "solaris",
         target_os = "fuchsia",
         target_os = "redox",
-        target_os = "illumos"
+        target_os = "illumos",
+        target_os = "nto",
     )))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
@@ -794,7 +821,8 @@ impl DirEntry {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "haiku",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "nto",
     ))]
     pub fn file_type(&self) -> io::Result<FileType> {
         self.metadata().map(|m| m.file_type())
@@ -804,7 +832,8 @@ impl DirEntry {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "haiku",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "nto",
     )))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
@@ -834,7 +863,8 @@ impl DirEntry {
         target_os = "redox",
         target_os = "vxworks",
         target_os = "espidf",
-        target_os = "horizon"
+        target_os = "horizon",
+        target_os = "nto",
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -887,7 +917,8 @@ impl DirEntry {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "fuchsia",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "nto",
     )))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
@@ -898,7 +929,8 @@ impl DirEntry {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "fuchsia",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "nto",
     ))]
     fn name_cstr(&self) -> &CStr {
         &self.name
@@ -1051,7 +1083,8 @@ impl File {
             target_os = "linux",
             target_os = "android",
             target_os = "netbsd",
-            target_os = "openbsd"
+            target_os = "openbsd",
+            target_os = "nto",
         ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fdatasync(fd)
@@ -1065,6 +1098,7 @@ impl File {
             target_os = "netbsd",
             target_os = "openbsd",
             target_os = "watchos",
+            target_os = "nto",
         )))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
@@ -1750,13 +1784,25 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
 pub use remove_dir_impl::remove_dir_all;
 
 // Fallback for REDOX, ESP-ID, Horizon, and Miri
-#[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri))]
+#[cfg(any(
+    target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "nto",
+    miri
+))]
 mod remove_dir_impl {
     pub use crate::sys_common::fs::remove_dir_all;
 }
 
 // Modern implementation using openat(), unlinkat() and fdopendir()
-#[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri)))]
+#[cfg(not(any(
+    target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "nto",
+    miri
+)))]
 mod remove_dir_impl {
     use super::{lstat, Dir, DirEntry, InnerReadDir, ReadDir};
     use crate::ffi::CStr;

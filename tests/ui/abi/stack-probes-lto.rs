@@ -13,5 +13,6 @@
 // ignore-fuchsia no exception handler registered for segfault
 // compile-flags: -C lto
 // no-prefer-dynamic
+// ignore-nto Crash analysis impossible at SIGSEGV in QNX Neutrino
 
 include!("stack-probes.rs");

@@ -18,6 +18,7 @@ use crate::sys::weak::raw_syscall;
     target_os = "freebsd",
     all(target_os = "linux", target_env = "gnu"),
     all(target_os = "linux", target_env = "musl"),
+    target_os = "nto",
 ))]
 use crate::sys::weak::weak;
 
@@ -140,7 +141,7 @@ impl Command {
 
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, -1)) in the parent.
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(target_os = "linux", target_os = "nto"))]
     unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
         cvt(libc::fork()).map(|res| (res, -1))
     }
@@ -389,6 +390,7 @@ impl Command {
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
+        target_os = "nto",
     )))]
     fn posix_spawn(
         &mut self,
@@ -405,6 +407,7 @@ impl Command {
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
+        target_os = "nto",
     ))]
     fn posix_spawn(
         &mut self,
@@ -760,7 +763,7 @@ fn signal_string(signal: i32) -> &'static str {
             )
         ))]
         libc::SIGSTKFLT => " (SIGSTKFLT)",
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "nto"))]
         libc::SIGPWR => " (SIGPWR)",
         #[cfg(any(
             target_os = "macos",
@@ -769,7 +772,8 @@ fn signal_string(signal: i32) -> &'static str {
             target_os = "freebsd",
             target_os = "netbsd",
             target_os = "openbsd",
-            target_os = "dragonfly"
+            target_os = "dragonfly",
+            target_os = "nto",
         ))]
         libc::SIGEMT => " (SIGEMT)",
         #[cfg(any(

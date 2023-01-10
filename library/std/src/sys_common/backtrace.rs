@@ -91,6 +91,19 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
         if stop {
             return false;
         }
+        #[cfg(target_os = "nto")]
+        if libc::__my_thread_exit as *mut libc::c_void == frame.ip() {
+            if !hit && start {
+                use crate::backtrace_rs::SymbolName;
+                res = bt_fmt.frame().print_raw(
+                    frame.ip(),
+                    Some(SymbolName::new("__my_thread_exit".as_bytes())),
+                    None,
+                    None,
+                );
+            }
+            return false;
+        }
         if !hit && start {
             res = bt_fmt.frame().print_raw(frame.ip(), None, None, None);
         }
