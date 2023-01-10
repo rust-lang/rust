@@ -288,9 +288,3 @@ pub(crate) mod test_helpers {
 
 use crate::alloc::Global;
 
-/// See also `core::alloc::co_alloc_metadata_num_slots_with_preference`.
-#[unstable(feature = "global_co_alloc", issue = "none")]
-pub const fn co_alloc_metadata_num_slots_with_preference_global(coop_preferred: bool) -> usize {
-    // FIXME or replace any calls with core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED). See raw_vec.rs.
-    if /*Global::IS_CO_ALLOCATOR*/ true && coop_preferred { 1 } else { 0 }
-}

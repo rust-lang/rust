@@ -662,7 +662,7 @@ where
 
         const REPLACEMENT: &str = "\u{FFFD}";
 
-        let mut res = String::with_capacity(v.len());
+        let mut res = String::<false>::with_capacity(v.len());
         res.push_str(first_valid);
         res.push_str(REPLACEMENT);
 
