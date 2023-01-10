@@ -178,17 +178,30 @@ fn is_valid_for_html_tag_name(c: char, is_empty: bool) -> bool {
     c.is_ascii_alphabetic() || !is_empty && (c == '-' || c.is_ascii_digit())
 }
 
+/// These class names are provided by rustdoc to doc authors as a stable API.
+///
+/// Structure: `[(class, [depends_on_other_class])]`
+const STABLE_CLASSES: &[(&str, &[&str])] =
+    &[("stab", &[]), ("deprecated", &["stab"]), ("portability", &["stab"])];
+
 fn check_html_attr(name: &str, value: &str, range: Range<usize>, report_diag: &ReportDiag<'_, '_>) {
     match name {
         "class" => {
-            let is_stab = value.split_ascii_whitespace().contains(&"stab");
             let prefix = format!("{}_", report_diag.crate_name());
             let has_prefix = |name: &str| name.starts_with(&prefix);
+            let is_stable_class = |name: &str| {
+                STABLE_CLASSES.iter().any(|&(class, depends_on_other_classes)| {
+                    class == name
+                        && depends_on_other_classes.iter().all(|&class| {
+                            value.split_ascii_whitespace().any(|class2| class2 == class)
+                        })
+                })
+            };
             // Can't use `split_ascii_whitespace()`, because I need byte offsets to report suggestions.
             let mut start = None;
             for (i, c) in value.char_indices() {
                 if c.is_ascii_whitespace() {
-                    if let Some(start) = start && let class_name = &value[start..i] && !has_prefix(class_name) && !(is_stab && matches!(class_name, "stab" | "deprecated" | "portability")) {
+                    if let Some(start) = start && let class_name = &value[start..i] && !has_prefix(class_name) && !is_stable_class(class_name) {
                         let range = (start + range.start)..(i + range.start);
                         report_diag.unprefixed_html_class(&range);
                     }
@@ -197,7 +210,7 @@ fn check_html_attr(name: &str, value: &str, range: Range<usize>, report_diag: &R
                     start = Some(i);
                 }
             }
-            if let Some(start) = start && let class_name = &value[start..] && !has_prefix(class_name) && !(is_stab && matches!(class_name, "stab" | "deprecated" | "portability")) {
+            if let Some(start) = start && let class_name = &value[start..] && !has_prefix(class_name) && !is_stable_class(class_name) {
                 let range = (start + range.start)..range.end;
                 report_diag.unprefixed_html_class(&range);
             }
@@ -528,12 +541,27 @@ impl<'cx, 'item> ReportDiag<'cx, 'item> {
             use rustc_lint_defs::Applicability;
             lint.multipart_suggestion(
                 "add prefix",
-                vec![
-                    (span.shrink_to_lo(), format!("{}_", self.crate_name())),
-                ],
+                vec![(span.shrink_to_lo(), format!("{}_", self.crate_name()))],
                 Applicability::MaybeIncorrect,
             );
-            lint.help("classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`");
+            lint.help(format!(
+                "classes should start with `{{cratename}}_`, or be: {}",
+                STABLE_CLASSES
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &(class, depends_on_other_classes))| {
+                        let mut result =
+                            if i == STABLE_CLASSES.len() - 1 { "or `" } else { "`" }.to_string();
+                        for other in depends_on_other_classes {
+                            result.push_str(other);
+                            result.push_str(" ");
+                        }
+                        result.push_str(class);
+                        result.push_str("`");
+                        result
+                    })
+                    .join(", ")
+            ));
             lint
         });
     }
