@@ -251,17 +251,17 @@ impl Attrs {
                 let enum_ = &item_tree[loc.id.value];
 
                 let cfg_options = &crate_graph[krate].cfg_options;
-                let variant = 'tri: loop {
-                    let mut idx = 0;
-                    for variant in enum_.variants.clone() {
-                        let attrs = item_tree.attrs(db, krate, variant.into());
-                        if attrs.is_cfg_enabled(cfg_options) {
-                            if it.local_id == Idx::from_raw(RawIdx::from(idx)) {
-                                break 'tri variant;
-                            }
-                            idx += 1;
+                let mut idx = 0;
+                let Some(variant) = enum_.variants.clone().find(|variant| {
+                    let attrs = item_tree.attrs(db, krate, (*variant).into());
+                    if attrs.is_cfg_enabled(cfg_options) {
+                        if it.local_id == Idx::from_raw(RawIdx::from(idx)) {
+                            return true
                         }
+                        idx += 1;
                     }
+                    false
+                }) else {
                     return Arc::new(res);
                 };
                 (item_tree[variant].fields.clone(), item_tree, krate)
