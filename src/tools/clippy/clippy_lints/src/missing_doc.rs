@@ -175,7 +175,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
         if let Some(cid) = cx.tcx.associated_item(impl_item.owner_id).impl_container(cx.tcx) {
-            if cx.tcx.impl_trait_ref(cid).is_some() {
+            if cx.tcx.bound_impl_trait_ref(cid).is_some() {
                 return;
             }
         } else {

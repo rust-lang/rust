@@ -1940,7 +1940,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     return None;
                 }
 
-                let imp = self.tcx.impl_trait_ref(def_id).unwrap();
+                let imp = self.tcx.bound_impl_trait_ref(def_id).unwrap().subst_identity();
 
                 self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false)
                     .map(|similarity| ImplCandidate { trait_ref: imp, similarity })
@@ -2039,7 +2039,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.tcx.impl_polarity(def_id) != ty::ImplPolarity::Negative
                         || self.tcx.is_builtin_derive(def_id)
                 })
-                .filter_map(|def_id| self.tcx.impl_trait_ref(def_id))
+                .filter_map(|def_id| self.tcx.bound_impl_trait_ref(def_id))
+                .map(ty::EarlyBinder::subst_identity)
                 .filter(|trait_ref| {
                     let self_ty = trait_ref.self_ty();
                     // Avoid mentioning type parameters.

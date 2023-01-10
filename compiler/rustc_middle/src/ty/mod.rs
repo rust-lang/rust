@@ -2187,8 +2187,12 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Option<ImplOverlapKind> {
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.references_error())
-            || self.impl_trait_ref(def_id2).map_or(false, |tr| tr.references_error())
+        if self
+            .bound_impl_trait_ref(def_id1)
+            .map_or(false, |tr| tr.skip_binder().references_error())
+            || self
+                .bound_impl_trait_ref(def_id2)
+                .map_or(false, |tr| tr.skip_binder().references_error())
         {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
@@ -2217,8 +2221,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let is_marker_overlap = {
             let is_marker_impl = |def_id: DefId| -> bool {
-                let trait_ref = self.impl_trait_ref(def_id);
-                trait_ref.map_or(false, |tr| self.trait_def(tr.def_id).is_marker)
+                let trait_ref = self.bound_impl_trait_ref(def_id);
+                trait_ref.map_or(false, |tr| self.trait_def(tr.skip_binder().def_id).is_marker)
             };
             is_marker_impl(def_id1) && is_marker_impl(def_id2)
         };
@@ -2364,7 +2368,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
     /// If it implements no trait, returns `None`.
     pub fn trait_id_of_impl(self, def_id: DefId) -> Option<DefId> {
-        self.impl_trait_ref(def_id).map(|tr| tr.def_id)
+        self.bound_impl_trait_ref(def_id).map(|tr| tr.skip_binder().def_id)
     }
 
     /// If the given `DefId` describes an item belonging to a trait,

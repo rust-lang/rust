@@ -2059,14 +2059,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
-                let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
+                let Some(trait_ref) = tcx.bound_impl_trait_ref(impl_def_id) else {
                     // A cycle error occurred, most likely.
                     let guar = tcx.sess.delay_span_bug(span, "expected cycle error");
                     return Err(guar);
                 };
 
                 self.one_bound_for_assoc_type(
-                    || traits::supertraits(tcx, ty::Binder::dummy(trait_ref)),
+                    || traits::supertraits(tcx, ty::Binder::dummy(trait_ref.skip_binder())),
                     || "Self".to_string(),
                     assoc_ident,
                     span,

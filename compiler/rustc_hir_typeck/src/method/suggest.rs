@@ -1036,8 +1036,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Provide the best span we can. Use the item, if local to crate, else
                     // the impl, if local to crate (item may be defaulted), else nothing.
                     let Some(item) = self.associated_value(impl_did, item_name).or_else(|| {
-                        let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
-                        self.associated_value(impl_trait_ref.def_id, item_name)
+                        let impl_trait_ref = self.tcx.bound_impl_trait_ref(impl_did)?;
+                        self.associated_value(impl_trait_ref.skip_binder().def_id, item_name)
                     }) else {
                         continue;
                     };
@@ -1052,10 +1052,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let impl_ty = self.tcx.at(span).type_of(impl_did);
 
-                    let insertion = match self.tcx.impl_trait_ref(impl_did) {
+                    let insertion = match self.tcx.bound_impl_trait_ref(impl_did) {
                         None => String::new(),
                         Some(trait_ref) => {
-                            format!(" of the trait `{}`", self.tcx.def_path_str(trait_ref.def_id))
+                            format!(
+                                " of the trait `{}`",
+                                self.tcx.def_path_str(trait_ref.skip_binder().def_id)
+                            )
                         }
                     };
 
@@ -1085,8 +1088,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(&note_str);
                     }
                     if let Some(sugg_span) = sugg_span
-                        && let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
-                        let path = self.tcx.def_path_str(trait_ref.def_id);
+                        && let Some(trait_ref) = self.tcx.bound_impl_trait_ref(impl_did) {
+                        let path = self.tcx.def_path_str(trait_ref.skip_binder().def_id);
 
                         let ty = match item.kind {
                             ty::AssocKind::Const | ty::AssocKind::Type => rcvr_ty,
@@ -2581,7 +2584,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx.impl_polarity(*imp_did) == ty::ImplPolarity::Negative
                         })
                         .any(|imp_did| {
-                            let imp = self.tcx.impl_trait_ref(imp_did).unwrap();
+                            let imp =
+                                self.tcx.bound_impl_trait_ref(imp_did).unwrap().subst_identity();
                             let imp_simp =
                                 simplify_type(self.tcx, imp.self_ty(), TreatParams::AsPlaceholder);
                             imp_simp.map_or(false, |s| s == simp_rcvr_ty)

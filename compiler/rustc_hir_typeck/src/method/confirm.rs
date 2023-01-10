@@ -240,7 +240,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container_id(self.tcx);
                 assert!(
-                    self.tcx.impl_trait_ref(impl_def_id).is_none(),
+                    self.tcx.bound_impl_trait_ref(impl_def_id).is_none(),
                     "impl {:?} is not an inherent impl",
                     impl_def_id
                 );

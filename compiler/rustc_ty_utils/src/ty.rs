@@ -289,7 +289,7 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
         // In a trait impl, we assume that the header trait ref and all its
         // constituents are well-formed.
         NodeKind::TraitImpl => {
-            let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
+            let trait_ref = tcx.bound_impl_trait_ref(def_id).expect("not an impl").subst_identity();
 
             // FIXME(chalk): this has problems because of late-bound regions
             //inputs.extend(trait_ref.substs.iter().flat_map(|arg| arg.walk()));
@@ -359,8 +359,9 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
     debug!("issue33140_self_ty({:?})", def_id);
 
     let trait_ref = tcx
-        .impl_trait_ref(def_id)
-        .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id));
+        .bound_impl_trait_ref(def_id)
+        .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id))
+        .skip_binder();
 
     debug!("issue33140_self_ty({:?}), trait-ref={:?}", def_id, trait_ref);
 

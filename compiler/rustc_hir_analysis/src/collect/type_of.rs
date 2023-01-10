@@ -286,7 +286,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 }
             }
             ImplItemKind::Type(ty) => {
-                if tcx.impl_trait_ref(tcx.hir().get_parent_item(hir_id)).is_none() {
+                if tcx.bound_impl_trait_ref(tcx.hir().get_parent_item(hir_id).to_def_id()).is_none() {
                     check_feature_inherent_assoc_ty(tcx, item.span);
                 }
 

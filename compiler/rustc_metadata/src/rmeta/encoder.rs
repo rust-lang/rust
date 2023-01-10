@@ -1555,7 +1555,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.impl_defaultness.set(def_id.index, *defaultness);
                 self.tables.constness.set(def_id.index, *constness);
 
-                let trait_ref = self.tcx.impl_trait_ref(def_id);
+                let trait_ref =
+                    self.tcx.bound_impl_trait_ref(def_id).map(ty::EarlyBinder::skip_binder);
                 if let Some(trait_ref) = trait_ref {
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
                     if let Ok(mut an) = trait_def.ancestors(self.tcx, def_id) {
@@ -1632,7 +1633,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
         if let hir::ItemKind::Impl { .. } = item.kind {
-            if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
+            if let Some(trait_ref) =
+                self.tcx.bound_impl_trait_ref(def_id).map(ty::EarlyBinder::subst_identity)
+            {
                 record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
             }
         }
@@ -1898,7 +1901,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         for id in tcx.hir().items() {
             if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
-                if let Some(trait_ref) = tcx.impl_trait_ref(id.owner_id) {
+                if let Some(trait_ref) = tcx
+                    .bound_impl_trait_ref(id.owner_id.to_def_id())
+                    .map(ty::EarlyBinder::subst_identity)
+                {
                     let simplified_self_ty = fast_reject::simplify_type(
                         self.tcx,
                         trait_ref.self_ty(),

@@ -26,7 +26,7 @@ pub fn method_context(cx: &LateContext<'_>, id: hir::HirId) -> MethodLateContext
     let item = cx.tcx.associated_item(def_id);
     match item.container {
         ty::TraitContainer => MethodLateContext::TraitAutoImpl,
-        ty::ImplContainer => match cx.tcx.impl_trait_ref(item.container_id(cx.tcx)) {
+        ty::ImplContainer => match cx.tcx.bound_impl_trait_ref(item.container_id(cx.tcx)) {
             Some(_) => MethodLateContext::TraitImpl,
             None => MethodLateContext::PlainImpl,
         },
