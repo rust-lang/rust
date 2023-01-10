@@ -487,12 +487,10 @@ libs = [
 ]
 bootstrap = [
     "@Mark-Simulacrum",
-    "@jyn514",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
     "@pietroalbini",
-    "@jyn514",
 ]
 rustdoc = [
     "@jsha",
