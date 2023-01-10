@@ -322,8 +322,7 @@ don't support `colspan`:
 </table>
 
 HTML is not sanitized when included in the documentation, though
-improperly-nested tags will produce a build-time warning. It can be turned
-into an error by adding `#![deny(rustdoc::invalid_html_tags)]` to your crate.
+improperly-nested tags will produce a build-time warning.
 
 ```text
 warning: unclosed HTML tag `h2`
@@ -342,12 +341,10 @@ LL | /// <p style="x/></p>
 Additionally, IDs and classes should be prefixed with your crate's name,
 followed by an underscore `_`. Since rustdoc sometimes includes excerpts
 of the documentation of your dependencies in your crate's documentation,
-this ensures you don't conflict with them. It can be turned into an error
-by adding `#![deny(rustdoc::unprefixed_html_class)]` and
-`#![deny(rustdoc::unprefixed_html_id)]`.
+this ensures you don't conflict with them.
 
 ```text
-error: unprefixed HTML `class` attribute
+warning: unprefixed HTML `class` attribute
   --> $DIR/unprefixed-html-class.rs:4:27
    |
 LL | /// Test with <div class="evil"></div>
@@ -357,7 +354,7 @@ LL | /// Test with <div class="evil"></div>
    |
    = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
 
-error: unprefixed HTML `id` attribute
+warning: unprefixed HTML `id` attribute
   --> $DIR/unprefixed-html-id.rs:4:24
    |
 LL | /// Test with <div id="evil"></div>
