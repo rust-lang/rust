@@ -249,9 +249,8 @@ pub struct DirBuilder {
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     fn inner(path: &Path) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
-        let mut bytes = Vec::new();
         let size = file.metadata().map(|m| m.len()).unwrap_or(0);
-        bytes.reserve(size as usize);
+        let mut bytes = Vec::with_capacity(size as usize);
         io::default_read_to_end(&mut file, &mut bytes)?;
         Ok(bytes)
     }
@@ -290,9 +289,8 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fn inner(path: &Path) -> io::Result<String> {
         let mut file = File::open(path)?;
-        let mut string = String::new();
         let size = file.metadata().map(|m| m.len()).unwrap_or(0);
-        string.reserve(size as usize);
+        let mut string = String::with_capacity(size as usize);
         io::default_read_to_string(&mut file, &mut string)?;
         Ok(string)
     }
