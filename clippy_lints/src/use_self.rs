@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 ref mut types_to_skip,
                 ..
             }) = self.stack.last_mut();
-            if let Some(impl_trait_ref) = cx.tcx.bound_impl_trait_ref(impl_id.to_def_id());
+            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_id);
             then {
                 // `self_ty` is the semantic self type of `impl <trait> for <type>`. This cannot be
                 // `Self`.

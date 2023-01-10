@@ -12,7 +12,7 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
         if count <= 1;
         if let Some(call_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(call_id);
-        if cx.tcx.bound_impl_trait_ref(impl_id).is_none();
+        if cx.tcx.impl_trait_ref(impl_id).is_none();
         let self_ty = cx.tcx.type_of(impl_id);
         if self_ty.is_slice() || self_ty.is_str();
         then {
