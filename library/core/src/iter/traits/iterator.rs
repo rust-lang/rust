@@ -1514,6 +1514,18 @@ pub trait Iterator {
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     ///
+    /// Flattening works on any `IntoIterator` type, including `Option` and `Result`:
+    ///
+    /// ```
+    /// let options = vec![Some(123), Some(321), None, Some(231)];
+    /// let flattened_options: Vec<_> = options.into_iter().flatten().collect();
+    /// assert_eq!(flattened_options, vec![123, 321, 231]);
+    ///
+    /// let results = vec![Ok(123), Ok(321), Err(456), Ok(231)];
+    /// let flattened_results: Vec<_> = results.into_iter().flatten().collect();
+    /// assert_eq!(flattened_results, vec![123, 321, 231]);
+    /// ```
+    ///
     /// Flattening only removes one level of nesting at a time:
     ///
     /// ```

@@ -253,6 +253,7 @@ h1 a,
 
 a {
 	color: var(--link-color);
+	text-decoration: none;
 }
 
 ol, ul {
@@ -660,10 +661,6 @@ nav.sub {
 }
 .source nav.sub {
 	margin: 0 0 15px 0;
-}
-
-a {
-	text-decoration: none;
 }
 
 .small-section-header {

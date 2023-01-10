@@ -29,11 +29,6 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         }
     }
 
-    #[instrument(level = "debug", ret)]
-    pub fn take_opaque_types(&mut self) -> OpaqueTypeMap<'tcx> {
-        std::mem::take(&mut self.opaque_types)
-    }
-
     #[inline]
     pub(crate) fn with_log<'a>(
         &'a mut self,
