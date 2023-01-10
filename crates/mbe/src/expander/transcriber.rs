@@ -138,7 +138,7 @@ fn expand_subtree(
             Op::Ident(it) => arena.push(tt::Leaf::from(it.clone()).into()),
             Op::Punct(puncts) => {
                 for punct in puncts {
-                    arena.push(tt::Leaf::from(punct.clone()).into());
+                    arena.push(tt::Leaf::from(*punct).into());
                 }
             }
             Op::Subtree { tokens, delimiter } => {

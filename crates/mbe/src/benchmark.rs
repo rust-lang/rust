@@ -145,7 +145,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
             Op::Ident(it) => parent.token_trees.push(tt::Leaf::from(it.clone()).into()),
             Op::Punct(puncts) => {
                 for punct in puncts {
-                    parent.token_trees.push(tt::Leaf::from(punct.clone()).into());
+                    parent.token_trees.push(tt::Leaf::from(*punct).into());
                 }
             }
             Op::Repeat { tokens, kind, separator } => {
