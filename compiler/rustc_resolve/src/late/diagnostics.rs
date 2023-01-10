@@ -1451,22 +1451,13 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         .collect();
 
                     if non_visible_spans.len() > 0 {
-                        if let Some(visibility_spans) = self.r.field_visibility_spans.get(&def_id) {
+                        if let Some(fields) = self.r.field_visibility_spans.get(&def_id) {
                             err.multipart_suggestion_verbose(
                                 &format!(
                                     "consider making the field{} publicly accessible",
-                                    pluralize!(visibility_spans.len())
+                                    pluralize!(fields.len())
                                 ),
-                                visibility_spans
-                                    .iter()
-                                    .map(|span| {
-                                        (
-                                            *span,
-                                            if span.is_empty() { "pub " } else { "pub" }
-                                                .to_string(),
-                                        )
-                                    })
-                                    .collect(),
+                                fields.iter().map(|span| (*span, "pub ".to_string())).collect(),
                                 Applicability::MaybeIncorrect,
                             );
                         }
