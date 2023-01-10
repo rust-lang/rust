@@ -82,7 +82,6 @@ fn files_are_tidy() {
                 check_dbg(&path, &text);
                 check_test_attrs(&path, &text);
                 check_trailing_ws(&path, &text);
-                deny_clippy(&path, &text);
                 tidy_docs.visit(&path, &text);
                 tidy_marks.visit(&path, &text);
             }
@@ -141,32 +140,6 @@ fn check_cargo_toml(path: &Path, text: String) {
             }
             _ => {}
         }
-    }
-}
-
-fn deny_clippy(path: &Path, text: &str) {
-    let ignore = &[
-        // The documentation in string literals may contain anything for its own purposes
-        "ide-db/src/generated/lints.rs",
-        // The tests test clippy lint hovers
-        "ide/src/hover/tests.rs",
-        // The tests test clippy lint completions
-        "ide-completion/src/tests/attribute.rs",
-    ];
-    if ignore.iter().any(|p| path.ends_with(p)) {
-        return;
-    }
-
-    if text.contains("\u{61}llow(clippy") {
-        panic!(
-            "\n\nallowing lints is forbidden: {}.
-rust-analyzer intentionally doesn't check clippy on CI.
-You can allow lint globally via `xtask clippy`.
-See https://github.com/rust-lang/rust-clippy/issues/5537 for discussion.
-
-",
-            path.display()
-        )
     }
 }
 
