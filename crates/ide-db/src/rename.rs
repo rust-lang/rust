@@ -334,11 +334,9 @@ pub fn source_edit_from_references(
             }
             _ => false,
         };
-        if !has_emitted_edit {
-            if !edited_ranges.contains(&range.start()) {
-                edit.replace(range, new_name.to_string());
-                edited_ranges.push(range.start());
-            }
+        if !has_emitted_edit && !edited_ranges.contains(&range.start()) {
+            edit.replace(range, new_name.to_string());
+            edited_ranges.push(range.start());
         }
     }
 

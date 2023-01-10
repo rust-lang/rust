@@ -212,7 +212,7 @@ fn expand_var(ctx: &mut ExpandCtx<'_>, v: &SmolStr, id: tt::TokenId) -> ExpandRe
     } else {
         ctx.bindings.get(v, &mut ctx.nesting).map_or_else(
             |e| ExpandResult { value: Fragment::Tokens(tt::TokenTree::empty()), err: Some(e) },
-            |it| ExpandResult::ok(it),
+            ExpandResult::ok,
         )
     }
 }
