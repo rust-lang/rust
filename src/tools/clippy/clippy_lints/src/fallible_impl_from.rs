@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
         // check for `impl From<???> for ..`
         if_chain! {
             if let hir::ItemKind::Impl(impl_) = &item.kind;
-            if let Some(impl_trait_ref) = cx.tcx.bound_impl_trait_ref(item.owner_id.to_def_id());
+            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id);
             if cx.tcx.is_diagnostic_item(sym::From, impl_trait_ref.skip_binder().def_id);
             then {
                 lint_impl_body(cx, item.span, impl_.items);

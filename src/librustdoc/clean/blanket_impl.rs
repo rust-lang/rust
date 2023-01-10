@@ -33,7 +33,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     trait_def_id,
                     impl_def_id
                 );
-                let trait_ref = cx.tcx.bound_impl_trait_ref(impl_def_id).unwrap();
+                let trait_ref = cx.tcx.impl_trait_ref(impl_def_id).unwrap();
                 if !matches!(trait_ref.0.self_ty().kind(), ty::Param(_)) {
                     continue;
                 }

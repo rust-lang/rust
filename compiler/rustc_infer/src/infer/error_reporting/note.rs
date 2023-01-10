@@ -317,7 +317,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.tcx.associated_item(impl_item_def_id).impl_container(self.tcx) else { return; };
         let Some(trait_ref) = self
             .tcx
-            .bound_impl_trait_ref(impl_def_id)
+            .impl_trait_ref(impl_def_id)
             else { return; };
         let trait_substs = trait_ref
             .subst_identity()

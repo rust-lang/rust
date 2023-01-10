@@ -2059,7 +2059,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
-                let Some(trait_ref) = tcx.bound_impl_trait_ref(impl_def_id) else {
+                let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
                     // A cycle error occurred, most likely.
                     let guar = tcx.sess.delay_span_bug(span, "expected cycle error");
                     return Err(guar);
@@ -2155,7 +2155,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .is_accessible_from(self.item_def_id(), tcx)
                             && tcx.all_impls(*trait_def_id)
                                 .any(|impl_def_id| {
-                                    let trait_ref = tcx.bound_impl_trait_ref(impl_def_id);
+                                    let trait_ref = tcx.impl_trait_ref(impl_def_id);
                                     trait_ref.map_or(false, |trait_ref| {
                                         let impl_ = trait_ref.subst(
                                             tcx,
@@ -2308,7 +2308,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
                     })
                     .filter_map(|impl_def_id| tcx.impl_trait_ref(impl_def_id))
-                    .map(|impl_| impl_.self_ty())
+                    .map(|impl_| impl_.subst_identity().self_ty())
                     // We don't care about blanket impls.
                     .filter(|self_ty| !self_ty.has_non_region_param())
                     .map(|self_ty| tcx.erase_regions(self_ty).to_string())

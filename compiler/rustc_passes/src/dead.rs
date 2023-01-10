@@ -266,7 +266,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of)
                 && self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
             {
-                let trait_ref = self.tcx.bound_impl_trait_ref(impl_of).unwrap().subst_identity();
+                let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().subst_identity();
                 if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
                     && let Some(adt_def_id) = adt_def.did().as_local()
                 {
@@ -310,7 +310,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
             Node::ImplItem(impl_item) => {
                 let item = self.tcx.local_parent(impl_item.owner_id.def_id);
-                if self.tcx.bound_impl_trait_ref(item.into()).is_none() {
+                if self.tcx.impl_trait_ref(item).is_none() {
                     //// If it's a type whose items are live, then it's live, too.
                     //// This is done to handle the case where, for example, the static
                     //// method of a private type is used, but the type itself is never
@@ -534,7 +534,7 @@ fn check_item<'tcx>(
             }
         }
         DefKind::Impl => {
-            let of_trait = tcx.bound_impl_trait_ref(id.owner_id.to_def_id());
+            let of_trait = tcx.impl_trait_ref(id.owner_id);
 
             if of_trait.is_some() {
                 worklist.push(id.owner_id.def_id);

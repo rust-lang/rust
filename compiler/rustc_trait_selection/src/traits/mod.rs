@@ -522,7 +522,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
     let generics = tcx.generics_of(trait_item_def_id);
     let predicates = tcx.predicates_of(trait_item_def_id);
     let impl_trait_ref = tcx
-        .bound_impl_trait_ref(impl_def_id)
+        .impl_trait_ref(impl_def_id)
         .expect("expected impl to correspond to trait")
         .subst_identity();
     let param_env = tcx.param_env(impl_def_id);

@@ -535,7 +535,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                 return;
             };
             debug!("ItemKind::Impl {} with id {:?}", it.ident, it.owner_id);
-            if let Some(impl_trait_ref) = tcx.bound_impl_trait_ref(it.owner_id.to_def_id()) {
+            if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.owner_id) {
                 check_impl_items_against_trait(
                     tcx,
                     it.span,

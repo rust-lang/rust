@@ -181,7 +181,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         // for `T`
         hir::ItemKind::Impl(ref impl_) => {
             let is_auto = tcx
-                .bound_impl_trait_ref(def_id.into())
+                .impl_trait_ref(def_id)
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.skip_binder().def_id));
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
@@ -1253,8 +1253,7 @@ fn check_impl<'tcx>(
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
-                let trait_ref =
-                    tcx.bound_impl_trait_ref(item.owner_id.to_def_id()).unwrap().subst_identity();
+                let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap().subst_identity();
                 let trait_ref = wfcx.normalize(
                     ast_trait_ref.path.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),

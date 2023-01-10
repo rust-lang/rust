@@ -77,8 +77,8 @@ pub fn overlapping_impls(
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
     let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsInfer };
-    let impl1_ref = tcx.bound_impl_trait_ref(impl1_def_id).map(ty::EarlyBinder::subst_identity);
-    let impl2_ref = tcx.bound_impl_trait_ref(impl2_def_id).map(ty::EarlyBinder::subst_identity);
+    let impl1_ref = tcx.impl_trait_ref(impl1_def_id).map(ty::EarlyBinder::subst_identity);
+    let impl2_ref = tcx.impl_trait_ref(impl2_def_id).map(ty::EarlyBinder::subst_identity);
     let may_overlap = match (impl1_ref, impl2_ref) {
         (Some(a), Some(b)) => iter::zip(a.substs, b.substs)
             .all(|(arg1, arg2)| drcx.generic_args_may_unify(arg1, arg2)),
@@ -126,7 +126,7 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
     let header = ty::ImplHeader {
         impl_def_id,
         self_ty: tcx.bound_type_of(impl_def_id).subst(tcx, impl_substs),
-        trait_ref: tcx.bound_impl_trait_ref(impl_def_id).map(|i| i.subst(tcx, impl_substs)),
+        trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.subst(tcx, impl_substs)),
         predicates: tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs).predicates,
     };
 
@@ -461,7 +461,7 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 
     // We only except this routine to be invoked on implementations
     // of a trait, not inherent implementations.
-    let trait_ref = tcx.bound_impl_trait_ref(impl_def_id).unwrap().skip_binder();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
     debug!("orphan_check: trait_ref={:?}", trait_ref);
 
     // If the *trait* is local to the crate, ok.
