@@ -84,15 +84,10 @@ pub struct CrateGraph {
     arena: NoHashHashMap<CrateId, CrateData>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
 impl stdx::hash::NoHashHashable for CrateId {}
-impl std::hash::Hash for CrateId {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateName(SmolStr);
