@@ -11,6 +11,7 @@ The basic structure of the solver is a pure function
 While the actual solver is not fully pure to deal with overflow and cycles, we are
 going to defer that for now.
 
-To deal with inference variables and to improve caching, we use [canonicalization](/canonicalization.html).
+To deal with inference variables and to improve caching, we use
+[canonicalization](/canonicalization.html).
 
 TODO: write the remaining code for this as well.

@@ -1,17 +1,20 @@
 # Coinduction
 
-The trait solver may use coinduction when proving goals. Coinduction is fairly subtle so we're giving it its own chapter.
+The trait solver may use coinduction when proving goals.
+Coinduction is fairly subtle so we're giving it its own chapter.
 
 ## Coinduction and induction
 
-With induction, we recursively apply proofs until we end up with a finite proof tree. Consider the example of `Vec<Vec<Vec<u32>>>: Debug` which results in the following tree.
+With induction, we recursively apply proofs until we end up with a finite proof tree.
+Consider the example of `Vec<Vec<Vec<u32>>>: Debug` which results in the following tree.
 
 - `Vec<Vec<Vec<u32>>>: Debug`
     - `Vec<Vec<u32>>: Debug`
         - `Vec<u32>: Debug`
             - `u32: Debug`
 
-This tree is finite. But not all goals we would want to hold have finite proof trees, consider the following example:
+This tree is finite. But not all goals we would want to hold have finite proof trees,
+consider the following example:
 
 ```rust
 struct List<T> {
@@ -20,7 +23,8 @@ struct List<T> {
 }
 ```
 
-For `List<T>: Send` to hold all its fields have to recursively implement `Send` as well. This would result in the following proof tree:
+For `List<T>: Send` to hold all its fields have to recursively implement `Send` as well.
+This would result in the following proof tree:
 
 - `List<T>: Send`
     - `T: Send`
@@ -57,9 +61,9 @@ With cycles we have to be careful with caching. Due to canonicalization of regio
 variables we also have to rerun queries until the provisional result returned when hitting the cycle
 is equal to the final result.
 
-TODO: elaborate here. We use the same approach as chalk for coinductive cycles. Note that the treatment
-for inductive cycles currently differs by simply returning `Overflow`. See [the relevant chapters][chalk]
-in the chalk book.
+TODO: elaborate here. We use the same approach as chalk for coinductive cycles.
+Note that the treatment for inductive cycles currently differs by simply returning `Overflow`.
+See [the relevant chapters][chalk] in the chalk book.
 
 [chalk]: https://rust-lang.github.io/chalk/book/recursive/inductive_cycles.html
 
@@ -90,20 +94,29 @@ impl<T: Clone> Clone for List<T> {
 }
 ```
 
-We are using `tail.clone()` in this impl. For this we have to prove `Box<List<T>>: Clone` which requires `List<T>: Clone` but that relies on the currently impl which we are currently checking. By adding that requirement to the `where`-clauses of the impl, which is what we would do with [perfect derive], we move that cycle into the trait solver and [get an error][ex1].
+We are using `tail.clone()` in this impl. For this we have to prove `Box<List<T>>: Clone`
+which requires `List<T>: Clone` but that relies on the currently impl which we are currently
+checking. By adding that requirement to the `where`-clauses of the impl, which is what we would
+do with [perfect derive], we move that cycle into the trait solver and [get an error][ex1].
 
 ### Recursive data types
 
-We also need coinduction to reason about recursive types containing projections, e.g. the following currently fails to compile even though it should be valid.
+We also need coinduction to reason about recursive types containing projections,
+e.g. the following currently fails to compile even though it should be valid.
 ```rust
 use std::borrow::Cow;
 pub struct Foo<'a>(Cow<'a, [Foo<'a>]>);
 ```
-This issue has been known since at least 2015, see [#23714](https://github.com/rust-lang/rust/issues/23714) if you want to know more.
+This issue has been known since at least 2015, see
+[#23714](https://github.com/rust-lang/rust/issues/23714) if you want to know more.
 
 ### Explicitly checked implied bounds
 
-When checking an impl, we assume that the types in the impl headers are well-formed. This means that when using instantiating the impl we have to prove that's actually the case. [#100051](https://github.com/rust-lang/rust/issues/100051) shows that this is not the case. To fix this, we have to add `WF` predicates for the types in impl headers. Without coinduction for all traits, this even breaks `core`.
+When checking an impl, we assume that the types in the impl headers are well-formed.
+This means that when using instantiating the impl we have to prove that's actually the case.
+[#100051](https://github.com/rust-lang/rust/issues/100051) shows that this is not the case.
+To fix this, we have to add `WF` predicates for the types in impl headers.
+Without coinduction for all traits, this even breaks `core`.
 
 ```rust
 trait FromResidual<R> {}
@@ -123,7 +136,7 @@ When checking that the impl of `FromResidual` is well formed we get the followin
 The impl is well formed if `<Ready<T> as Try>::Residual` and `Ready<T>` are well formed.
 - `wf(<Ready<T> as Try>::Residual)` requires
 -  `Ready<T>: Try`, which requires because of the super trait
--  `Ready<T>: FromResidual<Ready<T> as Try>::Residual>`, which has an impl which requires **because of implied bounds**
+-  `Ready<T>: FromResidual<Ready<T> as Try>::Residual>`, **because of implied bounds on impl**
 -  `wf(<Ready<T> as Try>::Residual)` :tada: **cycle**
 
 ### Issues when extending coinduction to more goals
@@ -133,9 +146,13 @@ The issues here are not relevant for the current solver.
 
 #### Implied super trait bounds
 
-Our trait system currectly treats super traits, e.g. `trait Trait: SuperTrait`, by 1) requiring that `SuperTrait` has to hold for all types which implement `Trait`, and 2) assuming `SuperTrait` holds if `Trait` holds.
+Our trait system currectly treats super traits, e.g. `trait Trait: SuperTrait`,
+by 1) requiring that `SuperTrait` has to hold for all types which implement `Trait`,
+and 2) assuming `SuperTrait` holds if `Trait` holds.
 
-Relying on 2) while proving 1) is unsound. This can only be observed in case of coinductive cycles. Without a cycles, whenever we rely on 2) we must have also proven 1) without relying on 2) for the used impl of `Trait`.
+Relying on 2) while proving 1) is unsound. This can only be observed in case of
+coinductive cycles. Without a cycles, whenever we rely on 2) we must have also
+proven 1) without relying on 2) for the used impl of `Trait`.
 
 ```rust
 trait Trait: SuperTrait {}
@@ -148,21 +165,25 @@ fn sup<T: SuperTrait>() {}
 fn requires_trait<T: Trait>() { sup::<T>() }
 fn generic<T>() { requires_trait::<T>() }
 ```
-This is not really fundamental to coinduction but rather an existing property which is made unsound because of it.
+This is not really fundamental to coinduction but rather an existing property
+which is made unsound because of it.
 
 ##### Possible solutions
 
 The easiest way to solve this would be to completely remove 2) and always elaborate
 `T: Trait` to `T: Trait` and `T: SuperTrait` outside of the trait solver.
-This would allow us to also remove 1), but as we still have to prove ordinary `where`-bounds on traits,
-that's just additional work.
+This would allow us to also remove 1), but as we still have to prove ordinary
+`where`-bounds on traits, that's just additional work.
 
-While one could imagine ways to disable cyclic uses of 2) when checking 1), at least the ideas of myself - @lcnr -
-are all far to complex to be reasonable.
+While one could imagine ways to disable cyclic uses of 2) when checking 1),
+at least the ideas of myself - @lcnr - are all far to complex to be reasonable.
 
 #### `normalizes_to` goals and progress
 
-A `normalizes_to` goal represents the requirement that `<T as Trait>::Assoc` normalizes to some `U`. This is achieved by defacto first normalizing `<T as Trait>::Assoc` and then equating the resulting type with `U`. It should be a mapping as each projection should normalize to exactly one type. By simply allowing infinite proof trees, we would get the following behavior:
+A `normalizes_to` goal represents the requirement that `<T as Trait>::Assoc` normalizes
+to some `U`. This is achieved by defacto first normalizing `<T as Trait>::Assoc` and then
+equating the resulting type with `U`. It should be a mapping as each projection should normalize
+to exactly one type. By simply allowing infinite proof trees, we would get the following behavior:
 
 ```rust
 trait Trait {
@@ -174,7 +195,10 @@ impl Trait for () {
 }
 ```
 
-If we now compute `normalizes_to(<() as Trait>::Assoc, Vec<u32>)`, we would resolve the impl and get the associated type `<() as Trait>::Assoc`. We then equate that with the expected type, causing us to check `normalizes_to(<() as Trait>::Assoc, Vec<u32>)` again. This just goes on forever, resulting in an infinite proof tree.
+If we now compute `normalizes_to(<() as Trait>::Assoc, Vec<u32>)`, we would resolve the impl
+and get the associated type `<() as Trait>::Assoc`. We then equate that with the expected type,
+causing us to check `normalizes_to(<() as Trait>::Assoc, Vec<u32>)` again.
+This just goes on forever, resulting in an infinite proof tree.
 
 This means that `<() as Trait>::Assoc` would be equal to any other type which is unsound.
 
@@ -182,11 +206,19 @@ This means that `<() as Trait>::Assoc` would be equal to any other type which is
 
 **WARNING: THIS IS SUBTLE AND MIGHT BE WRONG**
 
-Unlike trait goals, `normalizes_to` has to be *productive*[^1]. A `normalizes_to` goal is productive once the projection normalizes to a rigid type constructor, so `<() as Trait>::Assoc` normalizing to `Vec<<() as Trait>::Assoc>` would be productive.
+Unlike trait goals, `normalizes_to` has to be *productive*[^1]. A `normalizes_to` goal
+is productive once the projection normalizes to a rigid type constructor,
+so `<() as Trait>::Assoc` normalizing to `Vec<<() as Trait>::Assoc>` would be productive.
 
-A `normalizes_to` goal has two kinds of nested goals. Nested requirements needed to actually normalize the projection, and the equality between the normalized projection and the expected type. Only the equality has to be productive. A branch in the proof tree is productive if it is either finite, or contains at least one `normalizes_to` where the alias is resolved to a rigid type constructor.
+A `normalizes_to` goal has two kinds of nested goals. Nested requirements needed to actually
+normalize the projection, and the equality between the normalized projection and the
+expected type. Only the equality has to be productive. A branch in the proof tree is productive
+if it is either finite, or contains at least one `normalizes_to` where the alias is resolved
+to a rigid type constructor.
 
-Alternatively, we could simply always treat the equate branch of `normalizes_to` as inductive. Any cycles should result in infinite types, which aren't supported anyways and would only result in overflow when deeply normalizing for codegen.
+Alternatively, we could simply always treat the equate branch of `normalizes_to` as inductive.
+Any cycles should result in infinite types, which aren't supported anyways and would only
+result in overflow when deeply normalizing for codegen.
 
 experimentation and examples: https://hackmd.io/-8p0AHnzSq2VAE6HE_wX-w?view
 

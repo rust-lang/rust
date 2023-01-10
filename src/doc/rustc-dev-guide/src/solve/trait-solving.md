@@ -31,10 +31,10 @@ recursively proving its nested goals. For a list of possible candidates with exa
 [`CandidateSource`]. The most important candidates are `Impl` candidates, i.e. trait implementations
 written by the user,  and `ParamEnv` candidates, i.e. assumptions in our current environment.
 
-Looking at the above example, to prove `Vec<T>: Clone` we first use `impl<T: Clone> Clone for Vec<T>`.
-To use this impl we have to prove the nested goal that `T: Clone` holds. This can use the
-assumption `T: Clone` from the `ParamEnv` which does not have any nested goals.
-Therefore `Vec<T>: Clone` holds.
+Looking at the above example, to prove `Vec<T>: Clone` we first use
+`impl<T: Clone> Clone for Vec<T>`. To use this impl we have to prove the nested
+goal that `T: Clone` holds. This can use the assumption `T: Clone` from the `ParamEnv`
+which does not have any nested goals. Therefore `Vec<T>: Clone` holds.
 
 The trait solver can either return success, ambiguity or an error as a [`CanonicalResponse`].
 For success and ambiguity it also returns constraints inference and region constraints.
@@ -55,8 +55,9 @@ simply be unsound by assuming a trait is implemented even though it is not.
 
 ### 2. If type checker solves generic goal concrete instantiations of that goal have the same result
 
-Pretty much: If we successfully typecheck a generic function concrete instantiations of that function
-should also typeck. We should not get errors post-monomorphization. We can however get overflow.
+Pretty much: If we successfully typecheck a generic function concrete instantiations
+of that function should also typeck. We should not get errors post-monomorphization.
+We can however get overflow.
 
 ### 3. Trait goals in empty environments are proven by a unique impl.
 
@@ -84,7 +85,8 @@ is special behavior for `'static`.
 
 ### 7. Removing ambiguity makes strictly more things compile
 
-We *should* not rely on ambiguity for things to compile. Not doing that will cause future improvements to be breaking changes.
+We *should* not rely on ambiguity for things to compile.
+Not doing that will cause future improvements to be breaking changes.
 
 ### 8. semantic equality implies structural equality
 
