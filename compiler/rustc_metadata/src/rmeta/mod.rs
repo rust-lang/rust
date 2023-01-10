@@ -360,7 +360,7 @@ define_tables! {
     fn_sig: Table<DefIndex, LazyValue<ty::PolyFnSig<'static>>>,
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
     impl_trait_ref: Table<DefIndex, LazyValue<ty::TraitRef<'static>>>,
-    const_param_default: Table<DefIndex, LazyValue<rustc_middle::ty::Const<'static>>>,
+    const_param_default: Table<DefIndex, LazyValue<ty::EarlyBinder<rustc_middle::ty::Const<'static>>>>,
     object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,
     optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,

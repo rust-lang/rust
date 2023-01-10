@@ -511,9 +511,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             return tcx.const_error(ty).into();
                         }
                         if !infer_args && has_default {
-                            tcx.bound_const_param_default(param.def_id)
-                                .subst(tcx, substs.unwrap())
-                                .into()
+                            tcx.const_param_default(param.def_id).subst(tcx, substs.unwrap()).into()
                         } else {
                             if infer_args {
                                 self.astconv.ct_infer(ty, Some(param), self.span).into()

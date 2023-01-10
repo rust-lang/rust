@@ -507,7 +507,7 @@ fn clean_generic_param_def<'tcx>(
                 )),
                 default: match has_default {
                     true => Some(Box::new(
-                        cx.tcx.bound_const_param_default(def.def_id).subst_identity().to_string(),
+                        cx.tcx.const_param_default(def.def_id).subst_identity().to_string(),
                     )),
                     false => None,
                 },

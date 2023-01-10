@@ -673,10 +673,6 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::EarlyBinder(self.item_bounds(def_id))
     }
 
-    pub fn bound_const_param_default(self, def_id: DefId) -> ty::EarlyBinder<ty::Const<'tcx>> {
-        ty::EarlyBinder(self.const_param_default(def_id))
-    }
-
     pub fn bound_predicates_of(
         self,
         def_id: DefId,
