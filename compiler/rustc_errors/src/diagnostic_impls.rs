@@ -179,16 +179,7 @@ impl IntoDiagnosticArg for type_ir::FloatTy {
 
 impl IntoDiagnosticArg for Level {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Borrowed(match self {
-            Level::Allow => "-A",
-            Level::Warn => "-W",
-            Level::ForceWarn(_) => "--force-warn",
-            Level::Deny => "-D",
-            Level::Forbid => "-F",
-            Level::Expect(_) => {
-                unreachable!("lints with the level of `expect` should not run this code");
-            }
-        }))
+        DiagnosticArgValue::Str(Cow::Borrowed(self.to_cmd_flag()))
     }
 }
 
