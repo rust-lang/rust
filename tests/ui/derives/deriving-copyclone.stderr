@@ -10,7 +10,7 @@ note: required for `B<C>` to implement `Copy`
   --> $DIR/deriving-copyclone.rs:9:10
    |
 LL | #[derive(Copy, Clone)]
-   |          ^^^^
+   |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
 note: required by a bound in `is_copy`
   --> $DIR/deriving-copyclone.rs:18:15
    |
@@ -34,7 +34,7 @@ note: required for `B<C>` to implement `Clone`
   --> $DIR/deriving-copyclone.rs:9:16
    |
 LL | #[derive(Copy, Clone)]
-   |                ^^^^^
+   |                ^^^^^ unsatisfied trait bound introduced in this `derive` macro
 note: required by a bound in `is_clone`
   --> $DIR/deriving-copyclone.rs:19:16
    |
@@ -58,7 +58,7 @@ note: required for `B<D>` to implement `Copy`
   --> $DIR/deriving-copyclone.rs:9:10
    |
 LL | #[derive(Copy, Clone)]
-   |          ^^^^
+   |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
 note: required by a bound in `is_copy`
   --> $DIR/deriving-copyclone.rs:18:15
    |

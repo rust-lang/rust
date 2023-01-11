@@ -10,7 +10,7 @@ note: required for `&T` to implement `Zen`
   --> $DIR/phantom-auto-trait.rs:10:24
    |
 LL | unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
-   |                        ^^^     ^^^^^
+   |                        ^^^     ^^^^^          ---- unsatisfied trait bound introduced here
    = note: required because it appears within the type `PhantomData<&T>`
 note: required because it appears within the type `Guard<'_, T>`
   --> $DIR/phantom-auto-trait.rs:12:8
@@ -39,7 +39,7 @@ note: required for `&T` to implement `Zen`
   --> $DIR/phantom-auto-trait.rs:10:24
    |
 LL | unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
-   |                        ^^^     ^^^^^
+   |                        ^^^     ^^^^^          ---- unsatisfied trait bound introduced here
    = note: required because it appears within the type `PhantomData<&T>`
 note: required because it appears within the type `Guard<'_, T>`
   --> $DIR/phantom-auto-trait.rs:12:8

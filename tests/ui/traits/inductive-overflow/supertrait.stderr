@@ -8,7 +8,9 @@ note: required for `NoClone` to implement `Magic`
   --> $DIR/supertrait.rs:5:16
    |
 LL | impl<T: Magic> Magic for T {}
-   |                ^^^^^     ^
+   |         -----  ^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
 note: required by a bound in `copy`
   --> $DIR/supertrait.rs:7:12
    |

@@ -8,7 +8,9 @@ note: required for `()` to implement `ProofForConversion<T>`
   --> $DIR/underconstrained_generic.rs:13:16
    |
 LL | impl<X: Trait> ProofForConversion<X> for () {
-   |                ^^^^^^^^^^^^^^^^^^^^^     ^^
+   |         -----  ^^^^^^^^^^^^^^^^^^^^^     ^^
+   |         |
+   |         unsatisfied trait bound introduced here
 help: consider restricting type parameter `T`
    |
 LL | type Converter<T: Trait> = impl ProofForConversion<T>;

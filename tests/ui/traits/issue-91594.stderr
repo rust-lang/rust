@@ -9,7 +9,9 @@ note: required for `Foo` to implement `Component<Foo>`
   --> $DIR/issue-91594.rs:13:27
    |
 LL | impl<M: HasComponent<()>> Component<M> for Foo {
-   |                           ^^^^^^^^^^^^     ^^^
+   |         ----------------  ^^^^^^^^^^^^     ^^^
+   |         |
+   |         unsatisfied trait bound introduced here
 
 error: aborting due to previous error
 

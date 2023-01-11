@@ -9,7 +9,9 @@ note: required for `Bob` to implement `Add<{integer}>`
   --> $DIR/issue-22645.rs:8:19
    |
 LL | impl<RHS: Scalar> Add <RHS> for Bob {
-   |                   ^^^^^^^^^     ^^^
+   |           ------  ^^^^^^^^^     ^^^
+   |           |
+   |           unsatisfied trait bound introduced here
 
 error[E0308]: mismatched types
   --> $DIR/issue-22645.rs:15:3

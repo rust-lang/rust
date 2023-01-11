@@ -15,6 +15,9 @@ note: required for `i32` to implement `Iterate<'_>`
    |
 LL | impl<'a, T> Iterate<'a> for T
    |             ^^^^^^^^^^^     ^
+LL | where
+LL |     T: Check,
+   |        ----- unsatisfied trait bound introduced here
 
 error: aborting due to previous error; 1 warning emitted
 

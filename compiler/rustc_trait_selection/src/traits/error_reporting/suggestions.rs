@@ -36,7 +36,7 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeVisitable, TypeckResults,
 };
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span, DUMMY_SP};
+use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use std::ops::Deref;
 
@@ -2949,7 +2949,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // FIXME: we should do something else so that it works even on crate foreign
                         // auto traits.
                         is_auto_trait = matches!(is_auto, hir::IsAuto::Yes);
-                        err.span_note(ident.span, &msg)
+                        err.span_note(ident.span, &msg);
                     }
                     Some(Node::Item(hir::Item {
                         kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
@@ -2960,9 +2960,29 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             spans.push(trait_ref.path.span);
                         }
                         spans.push(self_ty.span);
-                        err.span_note(spans, &msg)
+                        let mut spans: MultiSpan = spans.into();
+                        if matches!(
+                            self_ty.span.ctxt().outer_expn_data().kind,
+                            ExpnKind::Macro(MacroKind::Derive, _)
+                        ) || matches!(
+                            of_trait.as_ref().map(|t| t.path.span.ctxt().outer_expn_data().kind),
+                            Some(ExpnKind::Macro(MacroKind::Derive, _))
+                        ) {
+                            spans.push_span_label(
+                                data.span,
+                                "unsatisfied trait bound introduced in this `derive` macro",
+                            );
+                        } else if !data.span.is_dummy() && !data.span.overlaps(self_ty.span) {
+                            spans.push_span_label(
+                                data.span,
+                                "unsatisfied trait bound introduced here",
+                            );
+                        }
+                        err.span_note(spans, &msg);
                     }
-                    _ => err.note(&msg),
+                    _ => {
+                        err.note(&msg);
+                    }
                 };
 
                 if let Some(file) = file {

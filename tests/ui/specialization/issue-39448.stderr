@@ -18,12 +18,17 @@ note: required for `T` to implement `FromA<U>`
   --> $DIR/issue-39448.rs:24:29
    |
 LL | impl<T: A, U: A + FromA<T>> FromA<T> for U {
-   |                             ^^^^^^^^     ^
+   |                   --------  ^^^^^^^^     ^
+   |                   |
+   |                   unsatisfied trait bound introduced here
 note: required for `U` to implement `ToA<T>`
   --> $DIR/issue-39448.rs:34:12
    |
 LL | impl<T, U> ToA<U> for T
    |            ^^^^^^     ^
+LL | where
+LL |     U: FromA<T>,
+   |        -------- unsatisfied trait bound introduced here
 
 error: aborting due to previous error; 1 warning emitted
 
