@@ -261,6 +261,9 @@ impl CleanupKind {
     }
 }
 
+/// MSVC requires unwinding code to be split to a tree of *funclets*, where each funclet can only
+/// branch to itself or to its parent. Luckily, the code we generates matches this pattern.
+/// Recover that structure in an analyze pass.
 pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(
         result: &mut IndexVec<mir::BasicBlock, CleanupKind>,

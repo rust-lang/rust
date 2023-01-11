@@ -344,14 +344,14 @@ cc = ["@BoxyUwU"]
 
 [mentions."compiler/rustc_trait_selection/src/solve/"]
 message = "Some changes occurred to the core trait solver"
-cc = ["@lcnr"]
+cc = ["@lcnr", "@compiler-errors"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/engine.rs"]
 message = """
 Some changes occurred in engine.rs, potentially modifying the public API \
 of `ObligationCtxt`.
 """
-cc = ["@lcnr"]
+cc = ["@lcnr", "@compiler-errors"]
 
 [mentions."compiler/rustc_error_codes/src/error_codes.rs"]
 message = "Some changes occurred in diagnostic error codes"
@@ -487,12 +487,10 @@ libs = [
 ]
 bootstrap = [
     "@Mark-Simulacrum",
-    "@jyn514",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
     "@pietroalbini",
-    "@jyn514",
 ]
 rustdoc = [
     "@jsha",

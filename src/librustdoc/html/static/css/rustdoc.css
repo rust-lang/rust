@@ -338,6 +338,10 @@ pre {
 .item-decl pre {
 	overflow-x: auto;
 }
+/* This rule allows to have scrolling on the X axis. */
+.item-decl .type-contents-toggle {
+	contain: initial;
+}
 
 .source .content pre {
 	padding: 20px;

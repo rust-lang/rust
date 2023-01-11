@@ -253,6 +253,19 @@ impl Level {
         }
     }
 
+    pub fn to_cmd_flag(self) -> &'static str {
+        match self {
+            Level::Warn => "-W",
+            Level::Deny => "-D",
+            Level::Forbid => "-F",
+            Level::Allow => "-A",
+            Level::ForceWarn(_) => "--force-warn",
+            Level::Expect(_) => {
+                unreachable!("the expect level does not have a commandline flag")
+            }
+        }
+    }
+
     pub fn is_error(self) -> bool {
         match self {
             Level::Allow | Level::Expect(_) | Level::Warn | Level::ForceWarn(_) => false,

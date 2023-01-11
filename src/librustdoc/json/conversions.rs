@@ -252,7 +252,6 @@ pub(crate) fn from_item_id_with_name(item_id: ItemId, tcx: TyCtxt<'_>, name: Opt
         ItemId::Auto { for_, trait_ } => {
             Id(format!("a:{}-{}", DisplayDefId(trait_, tcx, None), DisplayDefId(for_, tcx, name)))
         }
-        ItemId::Primitive(_, _) => unreachable!(),
     }
 }
 

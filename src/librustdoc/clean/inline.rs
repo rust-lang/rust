@@ -600,7 +600,9 @@ fn build_module_items(
                 items.push(clean::Item {
                     name: None,
                     attrs: Box::new(clean::Attributes::default()),
-                    item_id: ItemId::Primitive(prim_ty, did.krate),
+                    // We can use the item's `DefId` directly since the only information ever used
+                    // from it is `DefId.krate`.
+                    item_id: ItemId::DefId(did),
                     kind: Box::new(clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
                         clean::ImportSource {

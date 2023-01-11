@@ -1102,15 +1102,19 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
 
                     ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-                    | ty::PredicateKind::Clause(ty::Clause::Projection(..))
                     | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..)) => {
-                        let predicate = self.resolve_vars_if_possible(obligation.predicate);
-                        struct_span_err!(
-                            self.tcx.sess,
+                        span_bug!(
                             span,
-                            E0280,
-                            "the requirement `{}` is not satisfied",
-                            predicate
+                            "outlives clauses should not error outside borrowck. obligation: `{:?}`",
+                            obligation
+                        )
+                    }
+
+                    ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
+                        span_bug!(
+                            span,
+                            "projection clauses should be implied from elsewhere. obligation: `{:?}`",
+                            obligation
                         )
                     }
 
