@@ -292,6 +292,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::InlineAsm(asm) => {
                     hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
                 }
+                ExprKind::FormatArgs(fmt) => self.lower_format_args(e.span, fmt),
                 ExprKind::Struct(se) => {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
