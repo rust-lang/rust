@@ -1044,7 +1044,7 @@ impl Config {
         &self.data.cargo_extraEnv
     }
 
-    pub fn check_on_save_extra_env(&self) -> FxHashMap<String, String> {
+    pub fn check_extra_env(&self) -> FxHashMap<String, String> {
         let mut extra_env = self.data.cargo_extraEnv.clone();
         extra_env.extend(self.data.check_extraEnv.clone());
         extra_env
@@ -1165,7 +1165,7 @@ impl Config {
                 FlycheckConfig::CustomCommand {
                     command,
                     args,
-                    extra_env: self.check_on_save_extra_env(),
+                    extra_env: self.check_extra_env(),
                     invocation_strategy: match self.data.check_invocationStrategy {
                         InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
@@ -1210,7 +1210,7 @@ impl Config {
                     CargoFeaturesDef::Selected(it) => it,
                 },
                 extra_args: self.data.check_extraArgs.clone(),
-                extra_env: self.check_on_save_extra_env(),
+                extra_env: self.check_extra_env(),
                 ansi_color_output: self.color_diagnostic_output(),
             },
         }
