@@ -23,7 +23,8 @@ pub struct FormatSpec {
 }
 
 impl Argument {
-    pub fn new(
+    #[inline(always)]
+    pub const fn new(
         position: usize,
         fill: char,
         align: Alignment,
