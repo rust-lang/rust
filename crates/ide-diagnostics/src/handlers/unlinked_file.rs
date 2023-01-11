@@ -1,6 +1,8 @@
 //! Diagnostic emitted for files that aren't part of any crate.
 
-use hir::db::DefDatabase;
+use std::iter;
+
+use hir::{db::DefDatabase, InFile, ModuleSource};
 use ide_db::{
     base_db::{FileId, FileLoader, SourceDatabase, SourceDatabaseExt},
     source_change::SourceChange,
@@ -42,45 +44,106 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
 
     let source_root = ctx.sema.db.source_root(ctx.sema.db.file_source_root(file_id));
     let our_path = source_root.path_for_file(&file_id)?;
-    let (mut module_name, _) = our_path.name_and_extension()?;
-
-    // Candidates to look for:
-    // - `mod.rs`, `main.rs` and `lib.rs` in the same folder
-    // - `$dir.rs` in the parent folder, where `$dir` is the directory containing `self.file_id`
     let parent = our_path.parent()?;
-    let paths = {
-        let parent = if module_name == "mod" {
-            // for mod.rs we need to actually look up one higher
-            // and take the parent as our to be module name
-            let (name, _) = parent.name_and_extension()?;
-            module_name = name;
-            parent.parent()?
-        } else {
-            parent
-        };
-        let mut paths =
-            vec![parent.join("mod.rs")?, parent.join("lib.rs")?, parent.join("main.rs")?];
-
-        // `submod/bla.rs` -> `submod.rs`
-        let parent_mod = (|| {
-            let (name, _) = parent.name_and_extension()?;
-            parent.parent()?.join(&format!("{name}.rs"))
-        })();
-        paths.extend(parent_mod);
-        paths
+    let (module_name, _) = our_path.name_and_extension()?;
+    let (parent, module_name) = if module_name == "mod" {
+        // for mod.rs we need to actually look up one higher
+        // and take the parent as our to be module name
+        let (name, _) = parent.name_and_extension()?;
+        (parent.parent()?, name.to_owned())
+    } else {
+        (parent, module_name.to_owned())
     };
 
-    for &parent_id in paths.iter().filter_map(|path| source_root.file_for_path(path)) {
+    // check crate roots, i.e. main.rs, lib.rs, ...
+    'outer: for &krate in &*ctx.sema.db.relevant_crates(file_id) {
+        let crate_def_map = ctx.sema.db.crate_def_map(krate);
+        if let Some(root_file_id) = crate_def_map[crate_def_map.root()].origin.file_id() {
+            if let Some(path) = source_root.path_for_file(&root_file_id) {
+                let parent2 = path.parent()?;
+                if let Some(rel) = parent.strip_prefix(&parent2) {
+                    let mut current = &crate_def_map[crate_def_map.root()];
+                    for ele in rel.as_ref().components() {
+                        let seg = match ele {
+                            std::path::Component::Normal(seg) => seg.to_str()?,
+                            std::path::Component::RootDir => continue,
+                            // shouldn't occur
+                            _ => continue 'outer,
+                        };
+                        match current.children.iter().find(|(name, _)| name.to_smol_str() == seg) {
+                            Some((_, child)) => {
+                                current = &crate_def_map[*child];
+                            }
+                            None => continue 'outer,
+                        }
+                    }
+                    let InFile { file_id: parent_file_id, value: source } =
+                        current.definition_source(ctx.sema.db);
+                    if let Some(parent_file_id) = parent_file_id.file_id() {
+                        return make_fixes(
+                            ctx.sema.db,
+                            parent_file_id,
+                            source,
+                            &module_name,
+                            file_id,
+                        );
+                    }
+                }
+            }
+        }
+    }
+    // build all parent paths of the form `../module_name/mod.rs` and `../module_name.rs`
+    let paths = iter::successors(Some(parent.clone()), |prev| prev.parent()).filter_map(|path| {
+        let parent = path.parent()?;
+        let (name, _) = path.name_and_extension()?;
+        Some(([parent.join(&format!("{name}.rs"))?, path.join("mod.rs")?], name.to_owned()))
+    });
+    let mut stack = vec![];
+    if let Some(&parent_id) = paths
+        .inspect(|(_, name)| stack.push(name.clone()))
+        .find_map(|(paths, _)| paths.into_iter().find_map(|path| source_root.file_for_path(&path)))
+    {
+        stack.pop();
         for &krate in ctx.sema.db.relevant_crates(parent_id).iter() {
             let crate_def_map = ctx.sema.db.crate_def_map(krate);
-            for (_, module) in crate_def_map.modules() {
-                if module.origin.is_inline() {
-                    // We don't handle inline `mod parent {}`s, they use different paths.
-                    continue;
-                }
-
+            'outer: for (_, module) in crate_def_map.modules() {
                 if module.origin.file_id() == Some(parent_id) {
-                    return make_fixes(ctx.sema.db, parent_id, module_name, file_id);
+                    if module.origin.is_inline() {
+                        continue;
+                    }
+                    if stack.is_empty() {
+                        return make_fixes(
+                            ctx.sema.db,
+                            parent_id,
+                            module.definition_source(ctx.sema.db).value,
+                            &module_name,
+                            file_id,
+                        );
+                    } else {
+                        let mut current = module;
+                        for s in stack.iter().rev() {
+                            match module.children.iter().find(|(name, _)| name.to_smol_str() == s) {
+                                Some((_, child)) => {
+                                    current = &crate_def_map[*child];
+                                }
+                                None => break 'outer,
+                            }
+                        }
+                        let InFile { file_id: parent_file_id, value: source } =
+                            current.definition_source(ctx.sema.db);
+                        if let Some(parent_file_id) = parent_file_id.file_id() {
+                            if current.origin.is_inline() {
+                                return make_fixes(
+                                    ctx.sema.db,
+                                    parent_file_id,
+                                    source,
+                                    &module_name,
+                                    file_id,
+                                );
+                            }
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -92,6 +155,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
 fn make_fixes(
     db: &RootDatabase,
     parent_file_id: FileId,
+    source: ModuleSource,
     new_mod_name: &str,
     added_file_id: FileId,
 ) -> Option<Vec<Assist>> {
@@ -102,14 +166,18 @@ fn make_fixes(
     let mod_decl = format!("mod {new_mod_name};");
     let pub_mod_decl = format!("pub mod {new_mod_name};");
 
-    let ast: ast::SourceFile = db.parse(parent_file_id).tree();
-
     let mut mod_decl_builder = TextEdit::builder();
     let mut pub_mod_decl_builder = TextEdit::builder();
 
+    let mut items = match &source {
+        ModuleSource::SourceFile(it) => it.items(),
+        ModuleSource::Module(it) => it.item_list()?.items(),
+        ModuleSource::BlockExpr(_) => return None,
+    };
+
     // If there's an existing `mod m;` statement matching the new one, don't emit a fix (it's
     // probably `#[cfg]`d out).
-    for item in ast.items() {
+    for item in items.clone() {
         if let ast::Item::Module(m) = item {
             if let Some(name) = m.name() {
                 if m.item_list().is_none() && name.to_string() == new_mod_name {
@@ -121,7 +189,7 @@ fn make_fixes(
     }
 
     // If there are existing `mod m;` items, append after them (after the first group of them, rather).
-    match ast.items().skip_while(|item| !is_outline_mod(item)).take_while(is_outline_mod).last() {
+    match items.clone().skip_while(|item| !is_outline_mod(item)).take_while(is_outline_mod).last() {
         Some(last) => {
             cov_mark::hit!(unlinked_file_append_to_existing_mods);
             let offset = last.syntax().text_range().end();
@@ -130,7 +198,7 @@ fn make_fixes(
         }
         None => {
             // Prepend before the first item in the file.
-            match ast.items().next() {
+            match items.next() {
                 Some(item) => {
                     cov_mark::hit!(unlinked_file_prepend_before_first_item);
                     let offset = item.syntax().text_range().start();
@@ -140,7 +208,13 @@ fn make_fixes(
                 None => {
                     // No items in the file, so just append at the end.
                     cov_mark::hit!(unlinked_file_empty_file);
-                    let offset = ast.syntax().text_range().end();
+                    let offset = match &source {
+                        ModuleSource::SourceFile(it) => it.syntax().text_range().end(),
+                        ModuleSource::Module(it) => {
+                            it.item_list()?.r_curly_token()?.text_range().start()
+                        }
+                        ModuleSource::BlockExpr(_) => return None,
+                    };
                     mod_decl_builder.insert(offset, format!("{mod_decl}\n"));
                     pub_mod_decl_builder.insert(offset, format!("{pub_mod_decl}\n"));
                 }
@@ -167,7 +241,6 @@ fn make_fixes(
 
 #[cfg(test)]
 mod tests {
-
     use crate::tests::{check_diagnostics, check_fix, check_fixes, check_no_fix};
 
     #[test]
@@ -330,6 +403,70 @@ $0
 mod foo;
 
 //- /foo.rs
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_insert_into_inline_simple() {
+        check_fix(
+            r#"
+//- /main.rs
+mod bar;
+//- /bar.rs
+mod foo {
+
+}
+//- /bar/foo/baz.rs
+$0
+"#,
+            r#"
+mod foo {
+
+mod baz;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_insert_into_inline_simple_modrs() {
+        check_fix(
+            r#"
+//- /main.rs
+mod bar;
+//- /bar.rs
+mod baz {
+
+}
+//- /bar/baz/foo/mod.rs
+$0
+"#,
+            r#"
+mod baz {
+
+mod foo;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_insert_into_inline_simple_modrs_main() {
+        check_fix(
+            r#"
+//- /main.rs
+mod bar {
+
+}
+//- /bar/foo/mod.rs
+$0
+"#,
+            r#"
+mod bar {
+
+mod foo;
+}
 "#,
         );
     }

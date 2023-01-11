@@ -356,6 +356,14 @@ impl HirFileId {
         }
     }
 
+    #[inline]
+    pub fn file_id(self) -> Option<FileId> {
+        match self.0 & Self::MACRO_FILE_TAG_MASK {
+            0 => Some(FileId(self.0)),
+            _ => None,
+        }
+    }
+
     fn repr(self) -> HirFileIdRepr {
         match self.0 & Self::MACRO_FILE_TAG_MASK {
             0 => HirFileIdRepr::FileId(FileId(self.0)),
