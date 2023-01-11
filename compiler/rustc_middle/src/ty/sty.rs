@@ -100,6 +100,13 @@ impl BoundRegionKind {
 
         None
     }
+
+    pub fn get_id(&self) -> Option<DefId> {
+        match *self {
+            BoundRegionKind::BrNamed(id, _) => return Some(id),
+            _ => None,
+        }
+    }
 }
 
 pub trait Article {
