@@ -577,6 +577,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify::SimplifyCfg::new("final")),
             &nrvo::RenameReturnPlace,
             &simplify::SimplifyLocals::new("final"),
+            &o1(simplify::SimplifyCfg::new("final")),
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
