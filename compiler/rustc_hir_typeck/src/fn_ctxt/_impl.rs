@@ -10,6 +10,9 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, GenericArg, Node, QPath};
+use rustc_hir_analysis::astconv::generics::{
+    check_generic_arg_count_for_call, create_substs_for_generic_args,
+};
 use rustc_hir_analysis::astconv::{
     AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, IsMethodCall, PathSeg,
@@ -1067,7 +1070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            let arg_count = <dyn AstConv<'_>>::check_generic_arg_count_for_call(
+            let arg_count = check_generic_arg_count_for_call(
                 tcx,
                 span,
                 def_id,
@@ -1233,7 +1236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let substs_raw = self_ctor_substs.unwrap_or_else(|| {
-            <dyn AstConv<'_>>::create_substs_for_generic_args(
+            create_substs_for_generic_args(
                 tcx,
                 def_id,
                 &[],
