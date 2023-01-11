@@ -251,19 +251,18 @@ impl Attrs {
                 let enum_ = &item_tree[loc.id.value];
 
                 let cfg_options = &crate_graph[krate].cfg_options;
-                let mut idx = 0;
-                let Some(variant) = enum_.variants.clone().find(|variant| {
+
+                let Some(variant) = enum_.variants.clone().filter(|variant| {
                     let attrs = item_tree.attrs(db, krate, (*variant).into());
-                    if attrs.is_cfg_enabled(cfg_options) {
-                        if it.local_id == Idx::from_raw(RawIdx::from(idx)) {
-                            return true
-                        }
-                        idx += 1;
-                    }
-                    false
-                }) else {
+                    attrs.is_cfg_enabled(cfg_options)
+                })
+                .zip(0u32..)
+                .find(|(_variant, idx)| it.local_id == Idx::from_raw(RawIdx::from(*idx)))
+                .map(|(variant, _idx)| variant)
+                else {
                     return Arc::new(res);
                 };
+
                 (item_tree[variant].fields.clone(), item_tree, krate)
             }
             VariantId::StructId(it) => {
