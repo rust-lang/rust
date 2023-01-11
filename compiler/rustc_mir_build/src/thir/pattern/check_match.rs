@@ -208,9 +208,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
             // when the iterator is an uninhabited type. unreachable_code will trigger instead.
             hir::MatchSource::ForLoopDesugar if arms.len() == 1 => {}
-            hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
-                report_arm_reachability(&cx, &report)
-            }
+            hir::MatchSource::ForLoopDesugar
+            | hir::MatchSource::Normal
+            | hir::MatchSource::FormatArgs => report_arm_reachability(&cx, &report),
             // Unreachable patterns in try and await expressions occur when one of
             // the arms are an uninhabited type. Which is OK.
             hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
