@@ -139,6 +139,6 @@ impl Backoff {
     /// Returns `true` if quadratic backoff has completed and blocking the thread is advised.
     #[inline]
     pub fn is_completed(&self) -> bool {
-        self.step.get() > YIELD_LIMIT
+        self.step.get() > SPIN_LIMIT
     }
 }
