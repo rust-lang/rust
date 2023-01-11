@@ -1600,17 +1600,15 @@ impl ModCollector<'_, '_> {
                         FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
 
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
-                    if self.def_collector.is_proc_macro {
-                        if self.module_id == def_map.root {
-                            if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
-                                let crate_root = def_map.module_id(def_map.root);
-                                self.def_collector.export_proc_macro(
-                                    proc_macro,
-                                    ItemTreeId::new(self.tree_id, id),
-                                    fn_id,
-                                    crate_root,
-                                );
-                            }
+                    if self.def_collector.is_proc_macro && self.module_id == def_map.root {
+                        if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
+                            let crate_root = def_map.module_id(def_map.root);
+                            self.def_collector.export_proc_macro(
+                                proc_macro,
+                                ItemTreeId::new(self.tree_id, id),
+                                fn_id,
+                                crate_root,
+                            );
                         }
                     }
 

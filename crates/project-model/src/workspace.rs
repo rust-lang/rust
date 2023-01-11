@@ -366,7 +366,7 @@ impl ProjectWorkspace {
                 _ => None,
             })
             .collect();
-        let ref mut outputs = match WorkspaceBuildScripts::run_once(config, &cargo_ws, progress) {
+        let outputs = &mut match WorkspaceBuildScripts::run_once(config, &cargo_ws, progress) {
             Ok(it) => Ok(it.into_iter()),
             // io::Error is not Clone?
             Err(e) => Err(Arc::new(e)),

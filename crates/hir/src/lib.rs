@@ -472,8 +472,8 @@ impl Module {
         let def_map = self.id.def_map(db.upcast());
         let children = def_map[self.id.local_id]
             .children
-            .iter()
-            .map(|(_, module_id)| Module { id: def_map.module_id(*module_id) })
+            .values()
+            .map(|module_id| Module { id: def_map.module_id(*module_id) })
             .collect::<Vec<_>>();
         children.into_iter()
     }

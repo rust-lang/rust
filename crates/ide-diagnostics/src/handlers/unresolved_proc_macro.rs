@@ -34,10 +34,7 @@ pub(crate) fn unresolved_proc_macro(
     let message = format!(
         "{message}: {}",
         if config_enabled {
-            match def_map.proc_macro_loading_error() {
-                Some(e) => e,
-                None => "proc macro not found in the built dylib",
-            }
+            def_map.proc_macro_loading_error().unwrap_or("proc macro not found in the built dylib")
         } else {
             match d.kind {
                 hir::MacroKind::Attr if proc_macros_enabled => {

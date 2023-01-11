@@ -205,10 +205,8 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
             if expr_stmt.semicolon_token().is_some() {
                 return None;
             }
-        } else {
-            if !ast::StmtList::can_cast(binop.syntax().parent()?.kind()) {
-                return None;
-            }
+        } else if !ast::StmtList::can_cast(binop.syntax().parent()?.kind()) {
+            return None;
         }
 
         let expr = binop.rhs()?;

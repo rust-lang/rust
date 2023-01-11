@@ -64,12 +64,10 @@ pub(super) fn type_info(
             bt_end = if config.markdown() { "```\n" } else { "" }
         )
         .into()
+    } else if config.markdown() {
+        Markup::fenced_block(&original.display(sema.db))
     } else {
-        if config.markdown() {
-            Markup::fenced_block(&original.display(sema.db))
-        } else {
-            original.display(sema.db).to_string().into()
-        }
+        original.display(sema.db).to_string().into()
     };
     res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
     Some(res)

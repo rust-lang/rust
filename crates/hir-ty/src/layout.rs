@@ -251,17 +251,14 @@ fn layout_of_unit(cx: &LayoutCx<'_>, dl: &TargetDataLayout) -> Result<Layout, La
 
 fn struct_tail_erasing_lifetimes(db: &dyn HirDatabase, pointee: Ty) -> Ty {
     match pointee.kind(Interner) {
-        TyKind::Adt(AdtId(adt), subst) => match adt {
-            &hir_def::AdtId::StructId(i) => {
-                let data = db.struct_data(i);
-                let mut it = data.variant_data.fields().iter().rev();
-                match it.next() {
-                    Some((f, _)) => field_ty(db, i.into(), f, subst),
-                    None => pointee,
-                }
+        TyKind::Adt(AdtId(hir_def::AdtId::StructId(i)), subst) => {
+            let data = db.struct_data(*i);
+            let mut it = data.variant_data.fields().iter().rev();
+            match it.next() {
+                Some((f, _)) => field_ty(db, (*i).into(), f, subst),
+                None => pointee,
             }
-            _ => pointee,
-        },
+        }
         _ => pointee,
     }
 }

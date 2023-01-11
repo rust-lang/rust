@@ -494,20 +494,28 @@ impl<'a> FindUsages<'a> {
         }
 
         // Search for `super` and `crate` resolving to our module
-        match self.def {
-            Definition::Module(module) => {
-                let scope = search_scope
-                    .intersection(&SearchScope::module_and_children(self.sema.db, module));
+        if let Definition::Module(module) = self.def {
+            let scope =
+                search_scope.intersection(&SearchScope::module_and_children(self.sema.db, module));
 
-                let is_crate_root =
-                    module.is_crate_root(self.sema.db).then(|| Finder::new("crate"));
-                let finder = &Finder::new("super");
+            let is_crate_root = module.is_crate_root(self.sema.db).then(|| Finder::new("crate"));
+            let finder = &Finder::new("super");
 
-                for (text, file_id, search_range) in scope_files(sema, &scope) {
-                    let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
+            for (text, file_id, search_range) in scope_files(sema, &scope) {
+                let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
 
+                for offset in match_indices(&text, finder, search_range) {
+                    if let Some(iter) = find_nodes("super", &tree, offset) {
+                        for name_ref in iter.filter_map(ast::NameRef::cast) {
+                            if self.found_name_ref(&name_ref, sink) {
+                                return;
+                            }
+                        }
+                    }
+                }
+                if let Some(finder) = &is_crate_root {
                     for offset in match_indices(&text, finder, search_range) {
-                        if let Some(iter) = find_nodes("super", &tree, offset) {
+                        if let Some(iter) = find_nodes("crate", &tree, offset) {
                             for name_ref in iter.filter_map(ast::NameRef::cast) {
                                 if self.found_name_ref(&name_ref, sink) {
                                     return;
@@ -515,20 +523,8 @@ impl<'a> FindUsages<'a> {
                             }
                         }
                     }
-                    if let Some(finder) = &is_crate_root {
-                        for offset in match_indices(&text, finder, search_range) {
-                            if let Some(iter) = find_nodes("crate", &tree, offset) {
-                                for name_ref in iter.filter_map(ast::NameRef::cast) {
-                                    if self.found_name_ref(&name_ref, sink) {
-                                        return;
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
-            _ => (),
         }
 
         // search for module `self` references in our module's definition source
