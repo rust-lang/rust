@@ -140,6 +140,38 @@ fn aarch64_bsd() {
 }
 
 #[test]
+#[cfg(all(target_arch = "aarch64", target_os = "macos"))]
+fn aarch64_macos() {
+    println!("asimd: {:?}", is_aarch64_feature_detected!("asimd"));
+    println!("fp: {:?}", is_aarch64_feature_detected!("fp"));
+    println!("fp16: {:?}", is_aarch64_feature_detected!("fp16"));
+    println!("pmull: {:?}", is_aarch64_feature_detected!("pmull"));
+    println!("crc: {:?}", is_aarch64_feature_detected!("crc"));
+    println!("lse: {:?}", is_aarch64_feature_detected!("lse"));
+    println!("lse2: {:?}", is_aarch64_feature_detected!("lse2"));
+    println!("rdm: {:?}", is_aarch64_feature_detected!("rdm"));
+    println!("rcpc: {:?}", is_aarch64_feature_detected!("rcpc"));
+    println!("rcpc2: {:?}", is_aarch64_feature_detected!("rcpc2"));
+    println!("dotprod: {:?}", is_aarch64_feature_detected!("dotprod"));
+    println!("fhm: {:?}", is_aarch64_feature_detected!("fhm"));
+    println!("flagm: {:?}", is_aarch64_feature_detected!("flagm"));
+    println!("ssbs: {:?}", is_aarch64_feature_detected!("ssbs"));
+    println!("sb: {:?}", is_aarch64_feature_detected!("sb"));
+    println!("paca: {:?}", is_aarch64_feature_detected!("paca"));
+    println!("dpb: {:?}", is_aarch64_feature_detected!("dpb"));
+    println!("dpb2: {:?}", is_aarch64_feature_detected!("dpb2"));
+    println!("frintts: {:?}", is_aarch64_feature_detected!("frintts"));
+    println!("i8mm: {:?}", is_aarch64_feature_detected!("i8mm"));
+    println!("bf16: {:?}", is_aarch64_feature_detected!("bf16"));
+    println!("bti: {:?}", is_aarch64_feature_detected!("bti"));
+    println!("fcma: {:?}", is_aarch64_feature_detected!("fcma"));
+    println!("jsconv: {:?}", is_aarch64_feature_detected!("jsconv"));
+    println!("aes: {:?}", is_aarch64_feature_detected!("aes"));
+    println!("sha2: {:?}", is_aarch64_feature_detected!("sha2"));
+    println!("sha3: {:?}", is_aarch64_feature_detected!("sha3"));
+}
+
+#[test]
 #[cfg(all(target_arch = "powerpc", target_os = "linux"))]
 fn powerpc_linux() {
     println!("altivec: {}", is_powerpc_feature_detected!("altivec"));
