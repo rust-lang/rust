@@ -14,8 +14,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, Binder, BoundConstness, Clause, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate,
-    Ty, TyCtxt,
+    self, Binder, BoundConstness, Clause, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind,
+    TraitPredicate, Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -364,6 +364,15 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     // Derive constrains all generic types to requiring Clone. Check if any type is not constrained for
     // this impl.
     if ty_subs.types().any(|ty| !implements_trait(cx, ty, clone_id, &[])) {
+        return;
+    }
+    // `#[repr(packed)]` structs with type/const parameters can't derive `Clone`.
+    // https://github.com/rust-lang/rust-clippy/issues/10188
+    if ty_adt.repr().packed()
+        && ty_subs
+            .iter()
+            .any(|arg| matches!(arg.unpack(), GenericArgKind::Type(_) | GenericArgKind::Const(_)))
+    {
         return;
     }
 

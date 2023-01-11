@@ -85,4 +85,15 @@ impl<T: Clone, U> Clone for GenericRef<'_, T, U> {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/10188
+#[repr(packed)]
+#[derive(Copy)]
+struct Packed<T>(T);
+
+impl<T: Copy> Clone for Packed<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 fn main() {}
