@@ -201,8 +201,8 @@ OK as long as the mutation is not observable. This is achieved by two things:
 - Before a result is stolen, we make sure to eagerly run all queries that
   might ever need to read that result. This has to be done manually by calling
   those queries.
-- Whenever a query tries to access a stolen result, we make the compiler ICE so
-  that such a condition cannot go unnoticed.
+- Whenever a query tries to access a stolen result, we make an ICE
+  (Internal Compiler Error) so that such a condition cannot go unnoticed.
 
 This is not an ideal setup because of the manual intervention needed, so it
 should be used sparingly and only when it is well known which queries might
