@@ -1193,7 +1193,7 @@ impl Step for Sysroot {
             );
             if builder.config.rust_remap_debuginfo {
                 eprintln!(
-                    "warning: some `src/test/ui` tests will fail when lacking `{}`",
+                    "warning: some `tests/ui` tests will fail when lacking `{}`",
                     sysroot_lib_rustlib_src_rust.display(),
                 );
             }

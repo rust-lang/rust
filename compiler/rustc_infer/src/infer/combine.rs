@@ -219,7 +219,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// As `3 + 4` contains `N` in its substs, this must not succeed.
     ///
-    /// See `src/test/ui/const-generics/occurs-check/` for more examples where this is relevant.
+    /// See `tests/ui/const-generics/occurs-check/` for more examples where this is relevant.
     #[instrument(level = "debug", skip(self))]
     fn unify_const_variable(
         &self,

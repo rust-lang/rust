@@ -56,14 +56,14 @@ ENV SCRIPT ../x.py --stage 2 test --exclude src/tools/tidy && \
            # the PR is approved and tested for merging.
            # It will also detect tests lacking `// EMIT_MIR_FOR_EACH_BIT_WIDTH`,
            # despite having different output on 32-bit vs 64-bit targets.
-           ../x --stage 2 test src/test/mir-opt \
+           ../x --stage 2 test tests/mir-opt \
                              --host='' --target=i686-unknown-linux-gnu && \
            # Run the UI test suite again, but in `--pass=check` mode
            #
            # This is intended to make sure that both `--pass=check` continues to
            # work.
            #
-           ../x.ps1 --stage 2 test src/test/ui --pass=check \
+           ../x.ps1 --stage 2 test tests/ui --pass=check \
                              --host='' --target=i686-unknown-linux-gnu && \
            # Run tidy at the very end, after all the other tests.
            python2.7 ../x.py --stage 2 test src/tools/tidy

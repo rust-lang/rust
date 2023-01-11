@@ -707,7 +707,7 @@ h2.small-section-header > .anchor {
 
 /*  In most contexts we use `overflow-wrap: anywhere` to ensure that we can wrap
 	as much as needed on mobile (see
-	src/test/rustdoc-gui/type-declaration-overflow.goml for an example of why
+	tests/rustdoc-gui/type-declaration-overflow.goml for an example of why
 	this matters). The `anywhere` value means:
 
 	"Soft wrap opportunities introduced by the word break are considered when

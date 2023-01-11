@@ -144,7 +144,7 @@ pub fn setup(config: &Config, profile: Profile) {
         Profile::Tools => &[
             "check",
             "build",
-            "test src/test/rustdoc*",
+            "test tests/rustdoc*",
             "test src/tools/clippy",
             "test src/tools/miri",
             "test src/tools/rustfmt",

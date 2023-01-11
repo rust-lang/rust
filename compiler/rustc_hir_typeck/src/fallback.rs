@@ -308,7 +308,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
             if relationship.self_in_trait && relationship.output {
                 // This case falls back to () to ensure that the code pattern in
-                // src/test/ui/never_type/fallback-closure-ret.rs continues to
+                // tests/ui/never_type/fallback-closure-ret.rs continues to
                 // compile when never_type_fallback is enabled.
                 //
                 // This rule is not readily explainable from first principles,

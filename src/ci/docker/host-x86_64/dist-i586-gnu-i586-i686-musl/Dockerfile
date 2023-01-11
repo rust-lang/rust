@@ -48,7 +48,7 @@ RUN CC=gcc CFLAGS="-m32 -Wa,-mrelax-relocations=no" \
     rm -rf /build
 
 # FIXME: musl really shouldn't be linking libgcc_s.so, as it's linked to glibc,
-# but it's required by src/test/ui/proc-macro/crt-static.rs. Ubuntu:16.04 gcc-5
+# but it's required by tests/ui/proc-macro/crt-static.rs. Ubuntu:16.04 gcc-5
 # had libgcc_s.so as a symlink to the absolute libgcc_s.so.1, but now it's an
 # ld-script that expects to find libgcc_s.so.1 in the library search path.
 # See also https://github.com/rust-lang/rust/issues/82521

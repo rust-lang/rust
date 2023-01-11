@@ -1855,7 +1855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut expectation = Some(expected_ty);
         while let hir::ExprKind::MethodCall(_, rcvr, ..) = expr.kind {
             // Getting to the root receiver and asserting it is a fn call let's us ignore cases in
-            // `src/test/ui/methods/issues/issue-90315.stderr`.
+            // `tests/ui/methods/issues/issue-90315.stderr`.
             expr = rcvr;
             // If we have more than one layer of calls, then the expected ty
             // cannot guide the method probe.

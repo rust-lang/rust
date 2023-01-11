@@ -1737,7 +1737,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 /// We check that there's a single level of block nesting to ensure always correct
                 /// suggestions. If we don't, then we only provide a free-form message to avoid
-                /// misleading users in cases like `src/test/ui/nll/borrowed-temporary-error.rs`.
+                /// misleading users in cases like `tests/ui/nll/borrowed-temporary-error.rs`.
                 /// We could expand the analysis to suggest hoising all of the relevant parts of
                 /// the users' code to make the code compile, but that could be too much.
                 struct NestedStatementVisitor {

@@ -120,12 +120,12 @@ trigger_files = [
     "src/rustdoc-json-types",
 
     # Tests
-    "src/test/rustdoc",
-    "src/test/rustdoc-ui",
-    "src/test/rustdoc-gui",
-    "src/test/rustdoc-js",
-    "src/test/rustdoc-js-std",
-    "src/test/rustdoc-json",
+    "tests/rustdoc",
+    "tests/rustdoc-ui",
+    "tests/rustdoc-gui",
+    "tests/rustdoc-js",
+    "tests/rustdoc-js-std",
+    "tests/rustdoc-json",
 
     # Internal tooling
     "src/etc/htmldocck.py",
@@ -143,7 +143,7 @@ exclude_labels = [
 trigger_files = [
     "src/librustdoc/json/",
     "src/rustdoc-json-types",
-    "src/test/rustdoc-json",
+    "tests/rustdoc-json",
     "src/tools/jsondocck",
     "src/tools/jsondoclint",
 ]
@@ -154,7 +154,7 @@ trigger_files = [
     "compiler",
 
     # Tests
-    "src/test/ui",
+    "tests/ui",
 ]
 exclude_labels = [
     "T-*",
@@ -601,7 +601,7 @@ fallback = [
 "/src/llvm-project" =                        ["@cuviper"]
 "/src/rustdoc-json-types" =                  ["rustdoc"]
 "/src/stage0.json" =                         ["bootstrap"]
-"/src/test/ui" =                             ["compiler"]
+"/tests/ui" =                                ["compiler"]
 "/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
 "/src/tools/compiletest" =                   ["bootstrap"]
 "/src/tools/linkchecker" =                   ["@ehuss"]

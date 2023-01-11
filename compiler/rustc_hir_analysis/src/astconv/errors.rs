@@ -267,7 +267,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
                 // This would otherwise cause an invalid suggestion. For an example, look at
-                // `src/test/ui/issues/issue-28344.rs` where instead of the following:
+                // `tests/ui/issues/issue-28344.rs` where instead of the following:
                 //
                 //   error[E0191]: the value of the associated type `Output`
                 //                 (from trait `std::ops::BitXor`) must be specified

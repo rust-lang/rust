@@ -262,7 +262,7 @@ async function main(argv) {
             console.log("");
             console.log(
                 "`browser-ui-test` crashed unexpectedly. Please try again with adding `--test-args \
---no-sandbox` at the end. For example: `x.py test src/test/rustdoc-gui --test-args --no-sandbox`");
+--no-sandbox` at the end. For example: `x.py test tests/rustdoc-gui --test-args --no-sandbox`");
             console.log("");
         }
     };

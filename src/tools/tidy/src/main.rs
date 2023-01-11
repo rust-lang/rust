@@ -25,6 +25,7 @@ fn main() {
             .expect("concurrency must be a number");
 
     let src_path = root_path.join("src");
+    let tests_path = root_path.join("tests");
     let library_path = root_path.join("library");
     let compiler_path = root_path.join("compiler");
     let librustdoc_path = src_path.join("librustdoc");
@@ -68,16 +69,16 @@ fn main() {
             }
         }
 
-        check!(target_specific_tests, &src_path);
+        check!(target_specific_tests, &tests_path);
 
         // Checks that are done on the cargo workspace.
         check!(deps, &root_path, &cargo);
         check!(extdeps, &root_path);
 
         // Checks over tests.
-        check!(debug_artifacts, &src_path);
-        check!(ui_tests, &src_path);
-        check!(mir_opt_tests, &src_path, bless);
+        check!(debug_artifacts, &tests_path);
+        check!(ui_tests, &tests_path);
+        check!(mir_opt_tests, &tests_path, bless);
 
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);
@@ -88,6 +89,7 @@ fn main() {
 
         // Checks that need to be done for both the compiler and std libraries.
         check!(unit_tests, &src_path);
+        check!(unit_tests, &tests_path);
         check!(unit_tests, &compiler_path);
         check!(unit_tests, &library_path);
 
@@ -96,14 +98,17 @@ fn main() {
         }
 
         check!(style, &src_path);
+        check!(style, &tests_path);
         check!(style, &compiler_path);
         check!(style, &library_path);
 
         check!(edition, &src_path);
         check!(edition, &compiler_path);
         check!(edition, &library_path);
+        check!(edition, &tests_path);
 
         check!(alphabetical, &src_path);
+        check!(alphabetical, &tests_path);
         check!(alphabetical, &compiler_path);
         check!(alphabetical, &library_path);
 
@@ -113,7 +118,14 @@ fn main() {
             drain_handles(&mut handles);
 
             let mut flag = false;
-            let r = features::check(&src_path, &compiler_path, &library_path, &mut flag, verbose);
+            let r = features::check(
+                &src_path,
+                &tests_path,
+                &compiler_path,
+                &library_path,
+                &mut flag,
+                verbose,
+            );
             if flag {
                 bad.store(true, Ordering::Relaxed);
             }

@@ -689,8 +689,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // call (like the identity function), as otherwise type and lifetime
         // inference have a hard time figuring things out.
         // Without this, we would get:
-        // E0720 in src/test/ui/impl-trait/in-trait/default-body-with-rpit.rs
-        // E0700 in src/test/ui/self/self_lifetime-async.rs
+        // E0720 in tests/ui/impl-trait/in-trait/default-body-with-rpit.rs
+        // E0700 in tests/ui/self/self_lifetime-async.rs
 
         // `future::identity_future`:
         let identity_future =

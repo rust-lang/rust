@@ -246,7 +246,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             // This list should ideally be sourced from rustfmt.toml but we don't want to add a toml
             // parser to tidy.
             !file.ancestors().any(|a| {
-                a.ends_with("src/test") ||
+                (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists()) ||
                     a.ends_with("src/doc/book")
             });
 
@@ -324,9 +324,10 @@ pub fn check(path: &Path, bad: &mut bool) {
 
             if trimmed.contains("dbg!")
                 && !trimmed.starts_with("//")
-                && !file
-                    .ancestors()
-                    .any(|a| a.ends_with("src/test") || a.ends_with("library/alloc/tests"))
+                && !file.ancestors().any(|a| {
+                    (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
+                        || a.ends_with("library/alloc/tests")
+                })
                 && filename != "tests.rs"
             {
                 suppressible_tidy_err!(

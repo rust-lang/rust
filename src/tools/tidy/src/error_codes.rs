@@ -8,7 +8,7 @@
 //!   - The explanation is expected to contain a `doctest` that fails with the correct error code. (`EXEMPT_FROM_DOCTEST` *currently* bypasses this check)
 //!   - Note that other stylistic conventions for markdown files are checked in the `style.rs` tidy check.
 //!
-//! 3. We check that the error code has a UI test in `src/test/ui/error-codes/`.
+//! 3. We check that the error code has a UI test in `tests/ui/error-codes/`.
 //!   - We ensure that there is both a `Exxxx.rs` file and a corresponding `Exxxx.stderr` file.
 //!   - We also ensure that the error code is used in the tests.
 //!   - *Currently*, it is possible to opt-out of this check with the `EXEMPTED_FROM_TEST` constant.
@@ -24,7 +24,7 @@ use crate::walk::{filter_dirs, walk, walk_many};
 
 const ERROR_CODES_PATH: &str = "compiler/rustc_error_codes/src/error_codes.rs";
 const ERROR_DOCS_PATH: &str = "compiler/rustc_error_codes/src/error_codes/";
-const ERROR_TESTS_PATH: &str = "src/test/ui/error-codes/";
+const ERROR_TESTS_PATH: &str = "tests/ui/error-codes/";
 
 // Error codes that (for some reason) can't have a doctest in their explanation. Error codes are still expected to provide a code example, even if untested.
 const IGNORE_DOCTEST_CHECK: &[&str] =
@@ -270,14 +270,14 @@ fn check_error_codes_tests(
         if !test_path.exists() && !IGNORE_UI_TEST_CHECK.contains(&code.as_str()) {
             verbose_print!(
                 verbose,
-                "warning: Error code `{code}` needs to have at least one UI test in the `src/test/ui/error-codes/` directory`!"
+                "warning: Error code `{code}` needs to have at least one UI test in the `tests/error-codes/` directory`!"
             );
             continue;
         }
         if IGNORE_UI_TEST_CHECK.contains(&code.as_str()) {
             if test_path.exists() {
                 errors.push(format!(
-                    "Error code `{code}` has a UI test in `src/test/ui/error-codes/{code}.rs`, it shouldn't be listed in `EXEMPTED_FROM_TEST`!"
+                    "Error code `{code}` has a UI test in `tests/ui/error-codes/{code}.rs`, it shouldn't be listed in `EXEMPTED_FROM_TEST`!"
                 ));
             }
             continue;
