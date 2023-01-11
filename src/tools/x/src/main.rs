@@ -52,14 +52,6 @@ fn exec_or_status(command: &mut Command) -> io::Result<ExitStatus> {
 }
 
 fn main() {
-    match env::args().skip(1).next().as_deref() {
-        Some("--wrapper-version") => {
-            let version = env!("CARGO_PKG_VERSION");
-            println!("{}", version);
-            return;
-        }
-        _ => {}
-    }
     let current = match env::current_dir() {
         Ok(dir) => dir,
         Err(err) => {

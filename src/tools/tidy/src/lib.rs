@@ -68,4 +68,3 @@ pub mod ui_tests;
 pub mod unit_tests;
 pub mod unstable_book;
 pub mod walk;
-pub mod x_version;
