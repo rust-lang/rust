@@ -8,7 +8,9 @@ note: required for `T` to implement `~const A`
   --> $DIR/specializing-constness-2.rs:20:37
    |
 LL | impl<T: Default + ~const Sup> const A for T {
-   |                                     ^     ^
+   |                   ----------        ^     ^
+   |                   |
+   |                   unsatisfied trait bound introduced here
 help: consider further restricting this bound
    |
 LL | const fn generic<T: Default + ~const Sup>() {

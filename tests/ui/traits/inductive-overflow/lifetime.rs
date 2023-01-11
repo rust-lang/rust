@@ -16,6 +16,7 @@ struct C<'a>(&'a ());
 struct X<T: Y>(T::P);
 
 impl<T: NotAuto> NotAuto for Box<T> {} //~ NOTE: required
+//~^ NOTE unsatisfied trait bound introduced here
 impl<T: Y> NotAuto for X<T> where T::P: NotAuto {}
 impl<'a> NotAuto for C<'a> {}
 

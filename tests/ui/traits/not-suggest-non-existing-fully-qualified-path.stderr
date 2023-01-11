@@ -27,6 +27,9 @@ note: required for `A<B>` to implement `V<_>`
    |
 LL | impl<T, U> V<U> for A<T>
    |            ^^^^     ^^^^
+LL | where
+LL |     T: I<U>,
+   |        ---- unsatisfied trait bound introduced here
 help: try using a fully qualified path to specify the expected types
    |
 LL |     <A<B> as V<U>>::method(a);

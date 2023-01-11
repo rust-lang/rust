@@ -10,6 +10,9 @@ note: required for `Wrapper<P>` to implement `for<'b> Wrap<'b>`
    |
 LL | impl<'b, P> Wrap<'b> for Wrapper<P>
    |             ^^^^^^^^     ^^^^^^^^^^
+LL | where P: Process<'b>,
+LL |       <P as Process<'b>>::Item: Iterator {
+   |                                 -------- unsatisfied trait bound introduced here
    = note: required for the cast from `Wrapper<P>` to the object type `dyn for<'b> Wrap<'b>`
 help: consider further restricting the associated type
    |

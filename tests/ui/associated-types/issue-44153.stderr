@@ -14,6 +14,8 @@ note: required for `()` to implement `Visit`
    |
 LL | impl<'a> Visit for () where
    |          ^^^^^     ^^
+LL |     (): Array<Element=&'a ()>,
+   |               -------------- unsatisfied trait bound introduced here
 
 error: aborting due to previous error
 

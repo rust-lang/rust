@@ -30,6 +30,7 @@ pub trait Access<T> {
 }
 impl<T, A: Access<T>, P: Deref<Target = A>> Access<T> for P {
     //~^ NOTE: required for `Arc<ArcSwapAny<Arc<usize>>>` to implement `Access<_>`
+    //~| NOTE unsatisfied trait bound introduced here
     type Guard = A::Guard;
 }
 impl<T> Access<T> for ArcSwapAny<T> {

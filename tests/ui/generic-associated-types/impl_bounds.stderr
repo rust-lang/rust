@@ -31,7 +31,7 @@ note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:10:10
    |
 LL | #[derive(Copy, Clone)]
-   |          ^^^^
+   |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
 note: the requirement `Fooy<T>: Copy` appears on the `impl`'s associated type `C` but not on the corresponding trait's associated type
   --> $DIR/impl_bounds.rs:6:10
    |
@@ -56,7 +56,7 @@ note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:10:10
    |
 LL | #[derive(Copy, Clone)]
-   |          ^^^^
+   |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
 note: the requirement `Fooy<T>: Copy` appears on the `impl`'s method `d` but not on the corresponding trait's method
   --> $DIR/impl_bounds.rs:7:8
    |

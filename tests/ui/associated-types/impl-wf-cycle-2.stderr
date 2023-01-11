@@ -9,6 +9,9 @@ note: required for `(T,)` to implement `Grault`
    |
 LL | impl<T: Grault> Grault for (T,)
    |                 ^^^^^^     ^^^^
+...
+LL |     Self::A: Copy,
+   |              ---- unsatisfied trait bound introduced here
 
 error: aborting due to previous error
 

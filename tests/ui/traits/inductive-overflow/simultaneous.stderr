@@ -8,7 +8,9 @@ note: required for `{integer}` to implement `Combo`
   --> $DIR/simultaneous.rs:11:34
    |
 LL | impl<T: Tweedledee + Tweedledum> Combo for T {}
-   |                                  ^^^^^     ^
+   |                      ----------  ^^^^^     ^
+   |                      |
+   |                      unsatisfied trait bound introduced here
 note: required by a bound in `is_ee`
   --> $DIR/simultaneous.rs:13:13
    |

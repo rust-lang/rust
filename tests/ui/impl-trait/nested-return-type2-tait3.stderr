@@ -9,7 +9,9 @@ note: required for `[closure@$DIR/nested-return-type2-tait3.rs:26:5: 26:7]` to i
   --> $DIR/nested-return-type2-tait3.rs:14:31
    |
 LL | impl<R: Duh, F: FnMut() -> R> Trait for F {
-   |                               ^^^^^     ^
+   |         ---                   ^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
 
 error: aborting due to previous error
 

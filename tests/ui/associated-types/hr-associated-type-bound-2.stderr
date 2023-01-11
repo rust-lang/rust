@@ -10,6 +10,9 @@ note: required for `u32` to implement `for<'b> X<'b>`
    |
 LL | impl X<'_> for u32
    |      ^^^^^     ^^^
+LL | where
+LL |     for<'b> <Self as X<'b>>::U: Clone,
+   |                                 ----- unsatisfied trait bound introduced here
    = note: 128 redundant requirements hidden
    = note: required for `u32` to implement `for<'b> X<'b>`
 

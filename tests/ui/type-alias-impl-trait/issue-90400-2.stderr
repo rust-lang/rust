@@ -8,7 +8,9 @@ note: required for `MyBaz<B>` to implement `Baz`
   --> $DIR/issue-90400-2.rs:30:14
    |
 LL | impl<B: Bar> Baz for MyBaz<B> {
-   |              ^^^     ^^^^^^^^
+   |         ---  ^^^     ^^^^^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
 help: consider restricting type parameter `B`
    |
 LL |     type FooFn<B: Bar> = impl Baz;
