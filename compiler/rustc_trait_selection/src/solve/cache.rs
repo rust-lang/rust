@@ -11,22 +11,37 @@
 use super::overflow::OverflowData;
 use super::{CanonicalGoal, Certainty, MaybeCause, Response};
 use super::{EvalCtxt, QueryResult};
-
 use rustc_data_structures::fx::FxHashMap;
+use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarKind, CanonicalVarValues};
 use rustc_middle::ty::{self, TyCtxt};
-use std::{cmp::Ordering, collections::hash_map::Entry};
+use std::collections::hash_map::Entry;
+
+rustc_index::newtype_index! {
+    pub struct StackDepth {}
+}
+rustc_index::newtype_index! {
+    pub struct EntryIndex {}
+}
 
 #[derive(Debug, Clone)]
 struct ProvisionalEntry<'tcx> {
     // In case we have a coinductive cycle, this is the
     // the currently least restrictive result of this goal.
     response: QueryResult<'tcx>,
-    // The lowest element on the stack on which this result
-    // relies on. Starts out as just being the depth at which
-    // we've proven this obligation, but gets lowered to the
-    // depth of another goal if we rely on it in a cycle.
-    depth: usize,
+    // In case of a cycle, the depth of lowest stack entry involved
+    // in that cycle. This is monotonically decreasing in the stack as all
+    // elements between the current stack element in the lowest stack entry
+    // involved have to also be involved in that cycle.
+    //
+    // We can only move entries to the global cache once we're complete done
+    // with the cycle. If this entry has not been involved in a cycle,
+    // this is just its own depth.
+    depth: StackDepth,
+
+    // The goal for this entry. Should always be equal to the corresponding goal
+    // in the lookup table.
+    goal: CanonicalGoal<'tcx>,
 }
 
 struct StackElem<'tcx> {
@@ -34,61 +49,22 @@ struct StackElem<'tcx> {
     has_been_used: bool,
 }
 
-/// The cache used for goals which are currently in progress or which depend
-/// on in progress results.
-///
-/// Once we're done with a goal we can store it in the global trait solver
-/// cache of the `TyCtxt`. For goals which we're currently proving, or which
-/// have only been proven via a coinductive cycle using a goal still on our stack
-/// we have to use this separate data structure.
-///
-/// The current data structure is not perfect, so there may still be room for
-/// improvement here. We have the following requirements:
-///
-/// ## Is there is a provisional entry for the given goal:
-///
-/// ```ignore (for syntax highlighting)
-/// self.entries.get(goal)
-/// ```
-///
-/// ## Get all goals on the stack involved in a cycle:
-///
-/// ```ignore (for syntax highlighting)
-/// let entry = self.entries.get(goal).unwrap();
-/// let involved_goals = self.stack.iter().skip(entry.depth);
-/// ```
-///
-/// ## Capping the depth of all entries
-///
-/// Needed whenever we encounter a cycle. The current implementation always
-/// iterates over all entries instead of only the ones with a larger depth.
-/// Changing this may result in notable performance improvements.
-///
-/// ```ignore (for syntax highlighting)
-/// let cycle_depth = self.entries.get(goal).unwrap().depth;
-/// for e in &mut self.entries {
-///     e.depth = e.depth.min(cycle_depth);
-/// }
-/// ```
-///
-/// ## Checking whether we have to rerun the current goal
-///
-/// A goal has to be rerun if its provisional result was used in a cycle
-/// and that result is different from its final result. We update
-/// [StackElem::has_been_used] for the deepest stack element involved in a cycle.
-///
-/// ## Moving all finished goals into the global cache
-///
-/// If `stack_elem.has_been_used` is true, iterate over all entries, moving the ones
-/// with equal depth. If not, simply move this single entry.
 pub(super) struct ProvisionalCache<'tcx> {
-    stack: Vec<StackElem<'tcx>>,
-    entries: FxHashMap<CanonicalGoal<'tcx>, ProvisionalEntry<'tcx>>,
+    stack: IndexVec<StackDepth, StackElem<'tcx>>,
+    entries: IndexVec<EntryIndex, ProvisionalEntry<'tcx>>,
+    // FIXME: This is only used to quickly check whether a given goal
+    // is in the cache. We should experiment with using something like
+    // `SsoHashSet` here because in most cases there are only a few entries.
+    lookup_table: FxHashMap<CanonicalGoal<'tcx>, EntryIndex>,
 }
 
 impl<'tcx> ProvisionalCache<'tcx> {
     pub(super) fn empty() -> ProvisionalCache<'tcx> {
-        ProvisionalCache { stack: Vec::new(), entries: Default::default() }
+        ProvisionalCache {
+            stack: Default::default(),
+            entries: Default::default(),
+            lookup_table: Default::default(),
+        }
     }
 
     pub(super) fn current_depth(&self) -> usize {
@@ -108,18 +84,17 @@ impl<'tcx> EvalCtxt<'tcx> {
 
         // Look at the provisional cache to check for cycles.
         let cache = &mut self.provisional_cache;
-        match cache.entries.entry(goal) {
+        match cache.lookup_table.entry(goal) {
             // No entry, simply push this goal on the stack after dealing with overflow.
             Entry::Vacant(v) => {
                 if self.overflow_data.has_overflow(cache.stack.len()) {
                     return Err(self.deal_with_overflow(goal));
                 }
 
-                v.insert(ProvisionalEntry {
-                    response: response_no_constraints(self.tcx, goal, Certainty::Yes),
-                    depth: cache.stack.len(),
-                });
-                cache.stack.push(StackElem { goal, has_been_used: false });
+                let depth = cache.stack.push(StackElem { goal, has_been_used: false });
+                let response = response_no_constraints(self.tcx, goal, Certainty::Yes);
+                let entry_index = cache.entries.push(ProvisionalEntry { response, depth, goal });
+                v.insert(entry_index);
                 Ok(())
             }
             // We have a nested goal which relies on a goal `root` deeper in the stack.
@@ -131,11 +106,12 @@ impl<'tcx> EvalCtxt<'tcx> {
             //
             // Finally we can return either the provisional response for that goal if we have a
             // coinductive cycle or an ambiguous result if the cycle is inductive.
-            Entry::Occupied(entry) => {
-                // FIXME: `ProvisionalEntry` should be `Copy`.
-                let entry = entry.get().clone();
+            Entry::Occupied(entry_index) => {
+                let entry_index = *entry_index.get();
+                // FIXME `ProvisionalEntry` should be `Copy`.
+                let entry = cache.entries.get(entry_index).unwrap().clone();
                 cache.stack[entry.depth].has_been_used = true;
-                for provisional_entry in cache.entries.values_mut() {
+                for provisional_entry in cache.entries.iter_mut().skip(entry_index.index()) {
                     provisional_entry.depth = provisional_entry.depth.min(entry.depth);
                 }
 
@@ -143,9 +119,9 @@ impl<'tcx> EvalCtxt<'tcx> {
                 // We can also depend on goals which aren't part of the stack but coinductively
                 // depend on the stack themselves. We already checked whether all the goals
                 // between these goals and their root on the stack. This means that as long as
-                // each goal in a cycle is checked for coinductivity by itself simply checking
+                // each goal in a cycle is checked for coinductivity by itself, simply checking
                 // the stack is enough.
-                if cache.stack[entry.depth..]
+                if cache.stack.raw[entry.depth.index()..]
                     .iter()
                     .all(|g| g.goal.value.predicate.is_coinductive(self.tcx))
                 {
@@ -154,7 +130,7 @@ impl<'tcx> EvalCtxt<'tcx> {
                     Err(response_no_constraints(
                         self.tcx,
                         goal,
-                        Certainty::Maybe(MaybeCause::Ambiguity),
+                        Certainty::Maybe(MaybeCause::Overflow),
                     ))
                 }
             }
@@ -182,49 +158,49 @@ impl<'tcx> EvalCtxt<'tcx> {
         let StackElem { goal, has_been_used } = cache.stack.pop().unwrap();
         assert_eq!(goal, actual_goal);
 
-        let provisional_entry = cache.entries.get_mut(&goal).unwrap();
-        // Check whether the current stack entry is the root of a cycle.
-        //
-        // If so, we either move all participants of that cycle to the global cache
-        // or, in case the provisional response used in the cycle is not equal to the
-        // final response, have to recompute the goal after updating the provisional
-        // response to the final response of this iteration.
-        if has_been_used {
-            if provisional_entry.response == response {
-                // We simply drop all entries according to an immutable condition, so
-                // query instability is not a concern here.
-                #[allow(rustc::potential_query_instability)]
-                cache.entries.retain(|goal, entry| match entry.depth.cmp(&cache.stack.len()) {
-                    Ordering::Less => true,
-                    Ordering::Equal => {
-                        Self::try_move_finished_goal_to_global_cache(
-                            self.tcx,
-                            &mut self.overflow_data,
-                            &cache.stack,
-                            // FIXME: these should be `Copy` :(
-                            goal.clone(),
-                            entry.response.clone(),
-                        );
-                        false
-                    }
-                    Ordering::Greater => bug!("entry with greater depth than the current leaf"),
-                });
+        let provisional_entry_index = *cache.lookup_table.get(&goal).unwrap();
+        let provisional_entry = &mut cache.entries[provisional_entry_index];
+        // Was the current goal the root of a cycle and was the provisional response
+        // different from the final one.
+        if has_been_used && provisional_entry.response != response {
+            // If so, update the provisional reponse for this goal...
+            provisional_entry.response = response;
+            // ...remove all entries whose result depends on this goal
+            // from the provisional cache...
+            //
+            // That's not completely correct, as a nested goal can also
+            // depend on a goal which is lower in the stack so it doesn't
+            // actually depend on the current goal. This should be fairly
+            // rare and is hopefully not relevant for performance.
+            #[allow(rustc::potential_query_instability)]
+            cache.lookup_table.retain(|_key, index| *index <= provisional_entry_index);
+            cache.entries.truncate(provisional_entry_index.index() + 1);
 
-                true
-            } else {
-                provisional_entry.response = response;
-                cache.stack.push(StackElem { goal, has_been_used: false });
-                false
-            }
+            // ...and finally push our goal back on the stack and reevaluate it.
+            cache.stack.push(StackElem { goal, has_been_used: false });
+            false
         } else {
-            Self::try_move_finished_goal_to_global_cache(
-                self.tcx,
-                &mut self.overflow_data,
-                &cache.stack,
-                goal,
-                response,
-            );
-            cache.entries.remove(&goal);
+            // If not, we're done with this goal.
+            //
+            // Check whether that this goal doesn't depend on a goal deeper on the stack
+            // and if so, move it and all nested goals to the global cache.
+            //
+            // Note that if any nested goal were to depend on something deeper on the stack,
+            // this would have also updated the depth of this goal.
+            if provisional_entry.depth == cache.stack.next_index() {
+                for (i, entry) in cache.entries.drain_enumerated(provisional_entry_index.index()..)
+                {
+                    let actual_index = cache.lookup_table.remove(&entry.goal);
+                    debug_assert_eq!(Some(i), actual_index);
+                    Self::try_move_finished_goal_to_global_cache(
+                        self.tcx,
+                        &mut self.overflow_data,
+                        &cache.stack,
+                        entry.goal,
+                        entry.response,
+                    );
+                }
+            }
             true
         }
     }
@@ -232,7 +208,7 @@ impl<'tcx> EvalCtxt<'tcx> {
     fn try_move_finished_goal_to_global_cache(
         tcx: TyCtxt<'tcx>,
         overflow_data: &mut OverflowData,
-        stack: &[StackElem<'tcx>],
+        stack: &IndexVec<StackDepth, StackElem<'tcx>>,
         goal: CanonicalGoal<'tcx>,
         response: QueryResult<'tcx>,
     ) {
