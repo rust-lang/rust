@@ -8,8 +8,6 @@ use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 
-use crate::traits::error_reporting::TypeErrCtxtExt;
-
 use super::outlives_bounds::InferCtxtExt;
 
 pub enum CopyImplementationError<'tcx> {
@@ -60,8 +58,8 @@ pub fn type_allowed_to_implement_copy<'tcx>(
             let infcx = tcx.infer_ctxt().build();
             let ocx = traits::ObligationCtxt::new(&infcx);
 
-            let ty = field.ty(tcx, substs);
-            if ty.references_error() {
+            let unnormalized_ty = field.ty(tcx, substs);
+            if unnormalized_ty.references_error() {
                 continue;
             }
 
@@ -84,12 +82,10 @@ pub fn type_allowed_to_implement_copy<'tcx>(
             } else {
                 ObligationCause::dummy_with_span(field_ty_span)
             };
-            let ty = ocx.normalize(&normalization_cause, param_env, ty);
+            let ty = ocx.normalize(&normalization_cause, param_env, unnormalized_ty);
             let normalization_errors = ocx.select_where_possible();
             if !normalization_errors.is_empty() {
-                // Don't report this as a field that doesn't implement Copy,
-                // but instead just implement this as a field that isn't WF.
-                infcx.err_ctxt().report_fulfillment_errors(&normalization_errors, None);
+                tcx.sess.delay_span_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking Copy implementation"));
                 continue;
             }
 
