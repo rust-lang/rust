@@ -28,6 +28,7 @@ use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
+use std::error::Report;
 use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
@@ -250,7 +251,7 @@ pub trait Emitter: Translate {
         let mut primary_span = diag.span.clone();
         let suggestions = diag.suggestions.as_deref().unwrap_or(&[]);
         if let Some((sugg, rest)) = suggestions.split_first() {
-            let msg = self.translate_message(&sugg.msg, fluent_args);
+            let msg = self.translate_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
             if rest.is_empty() &&
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
@@ -1325,7 +1326,7 @@ impl EmitterWriter {
         //                very *weird* formats
         //                see?
         for (text, style) in msg.iter() {
-            let text = self.translate_message(text, args);
+            let text = self.translate_message(text, args).map_err(Report::new).unwrap();
             let lines = text.split('\n').collect::<Vec<_>>();
             if lines.len() > 1 {
                 for (i, line) in lines.iter().enumerate() {
@@ -1387,7 +1388,7 @@ impl EmitterWriter {
                 label_width += 2;
             }
             for (text, _) in msg.iter() {
-                let text = self.translate_message(text, args);
+                let text = self.translate_message(text, args).map_err(Report::new).unwrap();
                 // Account for newlines to align output to its label.
                 for (line, text) in normalize_whitespace(&text).lines().enumerate() {
                     buffer.append(
@@ -2301,7 +2302,9 @@ impl FileWithAnnotatedLines {
                     hi.col_display += 1;
                 }
 
-                let label = label.as_ref().map(|m| emitter.translate_message(m, args).to_string());
+                let label = label.as_ref().map(|m| {
+                    emitter.translate_message(m, args).map_err(Report::new).unwrap().to_string()
+                });
 
                 if lo.line != hi.line {
                     let ml = MultilineAnnotation {

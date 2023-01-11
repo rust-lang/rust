@@ -24,6 +24,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::Span;
+use std::error::Report;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -321,7 +322,8 @@ impl Diagnostic {
     fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
         let args = to_fluent_args(diag.args());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
-            let translated_message = je.translate_message(&sugg.msg, &args);
+            let translated_message =
+                je.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();
             Diagnostic {
                 message: translated_message.to_string(),
                 code: None,
@@ -411,7 +413,10 @@ impl DiagnosticSpan {
         Self::from_span_etc(
             span.span,
             span.is_primary,
-            span.label.as_ref().map(|m| je.translate_message(m, args)).map(|m| m.to_string()),
+            span.label
+                .as_ref()
+                .map(|m| je.translate_message(m, args).unwrap())
+                .map(|m| m.to_string()),
             suggestion,
             je,
         )

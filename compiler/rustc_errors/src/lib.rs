@@ -11,6 +11,10 @@
 #![feature(never_type)]
 #![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
+#![feature(yeet_expr)]
+#![feature(try_blocks)]
+#![feature(box_patterns)]
+#![feature(error_reporter)]
 #![allow(incomplete_features)]
 
 #[macro_use]
@@ -42,6 +46,7 @@ use rustc_span::{Loc, Span};
 
 use std::any::Any;
 use std::borrow::Cow;
+use std::error::Report;
 use std::fmt;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
@@ -55,11 +60,14 @@ mod diagnostic;
 mod diagnostic_builder;
 mod diagnostic_impls;
 pub mod emitter;
+pub mod error;
 pub mod json;
 mod lock;
 pub mod registry;
 mod snippet;
 mod styled_buffer;
+#[cfg(test)]
+mod tests;
 pub mod translation;
 
 pub use diagnostic_builder::IntoDiagnostic;
@@ -622,7 +630,14 @@ impl Handler {
     ) -> SubdiagnosticMessage {
         let inner = self.inner.borrow();
         let args = crate::translation::to_fluent_args(args);
-        SubdiagnosticMessage::Eager(inner.emitter.translate_message(&message, &args).to_string())
+        SubdiagnosticMessage::Eager(
+            inner
+                .emitter
+                .translate_message(&message, &args)
+                .map_err(Report::new)
+                .unwrap()
+                .to_string(),
+        )
     }
 
     // This is here to not allow mutation of flags;
