@@ -22,6 +22,19 @@ pub struct FormatSpec {
     pub width: Count,
 }
 
+impl Argument {
+    pub fn new(
+        position: usize,
+        fill: char,
+        align: Alignment,
+        flags: u32,
+        precision: Count,
+        width: Count,
+    ) -> Self {
+        Self { position, format: FormatSpec { fill, align, flags, precision, width } }
+    }
+}
+
 /// Possible alignments that can be requested as part of a formatting directive.
 #[cfg_attr(not(bootstrap), lang = "format_alignment")]
 #[derive(Copy, Clone, PartialEq, Eq)]
