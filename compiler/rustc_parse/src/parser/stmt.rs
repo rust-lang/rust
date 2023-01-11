@@ -498,7 +498,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a block. Inner attributes are allowed.
     pub(super) fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (AttrVec, P<Block>)> {
-        self.parse_block_common(self.token.span, BlockCheckMode::Default)
+        self.parse_block_common(self.token.span, BlockCheckMode::Default, true)
     }
 
     /// Parses a block. Inner attributes are allowed.
@@ -506,16 +506,23 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         blk_mode: BlockCheckMode,
+        can_be_struct_literal: bool,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (AttrVec::new(), x));
 
+        let maybe_ident = self.prev_token.clone();
         self.maybe_recover_unexpected_block_label();
         if !self.eat(&token::OpenDelim(Delimiter::Brace)) {
             return self.error_block_no_opening_brace();
         }
 
         let attrs = self.parse_inner_attributes()?;
-        let tail = match self.maybe_suggest_struct_literal(lo, blk_mode) {
+        let tail = match self.maybe_suggest_struct_literal(
+            lo,
+            blk_mode,
+            maybe_ident,
+            can_be_struct_literal,
+        ) {
             Some(tail) => tail?,
             None => self.parse_block_tail(lo, blk_mode, AttemptLocalParseRecovery::Yes)?,
         };

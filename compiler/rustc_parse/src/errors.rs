@@ -971,6 +971,24 @@ pub(crate) struct StructLiteralBodyWithoutPathSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_struct_literal_needing_parens)]
+pub(crate) struct StructLiteralNeedingParens {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: StructLiteralNeedingParensSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+pub(crate) struct StructLiteralNeedingParensSugg {
+    #[suggestion_part(code = "(")]
+    pub before: Span,
+    #[suggestion_part(code = ")")]
+    pub after: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_unmatched_angle_brackets)]
 pub(crate) struct UnmatchedAngleBrackets {
     #[primary_span]

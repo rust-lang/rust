@@ -2214,7 +2214,8 @@ impl<'a> Parser<'a> {
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
         } else if self.check(&token::OpenDelim(Delimiter::Brace)) || self.token.is_whole_block() {
-            self.parse_inner_attrs_and_block().map(|(attrs, body)| (attrs, Some(body)))?
+            self.parse_block_common(self.token.span, BlockCheckMode::Default, false)
+                .map(|(attrs, body)| (attrs, Some(body)))?
         } else if self.token.kind == token::Eq {
             // Recover `fn foo() = $expr;`.
             self.bump(); // `=`
