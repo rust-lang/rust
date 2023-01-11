@@ -1,13 +1,13 @@
-// check-fail
+// edition:2021
 // known-bug
 // unset-rustc-env:RUST_BACKTRACE
-// compile-flags:-Z trait-solver=chalk --edition=2021
+// compile-flags:-Z trait-solver=chalk
 // error-pattern:stack backtrace:
 // failure-status:101
 // normalize-stderr-test "note: .*" -> ""
 // normalize-stderr-test "thread 'rustc' .*" -> ""
-// normalize-stderr-test "  .*\n" -> ""
-// normalize-stderr-test "DefId([^)]*)" -> "..."
+// normalize-stderr-test " +[0-9]+:.*\n" -> ""
+// normalize-stderr-test " +at .*\n" -> ""
 
 fn main() -> () {}
 
