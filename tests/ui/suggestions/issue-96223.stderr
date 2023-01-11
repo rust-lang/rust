@@ -11,12 +11,15 @@ note: required for `Baz<EmptyBis<'de>>` to implement `for<'de> Foo<'de>`
   --> $DIR/issue-96223.rs:16:14
    |
 LL | impl<'de, T> Foo<'de> for Baz<T> where T: Foo<'de> {}
-   |              ^^^^^^^^     ^^^^^^
+   |              ^^^^^^^^     ^^^^^^          -------- unsatisfied trait bound introduced here
 note: required for `Empty` to implement `Dummy<EmptyMarker>`
   --> $DIR/issue-96223.rs:20:9
    |
 LL | impl<M> Dummy<M> for Empty
    |         ^^^^^^^^     ^^^^^
+...
+LL |     for<'de> Baz<<M::Bar as Bar<'de>>::Inner>: Foo<'de>,
+   |                                                -------- unsatisfied trait bound introduced here
 note: required by a bound in `icey_bounds`
   --> $DIR/issue-96223.rs:45:19
    |

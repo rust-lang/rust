@@ -113,7 +113,9 @@ note: required for `Outer2<main::TestType>` to implement `Sync`
   --> $DIR/negated-auto-traits-error.rs:14:22
    |
 LL | unsafe impl<T: Send> Sync for Outer2<T> {}
-   |                      ^^^^     ^^^^^^^^^
+   |                ----  ^^^^     ^^^^^^^^^
+   |                |
+   |                unsatisfied trait bound introduced here
 note: required by a bound in `is_sync`
   --> $DIR/negated-auto-traits-error.rs:17:15
    |

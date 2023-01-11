@@ -1098,7 +1098,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // There are a few environmental pre-conditions that shape how the system
     // is set up:
     //
-    // - Error reporting only can happen on the main thread because that's the
+    // - Error reporting can only happen on the main thread because that's the
     //   only place where we have access to the compiler `Session`.
     // - LLVM work can be done on any thread.
     // - Codegen can only happen on the main thread.
@@ -1110,16 +1110,16 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // Error Reporting
     // ===============
     // The error reporting restriction is handled separately from the rest: We
-    // set up a `SharedEmitter` the holds an open channel to the main thread.
+    // set up a `SharedEmitter` that holds an open channel to the main thread.
     // When an error occurs on any thread, the shared emitter will send the
     // error message to the receiver main thread (`SharedEmitterMain`). The
     // main thread will periodically query this error message queue and emit
     // any error messages it has received. It might even abort compilation if
-    // has received a fatal error. In this case we rely on all other threads
+    // it has received a fatal error. In this case we rely on all other threads
     // being torn down automatically with the main thread.
     // Since the main thread will often be busy doing codegen work, error
     // reporting will be somewhat delayed, since the message queue can only be
-    // checked in between to work packages.
+    // checked in between two work packages.
     //
     // Work Processing Infrastructure
     // ==============================
@@ -1133,7 +1133,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // thread about what work to do when, and it will spawn off LLVM worker
     // threads as open LLVM WorkItems become available.
     //
-    // The job of the main thread is to codegen CGUs into LLVM work package
+    // The job of the main thread is to codegen CGUs into LLVM work packages
     // (since the main thread is the only thread that can do this). The main
     // thread will block until it receives a message from the coordinator, upon
     // which it will codegen one CGU, send it to the coordinator and block
@@ -1142,10 +1142,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
     //
     // The coordinator keeps a queue of LLVM WorkItems, and when a `Token` is
     // available, it will spawn off a new LLVM worker thread and let it process
-    // that a WorkItem. When a LLVM worker thread is done with its WorkItem,
+    // a WorkItem. When a LLVM worker thread is done with its WorkItem,
     // it will just shut down, which also frees all resources associated with
     // the given LLVM module, and sends a message to the coordinator that the
-    // has been completed.
+    // WorkItem has been completed.
     //
     // Work Scheduling
     // ===============
@@ -1165,7 +1165,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     //
     // Doing LLVM Work on the Main Thread
     // ----------------------------------
-    // Since the main thread owns the compiler processes implicit `Token`, it is
+    // Since the main thread owns the compiler process's implicit `Token`, it is
     // wasteful to keep it blocked without doing any work. Therefore, what we do
     // in this case is: We spawn off an additional LLVM worker thread that helps
     // reduce the queue. The work it is doing corresponds to the implicit
@@ -1216,7 +1216,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // ------------------------------
     //
     // The final job the coordinator thread is responsible for is managing LTO
-    // and how that works. When LTO is requested what we'll to is collect all
+    // and how that works. When LTO is requested what we'll do is collect all
     // optimized LLVM modules into a local vector on the coordinator. Once all
     // modules have been codegened and optimized we hand this to the `lto`
     // module for further optimization. The `lto` module will return back a list

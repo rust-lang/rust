@@ -81,7 +81,9 @@ note: required for `str` to implement `Foo<'_, '_, u8>`
   --> $DIR/substs-ppaux.rs:11:17
    |
 LL | impl<'a,'b,T,S> Foo<'a, 'b, S> for T {}
-   |                 ^^^^^^^^^^^^^^     ^
+   |            -    ^^^^^^^^^^^^^^     ^
+   |            |
+   |            unsatisfied trait bound introduced here
 
 error: aborting due to 5 previous errors
 

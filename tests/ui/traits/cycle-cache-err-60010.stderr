@@ -22,11 +22,17 @@ note: required for `RootDatabase` to implement `SourceDatabase`
    |
 LL | impl<T> SourceDatabase for T
    |         ^^^^^^^^^^^^^^     ^
+LL | where
+LL |     T: RefUnwindSafe,
+   |        ------------- unsatisfied trait bound introduced here
 note: required for `ParseQuery` to implement `Query<RootDatabase>`
   --> $DIR/cycle-cache-err-60010.rs:37:10
    |
 LL | impl<DB> Query<DB> for ParseQuery
    |          ^^^^^^^^^     ^^^^^^^^^^
+LL | where
+LL |     DB: SourceDatabase,
+   |         -------------- unsatisfied trait bound introduced here
 
 error: aborting due to previous error
 

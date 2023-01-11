@@ -9,7 +9,9 @@ note: required for `&'static u32` to implement `Defaulted`
   --> $DIR/typeck-default-trait-impl-precedence.rs:10:19
    |
 LL | impl<'a,T:Signed> Defaulted for &'a T { }
-   |                   ^^^^^^^^^     ^^^^^
+   |           ------  ^^^^^^^^^     ^^^^^
+   |           |
+   |           unsatisfied trait bound introduced here
 note: required by a bound in `is_defaulted`
   --> $DIR/typeck-default-trait-impl-precedence.rs:12:19
    |

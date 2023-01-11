@@ -2039,7 +2039,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let (attrs, blk) = self.parse_block_common(lo, blk_mode)?;
+        let (attrs, blk) = self.parse_block_common(lo, blk_mode, true)?;
         Ok(self.mk_expr_with_attrs(blk.span, ExprKind::Block(blk, opt_label), attrs))
     }
 

@@ -76,6 +76,7 @@ fn main() {
         check!(extdeps, &root_path);
 
         // Checks over tests.
+        check!(tests_placement, &root_path);
         check!(debug_artifacts, &tests_path);
         check!(ui_tests, &tests_path);
         check!(mir_opt_tests, &tests_path, bless);

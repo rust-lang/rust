@@ -8,7 +8,9 @@ note: required for `Ctx<()>` to implement `for<'a> BufferUdpStateContext<&'a ()>
   --> $DIR/issue-89118.rs:5:23
    |
 LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+   |         ---------     ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
 note: required by a bound in `StackContext`
   --> $DIR/issue-89118.rs:9:14
    |
@@ -28,7 +30,9 @@ note: required for `Ctx<()>` to implement `for<'a> BufferUdpStateContext<&'a ()>
   --> $DIR/issue-89118.rs:5:23
    |
 LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+   |         ---------     ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
 note: required by a bound in `EthernetWorker`
   --> $DIR/issue-89118.rs:28:14
    |
@@ -48,7 +52,9 @@ note: required for `Ctx<()>` to implement `for<'a> BufferUdpStateContext<&'a ()>
   --> $DIR/issue-89118.rs:5:23
    |
 LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+   |         ---------     ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
 note: required by a bound in `StackContext`
   --> $DIR/issue-89118.rs:9:14
    |

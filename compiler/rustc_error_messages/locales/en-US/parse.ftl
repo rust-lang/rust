@@ -2,6 +2,10 @@ parse_struct_literal_body_without_path =
     struct literal body without path
     .suggestion = you might have forgotten to add the struct literal inside the block
 
+parse_struct_literal_needing_parens =
+    invalid struct literal
+    .suggestion = you might need to surround the struct literal in parentheses
+
 parse_maybe_report_ambiguous_plus =
     ambiguous `+` in a type
     .suggestion = use parentheses to disambiguate
