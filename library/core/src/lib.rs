@@ -110,7 +110,6 @@
 #![feature(const_char_from_u32_unchecked)]
 #![feature(const_clone)]
 #![feature(const_cmp)]
-#![feature(const_discriminant)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
 #![feature(const_float_bits_conv)]
