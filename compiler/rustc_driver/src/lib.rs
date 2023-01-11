@@ -1185,16 +1185,7 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
 }
 
 struct IceError;
-impl From<time::error::InvalidFormatDescription> for IceError {
-    fn from(_: time::error::InvalidFormatDescription) -> IceError {
-        IceError
-    }
-}
-impl From<time::error::Format> for IceError {
-    fn from(_: time::error::Format) -> IceError {
-        IceError
-    }
-}
+
 impl From<std::io::Error> for IceError {
     fn from(_: std::io::Error) -> IceError {
         IceError
@@ -1203,11 +1194,9 @@ impl From<std::io::Error> for IceError {
 
 fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<String, IceError> {
     let capture = backtrace::Backtrace::force_capture();
-    let now = time::OffsetDateTime::now_utc();
-    let format = time::format_description::parse("[year]-[month]-[day]_[hour]:[minute]:[second]")?;
-    let file_now = now.format(&format)?;
-    let format = time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]")?;
-    let now = now.format(&format)?;
+    let now = chrono::UTC::now();
+    let file_now = now.format("%Y-%m-%d_%H:%M:%S");
+    let now = now.format("%Y-%m-%d %H:%M:%S");
     let path = format!("rustc-ice-context-{file_now}.txt");
     let mut file = std::fs::File::create(&path)?;
     writeln!(

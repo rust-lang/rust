@@ -613,6 +613,16 @@ dependencies = [
 
 [[package]]
 name = "chrono"
+version = "0.2.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9213f7cd7c27e95c2b57c49f0e69b1ea65b27138da84a170133fd21b07659c00"
+dependencies = [
+ "num",
+ "time 0.1.43",
+]
+
+[[package]]
+name = "chrono"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
@@ -2535,7 +2545,7 @@ checksum = "23f3e133c6d515528745ffd3b9f0c7d975ae039f0b6abb099f2168daa2afb4f9"
 dependencies = [
  "ammonia",
  "anyhow",
- "chrono",
+ "chrono 0.4.19",
  "clap 3.2.20",
  "clap_complete",
  "elasticlunr-rs",
@@ -2704,12 +2714,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
 
 [[package]]
+name = "num"
+version = "0.1.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4703ad64153382334aa8db57c637364c322d3372e097840c72000dabdcf6156e"
+dependencies = [
+ "num-integer",
+ "num-iter",
+ "num-traits",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d59457e662d541ba17869cf51cf177c0b5f0cbf476c66bdc90bf1edac4f875b"
 dependencies = [
  "autocfg",
+ "num-traits",
+]
+
+[[package]]
+name = "num-iter"
+version = "0.1.43"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d03e6c028c5dc5cac6e2dec0efda81fc887605bb3d884578bb6d6bf7514e252"
+dependencies = [
+ "autocfg",
+ "num-integer",
  "num-traits",
 ]
 
@@ -3916,6 +3948,7 @@ name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
  "backtrace",
+ "chrono 0.2.25",
  "libc",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3942,7 +3975,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "serde_json",
- "time 0.3.17",
  "tracing",
  "winapi",
 ]
@@ -5252,7 +5284,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3c02f6eb7e7b4100c272f685a9ccaccaab302324e8c7ec3e2ee72340fb29ff3"
 dependencies = [
- "chrono",
+ "chrono 0.4.19",
  "log",
  "nom",
  "serde",

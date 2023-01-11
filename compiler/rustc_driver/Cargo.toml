@@ -9,7 +9,7 @@ crate-type = ["dylib"]
 [dependencies]
 backtrace = "0.3.66"
 serde_json = "1.0.59"
-time = { version = "0.3.17", features = ["std", "formatting"] }
+chrono = "0.2"
 tracing = { version = "0.1.35" }
 rustc_log = { path = "../rustc_log" }
 rustc_middle = { path = "../rustc_middle" }

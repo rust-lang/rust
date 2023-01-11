@@ -96,6 +96,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "arrayvec",
     "atty",
     "autocfg",
+    "backtrace",
     "bitflags",
     "block-buffer",
     "bumpalo", // Included in Cargo's dep graph but only activated on wasm32-*-unknown.
