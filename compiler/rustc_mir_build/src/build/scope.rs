@@ -1132,9 +1132,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let assign = self.cfg.start_new_cleanup_block();
         self.cfg.push_assign(assign, source_info, place, value.clone());
-        // We still have to build the scope drops so we don't know which block will follow.
-        // This terminator will be overwritten once the unwind drop tree builder runs.
-        self.cfg.terminate(assign, source_info, TerminatorKind::Unreachable);
         self.cfg.terminate(
             block,
             source_info,
@@ -1423,8 +1420,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
         match &mut term.kind {
             TerminatorKind::Drop { unwind, .. } => {
                 if let Some(unwind) = unwind.clone() {
-                    cfg.block_data_mut(unwind).terminator_mut().kind =
-                        TerminatorKind::Goto { target: to };
+                    let source_info = term.source_info;
+                    cfg.terminate(unwind, source_info, TerminatorKind::Goto { target: to });
                 } else {
                     *unwind = Some(to);
                 }
