@@ -8,7 +8,7 @@ use crate::build_system::rustc_info::get_default_sysroot;
 use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_file_name, get_rustc_version};
-use super::utils::{copy_dir_recursively, spawn_and_wait, Compiler};
+use super::utils::{copy_dir_recursively, retry_spawn_and_wait, spawn_and_wait, Compiler};
 
 pub(crate) fn prepare(dirs: &Dirs) {
     if RelPath::DOWNLOAD.to_path(dirs).exists() {
@@ -140,8 +140,22 @@ fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo:
 
     // Download zip archive
     let mut download_cmd = Command::new("curl");
-    download_cmd.arg("--location").arg("--output").arg(&archive_file).arg(archive_url);
-    spawn_and_wait(download_cmd);
+    download_cmd
+        .arg("--max-time")
+        .arg("600")
+        .arg("-y")
+        .arg("30")
+        .arg("-Y")
+        .arg("10")
+        .arg("--connect-timeout")
+        .arg("30")
+        .arg("--continue-at")
+        .arg("-")
+        .arg("--location")
+        .arg("--output")
+        .arg(&archive_file)
+        .arg(archive_url);
+    retry_spawn_and_wait(5, download_cmd);
 
     // Unpack tar archive
     let mut unpack_cmd = Command::new("tar");

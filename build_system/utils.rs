@@ -188,6 +188,22 @@ pub(crate) fn spawn_and_wait(mut cmd: Command) {
     }
 }
 
+// Based on the retry function in rust's src/ci/shared.sh
+#[track_caller]
+pub(crate) fn retry_spawn_and_wait(tries: u64, mut cmd: Command) {
+    for i in 1..tries+1 {
+        if i != 1 {
+            println!("Command failed. Attempt {i}/{tries}:");
+        }
+        if cmd.spawn().unwrap().wait().unwrap().success() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(i * 5));
+    }
+    println!("The command has failed after {tries} attempts.");
+    process::exit(1);
+}
+
 #[track_caller]
 pub(crate) fn spawn_and_wait_with_input(mut cmd: Command, input: String) -> String {
     let mut child = cmd
