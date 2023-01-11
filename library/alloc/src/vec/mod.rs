@@ -2879,12 +2879,12 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> FromIterator<T> for Vec<T, A, COOP_PREFERRED>
+impl<T, const COOP_PREFERRED: bool> FromIterator<T> for Vec<T, Global, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
  {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T, A, COOP_PREFERRED> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T, Global, COOP_PREFERRED> {
         <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
 }
