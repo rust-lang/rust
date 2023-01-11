@@ -2729,23 +2729,22 @@ pub mod restriction_kind {
     /// trait.
     macro_rules! restriction {
         (
+            requires_explicit_path: $requires_explicit_path:ident,
             name: $name:ident,
-            allows_kw_only: $allows_kw_only:literal,
-            kw_sym: $kw_sym:path,
-            kw_str: $kw_str:literal,
-            action: $action:literal,
-            description: $description:literal,
+            keyword: $keyword_sym:path => $keyword_str:literal,
+            adjective: $adjective:literal,
+            noun: $noun:literal,
             feature_gate: $feature_gate:expr $(,)?
         ) => {
             #[derive(Debug, Clone, Copy, Encodable, Decodable)]
             pub enum $name {}
 
             impl RestrictionKind for $name {
-                const ALLOWS_KW_ONLY: bool = $allows_kw_only;
-                const KW_SYM: Symbol = $kw_sym;
-                const KW_STR: &'static str = $kw_str;
-                const ACTION: &'static str = $action;
-                const DESCRIPTION: &'static str = $description;
+                const REQUIRES_EXPLICIT_PATH: bool = $requires_explicit_path;
+                const KEYWORD_SYM: Symbol = $keyword_sym;
+                const KEYWORD_STR: &'static str = $keyword_str;
+                const ADJECTIVE: &'static str = $adjective;
+                const NOUN: &'static str = $noun;
                 const FEATURE_GATE: Option<Symbol> = $feature_gate;
             }
 
@@ -2759,39 +2758,36 @@ pub mod restriction_kind {
     }
 
     pub trait RestrictionKind: sealed::Sealed {
-        const ALLOWS_KW_ONLY: bool;
-        const KW_SYM: Symbol;
-        const KW_STR: &'static str;
-        const ACTION: &'static str;
-        const DESCRIPTION: &'static str;
+        const REQUIRES_EXPLICIT_PATH: bool;
+        const KEYWORD_SYM: Symbol;
+        const KEYWORD_STR: &'static str;
+        const ADJECTIVE: &'static str;
+        const NOUN: &'static str;
         const FEATURE_GATE: Option<Symbol>;
     }
 
     restriction! {
+        requires_explicit_path: false,
         name: Visibility,
-        allows_kw_only: true,
-        kw_sym: kw::Pub,
-        kw_str: "pub",
-        action: "visible",
-        description: "visibility",
+        keyword: kw::Pub => "pub",
+        adjective: "visible",
+        noun: "visibility",
         feature_gate: None,
     }
     restriction! {
+        requires_explicit_path: true,
         name: Impl,
-        allows_kw_only: false,
-        kw_sym: kw::Impl,
-        kw_str: "impl",
-        action: "implementable",
-        description: "impl",
+        keyword: kw::Impl => "impl",
+        adjective: "implementable",
+        noun: "impl",
         feature_gate: Some(sym::impl_restriction),
     }
     restriction! {
+        requires_explicit_path: true,
         name: Mut,
-        allows_kw_only: false,
-        kw_sym: kw::Mut,
-        kw_str: "mut",
-        action: "mutable",
-        description: "mut",
+        keyword: kw::Mut => "mut",
+        adjective: "mutable",
+        noun: "mut",
         feature_gate: Some(sym::mut_restriction),
     }
 }
@@ -2814,6 +2810,28 @@ pub enum RestrictionLevel {
     Restricted { path: P<Path>, id: NodeId, shorthand: bool },
     // nothing
     Implied,
+}
+
+impl From<Restriction<restriction_kind::Visibility>> for Visibility {
+    fn from(restriction: Restriction<restriction_kind::Visibility>) -> Self {
+        match restriction.level {
+            RestrictionLevel::Unrestricted => Self {
+                kind: VisibilityKind::Public,
+                span: restriction.span,
+                tokens: restriction.tokens,
+            },
+            RestrictionLevel::Restricted { path, id, shorthand } => Self {
+                kind: VisibilityKind::Restricted { path, id, shorthand },
+                span: restriction.span,
+                tokens: restriction.tokens,
+            },
+            RestrictionLevel::Implied => Self {
+                kind: VisibilityKind::Inherited,
+                span: restriction.span,
+                tokens: restriction.tokens,
+            },
+        }
+    }
 }
 
 impl<Kind: RestrictionKind> Restriction<Kind> {

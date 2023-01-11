@@ -2,7 +2,7 @@ error[E0704]: incorrect impl restriction
   --> $DIR/naked-impl-restriction.rs:4:5
    |
 LL | pub impl trait Foo {}
-   |     ^^^^ help: make this implementable only in the current crate: `impl(crate)`
+   |     ^^^^ help: make this implementable only to the current crate: `impl(crate)`
    |
    = help: some possible impl restrictions are:
            `impl(crate)`: implementable only in the current crate

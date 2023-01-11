@@ -2,7 +2,7 @@ error[E0704]: incorrect mut restriction
   --> $DIR/naked-mut-restriction.rs:5:9
    |
 LL |     pub mut x: u32,
-   |         ^^^ help: make this mutable only in the current crate: `mut(crate)`
+   |         ^^^ help: make this mutable only to the current crate: `mut(crate)`
    |
    = help: some possible mut restrictions are:
            `mut(crate)`: mutable only in the current crate

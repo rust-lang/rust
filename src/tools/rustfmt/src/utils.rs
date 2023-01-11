@@ -80,13 +80,13 @@ pub(crate) fn format_restriction<Kind: ast::RestrictionKind>(
     restriction: &Restriction<Kind>,
 ) -> Cow<'static, str> {
     match restriction.level {
-        RestrictionLevel::Unrestricted => Kind::KW_STR.into(),
+        RestrictionLevel::Unrestricted => Kind::KEYWORD_STR.into(),
         RestrictionLevel::Restricted {
             ref path,
             id: _,
             shorthand,
         } => {
-            let kw = Kind::KW_STR;
+            let kw = Kind::KEYWORD_STR;
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
             if path.is_global() && segments_iter.next().is_none() {

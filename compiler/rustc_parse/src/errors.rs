@@ -812,16 +812,6 @@ pub(crate) struct MismatchedClosingDelimiter {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_incorrect_visibility_restriction, code = "E0704")]
-#[help]
-pub(crate) struct IncorrectVisibilityRestriction {
-    #[primary_span]
-    #[suggestion(code = "in {inner_str}", applicability = "machine-applicable")]
-    pub span: Span,
-    pub inner_str: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_incorrect_restriction, code = "E0704")]
 #[help]
 pub(crate) struct IncorrectRestriction {
@@ -829,21 +819,21 @@ pub(crate) struct IncorrectRestriction {
     #[suggestion(code = "in {path}", applicability = "machine-applicable")]
     pub span: Span,
     pub path: String,
-    pub kind: &'static str,
-    pub action: &'static str,
-    pub kw: &'static str,
+    pub noun: &'static str,
+    pub adjective: &'static str,
+    pub keyword: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_naked_restriction, code = "E0704")]
+#[diag(parse_restriction_missing_path, code = "E0704")]
 #[help]
-pub(crate) struct NakedRestriction {
+pub(crate) struct RestrictionMissingPath {
     #[primary_span]
-    #[suggestion(code = "{kw}(crate)", applicability = "machine-applicable")]
+    #[suggestion(code = "{keyword}(crate)", applicability = "maybe-incorrect")]
     pub span: Span,
-    pub kind: &'static str,
-    pub action: &'static str,
-    pub kw: &'static str,
+    pub noun: &'static str,
+    pub adjective: &'static str,
+    pub keyword: &'static str,
 }
 
 #[derive(Diagnostic)]

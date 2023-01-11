@@ -435,9 +435,9 @@ impl<'a> State<'a> {
         restriction: &ast::Restriction<Kind>,
     ) {
         match restriction.level {
-            ast::RestrictionLevel::Unrestricted => self.word_nbsp(Kind::KW_STR),
+            ast::RestrictionLevel::Unrestricted => self.word_nbsp(Kind::KEYWORD_STR),
             ast::RestrictionLevel::Restricted { ref path, id: _, shorthand } => {
-                let kw = Kind::KW_STR;
+                let kw = Kind::KEYWORD_STR;
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
                 if shorthand {
                     self.word_nbsp(format!("{kw}({path})"))
