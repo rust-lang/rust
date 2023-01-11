@@ -1,9 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::visitors::is_local_used;
 use if_chain::if_chain;
-use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind};
+use rustc_hir::{Body, Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -57,6 +59,20 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
         let parent_item = cx.tcx.hir().expect_item(parent);
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
+        let contains_todo = |cx, body: &'_ Body<'_>| -> bool {
+            clippy_utils::visitors::for_each_expr(body.value, |e| {
+                if let Some(macro_call) = root_macro_call_first_node(cx, e) {
+                    if cx.tcx.item_name(macro_call.def_id).as_str() == "todo" {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                } else {
+                    ControlFlow::Continue(())
+                }
+            })
+            .is_some()
+        };
         if_chain! {
             if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind;
             if assoc_item.fn_has_self_parameter;
@@ -65,6 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             let body = cx.tcx.hir().body(*body_id);
             if let [self_param, ..] = body.params;
             if !is_local_used(cx, body, self_param.pat.hir_id);
+            if !contains_todo(cx, body);
             then {
                 span_lint_and_help(
                     cx,
