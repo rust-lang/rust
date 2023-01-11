@@ -1,5 +1,5 @@
 // check-fail
-// known-bug
+// known-bug: unknown
 
 // This gives us problems because `for<'a> I::Item<'a>: Debug` should mean "for
 // all 'a where I::Item<'a> is WF", but really means "for all 'a possible"
@@ -29,7 +29,6 @@ where
 
 fn main() {
     let slice = &mut ();
-    //~^ temporary value dropped while borrowed
     let windows = WindowsMut { slice };
     print_items::<WindowsMut<'_>>(windows);
 }
