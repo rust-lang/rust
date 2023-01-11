@@ -50,6 +50,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("similar", "Apache-2.0"),       // cargo (dev dependency)
     ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
     ("dissimilar", "Apache-2.0"),    // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
+    ("subtle", "BSD-3-Clause"),      // cargo
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
@@ -219,6 +220,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "snap",
     "stable_deref_trait",
     "stacker",
+    "subtle",
     "syn",
     "synstructure",
     "tempfile",
