@@ -18,17 +18,6 @@ pub(crate) fn prepare(dirs: &Dirs) {
 
     prepare_sysroot(dirs);
 
-    // FIXME maybe install this only locally?
-    eprintln!("[INSTALL] hyperfine");
-    Command::new("cargo")
-        .arg("install")
-        .arg("hyperfine")
-        .env_remove("CARGO_TARGET_DIR")
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
-
     super::abi_cafe::ABI_CAFE_REPO.fetch(dirs);
     super::tests::RAND_REPO.fetch(dirs);
     super::tests::REGEX_REPO.fetch(dirs);
