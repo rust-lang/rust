@@ -191,7 +191,7 @@ pub(crate) fn spawn_and_wait(mut cmd: Command) {
 // Based on the retry function in rust's src/ci/shared.sh
 #[track_caller]
 pub(crate) fn retry_spawn_and_wait(tries: u64, mut cmd: Command) {
-    for i in 1..tries+1 {
+    for i in 1..tries + 1 {
         if i != 1 {
             println!("Command failed. Attempt {i}/{tries}:");
         }
