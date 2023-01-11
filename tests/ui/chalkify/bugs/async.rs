@@ -6,7 +6,8 @@
 // failure-status:101
 // normalize-stderr-test "note: .*" -> ""
 // normalize-stderr-test "thread 'rustc' .*" -> ""
-// normalize-stderr-test "  .*\n" -> ""
+// normalize-stderr-test "  ? ?\d\d?\d?:.*\n" -> ""
+// normalize-stderr-test "       .*\n" -> ""
 // normalize-stderr-test "DefId([^)]*)" -> "..."
 
 fn main() -> () {}

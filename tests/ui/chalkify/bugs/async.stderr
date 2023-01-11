@@ -1,21 +1,39 @@
-error[E0277]: `[async fn body@$DIR/async.rs:14:29: 16:2]` is not a future
-LL |LL | |LL | | }
+error[E0277]: `[async fn body@$DIR/async.rs:15:29:  --> $DIR/async.rs:15:29
+   |
+LL |   async fn foo(x: u32) -> u32 {
+   |  _____________________________-
+LL | |     x
+LL | | }
+   | | ^
+   | | |
+   | |_`[async fn body@$DIR/async.rs:15:29:   |   required by a bound introduced by this call
+   |
+   = help: the trait `Future` is not implemented for `[async fn body@$DIR/async.rs:15:29:   = 
 
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
 
-error[E0277]: the size for values of type `<[async fn body@$DIR/async.rs:14:29: 16:2] as Future>::Output` cannot be known at compilation time
-LL |LL | |LL | | }
+error[E0277]: the size for values of type `<[async fn body@$DIR/async.rs:15:29:  --> $DIR/async.rs:15:29
+   |
+LL |   async fn foo(x: u32) -> u32 {
+   |  _____________________________^
+LL | |     x
+LL | | }
+   | |_^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `<[async fn body@$DIR/async.rs:15:29:
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
 
-
-error[E0277]: `[async fn body@$DIR/async.rs:14:29: 16:2]` is not a future
+error[E0277]: `[async fn body@$DIR/async.rs:15:29:  --> $DIR/async.rs:15:25
+   |
 LL | async fn foo(x: u32) -> u32 {
+   |   = help: the trait `Future` is not implemented for `[async fn body@$DIR/async.rs:15:29:   = 
 
-error: internal compiler error: compiler/rustc_trait_selection/src/traits/error_reporting/mod.rs:1114:25: projection clauses should be implied from elsewhere. obligation: `Obligation(predicate=Binder(ProjectionPredicate(AliasTy { substs: [[async fn body@$DIR/async.rs:14:29: 16:2]], def_id: ...), _use_mk_alias_ty_instead: () }, Term::Ty(u32)), []), depth=0)`
+error: internal compiler error: compiler/rustc_trait_selection/src/traits/error_reporting/mod.rs:1114:25: projection clauses should be implied from elsewhere. obligation: `Obligation(predicate=Binder(ProjectionPredicate(AliasTy { substs: [[async fn body@$DIR/async.rs:15:29:  --> $DIR/async.rs:15:25
+   |
 LL | async fn foo(x: u32) -> u32 {
-
+   |
 
 stack backtrace:
-
-
 
 
 
