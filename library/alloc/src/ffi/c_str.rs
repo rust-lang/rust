@@ -17,7 +17,7 @@ use core::ptr;
 use core::slice;
 use core::slice::memchr;
 use core::str::{self, Utf8Error};
-use crate::Global;
+use crate::alloc::Global;
 use crate::DEFAULT_COOP_PREFERRED;
 
 #[cfg(target_has_atomic = "ptr")]

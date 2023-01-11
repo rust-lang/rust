@@ -1,5 +1,5 @@
 use super::{IntoIter, VecDeque};
-use crate::Global;
+use crate::alloc::Global;
 use core::alloc;
 
 /// Specialization trait used for `VecDeque::from_iter`
