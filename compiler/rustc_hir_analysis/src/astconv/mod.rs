@@ -120,6 +120,13 @@ pub trait AstConv<'tcx> {
     fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
+
+    fn astconv(&self) -> &dyn AstConv<'tcx>
+    where
+        Self: Sized,
+    {
+        self
+    }
 }
 
 #[derive(Debug)]

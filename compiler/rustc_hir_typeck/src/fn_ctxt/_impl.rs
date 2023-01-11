@@ -374,7 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> RawTy<'tcx> {
-        let t = <dyn AstConv<'_>>::ast_ty_to_ty(self, ast_t);
+        let t = self.astconv().ast_ty_to_ty(ast_t);
         self.register_wf_obligation(t.into(), ast_t.span, traits::WellFormed(None));
         self.handle_raw_ty(ast_t.span, t)
     }
@@ -777,7 +777,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // to be object-safe.
                 // We manually call `register_wf_obligation` in the success path
                 // below.
-                let ty = <dyn AstConv<'_>>::ast_ty_to_ty_in_path(self, qself);
+                let ty = self.astconv().ast_ty_to_ty_in_path(qself);
                 (self.handle_raw_ty(span, ty), qself, segment)
             }
             QPath::LangItem(..) => {
@@ -975,8 +975,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let path_segs = match res {
             Res::Local(_) | Res::SelfCtor(_) => vec![],
-            Res::Def(kind, def_id) => <dyn AstConv<'_>>::def_ids_for_value_path_segments(
-                self,
+            Res::Def(kind, def_id) => self.astconv().def_ids_for_value_path_segments(
                 segments,
                 self_ty.map(|ty| ty.raw),
                 kind,
@@ -1027,8 +1026,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // errors if type parameters are provided in an inappropriate place.
 
         let generic_segs: FxHashSet<_> = path_segs.iter().map(|PathSeg(_, index)| index).collect();
-        let generics_has_err = <dyn AstConv<'_>>::prohibit_generics(
-            self,
+        let generics_has_err = self.astconv().prohibit_generics(
             segments.iter().enumerate().filter_map(|(index, seg)| {
                 if !generic_segs.contains(&index) || is_alias_variant_ctor {
                     Some(seg)
@@ -1177,7 +1175,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        <dyn AstConv<'_>>::ast_region_to_region(self.fcx, lt, Some(param)).into()
+                        self.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.fcx.to_ty(ty).raw.into()
