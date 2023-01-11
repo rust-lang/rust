@@ -18,9 +18,6 @@ note: trait bound `NotClone: Clone` was not satisfied
    |
 LL | #[derive(Clone)]
    |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
-   = note: the following trait bounds were not satisfied:
-           `NotClone: Clone`
-           which is required by `Bar<NotClone>: Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `Clone`
