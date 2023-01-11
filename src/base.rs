@@ -87,6 +87,10 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         // Instantiate monomorphizations without filling out definitions yet...
         //let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
         let context = Context::default();
+
+        context.add_command_line_option("-fexceptions");
+        context.add_driver_option("-fexceptions");
+
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
         // TODO(antoyo): only add the following cli argument if the feature is supported.
@@ -146,7 +150,7 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
             context.set_keep_intermediates(true);
         }
 
-        // TODO(bjorn3): Remove once unwinding is properly implemented
+        // NOTE: The codegen generates unrechable blocks.
         context.set_allow_unreachable_blocks(true);
 
         {

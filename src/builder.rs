@@ -372,10 +372,11 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
     }
 }
 
-impl<'gcc, 'tcx> Deref for Builder<'_, 'gcc, 'tcx> {
+impl<'a, 'gcc, 'tcx> Deref for Builder<'a, 'gcc, 'tcx> {
     type Target = CodegenCx<'gcc, 'tcx>;
 
-    fn deref(&self) -> &Self::Target {
+    fn deref<'b>(&'b self) -> &'a Self::Target
+    {
         self.cx
     }
 }
@@ -393,7 +394,7 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
 }
 
 impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
-    fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Self {
+    fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Builder<'a, 'gcc, 'tcx> {
         Builder::with_cx(cx, block)
     }
 
@@ -450,8 +451,36 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block.end_with_switch(None, value, default_block, &gcc_cases);
     }
 
+    #[cfg(feature="master")]
     fn invoke(&mut self, typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        // TODO(bjorn3): Properly implement unwinding.
+        let try_block = self.current_func().new_block("try");
+
+        let current_block = self.block.clone();
+        self.block = try_block;
+        let call = self.call(typ, func, args, None); // TODO(antoyo): use funclet here?
+        self.block = current_block;
+
+        let return_value = self.current_func()
+            .new_local(None, call.get_type(), "invokeResult");
+
+        try_block.add_assignment(None, return_value, call);
+
+        try_block.end_with_jump(None, then);
+
+        if self.cleanup_blocks.borrow().contains(&catch) {
+            self.block.add_try_finally(None, try_block, catch);
+        }
+        else {
+            self.block.add_try_catch(None, try_block, catch);
+        }
+
+        self.block.end_with_jump(None, then);
+
+        return_value.to_rvalue()
+    }
+
+    #[cfg(not(feature="master"))]
+    fn invoke(&mut self, typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
         let call_site = self.call(typ, func, args, None);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(None, condition, then, catch);
@@ -1161,22 +1190,61 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
-        // TODO(antoyo)
+        #[cfg(feature="master")]
+        {
+            let personality = self.rvalue_as_function(_personality);
+            self.current_func().set_personality_function(personality);
+        }
     }
 
+    #[cfg(feature="master")]
+    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, pers_fn: RValue<'gcc>) -> RValue<'gcc> {
+        self.set_personality_fn(pers_fn);
+
+        // NOTE: insert the current block in a variable so that a later call to invoke knows to
+        // generate a try/finally instead of a try/catch for this block.
+        self.cleanup_blocks.borrow_mut().insert(self.block);
+
+        let eh_pointer_builtin = self.cx.context.get_target_builtin_function("__builtin_eh_pointer");
+        let zero = self.cx.context.new_rvalue_zero(self.int_type);
+        let ptr = self.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
+
+        let field1_type = self.u8_type.make_pointer();
+        let field1 = self.context.new_field(None, field1_type, "landing_pad_field_1");
+        let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_2");
+        let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
+        let value = self.current_func().new_local(None, struct_type.as_type(), "landing_pad");
+        let ptr = self.cx.context.new_cast(None, ptr, field1_type);
+        self.block.add_assignment(None, value.access_field(None, field1), ptr);
+        self.block.add_assignment(None, value.access_field(None, field2), zero); // TODO: set the proper value here (the type of exception?).
+
+        value.to_rvalue()
+    }
+
+    #[cfg(not(feature="master"))]
     fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
         let field1 = self.context.new_field(None, self.u8_type.make_pointer(), "landing_pad_field_1");
         let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
         let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
         self.current_func().new_local(None, struct_type.as_type(), "landing_pad")
             .to_rvalue()
-        // TODO(antoyo): Properly implement unwinding.
-        // the above is just to make the compilation work as it seems
-        // rustc_codegen_ssa now calls the unwinding builder methods even on panic=abort.
     }
 
+    #[cfg(feature="master")]
+    fn resume(&mut self, exn: RValue<'gcc>) {
+        // TODO: check if this is normal that we need to dereference the value.
+        // NOTE: the type is wrong, so in order to get a pointer for parameter, cast it to a
+        // pointer of pointer that is later dereferenced.
+        let exn_type = exn.get_type().make_pointer();
+        let exn = self.context.new_cast(None, exn, exn_type);
+        let exn = exn.dereference(None).to_rvalue();
+        let unwind_resume = self.context.get_target_builtin_function("__builtin_unwind_resume");
+        self.llbb().add_eval(None, self.context.new_call(None, unwind_resume, &[exn]));
+        self.unreachable();
+    }
+
+    #[cfg(not(feature="master"))]
     fn resume(&mut self, _exn: RValue<'gcc>) {
-        // TODO(bjorn3): Properly implement unwinding.
         self.unreachable();
     }
 

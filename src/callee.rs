@@ -1,11 +1,9 @@
 #[cfg(feature="master")]
 use gccjit::{FnAttribute, Visibility};
-use gccjit::{FunctionType, RValue};
-use rustc_codegen_ssa::traits::BaseTypeMethods;
+use gccjit::{FunctionType, Function};
 use rustc_middle::ty::{self, Instance, TypeVisitable};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 
-use crate::abi::FnAbiGccExt;
 use crate::attributes;
 use crate::context::CodegenCx;
 
@@ -16,22 +14,26 @@ use crate::context::CodegenCx;
 ///
 /// - `cx`: the crate context
 /// - `instance`: the instance to be instantiated
-pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) -> RValue<'gcc> {
+pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) -> Function<'gcc> {
     let tcx = cx.tcx();
 
     assert!(!instance.substs.needs_infer());
     assert!(!instance.substs.has_escaping_bound_vars());
 
+    let sym = tcx.symbol_name(instance).name;
+
     if let Some(&func) = cx.function_instances.borrow().get(&instance) {
         return func;
     }
 
-    let sym = tcx.symbol_name(instance).name;
-
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
     let func =
-        if let Some(func) = cx.get_declared_value(&sym) {
+        if let Some(_func) = cx.get_declared_value(&sym) {
+            // FIXME: we never reach this because get_declared_value only returns global variables
+            // and here we try to get a function.
+            unreachable!();
+            /*
             // Create a fn pointer with the new signature.
             let ptrty = fn_abi.ptr_to_gcc_type(cx);
 
@@ -64,7 +66,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
             }
             else {
                 func
-            }
+            }*/
         }
         else {
             cx.linkage.set(FunctionType::Extern);
@@ -163,8 +165,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
                 }
             }
 
-            // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
-            unsafe { std::mem::transmute(func) }
+            func
         };
 
     cx.function_instances.borrow_mut().insert(instance, func);

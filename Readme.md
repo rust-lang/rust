@@ -162,7 +162,25 @@ To print a debug representation of a tree:
 debug_tree(expr);
 ```
 
+(defined in print-tree.h)
+
+To print a debug reprensentation of a gimple struct:
+
+```c
+debug_gimple_stmt(gimple_struct)
+```
+
 To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo build`.
+
+To have the correct file paths in `gdb` instead of `/usr/src/debug/gcc/libstdc++-v3/libsupc++/eh_personality.cc`, TODO
+
+Maybe by calling the following at the beginning of gdb:
+
+```
+set substitute-path /usr/src/debug/gcc /path/to/gcc-repo/gcc
+```
+
+TODO: but that's not what I remember I was doing.
 
 ### How to use a custom-build rustc
 

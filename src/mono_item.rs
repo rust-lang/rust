@@ -59,5 +59,8 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo): call set_link_section() to allow initializing argc/argv.
         // TODO(antoyo): set unique comdat.
         // TODO(antoyo): use inline attribute from there in linkage.set() above.
+
+        self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
+        self.function_instances.borrow_mut().insert(instance, unsafe { std::mem::transmute(decl) });
     }
 }
