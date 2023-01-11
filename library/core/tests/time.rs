@@ -174,6 +174,32 @@ fn div() {
 }
 
 #[test]
+fn div_duration_f32() {
+    assert_eq!(Duration::ZERO.div_duration_f32(Duration::MAX), 0.0);
+    assert_eq!(Duration::MAX.div_duration_f32(Duration::ZERO), f32::INFINITY);
+    assert_eq!((Duration::SECOND * 2).div_duration_f32(Duration::SECOND), 2.0);
+    assert!(Duration::ZERO.div_duration_f32(Duration::ZERO).is_nan());
+    // These tests demonstrate it doesn't panic with extreme values.
+    // Accuracy of the computed value is not a huge concern, we know floats don't work well
+    // at these extremes.
+    assert!((Duration::MAX).div_duration_f32(Duration::NANOSECOND) > 10.0f32.powf(28.0));
+    assert!((Duration::NANOSECOND).div_duration_f32(Duration::MAX) < 0.1);
+}
+
+#[test]
+fn div_duration_f64() {
+    assert_eq!(Duration::ZERO.div_duration_f64(Duration::MAX), 0.0);
+    assert_eq!(Duration::MAX.div_duration_f64(Duration::ZERO), f64::INFINITY);
+    assert_eq!((Duration::SECOND * 2).div_duration_f64(Duration::SECOND), 2.0);
+    assert!(Duration::ZERO.div_duration_f64(Duration::ZERO).is_nan());
+    // These tests demonstrate it doesn't panic with extreme values.
+    // Accuracy of the computed value is not a huge concern, we know floats don't work well
+    // at these extremes.
+    assert!((Duration::MAX).div_duration_f64(Duration::NANOSECOND) > 10.0f64.powf(28.0));
+    assert!((Duration::NANOSECOND).div_duration_f64(Duration::MAX) < 0.1);
+}
+
+#[test]
 fn checked_div() {
     assert_eq!(Duration::new(2, 0).checked_div(2), Some(Duration::new(1, 0)));
     assert_eq!(Duration::new(1, 0).checked_div(2), Some(Duration::new(0, 500_000_000)));
