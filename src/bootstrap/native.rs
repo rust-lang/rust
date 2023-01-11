@@ -618,7 +618,9 @@ impl Step for Enzyme {
     /// Compile Enzyme for `target`.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         if builder.config.dry_run {
-            return PathBuf::from("enzyme-out-dir-test-gen");
+            let out_dir = builder.enzyme_out(self.target);
+            return out_dir;
+            //return PathBuf::from("enzyme-out-dir-test-gen");
         }
         let target = self.target;
 
