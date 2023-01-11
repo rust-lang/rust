@@ -3,7 +3,10 @@ use std::mem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_infer::{
     infer::InferCtxt,
-    traits::{query::NoSolution, FulfillmentError, PredicateObligation, TraitEngine},
+    traits::{
+        query::NoSolution, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
+        SelectionError, TraitEngine,
+    },
 };
 use rustc_middle::ty;
 
@@ -45,32 +48,43 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             return errors;
         }
 
-        if self.obligations.is_empty() {
-            Vec::new()
-        } else {
-            unimplemented!("ambiguous obligations")
-        }
+        self.obligations
+            .drain(..)
+            .map(|obligation| FulfillmentError {
+                obligation: obligation.clone(),
+                code: FulfillmentErrorCode::CodeSelectionError(SelectionError::Unimplemented),
+                root_obligation: obligation,
+            })
+            .collect()
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let errors = Vec::new();
+        let mut errors = Vec::new();
         for i in 0.. {
             if !infcx.tcx.recursion_limit().value_within_limit(i) {
                 unimplemented!("overflow")
             }
 
             let mut has_changed = false;
-            for o in mem::take(&mut self.obligations) {
+            for obligation in mem::take(&mut self.obligations) {
                 let mut cx = EvalCtxt::new(infcx.tcx);
-                let (changed, certainty) = match cx.evaluate_goal(infcx, o.clone().into()) {
+                let (changed, certainty) = match cx.evaluate_goal(infcx, obligation.clone().into())
+                {
                     Ok(result) => result,
-                    Err(NoSolution) => unimplemented!("error"),
+                    Err(NoSolution) => {
+                        errors.push(FulfillmentError {
+                            obligation: obligation.clone(),
+                            code: FulfillmentErrorCode::CodeAmbiguity,
+                            root_obligation: obligation,
+                        });
+                        continue;
+                    }
                 };
 
                 has_changed |= changed;
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => self.obligations.push(o),
+                    Certainty::Maybe(_) => self.obligations.push(obligation),
                 }
             }
 
