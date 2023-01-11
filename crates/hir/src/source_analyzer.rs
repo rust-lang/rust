@@ -504,7 +504,7 @@ impl SourceAnalyzer {
                         AssocItemId::ConstId(const_id) => {
                             self.resolve_impl_const_or_trait_def(db, const_id, subs).into()
                         }
-                        _ => assoc,
+                        assoc => assoc,
                     };
 
                     return Some(PathResolution::Def(AssocItem::from(assoc).into()));
@@ -517,7 +517,13 @@ impl SourceAnalyzer {
                 prefer_value_ns = true;
             } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
                 let pat_id = self.pat_id(&path_pat.into())?;
-                if let Some((assoc, _)) = infer.assoc_resolutions_for_pat(pat_id) {
+                if let Some((assoc, subs)) = infer.assoc_resolutions_for_pat(pat_id) {
+                    let assoc = match assoc {
+                        AssocItemId::ConstId(const_id) => {
+                            self.resolve_impl_const_or_trait_def(db, const_id, subs).into()
+                        }
+                        assoc => assoc,
+                    };
                     return Some(PathResolution::Def(AssocItem::from(assoc).into()));
                 }
                 if let Some(VariantId::EnumVariantId(variant)) =

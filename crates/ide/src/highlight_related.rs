@@ -1356,7 +1356,6 @@ fn main() {
             r#"
 trait Trait {
     fn func(self) {}
-     //^^^^
 }
 
 impl Trait for () {
@@ -1376,7 +1375,6 @@ fn main() {
             r#"
 trait Trait {
     fn func(self) {}
-     //^^^^
 }
 
 impl Trait for () {

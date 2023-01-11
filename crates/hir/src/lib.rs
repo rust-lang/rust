@@ -2129,7 +2129,7 @@ pub enum AssocItem {
     Const(Const),
     TypeAlias(TypeAlias),
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AssocItemContainer {
     Trait(Trait),
     Impl(Impl),
