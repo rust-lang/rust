@@ -71,7 +71,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         impl_def_id: DefId,
     ) {
-        let impl_trait_ref = acx.cx.tcx.bound_impl_trait_ref(impl_def_id).unwrap();
+        let tcx = acx.cx.tcx;
+
+        let impl_trait_ref = tcx.bound_impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsPlaceholder };
         if iter::zip(goal.predicate.trait_ref.substs, impl_trait_ref.skip_binder().substs)
             .any(|(goal, imp)| !drcx.generic_args_may_unify(goal, imp))
@@ -81,7 +83,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         acx.infcx.probe(|_| {
             let impl_substs = acx.infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
-            let impl_trait_ref = impl_trait_ref.subst(acx.cx.tcx, impl_substs);
+            let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
             let Ok(InferOk { obligations, .. }) = acx
                 .infcx
@@ -92,8 +94,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             else {
                 return
             };
+            let where_clause_bounds = tcx
+                .predicates_of(impl_def_id)
+                .instantiate(tcx, impl_substs)
+                .predicates
+                .into_iter()
+                .map(|pred| goal.with(tcx, pred));
 
-            let nested_goals = obligations.into_iter().map(|o| o.into()).collect();
+            let nested_goals =
+                obligations.into_iter().map(|o| o.into()).chain(where_clause_bounds).collect();
 
             let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
             acx.try_insert_candidate(CandidateSource::Impl(impl_def_id), certainty);
