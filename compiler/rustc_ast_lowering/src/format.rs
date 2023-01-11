@@ -94,16 +94,14 @@ fn make_format_spec<'hir>(
     argmap: &mut FxIndexSet<(usize, ArgumentType)>,
 ) -> hir::Expr<'hir> {
     // Generate:
-    //     ::core::fmt::rt::v1::Argument {
-    //         position: 0usize,
-    //         format: ::core::fmt::rt::v1::FormatSpec {
-    //             fill: ' ',
-    //             align: ::core::fmt::rt::v1::Alignment::Unknown,
-    //             flags: 0u32,
-    //             precision: ::core::fmt::rt::v1::Count::Implied,
-    //             width: ::core::fmt::rt::v1::Count::Implied,
-    //         },
-    //     }
+    //     ::core::fmt::rt::v1::Argument::new(
+    //         0usize, // position
+    //         ' ', // fill
+    //         ::core::fmt::rt::v1::Alignment::Unknown,
+    //         0u32, // flags
+    //         ::core::fmt::rt::v1::Count::Implied, // width
+    //         ::core::fmt::rt::v1::Count::Implied, // precision
+    //     )
     let position = match placeholder.argument.index {
         Ok(arg_index) => {
             let (i, _) =
