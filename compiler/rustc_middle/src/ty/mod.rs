@@ -2187,8 +2187,10 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Option<ImplOverlapKind> {
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.skip_binder().references_error())
-            || self.impl_trait_ref(def_id2).map_or(false, |tr| tr.skip_binder().references_error())
+        if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.subst_identity().references_error())
+            || self
+                .impl_trait_ref(def_id2)
+                .map_or(false, |tr| tr.subst_identity().references_error())
         {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }

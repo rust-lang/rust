@@ -1898,9 +1898,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         for id in tcx.hir().items() {
             if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
-                if let Some(trait_ref) =
-                    tcx.impl_trait_ref(id.owner_id).map(ty::EarlyBinder::subst_identity)
-                {
+                if let Some(trait_ref) = tcx.impl_trait_ref(id.owner_id) {
+                    let trait_ref = trait_ref.subst_identity();
+
                     let simplified_self_ty = fast_reject::simplify_type(
                         self.tcx,
                         trait_ref.self_ty(),

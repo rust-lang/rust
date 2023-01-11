@@ -1351,9 +1351,9 @@ fn create_mono_items_for_default_impls<'tcx>(
                 tcx.def_path_str(item.owner_id.to_def_id())
             );
 
-            if let Some(trait_ref) =
-                tcx.impl_trait_ref(item.owner_id).map(ty::EarlyBinder::subst_identity)
-            {
+            if let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) {
+                let trait_ref = trait_ref.subst_identity();
+
                 let param_env = ty::ParamEnv::reveal_all();
                 let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
                 let overridden_methods = tcx.impl_item_implementor_ids(item.owner_id);

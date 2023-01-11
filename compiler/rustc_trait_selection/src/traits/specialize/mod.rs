@@ -431,7 +431,7 @@ fn report_conflicting_impls<'tcx>(
 pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
-    let trait_ref = tcx.impl_trait_ref(impl_def_id)?.skip_binder();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id)?.subst_identity();
     let mut w = "impl".to_owned();
 
     let substs = InternalSubsts::identity_for_item(tcx, impl_def_id);

@@ -2066,7 +2066,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
 
                 self.one_bound_for_assoc_type(
-                    || traits::supertraits(tcx, ty::Binder::dummy(trait_ref.skip_binder())),
+                    || traits::supertraits(tcx, ty::Binder::dummy(trait_ref.subst_identity())),
                     || "Self".to_string(),
                     assoc_ident,
                     span,
