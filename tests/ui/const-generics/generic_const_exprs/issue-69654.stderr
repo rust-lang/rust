@@ -15,8 +15,14 @@ LL | struct Foo<const N: usize> {}
 LL |     Foo::foo();
    |          ^^^ function or associated item cannot be called on `Foo<_>` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `[u8; _]: Bar<[(); _]>`
+note: trait bound `[u8; _]: Bar<[(); _]>` was not satisfied
+  --> $DIR/issue-69654.rs:11:14
+   |
+LL | impl<const N: usize> Foo<N>
+   |                      ------
+LL | where
+LL |     [u8; N]: Bar<[(); N]>,
+   |              ^^^^^^^^^^^^ unsatisfied trait bound introduced here
 
 error: aborting due to 2 previous errors
 

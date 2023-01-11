@@ -101,6 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.autoderef(span, ty).any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub fn report_method_error(
         &self,
         span: Span,
@@ -587,21 +588,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Find all the requirements that come from a local `impl` block.
             let mut skip_list: FxHashSet<_> = Default::default();
             let mut spanned_predicates: FxHashMap<MultiSpan, _> = Default::default();
-            for (data, p, parent_p, impl_def_id, cause) in unsatisfied_predicates
+            for (p, parent_p, impl_def_id, cause) in unsatisfied_predicates
                 .iter()
                 .filter_map(|(p, parent, c)| c.as_ref().map(|c| (p, parent, c)))
                 .filter_map(|(p, parent, c)| match c.code() {
-                    ObligationCauseCode::ImplDerivedObligation(data) => {
-                        Some((&data.derived, p, parent, data.impl_def_id, data))
+                    ObligationCauseCode::ImplDerivedObligation(data)
+                        if matches!(p.kind().skip_binder(), ty::PredicateKind::Clause(_)) =>
+                    {
+                        Some((p, parent, data.impl_def_id, data))
                     }
                     _ => None,
                 })
             {
-                let parent_trait_ref = data.parent_trait_pred;
-                let path = parent_trait_ref.print_modifiers_and_trait_path();
-                let tr_self_ty = parent_trait_ref.skip_binder().self_ty();
-                let unsatisfied_msg = "unsatisfied trait bound introduced here";
-                let derive_msg = "unsatisfied trait bound introduced in this `derive` macro";
                 match self.tcx.hir().get_if_local(impl_def_id) {
                     // Unmet obligation comes from a `derive` macro, point at it once to
                     // avoid multiple span labels pointing at the same place.
@@ -618,9 +616,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let span = self_ty.span.ctxt().outer_expn_data().call_site;
                         let mut spans: MultiSpan = span.into();
-                        spans.push_span_label(span, derive_msg);
+                        spans.push_span_label(
+                            span,
+                            "unsatisfied trait bound introduced in this `derive` macro",
+                        );
                         let entry = spanned_predicates.entry(spans);
-                        entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
+                        entry.or_insert_with(|| Vec::new()).push(p);
                     }
 
                     // Unmet obligation coming from an `impl`.
@@ -647,8 +648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                                 err.span_suggestion_verbose(
                                     sp,
-                                    "consider relaxing the type parameter's implicit \
-                                     `Sized` bound",
+                                    "consider relaxing the type parameter's implicit `Sized` bound",
                                     sugg,
                                     Applicability::MachineApplicable,
                                 );
@@ -661,7 +661,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         skip_list.insert(p);
                         let mut spans = if cause.span != *item_span {
                             let mut spans: MultiSpan = cause.span.into();
-                            spans.push_span_label(cause.span, unsatisfied_msg);
+                            spans.push_span_label(
+                                cause.span,
+                                "unsatisfied trait bound introduced here",
+                            );
                             spans
                         } else {
                             let mut spans = Vec::with_capacity(2);
@@ -677,7 +680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         spans.push_span_label(self_ty.span, "");
 
                         let entry = spanned_predicates.entry(spans);
-                        entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
+                        entry.or_insert_with(|| Vec::new()).push(p);
                     }
                     Some(Node::Item(hir::Item {
                         kind: hir::ItemKind::Trait(rustc_ast::ast::IsAuto::Yes, ..),
@@ -694,11 +697,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             let mut spanned_predicates: Vec<_> = spanned_predicates.into_iter().collect();
-            spanned_predicates.sort_by_key(|(span, (_, _, _))| span.primary_span());
-            for (span, (_path, _self_ty, preds)) in spanned_predicates {
-                let mut preds: Vec<_> = preds
-                    .into_iter()
-                    .filter_map(|pred| format_pred(*pred))
+            spanned_predicates.sort_by_key(|(span, _)| span.primary_span());
+            for (span, predicates) in spanned_predicates {
+                let mut preds: Vec<_> = predicates
+                    .iter()
+                    .filter_map(|pred| format_pred(**pred))
                     .map(|(p, _)| format!("`{}`", p))
                     .collect();
                 preds.sort();

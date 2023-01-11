@@ -42,8 +42,13 @@ LL | struct Object<T, A>(T, A);
 LL |     foo.use_clone();
    |         ^^^^^^^^^ method cannot be called on `Object<NoDerives, SomeDerives>` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `NoDerives: Clone`
+note: trait bound `NoDerives: Clone` was not satisfied
+  --> $DIR/issue-91492.rs:18:9
+   |
+LL | impl<T: Clone, A: Default> Object<T, A> {
+   |         ^^^^^              ------------
+   |         |
+   |         unsatisfied trait bound introduced here
 help: consider annotating `NoDerives` with `#[derive(Clone)]`
    |
 LL | #[derive(Clone)]

@@ -16,10 +16,27 @@ LL | struct Foo<X, Y> (X, Y);
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Enum, CloneEnum>` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `Enum: Clone`
-           `Enum: Default`
-           `CloneEnum: Default`
+note: trait bound `Enum: Clone` was not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:20:9
+   |
+LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
+   |         ^^^^^                                   ---------
+   |         |
+   |         unsatisfied trait bound introduced here
+note: trait bound `Enum: Default` was not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:20:17
+   |
+LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
+   |                 ^^^^^^^                         ---------
+   |                 |
+   |                 unsatisfied trait bound introduced here
+note: trait bound `CloneEnum: Default` was not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:20:40
+   |
+LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
+   |                                        ^^^^^^^  ---------
+   |                                        |
+   |                                        unsatisfied trait bound introduced here
 note: the trait `Default` must be implemented
   --> $SRC_DIR/core/src/default.rs:LL:COL
 help: consider annotating `Enum` with `#[derive(Clone)]`
@@ -45,10 +62,27 @@ LL | struct Foo<X, Y> (X, Y);
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Struct, CloneStruct>` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `Struct: Clone`
-           `Struct: Default`
-           `CloneStruct: Default`
+note: trait bound `Struct: Clone` was not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:20:9
+   |
+LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
+   |         ^^^^^                                   ---------
+   |         |
+   |         unsatisfied trait bound introduced here
+note: trait bound `Struct: Default` was not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:20:17
+   |
+LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
+   |                 ^^^^^^^                         ---------
+   |                 |
+   |                 unsatisfied trait bound introduced here
+note: trait bound `CloneStruct: Default` was not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:20:40
+   |
+LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
+   |                                        ^^^^^^^  ---------
+   |                                        |
+   |                                        unsatisfied trait bound introduced here
 help: consider annotating `CloneStruct` with `#[derive(Default)]`
    |
 LL | #[derive(Default)]
@@ -73,9 +107,20 @@ LL |     let y = x.test();
    |
    = note: doesn't satisfy `Vec<Enum>: Clone`
    |
-   = note: the following trait bounds were not satisfied:
-           `Vec<Enum>: Clone`
-           `Instant: Default`
+note: trait bound `Vec<Enum>: Clone` was not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:20:9
+   |
+LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
+   |         ^^^^^                                   ---------
+   |         |
+   |         unsatisfied trait bound introduced here
+note: trait bound `Instant: Default` was not satisfied
+  --> $DIR/derive-trait-for-method-call.rs:20:40
+   |
+LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
+   |                                        ^^^^^^^  ---------
+   |                                        |
+   |                                        unsatisfied trait bound introduced here
 
 error: aborting due to 3 previous errors
 

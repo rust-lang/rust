@@ -23,8 +23,17 @@ LL |     let dst = Inline::<dyn Debug>::new(0);
    |
    = note: doesn't satisfy `dyn Debug: Sized`
    |
-   = note: the following trait bounds were not satisfied:
-           `dyn Debug: Sized`
+note: trait bound `dyn Debug: Sized` was not satisfied
+  --> $DIR/issue-80742.rs:20:6
+   |
+LL | impl<T> Inline<T>
+   |      ^  ---------
+   |      |
+   |      unsatisfied trait bound introduced here
+help: consider relaxing the type parameter's implicit `Sized` bound
+   |
+LL | impl<T: ?Sized> Inline<T>
+   |       ++++++++
 
 error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
