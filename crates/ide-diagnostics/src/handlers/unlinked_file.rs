@@ -46,52 +46,51 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
     let our_path = source_root.path_for_file(&file_id)?;
     let parent = our_path.parent()?;
     let (module_name, _) = our_path.name_and_extension()?;
-    let (parent, module_name) = if module_name == "mod" {
+    let (parent, module_name) = match module_name {
         // for mod.rs we need to actually look up one higher
         // and take the parent as our to be module name
-        let (name, _) = parent.name_and_extension()?;
-        (parent.parent()?, name.to_owned())
-    } else {
-        (parent, module_name.to_owned())
+        "mod" => {
+            let (name, _) = parent.name_and_extension()?;
+            (parent.parent()?, name.to_owned())
+        }
+        _ => (parent, module_name.to_owned()),
     };
 
     // check crate roots, i.e. main.rs, lib.rs, ...
-    'outer: for &krate in &*ctx.sema.db.relevant_crates(file_id) {
+    'crates: for &krate in &*ctx.sema.db.relevant_crates(file_id) {
         let crate_def_map = ctx.sema.db.crate_def_map(krate);
-        if let Some(root_file_id) = crate_def_map[crate_def_map.root()].origin.file_id() {
-            if let Some(path) = source_root.path_for_file(&root_file_id) {
-                let parent2 = path.parent()?;
-                if let Some(rel) = parent.strip_prefix(&parent2) {
-                    let mut current = &crate_def_map[crate_def_map.root()];
-                    for ele in rel.as_ref().components() {
-                        let seg = match ele {
-                            std::path::Component::Normal(seg) => seg.to_str()?,
-                            std::path::Component::RootDir => continue,
-                            // shouldn't occur
-                            _ => continue 'outer,
-                        };
-                        match current.children.iter().find(|(name, _)| name.to_smol_str() == seg) {
-                            Some((_, child)) => {
-                                current = &crate_def_map[*child];
-                            }
-                            None => continue 'outer,
-                        }
-                    }
-                    let InFile { file_id: parent_file_id, value: source } =
-                        current.definition_source(ctx.sema.db);
-                    if let Some(parent_file_id) = parent_file_id.file_id() {
-                        return make_fixes(
-                            ctx.sema.db,
-                            parent_file_id,
-                            source,
-                            &module_name,
-                            file_id,
-                        );
-                    }
-                }
+
+        let root_module = &crate_def_map[crate_def_map.root()];
+        let Some(root_file_id) = root_module.origin.file_id() else { continue };
+        let Some(crate_root_path) = source_root.path_for_file(&root_file_id) else { continue };
+        let Some(rel) = parent.strip_prefix(&crate_root_path.parent()?) else { continue };
+
+        // try resolving the relative difference of the paths as inline modules
+        let mut current = root_module;
+        for ele in rel.as_ref().components() {
+            let seg = match ele {
+                std::path::Component::Normal(seg) => seg.to_str()?,
+                std::path::Component::RootDir => continue,
+                // shouldn't occur
+                _ => continue 'crates,
+            };
+            match current.children.iter().find(|(name, _)| name.to_smol_str() == seg) {
+                Some((_, &child)) => current = &crate_def_map[child],
+                None => continue 'crates,
+            }
+            if !current.origin.is_inline() {
+                continue 'crates;
             }
         }
+
+        let InFile { file_id: parent_file_id, value: source } =
+            current.definition_source(ctx.sema.db);
+        let parent_file_id = parent_file_id.file_id()?;
+        return make_fixes(ctx.sema.db, parent_file_id, source, &module_name, file_id);
     }
+
+    // if we aren't adding to a crate root, walk backwards such that we support `#[path = ...]` overrides if possible
+
     // build all parent paths of the form `../module_name/mod.rs` and `../module_name.rs`
     let paths = iter::successors(Some(parent.clone()), |prev| prev.parent()).filter_map(|path| {
         let parent = path.parent()?;
@@ -99,53 +98,45 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
         Some(([parent.join(&format!("{name}.rs"))?, path.join("mod.rs")?], name.to_owned()))
     });
     let mut stack = vec![];
-    if let Some(&parent_id) = paths
-        .inspect(|(_, name)| stack.push(name.clone()))
-        .find_map(|(paths, _)| paths.into_iter().find_map(|path| source_root.file_for_path(&path)))
-    {
-        stack.pop();
-        for &krate in ctx.sema.db.relevant_crates(parent_id).iter() {
-            let crate_def_map = ctx.sema.db.crate_def_map(krate);
-            'outer: for (_, module) in crate_def_map.modules() {
-                if module.origin.file_id() == Some(parent_id) {
-                    if module.origin.is_inline() {
-                        continue;
+    let &parent_id =
+        paths.inspect(|(_, name)| stack.push(name.clone())).find_map(|(paths, _)| {
+            paths.into_iter().find_map(|path| source_root.file_for_path(&path))
+        })?;
+    stack.pop();
+    'crates: for &krate in ctx.sema.db.relevant_crates(parent_id).iter() {
+        let crate_def_map = ctx.sema.db.crate_def_map(krate);
+        let Some((_, module)) =
+            crate_def_map.modules()
+            .find(|(_, module)| module.origin.file_id() == Some(parent_id) && !module.origin.is_inline())
+        else { continue };
+
+        if stack.is_empty() {
+            return make_fixes(
+                ctx.sema.db,
+                parent_id,
+                module.definition_source(ctx.sema.db).value,
+                &module_name,
+                file_id,
+            );
+        } else {
+            // direct parent file is missing,
+            // try finding a parent that has an inline tree from here on
+            let mut current = module;
+            for s in stack.iter().rev() {
+                match module.children.iter().find(|(name, _)| name.to_smol_str() == s) {
+                    Some((_, child)) => {
+                        current = &crate_def_map[*child];
                     }
-                    if stack.is_empty() {
-                        return make_fixes(
-                            ctx.sema.db,
-                            parent_id,
-                            module.definition_source(ctx.sema.db).value,
-                            &module_name,
-                            file_id,
-                        );
-                    } else {
-                        let mut current = module;
-                        for s in stack.iter().rev() {
-                            match module.children.iter().find(|(name, _)| name.to_smol_str() == s) {
-                                Some((_, child)) => {
-                                    current = &crate_def_map[*child];
-                                }
-                                None => break 'outer,
-                            }
-                        }
-                        let InFile { file_id: parent_file_id, value: source } =
-                            current.definition_source(ctx.sema.db);
-                        if let Some(parent_file_id) = parent_file_id.file_id() {
-                            if current.origin.is_inline() {
-                                return make_fixes(
-                                    ctx.sema.db,
-                                    parent_file_id,
-                                    source,
-                                    &module_name,
-                                    file_id,
-                                );
-                            }
-                        }
-                        break;
-                    }
+                    None => continue 'crates,
+                }
+                if !current.origin.is_inline() {
+                    continue 'crates;
                 }
             }
+            let InFile { file_id: parent_file_id, value: source } =
+                current.definition_source(ctx.sema.db);
+            let parent_file_id = parent_file_id.file_id()?;
+            return make_fixes(ctx.sema.db, parent_file_id, source, &module_name, file_id);
         }
     }
 
