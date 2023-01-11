@@ -4,6 +4,10 @@
 //!
 //! This API is completely unstable and subject to change.
 
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+#![allow(unused)]
+
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
@@ -42,6 +46,8 @@ use rustc_span::symbol::Symbol;
 
 use std::any::Any;
 use std::ffi::CStr;
+
+mod enzyme;
 
 mod back {
     pub mod archive;
@@ -115,14 +121,14 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         module_name: &str,
         kind: AllocatorKind,
         has_alloc_error_handler: bool,
-    ) {
+        ) {
         unsafe { allocator::codegen(tcx, module_llvm, module_name, kind, has_alloc_error_handler) }
     }
     fn compile_codegen_unit(
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
-    ) -> (ModuleCodegen<ModuleLlvm>, u64) {
+        ) -> (ModuleCodegen<ModuleLlvm>, u64) {
         base::compile_codegen_unit(tcx, cgu_name)
     }
     fn target_machine_factory(
@@ -130,7 +136,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         sess: &Session,
         optlvl: OptLevel,
         target_features: &[String],
-    ) -> TargetMachineFactoryFn<Self> {
+        ) -> TargetMachineFactoryFn<Self> {
         back::write::target_machine_factory(sess, optlvl, target_features)
     }
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
@@ -141,32 +147,32 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     }
 
     fn spawn_thread<F, T>(time_trace: bool, f: F) -> std::thread::JoinHandle<T>
-    where
-        F: FnOnce() -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        std::thread::spawn(move || {
-            let _profiler = TimeTraceProfiler::new(time_trace);
-            f()
-        })
-    }
+        where
+            F: FnOnce() -> T,
+            F: Send + 'static,
+            T: Send + 'static,
+            {
+                std::thread::spawn(move || {
+                    let _profiler = TimeTraceProfiler::new(time_trace);
+                    f()
+                })
+            }
 
     fn spawn_named_thread<F, T>(
         time_trace: bool,
         name: String,
         f: F,
-    ) -> std::io::Result<std::thread::JoinHandle<T>>
-    where
-        F: FnOnce() -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        std::thread::Builder::new().name(name).spawn(move || {
-            let _profiler = TimeTraceProfiler::new(time_trace);
-            f()
-        })
-    }
+        ) -> std::io::Result<std::thread::JoinHandle<T>>
+        where
+            F: FnOnce() -> T,
+            F: Send + 'static,
+            T: Send + 'static,
+            {
+                std::thread::Builder::new().name(name).spawn(move || {
+                    let _profiler = TimeTraceProfiler::new(time_trace);
+                    f()
+                })
+            }
 }
 
 impl WriteBackendMethods for LlvmCodegenBackend {
@@ -185,21 +191,21 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         cgcx: &CodegenContext<Self>,
         diag_handler: &Handler,
         modules: Vec<ModuleCodegen<Self::Module>>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, diag_handler, modules)
     }
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLTOInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<LtoModuleCodegen<Self>, FatalError> {
+        ) -> Result<LtoModuleCodegen<Self>, FatalError> {
         back::lto::run_fat(cgcx, modules, cached_modules)
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
+        ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
         back::lto::run_thin(cgcx, modules, cached_modules)
     }
     unsafe fn optimize(
@@ -207,13 +213,13 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         diag_handler: &Handler,
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-    ) -> Result<(), FatalError> {
+        ) -> Result<(), FatalError> {
         back::write::optimize(cgcx, diag_handler, module, config)
     }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: &mut ThinModule<Self>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::lto::optimize_thin_module(thin, cgcx)
     }
     unsafe fn codegen(
@@ -221,7 +227,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         diag_handler: &Handler,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-    ) -> Result<CompiledModule, FatalError> {
+        ) -> Result<CompiledModule, FatalError> {
         back::write::codegen(cgcx, diag_handler, module, config)
     }
     fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
@@ -235,7 +241,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
         thin: bool,
-    ) -> Result<(), FatalError> {
+        ) -> Result<(), FatalError> {
         let diag_handler = cgcx.create_diag_handler();
         back::lto::run_pass_manager(cgcx, &diag_handler, module, config, thin)
     }
@@ -315,7 +321,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     none
         Do not generate stack canaries.
 "#
-                );
+);
             }
             req => llvm_util::print(req, sess),
         }
@@ -338,14 +344,14 @@ impl CodegenBackend for LlvmCodegenBackend {
         tcx: TyCtxt<'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-    ) -> Box<dyn Any> {
+        ) -> Box<dyn Any> {
         Box::new(rustc_codegen_ssa::base::codegen_crate(
-            LlvmCodegenBackend(()),
-            tcx,
-            crate::llvm_util::target_cpu(tcx.sess).to_string(),
-            metadata,
-            need_metadata_module,
-        ))
+                LlvmCodegenBackend(()),
+                tcx,
+                crate::llvm_util::target_cpu(tcx.sess).to_string(),
+                metadata,
+                need_metadata_module,
+                ))
     }
 
     fn join_codegen(
@@ -353,7 +359,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
+        ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -374,7 +380,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         sess: &Session,
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
-    ) -> Result<(), ErrorGuaranteed> {
+        ) -> Result<(), ErrorGuaranteed> {
         use crate::back::archive::LlvmArchiveBuilder;
         use rustc_codegen_ssa::back::link::link_binary;
 
@@ -415,7 +421,7 @@ impl ModuleLlvm {
         name: &CStr,
         buffer: &[u8],
         handler: &Handler,
-    ) -> Result<Self, FatalError> {
+        ) -> Result<Self, FatalError> {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, handler)?;

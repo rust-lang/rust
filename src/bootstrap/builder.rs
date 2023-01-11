@@ -232,9 +232,9 @@ impl StepDescription {
 
         if !builder.config.exclude.is_empty() {
             builder.verbose(&format!(
-                "{:?} not skipped for {:?} -- not in {:?}",
-                pathset, self.name, builder.config.exclude
-            ));
+                    "{:?} not skipped for {:?} -- not in {:?}",
+                    pathset, self.name, builder.config.exclude
+                    ));
         }
         false
     }
@@ -251,7 +251,7 @@ impl StepDescription {
                 !should_run.paths.is_empty(),
                 "{:?} should have at least one pathset",
                 desc.name
-            );
+                );
         }
 
         if paths.is_empty() || builder.config.include_default_paths {
@@ -372,8 +372,8 @@ impl<'a> ShouldRun<'a> {
     // multiple aliases for the same job
     pub fn paths(mut self, paths: &[&str]) -> Self {
         self.paths.insert(PathSet::Set(
-            paths.iter().map(|p| TaskPath { path: p.into(), kind: Some(self.kind) }).collect(),
-        ));
+                paths.iter().map(|p| TaskPath { path: p.into(), kind: Some(self.kind) }).collect(),
+                ));
         self
     }
 
@@ -485,137 +485,137 @@ impl<'a> Builder<'a> {
                 tool::CargoMiri,
                 native::Lld,
                 native::CrtBeginEnd
-            ),
-            Kind::Check | Kind::Clippy { .. } | Kind::Fix => describe!(
-                check::Std,
-                check::Rustc,
-                check::Rustdoc,
-                check::CodegenBackend,
-                check::Clippy,
-                check::Miri,
-                check::Rls,
-                check::Rustfmt,
-                check::Bootstrap
-            ),
-            Kind::Test => describe!(
-                crate::toolstate::ToolStateCheck,
-                test::ExpandYamlAnchors,
-                test::Tidy,
-                test::Ui,
-                test::RunPassValgrind,
-                test::MirOpt,
-                test::Codegen,
-                test::CodegenUnits,
-                test::Assembly,
-                test::Incremental,
-                test::Debuginfo,
-                test::UiFullDeps,
-                test::Rustdoc,
-                test::Pretty,
-                test::Crate,
-                test::CrateLibrustc,
-                test::CrateRustdoc,
-                test::CrateRustdocJsonTypes,
-                test::Linkcheck,
-                test::TierCheck,
-                test::Cargotest,
-                test::Cargo,
-                test::Rls,
-                test::ErrorIndex,
-                test::Distcheck,
-                test::RunMakeFullDeps,
-                test::Nomicon,
-                test::Reference,
-                test::RustdocBook,
-                test::RustByExample,
-                test::TheBook,
-                test::UnstableBook,
-                test::RustcBook,
-                test::LintDocs,
-                test::RustcGuide,
-                test::EmbeddedBook,
-                test::EditionGuide,
-                test::Rustfmt,
-                test::Miri,
-                test::Clippy,
-                test::RustDemangler,
-                test::CompiletestTest,
-                test::RustdocJSStd,
-                test::RustdocJSNotStd,
-                test::RustdocGUI,
-                test::RustdocTheme,
-                test::RustdocUi,
-                test::RustdocJson,
-                test::HtmlCheck,
-                // Run bootstrap close to the end as it's unlikely to fail
-                test::Bootstrap,
-                // Run run-make last, since these won't pass without make on Windows
-                test::RunMake,
-            ),
-            Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
-            Kind::Doc => describe!(
-                doc::UnstableBook,
-                doc::UnstableBookGen,
-                doc::TheBook,
-                doc::Standalone,
-                doc::Std,
-                doc::Rustc,
-                doc::Rustdoc,
-                doc::Rustfmt,
-                doc::ErrorIndex,
-                doc::Nomicon,
-                doc::Reference,
-                doc::RustdocBook,
-                doc::RustByExample,
-                doc::RustcBook,
-                doc::CargoBook,
-                doc::Clippy,
-                doc::EmbeddedBook,
-                doc::EditionGuide,
-            ),
-            Kind::Dist => describe!(
-                dist::Docs,
-                dist::RustcDocs,
-                dist::Mingw,
-                dist::Rustc,
-                dist::DebuggerScripts,
-                dist::Std,
-                dist::RustcDev,
-                dist::Analysis,
-                dist::Src,
-                dist::Cargo,
-                dist::Rls,
-                dist::RustAnalyzer,
-                dist::Rustfmt,
-                dist::RustDemangler,
-                dist::Clippy,
-                dist::Miri,
-                dist::LlvmTools,
-                dist::RustDev,
-                dist::Extended,
-                // It seems that PlainSourceTarball somehow changes how some of the tools
-                // perceive their dependencies (see #93033) which would invalidate fingerprints
-                // and force us to rebuild tools after vendoring dependencies.
-                // To work around this, create the Tarball after building all the tools.
-                dist::PlainSourceTarball,
-                dist::BuildManifest,
-                dist::ReproducibleArtifacts,
-            ),
-            Kind::Install => describe!(
-                install::Docs,
-                install::Std,
-                install::Cargo,
-                install::Rls,
-                install::RustAnalyzer,
-                install::Rustfmt,
-                install::RustDemangler,
-                install::Clippy,
-                install::Miri,
-                install::Analysis,
-                install::Src,
-                install::Rustc
-            ),
-            Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
+                    ),
+                    Kind::Check | Kind::Clippy { .. } | Kind::Fix => describe!(
+                        check::Std,
+                        check::Rustc,
+                        check::Rustdoc,
+                        check::CodegenBackend,
+                        check::Clippy,
+                        check::Miri,
+                        check::Rls,
+                        check::Rustfmt,
+                        check::Bootstrap
+                        ),
+                    Kind::Test => describe!(
+                        crate::toolstate::ToolStateCheck,
+                        test::ExpandYamlAnchors,
+                        test::Tidy,
+                        test::Ui,
+                        test::RunPassValgrind,
+                        test::MirOpt,
+                        test::Codegen,
+                        test::CodegenUnits,
+                        test::Assembly,
+                        test::Incremental,
+                        test::Debuginfo,
+                        test::UiFullDeps,
+                        test::Rustdoc,
+                        test::Pretty,
+                        test::Crate,
+                        test::CrateLibrustc,
+                        test::CrateRustdoc,
+                        test::CrateRustdocJsonTypes,
+                        test::Linkcheck,
+                        test::TierCheck,
+                        test::Cargotest,
+                        test::Cargo,
+                        test::Rls,
+                        test::ErrorIndex,
+                        test::Distcheck,
+                        test::RunMakeFullDeps,
+                        test::Nomicon,
+                        test::Reference,
+                        test::RustdocBook,
+                        test::RustByExample,
+                        test::TheBook,
+                        test::UnstableBook,
+                        test::RustcBook,
+                        test::LintDocs,
+                        test::RustcGuide,
+                        test::EmbeddedBook,
+                        test::EditionGuide,
+                        test::Rustfmt,
+                        test::Miri,
+                        test::Clippy,
+                        test::RustDemangler,
+                        test::CompiletestTest,
+                        test::RustdocJSStd,
+                        test::RustdocJSNotStd,
+                        test::RustdocGUI,
+                        test::RustdocTheme,
+                        test::RustdocUi,
+                        test::RustdocJson,
+                        test::HtmlCheck,
+                        // Run bootstrap close to the end as it's unlikely to fail
+                        test::Bootstrap,
+                        // Run run-make last, since these won't pass without make on Windows
+                        test::RunMake,
+                        ),
+                        Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
+                        Kind::Doc => describe!(
+                            doc::UnstableBook,
+                            doc::UnstableBookGen,
+                            doc::TheBook,
+                            doc::Standalone,
+                            doc::Std,
+                            doc::Rustc,
+                            doc::Rustdoc,
+                            doc::Rustfmt,
+                            doc::ErrorIndex,
+                            doc::Nomicon,
+                            doc::Reference,
+                            doc::RustdocBook,
+                            doc::RustByExample,
+                            doc::RustcBook,
+                            doc::CargoBook,
+                            doc::Clippy,
+                            doc::EmbeddedBook,
+                            doc::EditionGuide,
+                            ),
+                        Kind::Dist => describe!(
+                            dist::Docs,
+                            dist::RustcDocs,
+                            dist::Mingw,
+                            dist::Rustc,
+                            dist::DebuggerScripts,
+                            dist::Std,
+                            dist::RustcDev,
+                            dist::Analysis,
+                            dist::Src,
+                            dist::Cargo,
+                            dist::Rls,
+                            dist::RustAnalyzer,
+                            dist::Rustfmt,
+                            dist::RustDemangler,
+                            dist::Clippy,
+                            dist::Miri,
+                            dist::LlvmTools,
+                            dist::RustDev,
+                            dist::Extended,
+                            // It seems that PlainSourceTarball somehow changes how some of the tools
+                            // perceive their dependencies (see #93033) which would invalidate fingerprints
+                            // and force us to rebuild tools after vendoring dependencies.
+                            // To work around this, create the Tarball after building all the tools.
+                            dist::PlainSourceTarball,
+                            dist::BuildManifest,
+                            dist::ReproducibleArtifacts,
+                            ),
+                            Kind::Install => describe!(
+                                install::Docs,
+                                install::Std,
+                                install::Cargo,
+                                install::Rls,
+                                install::RustAnalyzer,
+                                install::Rustfmt,
+                                install::RustDemangler,
+                                install::Clippy,
+                                install::Miri,
+                                install::Analysis,
+                                install::Src,
+                                install::Rustc
+                                ),
+                            Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
         }
     }
 
@@ -738,7 +738,7 @@ impl<'a> Builder<'a> {
         stage: u32,
         host: TargetSelection,
         target: TargetSelection,
-    ) -> Compiler {
+        ) -> Compiler {
         if self.build.force_use_stage1(Compiler { stage, host }, target) {
             self.compiler(1, self.config.build)
         } else {
@@ -941,7 +941,7 @@ impl<'a> Builder<'a> {
         source_type: SourceType,
         target: TargetSelection,
         cmd: &str,
-    ) -> Cargo {
+        ) -> Cargo {
         let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
 
@@ -1042,10 +1042,10 @@ impl<'a> Builder<'a> {
                 rustflags.arg("--sysroot");
                 rustflags.arg(
                     self.sysroot(compiler)
-                        .as_os_str()
-                        .to_str()
-                        .expect("sysroot must be valid UTF-8"),
-                );
+                    .as_os_str()
+                    .to_str()
+                    .expect("sysroot must be valid UTF-8"),
+                    );
                 // Only run clippy on a very limited subset of crates (in particular, not build scripts).
                 cargo.arg("-Zunstable-options");
                 // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
@@ -1059,7 +1059,7 @@ impl<'a> Builder<'a> {
                 }).unwrap_or_else(|_| {
                     eprintln!(
                         "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
-                    );
+                        );
                     eprintln!("help: try `rustup component add clippy`");
                     std::process::exit(1);
                 });
@@ -1070,6 +1070,14 @@ impl<'a> Builder<'a> {
                 rustflags.arg("--cfg=bootstrap");
             }
         }
+
+        // TODO: check if enzyme is even build??
+        //if compiler.stage == 1 {
+        println!("BBBBBBBBBBBBBBBBBBBBBBB");
+        rustflags.arg("-l");
+        rustflags.arg("LLVMEnzyme-14");
+        //rustflags.arg("libLLVMEnzyme-14.so");
+        //}
 
         let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
             Some(setting) => {
@@ -1262,7 +1270,7 @@ impl<'a> Builder<'a> {
                 } else {
                     PathBuf::from("/path/to/nowhere/rustdoc/not/required")
                 },
-            )
+                )
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
             .env("RUSTC_BREAK_ON_ICE", "1");
         // Clippy support is a hack and uses the default `cargo-clippy` in path.
@@ -1355,7 +1363,7 @@ impl<'a> Builder<'a> {
             } else {
                 self.config.rust_debug_assertions.to_string()
             },
-        );
+            );
         cargo.env(
             profile_var("OVERFLOW_CHECKS"),
             if mode == Mode::Std {
@@ -1363,7 +1371,7 @@ impl<'a> Builder<'a> {
             } else {
                 self.config.rust_overflow_checks.to_string()
             },
-        );
+            );
 
         // `dsymutil` adds time to builds on Apple platforms for no clear benefit, and also makes
         // it more difficult for debuggers to find debug info. The compiler currently defaults to
@@ -1566,9 +1574,9 @@ impl<'a> Builder<'a> {
             cargo.env(
                 "RUST_SAVE_ANALYSIS_CONFIG",
                 "{\"output_file\": null,\"full_docs\": false,\
-                       \"pub_only\": true,\"reachable_only\": false,\
+                \"pub_only\": true,\"reachable_only\": false,\
                        \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}",
-            );
+                       );
         }
 
         // If Control Flow Guard is enabled, pass the `control-flow-guard` flag to rustc
@@ -1579,11 +1587,11 @@ impl<'a> Builder<'a> {
         // the stage 1 compiler.
         if cfg!(windows)
             && mode == Mode::Std
-            && self.config.control_flow_guard
-            && compiler.stage >= 1
-        {
-            rustflags.arg("-Ccontrol-flow-guard");
-        }
+                && self.config.control_flow_guard
+                && compiler.stage >= 1
+                {
+                    rustflags.arg("-Ccontrol-flow-guard");
+                }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
         // This replaces spaces with newlines because RUSTDOCFLAGS does not
@@ -1750,7 +1758,7 @@ impl<'a> Builder<'a> {
         &'a self,
         step: S,
         kind: Kind,
-    ) -> S::Output {
+        ) -> S::Output {
         let desc = StepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
@@ -1775,10 +1783,10 @@ impl<'a> Builder<'a> {
                 && !desc.is_excluded(
                     self,
                     &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
-                )
-            {
-                return true;
-            }
+                    )
+                {
+                    return true;
+                }
         }
 
         false
@@ -1853,15 +1861,15 @@ impl Cargo {
     }
 
     pub fn args<I, S>(&mut self, args: I) -> &mut Cargo
-    where
+        where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
-    {
-        for arg in args {
-            self.arg(arg.as_ref());
+        {
+            for arg in args {
+                self.arg(arg.as_ref());
+            }
+            self
         }
-        self
-    }
 
     pub fn env(&mut self, key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Cargo {
         // These are managed through rustflag/rustdocflag interfaces.
