@@ -35,5 +35,5 @@ if ! [ "$python" = "" ]; then
     exec "$python" "$xpy" "$@"
 fi
 
-echo "$0: error: did not find python installed" >&2
+echo "$0: error: did not find Python installed" >&2
 exit 1
