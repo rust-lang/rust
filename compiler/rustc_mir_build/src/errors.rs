@@ -494,6 +494,16 @@ pub struct LowerRangeBoundMustBeLessThanOrEqualToUpper {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_literal_in_range_out_of_bounds)]
+pub struct LiteralOutOfRange<'tcx> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub max: u128,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_lower_range_bound_must_be_less_than_upper, code = "E0579")]
 pub struct LowerRangeBoundMustBeLessThanUpper {
     #[primary_span]
