@@ -20,11 +20,11 @@ use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
 //  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,
 //     but doesn't parse the template (the literal) itself.
 //  2. Second, `make_format_args` will parse the template, the format options, resolve argument references,
-//     produce diagnostics, and turn the whole thing into a `FormatArgs` structure.
-//  3. Finally, `expand_parsed_format_args` will turn that `FormatArgs` structure
-//     into the expression that the macro expands to.
+//     produce diagnostics, and turn the whole thing into a `FormatArgs` AST node.
+//  3. Much later, in AST lowering (rustc_ast_lowering), that `FormatArgs` structure will be turned
+//     into the expression of type `core::fmt::Arguments`.
 
-// See format/ast.rs for the FormatArgs structure and glossary.
+// See rustc_ast/src/format.rs for the FormatArgs structure and glossary.
 
 // Only used in parse_args and report_invalid_references,
 // to indicate how a referred argument was used.
