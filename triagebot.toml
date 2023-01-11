@@ -249,6 +249,11 @@ trigger_files = [
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
+[autolabel."WG-trait-system-refactor"]
+trigger_files = [
+    "compiler/rustc_trait_selection/solve"
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
@@ -344,7 +349,7 @@ cc = ["@BoxyUwU"]
 
 [mentions."compiler/rustc_trait_selection/src/solve/"]
 message = "Some changes occurred to the core trait solver"
-cc = ["@lcnr", "@compiler-errors"]
+cc = ["@rust-lang/initiative-trait-system-refactor"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/engine.rs"]
 message = """

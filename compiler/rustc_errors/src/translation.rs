@@ -1,11 +1,10 @@
+use crate::error::TranslateError;
 use crate::snippet::Style;
 use crate::{DiagnosticArg, DiagnosticMessage, FluentBundle};
 use rustc_data_structures::sync::Lrc;
-use rustc_error_messages::{
-    fluent_bundle::resolver::errors::{ReferenceKind, ResolverError},
-    FluentArgs, FluentError,
-};
+use rustc_error_messages::FluentArgs;
 use std::borrow::Cow;
+use std::error::Report;
 
 /// Convert diagnostic arguments (a rustc internal type that exists to implement
 /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
@@ -46,7 +45,10 @@ pub trait Translate {
         args: &FluentArgs<'_>,
     ) -> Cow<'_, str> {
         Cow::Owned(
-            messages.iter().map(|(m, _)| self.translate_message(m, args)).collect::<String>(),
+            messages
+                .iter()
+                .map(|(m, _)| self.translate_message(m, args).map_err(Report::new).unwrap())
+                .collect::<String>(),
         )
     }
 
@@ -55,83 +57,56 @@ pub trait Translate {
         &'a self,
         message: &'a DiagnosticMessage,
         args: &'a FluentArgs<'_>,
-    ) -> Cow<'_, str> {
+    ) -> Result<Cow<'_, str>, TranslateError<'_>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
             DiagnosticMessage::Str(msg) | DiagnosticMessage::Eager(msg) => {
-                return Cow::Borrowed(msg);
+                return Ok(Cow::Borrowed(msg));
             }
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
         };
+        let translate_with_bundle =
+            |bundle: &'a FluentBundle| -> Result<Cow<'_, str>, TranslateError<'_>> {
+                let message = bundle
+                    .get_message(identifier)
+                    .ok_or(TranslateError::message(identifier, args))?;
+                let value = match attr {
+                    Some(attr) => message
+                        .get_attribute(attr)
+                        .ok_or(TranslateError::attribute(identifier, args, attr))?
+                        .value(),
+                    None => message.value().ok_or(TranslateError::value(identifier, args))?,
+                };
+                debug!(?message, ?value);
 
-        let translate_with_bundle = |bundle: &'a FluentBundle| -> Option<(Cow<'_, str>, Vec<_>)> {
-            let message = bundle.get_message(identifier)?;
-            let value = match attr {
-                Some(attr) => message.get_attribute(attr)?.value(),
-                None => message.value()?,
-            };
-            debug!(?message, ?value);
-
-            let mut errs = vec![];
-            let translated = bundle.format_pattern(value, Some(args), &mut errs);
-            debug!(?translated, ?errs);
-            Some((translated, errs))
-        };
-
-        self.fluent_bundle()
-            .and_then(|bundle| translate_with_bundle(bundle))
-            // If `translate_with_bundle` returns `None` with the primary bundle, this is likely
-            // just that the primary bundle doesn't contain the message being translated, so
-            // proceed to the fallback bundle.
-            //
-            // However, when errors are produced from translation, then that means the translation
-            // is broken (e.g. `{$foo}` exists in a translation but `foo` isn't provided).
-            //
-            // In debug builds, assert so that compiler devs can spot the broken translation and
-            // fix it..
-            .inspect(|(_, errs)| {
-                debug_assert!(
-                    errs.is_empty(),
-                    "identifier: {:?}, attr: {:?}, args: {:?}, errors: {:?}",
-                    identifier,
-                    attr,
-                    args,
-                    errs
-                );
-            })
-            // ..otherwise, for end users, an error about this wouldn't be useful or actionable, so
-            // just hide it and try with the fallback bundle.
-            .filter(|(_, errs)| errs.is_empty())
-            .or_else(|| translate_with_bundle(self.fallback_fluent_bundle()))
-            .map(|(translated, errs)| {
-                // Always bail out for errors with the fallback bundle.
-
-                let mut help_messages = vec![];
-
-                if !errs.is_empty() {
-                    for error in &errs {
-                        match error {
-                            FluentError::ResolverError(ResolverError::Reference(
-                                ReferenceKind::Message { id, .. },
-                            )) if args.iter().any(|(arg_id, _)| arg_id == id) => {
-                                help_messages.push(format!("Argument `{id}` exists but was not referenced correctly. Try using `{{${id}}}` instead"));
-                            }
-                            _ => {}
-                        }
-                    }
-
-                    panic!(
-                        "Encountered errors while formatting message for `{identifier}`\n\
-                        help: {}\n\
-                        attr: `{attr:?}`\n\
-                        args: `{args:?}`\n\
-                        errors: `{errs:?}`",
-                        help_messages.join("\nhelp: ")
-                    );
+                let mut errs = vec![];
+                let translated = bundle.format_pattern(value, Some(args), &mut errs);
+                debug!(?translated, ?errs);
+                if errs.is_empty() {
+                    Ok(translated)
+                } else {
+                    Err(TranslateError::fluent(identifier, args, errs))
                 }
+            };
 
-                translated
-            })
-            .expect("failed to find message in primary or fallback fluent bundles")
+        try {
+            match self.fluent_bundle().map(|b| translate_with_bundle(b)) {
+                // The primary bundle was present and translation succeeded
+                Some(Ok(t)) => t,
+
+                // Always yeet out for errors on debug
+                Some(Err(primary)) if cfg!(debug_assertions) => do yeet primary,
+
+                // If `translate_with_bundle` returns `Err` with the primary bundle, this is likely
+                // just that the primary bundle doesn't contain the message being translated or
+                // something else went wrong) so proceed to the fallback bundle.
+                Some(Err(primary)) => translate_with_bundle(self.fallback_fluent_bundle())
+                    .map_err(|fallback| primary.and(fallback))?,
+
+                // The primary bundle is missing, proceed to the fallback bundle
+                None => translate_with_bundle(self.fallback_fluent_bundle())
+                    .map_err(|fallback| TranslateError::primary(identifier, args).and(fallback))?,
+            }
+        }
     }
 }

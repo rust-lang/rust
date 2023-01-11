@@ -86,7 +86,7 @@ pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, OnDiskCache, TyCtxt,
     TyCtxtFeed,
 };
-pub use self::instance::{Instance, InstanceDef, ShortInstance};
+pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
 pub use self::list::List;
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::rvalue_scopes::RvalueScopes;
