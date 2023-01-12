@@ -155,7 +155,7 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     })
 }
 
-fn required_hashes(s: &str) -> usize {
+pub fn required_hashes(s: &str) -> usize {
     let mut res = 0usize;
     for idx in s.match_indices('"').map(|(i, _)| i) {
         let (_, sub) = s.split_at(idx + 1);
