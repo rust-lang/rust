@@ -6,6 +6,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::{self, visit::Visitor as _, Mutability};
 use rustc_middle::ty::{self, visit::TypeVisitor};
 use rustc_mir_dataflow::{impls::MaybeStorageLive, Analysis, ResultsCursor};
+use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 /// Collects the possible borrowers of each local.
@@ -36,7 +37,7 @@ impl<'a, 'b, 'tcx> PossibleBorrowerVisitor<'a, 'b, 'tcx> {
     fn into_map(
         self,
         cx: &'a LateContext<'tcx>,
-        maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive>,
+        maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive<'tcx>>,
     ) -> PossibleBorrowerMap<'b, 'tcx> {
         let mut map = FxHashMap::default();
         for row in (1..self.body.local_decls.len()).map(mir::Local::from_usize) {
@@ -167,7 +168,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 pub struct PossibleBorrowerMap<'b, 'tcx> {
     /// Mapping `Local -> its possible borrowers`
     pub map: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
-    maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive>,
+    maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive<'tcx>>,
     // Caches to avoid allocation of `BitSet` on every query
     pub bitset: (BitSet<mir::Local>, BitSet<mir::Local>),
 }
@@ -179,7 +180,7 @@ impl<'a, 'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
             vis.visit_body(mir);
             vis.into_map(cx)
         };
-        let maybe_storage_live_result = MaybeStorageLive::new(BitSet::new_empty(mir.local_decls.len()))
+        let maybe_storage_live_result = MaybeStorageLive::new(Cow::Owned(BitSet::new_empty(mir.local_decls.len())))
             .into_engine(cx.tcx, mir)
             .pass_name("redundant_clone")
             .iterate_to_fixpoint()
