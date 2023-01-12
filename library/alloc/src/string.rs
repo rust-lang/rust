@@ -646,7 +646,7 @@ where
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
+    pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str, COOP_PREFERRED> {
         let mut iter = Utf8Chunks::new(v);
 
         let first_valid = if let Some(chunk) = iter.next() {
@@ -662,7 +662,7 @@ where
 
         const REPLACEMENT: &str = "\u{FFFD}";
 
-        let mut res = String::<false>::with_capacity(v.len());
+        let mut res = String::<COOP_PREFERRED>::with_capacity(v.len());
         res.push_str(first_valid);
         res.push_str(REPLACEMENT);
 
@@ -2132,7 +2132,7 @@ impl<'a, const COOP_PREFERRED: bool> FromIterator<Cow<'a, str>> for String<COOP_
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
-    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String<COOP_PREFERRED> {
+    fn from_iter<I: IntoIterator<Item = Cow<'a, str, COOP_PREFERRED>>>(iter: I) -> String<COOP_PREFERRED> {
         let mut iterator = iter.into_iter();
 
         // Because we're iterating over CoWs, we can (potentially) avoid at least
@@ -2960,7 +2960,7 @@ where
     /// let owned: String = String::from(cow);
     /// assert_eq!(&owned[..], "eggplant");
     /// ```
-    fn from(s: Cow<'a, str>) -> String<COOP_PREFERRED> {
+    fn from(s: Cow<'a, str, COOP_PREFERRED>) -> String<COOP_PREFERRED> {
         s.into_owned()
     }
 }
@@ -3007,7 +3007,7 @@ where
     ///
     /// [`Owned`]: crate::borrow::Cow::Owned "borrow::Cow::Owned"
     #[inline]
-    fn from(s: String<COOP_PREFERRED>) -> Cow<'a, str> {
+    fn from(s: String<COOP_PREFERRED>) -> Cow<'a, str, COOP_PREFERRED> {
         Cow::Owned(s)
     }
 }
@@ -3032,7 +3032,7 @@ where
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed "borrow::Cow::Borrowed"
     #[inline]
-    fn from(s: &'a String<COOP_PREFERRED>) -> Cow<'a, str> {
+    fn from(s: &'a String<COOP_PREFERRED>) -> Cow<'a, str, COOP_PREFERRED> {
         Cow::Borrowed(s.as_str())
     }
 }
@@ -3059,7 +3059,7 @@ impl<'a, const COOP_PREFERRED: bool> FromIterator<String<COOP_PREFERRED>> for Co
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
-    fn from_iter<I: IntoIterator<Item = String<COOP_PREFERRED>>>(it: I) -> Cow<'a, str> {
+    fn from_iter<I: IntoIterator<Item = String<COOP_PREFERRED>>>(it: I) -> Cow<'a, str, COOP_PREFERRED> {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }

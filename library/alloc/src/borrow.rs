@@ -18,9 +18,11 @@ use crate::string::String;
 use Cow::*;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B>
+impl<'a, B: ?Sized, const COOP_PREFERRED: bool> Borrow<B> for Cow<'a, B, COOP_PREFERRED>
 where
-    B: ToOwned,
+    B: ToOwned<COOP_PREFERRED>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+
 {
     fn borrow(&self) -> &B {
         &**self
@@ -83,9 +85,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ToOwned for T
+impl<T, const COOP_PREFERRED: bool> ToOwned<COOP_PREFERRED> for T
 where
     T: Clone,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     type Owned = T;
     fn to_owned(&self) -> T {
@@ -180,9 +183,11 @@ where
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Cow")]
-pub enum Cow<'a, B: ?Sized + 'a>
+#[allow(unused_braces)]
+pub enum Cow<'a, B: ?Sized + 'a, const COOP_PREFERRED: bool = { DEFAULT_COOP_PREFERRED!() }>
 where
-    B: ToOwned,
+    B: ToOwned<COOP_PREFERRED>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     /// Borrowed data.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -190,11 +195,14 @@ where
 
     /// Owned data.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Owned(#[stable(feature = "rust1", since = "1.0.0")] <B as ToOwned>::Owned),
+    Owned(#[stable(feature = "rust1", since = "1.0.0")] <B as ToOwned<COOP_PREFERRED>>::Owned),
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B: ?Sized + ToOwned> Clone for Cow<'_, B> {
+impl<B: ?Sized + ToOwned<COOP_PREFERRED>, const COOP_PREFERRED: bool> Clone for Cow<'_, B, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     fn clone(&self) -> Self {
         match *self {
             Borrowed(b) => Borrowed(b),
@@ -213,7 +221,10 @@ impl<B: ?Sized + ToOwned> Clone for Cow<'_, B> {
     }
 }
 
-impl<B: ?Sized + ToOwned> Cow<'_, B> {
+impl<B: ?Sized + ToOwned<COOP_PREFERRED>, const COOP_PREFERRED: bool> Cow<'_, B, COOP_PREFERRED>
+where
+[(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Returns true if the data is borrowed, i.e. if `to_mut` would require additional work.
     ///
     /// # Examples
@@ -275,7 +286,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {
+    pub fn to_mut(&mut self) -> &mut <B as ToOwned<COOP_PREFERRED>>::Owned {
         match *self {
             Borrowed(borrowed) => {
                 *self = Owned(borrowed.to_owned());
@@ -323,7 +334,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_owned(self) -> <B as ToOwned>::Owned {
+    pub fn into_owned(self) -> <B as ToOwned<COOP_PREFERRED>>::Owned {
         match self {
             Borrowed(borrowed) => borrowed.to_owned(),
             Owned(owned) => owned,
@@ -385,9 +396,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B: ?Sized> fmt::Debug for Cow<'_, B>
+impl<B: ?Sized, const COOP_PREFERRED: bool> fmt::Debug for Cow<'_, B, COOP_PREFERRED>
 where
-    B: fmt::Debug + ToOwned<Owned: fmt::Debug>,
+    B: fmt::Debug + ToOwned<COOP_PREFERRED, Owned: fmt::Debug>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -398,9 +410,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B: ?Sized> fmt::Display for Cow<'_, B>
+impl<B: ?Sized, const COOP_PREFERRED: bool> fmt::Display for Cow<'_, B, COOP_PREFERRED>
 where
-    B: fmt::Display + ToOwned<Owned: fmt::Display>,
+    B: fmt::Display + ToOwned<COOP_PREFERRED, Owned: fmt::Display>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -411,13 +424,14 @@ where
 }
 
 #[stable(feature = "default", since = "1.11.0")]
-impl<B: ?Sized> Default for Cow<'_, B>
+impl<B: ?Sized, const COOP_PREFERRED: bool> Default for Cow<'_, B, COOP_PREFERRED>
 where
-    B: ToOwned<Owned: Default>,
+    B: ToOwned<COOP_PREFERRED, Owned: Default>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     /// Creates an owned Cow<'a, B> with the default value for the contained owned value.
     fn default() -> Self {
-        Owned(<B as ToOwned>::Owned::default())
+        Owned(<B as ToOwned<COOP_PREFERRED>>::Owned::default())
     }
 }
 

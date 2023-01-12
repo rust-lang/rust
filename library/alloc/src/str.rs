@@ -215,13 +215,13 @@ where
     type Owned = String<COOP_PREFERRED>;
     #[inline]
     fn to_owned(&self) -> String<COOP_PREFERRED> {
-        unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
+        unsafe { String::<COOP_PREFERRED>::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
 
     fn clone_into(&self, target: &mut String<COOP_PREFERRED>) {
         let mut b = mem::take(target).into_bytes();
         self.as_bytes().clone_into(&mut b);
-        *target = unsafe { String::from_utf8_unchecked(b) }
+        *target = unsafe { String::<COOP_PREFERRED>::from_utf8_unchecked(b) }
     }
 }
 

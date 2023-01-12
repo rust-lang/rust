@@ -1102,7 +1102,7 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    pub fn to_string_lossy(&self) -> Cow<'_, str> {
+    pub fn to_string_lossy(&self) -> Cow<'_, str, false> {
         // false = no need for co-alloc metadata, since it would get lost once converted to the slice.
         String::<false>::from_utf8_lossy(self.to_bytes())
     }
