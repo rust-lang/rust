@@ -32,9 +32,6 @@ note: trait bound `CloneNoCopy: Copy` was not satisfied
    |
 LL | #[derive(Clone, Copy)]
    |          ^^^^^ unsatisfied trait bound introduced in this `derive` macro
-   = note: the following trait bounds were not satisfied:
-           `CloneNoCopy: Copy`
-           which is required by `U5<CloneNoCopy>: Clone`
 help: consider annotating `CloneNoCopy` with `#[derive(Clone, Copy)]`
    |
 LL | #[derive(Clone, Copy)]
