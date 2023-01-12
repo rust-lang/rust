@@ -131,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 // `res = clone(arg)` can be turned into `res = move arg;`
                 // if `arg` is the only borrow of `cloned` at this point.
 
-                if cannot_move_out || !possible_borrower.at_most_borrowers(cx, &[arg], cloned, loc) {
+                if cannot_move_out || !possible_borrower.only_borrowers(&[arg], cloned, loc) {
                     continue;
                 }
 
@@ -178,7 +178,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 // StorageDead(pred_arg);
                 // res = to_path_buf(cloned);
                 // ```
-                if cannot_move_out || !possible_borrower.at_most_borrowers(cx, &[arg, cloned], local, loc) {
+                if cannot_move_out || !possible_borrower.only_borrowers(&[arg, cloned], local, loc) {
                     continue;
                 }
 

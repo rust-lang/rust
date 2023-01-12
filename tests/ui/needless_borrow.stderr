@@ -216,11 +216,5 @@ error: the borrowed expression implements the required traits
 LL |         foo(&a);
    |             ^^ help: change this to: `a`
 
-error: the borrowed expression implements the required traits
-  --> $DIR/needless_borrow.rs:502:85
-   |
-LL |         cx.struct_span_lint(lint, rustc_span::Span::default(), "", |diag| diag.note(&String::new()));
-   |                                                                                     ^^^^^^^^^^^^^^ help: change this to: `String::new()`
-
-error: aborting due to 37 previous errors
+error: aborting due to 36 previous errors
 
