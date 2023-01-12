@@ -1,0 +1,25 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `0`
+  --> $DIR/recover-unticked-labels.rs:3:32
+   |
+LL |     'label: loop { break label 0 }
+   |                                ^ expected one of 8 possible tokens
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `label`
+  --> $DIR/recover-unticked-labels.rs:4:29
+   |
+LL |     'label: loop { continue label }
+   |                             ^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error[E0425]: cannot find value `label` in this scope
+  --> $DIR/recover-unticked-labels.rs:2:26
+   |
+LL |     'label: loop { break label }
+   |     ------               ^^^^^
+   |     |                    |
+   |     |                    not found in this scope
+   |     |                    help: use the similarly named label: `'label`
+   |     a label with a similar name exists
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
