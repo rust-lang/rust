@@ -15,5 +15,4 @@ mod foo {
 
 fn main() {
     let _: foo::Foo = std::mem::transmute(0u8);
-    //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
 }
