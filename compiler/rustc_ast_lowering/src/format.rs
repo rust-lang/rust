@@ -1,6 +1,4 @@
 use super::LoweringContext;
-use rustc_ast as ast;
-use rustc_ast::visit::{self, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
@@ -190,37 +188,10 @@ fn expand_format_args<'hir>(
         ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(elements))
     });
 
-    let arguments = fmt.arguments.all_args();
-
-    // If the args array contains exactly all the original arguments once,
-    // in order, we can use a simple array instead of a `match` construction.
-    // However, if there's a yield point in any argument except the first one,
-    // we don't do this, because an ArgumentV1 cannot be kept across yield points.
-    let use_simple_array = argmap.len() == arguments.len()
-        && argmap.iter().enumerate().all(|(i, &(j, _))| i == j)
-        && arguments.iter().skip(1).all(|arg| !may_contain_yield_point(&arg.expr));
-
-    let args = if use_simple_array {
+    let args = if fmt.arguments.all_args().is_empty() {
         // Generate:
-        //     &[
-        //         ::core::fmt::ArgumentV1::new_display(&arg0),
-        //         ::core::fmt::ArgumentV1::new_lower_hex(&arg1),
-        //         ::core::fmt::ArgumentV1::new_debug(&arg2),
-        //     ]
-        let elements: Vec<_> = arguments
-            .iter()
-            .zip(argmap)
-            .map(|(arg, (_, ty))| {
-                let sp = arg.expr.span.with_ctxt(macsp.ctxt());
-                let arg = ctx.lower_expr(&arg.expr);
-                let ref_arg = ctx.arena.alloc(ctx.expr(
-                    sp,
-                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg),
-                ));
-                make_argument(ctx, sp, ref_arg, ty)
-            })
-            .collect();
-        ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(elements))
+        //     &[]
+        ctx.expr_array_ref(macsp, &[])
     } else {
         // Generate:
         //     &match (&arg0, &arg1, &arg2) {
@@ -233,7 +204,7 @@ fn expand_format_args<'hir>(
         let args_ident = Ident::new(sym::args, macsp);
         let (args_pat, args_hir_id) = ctx.pat_ident(macsp, args_ident);
         let args = ctx.arena.alloc_from_iter(argmap.iter().map(|&(arg_index, ty)| {
-            if let Some(arg) = arguments.get(arg_index) {
+            if let Some(arg) = fmt.arguments.all_args().get(arg_index) {
                 let sp = arg.expr.span.with_ctxt(macsp.ctxt());
                 let args_ident_expr = ctx.expr_ident(macsp, args_ident, args_hir_id);
                 let arg = ctx.arena.alloc(ctx.expr(
@@ -248,7 +219,9 @@ fn expand_format_args<'hir>(
                 ctx.expr(macsp, hir::ExprKind::Err)
             }
         }));
-        let elements: Vec<_> = arguments
+        let elements: Vec<_> = fmt
+            .arguments
+            .all_args()
             .iter()
             .map(|arg| {
                 let arg_expr = ctx.lower_expr(&arg.expr);
@@ -319,36 +292,4 @@ fn expand_format_args<'hir>(
         let new_args = ctx.arena.alloc_from_iter([lit_pieces, args]);
         hir::ExprKind::Call(new_v1, new_args)
     }
-}
-
-fn may_contain_yield_point(e: &ast::Expr) -> bool {
-    struct MayContainYieldPoint(bool);
-
-    impl Visitor<'_> for MayContainYieldPoint {
-        fn visit_expr(&mut self, e: &ast::Expr) {
-            if let ast::ExprKind::Await(_) | ast::ExprKind::Yield(_) = e.kind {
-                self.0 = true;
-            } else {
-                visit::walk_expr(self, e);
-            }
-        }
-
-        fn visit_mac_call(&mut self, _: &ast::MacCall) {
-            self.0 = true;
-        }
-
-        fn visit_attribute(&mut self, _: &ast::Attribute) {
-            // Conservatively assume this may be a proc macro attribute in
-            // expression position.
-            self.0 = true;
-        }
-
-        fn visit_item(&mut self, _: &ast::Item) {
-            // Do not recurse into nested items.
-        }
-    }
-
-    let mut visitor = MayContainYieldPoint(false);
-    visitor.visit_expr(e);
-    visitor.0
 }
