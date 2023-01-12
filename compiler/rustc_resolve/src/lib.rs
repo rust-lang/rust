@@ -881,6 +881,10 @@ pub struct Resolver<'a> {
     /// Used for hints during error reporting.
     field_names: FxHashMap<DefId, Vec<Spanned<Symbol>>>,
 
+    /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
+    /// Used for hints during error reporting.
+    field_visibility_spans: FxHashMap<DefId, Vec<Span>>,
+
     /// All imports known to succeed or fail.
     determined_imports: Vec<&'a Import<'a>>,
 
@@ -1268,6 +1272,7 @@ impl<'a> Resolver<'a> {
 
             has_self: FxHashSet::default(),
             field_names: FxHashMap::default(),
+            field_visibility_spans: FxHashMap::default(),
 
             determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),

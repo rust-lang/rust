@@ -12,6 +12,10 @@ note: the tuple struct constructor `A` is defined here
    |
 LL |     pub struct A(());
    |     ^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct A(pub ());
+   |                  +++
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:52:16
@@ -27,6 +31,10 @@ note: the tuple struct constructor `B` is defined here
    |
 LL |     pub struct B(isize);
    |     ^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct B(pub isize);
+   |                  +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:53:16
@@ -42,6 +50,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:56:12
@@ -57,6 +69,10 @@ note: the tuple struct constructor `A` is defined here
    |
 LL |     pub struct A(());
    |     ^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct A(pub ());
+   |                  +++
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:57:12
@@ -72,6 +88,10 @@ note: the tuple struct constructor `A` is defined here
    |
 LL |     pub struct A(());
    |     ^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct A(pub ());
+   |                  +++
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:58:18
@@ -87,6 +107,10 @@ note: the tuple struct constructor `A` is defined here
    |
 LL |     pub struct A(());
    |     ^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct A(pub ());
+   |                  +++
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:59:18
@@ -102,6 +126,10 @@ note: the tuple struct constructor `A` is defined here
    |
 LL |     pub struct A(());
    |     ^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct A(pub ());
+   |                  +++
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:61:12
@@ -117,6 +145,10 @@ note: the tuple struct constructor `B` is defined here
    |
 LL |     pub struct B(isize);
    |     ^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct B(pub isize);
+   |                  +++
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:62:12
@@ -132,6 +164,10 @@ note: the tuple struct constructor `B` is defined here
    |
 LL |     pub struct B(isize);
    |     ^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct B(pub isize);
+   |                  +++
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:63:18
@@ -147,6 +183,10 @@ note: the tuple struct constructor `B` is defined here
    |
 LL |     pub struct B(isize);
    |     ^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct B(pub isize);
+   |                  +++
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:64:18
@@ -162,6 +202,10 @@ note: the tuple struct constructor `B` is defined here
    |
 LL |     pub struct B(isize);
    |     ^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct B(pub isize);
+   |                  +++
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:65:18
@@ -177,6 +221,10 @@ note: the tuple struct constructor `B` is defined here
    |
 LL |     pub struct B(isize);
    |     ^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct B(pub isize);
+   |                  +++
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:65:32
@@ -192,6 +240,10 @@ note: the tuple struct constructor `B` is defined here
    |
 LL |     pub struct B(isize);
    |     ^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct B(pub isize);
+   |                  +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:68:12
@@ -207,6 +259,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:69:12
@@ -222,6 +278,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:70:12
@@ -237,6 +297,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:71:12
@@ -252,6 +316,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:72:18
@@ -267,6 +335,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:73:18
@@ -282,6 +354,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:74:18
@@ -297,6 +373,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:75:18
@@ -312,6 +392,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:83:17
@@ -327,6 +411,10 @@ note: the tuple struct constructor `A` is defined here
    |
 LL |     pub struct A(());
    |     ^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct A(pub ());
+   |                  +++
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:84:17
@@ -342,6 +430,10 @@ note: the tuple struct constructor `B` is defined here
    |
 LL |     pub struct B(isize);
    |     ^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct B(pub isize);
+   |                  +++
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:85:17
@@ -357,6 +449,10 @@ note: the tuple struct constructor `C` is defined here
    |
 LL |     pub struct C(pub isize, isize);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the fields publicly accessible
+   |
+LL |     pub struct C(pub isize, pub isize);
+   |                  ~~~        +++
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:90:20
