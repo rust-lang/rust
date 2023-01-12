@@ -5,7 +5,6 @@ use super::{
     PredicateObligation,
 };
 
-use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
 use crate::traits::{NormalizeExt, ObligationCtxt};
 
@@ -750,26 +749,30 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             if let ty::Ref(region, base_ty, mutbl) = *real_ty.skip_binder().kind() {
-                let mut autoderef = Autoderef::new(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.body_id,
-                    span,
-                    base_ty,
-                );
-                if let Some(steps) = autoderef.find_map(|(ty, steps)| {
-                    // Re-add the `&`
-                    let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
+                let autoderef = (self.autoderef_steps)(base_ty);
+                if let Some(steps) =
+                    autoderef.into_iter().enumerate().find_map(|(steps, (ty, obligations))| {
+                        // Re-add the `&`
+                        let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
 
-                    // Remapping bound vars here
-                    let real_trait_pred_and_ty =
-                        real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, ty));
-                    let obligation = self.mk_trait_obligation_with_new_self_ty(
-                        obligation.param_env,
-                        real_trait_pred_and_ty,
-                    );
-                    Some(steps).filter(|_| self.predicate_may_hold(&obligation))
-                }) {
+                        // Remapping bound vars here
+                        let real_trait_pred_and_ty =
+                            real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, ty));
+                        let obligation = self.mk_trait_obligation_with_new_self_ty(
+                            obligation.param_env,
+                            real_trait_pred_and_ty,
+                        );
+                        if obligations
+                            .iter()
+                            .chain([&obligation])
+                            .all(|obligation| self.predicate_may_hold(obligation))
+                        {
+                            Some(steps)
+                        } else {
+                            None
+                        }
+                    })
+                {
                     if steps > 0 {
                         // Don't care about `&mut` because `DerefMut` is used less
                         // often and user will not expect autoderef happens.

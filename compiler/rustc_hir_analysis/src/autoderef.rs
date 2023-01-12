@@ -178,6 +178,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         self.state.obligations
     }
 
+    pub fn current_obligations(&self) -> Vec<traits::PredicateObligation<'tcx>> {
+        self.state.obligations.clone()
+    }
+
     pub fn steps(&self) -> &[(Ty<'tcx>, AutoderefKind)] {
         &self.state.steps
     }

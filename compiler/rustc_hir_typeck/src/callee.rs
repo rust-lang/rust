@@ -8,6 +8,7 @@ use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, 
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::{
     infer,
     traits::{self, Obligation},
@@ -25,7 +26,6 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
