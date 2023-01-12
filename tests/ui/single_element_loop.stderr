@@ -95,5 +95,32 @@ LL +         dbg!(item);
 LL +     }
    |
 
-error: aborting due to 6 previous errors
+error: for loop over a single element
+  --> $DIR/single_element_loop.rs:46:5
+   |
+LL | /     for _ in [42] {
+LL | |         let _f = |n: u32| {
+LL | |             for i in 0..n {
+LL | |                 if i > 10 {
+...  |
+LL | |         };
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let _ = 42;
+LL +         let _f = |n: u32| {
+LL +             for i in 0..n {
+LL +                 if i > 10 {
+LL +                     dbg!(i);
+LL +                     break;
+LL +                 }
+LL +             }
+LL +         };
+LL +     }
+   |
+
+error: aborting due to 7 previous errors
 

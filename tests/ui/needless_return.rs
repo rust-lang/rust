@@ -287,4 +287,14 @@ fn issue9947() -> Result<(), String> {
     do yeet "hello";
 }
 
+// without anyhow, but triggers the same bug I believe
+#[expect(clippy::useless_format)]
+fn issue10051() -> Result<String, String> {
+    if true {
+        return Ok(format!("ok!"));
+    } else {
+        return Err(format!("err!"));
+    }
+}
+
 fn main() {}

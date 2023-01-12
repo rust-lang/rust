@@ -103,7 +103,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for range expressions `x..y` where both `x` and `y`
-    /// are constant and `x` is greater or equal to `y`.
+    /// are constant and `x` is greater to `y`. Also triggers if `x` is equal to `y` when they are conditions to a `for` loop.
     ///
     /// ### Why is this bad?
     /// Empty ranges yield no values so iterating them is a no-op.

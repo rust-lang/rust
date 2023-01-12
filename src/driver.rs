@@ -256,11 +256,14 @@ pub fn main() {
     LazyLock::force(&ICE_HOOK);
     exit(rustc_driver::catch_with_exit_code(move || {
         let mut orig_args: Vec<String> = env::args().collect();
+        let has_sysroot_arg = arg_value(&orig_args, "--sysroot", |_| true).is_some();
 
         let sys_root_env = std::env::var("SYSROOT").ok();
         let pass_sysroot_env_if_given = |args: &mut Vec<String>, sys_root_env| {
             if let Some(sys_root) = sys_root_env {
-                args.extend(vec!["--sysroot".into(), sys_root]);
+                if !has_sysroot_arg {
+                    args.extend(vec!["--sysroot".into(), sys_root]);
+                }
             };
         };
 

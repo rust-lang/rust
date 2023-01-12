@@ -11,25 +11,37 @@ impl TestStruct {
 
 #[allow(dead_code)]
 fn is_rust_file(filename: &str) -> bool {
-    filename.ends_with(".rs")
+    std::path::Path::new(filename)
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
 }
 
 fn main() {
     // std::string::String and &str should trigger the lint failure with .ext12
-    let _ = String::new().ends_with(".ext12");
-    let _ = "str".ends_with(".ext12");
+    let _ = std::path::Path::new(&String::new())
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
+    let _ = std::path::Path::new("str")
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
 
     // The fixup should preserve the indentation level
     {
-        let _ = "str".ends_with(".ext12");
+        let _ = std::path::Path::new("str")
+            .extension()
+            .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
     }
 
     // The test struct should not trigger the lint failure with .ext12
     TestStruct {}.ends_with(".ext12");
 
     // std::string::String and &str should trigger the lint failure with .EXT12
-    let _ = String::new().ends_with(".EXT12");
-    let _ = "str".ends_with(".EXT12");
+    let _ = std::path::Path::new(&String::new())
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
+    let _ = std::path::Path::new("str")
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
 
     // Should not trigger the lint failure because of the calls to to_lowercase and to_uppercase
     let _ = String::new().to_lowercase().ends_with(".EXT12");

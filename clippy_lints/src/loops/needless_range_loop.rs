@@ -81,7 +81,7 @@ pub(super) fn check<'tcx>(
 
                 let skip = if starts_at_zero {
                     String::new()
-                } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, start) {
+                } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, start, cx) {
                     return;
                 } else {
                     format!(".skip({})", snippet(cx, start.span, ".."))
@@ -109,7 +109,7 @@ pub(super) fn check<'tcx>(
 
                     if is_len_call(end, indexed) || is_end_eq_array_len(cx, end, limits, indexed_ty) {
                         String::new()
-                    } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, take_expr) {
+                    } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, take_expr, cx) {
                         return;
                     } else {
                         match limits {
