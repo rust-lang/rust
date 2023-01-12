@@ -1,5 +1,3 @@
-#![feature(pin_macro)]
-
 use std::future::*;
 use std::marker::PhantomPinned;
 use std::pin::*;
