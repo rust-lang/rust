@@ -1027,8 +1027,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         .chain(std::iter::once("implementors"))
         .collect();
     if let Some(did) = it.item_id.as_def_id() &&
-        let get_extern = { || cache.external_paths.get(&did).map(|s| s.0.clone()) } &&
-        let Some(fqp) = cache.exact_paths.get(&did).cloned().or_else(get_extern) {
+        let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) } &&
+        let Some(fqp) = cache.exact_paths.get(&did).or_else(get_extern) {
         js_src_path.extend(fqp[..fqp.len() - 1].iter().copied());
         js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), fqp.last().unwrap()));
     } else {
