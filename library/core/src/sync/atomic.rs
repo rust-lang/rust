@@ -2716,7 +2716,7 @@ macro_rules! atomic_int {
             ///
             #[doc = concat!("let atomic = ", stringify!($atomic_type), "::new(1);")]
             ///
-            // SAFETY: Safe as long as `my_atomic_op` is atomic.
+            /// // SAFETY: Safe as long as `my_atomic_op` is atomic.
             /// unsafe {
             ///     my_atomic_op(atomic.as_mut_ptr());
             /// }
