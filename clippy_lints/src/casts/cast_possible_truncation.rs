@@ -8,6 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_span::Span;
 use rustc_target::abi::IntegerType;
 
 use super::{utils, CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION};
@@ -76,7 +77,14 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    cast_expr: &Expr<'_>,
+    cast_from: Ty<'_>,
+    cast_to: Ty<'_>,
+    cast_to_span: Span,
+) {
     let msg = match (cast_from.kind(), cast_to.is_integral()) {
         (ty::Int(_) | ty::Uint(_), true) => {
             let from_nbits = apply_reductions(
@@ -155,9 +163,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         _ => return,
     };
 
-    let snippet = snippet(cx, expr.span, "..");
-    let name_of_cast_from = snippet.split(" as").next().unwrap_or("..");
-    let suggestion = format!("{cast_to}::try_from({name_of_cast_from})");
+    let name_of_cast_from = snippet(cx, cast_expr.span, "..");
+    let cast_to_snip = snippet(cx, cast_to_span, "..");
+    let suggestion = format!("{cast_to_snip}::try_from({name_of_cast_from})");
 
     span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, &msg, |diag| {
         diag.help("if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...");
