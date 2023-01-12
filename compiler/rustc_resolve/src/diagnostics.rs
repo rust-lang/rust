@@ -6,7 +6,9 @@ use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    pluralize, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
+};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
@@ -1604,6 +1606,16 @@ impl<'a> Resolver<'a> {
         err.span_label(ident.span, &format!("private {}", descr));
         if let Some(span) = ctor_fields_span {
             err.span_label(span, "a constructor is private if any of the fields is private");
+            if let Res::Def(_, d) = res && let Some(fields) = self.field_visibility_spans.get(&d) {
+                err.multipart_suggestion_verbose(
+                    &format!(
+                        "consider making the field{} publicly accessible",
+                        pluralize!(fields.len())
+                    ),
+                    fields.iter().map(|span| (*span, "pub ".to_string())).collect(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
 
         // Print the whole import chain to make it easier to see what happens.

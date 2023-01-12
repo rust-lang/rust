@@ -9,6 +9,10 @@ note: constructor is not visible here due to private fields
    |
 LL |     pub struct Bar(u8);
    |                    ^^ private field
+help: consider making the field publicly accessible
+   |
+LL |     pub struct Bar(pub u8);
+   |                    +++
 
 error: aborting due to previous error
 
