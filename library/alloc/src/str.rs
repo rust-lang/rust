@@ -191,7 +191,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Borrow<str> for String {
+impl<const COOP_PREFERRED: bool> Borrow<str> for String<COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn borrow(&self) -> &str {
         &self[..]
@@ -199,7 +202,10 @@ impl Borrow<str> for String {
 }
 
 #[stable(feature = "string_borrow_mut", since = "1.36.0")]
-impl BorrowMut<str> for String {
+impl<const COOP_PREFERRED: bool> BorrowMut<str> for String<COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn borrow_mut(&mut self) -> &mut str {
         &mut self[..]

@@ -496,7 +496,10 @@ impl CString {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn into_bytes(self) -> Vec<u8> {
+    pub fn into_bytes<const COOP_PREFERRED: bool>(self) -> Vec<u8, Global, COOP_PREFERRED>
+    where
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    {
         let mut vec = into_vec(self.into_inner());
         let _nul = vec.pop();
         debug_assert_eq!(_nul, Some(0u8));
@@ -726,12 +729,14 @@ impl fmt::Debug for CString {
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
 #[allow(unused_braces)]
-impl From<CString> for Vec<u8, Global, {DEFAULT_COOP_PREFERRED!()}> {
+impl<const COOP_PREFERRED: bool> From<CString> for Vec<u8, Global, COOP_PREFERRED>
+where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Converts a [`CString`] into a <code>[Vec]<[u8]></code>.
     ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.
     #[inline]
-    fn from(s: CString) -> Vec<u8> {
+    fn from(s: CString) -> Vec<u8, Global, COOP_PREFERRED> {
         s.into_bytes()
     }
 }
@@ -741,7 +746,8 @@ impl Default for CString {
     /// Creates an empty `CString`.
     fn default() -> CString {
         let a: &CStr = Default::default();
-        a.to_owned()
+        // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+        <CStr as ToOwned<false>>::to_owned(a)
     }
 }
 
@@ -754,11 +760,13 @@ impl Borrow<CStr> for CString {
 }
 
 #[stable(feature = "cstring_from_cow_cstr", since = "1.28.0")]
-impl<'a> From<Cow<'a, CStr>> for CString {
+impl<'a, const COOP_PREFERRED: bool> From<Cow<'a, CStr, COOP_PREFERRED>> for CString
+where     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Converts a `Cow<'a, CStr>` into a `CString`, by copying the contents if they are
     /// borrowed.
     #[inline]
-    fn from(s: Cow<'a, CStr>) -> Self {
+    fn from(s: Cow<'a, CStr, COOP_PREFERRED>) -> Self {
         s.into_owned()
     }
 }
@@ -775,11 +783,13 @@ impl From<&CStr> for Box<CStr> {
 }
 
 #[stable(feature = "box_from_cow", since = "1.45.0")]
-impl From<Cow<'_, CStr>> for Box<CStr> {
+impl<const COOP_PREFERRED: bool> From<Cow<'_, CStr, COOP_PREFERRED>> for Box<CStr>
+where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Converts a `Cow<'a, CStr>` into a `Box<CStr>`,
     /// by copying the contents if they are borrowed.
     #[inline]
-    fn from(cow: Cow<'_, CStr>) -> Box<CStr> {
+    fn from(cow: Cow<'_, CStr, COOP_PREFERRED>) -> Box<CStr> {
         match cow {
             Cow::Borrowed(s) => Box::from(s),
             Cow::Owned(s) => Box::from(s),
@@ -838,28 +848,33 @@ impl From<CString> for Box<CStr> {
 }
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
-impl<'a> From<CString> for Cow<'a, CStr> {
+#[allow(unused_braces)]
+impl<'a> From<CString> for Cow<'a, CStr, { DEFAULT_COOP_PREFERRED!() }> {
     /// Converts a [`CString`] into an owned [`Cow`] without copying or allocating.
     #[inline]
-    fn from(s: CString) -> Cow<'a, CStr> {
+    fn from(s: CString) -> Cow<'a, CStr, { DEFAULT_COOP_PREFERRED!() }> {
         Cow::Owned(s)
     }
 }
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
-impl<'a> From<&'a CStr> for Cow<'a, CStr> {
+#[allow(unused_braces)]
+impl<'a> From<&'a CStr> for Cow<'a, CStr, { DEFAULT_COOP_PREFERRED!() }> {
     /// Converts a [`CStr`] into a borrowed [`Cow`] without copying or allocating.
     #[inline]
-    fn from(s: &'a CStr) -> Cow<'a, CStr> {
+    fn from(s: &'a CStr) -> Cow<'a, CStr, { DEFAULT_COOP_PREFERRED!() }> {
         Cow::Borrowed(s)
     }
 }
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
-impl<'a> From<&'a CString> for Cow<'a, CStr> {
+impl<'a, const COOP_PREFERRED: bool> From<&'a CString> for Cow<'a, CStr, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Converts a `&`[`CString`] into a borrowed [`Cow`] without copying or allocating.
     #[inline]
-    fn from(s: &'a CString) -> Cow<'a, CStr> {
+    fn from(s: &'a CString) -> Cow<'a, CStr, COOP_PREFERRED> {
         Cow::Borrowed(s.as_c_str())
     }
 }
@@ -1017,7 +1032,11 @@ impl fmt::Display for IntoStringError {
 }
 
 #[stable(feature = "cstr_borrow", since = "1.3.0")]
-impl ToOwned for CStr {
+// @FIXME try remove COOP_PREFERRED and have ToOwned<_>
+impl<const COOP_PREFERRED: bool> ToOwned<COOP_PREFERRED> for CStr
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     type Owned = CString;
 
     fn to_owned(&self) -> CString {
@@ -1034,7 +1053,8 @@ impl ToOwned for CStr {
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 impl From<&CStr> for CString {
     fn from(s: &CStr) -> CString {
-        s.to_owned()
+        // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+        <CStr as ToOwned<false>>::to_owned(s)
     }
 }
 
@@ -1102,9 +1122,11 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    pub fn to_string_lossy(&self) -> Cow<'_, str, false> {
+    pub fn to_string_lossy<const COOP_PREFERRED: bool>(&self) -> Cow<'_, str, COOP_PREFERRED>
+    where    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    {
         // false = no need for co-alloc metadata, since it would get lost once converted to the slice.
-        String::<false>::from_utf8_lossy(self.to_bytes())
+        String::<COOP_PREFERRED>::from_utf8_lossy(self.to_bytes())
     }
 
     /// Converts a <code>[Box]<[CStr]></code> into a [`CString`] without copying or allocating.

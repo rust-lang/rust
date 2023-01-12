@@ -852,22 +852,26 @@ where
     }
 }
 
-// COOP_NOT_POSSIBLE
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone> ToOwned for [T] {
-    type Owned = Vec<T>;
+impl<T: Clone, const COOP_PREFERRED: bool> ToOwned<COOP_PREFERRED> for [T]
+where
+[(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(
+    COOP_PREFERRED,
+)]:,
+{
+    type Owned = Vec<T, Global, COOP_PREFERRED>;
     #[cfg(not(test))]
-    fn to_owned(&self) -> Vec<T> {
+    fn to_owned(&self) -> Vec<T, Global, COOP_PREFERRED> {
         self.to_vec()
     }
 
     #[cfg(test)]
-    fn to_owned(&self) -> Vec<T> {
+    fn to_owned(&self) -> Vec<T, Global, COOP_PREFERRED> {
         hack::to_vec(self, Global)
     }
 
-    fn clone_into(&self, target: &mut Vec<T>) {
+    fn clone_into(&self, target: &mut Vec<T, Global, COOP_PREFERRED>) {
         // drop anything in target that will not be overwritten
         target.truncate(self.len());
 

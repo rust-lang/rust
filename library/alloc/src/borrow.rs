@@ -17,6 +17,9 @@ use crate::string::String;
 
 use Cow::*;
 
+// @FIXME check if used & needed
+pub(crate) const BORROW_COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED!();
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, B: ?Sized, const COOP_PREFERRED: bool> Borrow<B> for Cow<'a, B, COOP_PREFERRED>
 where
@@ -344,9 +347,10 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_deref", issue = "88955")]
-impl<B: ?Sized + ToOwned> const Deref for Cow<'_, B>
+impl<B: ?Sized + ToOwned<COOP_PREFERRED>, const COOP_PREFERRED: bool> const Deref for Cow<'_, B, COOP_PREFERRED>
 where
     B::Owned: ~const Borrow<B>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     type Target = B;
 
@@ -359,12 +363,18 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B: ?Sized> Eq for Cow<'_, B> where B: Eq + ToOwned {}
+impl<B: ?Sized, const COOP_PREFERRED: bool> Eq for Cow<'_, B, COOP_PREFERRED>
+where
+    B: Eq + ToOwned<COOP_PREFERRED>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+
+   {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B: ?Sized> Ord for Cow<'_, B>
+impl<B: ?Sized, const COOP_PREFERRED: bool> Ord for Cow<'_, B, COOP_PREFERRED>
 where
-    B: Ord + ToOwned,
+    B: Ord + ToOwned<COOP_PREFERRED>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
@@ -373,24 +383,26 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, B: ?Sized, C: ?Sized> PartialEq<Cow<'b, C>> for Cow<'a, B>
+impl<'a, 'b, B: ?Sized, C: ?Sized, const COOP_PREFERRED: bool> PartialEq<Cow<'b, C, COOP_PREFERRED>> for Cow<'a, B, COOP_PREFERRED>
 where
-    B: PartialEq<C> + ToOwned,
-    C: ToOwned,
+    B: PartialEq<C> + ToOwned<COOP_PREFERRED>,
+    C: ToOwned<COOP_PREFERRED>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     #[inline]
-    fn eq(&self, other: &Cow<'b, C>) -> bool {
+    fn eq(&self, other: &Cow<'b, C, COOP_PREFERRED>) -> bool {
         PartialEq::eq(&**self, &**other)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> PartialOrd for Cow<'a, B>
+impl<'a, B: ?Sized, const COOP_PREFERRED: bool> PartialOrd for Cow<'a, B, COOP_PREFERRED>
 where
-    B: PartialOrd + ToOwned,
+    B: PartialOrd + ToOwned<COOP_PREFERRED>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     #[inline]
-    fn partial_cmp(&self, other: &Cow<'a, B>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Cow<'a, B, COOP_PREFERRED>) -> Option<Ordering> {
         PartialOrd::partial_cmp(&**self, &**other)
     }
 }
@@ -436,9 +448,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B: ?Sized> Hash for Cow<'_, B>
+impl<B: ?Sized, const COOP_PREFERRED: bool> Hash for Cow<'_, B, COOP_PREFERRED>
 where
-    B: Hash + ToOwned,
+    B: Hash + ToOwned<COOP_PREFERRED>,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -447,7 +460,9 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T> {
+impl<T: ?Sized + ToOwned<COOP_PREFERRED>, const COOP_PREFERRED: bool> AsRef<T> for Cow<'_, T, COOP_PREFERRED>
+where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     fn as_ref(&self) -> &T {
         self
     }
@@ -455,8 +470,10 @@ impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
-impl<'a> Add<&'a str> for Cow<'a, str> {
-    type Output = Cow<'a, str>;
+impl<'a, const COOP_PREFERRED: bool> Add<&'a str> for Cow<'a, str, COOP_PREFERRED>
+where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
+    type Output = Cow<'a, str, COOP_PREFERRED>;
 
     #[inline]
     fn add(mut self, rhs: &'a str) -> Self::Output {
@@ -467,11 +484,13 @@ impl<'a> Add<&'a str> for Cow<'a, str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
-impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
-    type Output = Cow<'a, str>;
+impl<'a, const COOP_PREFERRED: bool> Add<Cow<'a, str, COOP_PREFERRED>> for Cow<'a, str, COOP_PREFERRED>
+where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
+    type Output = Cow<'a, str, COOP_PREFERRED>;
 
     #[inline]
-    fn add(mut self, rhs: Cow<'a, str>) -> Self::Output {
+    fn add(mut self, rhs: Cow<'a, str, COOP_PREFERRED>) -> Self::Output {
         self += rhs;
         self
     }
@@ -479,7 +498,9 @@ impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
-impl<'a> AddAssign<&'a str> for Cow<'a, str> {
+impl<'a, const COOP_PREFERRED: bool> AddAssign<&'a str> for Cow<'a, str, COOP_PREFERRED>
+where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     fn add_assign(&mut self, rhs: &'a str) {
         if self.is_empty() {
             *self = Cow::Borrowed(rhs)
@@ -496,8 +517,10 @@ impl<'a> AddAssign<&'a str> for Cow<'a, str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
-impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
-    fn add_assign(&mut self, rhs: Cow<'a, str>) {
+impl<'a, const COOP_PREFERRED: bool> AddAssign<Cow<'a, str, COOP_PREFERRED>> for Cow<'a, str, COOP_PREFERRED>
+where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
+    fn add_assign(&mut self, rhs: Cow<'a, str, COOP_PREFERRED>) {
         if self.is_empty() {
             *self = rhs
         } else if !rhs.is_empty() {

@@ -15,7 +15,10 @@ where
     fn into_cow(self) -> Cow<'a, B>;
 }
 
-impl<'a> IntoCow<'a, str> for String {
+impl<'a, const COOP_PREFERRED: bool> IntoCow<'a, str> for String<COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     fn into_cow(self) -> Cow<'a, str> {
         Cow::Owned(self)
     }

@@ -3014,7 +3014,7 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_from_string_ref", since = "1.28.0")]
-impl<'a, const COOP_PREFERRED: bool> From<&'a String<COOP_PREFERRED>> for Cow<'a, str>
+impl<'a, const COOP_PREFERRED: bool> From<&'a String<COOP_PREFERRED>> for Cow<'a, str, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
@@ -3055,7 +3055,7 @@ impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
-impl<'a, const COOP_PREFERRED: bool> FromIterator<String<COOP_PREFERRED>> for Cow<'a, str>
+impl<'a, const COOP_PREFERRED: bool> FromIterator<String<COOP_PREFERRED>> for Cow<'a, str, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
