@@ -90,6 +90,8 @@ declare_features! (
     (accepted, clone_closures, "1.26.0", Some(44490), None),
     /// Allows coercing non capturing closures to function pointers.
     (accepted, closure_to_fn_coercion, "1.19.0", Some(39817), None),
+    /// Allows using `cmpxchg16b` from `core::arch::x86_64`.
+    (accepted, cmpxchg16b_target_feature, "CURRENT_RUSTC_VERSION", Some(44839), None),
     /// Allows usage of the `compile_error!` macro.
     (accepted, compile_error, "1.20.0", Some(40872), None),
     /// Allows `impl Trait` in function return types.
