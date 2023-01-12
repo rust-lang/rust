@@ -22,14 +22,19 @@ enum ArgumentType {
     Usize,
 }
 
+/// Generate a hir expression representing an argument to a format_args invocation.
+///
+/// Generates:
+///
+/// ```text
+///     <core::fmt::ArgumentV1>::new_…(arg)
+/// ```
 fn make_argument<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     sp: Span,
     arg: &'hir hir::Expr<'hir>,
     ty: ArgumentType,
 ) -> hir::Expr<'hir> {
-    // Generate:
-    //     ::core::fmt::ArgumentV1::new_…(arg)
     use ArgumentType::*;
     use FormatTrait::*;
     let new_fn = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
@@ -51,14 +56,31 @@ fn make_argument<'hir>(
     ctx.expr_call_mut(sp, new_fn, std::slice::from_ref(arg))
 }
 
+/// Generate a hir expression for a format_args Count.
+///
+/// Generates:
+///
+/// ```text
+///     <core::fmt::rt::v1::Count>::Is(…)
+/// ```
+///
+/// or
+///
+/// ```text
+///     <core::fmt::rt::v1::Count>::Param(…)
+/// ```
+///
+/// or
+///
+/// ```text
+///     <core::fmt::rt::v1::Count>::Implied
+/// ```
 fn make_count<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     sp: Span,
     count: &Option<FormatCount>,
     argmap: &mut FxIndexSet<(usize, ArgumentType)>,
 ) -> hir::Expr<'hir> {
-    // Generate:
-    //     ::core::fmt::rt::v1::Count::…(…)
     match count {
         Some(FormatCount::Literal(n)) => {
             let count_is = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
@@ -87,21 +109,26 @@ fn make_count<'hir>(
     }
 }
 
+/// Generate a hir expression for a format_args placeholder specification.
+///
+/// Generates
+///
+/// ```text
+///     <core::fmt::rt::v1::Argument::new(
+///         …usize, // position
+///         '…', // fill
+///         <core::fmt::rt::v1::Alignment>::…, // alignment
+///         …u32, // flags
+///         <core::fmt::rt::v1::Count::…>, // width
+///         <core::fmt::rt::v1::Count::…>, // precision
+///     )
+/// ```
 fn make_format_spec<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     sp: Span,
     placeholder: &FormatPlaceholder,
     argmap: &mut FxIndexSet<(usize, ArgumentType)>,
 ) -> hir::Expr<'hir> {
-    // Generate:
-    //     ::core::fmt::rt::v1::Argument::new(
-    //         0usize, // position
-    //         ' ', // fill
-    //         ::core::fmt::rt::v1::Alignment::Unknown,
-    //         0u32, // flags
-    //         ::core::fmt::rt::v1::Count::Implied, // width
-    //         ::core::fmt::rt::v1::Count::Implied, // precision
-    //     )
     let position = match placeholder.argument.index {
         Ok(arg_index) => {
             let (i, _) =
@@ -203,9 +230,10 @@ fn expand_format_args<'hir>(
     let args = if use_simple_array {
         // Generate:
         //     &[
-        //         ::core::fmt::ArgumentV1::new_display(&arg0),
-        //         ::core::fmt::ArgumentV1::new_lower_hex(&arg1),
-        //         ::core::fmt::ArgumentV1::new_debug(&arg2),
+        //         <core::fmt::ArgumentV1>::new_display(&arg0),
+        //         <core::fmt::ArgumentV1>::new_lower_hex(&arg1),
+        //         <core::fmt::ArgumentV1>::new_debug(&arg2),
+        //         …
         //     ]
         let elements: Vec<_> = arguments
             .iter()
@@ -223,11 +251,12 @@ fn expand_format_args<'hir>(
         ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(elements))
     } else {
         // Generate:
-        //     &match (&arg0, &arg1, &arg2) {
+        //     &match (&arg0, &arg1, &…) {
         //         args => [
-        //             ::core::fmt::ArgumentV1::new_display(args.0),
-        //             ::core::fmt::ArgumentV1::new_lower_hex(args.1),
-        //             ::core::fmt::ArgumentV1::new_debug(args.0),
+        //             <core::fmt::ArgumentV1>::new_display(args.0),
+        //             <core::fmt::ArgumentV1>::new_lower_hex(args.1),
+        //             <core::fmt::ArgumentV1>::new_debug(args.0),
+        //             …
         //         ]
         //     }
         let args_ident = Ident::new(sym::args, macsp);
@@ -277,7 +306,7 @@ fn expand_format_args<'hir>(
 
     if let Some(format_options) = format_options {
         // Generate:
-        //     ::core::fmt::Arguments::new_v1_formatted(
+        //     <core::fmt::Arguments>::new_v1_formatted(
         //         lit_pieces,
         //         args,
         //         format_options,
@@ -307,7 +336,7 @@ fn expand_format_args<'hir>(
         hir::ExprKind::Call(new_v1_formatted, args)
     } else {
         // Generate:
-        //     ::core::fmt::Arguments::new_v1(
+        //     <core::fmt::Arguments>::new_v1(
         //         lit_pieces,
         //         args,
         //     )
