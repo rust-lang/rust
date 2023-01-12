@@ -206,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
             let is_copy = is_copy(cx, arg_ty);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             let (lint, msg) = match fn_name {
-                sym::mem_drop if arg_ty.is_ref() => (DROP_REF, DROP_REF_SUMMARY),
+                sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => (DROP_REF, DROP_REF_SUMMARY),
                 sym::mem_forget if arg_ty.is_ref() => (FORGET_REF, FORGET_REF_SUMMARY),
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => (DROP_COPY, DROP_COPY_SUMMARY),
                 sym::mem_forget if is_copy => (FORGET_COPY, FORGET_COPY_SUMMARY),

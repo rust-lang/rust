@@ -724,3 +724,14 @@ pub fn for_each_local_assignment<'tcx, B>(
         ControlFlow::Continue(())
     }
 }
+
+pub fn contains_break_or_continue(expr: &Expr<'_>) -> bool {
+    for_each_expr(expr, |e| {
+        if matches!(e.kind, ExprKind::Break(..) | ExprKind::Continue(..)) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
+}

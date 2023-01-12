@@ -1,3 +1,12 @@
+//! This test is meant to only be run in CI. To run it locally use:
+//!
+//! `env INTEGRATION=rust-lang/log cargo test --test integration --features=integration`
+//!
+//! You can use a different `INTEGRATION` value to test different repositories.
+//!
+//! This test will clone the specified repository and run Clippy on it. The test succeeds, if
+//! Clippy doesn't produce an ICE. Lint warnings are ignored by this test.
+
 #![cfg(feature = "integration")]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]

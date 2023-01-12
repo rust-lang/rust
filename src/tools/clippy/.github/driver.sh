@@ -17,6 +17,13 @@ test "$sysroot" = $desired_sysroot
 sysroot=$(SYSROOT=$desired_sysroot ./target/debug/clippy-driver --print sysroot)
 test "$sysroot" = $desired_sysroot
 
+# Check that the --sysroot argument is only passed once (SYSROOT is ignored)
+(
+    cd rustc_tools_util
+    touch src/lib.rs
+    SYSROOT=/tmp RUSTFLAGS="--sysroot=$(rustc --print sysroot)" ../target/debug/cargo-clippy clippy --verbose
+)
+
 # Make sure this isn't set - clippy-driver should cope without it
 unset CARGO_MANIFEST_DIR
 

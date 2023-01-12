@@ -111,7 +111,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::dereference::NEEDLESS_BORROW_INFO,
     crate::dereference::REF_BINDING_TO_REFERENCE_INFO,
     crate::derivable_impls::DERIVABLE_IMPLS_INFO,
-    crate::derive::DERIVE_HASH_XOR_EQ_INFO,
+    crate::derive::DERIVED_HASH_WITH_MANUAL_EQ_INFO,
     crate::derive::DERIVE_ORD_XOR_PARTIAL_ORD_INFO,
     crate::derive::DERIVE_PARTIAL_EQ_WITHOUT_EQ_INFO,
     crate::derive::EXPL_IMPL_CLONE_ON_COPY_INFO,
