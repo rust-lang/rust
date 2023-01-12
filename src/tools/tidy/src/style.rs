@@ -282,6 +282,10 @@ pub fn check(path: &Path, bad: &mut bool) {
         if filename.contains("ignore-tidy") {
             return;
         }
+        // apfloat shouldn't be changed because of license problems
+        if is_in(file, "compiler", "rustc_apfloat") {
+            return;
+        }
         let mut skip_cr = contains_ignore_directive(can_contain, &contents, "cr");
         let mut skip_undocumented_unsafe =
             contains_ignore_directive(can_contain, &contents, "undocumented-unsafe");
