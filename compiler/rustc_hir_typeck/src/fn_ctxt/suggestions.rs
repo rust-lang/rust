@@ -5,7 +5,7 @@ use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Expr, ExprKind, GenericBound, Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
@@ -417,10 +417,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if self.suggest_else_fn_with_closure(err, expr, found, expected) {
             return true;
         } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
-            && let ty::FnDef(def_id, ..) = &found.kind()
-            && let Some(sp) = self.tcx.hir().span_if_local(*def_id)
+            && let ty::FnDef(def_id, ..) = *found.kind()
+            && let Some(sp) = self.tcx.hir().span_if_local(def_id)
         {
-            err.span_label(sp, format!("{found} defined here"));
+            let name = self.tcx.item_name(def_id);
+            let kind = self.tcx.def_kind(def_id);
+            if let DefKind::Ctor(of, CtorKind::Fn) = kind {
+                err.span_label(sp, format!("`{name}` defines {} constructor here, which should be called", match of {
+                    CtorOf::Struct => "a struct",
+                    CtorOf::Variant => "an enum variant",
+                }));
+            } else {
+                let descr = kind.descr(def_id);
+                err.span_label(sp, format!("{descr} `{name}` defined here"));
+            }
             return true;
         } else if self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
             return true;

@@ -2,10 +2,10 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
 use crate::ty::print::{with_forced_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
-use hir::def::DefKind;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, Diagnostic, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
@@ -319,7 +319,11 @@ impl<'tcx> Ty<'tcx> {
                     .into()
                 }
             }
-            ty::FnDef(..) => "fn item".into(),
+            ty::FnDef(def_id, ..) => match tcx.def_kind(def_id) {
+                DefKind::Ctor(CtorOf::Struct, _) => "struct constructor".into(),
+                DefKind::Ctor(CtorOf::Variant, _) => "enum constructor".into(),
+                _ => "fn item".into(),
+            },
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(ref inner, ..) if let Some(principal) = inner.principal() => {
                 format!("trait object `dyn {}`", tcx.def_path_str(principal.def_id())).into()
@@ -366,7 +370,11 @@ impl<'tcx> Ty<'tcx> {
                 _ => "reference",
             }
             .into(),
-            ty::FnDef(..) => "fn item".into(),
+            ty::FnDef(def_id, ..) => match tcx.def_kind(def_id) {
+                DefKind::Ctor(CtorOf::Struct, _) => "struct constructor".into(),
+                DefKind::Ctor(CtorOf::Variant, _) => "enum constructor".into(),
+                _ => "fn item".into(),
+            },
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
