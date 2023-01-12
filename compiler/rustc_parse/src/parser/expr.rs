@@ -1346,9 +1346,6 @@ impl<'a> Parser<'a> {
                 err.span_label(sp, "while parsing this `loop` expression");
                 err
             })
-        } else if self.eat_keyword(kw::Continue) {
-            let kind = ExprKind::Continue(self.eat_label());
-            Ok(self.mk_expr(lo.to(self.prev_token.span), kind))
         } else if self.eat_keyword(kw::Match) {
             let match_sp = self.prev_token.span;
             self.parse_match_expr().map_err(|mut err| {
@@ -1372,6 +1369,8 @@ impl<'a> Parser<'a> {
             self.parse_try_block(lo)
         } else if self.eat_keyword(kw::Return) {
             self.parse_return_expr()
+        } else if self.eat_keyword(kw::Continue) {
+            self.parse_continue_expr(lo)
         } else if self.eat_keyword(kw::Break) {
             self.parse_break_expr()
         } else if self.eat_keyword(kw::Yield) {
@@ -1724,8 +1723,8 @@ impl<'a> Parser<'a> {
         } else if self.token != token::OpenDelim(Delimiter::Brace)
             || !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
         {
-            let expr = self.parse_expr_opt()?;
-            if let Some(expr) = &expr {
+            let mut expr = self.parse_expr_opt()?;
+            if let Some(expr) = &mut expr {
                 if label.is_some()
                     && matches!(
                         expr.kind,
@@ -1743,13 +1742,42 @@ impl<'a> Parser<'a> {
                         BuiltinLintDiagnostics::BreakWithLabelAndLoop(expr.span),
                     );
                 }
+
+                // Recover `break label aaaaa`
+                if self.may_recover()
+                    && let ExprKind::Path(None, p) = &expr.kind
+                    && let [segment] = &*p.segments
+                    && let &ast::PathSegment { ident, args: None, .. } = segment
+                    && let Some(next) = self.parse_expr_opt()?
+                {
+                    label = Some(self.recover_ident_into_label(ident));
+                    *expr = next;
+                }
             }
+
             expr
         } else {
             None
         };
         let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Break(label, kind));
         self.maybe_recover_from_bad_qpath(expr)
+    }
+
+    /// Parse `"continue" label?`.
+    fn parse_continue_expr(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+        let mut label = self.eat_label();
+
+        // Recover `continue label` -> `continue 'label`
+        if self.may_recover()
+            && label.is_none()
+            && let Some((ident, _)) = self.token.ident()
+        {
+            self.bump();
+            label = Some(self.recover_ident_into_label(ident));
+        }
+
+        let kind = ExprKind::Continue(label);
+        Ok(self.mk_expr(lo.to(self.prev_token.span), kind))
     }
 
     /// Parse `"yield" expr?`.
@@ -3035,6 +3063,25 @@ impl<'a> Parser<'a> {
             return true;
         }
         false
+    }
+
+    /// Converts an ident into 'label and emits an "expected a label, found an identifier" error.
+    fn recover_ident_into_label(&mut self, ident: Ident) -> Label {
+        // Convert `label` -> `'label`,
+        // so that nameres doesn't complain about non-existing label
+        let label = format!("'{}", ident.name);
+        let ident = Ident { name: Symbol::intern(&label), span: ident.span };
+
+        self.struct_span_err(ident.span, "expected a label, found an identifier")
+            .span_suggestion(
+                ident.span,
+                "labels start with a tick",
+                label,
+                Applicability::MachineApplicable,
+            )
+            .emit();
+
+        Label { ident }
     }
 
     /// Parses `ident (COLON expr)?`.

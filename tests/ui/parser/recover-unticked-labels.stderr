@@ -1,19 +1,19 @@
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `0`
-  --> $DIR/recover-unticked-labels.rs:3:32
+error: expected a label, found an identifier
+  --> $DIR/recover-unticked-labels.rs:5:26
    |
-LL |     'label: loop { break label 0 }
-   |                                ^ expected one of 8 possible tokens
+LL |     'label: loop { break label 0 };
+   |                          ^^^^^ help: labels start with a tick: `'label`
 
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found `label`
-  --> $DIR/recover-unticked-labels.rs:4:29
+error: expected a label, found an identifier
+  --> $DIR/recover-unticked-labels.rs:6:29
    |
-LL |     'label: loop { continue label }
-   |                             ^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+LL |     'label: loop { continue label };
+   |                             ^^^^^ help: labels start with a tick: `'label`
 
 error[E0425]: cannot find value `label` in this scope
-  --> $DIR/recover-unticked-labels.rs:2:26
+  --> $DIR/recover-unticked-labels.rs:4:26
    |
-LL |     'label: loop { break label }
+LL |     'label: loop { break label };
    |     ------               ^^^^^
    |     |                    |
    |     |                    not found in this scope
