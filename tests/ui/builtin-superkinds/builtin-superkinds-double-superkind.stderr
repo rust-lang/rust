@@ -1,8 +1,8 @@
 error[E0277]: `T` cannot be sent between threads safely
-  --> $DIR/builtin-superkinds-double-superkind.rs:6:24
+  --> $DIR/builtin-superkinds-double-superkind.rs:6:32
    |
 LL | impl <T: Sync+'static> Foo for (T,) { }
-   |                        ^^^ `T` cannot be sent between threads safely
+   |                                ^^^^ `T` cannot be sent between threads safely
    |
    = note: required because it appears within the type `(T,)`
 note: required by a bound in `Foo`
@@ -16,10 +16,10 @@ LL | impl <T: Sync+'static + std::marker::Send> Foo for (T,) { }
    |                       +++++++++++++++++++
 
 error[E0277]: `T` cannot be shared between threads safely
-  --> $DIR/builtin-superkinds-double-superkind.rs:9:16
+  --> $DIR/builtin-superkinds-double-superkind.rs:9:24
    |
 LL | impl <T: Send> Foo for (T,T) { }
-   |                ^^^ `T` cannot be shared between threads safely
+   |                        ^^^^^ `T` cannot be shared between threads safely
    |
    = note: required because it appears within the type `(T, T)`
 note: required by a bound in `Foo`

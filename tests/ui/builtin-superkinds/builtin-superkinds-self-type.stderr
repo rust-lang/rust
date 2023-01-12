@@ -1,8 +1,8 @@
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/builtin-superkinds-self-type.rs:10:16
+  --> $DIR/builtin-superkinds-self-type.rs:10:24
    |
 LL | impl <T: Sync> Foo for T { }
-   |                ^^^ ...so that the type `T` will meet its required lifetime bounds...
+   |                        ^ ...so that the type `T` will meet its required lifetime bounds...
    |
 note: ...that is required by this bound
   --> $DIR/builtin-superkinds-self-type.rs:6:24

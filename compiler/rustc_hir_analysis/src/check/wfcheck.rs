@@ -1272,7 +1272,7 @@ fn check_impl<'tcx>(
                     wfcx.param_env,
                     wfcx.body_id,
                     &trait_pred,
-                    ast_trait_ref.path.span,
+                    ast_self_ty.span,
                     item,
                 );
                 debug!(?obligations);

@@ -9,10 +9,10 @@ LL | #![feature(specialization)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0277]: the trait bound `U: Eq` is not satisfied
-  --> $DIR/specialization-wfcheck.rs:7:17
+  --> $DIR/specialization-wfcheck.rs:7:37
    |
 LL | default impl<U> Foo<'static, U> for () {}
-   |                 ^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `U`
+   |                                     ^^ the trait `Eq` is not implemented for `U`
    |
 note: required by a bound in `Foo`
   --> $DIR/specialization-wfcheck.rs:5:18
