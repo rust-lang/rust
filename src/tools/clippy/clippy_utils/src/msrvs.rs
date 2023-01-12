@@ -20,8 +20,9 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,65,0 { LET_ELSE }
-    1,62,0 { BOOL_THEN_SOME }
+    1,62,0 { BOOL_THEN_SOME, DEFAULT_ENUM_ATTRIBUTE }
     1,58,0 { FORMAT_ARGS_CAPTURE, PATTERN_TRAIT_CHAR_ARRAY }
+    1,55,0 { SEEK_REWIND }
     1,53,0 { OR_PATTERNS, MANUAL_BITS, BTREE_MAP_RETAIN, BTREE_SET_RETAIN, ARRAY_INTO_ITERATOR }
     1,52,0 { STR_SPLIT_ONCE, REM_EUCLID_CONST }
     1,51,0 { BORROW_AS_PTR, SEEK_FROM_CURRENT, UNSIGNED_ABS }
@@ -45,7 +46,6 @@ msrv_aliases! {
     1,18,0 { HASH_MAP_RETAIN, HASH_SET_RETAIN }
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }
     1,16,0 { STR_REPEAT }
-    1,55,0 { SEEK_REWIND }
 }
 
 fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {

@@ -1,4 +1,4 @@
-error: this `to_owned` call clones the std::borrow::Cow<'_, str> itself and does not cause the std::borrow::Cow<'_, str> contents to become owned
+error: this `to_owned` call clones the Cow<'_, str> itself and does not cause the Cow<'_, str> contents to become owned
   --> $DIR/suspicious_to_owned.rs:16:13
    |
 LL |     let _ = cow.to_owned();
@@ -6,19 +6,19 @@ LL |     let _ = cow.to_owned();
    |
    = note: `-D clippy::suspicious-to-owned` implied by `-D warnings`
 
-error: this `to_owned` call clones the std::borrow::Cow<'_, [char; 3]> itself and does not cause the std::borrow::Cow<'_, [char; 3]> contents to become owned
+error: this `to_owned` call clones the Cow<'_, [char; 3]> itself and does not cause the Cow<'_, [char; 3]> contents to become owned
   --> $DIR/suspicious_to_owned.rs:26:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^ help: consider using, depending on intent: `cow.clone()` or `cow.into_owned()`
 
-error: this `to_owned` call clones the std::borrow::Cow<'_, std::vec::Vec<char>> itself and does not cause the std::borrow::Cow<'_, std::vec::Vec<char>> contents to become owned
+error: this `to_owned` call clones the Cow<'_, Vec<char>> itself and does not cause the Cow<'_, Vec<char>> contents to become owned
   --> $DIR/suspicious_to_owned.rs:36:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^ help: consider using, depending on intent: `cow.clone()` or `cow.into_owned()`
 
-error: this `to_owned` call clones the std::borrow::Cow<'_, str> itself and does not cause the std::borrow::Cow<'_, str> contents to become owned
+error: this `to_owned` call clones the Cow<'_, str> itself and does not cause the Cow<'_, str> contents to become owned
   --> $DIR/suspicious_to_owned.rs:46:13
    |
 LL |     let _ = cow.to_owned();

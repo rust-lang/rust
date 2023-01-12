@@ -244,4 +244,27 @@ impl Default for IntOrString {
     }
 }
 
+pub enum SimpleEnum {
+    Foo,
+    Bar,
+}
+
+impl Default for SimpleEnum {
+    fn default() -> Self {
+        SimpleEnum::Bar
+    }
+}
+
+pub enum NonExhaustiveEnum {
+    Foo,
+    #[non_exhaustive]
+    Bar,
+}
+
+impl Default for NonExhaustiveEnum {
+    fn default() -> Self {
+        NonExhaustiveEnum::Bar
+    }
+}
+
 fn main() {}

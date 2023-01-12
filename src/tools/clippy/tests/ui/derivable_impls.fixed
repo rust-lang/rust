@@ -210,4 +210,25 @@ impl Default for IntOrString {
     }
 }
 
+#[derive(Default)]
+pub enum SimpleEnum {
+    Foo,
+    #[default]
+    Bar,
+}
+
+
+
+pub enum NonExhaustiveEnum {
+    Foo,
+    #[non_exhaustive]
+    Bar,
+}
+
+impl Default for NonExhaustiveEnum {
+    fn default() -> Self {
+        NonExhaustiveEnum::Bar
+    }
+}
+
 fn main() {}

@@ -54,4 +54,14 @@ impl Read for ImplementsDefault {
 
 fn issue_9621_dyn_trait() {
     let _: Box<dyn Read> = Box::new(ImplementsDefault::default());
+    issue_10089();
+}
+
+fn issue_10089() {
+    let _closure = || {
+        #[derive(Default)]
+        struct WeirdPathed;
+
+        let _ = Box::new(WeirdPathed::default());
+    };
 }
