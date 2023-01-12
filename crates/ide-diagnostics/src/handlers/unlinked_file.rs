@@ -9,7 +9,7 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    ast::{self, HasModuleItem, HasName},
+    ast::{self, edit::IndentLevel, HasModuleItem, HasName},
     AstNode, TextRange, TextSize,
 };
 use text_edit::TextEdit;
@@ -184,30 +184,36 @@ fn make_fixes(
         Some(last) => {
             cov_mark::hit!(unlinked_file_append_to_existing_mods);
             let offset = last.syntax().text_range().end();
-            mod_decl_builder.insert(offset, format!("\n{mod_decl}"));
-            pub_mod_decl_builder.insert(offset, format!("\n{pub_mod_decl}"));
+            let indent = IndentLevel::from_node(last.syntax());
+            mod_decl_builder.insert(offset, format!("\n{indent}{mod_decl}"));
+            pub_mod_decl_builder.insert(offset, format!("\n{indent}{pub_mod_decl}"));
         }
         None => {
             // Prepend before the first item in the file.
             match items.next() {
-                Some(item) => {
+                Some(first) => {
                     cov_mark::hit!(unlinked_file_prepend_before_first_item);
-                    let offset = item.syntax().text_range().start();
-                    mod_decl_builder.insert(offset, format!("{mod_decl}\n\n"));
-                    pub_mod_decl_builder.insert(offset, format!("{pub_mod_decl}\n\n"));
+                    let offset = first.syntax().text_range().start();
+                    let indent = IndentLevel::from_node(first.syntax());
+                    mod_decl_builder.insert(offset, format!("{mod_decl}\n\n{indent}"));
+                    pub_mod_decl_builder.insert(offset, format!("{pub_mod_decl}\n\n{indent}"));
                 }
                 None => {
                     // No items in the file, so just append at the end.
                     cov_mark::hit!(unlinked_file_empty_file);
+                    let mut indent = IndentLevel::from(0);
                     let offset = match &source {
                         ModuleSource::SourceFile(it) => it.syntax().text_range().end(),
                         ModuleSource::Module(it) => {
+                            indent = IndentLevel::from_node(it.syntax()) + 1;
                             it.item_list()?.r_curly_token()?.text_range().start()
                         }
-                        ModuleSource::BlockExpr(_) => return None,
+                        ModuleSource::BlockExpr(it) => {
+                            it.stmt_list()?.r_curly_token()?.text_range().start()
+                        }
                     };
-                    mod_decl_builder.insert(offset, format!("{mod_decl}\n"));
-                    pub_mod_decl_builder.insert(offset, format!("{pub_mod_decl}\n"));
+                    mod_decl_builder.insert(offset, format!("{indent}{mod_decl}\n"));
+                    pub_mod_decl_builder.insert(offset, format!("{indent}{pub_mod_decl}\n"));
                 }
             }
         }
@@ -406,15 +412,13 @@ mod foo;
 mod bar;
 //- /bar.rs
 mod foo {
-
 }
 //- /bar/foo/baz.rs
 $0
 "#,
             r#"
 mod foo {
-
-mod baz;
+    mod baz;
 }
 "#,
         );
@@ -428,15 +432,13 @@ mod baz;
 mod bar;
 //- /bar.rs
 mod baz {
-
 }
 //- /bar/baz/foo/mod.rs
 $0
 "#,
             r#"
 mod baz {
-
-mod foo;
+    mod foo;
 }
 "#,
         );
@@ -448,15 +450,13 @@ mod foo;
             r#"
 //- /main.rs
 mod bar {
-
 }
 //- /bar/foo/mod.rs
 $0
 "#,
             r#"
 mod bar {
-
-mod foo;
+    mod foo;
 }
 "#,
         );
