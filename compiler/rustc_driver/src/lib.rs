@@ -9,6 +9,7 @@
 #![feature(once_cell)]
 #![feature(decl_macro)]
 #![feature(panic_info_message)]
+#![feature(backtrace_frames)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -1192,7 +1193,8 @@ impl From<std::io::Error> for IceError {
     }
 }
 
-fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<String, IceError> {
+fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<(String, String), IceError> {
+    let mut args = vec![];
     let capture = backtrace::Backtrace::force_capture();
     let now = chrono::UTC::now();
     let file_now = now.format("%Y-%m-%d_%H:%M:%S");
@@ -1210,10 +1212,12 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<String, IceError> {
         },
         config::host_triple(),
     )?;
+    args.push(("version", util::version_str!().unwrap_or("unknown_version")));
+    args.push(("platform", config::host_triple()));
 
     if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
         writeln!(file, "compiler flags:")?;
-        for flag in flags {
+        for flag in &flags {
             writeln!(file, "    {flag}")?;
         }
         if excluded_cargo_defaults {
@@ -1221,6 +1225,8 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<String, IceError> {
         }
     }
     writeln!(file, "")?;
+    let mut text = String::new();
+    text.push_str(&format!("{:?} {:?}", info.message(), info.location()));
     match (info.message(), info.location()) {
         (Some(message), Some(location)) => {
             writeln!(file, "panicked at {location}:\n{message}")?;
@@ -1237,7 +1243,15 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<String, IceError> {
     }
 
     writeln!(file, "")?;
-    writeln!(file, "{}", capture)?;
+    let capture = capture.frames().iter().map(|frame| {
+        format!("{:?}", frame)
+    }).collect::<String>();
+    writeln!(file, "{capture}")?;
+    text.push_str(&format!("{capture}"));
+    args.push(("backtrace", &text));
+
+    println!("{}", text);
+    println!("{}", urlqstring::QueryParams::from(args).stringify());
 
     // Be careful relying on global state here: this code is called from
     // a panic hook, which means that the global `Handler` may be in a weird
@@ -1266,7 +1280,7 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<String, IceError> {
         writeln!(file, "end of query stack")?;
         Ok(())
     })?;
-    Ok(path)
+    Ok((path, String::new()))
 }
 
 static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
@@ -1313,7 +1327,7 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 ///
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
-pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, reported_ice: Option<String>) {
+pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, reported_ice: Option<(String, String)>) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
@@ -1341,10 +1355,10 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, reported_ic
         handler.emit_diagnostic(&mut d);
     }
 
-    let xs: Vec<Cow<'static, str>> = if let Some(path) = &reported_ice {
+    let xs: Vec<Cow<'static, str>> = if let Some((path, url)) = &reported_ice {
         vec![
             format!("all necessary context about this bug was written to `{path}`").into(),
-            format!("we would appreciate a bug report with this context at <{bug_report_url}>")
+            format!("we would appreciate a bug report with this context at <{url}>")
                 .into(),
         ]
     } else {
