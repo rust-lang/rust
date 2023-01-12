@@ -3,8 +3,11 @@
 //! instance of `AstConv`.
 
 mod errors;
-mod generics;
+pub mod generics;
 
+use crate::astconv::generics::{
+    check_generic_arg_count, create_substs_for_generic_args, prohibit_assoc_ty_binding,
+};
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
 use crate::errors::{
@@ -120,6 +123,13 @@ pub trait AstConv<'tcx> {
     fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
+
+    fn astconv(&self) -> &dyn AstConv<'tcx>
+    where
+        Self: Sized,
+    {
+        self
+    }
 }
 
 #[derive(Debug)]
@@ -279,7 +289,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty::BoundConstness::NotConst,
         );
         if let Some(b) = item_segment.args().bindings.first() {
-            Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
+            prohibit_assoc_ty_binding(self.tcx(), b.span);
         }
 
         substs
@@ -349,7 +359,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             assert!(self_ty.is_none());
         }
 
-        let arg_count = Self::check_generic_arg_count(
+        let arg_count = check_generic_arg_count(
             tcx,
             span,
             def_id,
@@ -524,7 +534,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             inferred_params: vec![],
             infer_args,
         };
-        let substs = Self::create_substs_for_generic_args(
+        let substs = create_substs_for_generic_args(
             tcx,
             def_id,
             parent_substs,
@@ -610,7 +620,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         if let Some(b) = item_segment.args().bindings.first() {
-            Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
+            prohibit_assoc_ty_binding(self.tcx(), b.span);
         }
 
         args
@@ -804,7 +814,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             constness,
         );
         if let Some(b) = trait_segment.args().bindings.first() {
-            Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
+            prohibit_assoc_ty_binding(self.tcx(), b.span);
         }
         self.tcx().mk_trait_ref(trait_def_id, substs)
     }
@@ -2301,7 +2311,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for segment in segments {
             // Only emit the first error to avoid overloading the user with error messages.
             if let Some(b) = segment.args().bindings.first() {
-                Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
+                prohibit_assoc_ty_binding(self.tcx(), b.span);
                 return true;
             }
         }

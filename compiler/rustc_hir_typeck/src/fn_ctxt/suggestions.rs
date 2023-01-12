@@ -5,7 +5,7 @@ use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Expr, ExprKind, GenericBound, Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
@@ -417,10 +417,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if self.suggest_else_fn_with_closure(err, expr, found, expected) {
             return true;
         } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
-            && let ty::FnDef(def_id, ..) = &found.kind()
-            && let Some(sp) = self.tcx.hir().span_if_local(*def_id)
+            && let ty::FnDef(def_id, ..) = *found.kind()
+            && let Some(sp) = self.tcx.hir().span_if_local(def_id)
         {
-            err.span_label(sp, format!("{found} defined here"));
+            let name = self.tcx.item_name(def_id);
+            let kind = self.tcx.def_kind(def_id);
+            if let DefKind::Ctor(of, CtorKind::Fn) = kind {
+                err.span_label(sp, format!("`{name}` defines {} constructor here, which should be called", match of {
+                    CtorOf::Struct => "a struct",
+                    CtorOf::Variant => "an enum variant",
+                }));
+            } else {
+                let descr = kind.descr(def_id);
+                err.span_label(sp, format!("{descr} `{name}` defined here"));
+            }
             return true;
         } else if self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
             return true;
@@ -783,7 +793,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
                 let span = ty.span;
-                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
+                let ty = self.astconv().ast_ty_to_ty(ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
                 let bound_vars = self.tcx.late_bound_vars(fn_id);
@@ -854,7 +864,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 }) => {
                     // FIXME: Maybe these calls to `ast_ty_to_ty` can be removed (and the ones below)
-                    let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, bounded_ty);
+                    let ty = self.astconv().ast_ty_to_ty(bounded_ty);
                     Some((ty, bounds))
                 }
                 _ => None,
@@ -892,7 +902,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let all_bounds_str = all_matching_bounds_strs.join(" + ");
 
         let ty_param_used_in_fn_params = fn_parameters.iter().any(|param| {
-                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, param);
+                let ty = self.astconv().ast_ty_to_ty( param);
                 matches!(ty.kind(), ty::Param(fn_param_ty_param) if expected_ty_as_param == fn_param_ty_param)
             });
 
@@ -946,7 +956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
-            let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
+            let ty = self.astconv().ast_ty_to_ty(ty);
             let bound_vars = self.tcx.late_bound_vars(fn_id);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = match self.tcx.asyncness(fn_id.owner) {
@@ -1339,7 +1349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::Path { segments: [segment], .. },
             ))
             | hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
-                let self_ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
+                let self_ty = self.astconv().ast_ty_to_ty(ty);
                 if let Ok(pick) = self.probe_for_name(
                     Mode::Path,
                     Ident::new(capitalized_name, segment.ident.span),

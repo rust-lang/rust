@@ -351,7 +351,7 @@ impl<'tcx> ItemCtxt<'tcx> {
     }
 
     pub fn to_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
-        <dyn AstConv<'_>>::ast_ty_to_ty(self, ast_ty)
+        self.astconv().ast_ty_to_ty(ast_ty)
     }
 
     pub fn hir_id(&self) -> hir::HirId {
@@ -413,8 +413,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
-            let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
-                self,
+            let item_substs = self.astconv().create_substs_for_associated_item(
                 span,
                 item_def_id,
                 item_segment,
@@ -1112,8 +1111,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                 tcx.hir().get_parent(hir_id)
                 && i.of_trait.is_some()
             {
-                <dyn AstConv<'_>>::ty_of_fn(
-                    &icx,
+                icx.astconv().ty_of_fn(
                     hir_id,
                     sig.header.unsafety,
                     sig.header.abi,
@@ -1130,15 +1128,9 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             kind: TraitItemKind::Fn(FnSig { header, decl, span: _ }, _),
             generics,
             ..
-        }) => <dyn AstConv<'_>>::ty_of_fn(
-            &icx,
-            hir_id,
-            header.unsafety,
-            header.abi,
-            decl,
-            Some(generics),
-            None,
-        ),
+        }) => {
+            icx.astconv().ty_of_fn(hir_id, header.unsafety, header.abi, decl, Some(generics), None)
+        }
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
@@ -1244,8 +1236,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
 
             ty::Binder::dummy(fn_sig)
         }
-        None => <dyn AstConv<'_>>::ty_of_fn(
-            icx,
+        None => icx.astconv().ty_of_fn(
             hir_id,
             sig.header.unsafety,
             sig.header.abi,
@@ -1354,8 +1345,7 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     match item.kind {
         hir::ItemKind::Impl(ref impl_) => impl_.of_trait.as_ref().map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id);
-            <dyn AstConv<'_>>::instantiate_mono_trait_ref(
-                &icx,
+            icx.astconv().instantiate_mono_trait_ref(
                 ast_trait_ref,
                 selfty,
                 check_impl_constness(tcx, impl_.constness, ast_trait_ref),
@@ -1485,15 +1475,8 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         hir::Unsafety::Unsafe
     };
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let fty = <dyn AstConv<'_>>::ty_of_fn(
-        &ItemCtxt::new(tcx, def_id),
-        hir_id,
-        unsafety,
-        abi,
-        decl,
-        None,
-        None,
-    );
+    let fty =
+        ItemCtxt::new(tcx, def_id).astconv().ty_of_fn(hir_id, unsafety, abi, decl, None, None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw

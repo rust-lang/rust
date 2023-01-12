@@ -20,7 +20,7 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
-use rustc_span::{self, Span};
+use rustc_span::{self, Span, DUMMY_SP};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::cell::{Cell, RefCell};
@@ -175,6 +175,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     fn_sig
                 })
             }),
+            autoderef_steps: Box::new(|ty| {
+                let mut autoderef = self.autoderef(DUMMY_SP, ty).silence_errors();
+                let mut steps = vec![];
+                while let Some((ty, _)) = autoderef.next() {
+                    steps.push((ty, autoderef.current_obligations()));
+                }
+                steps
+            }),
         }
     }
 
@@ -286,8 +294,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             poly_trait_ref,
         );
 
-        let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
-            self,
+        let item_substs = self.astconv().create_substs_for_associated_item(
             span,
             item_def_id,
             item_segment,

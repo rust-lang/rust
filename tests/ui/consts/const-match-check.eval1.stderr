@@ -1,4 +1,4 @@
-error[E0005]: refutable pattern in local binding: `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+error[E0005]: refutable pattern in local binding
   --> $DIR/const-match-check.rs:25:15
    |
 LL |     A = { let 0 = 0; 0 },

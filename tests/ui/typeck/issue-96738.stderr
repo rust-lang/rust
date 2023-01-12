@@ -1,4 +1,4 @@
-error[E0599]: no method named `nonexistent_method` found for fn item `fn(_) -> Option<_> {Option::<_>::Some}` in the current scope
+error[E0599]: no method named `nonexistent_method` found for enum constructor `fn(_) -> Option<_> {Option::<_>::Some}` in the current scope
   --> $DIR/issue-96738.rs:2:10
    |
 LL |     Some.nonexistent_method();

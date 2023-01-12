@@ -1664,15 +1664,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
-                let ty = <dyn AstConv<'_>>::res_to_ty(self, self_ty, path, true);
+                let ty = self.astconv().res_to_ty(self_ty, path, true);
                 (path.res, self.handle_raw_ty(path_span, ty))
             }
             QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
-                let result = <dyn AstConv<'_>>::associated_path_to_ty(
-                    self, hir_id, path_span, ty.raw, qself, segment, true,
-                );
+                let result = self
+                    .astconv()
+                    .associated_path_to_ty(hir_id, path_span, ty.raw, qself, segment, true);
                 let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
                 let ty = self.handle_raw_ty(path_span, ty);
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));

@@ -303,3 +303,64 @@ mir_build_multiple_mut_borrows = cannot borrow value as mutable more than once a
     .mutable_borrow = another mutable borrow, by `{$name_mut}`, occurs here
     .immutable_borrow = also borrowed as immutable, by `{$name_immut}`, here
     .moved = also moved into `{$name_moved}` here
+
+mir_build_union_pattern = cannot use unions in constant patterns
+
+mir_build_type_not_structural =
+     to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
+
+mir_build_unsized_pattern = cannot use unsized non-slice type `{$non_sm_ty}` in constant patterns
+
+mir_build_invalid_pattern = `{$non_sm_ty}` cannot be used in patterns
+
+mir_build_float_pattern = floating-point types cannot be used in patterns
+
+mir_build_pointer_pattern = function pointers and unsized pointers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+
+mir_build_indirect_structural_match =
+    to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
+
+mir_build_nontrivial_structural_match =
+    to use a constant of type `{$non_sm_ty}` in a pattern, the constant's initializer must be trivial or `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
+
+mir_build_overlapping_range_endpoints = multiple patterns overlap on their endpoints
+    .range = ... with this range
+    .note = you likely meant to write mutually exclusive ranges
+
+mir_build_non_exhaustive_omitted_pattern = some variants are not matched explicitly
+    .help = ensure that all variants are matched explicitly by adding the suggested match arms
+    .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found
+
+mir_build_uncovered = {$count ->
+        [1] pattern `{$witness_1}`
+        [2] patterns `{$witness_1}` and `{$witness_2}`
+        [3] patterns `{$witness_1}`, `{$witness_2}` and `{$witness_3}`
+        *[other] patterns `{$witness_1}`, `{$witness_2}`, `{$witness_3}` and {$remainder} more
+    } not covered
+
+mir_build_pattern_not_covered = refutable pattern in {$origin}
+    .pattern_ty = the matched value is of type `{$pattern_ty}`
+
+mir_build_inform_irrefutable = `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+
+mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+
+mir_build_res_defined_here = {$res} defined here
+
+mir_build_adt_defined_here = `{$ty}` defined here
+
+mir_build_variant_defined_here = not covered
+
+mir_build_interpreted_as_const = introduce a variable instead
+
+mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as {$article} {$res} pattern, not a new variable
+
+mir_build_suggest_if_let = you might want to use `if let` to ignore the {$count ->
+        [one] variant that isn't
+        *[other] variants that aren't
+    } matched
+
+mir_build_suggest_let_else = you might want to use `let else` to handle the {$count ->
+        [one] variant that isn't
+        *[other] variants that aren't
+    } matched

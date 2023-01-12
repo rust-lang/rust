@@ -1,14 +1,9 @@
-error[E0005]: refutable pattern in `for` loop binding: `None` not covered
+error[E0005]: refutable pattern in `for` loop binding
   --> $DIR/E0297.rs:4:9
    |
 LL |     for Some(x) in xs {}
    |         ^^^^^^^ pattern `None` not covered
    |
-note: `Option<i32>` defined here
-  --> $SRC_DIR/core/src/option.rs:LL:COL
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
-   |
-   = note: not covered
    = note: the matched value is of type `Option<i32>`
 
 error: aborting due to previous error

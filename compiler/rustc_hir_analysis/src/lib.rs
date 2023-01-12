@@ -84,6 +84,7 @@ extern crate rustc_middle;
 pub mod check;
 
 pub mod astconv;
+pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;
@@ -544,7 +545,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     // scope.  This is derived from the enclosing item-like thing.
     let env_def_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
-    <dyn AstConv<'_>>::ast_ty_to_ty(&item_cx, hir_ty)
+    item_cx.astconv().ast_ty_to_ty(hir_ty)
 }
 
 pub fn hir_trait_to_predicates<'tcx>(
@@ -558,8 +559,7 @@ pub fn hir_trait_to_predicates<'tcx>(
     let env_def_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
     let mut bounds = Bounds::default();
-    let _ = <dyn AstConv<'_>>::instantiate_poly_trait_ref(
-        &item_cx,
+    let _ = &item_cx.astconv().instantiate_poly_trait_ref(
         hir_trait,
         DUMMY_SP,
         ty::BoundConstness::NotConst,
