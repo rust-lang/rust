@@ -692,7 +692,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "auto trait is invoked with no method error, but no error reported?",
                         );
                     }
-                    Some(_) => unreachable!(),
+                    Some(Node::Item(hir::Item {
+                        ident, kind: hir::ItemKind::Trait(..), ..
+                    })) => {
+                        skip_list.insert(p);
+                        let entry = spanned_predicates.entry(ident.span);
+                        let entry = entry.or_insert_with(|| {
+                            (FxHashSet::default(), FxHashSet::default(), Vec::new())
+                        });
+                        entry.0.insert(cause.span);
+                        entry.1.insert((ident.span, ""));
+                        entry.1.insert((cause.span, "unsatisfied trait bound introduced here"));
+                        entry.2.push(p);
+                    }
+                    Some(node) => unreachable!("encountered `{node:?}`"),
                     None => (),
                 }
             }
