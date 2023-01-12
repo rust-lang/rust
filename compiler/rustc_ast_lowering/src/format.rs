@@ -334,13 +334,8 @@ fn may_contain_yield_point(e: &ast::Expr) -> bool {
         }
 
         fn visit_mac_call(&mut self, _: &ast::MacCall) {
-            self.0 = true;
-        }
-
-        fn visit_attribute(&mut self, _: &ast::Attribute) {
-            // Conservatively assume this may be a proc macro attribute in
-            // expression position.
-            self.0 = true;
+            // Macros should be expanded at this point.
+            unreachable!("unexpanded macro in ast lowering");
         }
 
         fn visit_item(&mut self, _: &ast::Item) {
