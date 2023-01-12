@@ -12,6 +12,11 @@ note: required by a bound in `assert`
    |
 LL | fn assert<T: UnwindSafe + ?Sized>() {}
    |              ^^^^^^^^^^ required by this bound in `assert`
+help: consider removing the leading `&`-reference
+   |
+LL -     assert::<&RefCell<i32>>();
+LL +     assert::<RefCell<i32>>();
+   |
 
 error[E0277]: the type `UnsafeCell<isize>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
   --> $DIR/not-panic-safe-4.rs:9:14
@@ -28,6 +33,11 @@ note: required by a bound in `assert`
    |
 LL | fn assert<T: UnwindSafe + ?Sized>() {}
    |              ^^^^^^^^^^ required by this bound in `assert`
+help: consider removing the leading `&`-reference
+   |
+LL -     assert::<&RefCell<i32>>();
+LL +     assert::<RefCell<i32>>();
+   |
 
 error: aborting due to 2 previous errors
 
