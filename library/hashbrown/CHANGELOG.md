@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.13.2] - 2023-01-12
+
+### Fixed
+
+- Added `#[inline(always)]` to `find_inner`. (#375)
+- Fixed `RawTable::allocation_info` for empty tables. (#376)
+
 ## [v0.13.1] - 2022-11-10
 
 ### Added
@@ -389,7 +396,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.13.2...HEAD
+[v0.13.2]: https://github.com/rust-lang/hashbrown/compare/v0.13.1...v0.13.2
 [v0.13.1]: https://github.com/rust-lang/hashbrown/compare/v0.12.3...v0.13.1
 [v0.12.3]: https://github.com/rust-lang/hashbrown/compare/v0.12.2...v0.12.3
 [v0.12.2]: https://github.com/rust-lang/hashbrown/compare/v0.12.1...v0.12.2
