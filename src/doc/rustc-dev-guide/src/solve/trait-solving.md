@@ -51,7 +51,8 @@ Also add issues where each of these rules have been broken in the past
 ### 1. The trait solver has to be *sound*
 
 This means that we must never return *success* for goals for which no `impl` exists. That would
-simply be unsound by assuming a trait is implemented even though it is not.
+simply be unsound by assuming a trait is implemented even though it is not. When using predicates
+from the `where`-bounds, the `impl` whill be proved by the user of the item.
 
 ### 2. If type checker solves generic goal concrete instantiations of that goal have the same result
 

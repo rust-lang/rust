@@ -57,9 +57,26 @@ As we cannot check for infinite trees, we instead search for patterns for which 
 they would result in an infinite proof tree. The currently pattern we detect are (canonical)
 cycles. If `T: Send` relies on `T: Send` then it's pretty clear that this will just go on forever.
 
-With cycles we have to be careful with caching. Due to canonicalization of regions and inference
-variables we also have to rerun queries until the provisional result returned when hitting the cycle
-is equal to the final result.
+With cycles we have to be careful with caching. Because of canonicalization of regions and
+inference variables encountering a cycle doesn't mean that we would get an infinite proof tree.
+Looking at the following example:
+```rust
+trait Foo {}
+struct Wrapper<T>(T);
+
+impl<T> Foo for Wrapper<Wrapper<T>>
+where
+    Wrapper<T>: Foo
+{} 
+```
+Proving `Wrapper<?0>: Foo` uses the impl `impl<T> Foo for Wrapper<Wrapper<T>>` which constrains
+`?0` to `Vec<?1>` and then requires `Wrapper<?1>: Foo`. Due to canonicalization this would be
+detected as a cycle.
+
+The idea to solve is to return a *provisional result* whenever we detect a cycle and repeatedly
+retry goals until the *provisional result* is equal to the final result of that goal. We
+start out by using `Yes` with no constraints as the result and then update it to the result of
+the previous iteration whenever we have to rerun.
 
 TODO: elaborate here. We use the same approach as chalk for coinductive cycles.
 Note that the treatment for inductive cycles currently differs by simply returning `Overflow`.
