@@ -33,6 +33,7 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
+          _4 = const 0_u32;
           StorageLive(_15);
           StorageLive(_14);
           _14 = Shr(_1, const 0_i32);
