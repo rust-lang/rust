@@ -527,10 +527,12 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprKind::InlineAsm(a) => {
+                // FIXME: This should have its own syntax, distinct from a macro invocation.
                 self.word("asm!");
                 self.print_inline_asm(a);
             }
             ast::ExprKind::FormatArgs(fmt) => {
+                // FIXME: This should have its own syntax, distinct from a macro invocation.
                 self.word("format_args!");
                 self.popen();
                 self.rbox(0, Inconsistent);
