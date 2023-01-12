@@ -361,9 +361,9 @@ can't know ahead of time whether a function will require a frame/base pointer.
 
 Various tests for inline assembly are available:
 
-- `src/test/assembly/asm`
-- `src/test/ui/asm`
-- `src/test/codegen/asm-*`
+- `tests/assembly/asm`
+- `tests/ui/asm`
+- `tests/codegen/asm-*`
 
 Every architecture supported by inline assembly must have exhaustive tests in
-`src/test/assembly/asm` which test all combinations of register classes and types.
+`tests/assembly/asm` which test all combinations of register classes and types.

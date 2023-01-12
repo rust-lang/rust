@@ -172,8 +172,8 @@ rebuild. That ought to fix the problem.
 
 You can also use `--keep-stage 1` when running tests. Something like this:
 
-- Initial test run: `./x.py test src/test/ui`
-- Subsequent test run: `./x.py test src/test/ui --keep-stage 1`
+- Initial test run: `./x.py test tests/ui`
+- Subsequent test run: `./x.py test tests/ui --keep-stage 1`
 
 ## Fine-tuning optimizations
 

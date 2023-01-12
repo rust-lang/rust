@@ -37,7 +37,7 @@ modifying rustc to see if things are generally working correctly would be the
 following:
 
 ```bash
-./x.py test src/test/ui
+./x.py test tests/ui
 ```
 
 This will run the `ui` test suite. Of course, the choice
@@ -46,20 +46,20 @@ doing. For example, if you are hacking on debuginfo, you may be better off
 with the debuginfo test suite:
 
 ```bash
-./x.py test src/test/debuginfo
+./x.py test tests/debuginfo
 ```
 
 If you only need to test a specific subdirectory of tests for any
 given test suite, you can pass that directory to `./x.py test`:
 
 ```bash
-./x.py test src/test/ui/const-generics
+./x.py test tests/ui/const-generics
 ```
 
 Likewise, you can test a single file by passing its path:
 
 ```bash
-./x.py test src/test/ui/const-generics/const-test.rs
+./x.py test tests/ui/const-generics/const-test.rs
 ```
 
 ### Run only the tidy script
@@ -125,7 +125,7 @@ you may pass the full file path to achieve this, or alternatively one
 may invoke `x.py` with the `--test-args` option:
 
 ```bash
-./x.py test src/test/ui --test-args issue-1234
+./x.py test tests/ui --test-args issue-1234
 ```
 
 Under the hood, the test runner invokes the standard Rust test runner
@@ -137,10 +137,10 @@ filtering for tests that include "issue-1234" in the name. (Thus
 
 If you have changed the compiler's output intentionally, or you are
 making a new test, you can pass `--bless` to the test subcommand. E.g.
-if some tests in `src/test/ui` are failing, you can run
+if some tests in `tests/ui` are failing, you can run
 
 ```text
-./x.py test src/test/ui --bless
+./x.py test tests/ui --bless
 ```
 
 to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
@@ -165,10 +165,10 @@ Pass UI tests now have three modes, `check-pass`, `build-pass` and
 `run-pass`. When `--pass $mode` is passed, these tests will be forced
 to run under the given `$mode` unless the directive `// ignore-pass`
 exists in the test file. For example, you can run all the tests in
-`src/test/ui` as `check-pass`:
+`tests/ui` as `check-pass`:
 
 ```bash
-./x.py test src/test/ui --pass check
+./x.py test tests/ui --pass check
 ```
 
 By passing `--pass $mode`, you can reduce the testing time. For each
@@ -181,7 +181,7 @@ You can further enable the `--incremental` flag to save additional
 time in subsequent rebuilds:
 
 ```bash
-./x.py test src/test/ui --incremental --test-args issue-1234
+./x.py test tests/ui --incremental --test-args issue-1234
 ```
 
 If you don't want to include the flag with every command, you can
@@ -205,7 +205,7 @@ mode, a test `foo.rs` will first look for expected output in
 The following will run the UI test suite in Polonius mode:
 
 ```bash
-./x.py test src/test/ui --compare-mode=polonius
+./x.py test tests/ui --compare-mode=polonius
 ```
 
 See [Compare modes](compiletest.md#compare-modes) for more details.
@@ -218,7 +218,7 @@ Most tests are just `rs` files, so after
 you can do something like:
 
 ```bash
-rustc +stage1 src/test/ui/issue-1234.rs
+rustc +stage1 tests/ui/issue-1234.rs
 ```
 
 This is much faster, but doesn't always work. For example, some tests
@@ -272,7 +272,7 @@ variable then use `x.py` as usual. For example, to run `ui` tests for a RISC-V
 machine with the IP address `1.2.3.4` use
 ```sh
 export TEST_DEVICE_ADDR="1.2.3.4:12345"
-./x.py test src/test/ui --target riscv64gc-unknown-linux-gnu
+./x.py test tests/ui --target riscv64gc-unknown-linux-gnu
 ```
 
 If `remote-test-server` was run with the verbose flag, output on the test machine

@@ -244,12 +244,12 @@ described below:
   - Examples: `/path/to/rust`, `/path/to/build/root`
 - `{{src-base}}`: The directory where the test is defined. This is equivalent to
   `$DIR` for [output normalization].
-  - Example: `/path/to/rust/src/test/ui/error-codes`
+  - Example: `/path/to/rust/tests/ui/error-codes`
 - `{{build-base}}`: The base directory where the test's output goes. This is
   equivalent to `$TEST_BUILD_DIR` for [output normalization].
   - Example: `/path/to/rust/build/x86_64-unknown-linux-gnu/test/ui`
 
-See [`src/test/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/a5029ac0ab372aec515db2e718da6d7787f3d122/src/test/ui/commandline-argfile.rs)
+See [`tests/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/commandline-argfile.rs)
 for an example of a test that uses this substitution.
 
 [output normalization]: ui.md#normalization

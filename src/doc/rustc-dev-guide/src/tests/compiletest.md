@@ -26,11 +26,11 @@ suite.
 
 ## Test suites
 
-All of the tests are in the [`src/test`] directory.
+All of the tests are in the [`tests`] directory.
 The tests are organized into "suites", with each suite in a separate subdirectory.
 Each test suite behaves a little differently, with different compiler behavior
 and different checks for correctness.
-For example, the [`src/test/incremental`] directory contains tests for
+For example, the [`tests/incremental`] directory contains tests for
 incremental compilation.
 The various suites are defined in [`src/tools/compiletest/src/common.rs`] in
 the `pub enum Mode` declaration.
@@ -62,12 +62,12 @@ The following test suites are available, with links for more information:
     - `rustdoc-json` — tests on the JSON output of rustdoc.
     - `rustdoc-ui` — tests on the terminal output of rustdoc.
 
-[`src/test`]: https://github.com/rust-lang/rust/blob/master/src/test
+[`tests`]: https://github.com/rust-lang/rust/blob/master/tests
 [`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs
 
 ### Pretty-printer tests
 
-The tests in [`src/test/pretty`] exercise the "pretty-printing" functionality of `rustc`.
+The tests in [`tests/pretty`] exercise the "pretty-printing" functionality of `rustc`.
 The `-Z unpretty` CLI option for `rustc` causes it to translate the input source
 into various different formats, such as the Rust source after macro expansion.
 
@@ -119,11 +119,11 @@ The header commands for pretty-printing tests are:
   pretty-printing rounds will be compared to ensure that the pretty-printed
   output converges to a steady state.
 
-[`src/test/pretty`]: https://github.com/rust-lang/rust/tree/master/src/test/pretty
+[`tests/pretty`]: https://github.com/rust-lang/rust/tree/master/tests/pretty
 
 ### Incremental tests
 
-The tests in [`src/test/incremental`] exercise incremental compilation.
+The tests in [`tests/incremental`] exercise incremental compilation.
 They use [revision headers](#revisions) to tell compiletest to run the
 compiler in a series of steps.
 Compiletest starts with an empty directory with the `-C incremental` flag, and
@@ -168,12 +168,12 @@ cause an Internal Compiler Error (ICE).
 This is a highly specialized header to check that the incremental cache
 continues to work after an ICE.
 
-[`src/test/incremental`]: https://github.com/rust-lang/rust/tree/master/src/test/incremental
+[`tests/incremental`]: https://github.com/rust-lang/rust/tree/master/tests/incremental
 
 
 ### Debuginfo tests
 
-The tests in [`src/test/debuginfo`] test debuginfo generation.
+The tests in [`tests/debuginfo`] test debuginfo generation.
 They build a program, launch a debugger, and issue commands to the debugger.
 A single test can work with cdb, gdb, and lldb.
 
@@ -237,12 +237,12 @@ test based on the debugger currently being used:
   NOTE: The "Rust" version of LLDB doesn't exist anymore, so this will always be ignored.
   This should probably be removed.
 
-[`src/test/debuginfo`]: https://github.com/rust-lang/rust/tree/master/src/test/debuginfo
+[`tests/debuginfo`]: https://github.com/rust-lang/rust/tree/master/tests/debuginfo
 
 
 ### Codegen tests
 
-The tests in [`src/test/codegen`] test LLVM code generation.
+The tests in [`tests/codegen`] test LLVM code generation.
 They compile the test with the `--emit=llvm-ir` flag to emit LLVM IR.
 They then run the LLVM [FileCheck] tool.
 The test is annotated with various `// CHECK` comments to check the generated code.
@@ -250,13 +250,13 @@ See the FileCheck documentation for a tutorial and more information.
 
 See also the [assembly tests](#assembly-tests) for a similar set of tests.
 
-[`src/test/codegen`]: https://github.com/rust-lang/rust/tree/master/src/test/codegen
+[`tests/codegen`]: https://github.com/rust-lang/rust/tree/master/tests/codegen
 [FileCheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
 
 
 ### Assembly tests
 
-The tests in [`src/test/assembly`] test LLVM assembly output.
+The tests in [`tests/assembly`] test LLVM assembly output.
 They compile the test with the `--emit=asm` flag to emit a `.s` file with the
 assembly output.
 They then run the LLVM [FileCheck] tool.
@@ -271,12 +271,12 @@ See the FileCheck documentation for a tutorial and more information.
 
 See also the [codegen tests](#codegen-tests) for a similar set of tests.
 
-[`src/test/assembly`]: https://github.com/rust-lang/rust/tree/master/src/test/assembly
+[`tests/assembly`]: https://github.com/rust-lang/rust/tree/master/tests/assembly
 
 
 ### Codegen-units tests
 
-The tests in [`src/test/codegen-units`] test the
+The tests in [`tests/codegen-units`] test the
 [monomorphization](../backend/monomorph.md) collector and CGU partitioning.
 
 These tests work by running `rustc` with a flag to print the result of the
@@ -295,12 +295,12 @@ where `cgu` is a space separated list of the CGU names and the linkage
 information in brackets.
 For example: `//~ MONO_ITEM static function::FOO @@ statics[Internal]`
 
-[`src/test/codegen-units`]: https://github.com/rust-lang/rust/tree/master/src/test/codegen-units
+[`tests/codegen-units`]: https://github.com/rust-lang/rust/tree/master/tests/codegen-units
 
 
 ### Mir-opt tests
 
-The tests in [`src/test/mir-opt`] check parts of the generated MIR to make
+The tests in [`tests/mir-opt`] check parts of the generated MIR to make
 sure it is generated correctly and is doing the expected optimizations.
 Check out the [MIR Optimizations](../mir/optimizations.md) chapter for more.
 
@@ -345,12 +345,12 @@ problematic in the presence of pointers in constants or other bit width
 dependent things. In that case you can add `// EMIT_MIR_FOR_EACH_BIT_WIDTH` to
 your test, causing separate files to be generated for 32bit and 64bit systems.
 
-[`src/test/mir-opt`]: https://github.com/rust-lang/rust/tree/master/src/test/mir-opt
+[`tests/mir-opt`]: https://github.com/rust-lang/rust/tree/master/tests/mir-opt
 
 
 ### Run-make tests
 
-The tests in [`src/test/run-make`] are general-purpose tests using Makefiles
+The tests in [`tests/run-make`] are general-purpose tests using Makefiles
 which provide the ultimate in flexibility.
 These should be used as a last resort.
 If possible, you should use one of the other test suites.
@@ -365,18 +365,18 @@ There is a [`tools.mk`] Makefile which you can include which provides a bunch of
 utilities to make it easier to run commands and compare outputs.
 Take a look at some of the other tests for some examples on how to get started.
 
-[`tools.mk`]: https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/tools.mk
-[`src/test/run-make`]: https://github.com/rust-lang/rust/tree/master/src/test/run-make
+[`tools.mk`]: https://github.com/rust-lang/rust/blob/master/tests/run-make-fulldeps/tools.mk
+[`tests/run-make`]: https://github.com/rust-lang/rust/tree/master/tests/run-make
 
 
 ### Valgrind tests
 
-The tests in [`src/test/run-pass-valgrind`] are for use with [Valgrind].
+The tests in [`tests/run-pass-valgrind`] are for use with [Valgrind].
 These are currently vestigial, as Valgrind is no longer used in CI.
 These may be removed in the future.
 
 [Valgrind]: https://valgrind.org/
-[`src/test/run-pass-valgrind`]: https://github.com/rust-lang/rust/tree/master/src/test/run-pass-valgrind
+[`tests/run-pass-valgrind`]: https://github.com/rust-lang/rust/tree/master/tests/run-pass-valgrind
 
 
 ## Building auxiliary crates
@@ -501,7 +501,7 @@ To run the tests in a different mode, you need to pass the `--compare-mode`
 CLI flag:
 
 ```bash
-./x.py test src/test/ui --compare-mode=chalk
+./x.py test tests/ui --compare-mode=chalk
 ```
 
 The possible compare modes are:
@@ -517,10 +517,10 @@ tests support different output for different modes.
 In CI, compare modes are only used in one Linux builder, and only with the
 following settings:
 
-* `src/test/debuginfo`: Uses `split-dwarf` mode.
+* `tests/debuginfo`: Uses `split-dwarf` mode.
   This helps ensure that none of the debuginfo tests are affected when
   enabling split-DWARF.
 
 Note that compare modes are separate to [revisions](#revisions).
-All revisions are tested when running `./x.py test src/test/ui`, however
+All revisions are tested when running `./x.py test tests/ui`, however
 compare-modes must be manually run individually via the `--compare-mode` flag.

@@ -6,18 +6,18 @@ UI tests are a particular [test suite](compiletest.md#test-suites) of compiletes
 
 ## Introduction
 
-The tests in [`src/test/ui`] are a collection of general-purpose tests which
+The tests in [`tests/ui`] are a collection of general-purpose tests which
 primarily focus on validating the console output of the compiler, but can be
 used for many other purposes.
 For example, tests can also be configured to [run the resulting
 program](#controlling-passfail-expectations) to verify its behavior.
 
-[`src/test/ui`]: https://github.com/rust-lang/rust/blob/master/src/test/ui
+[`tests/ui`]: https://github.com/rust-lang/rust/blob/master/tests/ui
 
 ## General structure of a test
 
-A test consists of a Rust source file located anywhere in the `src/test/ui` directory.
-For example, [`src/test/ui/hello.rs`] is a basic hello-world test.
+A test consists of a Rust source file located anywhere in the `tests/ui` directory.
+For example, [`tests/ui/hello.rs`] is a basic hello-world test.
 
 Compiletest will use `rustc` to compile the test, and compare the output
 against the expected output which is stored in a `.stdout` or `.stderr` file
@@ -40,7 +40,7 @@ By default, a test is built as an executable binary.
 If you need a different crate type, you can use the `#![crate_type]` attribute
 to set it as needed.
 
-[`src/test/ui/hello.rs`]: https://github.com/rust-lang/rust/blob/master/src/test/ui/hello.rs
+[`tests/ui/hello.rs`]: https://github.com/rust-lang/rust/blob/master/tests/ui/hello.rs
 
 ## Output comparison
 
@@ -99,7 +99,7 @@ platforms, mainly about filenames.
 Compiletest makes the following replacements on the compiler output:
 
 - The directory where the test is defined is replaced with `$DIR`.
-  Example: `/path/to/rust/src/test/ui/error-codes`
+  Example: `/path/to/rust/tests/ui/error-codes`
 - The directory to the standard library source is replaced with `$SRC_DIR`.
   Example: `/path/to/rust/library`
 - Line and column numbers for paths in `$SRC_DIR` are replaced with `LL:COL`.
@@ -160,8 +160,8 @@ The corresponding reference file will use the normalized output to test both
 Please see [`ui/transmute/main.rs`][mrs] and [`main.stderr`] for a
 concrete usage example.
 
-[mrs]: https://github.com/rust-lang/rust/blob/master/src/test/ui/transmute/main.rs
-[`main.stderr`]: https://github.com/rust-lang/rust/blob/master/src/test/ui/transmute/main.stderr
+[mrs]: https://github.com/rust-lang/rust/blob/master/tests/ui/transmute/main.rs
+[`main.stderr`]: https://github.com/rust-lang/rust/blob/master/tests/ui/transmute/main.stderr
 
 Besides `normalize-stderr-32bit` and `-64bit`, one may use any target
 information or stage supported by [`ignore-X`](headers.md#ignoring-tests)
@@ -387,7 +387,7 @@ Tests with the `*-pass` headers can be overridden with the `--pass`
 command-line option:
 
 ```sh
-./x.py test src/test/ui --pass check
+./x.py test tests/ui --pass check
 ```
 
 The `--pass` option only affects UI tests.
@@ -426,30 +426,30 @@ from the internet – we often name the test after the issue plus a short
 description.
 Ideally, the test should be added to a directory that helps identify what
 piece of code is being tested here (e.g.,
-`src/test/ui/borrowck/issue-54597-reject-move-out-of-borrow-via-pat.rs`)
+`tests/ui/borrowck/issue-54597-reject-move-out-of-borrow-via-pat.rs`)
 
 When writing a new feature, **create a subdirectory to store your tests**.
 For example, if you are implementing RFC 1234 ("Widgets"), then it might make
-sense to put the tests in a directory like `src/test/ui/rfc1234-widgets/`.
+sense to put the tests in a directory like `tests/ui/rfc1234-widgets/`.
 
 In other cases, there may already be a suitable directory. (The proper
 directory structure to use is actually an area of active debate.)
 
-Over time, the [`src/test/ui`] directory has grown very fast.
+Over time, the [`tests/ui`] directory has grown very fast.
 There is a check in [tidy](intro.md#tidy) that will ensure none of the
 subdirectories has more than 1000 entries.
 Having too many files causes problems because it isn't editor/IDE friendly and
 the GitHub UI won't show more than 1000 entries.
-However, since `src/test/ui` (UI test root directory) and `src/test/ui/issues`
+However, since `tests/ui` (UI test root directory) and `tests/ui/issues`
 directories have more than 1000 entries, we set a different limit for those
 directories.
 So, please avoid putting a new test there and try to find a more relevant
 place.
 
 For example, if your test is related to closures, you should put it in
-`src/test/ui/closures`.
+`tests/ui/closures`.
 If you're not sure where is the best place, it's still okay to add to
-`src/test/ui/issues/`.
+`tests/ui/issues/`.
 When you reach the limit, you could increase it by tweaking [here][ui test
 tidy].
 
@@ -512,7 +512,7 @@ If in the rare case you encounter a test that has different behavior, you can
 run something like the following to generate the alternate stderr file:
 
 ```sh
-./x.py test src/test/ui --compare-mode=polonius --bless
+./x.py test tests/ui --compare-mode=polonius --bless
 ```
 
 Currently none of the compare modes are checked in CI for UI tests.

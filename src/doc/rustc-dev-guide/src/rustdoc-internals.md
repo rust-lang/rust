@@ -191,7 +191,7 @@ Some extra reading about `make_test` can be found
 
 So that's rustdoc's code in a nutshell, but there's more things in the repo
 that deal with it. Since we have the full `compiletest` suite at hand, there's
-a set of tests in `src/test/rustdoc` that make sure the final HTML is what we
+a set of tests in `tests/rustdoc` that make sure the final HTML is what we
 expect in various situations. These tests also use a supplementary script,
 `src/etc/htmldocck.py`, that allows it to look through the final HTML using
 XPath notation to get a precise look at the output. The full description of all
@@ -204,7 +204,7 @@ directory relative to the test file with the comment. If you need to build
 docs for the auxiliary file, use `// build-aux-docs`.
 
 In addition, there are separate tests for the search index and rustdoc's
-ability to query it. The files in `src/test/rustdoc-js` each contain a
+ability to query it. The files in `tests/rustdoc-js` each contain a
 different search query and the expected results, broken out by search tab.
 These files are processed by a script in `src/tools/rustdoc-js` and the Node.js
 runtime. These tests don't have as thorough of a writeup, but a broad example

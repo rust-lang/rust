@@ -223,10 +223,10 @@ in other sections:
 - Running tests (see the [section on running tests](../tests/running.html) for
   more details):
   - `./x.py test library/std` – runs the unit tests and integration tests from `std`
-  - `./x.py test src/test/ui` – runs the `ui` test suite
-  - `./x.py test src/test/ui/const-generics` - runs all the tests in
+  - `./x.py test tests/ui` – runs the `ui` test suite
+  - `./x.py test tests/ui/const-generics` - runs all the tests in
   the `const-generics/` subdirectory of the `ui` test suite
-  - `./x.py test src/test/ui/const-generics/const-types.rs` - runs
+  - `./x.py test tests/ui/const-generics/const-types.rs` - runs
   the single test `const-types.rs` from the `ui` test suite
 
 ### Cleaning out build directories

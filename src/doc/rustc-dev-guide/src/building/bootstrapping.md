@@ -193,14 +193,14 @@ Build artifacts include, but are not limited to:
     without building `rustc` from source ('build with stage 0, then test the
   artifacts'). If you're working on the standard library, this is normally the
   test command you want.
-- `./x.py test src/test/ui` means to build the stage 1 compiler and run
+- `./x.py test tests/ui` means to build the stage 1 compiler and run
   `compiletest` on it. If you're working on the compiler, this is normally the
   test command you want.
 
 #### Examples of what *not* to do
 
-- `./x.py test --stage 0 src/test/ui` is not useful: it runs tests on the
-  _beta_ compiler and doesn't build `rustc` from source. Use `test src/test/ui`
+- `./x.py test --stage 0 tests/ui` is not useful: it runs tests on the
+  _beta_ compiler and doesn't build `rustc` from source. Use `test tests/ui`
   instead, which builds stage 1 from source.
 - `./x.py test --stage 0 compiler/rustc` builds the compiler but runs no tests:
   it's running `cargo test -p rustc`, but cargo doesn't understand Rust's
@@ -386,7 +386,7 @@ recompiling all dependencies.
 `CARGOFLAGS` will pass arguments to cargo itself (e.g. `--timings`). `CARGOFLAGS_BOOTSTRAP` and
 `CARGOFLAGS_NOT_BOOTSTRAP` work analogously to `RUSTFLAGS_BOOTSTRAP`.
 
-`--test-args` will pass arguments through to the test runner. For `src/test/ui`, this is
+`--test-args` will pass arguments through to the test runner. For `tests/ui`, this is
 compiletest; for unit tests and doctests this is the `libtest` runner. Most test runner accept
 `--help`, which you can use to find out the options accepted by the runner.
 

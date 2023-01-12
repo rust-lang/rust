@@ -76,8 +76,8 @@ implementation:
 ## Testing sanitizers
 
 Sanitizers are validated by code generation tests in
-[`src/test/codegen/sanitize*.rs`][test-cg] and end-to-end functional tests in
-[`src/test/ui/sanitize/`][test-ui] directory.
+[`tests/codegen/sanitize*.rs`][test-cg] and end-to-end functional tests in
+[`tests/ui/sanitize/`][test-ui] directory.
 
 Testing sanitizer functionality requires the sanitizer runtimes (built when
 `sanitizer = true` in `config.toml`) and target providing support for particular
@@ -85,8 +85,8 @@ sanitizer. When sanitizer is unsupported on given target, sanitizers tests will
 be ignored. This behaviour is controlled by compiletest `needs-sanitizer-*`
 directives.
 
-[test-cg]: https://github.com/rust-lang/rust/tree/master/src/test/codegen
-[test-ui]: https://github.com/rust-lang/rust/tree/master/src/test/ui/sanitize
+[test-cg]: https://github.com/rust-lang/rust/tree/master/tests/codegen
+[test-ui]: https://github.com/rust-lang/rust/tree/master/tests/ui/sanitize
 
 ## Enabling sanitizer on a new target
 
@@ -98,7 +98,7 @@ To enable a sanitizer on a new target which is already supported by LLVM:
 2. [Build the runtime for the target and include it in the libdir.][sanitizer-targets]
 3. [Teach compiletest that your target now supports the sanitizer.][compiletest-definition]
    Tests marked with `needs-sanitizer-*` should now run on the target.
-4. Run tests `./x.py test --force-rerun src/test/ui/sanitize/` to verify.
+4. Run tests `./x.py test --force-rerun tests/ui/sanitize/` to verify.
 5. [--enable-sanitizers in the CI configuration][ci-configuration] to build and
    distribute the sanitizer runtime as part of the release process.
 

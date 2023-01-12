@@ -16,13 +16,13 @@ Almost all of them are driven by `./x.py test`, with some exceptions noted below
 
 The main test harness for testing the compiler itself is a tool called [compiletest].
 It supports running different styles of tests, called *test suites*.
-The tests are all located in the [`src/test`] directory.
+The tests are all located in the [`tests`] directory.
 The [Compiletest chapter][compiletest] goes into detail on how to use this tool.
 
-> Example: `./x.py test src/test/ui`
+> Example: `./x.py test tests/ui`
 
 [compiletest]: compiletest.md
-[`src/test`]: https://github.com/rust-lang/rust/tree/master/src/test
+[`tests`]: https://github.com/rust-lang/rust/tree/master/tests
 
 ### Package tests
 

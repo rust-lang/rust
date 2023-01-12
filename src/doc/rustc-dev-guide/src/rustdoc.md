@@ -56,7 +56,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   * If you want to copy those docs to a webserver, copy all of
     `build/host/doc`, since that's where the CSS, JS, fonts, and landing
     page are.
-* Use `./x.py test src/test/rustdoc*` to run the tests using a stage1
+* Use `./x.py test tests/rustdoc*` to run the tests using a stage1
   rustdoc.
   * See [Rustdoc internals] for more information about tests.
 
@@ -72,13 +72,13 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   `doctest.rs`.
 * The Markdown renderer is loaded up in `html/markdown.rs`, including functions
   for extracting doctests from a given block of Markdown.
-* The tests on the structure of rustdoc HTML output are located in `src/test/rustdoc`, where
+* The tests on the structure of rustdoc HTML output are located in `tests/rustdoc`, where
   they're handled by the test runner of rustbuild and the supplementary script
   `src/etc/htmldocck.py`.
 
 ## Tests
 
-* All paths in this section are relative to `src/test` in the rust-lang/rust repository.
+* All paths in this section are relative to `tests` in the rust-lang/rust repository.
 * Tests on search index generation are located in `rustdoc-js`, as a
   series of JavaScript files that encode queries on the standard library search
   index and expected results.

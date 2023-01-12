@@ -12,7 +12,7 @@ This will depend on the nature of the change and what you want to exercise.
 Here are some rough guidelines:
 
 - The majority of compiler tests are done with [compiletest].
-  - The majority of compiletest tests are [UI](ui.md) tests in the [`src/test/ui`] directory.
+  - The majority of compiletest tests are [UI](ui.md) tests in the [`tests/ui`] directory.
 - Changes to the standard library are usually tested within the standard library itself.
   - The majority of standard library tests are written as doctests,
     which illustrate and exercise typical API behavior.
@@ -30,7 +30,7 @@ Here are some rough guidelines:
   - Check out the [compiletest] chapter for more specialized test suites.
 
 [compiletest]: compiletest.md
-[`src/test/ui`]: https://github.com/rust-lang/rust/tree/master/src/test/ui/
+[`tests/ui`]: https://github.com/rust-lang/rust/tree/master/tests/ui/
 
 ## UI test walkthrough
 
@@ -41,13 +41,13 @@ For this tutorial, we'll be adding a test for an async error message.
 ### Step 1. Add a test file
 
 The first step is to create a Rust source file somewhere in the
-[`src/test/ui`] tree.
+[`tests/ui`] tree.
 When creating a test, do your best to find a good location and name (see [Test
 organization](ui.md#test-organization) for more).
 Since naming is the hardest part of development, everything should be downhill
 from here!
 
-Let's place our async test at `src/test/ui/async-await/await-without-async.rs`:
+Let's place our async test at `tests/ui/async-await/await-without-async.rs`:
 
 ```rust,ignore
 // Check what happens when using await in a non-async fn.
@@ -84,17 +84,17 @@ The next step is to create the expected output from the compiler.
 This can be done with the `--bless` option:
 
 ```sh
-./x.py test src/test/ui/async-await/await-without-async.rs --bless
+./x.py test tests/ui/async-await/await-without-async.rs --bless
 ```
 
 This will build the compiler (if it hasn't already been built), compile the
 test, and place the output of the compiler in a file called
-`src/test/ui/async-await/await-without-async.stderr`.
+`tests/ui/async-await/await-without-async.stderr`.
 
 However, this step will fail!
 You should see an error message, something like this:
 
-> error: /rust/src/test/ui/async-await/await-without-async.rs:7: unexpected
+> error: /rust/tests/ui/async-await/await-without-async.rs:7: unexpected
 > error: '7:10: 7:16: `await` is only allowed inside `async` functions and
 > blocks E0728'
 
@@ -118,7 +118,7 @@ annotations](ui.md#error-annotations) section).
 Save that, and run the test again:
 
 ```sh
-./x.py test src/test/ui/async-await/await-without-async.rs
+./x.py test tests/ui/async-await/await-without-async.rs
 ```
 
 It should now pass, yay!
@@ -131,7 +131,7 @@ If you are adding a new diagnostic message, now would be a good time to
 also consider how readable the message looks overall, particularly for
 people new to Rust.
 
-Our example `src/test/ui/async-await/await-without-async.stderr` file should
+Our example `tests/ui/async-await/await-without-async.stderr` file should
 look like this:
 
 ```text
@@ -166,7 +166,7 @@ The final step before posting a PR is to check if you have affected anything els
 Running the UI suite is usually a good start:
 
 ```sh
-./x.py test src/test/ui
+./x.py test tests/ui
 ```
 
 If other tests start failing, you may need to investigate what has changed

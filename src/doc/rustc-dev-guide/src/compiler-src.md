@@ -147,14 +147,14 @@ You can read more about rustdoc in [this chapter][rustdocch].
 
 ## Tests
 
-The test suite for all of the above is in [`src/test/`]. You can read more
+The test suite for all of the above is in [`tests/`]. You can read more
 about the test suite [in this chapter][testsch].
 
 The test harness itself is in [`src/tools/compiletest`].
 
 [testsch]: ./tests/intro.md
 
-[`src/test/`]: https://github.com/rust-lang/rust/tree/master/src/test
+[`tests/`]: https://github.com/rust-lang/rust/tree/master/tests
 [`src/tools/compiletest`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
 
 ## Build System
