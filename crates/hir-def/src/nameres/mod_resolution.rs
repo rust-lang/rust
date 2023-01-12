@@ -7,7 +7,7 @@ use syntax::SmolStr;
 
 use crate::{db::DefDatabase, HirFileId};
 
-const MOD_DEPTH_LIMIT: Limit = Limit::new(32);
+static MOD_DEPTH_LIMIT: Limit = Limit::new(32);
 
 #[derive(Clone, Debug)]
 pub(super) struct ModDir {
