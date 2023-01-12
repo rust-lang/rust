@@ -5,11 +5,11 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     let mut _0: std::result::Result<T, E>; // return place in scope 0 at $DIR/try_identity_e2e.rs:+0:34: +0:46
     let mut _2: std::ops::ControlFlow<E, T>; // in scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
     let mut _3: isize;                   // in scope 0 at $DIR/try_identity_e2e.rs:+4:17: +4:22
-    let mut _4: T;                       // in scope 0 at $DIR/try_identity_e2e.rs:+4:48: +4:49
-    let mut _5: E;                       // in scope 0 at $DIR/try_identity_e2e.rs:+5:46: +5:47
+    let _4: T;                           // in scope 0 at $DIR/try_identity_e2e.rs:+4:20: +4:21
+    let _5: E;                           // in scope 0 at $DIR/try_identity_e2e.rs:+5:21: +5:22
     let mut _6: isize;                   // in scope 0 at $DIR/try_identity_e2e.rs:+8:13: +8:37
     let _7: T;                           // in scope 0 at $DIR/try_identity_e2e.rs:+8:35: +8:36
-    let mut _8: E;                       // in scope 0 at $DIR/try_identity_e2e.rs:+9:49: +9:50
+    let _8: E;                           // in scope 0 at $DIR/try_identity_e2e.rs:+9:32: +9:33
     scope 1 {
         debug v => _4;                   // in scope 1 at $DIR/try_identity_e2e.rs:+4:20: +4:21
     }

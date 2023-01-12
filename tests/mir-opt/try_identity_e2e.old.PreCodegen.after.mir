@@ -5,7 +5,7 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
     let mut _0: std::result::Result<T, E>; // return place in scope 0 at $DIR/try_identity_e2e.rs:+0:34: +0:46
     let mut _2: isize;                   // in scope 0 at $DIR/try_identity_e2e.rs:+3:13: +3:18
     let _3: T;                           // in scope 0 at $DIR/try_identity_e2e.rs:+3:16: +3:17
-    let mut _4: E;                       // in scope 0 at $DIR/try_identity_e2e.rs:+4:34: +4:35
+    let _4: E;                           // in scope 0 at $DIR/try_identity_e2e.rs:+4:17: +4:18
     scope 1 {
         debug v => _3;                   // in scope 1 at $DIR/try_identity_e2e.rs:+3:16: +3:17
     }

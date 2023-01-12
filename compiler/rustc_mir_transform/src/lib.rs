@@ -54,6 +54,7 @@ mod const_debuginfo;
 mod const_goto;
 mod const_prop;
 mod const_prop_lint;
+mod copy_prop;
 mod coverage;
 mod dataflow_const_prop;
 mod dead_store_elimination;
@@ -556,6 +557,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &instcombine::InstCombine,
             &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::new("before-const-prop"),
+            &copy_prop::CopyProp,
             //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
