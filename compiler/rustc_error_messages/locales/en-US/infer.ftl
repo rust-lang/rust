@@ -101,7 +101,6 @@ infer_subtype_2 = ...so that {$requirement ->
 infer_reborrow = ...so that reference does not outlive borrowed content
 infer_reborrow_upvar = ...so that closure can access `{$name}`
 infer_relate_object_bound = ...so that it can be closed over into an object
-infer_data_borrowed = ...so that the type `{$name}` is not borrowed for too long
 infer_reference_outlives_referent = ...so that the reference type `{$name}` does not outlive the data it points at
 infer_relate_param_bound = ...so that the type `{$name}` will meet its required lifetime bounds{$continues ->
     [true] ...

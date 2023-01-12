@@ -1,5 +1,5 @@
 mod foo {
-    pub struct Bx(());
+    pub struct Bx(pub(in crate::foo) ());
 }
 
 mod bar {

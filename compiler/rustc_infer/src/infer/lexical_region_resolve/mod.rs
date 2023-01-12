@@ -702,26 +702,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // Obtain the spans for all the places that can
                     // influence the constraints on this value for
                     // richer diagnostics in `static_impl_trait`.
-                    let influences: Vec<Span> = self
-                        .data
-                        .constraints
-                        .iter()
-                        .filter_map(|(constraint, origin)| match (constraint, origin) {
-                            (
-                                Constraint::VarSubVar(_, sup),
-                                SubregionOrigin::DataBorrowed(_, sp),
-                            ) if sup == &node_vid => Some(*sp),
-                            _ => None,
-                        })
-                        .collect();
 
-                    self.collect_error_for_expanding_node(
-                        graph,
-                        &mut dup_vec,
-                        node_vid,
-                        errors,
-                        influences,
-                    );
+                    self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
                 }
             }
         }
@@ -775,7 +757,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         dup_vec: &mut IndexVec<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
-        influences: Vec<Span>,
     ) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -830,7 +811,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         lower_bound.region,
                         upper_bound.origin.clone(),
                         upper_bound.region,
-                        influences,
+                        vec![],
                     ));
                     return;
                 }

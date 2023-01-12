@@ -478,6 +478,7 @@ compiler-team-contributors = [
     "@jackh726",
     "@TaKO8Ki",
     "@Nilstrieb",
+    "@WaffleLapkin",
 ]
 compiler = [
     "compiler-team",

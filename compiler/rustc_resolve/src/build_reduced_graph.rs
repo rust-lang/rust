@@ -334,6 +334,15 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         self.r.field_names.insert(def_id, field_names);
     }
 
+    fn insert_field_visibilities_local(&mut self, def_id: DefId, vdata: &ast::VariantData) {
+        let field_vis = vdata
+            .fields()
+            .iter()
+            .map(|field| field.vis.span.until(field.ident.map_or(field.ty.span, |i| i.span)))
+            .collect();
+        self.r.field_visibility_spans.insert(def_id, field_vis);
+    }
+
     fn insert_field_names_extern(&mut self, def_id: DefId) {
         let field_names =
             self.r.cstore().struct_field_names_untracked(def_id, self.r.session).collect();
@@ -737,6 +746,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
                 // Record field names for error reporting.
                 self.insert_field_names_local(def_id, vdata);
+                self.insert_field_visibilities_local(def_id, vdata);
 
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
@@ -770,6 +780,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id.to_def_id());
                     self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, sp, expansion));
                     self.r.visibilities.insert(ctor_def_id, ctor_vis);
+                    // We need the field visibility spans also for the constructor for E0603.
+                    self.insert_field_visibilities_local(ctor_def_id.to_def_id(), vdata);
 
                     self.r
                         .struct_constructors
@@ -783,6 +795,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
                 // Record field names for error reporting.
                 self.insert_field_names_local(def_id, vdata);
+                self.insert_field_visibilities_local(def_id, vdata);
             }
 
             ItemKind::Trait(..) => {
@@ -1510,6 +1523,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
 
         // Record field names for error reporting.
         self.insert_field_names_local(def_id.to_def_id(), &variant.data);
+        self.insert_field_visibilities_local(def_id.to_def_id(), &variant.data);
 
         visit::walk_variant(self, variant);
     }
