@@ -1267,14 +1267,21 @@ fn check_impl<'tcx>(
                     },
                     polarity: ty::ImplPolarity::Positive,
                 };
-                let obligations = traits::wf::trait_obligations(
+                let mut obligations = traits::wf::trait_obligations(
                     wfcx.infcx,
                     wfcx.param_env,
                     wfcx.body_id,
                     &trait_pred,
-                    ast_self_ty.span,
+                    ast_trait_ref.path.span,
                     item,
                 );
+                for obligation in &mut obligations {
+                    if let Some(pred) = obligation.predicate.to_opt_poly_trait_pred()
+                        && pred.self_ty().skip_binder() == trait_ref.self_ty()
+                    {
+                        obligation.cause.span = ast_self_ty.span;
+                    }
+                }
                 debug!(?obligations);
                 wfcx.register_obligations(obligations);
             }

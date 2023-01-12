@@ -23,10 +23,10 @@ LL |     [<u8 as Baz>::Quaks; 2]: Bar,
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:21:14
+  --> $DIR/issue-67185-2.rs:21:6
    |
 LL | impl Foo for FooImpl {}
-   |              ^^^^^^^ the trait `Bar` is not implemented for `[u16; 3]`
+   |      ^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
    = help: the following other types implement trait `Bar`:
              [[u16; 3]; 3]
@@ -41,10 +41,10 @@ LL |     <u8 as Baz>::Quaks: Bar,
    |                         ^^^ required by this bound in `Foo`
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:21:14
+  --> $DIR/issue-67185-2.rs:21:6
    |
 LL | impl Foo for FooImpl {}
-   |              ^^^^^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
+   |      ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
    = help: the following other types implement trait `Bar`:
              [[u16; 3]; 3]
