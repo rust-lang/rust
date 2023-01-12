@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/lifetime_errors_on_promotion_misusage.rs:12:35
+  --> $DIR/lifetime_errors_on_promotion_misusage.rs:11:35
    |
 LL |     let phantom_pinned = identity(pin!(PhantomPinned));
    |                                   ^^^^^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
@@ -13,7 +13,7 @@ LL |     stuff(phantom_pinned)
    = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/lifetime_errors_on_promotion_misusage.rs:19:30
+  --> $DIR/lifetime_errors_on_promotion_misusage.rs:18:30
    |
 LL |     let phantom_pinned = {
    |         -------------- borrow later stored here
