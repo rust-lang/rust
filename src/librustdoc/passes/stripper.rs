@@ -243,12 +243,25 @@ impl<'a> DocFolder for ImplStripper<'a, '_> {
 /// This stripper discards all private import statements (`use`, `extern crate`)
 pub(crate) struct ImportStripper<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) is_json_output: bool,
+}
+
+impl<'tcx> ImportStripper<'tcx> {
+    fn import_should_be_hidden(&self, i: &Item, imp: &clean::Import) -> bool {
+        if self.is_json_output {
+            // FIXME: This should be handled the same way as for HTML output.
+            imp.imported_item_is_doc_hidden(self.tcx)
+        } else {
+            i.attrs.lists(sym::doc).has_word(sym::hidden)
+        }
+    }
 }
 
 impl<'tcx> DocFolder for ImportStripper<'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
-            clean::ImportItem(imp) if imp.imported_item_is_doc_hidden(self.tcx) => None,
+            clean::ImportItem(imp) if self.import_should_be_hidden(&i, &imp) => None,
+            clean::ImportItem(_) if i.attrs.lists(sym::doc).has_word(sym::hidden) => None,
             clean::ExternCrateItem { .. } | clean::ImportItem(..)
                 if i.visibility(self.tcx) != Some(Visibility::Public) =>
             {
