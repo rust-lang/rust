@@ -676,7 +676,8 @@ impl Item {
         }
         let header = match *self.kind {
             ItemKind::ForeignFunctionItem(_) => {
-                let abi = tcx.fn_sig(self.item_id.as_def_id().unwrap()).abi();
+                let def_id = self.item_id.as_def_id().unwrap();
+                let abi = tcx.fn_sig(def_id).abi();
                 hir::FnHeader {
                     unsafety: if abi == Abi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, self.item_id.as_def_id().unwrap())
@@ -684,7 +685,14 @@ impl Item {
                         hir::Unsafety::Unsafe
                     },
                     abi,
-                    constness: hir::Constness::NotConst,
+                    constness: if abi == Abi::RustIntrinsic
+                        && tcx.is_const_fn(def_id)
+                        && is_unstable_const_fn(tcx, def_id).is_none()
+                    {
+                        hir::Constness::Const
+                    } else {
+                        hir::Constness::NotConst
+                    },
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
