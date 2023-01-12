@@ -184,7 +184,7 @@ impl<'tcx> PassByRefOrValue {
                     if is_copy(cx, ty)
                         && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
                         && size <= self.ref_min_size
-                        && let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind
+                        && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
                         if let Some(typeck) = cx.maybe_typeck_results() {
                             // Don't lint if an unsafe pointer is created.
@@ -299,7 +299,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+        if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
             if matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)

@@ -969,14 +969,14 @@ fn binding_ty_auto_deref_stability<'tcx>(
     precedence: i8,
     binder_args: &'tcx List<BoundVariableKind>,
 ) -> Position {
-    let TyKind::Rptr(_, ty) = &ty.kind else {
+    let TyKind::Ref(_, ty) = &ty.kind else {
         return Position::Other(precedence);
     };
     let mut ty = ty;
 
     loop {
         break match ty.ty.kind {
-            TyKind::Rptr(_, ref ref_ty) => {
+            TyKind::Ref(_, ref ref_ty) => {
                 ty = ref_ty;
                 continue;
             },
