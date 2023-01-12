@@ -618,7 +618,7 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0487, // unsafe use of destructor: destructor might be called while...
 //  E0488, // lifetime of variable does not enclose its declaration
 //  E0489, // type/lifetime parameter not in scope here
-    E0490, // a value of type `..` is borrowed for too long
+//  E0490, // removed: unreachable
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
