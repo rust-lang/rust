@@ -1,7 +1,7 @@
 //! Abstract-ish representation of paths for VFS.
 use std::fmt;
 
-use paths::{AbsPath, AbsPathBuf};
+use paths::{AbsPath, AbsPathBuf, RelPath};
 
 /// Path in [`Vfs`].
 ///
@@ -81,6 +81,14 @@ impl VfsPath {
             (VfsPathRepr::PathBuf(lhs), VfsPathRepr::PathBuf(rhs)) => lhs.starts_with(rhs),
             (VfsPathRepr::VirtualPath(lhs), VfsPathRepr::VirtualPath(rhs)) => lhs.starts_with(rhs),
             (VfsPathRepr::PathBuf(_) | VfsPathRepr::VirtualPath(_), _) => false,
+        }
+    }
+
+    pub fn strip_prefix(&self, other: &VfsPath) -> Option<&RelPath> {
+        match (&self.0, &other.0) {
+            (VfsPathRepr::PathBuf(lhs), VfsPathRepr::PathBuf(rhs)) => lhs.strip_prefix(rhs),
+            (VfsPathRepr::VirtualPath(lhs), VfsPathRepr::VirtualPath(rhs)) => lhs.strip_prefix(rhs),
+            (VfsPathRepr::PathBuf(_) | VfsPathRepr::VirtualPath(_), _) => None,
         }
     }
 
@@ -318,6 +326,13 @@ impl VirtualPath {
     /// Returns `true` if `other` is a prefix of `self` (as strings).
     fn starts_with(&self, other: &VirtualPath) -> bool {
         self.0.starts_with(&other.0)
+    }
+
+    fn strip_prefix(&self, base: &VirtualPath) -> Option<&RelPath> {
+        <_ as AsRef<std::path::Path>>::as_ref(&self.0)
+            .strip_prefix(&base.0)
+            .ok()
+            .map(RelPath::new_unchecked)
     }
 
     /// Remove the last component of `self`.
