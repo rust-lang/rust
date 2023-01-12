@@ -281,8 +281,6 @@ declare_features! (
     (active, abi_avr_interrupt, "1.45.0", Some(69664), None),
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (active, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391), None),
-    /// Allows using the `efiapi` ABI.
-    (active, abi_efiapi, "1.40.0", Some(65815), None),
     /// Allows `extern "msp430-interrupt" fn()`.
     (active, abi_msp430_interrupt, "1.16.0", Some(38487), None),
     /// Allows `extern "ptx-*" fn()`.
