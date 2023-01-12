@@ -55,7 +55,7 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         self.infcx.probe(|_| {
-            if a.is_ty_infer() || b.is_ty_infer() {
+            if a.is_ty_var() || b.is_ty_var() {
                 Ok(a)
             } else {
                 self.infcx.super_combine_tys(self, a, b).or_else(|e| {
@@ -71,10 +71,13 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        if a == b {
-            return Ok(a);
-        }
-        relate::super_relate_consts(self, a, b) // could do something similar here for constants!
+        self.infcx.probe(|_| {
+            if a.is_ct_infer() || b.is_ct_infer() {
+                Ok(a)
+            } else {
+                relate::super_relate_consts(self, a, b) // could do something similar here for constants!
+            }
+        })
     }
 
     fn binders<T: Relate<'tcx>>(
