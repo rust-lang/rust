@@ -309,8 +309,8 @@ fn run_compiler(
 
             if let Some(ppm) = &sess.opts.pretty {
                 if ppm.needs_ast_map() {
-                    let expanded_crate = queries.expansion()?.peek().0.clone();
-                    queries.global_ctxt()?.peek_mut().enter(|tcx| {
+                    let expanded_crate = queries.expansion()?.borrow().0.clone();
+                    queries.global_ctxt()?.enter(|tcx| {
                         pretty::print_after_hir_lowering(
                             tcx,
                             compiler.input(),
@@ -321,7 +321,7 @@ fn run_compiler(
                         Ok(())
                     })?;
                 } else {
-                    let krate = queries.parse()?.take();
+                    let krate = queries.parse()?.steal();
                     pretty::print_after_parsing(
                         sess,
                         compiler.input(),
@@ -343,7 +343,8 @@ fn run_compiler(
             }
 
             {
-                let (_, lint_store) = &*queries.register_plugins()?.peek();
+                let plugins = queries.register_plugins()?;
+                let (_, lint_store) = &*plugins.borrow();
 
                 // Lint plugins are registered; now we can process command line flags.
                 if sess.opts.describe_lints {
@@ -371,7 +372,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.global_ctxt()?.peek_mut().enter(|tcx| {
+            queries.global_ctxt()?.enter(|tcx| {
                 let result = tcx.analysis(());
                 if sess.opts.unstable_opts.save_analysis {
                     let crate_name = tcx.crate_name(LOCAL_CRATE);
