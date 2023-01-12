@@ -120,3 +120,7 @@ hir_analysis_self_in_impl_self =
 
 hir_analysis_linkage_type =
     invalid type for variable with `#[linkage]` attribute
+
+hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit while auto-dereferencing `{$ty}`
+    .label = deref recursion limit reached
+    .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)

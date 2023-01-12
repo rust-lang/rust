@@ -84,6 +84,7 @@ extern crate rustc_middle;
 pub mod check;
 
 pub mod astconv;
+pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;

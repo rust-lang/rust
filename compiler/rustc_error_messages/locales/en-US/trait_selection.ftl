@@ -2,10 +2,6 @@ trait_selection_dump_vtable_entries = vtable entries for `{$trait_ref}`: {$entri
 
 trait_selection_unable_to_construct_constant_value = unable to construct a constant value for the unevaluated constant {$unevaluated}
 
-trait_selection_auto_deref_reached_recursion_limit = reached the recursion limit while auto-dereferencing `{$ty}`
-    .label = deref recursion limit reached
-    .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
-
 trait_selection_empty_on_clause_in_rustc_on_unimplemented = empty `on`-clause in `#[rustc_on_unimplemented]`
     .label = empty on-clause here
 
