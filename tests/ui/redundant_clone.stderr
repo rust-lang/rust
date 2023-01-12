@@ -179,17 +179,5 @@ note: this value is dropped without further use
 LL |     foo(&x.clone(), move || {
    |          ^
 
-error: redundant clone
-  --> $DIR/redundant_clone.rs:246:40
-   |
-LL |     s = s.chars().filter(|&c| c != 'o').to_owned().collect();
-   |                                        ^^^^^^^^^^^ help: remove this
-   |
-note: this value is dropped without further use
-  --> $DIR/redundant_clone.rs:246:9
-   |
-LL |     s = s.chars().filter(|&c| c != 'o').to_owned().collect();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 16 previous errors
+error: aborting due to 15 previous errors
 
