@@ -29,15 +29,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 RegionOriginNote::Plain { span, msg: fluent::infer_relate_object_bound }
                     .add_to_diagnostic(err);
             }
-            infer::DataBorrowed(ty, span) => {
-                RegionOriginNote::WithName {
-                    span,
-                    msg: fluent::infer_data_borrowed,
-                    name: &self.ty_to_string(ty),
-                    continues: false,
-                }
-                .add_to_diagnostic(err);
-            }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 RegionOriginNote::WithName {
                     span,
@@ -222,32 +213,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &mut err,
                     "but lifetime parameter must outlive ",
                     sub,
-                    "",
-                    None,
-                );
-                err
-            }
-            infer::DataBorrowed(ty, span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0490,
-                    "a value of type `{}` is borrowed for too long",
-                    self.ty_to_string(ty)
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "the type is valid for ",
-                    sub,
-                    "",
-                    None,
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "but the borrow lasts for ",
-                    sup,
                     "",
                     None,
                 );
