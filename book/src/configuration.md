@@ -14,6 +14,15 @@ cognitive-complexity-threshold = 30
 See the [list of configurable lints](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration),
 the lint descriptions contain the names and meanings of these configuration variables.
 
+For configurations that are a list type with default values such as
+[disallowed-names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names),
+you can use the unique value `".."` to extend the default values instead of replacing them.
+
+```toml
+# default of disallowed-names is ["foo", "baz", "quux"]
+disallowed-names = ["bar", ".."] # -> ["bar", "foo", "baz", "quux"]
+```
+
 To deactivate the "for further information visit *lint-link*" message you can define the `CLIPPY_DISABLE_DOCS_LINKS`
 environment variable.
 
