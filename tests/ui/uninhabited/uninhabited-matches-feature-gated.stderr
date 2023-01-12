@@ -95,7 +95,7 @@ LL ~         Ok(x) => x,
 LL ~         Err(_) => todo!(),
    |
 
-error[E0005]: refutable pattern in local binding: `Err(_)` not covered
+error[E0005]: refutable pattern in local binding
   --> $DIR/uninhabited-matches-feature-gated.rs:37:9
    |
 LL |     let Ok(x) = x;
@@ -103,17 +103,8 @@ LL |     let Ok(x) = x;
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
-note: `Result<u32, Void>` defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
    = note: the matched value is of type `Result<u32, Void>`
-help: you might want to use `if let` to ignore the variant that isn't matched
-   |
-LL |     let x = if let Ok(x) = x { x } else { todo!() };
-   |     ++++++++++               ++++++++++++++++++++++
-help: alternatively, you might want to use let else to handle the variant that isn't matched
+help: you might want to use `let else` to handle the variant that isn't matched
    |
 LL |     let Ok(x) = x else { todo!() };
    |                   ++++++++++++++++
