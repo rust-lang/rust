@@ -30,8 +30,13 @@ LL | struct Object<T>(T);
 LL |     foo.use_eq();
    |         ^^^^^^ method cannot be called on `Object<NoDerives>` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `NoDerives: Eq`
+note: trait bound `NoDerives: Eq` was not satisfied
+  --> $DIR/issue-91550.rs:15:9
+   |
+LL | impl<T: Eq> Object<T> {
+   |         ^^  ---------
+   |         |
+   |         unsatisfied trait bound introduced here
 help: consider annotating `NoDerives` with `#[derive(Eq, PartialEq)]`
    |
 LL | #[derive(Eq, PartialEq)]
@@ -49,8 +54,13 @@ LL | struct Object<T>(T);
 LL |     foo.use_ord();
    |         ^^^^^^^ method cannot be called on `Object<NoDerives>` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `NoDerives: Ord`
+note: trait bound `NoDerives: Ord` was not satisfied
+  --> $DIR/issue-91550.rs:18:9
+   |
+LL | impl<T: Ord> Object<T> {
+   |         ^^^  ---------
+   |         |
+   |         unsatisfied trait bound introduced here
 help: consider annotating `NoDerives` with `#[derive(Eq, Ord, PartialEq, PartialOrd)]`
    |
 LL | #[derive(Eq, Ord, PartialEq, PartialOrd)]
@@ -71,9 +81,16 @@ LL | struct Object<T>(T);
 LL |     foo.use_ord_and_partial_ord();
    |         ^^^^^^^^^^^^^^^^^^^^^^^ method cannot be called on `Object<NoDerives>` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `NoDerives: Ord`
-           `NoDerives: PartialOrd`
+note: the following trait bounds were not satisfied:
+      `NoDerives: Ord`
+      `NoDerives: PartialOrd`
+  --> $DIR/issue-91550.rs:21:9
+   |
+LL | impl<T: Ord + PartialOrd> Object<T> {
+   |         ^^^   ^^^^^^^^^^  ---------
+   |         |     |
+   |         |     unsatisfied trait bound introduced here
+   |         unsatisfied trait bound introduced here
 help: consider annotating `NoDerives` with `#[derive(Eq, Ord, PartialEq, PartialOrd)]`
    |
 LL | #[derive(Eq, Ord, PartialEq, PartialOrd)]

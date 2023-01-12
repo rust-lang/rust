@@ -257,7 +257,7 @@ template<typename T> static inline void AddAttributes(T *t, unsigned Index,
   PALNew = PAL.addAttributes(t->getContext(), Index, B);
 #else
   AttrBuilder B(t->getContext());
-  for (LLVMAttributeRef Attr : makeArrayRef(Attrs, AttrsLen))
+  for (LLVMAttributeRef Attr : ArrayRef<LLVMAttributeRef>(Attrs, AttrsLen))
     B.addAttribute(unwrap(Attr));
   PALNew = PAL.addAttributesAtIndex(t->getContext(), Index, B);
 #endif
@@ -1064,7 +1064,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerator(
     LLVMRustDIBuilderRef Builder, const char *Name, size_t NameLen,
     const uint64_t Value[2], unsigned SizeInBits, bool IsUnsigned) {
   return wrap(Builder->createEnumerator(StringRef(Name, NameLen),
-      APSInt(APInt(SizeInBits, makeArrayRef(Value, 2)), IsUnsigned)));
+      APSInt(APInt(SizeInBits, ArrayRef<uint64_t>(Value, 2)), IsUnsigned)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
@@ -1477,7 +1477,7 @@ extern "C" void LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
 extern "C" OperandBundleDef *LLVMRustBuildOperandBundleDef(const char *Name,
                                                            LLVMValueRef *Inputs,
                                                            unsigned NumInputs) {
-  return new OperandBundleDef(Name, makeArrayRef(unwrap(Inputs), NumInputs));
+  return new OperandBundleDef(Name, ArrayRef<Value*>(unwrap(Inputs), NumInputs));
 }
 
 extern "C" void LLVMRustFreeOperandBundleDef(OperandBundleDef *Bundle) {
@@ -1491,8 +1491,8 @@ extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty, LLVM
   Value *Callee = unwrap(Fn);
   FunctionType *FTy = unwrap<FunctionType>(Ty);
   return wrap(unwrap(B)->CreateCall(
-      FTy, Callee, makeArrayRef(unwrap(Args), NumArgs),
-      makeArrayRef(*OpBundles, NumOpBundles)));
+      FTy, Callee, ArrayRef<Value*>(unwrap(Args), NumArgs),
+      ArrayRef<OperandBundleDef>(*OpBundles, NumOpBundles)));
 }
 
 extern "C" LLVMValueRef LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
@@ -1537,8 +1537,8 @@ LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
   Value *Callee = unwrap(Fn);
   FunctionType *FTy = unwrap<FunctionType>(Ty);
   return wrap(unwrap(B)->CreateInvoke(FTy, Callee, unwrap(Then), unwrap(Catch),
-                                      makeArrayRef(unwrap(Args), NumArgs),
-                                      makeArrayRef(*OpBundles, NumOpBundles),
+                                      ArrayRef<Value*>(unwrap(Args), NumArgs),
+                                      ArrayRef<OperandBundleDef>(*OpBundles, NumOpBundles),
                                       Name));
 }
 

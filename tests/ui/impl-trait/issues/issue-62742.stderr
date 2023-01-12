@@ -23,8 +23,13 @@ LL | pub struct RawImpl<T>(PhantomData<T>);
 LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
    | ----------------------------------------- function or associated item `foo` not found for this struct
    |
-   = note: the following trait bounds were not satisfied:
-           `RawImpl<()>: Raw<()>`
+note: trait bound `RawImpl<()>: Raw<()>` was not satisfied
+  --> $DIR/issue-62742.rs:28:20
+   |
+LL | impl<T: ?Sized, A: Raw<T>> SafeImpl<T, A> {
+   |                    ^^^^^^  --------------
+   |                    |
+   |                    unsatisfied trait bound introduced here
 note: the trait `Raw` must be implemented
   --> $DIR/issue-62742.rs:12:1
    |

@@ -88,9 +88,16 @@ LL | struct Struct<T> {
 LL |     s.method();
    |       ^^^^^^ method cannot be called on `Struct<f64>` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `f64: Eq`
-           `f64: Ord`
+note: the following trait bounds were not satisfied:
+      `f64: Eq`
+      `f64: Ord`
+  --> $DIR/method-not-found-generic-arg-elision.rs:74:36
+   |
+LL | impl<T: Clone + Copy + PartialEq + Eq + PartialOrd + Ord> Struct<T> {
+   |                                    ^^                ^^^  ---------
+   |                                    |                 |
+   |                                    |                 unsatisfied trait bound introduced here
+   |                                    unsatisfied trait bound introduced here
 
 error: aborting due to 9 previous errors
 
