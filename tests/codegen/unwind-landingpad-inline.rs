@@ -28,8 +28,7 @@ pub fn check_no_escape_in_landingpad(f: fn()) {
 // See https://github.com/rust-lang/rust/issues/87055
 // CHECK-LABEL: @check_eliminate_noop_drop
 // CHECK: start:
-// CHECK-NEXT: call void %g()
-// CHECK-NEXT: ret void
+// CHECK-NEXT: invoke void %g()
 #[no_mangle]
 pub fn check_eliminate_noop_drop(g: fn()) {
     let _var = String::new();
