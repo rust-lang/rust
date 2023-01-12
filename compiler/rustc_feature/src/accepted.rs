@@ -161,6 +161,8 @@ declare_features! (
     (accepted, extern_crate_self, "1.34.0", Some(56409), None),
     /// Allows access to crate names passed via `--extern` through prelude.
     (accepted, extern_prelude, "1.30.0", Some(44660), None),
+    /// Allows using F16C intrinsics from `core::arch::{x86, x86_64}`.
+    (accepted, f16c_target_feature, "CURRENT_RUSTC_VERSION", Some(44839), None),
     /// Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (accepted, field_init_shorthand, "1.17.0", Some(37340), None),
     /// Allows `#[must_use]` on functions, and introduces must-use operators (RFC 1940).
