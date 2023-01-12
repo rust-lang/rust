@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::hash::Hash;
 
-fn is_subset<T>(this: &HashSet<T>, other: &HashSet<T>) -> bool where T: Eq, T: Hash {
+fn is_subset<T>(this: &HashSet<T>, other: &HashSet<T>) -> bool where T: Eq, T: Hash, T: PartialEq {
     this.is_subset(other)
     //~^ ERROR the method
 }

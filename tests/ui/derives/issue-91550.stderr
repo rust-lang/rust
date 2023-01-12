@@ -6,12 +6,15 @@ LL | struct Value(u32);
    | |
    | doesn't satisfy `Value: Eq`
    | doesn't satisfy `Value: Hash`
+   | doesn't satisfy `Value: PartialEq`
 ...
 LL |     hs.insert(Value(0));
    |        ^^^^^^
    |
    = note: the following trait bounds were not satisfied:
            `Value: Eq`
+           `Value: PartialEq`
+           which is required by `Value: Eq`
            `Value: Hash`
 help: consider annotating `Value` with `#[derive(Eq, Hash, PartialEq)]`
    |
@@ -22,7 +25,10 @@ error[E0599]: the method `use_eq` exists for struct `Object<NoDerives>`, but its
   --> $DIR/issue-91550.rs:26:9
    |
 LL | pub struct NoDerives;
-   | -------------------- doesn't satisfy `NoDerives: Eq`
+   | --------------------
+   | |
+   | doesn't satisfy `NoDerives: Eq`
+   | doesn't satisfy `NoDerives: PartialEq`
 LL |
 LL | struct Object<T>(T);
    | ---------------- method `use_eq` not found for this struct
@@ -30,7 +36,9 @@ LL | struct Object<T>(T);
 LL |     foo.use_eq();
    |         ^^^^^^ method cannot be called on `Object<NoDerives>` due to unsatisfied trait bounds
    |
-note: trait bound `NoDerives: Eq` was not satisfied
+note: the following trait bounds were not satisfied:
+      `NoDerives: Eq`
+      `NoDerives: PartialEq`
   --> $DIR/issue-91550.rs:15:9
    |
 LL | impl<T: Eq> Object<T> {
@@ -46,7 +54,12 @@ error[E0599]: the method `use_ord` exists for struct `Object<NoDerives>`, but it
   --> $DIR/issue-91550.rs:27:9
    |
 LL | pub struct NoDerives;
-   | -------------------- doesn't satisfy `NoDerives: Ord`
+   | --------------------
+   | |
+   | doesn't satisfy `NoDerives: Eq`
+   | doesn't satisfy `NoDerives: Ord`
+   | doesn't satisfy `NoDerives: PartialEq`
+   | doesn't satisfy `NoDerives: PartialOrd`
 LL |
 LL | struct Object<T>(T);
    | ---------------- method `use_ord` not found for this struct
@@ -54,7 +67,11 @@ LL | struct Object<T>(T);
 LL |     foo.use_ord();
    |         ^^^^^^^ method cannot be called on `Object<NoDerives>` due to unsatisfied trait bounds
    |
-note: trait bound `NoDerives: Ord` was not satisfied
+note: the following trait bounds were not satisfied:
+      `NoDerives: Eq`
+      `NoDerives: Ord`
+      `NoDerives: PartialEq`
+      `NoDerives: PartialOrd`
   --> $DIR/issue-91550.rs:18:9
    |
 LL | impl<T: Ord> Object<T> {
@@ -72,7 +89,9 @@ error[E0599]: the method `use_ord_and_partial_ord` exists for struct `Object<NoD
 LL | pub struct NoDerives;
    | --------------------
    | |
+   | doesn't satisfy `NoDerives: Eq`
    | doesn't satisfy `NoDerives: Ord`
+   | doesn't satisfy `NoDerives: PartialEq`
    | doesn't satisfy `NoDerives: PartialOrd`
 LL |
 LL | struct Object<T>(T);
@@ -82,7 +101,9 @@ LL |     foo.use_ord_and_partial_ord();
    |         ^^^^^^^^^^^^^^^^^^^^^^^ method cannot be called on `Object<NoDerives>` due to unsatisfied trait bounds
    |
 note: the following trait bounds were not satisfied:
+      `NoDerives: Eq`
       `NoDerives: Ord`
+      `NoDerives: PartialEq`
       `NoDerives: PartialOrd`
   --> $DIR/issue-91550.rs:21:9
    |
