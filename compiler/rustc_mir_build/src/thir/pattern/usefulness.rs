@@ -291,9 +291,8 @@
 
 use self::ArmType::*;
 use self::Usefulness::*;
-
-use super::check_match::{joined_uncovered_patterns, pattern_not_covered_label};
 use super::deconstruct_pat::{Constructor, DeconstructedPat, Fields, SplitWildcard};
+use crate::errors::{NonExhaustiveOmittedPattern, Uncovered};
 
 use rustc_data_structures::captures::Captures;
 
@@ -743,31 +742,6 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
     }
 }
 
-/// Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
-/// is not exhaustive enough.
-///
-/// NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
-fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    scrut_ty: Ty<'tcx>,
-    sp: Span,
-    hir_id: HirId,
-    witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
-) {
-    cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, sp, "some variants are not matched explicitly", |lint| {
-        let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
-        lint.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
-        lint.help(
-            "ensure that all variants are matched explicitly by adding the suggested match arms",
-        );
-        lint.note(&format!(
-            "the matched value is of type `{}` and the `non_exhaustive_omitted_patterns` attribute was found",
-            scrut_ty,
-        ));
-        lint
-    });
-}
-
 /// Algorithm from <http://moscova.inria.fr/~maranget/papers/warn/index.html>.
 /// The algorithm from the paper has been modified to correctly handle empty
 /// types. The changes are:
@@ -913,7 +887,19 @@ fn is_useful<'p, 'tcx>(
                         .collect::<Vec<_>>()
                 };
 
-                lint_non_exhaustive_omitted_patterns(pcx.cx, pcx.ty, pcx.span, hir_id, patterns);
+                // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
+                // is not exhaustive enough.
+                //
+                // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
+                cx.tcx.emit_spanned_lint(
+                    NON_EXHAUSTIVE_OMITTED_PATTERNS,
+                    hir_id,
+                    pcx.span,
+                    NonExhaustiveOmittedPattern {
+                        scrut_ty: pcx.ty,
+                        uncovered: Uncovered::new(pcx.span, pcx.cx, patterns),
+                    },
+                );
             }
 
             ret.extend(usefulness);
