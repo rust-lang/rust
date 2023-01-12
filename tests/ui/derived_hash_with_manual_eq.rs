@@ -27,6 +27,8 @@ impl PartialEq<Baz> for Baz {
     }
 }
 
+// Implementing `Hash` with a derived `PartialEq` is fine. See #2627
+
 #[derive(PartialEq)]
 struct Bah;
 
