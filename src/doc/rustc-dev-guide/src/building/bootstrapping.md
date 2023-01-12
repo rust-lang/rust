@@ -28,7 +28,7 @@ stage0 compiler, and
 <span style="background-color: lightgreen; color: black">green</span> nodes are built with the
 stage1 compiler.
 
-[rustconf22-talk]: https://rustconf.com/schedule#bootstrapping-the-once-and-future-compiler
+[rustconf22-talk]: https://www.youtube.com/watch?v=oUIjG-y4zaA
 
 ```mermaid
 graph TD
