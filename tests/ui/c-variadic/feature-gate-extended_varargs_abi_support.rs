@@ -1,5 +1,3 @@
-#![feature(abi_efiapi)]
-
 fn efiapi(f: extern "efiapi" fn(usize, ...)) {
     //~^ ERROR: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
     //~^^ ERROR: using calling conventions other than `C` or `cdecl` for varargs functions is unstable

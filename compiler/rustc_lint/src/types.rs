@@ -878,39 +878,39 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
-        if def.repr().transparent() {
+        let transparent_safety = def.repr().transparent().then(|| {
             // Can assume that at most one field is not a ZST, so only check
             // that field's type for FFI-safety.
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
-                self.check_field_type_for_ffi(cache, field, substs)
+                return self.check_field_type_for_ffi(cache, field, substs);
             } else {
                 // All fields are ZSTs; this means that the type should behave
-                // like (), which is FFI-unsafe
+                // like (), which is FFI-unsafe... except if all fields are PhantomData,
+                // which is tested for below
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_struct_zst, help: None }
             }
-        } else {
-            // We can't completely trust repr(C) markings; make sure the fields are
-            // actually safe.
-            let mut all_phantom = !variant.fields.is_empty();
-            for field in &variant.fields {
-                match self.check_field_type_for_ffi(cache, &field, substs) {
-                    FfiSafe => {
-                        all_phantom = false;
-                    }
-                    FfiPhantom(..) if def.is_enum() => {
-                        return FfiUnsafe {
-                            ty,
-                            reason: fluent::lint_improper_ctypes_enum_phantomdata,
-                            help: None,
-                        };
-                    }
-                    FfiPhantom(..) => {}
-                    r => return r,
+        });
+        // We can't completely trust repr(C) markings; make sure the fields are
+        // actually safe.
+        let mut all_phantom = !variant.fields.is_empty();
+        for field in &variant.fields {
+            match self.check_field_type_for_ffi(cache, &field, substs) {
+                FfiSafe => {
+                    all_phantom = false;
                 }
+                FfiPhantom(..) if !def.repr().transparent() && def.is_enum() => {
+                    return FfiUnsafe {
+                        ty,
+                        reason: fluent::lint_improper_ctypes_enum_phantomdata,
+                        help: None,
+                    };
+                }
+                FfiPhantom(..) => {}
+                r => return transparent_safety.unwrap_or(r),
             }
-
-            if all_phantom { FfiPhantom(ty) } else { FfiSafe }
         }
+
+        if all_phantom { FfiPhantom(ty) } else { transparent_safety.unwrap_or(FfiSafe) }
     }
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined

@@ -58,6 +58,11 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
               syntax `start..end` or the inclusive range syntax `start..=end`"
     ),
+    on(
+        _Self = "{float}",
+        note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
+              syntax `start..end` or the inclusive range syntax `start..=end`"
+    ),
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
