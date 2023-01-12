@@ -294,8 +294,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             poly_trait_ref,
         );
 
-        let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
-            self,
+        let item_substs = self.astconv().create_substs_for_associated_item(
             span,
             item_def_id,
             item_segment,
