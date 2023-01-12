@@ -11,7 +11,7 @@ use core::ops::{Add, AddAssign};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::borrow::{Borrow, BorrowMut};
 
-use crate::fmt;
+use crate::{fmt, DEFAULT_COOP_PREFERRED, alloc::Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 
@@ -35,7 +35,11 @@ where
 /// from any borrow of a given type.
 #[cfg_attr(not(test), rustc_diagnostic_item = "ToOwned")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait ToOwned {
+#[allow(unused_braces)]
+pub trait ToOwned<const COOP_PREFERRED: bool = { DEFAULT_COOP_PREFERRED!() } >
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// The resulting type after obtaining ownership.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Owned: Borrow<Self>;

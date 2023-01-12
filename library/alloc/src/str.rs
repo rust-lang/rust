@@ -208,14 +208,17 @@ impl BorrowMut<str> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ToOwned for str {
-    type Owned = String;
+impl<const COOP_PREFERRED: bool> ToOwned<COOP_PREFERRED> for str
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
+    type Owned = String<COOP_PREFERRED>;
     #[inline]
-    fn to_owned(&self) -> String {
+    fn to_owned(&self) -> String<COOP_PREFERRED> {
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
 
-    fn clone_into(&self, target: &mut String) {
+    fn clone_into(&self, target: &mut String<COOP_PREFERRED>) {
         let mut b = mem::take(target).into_bytes();
         self.as_bytes().clone_into(&mut b);
         *target = unsafe { String::from_utf8_unchecked(b) }
