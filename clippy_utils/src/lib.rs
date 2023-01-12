@@ -22,6 +22,9 @@ extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
 extern crate rustc_data_structures;
+// The `rustc_driver` crate seems to be required in order to use the `rust_ast` crate.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_hir_typeck;
