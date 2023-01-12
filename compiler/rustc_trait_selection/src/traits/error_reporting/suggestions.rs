@@ -2622,11 +2622,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             ObligationCauseCode::ObjectCastObligation(concrete_ty, object_ty) => {
-                err.note(&format!(
-                    "required for the cast from `{}` to the object type `{}`",
-                    self.ty_to_string(concrete_ty),
-                    self.ty_to_string(object_ty)
-                ));
+                let (concrete_ty, concrete_file) =
+                    self.tcx.short_ty_string(self.resolve_vars_if_possible(concrete_ty));
+                let (object_ty, object_file) =
+                    self.tcx.short_ty_string(self.resolve_vars_if_possible(object_ty));
+                err.note(&with_forced_trimmed_paths!(format!(
+                    "required for the cast from `{concrete_ty}` to the object type `{object_ty}`",
+                )));
+                if let Some(file) = concrete_file {
+                    err.note(&format!(
+                        "the full name for the casted type has been written to '{}'",
+                        file.display(),
+                    ));
+                }
+                if let Some(file) = object_file {
+                    err.note(&format!(
+                        "the full name for the object type has been written to '{}'",
+                        file.display(),
+                    ));
+                }
             }
             ObligationCauseCode::Coercion { source: _, target } => {
                 err.note(&format!("required by cast to type `{}`", self.ty_to_string(target)));

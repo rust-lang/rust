@@ -1724,7 +1724,19 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .and_then(|(predicate, _, normalized_term, expected_term)| {
                     self.maybe_detailed_projection_msg(predicate, normalized_term, expected_term)
                 })
-                .unwrap_or_else(|| format!("type mismatch resolving `{}`", predicate));
+                .unwrap_or_else(|| {
+                    with_forced_trimmed_paths!(format!(
+                        "type mismatch resolving `{}`",
+                        self.resolve_vars_if_possible(predicate)
+                            .print(FmtPrinter::new_with_limit(
+                                self.tcx,
+                                Namespace::TypeNS,
+                                rustc_session::Limit(10),
+                            ))
+                            .unwrap()
+                            .into_buffer()
+                    ))
+                });
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
 
             let secondary_span = match predicate.kind().skip_binder() {
@@ -1755,7 +1767,20 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 kind: hir::ImplItemKind::Type(ty),
                                 ..
                             }),
-                        ) => Some((ty.span, format!("type mismatch resolving `{}`", predicate))),
+                        ) => Some((
+                            ty.span,
+                            with_forced_trimmed_paths!(format!(
+                                "type mismatch resolving `{}`",
+                                self.resolve_vars_if_possible(predicate)
+                                    .print(FmtPrinter::new_with_limit(
+                                        self.tcx,
+                                        Namespace::TypeNS,
+                                        rustc_session::Limit(5),
+                                    ))
+                                    .unwrap()
+                                    .into_buffer()
+                            )),
+                        )),
                         _ => None,
                     }),
                 _ => None,
