@@ -372,3 +372,9 @@ parse_maybe_fn_typo_with_impl = you might have meant to write `impl` instead of 
 
 parse_expected_fn_path_found_fn_keyword = expected identifier, found keyword `fn`
     .suggestion = use `Fn` to refer to the trait
+
+parse_where_clause_before_tuple_struct_body = where clauses are not allowed before tuple struct bodies
+    .label = unexpected where clause
+    .name_label = while parsing this tuple struct
+    .body_label = the struct body
+    .suggestion = move the body before the where clause
