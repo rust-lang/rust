@@ -1962,4 +1962,11 @@ rustc_queries! {
         eval_always
         desc { "computing the backend features for CLI flags" }
     }
+
+
+    /// The list autodiff extern functions in current crate
+    query autodiff_functions(_: ()) -> DiffItems {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { "autodiff functions" }
+    }
 }

@@ -1320,6 +1320,18 @@ pub(crate) mod builtin {
         };
     }
 
+    /// Differentiate function
+    ///#[unstable(
+    ///    feature = "autodiff",
+    ///    issue = "29598",
+    ///    reason = "autodiff is not stable enough"
+    ///)]
+    ///#[rustc_builtin_macro]
+    ///#[macro_export]
+    ///pub macro autodiff($item:item) {
+    ///    /* compiler built-in */
+    ///}
+
     /// Parses a file as an expression or an item according to the context.
     ///
     /// The file is located relative to the current file (similarly to how

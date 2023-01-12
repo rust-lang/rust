@@ -595,6 +595,7 @@ pub(crate) unsafe fn optimize(
                 }
             }
 
+            //
             // Instrumentation must be inserted before optimization,
             // otherwise LLVM may optimize some functions away which
             // breaks llvm-cov.

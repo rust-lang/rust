@@ -328,6 +328,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(no_mangle, Normal, template!(Word), WarnFollowing),
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing),
 
+    // Autodiff
+    ungated!(
+        autodiff, Normal,
+        template!(List: r#"function, /*opt*/ mode = "forward|backward""#),
+        DuplicatesOk,
+    ),
+
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
     ungated!(type_length_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),

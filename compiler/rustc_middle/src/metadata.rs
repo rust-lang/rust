@@ -1,9 +1,10 @@
 use crate::ty;
 
-use rustc_hir::def::Res;
+use rustc_hir::{def::Res};
 use rustc_macros::HashStable;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use rustc_hir::def_id::DefId;
 
 /// This structure is supposed to keep enough data to re-create `NameBinding`s for other crates
 /// during name resolution. Right now the bindings are not recreated entirely precisely so we may
@@ -24,3 +25,52 @@ pub struct ModChild {
     /// A proper `macro_rules` item (not a reexport).
     pub macro_rules: bool,
 }
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, HashStable)]
+pub enum DiffMode {
+    Forward,
+    Reverse,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, Copy, HashStable)]
+pub enum DiffActivity {
+    Active,
+    Const,
+    OnlyGrad,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, HashStable)]
+pub struct DiffItem {
+    pub source: DefId,
+    pub target: Ident,
+    pub mode: DiffMode,
+    pub respect_to: Vec<DiffActivity>,
+}
+
+//impl Default for DiffItem {
+//    fn default() -> Self {
+//        Self {
+//            source: Ident::empty(),
+//            target: Ident::empty(),
+//            mode: DiffMode::Forward,
+//            respect_to: Vec::new(),
+//        }
+//    }
+//}
+
+//impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for DiffItem {
+//    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+//        self.source.hash_stable(ctx, hasher);
+//        self.respect_to.hash_stable(ctx, hasher);
+//        self.target.hash_stable(ctx, hasher);
+//        match self.mode {
+//            DiffMode::Forward => 0.hash_stable(ctx, hasher),
+//            DiffMode::Reverse => 1.hash_stable(ctx, hasher)
+//        }
+//    }
+//}
+
+pub type DiffItems = Vec<DiffItem>;
