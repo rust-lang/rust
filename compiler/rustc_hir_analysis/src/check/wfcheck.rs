@@ -1254,7 +1254,11 @@ fn check_impl<'tcx>(
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap();
-                let trait_ref = wfcx.normalize(ast_trait_ref.path.span, None, trait_ref);
+                let trait_ref = wfcx.normalize(
+                    ast_trait_ref.path.span,
+                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
+                    trait_ref,
+                );
                 let trait_pred = ty::TraitPredicate {
                     trait_ref,
                     constness: match constness {
