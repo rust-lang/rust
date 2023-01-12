@@ -19,7 +19,7 @@ trait Test {
     fn test(&self);
 }
 
-fn func<T: Test>(foo: &Foo, t: T) {
+fn func<'a, T: Test + 'a>(foo: &'a Foo<'a>, t: T) {
     foo.bar(move |_| {
     //~^ ERROR the parameter type `T` may not live long enough
         t.test();
