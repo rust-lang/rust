@@ -2714,7 +2714,7 @@ macro_rules! atomic_int {
             #[doc = concat!("    fn my_atomic_op(arg: *mut ", stringify!($int_type), ");")]
             /// }
             ///
-            #[doc = concat!("let mut atomic = ", stringify!($atomic_type), "::new(1);")]
+            #[doc = concat!("let atomic = ", stringify!($atomic_type), "::new(1);")]
             ///
             // SAFETY: Safe as long as `my_atomic_op` is atomic.
             /// unsafe {
