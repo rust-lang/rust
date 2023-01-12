@@ -210,22 +210,25 @@ fn check_final_expr<'tcx>(
             // if desugar of `do yeet`, don't lint
             if let Some(inner_expr) = inner
                 && let ExprKind::Call(path_expr, _) = inner_expr.kind
-                && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, _, _)) = path_expr.kind {
-                    return;
+                && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, _, _)) = path_expr.kind
+            {
+                return;
             }
-            if cx.tcx.hir().attrs(expr.hir_id).is_empty() {
-                let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
-                if !borrows {
-                    // check if expr return nothing
-                    let ret_span = if inner.is_none() && replacement == RetReplacement::Empty {
-                        extend_span_to_previous_non_ws(cx, peeled_drop_expr.span)
-                    } else {
-                        peeled_drop_expr.span
-                    };
+            if !cx.tcx.hir().attrs(expr.hir_id).is_empty() {
+                return;
+            }
+            let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
+            if borrows {
+                return;
+            }
+            // check if expr return nothing
+            let ret_span = if inner.is_none() && replacement == RetReplacement::Empty {
+                extend_span_to_previous_non_ws(cx, peeled_drop_expr.span)
+            } else {
+                peeled_drop_expr.span
+            };
 
-                    emit_return_lint(cx, ret_span, semi_spans, inner.as_ref().map(|i| i.span), replacement);
-                }
-            }
+            emit_return_lint(cx, ret_span, semi_spans, inner.as_ref().map(|i| i.span), replacement);
         },
         ExprKind::If(_, then, else_clause_opt) => {
             check_block_return(cx, &then.kind, semi_spans.clone());
@@ -292,7 +295,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
         {
             ControlFlow::Break(())
         } else {
-            ControlFlow::Continue(Descend::from(!expr.span.from_expansion()))
+            ControlFlow::Continue(Descend::from(!e.span.from_expansion()))
         }
     })
     .is_some()

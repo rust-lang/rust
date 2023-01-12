@@ -21,16 +21,16 @@ macro_rules! outer {
 fn main() {
     let _string: Box<String> = Box::default();
     let _byte = Box::<u8>::default();
-    let _vec = Box::<std::vec::Vec<u8>>::default();
+    let _vec = Box::<Vec<u8>>::default();
     let _impl = Box::<ImplementsDefault>::default();
     let _impl2 = Box::<ImplementsDefault>::default();
     let _impl3: Box<ImplementsDefault> = Box::default();
     let _own = Box::new(OwnDefault::default()); // should not lint
-    let _in_macro = outer!(Box::<std::string::String>::default());
-    let _string_default = outer!(Box::<std::string::String>::default());
+    let _in_macro = outer!(Box::<String>::default());
+    let _string_default = outer!(Box::<String>::default());
     let _vec2: Box<Vec<ImplementsDefault>> = Box::default();
     let _vec3: Box<Vec<bool>> = Box::default();
-    let _vec4: Box<_> = Box::<std::vec::Vec<bool>>::default();
+    let _vec4: Box<_> = Box::<Vec<bool>>::default();
     let _more = ret_ty_fn();
     call_ty_fn(Box::default());
 }
@@ -54,4 +54,14 @@ impl Read for ImplementsDefault {
 
 fn issue_9621_dyn_trait() {
     let _: Box<dyn Read> = Box::<ImplementsDefault>::default();
+    issue_10089();
+}
+
+fn issue_10089() {
+    let _closure = || {
+        #[derive(Default)]
+        struct WeirdPathed;
+
+        let _ = Box::<WeirdPathed>::default();
+    };
 }

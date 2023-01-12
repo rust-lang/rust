@@ -116,6 +116,8 @@ use crate::consts::{constant, Constant};
 use crate::ty::{can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type, ty_is_fn_once_param};
 use crate::visitors::for_each_expr;
 
+use rustc_middle::hir::nested_filter;
+
 #[macro_export]
 macro_rules! extract_msrv_attr {
     ($context:ident) => {
@@ -1253,22 +1255,33 @@ pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     }
 }
 
-pub struct ContainsName {
+pub struct ContainsName<'a, 'tcx> {
+    pub cx: &'a LateContext<'tcx>,
     pub name: Symbol,
     pub result: bool,
 }
 
-impl<'tcx> Visitor<'tcx> for ContainsName {
+impl<'a, 'tcx> Visitor<'tcx> for ContainsName<'a, 'tcx> {
+    type NestedFilter = nested_filter::OnlyBodies;
+
     fn visit_name(&mut self, name: Symbol) {
         if self.name == name {
             self.result = true;
         }
     }
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
+    }
 }
 
 /// Checks if an `Expr` contains a certain name.
-pub fn contains_name(name: Symbol, expr: &Expr<'_>) -> bool {
-    let mut cn = ContainsName { name, result: false };
+pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
+    let mut cn = ContainsName {
+        name,
+        result: false,
+        cx,
+    };
     cn.visit_expr(expr);
     cn.result
 }
@@ -1304,6 +1317,7 @@ pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::HirId)
     }
 }
 
+/// Gets the enclosing block, if any.
 pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Block<'tcx>> {
     let map = &cx.tcx.hir();
     let enclosing_node = map
@@ -2242,6 +2256,18 @@ pub fn peel_n_hir_expr_refs<'a>(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'
         _ => None,
     });
     (e, count - remaining)
+}
+
+/// Peels off all unary operators of an expression. Returns the underlying expression and the number
+/// of operators removed.
+pub fn peel_hir_expr_unary<'a>(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
+    let mut count: usize = 0;
+    let mut curr_expr = expr;
+    while let ExprKind::Unary(_, local_expr) = curr_expr.kind {
+        count = count.wrapping_add(1);
+        curr_expr = local_expr;
+    }
+    (curr_expr, count)
 }
 
 /// Peels off all references on the expression. Returns the underlying expression and the number of

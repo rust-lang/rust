@@ -525,7 +525,11 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
             .iter()
             .filter(|&&(_, name)| !name.as_str().starts_with('_'))
             .any(|&(_, name)| {
-                let mut walker = ContainsName { name, result: false };
+                let mut walker = ContainsName {
+                    name,
+                    result: false,
+                    cx,
+                };
 
                 // Scan block
                 block
