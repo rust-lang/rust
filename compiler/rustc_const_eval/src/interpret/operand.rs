@@ -535,7 +535,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::Operand::*;
         let op = match mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
-            &(Copy(place) | Move(place)) => self.eval_place_to_op(place, layout)?,
+            &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
 
             Constant(constant) => {
                 let c =

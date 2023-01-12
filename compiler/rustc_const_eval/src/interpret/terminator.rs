@@ -22,20 +22,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         terminator: &mir::Terminator<'tcx>,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::TerminatorKind::*;
-        match &terminator.kind {
+        match terminator.kind {
             Return => {
                 self.pop_stack_frame(/* unwinding */ false)?
             }
 
-            Goto { target } => self.go_to_block(*target),
+            Goto { target } => self.go_to_block(target),
 
-            SwitchInt { discr, targets } => {
+            SwitchInt { ref discr, ref targets } => {
                 let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets.otherwise();
-
                 for (const_int, target) in targets.iter() {
                     // Compare using MIR BinOp::Eq, to also support pointer values.
                     // (Avoiding `self.binary_op` as that does some redundant layout computation.)
@@ -51,22 +50,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         break;
                     }
                 }
-
                 self.go_to_block(target_block);
             }
 
-            Call { func, args, destination, target, cleanup, from_hir_call: _, fn_span: _ } => {
+            Call {
+                ref func,
+                ref args,
+                destination,
+                target,
+                ref cleanup,
+                from_hir_call: _,
+                fn_span: _,
+            } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
                 let args = self.eval_operands(args)?;
-
                 let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
                 let fn_sig =
                     self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
                 let extra_args = &args[fn_sig.inputs().len()..];
                 let extra_args = self.tcx.mk_type_list(extra_args.iter().map(|arg| arg.layout.ty));
-
                 let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
                     ty::FnPtr(_sig) => {
                         let fn_ptr = self.read_pointer(&func)?;
@@ -89,14 +93,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ),
                 };
 
-                let destination = self.eval_place(*destination)?;
+                let destination = self.eval_place(destination)?;
                 self.eval_fn_call(
                     fn_val,
                     (fn_sig.abi, fn_abi),
                     &args,
                     with_caller_location,
                     &destination,
-                    *target,
+                    target,
                     match (cleanup, fn_abi.can_unwind) {
                         (Some(cleanup), true) => StackPopUnwind::Cleanup(*cleanup),
                         (None, true) => StackPopUnwind::Skip,
@@ -110,7 +114,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            &Drop { place, target, unwind } => {
+            Drop { place, target, unwind } => {
                 let frame = self.frame();
                 let ty = place.ty(&frame.body.local_decls, *self.tcx).ty;
                 let ty = self.subst_from_frame_and_normalize_erasing_regions(frame, ty)?;
@@ -128,19 +132,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.drop_in_place(&place, instance, target, unwind)?;
             }
 
-            Assert { cond, expected, msg, target, cleanup } => {
+            Assert { ref cond, expected, ref msg, target, cleanup } => {
                 let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
-                if *expected == cond_val {
-                    self.go_to_block(*target);
+                if expected == cond_val {
+                    self.go_to_block(target);
                 } else {
-                    M::assert_panic(self, msg, *cleanup)?;
+                    M::assert_panic(self, msg, cleanup)?;
                 }
             }
 
             Abort => {
                 M::abort(self, "the program aborted execution".to_owned())?;
             }
-
             // When we encounter Resume, we've finished unwinding
             // cleanup for the current stack frame. We pop it in order
             // to continue unwinding the next frame
@@ -151,10 +154,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.pop_stack_frame(/* unwinding */ true)?;
                 return Ok(());
             }
-
             // It is UB to ever encounter this.
             Unreachable => throw_ub!(Unreachable),
-
             // These should never occur for MIR we actually run.
             DropAndReplace { .. }
             | FalseEdge { .. }
@@ -166,8 +167,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 terminator.kind
             ),
 
-            InlineAsm { template, operands, options, destination, .. } => {
-                M::eval_inline_asm(self, template, operands, *options)?;
+            InlineAsm { template, ref operands, options, destination, .. } => {
+                M::eval_inline_asm(self, template, operands, options)?;
                 if options.contains(InlineAsmOptions::NORETURN) {
                     throw_ub_format!("returned from noreturn inline assembly");
                 }

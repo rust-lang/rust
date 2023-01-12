@@ -87,9 +87,9 @@ where
         field: usize,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let base = match base.as_mplace_or_imm() {
-            Left(mplace) => {
+            Left(ref mplace) => {
                 // We can reuse the mplace field computation logic for indirect operands.
-                let field = self.mplace_field(&mplace, field)?;
+                let field = self.mplace_field(mplace, field)?;
                 return Ok(field.into());
             }
             Right(value) => value,
