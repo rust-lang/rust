@@ -1709,10 +1709,10 @@ impl<'a> Parser<'a> {
     fn parse_break_expr(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
         let mut label = self.eat_label();
-        let kind = if label.is_some() && self.token == token::Colon {
+        let kind = if self.token == token::Colon && let Some(label) = label.take() {
             // The value expression can be a labeled loop, see issue #86948, e.g.:
             // `loop { break 'label: loop { break 'label 42; }; }`
-            let lexpr = self.parse_labeled_expr(label.take().unwrap(), true)?;
+            let lexpr = self.parse_labeled_expr(label, true)?;
             self.sess.emit_err(LabeledLoopInBreak {
                 span: lexpr.span,
                 sub: WrapExpressionInParentheses {
