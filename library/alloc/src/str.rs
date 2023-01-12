@@ -505,7 +505,10 @@ impl str {
     #[rustc_allow_incoherent_impl]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_string(self: Box<str>) -> String {
+    pub fn into_string<const COOP_PREFERRED: bool>(self: Box<str>) -> String<COOP_PREFERRED>
+    where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    {
         let slice = Box::<[u8]>::from(self);
         unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }

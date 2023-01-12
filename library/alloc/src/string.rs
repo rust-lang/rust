@@ -1480,13 +1480,19 @@ where
     where
         F: FnMut(char) -> bool,
     {
-        struct SetLenOnDrop<'a> {
-            s: &'a mut String,
+        struct SetLenOnDrop<'a, const LOCAL_COOP_PREFERRED: bool>
+        where
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(LOCAL_COOP_PREFERRED)]:,
+        {
+            s: &'a mut String<LOCAL_COOP_PREFERRED>,
             idx: usize,
             del_bytes: usize,
         }
 
-        impl<'a> Drop for SetLenOnDrop<'a> {
+        impl<'a, const LOCAL_COOP_PREFERRED: bool> Drop for SetLenOnDrop<'a, LOCAL_COOP_PREFERRED>
+        where
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(LOCAL_COOP_PREFERRED)]:,
+        {
             fn drop(&mut self) {
                 let new_len = self.idx - self.del_bytes;
                 debug_assert!(new_len <= self.s.len());
@@ -1783,7 +1789,7 @@ where
     /// assert_eq!(s, "");
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<'_>
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, COOP_PREFERRED>
     where
         R: RangeBounds<usize>,
     {
@@ -2216,16 +2222,16 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(CO
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_string", since = "1.4.0")]
-impl<const COOP_PREFERRED: bool> Extend<String> for String<COOP_PREFERRED>
+impl<const COOP_PREFERRED: bool> Extend<String<COOP_PREFERRED>> for String<COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
-    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = String<COOP_PREFERRED>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 
     #[inline]
-    fn extend_one(&mut self, s: String) {
+    fn extend_one(&mut self, s: String<COOP_PREFERRED>) {
         self.push_str(&s);
     }
 }
@@ -3109,6 +3115,7 @@ where
 /// [`drain`]: String::drain
 #[stable(feature = "drain", since = "1.6.0")]
 #[allow(unused_braces)]
+// @FIXME Do we need to use DEFAULT_COOP_PREFERRED here?
 pub struct Drain<'a, const COOP_PREFERRED: bool = {DEFAULT_COOP_PREFERRED!()}>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
