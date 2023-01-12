@@ -24,6 +24,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(ENZYME_CLANG "Build enzyme clang plugin" ON)
+option(ENZYME_FLANG "Build enzyme flang symlink" OFF)
 option(ENZYME_MLIR "Build enzyme mlir plugin" OFF)
 option(ENZYME_EXTERNAL_SHARED_LIB "Build external shared library" OFF)
 set(ENZYME_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -201,13 +202,13 @@ message("LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
 message("found llvm definitions " ${LLVM_DEFINITIONS})
 message("found llvm version " ${LLVM_VERSION_MAJOR})
 
-option(ENZYME_FLANG "Build for non-version compliant FLANG" OFF)
-if (ENZYME_FLANG)
+option(ENZYME_FLANG_VERSION "Build for non-version compliant FLANG" OFF)
+if (ENZYME_FLANG_VERSION)
   add_definitions(-DFLANG=1)
 endif()
 
-option(ENZYME_ROCM "Build for non-version compliant ROCM" OFF)
-if (ENZYME_ROCM)
+option(ENZYME_ROCM_VERSION "Build for non-version compliant ROCM" OFF)
+if (ENZYME_ROCM_VERSION)
   add_definitions(-DROCM=1)
 endif()
 
@@ -279,6 +280,14 @@ export(TARGETS LLVMEnzyme-${LLVM_VERSION_MAJOR}
 if (${Clang_FOUND})
 export(TARGETS ClangEnzyme-${LLVM_VERSION_MAJOR}
     APPEND FILE "${PROJECT_BINARY_DIR}/EnzymeTargets.cmake")
+endif()
+
+if (${ENZYME_FLANG} AND ${Clang_FOUND})
+	add_custom_target(link_target ALL
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+	  ClangEnzyme-${LLVM_VERSION_MAJOR}${LLVM_SHLIBEXT}
+	  ${PROJECT_BINARY_DIR}/Enzyme/FlangEnzyme-${LLVM_VERSION_MAJOR}${LLVM_SHLIBEXT}
+  )
 endif()
 
 export(TARGETS LLDEnzyme-${LLVM_VERSION_MAJOR}
