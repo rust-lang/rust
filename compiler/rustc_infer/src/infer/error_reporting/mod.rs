@@ -1782,9 +1782,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             // like when you have two references but one is `usize` and the other
                             // is `f32`. In those cases we still want to show the `note`. If the
                             // value from `ef` is `Infer(_)`, then we ignore it.
-                            if !ef.expected.is_ty_infer() {
+                            if !ef.expected.is_ty_or_numeric_infer() {
                                 ef.expected != values.expected
-                            } else if !ef.found.is_ty_infer() {
+                            } else if !ef.found.is_ty_or_numeric_infer() {
                                 ef.found != values.found
                             } else {
                                 false
