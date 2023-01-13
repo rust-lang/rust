@@ -82,6 +82,7 @@ impl CheckAttrVisitor<'_> {
         let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
             let attr_is_valid = match attr.name_or_empty() {
+                sym::do_not_recommend => self.check_do_not_recommend(attr.span, target),
                 sym::inline => self.check_inline(hir_id, attr, span, target),
                 sym::no_coverage => self.check_no_coverage(hir_id, attr, span, target),
                 sym::non_exhaustive => self.check_non_exhaustive(hir_id, attr, span, target),
@@ -239,6 +240,16 @@ impl CheckAttrVisitor<'_> {
             attr.span,
             errors::IgnoredAttr { sym },
         );
+    }
+
+    /// Checks if `#[do_not_recommend]` is applied on a trait impl.
+    fn check_do_not_recommend(&self, attr_span: Span, target: Target) -> bool {
+        if let Target::Impl = target {
+            true
+        } else {
+            self.tcx.sess.emit_err(errors::IncorrectDoNotRecommendLocation { span: attr_span });
+            false
+        }
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
