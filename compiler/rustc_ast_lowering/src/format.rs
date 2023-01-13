@@ -13,7 +13,8 @@ use std::borrow::Cow;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
-        let fmt = flatten_format_args(fmt);
+        let fmt = flatten_format_args(Cow::Borrowed(fmt));
+        let fmt = inline_literals(fmt);
         expand_format_args(self, sp, &fmt)
     }
 }
@@ -27,8 +28,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 /// into
 ///
 /// `format_args!("a {} b{}! {}.", 1, 2, 3)`.
-fn flatten_format_args(fmt: &FormatArgs) -> Cow<'_, FormatArgs> {
-    let mut fmt = Cow::Borrowed(fmt);
+fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
     let mut i = 0;
     while i < fmt.template.len() {
         if let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i]
@@ -97,6 +97,64 @@ fn flatten_format_args(fmt: &FormatArgs) -> Cow<'_, FormatArgs> {
             i += 1;
         }
     }
+    fmt
+}
+
+/// Inline literals into the format string.
+///
+/// Turns
+///
+/// `format_args!("Hello, {}! {}", "World", 123)`
+///
+/// into
+///
+/// `format_args!("Hello, World! {}", 123)`.
+fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
+    // None: Not sure yet.
+    // Some(true): Remove, because it was inlined. (Might be set to false later if it is used in another way.)
+    // Some(false): Do not remove, because some non-inlined placeholder uses it.
+    let mut remove = vec![None; fmt.arguments.all_args().len()];
+
+    for i in 0..fmt.template.len() {
+        let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i] else { continue };
+        let Ok(arg_index) = placeholder.argument.index else { continue };
+        if let FormatTrait::Display = placeholder.format_trait
+            && let ExprKind::Lit(lit) = fmt.arguments.all_args()[arg_index].expr.kind
+            && let token::LitKind::Str | token::LitKind::StrRaw(_) = lit.kind
+            && let Ok(LitKind::Str(s, _)) = LitKind::from_token_lit(lit)
+        {
+            // Now we need to mutate the outer FormatArgs.
+            // If this is the first time, this clones the outer FormatArgs.
+            let fmt = fmt.to_mut();
+            // Replace the placeholder with the literal.
+            fmt.template[i] = FormatArgsPiece::Literal(s);
+            // Only remove it wasn't set to 'do not remove'.
+            remove[arg_index].get_or_insert(true);
+        } else {
+            // Never remove an argument that's used by a non-inlined placeholder,
+            // even if this argument is inlined in another place.
+            remove[arg_index] = Some(false);
+        }
+    }
+
+    // Remove the arguments that were inlined.
+    if remove.iter().any(|&x| x == Some(true)) {
+        let fmt = fmt.to_mut();
+        // Drop all the arguments that are marked for removal.
+        let mut remove_it = remove.iter();
+        fmt.arguments.all_args_mut().retain(|_| remove_it.next() != Some(&Some(true)));
+        // Correct the indexes that refer to arguments that have shifted position.
+        for piece in &mut fmt.template {
+            let FormatArgsPiece::Placeholder(placeholder) = piece else { continue };
+            let Ok(arg_index) = &mut placeholder.argument.index else { continue };
+            for i in 0..*arg_index {
+                if remove[i] == Some(true) {
+                    *arg_index -= 1;
+                }
+            }
+        }
+    }
+
     fmt
 }
 
