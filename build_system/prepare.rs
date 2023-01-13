@@ -7,8 +7,8 @@ use crate::build_system::rustc_info::get_default_sysroot;
 
 use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_file_name, get_rustc_version};
-use super::utils::{copy_dir_recursively, retry_spawn_and_wait, spawn_and_wait, Compiler};
+use super::rustc_info::get_rustc_version;
+use super::utils::{copy_dir_recursively, retry_spawn_and_wait, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
     if RelPath::DOWNLOAD.to_path(dirs).exists() {
@@ -23,20 +23,6 @@ pub(crate) fn prepare(dirs: &Dirs) {
     super::tests::REGEX_REPO.fetch(dirs);
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
     super::bench::SIMPLE_RAYTRACER_REPO.fetch(dirs);
-
-    eprintln!("[LLVM BUILD] simple-raytracer");
-    let host_compiler = Compiler::host();
-    let build_cmd = super::bench::SIMPLE_RAYTRACER.build(&host_compiler, dirs);
-    spawn_and_wait(build_cmd);
-    fs::copy(
-        super::bench::SIMPLE_RAYTRACER
-            .target_dir(dirs)
-            .join(&host_compiler.triple)
-            .join("debug")
-            .join(get_file_name("main", "bin")),
-        RelPath::BUILD.to_path(dirs).join(get_file_name("raytracer_cg_llvm", "bin")),
-    )
-    .unwrap();
 }
 
 fn prepare_sysroot(dirs: &Dirs) {

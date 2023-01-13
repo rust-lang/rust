@@ -5,7 +5,7 @@ use std::path::Path;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
 use super::rustc_info::{get_file_name, get_wrapper_file_name};
-use super::utils::{hyperfine_command, is_ci, spawn_and_wait, CargoProject};
+use super::utils::{hyperfine_command, is_ci, spawn_and_wait, CargoProject, Compiler};
 
 pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
@@ -13,6 +13,10 @@ pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "804a7a21b9e673a482797aa289a18ed480e4d813",
     "<none>",
 );
+
+// Use a separate target dir for the initial LLVM build to reduce unnecessary recompiles
+pub(crate) static SIMPLE_RAYTRACER_LLVM: CargoProject =
+    CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer_llvm");
 
 pub(crate) static SIMPLE_RAYTRACER: CargoProject =
     CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer");
@@ -27,6 +31,20 @@ fn benchmark_simple_raytracer(dirs: &Dirs) {
         eprintln!("Hint: Try `cargo install hyperfine` to install hyperfine");
         std::process::exit(1);
     }
+
+    eprintln!("[LLVM BUILD] simple-raytracer");
+    let host_compiler = Compiler::host();
+    let build_cmd = SIMPLE_RAYTRACER_LLVM.build(&host_compiler, dirs);
+    spawn_and_wait(build_cmd);
+    fs::copy(
+        SIMPLE_RAYTRACER_LLVM
+            .target_dir(dirs)
+            .join(&host_compiler.triple)
+            .join("debug")
+            .join(get_file_name("main", "bin")),
+        RelPath::BUILD.to_path(dirs).join(get_file_name("raytracer_cg_llvm", "bin")),
+    )
+    .unwrap();
 
     let run_runs = env::var("RUN_RUNS")
         .unwrap_or(if is_ci() { "2" } else { "10" }.to_string())
