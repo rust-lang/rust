@@ -2173,7 +2173,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     // `self.foo` -- we want to double
                                     // check that the location `*self`
                                     // is mutable (i.e., this is not a
-                                    // `Fn` closure).  But if that
+                                    // `Fn` closure). But if that
                                     // check succeeds, we want to
                                     // *blame* the mutability on
                                     // `place` (that is,

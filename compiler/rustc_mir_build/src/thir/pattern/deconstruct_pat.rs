@@ -67,6 +67,7 @@ use self::SliceKind::*;
 
 use super::compare_const_vals;
 use super::usefulness::{MatchCheckCtxt, PatCtxt};
+use crate::errors::{Overlap, OverlappingRangeEndpoints};
 
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
 fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
@@ -96,7 +97,7 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
 /// `IntRange` is never used to encode an empty range or a "range" that wraps
 /// around the (offset) space: i.e., `range.lo <= range.hi`.
 #[derive(Clone, PartialEq, Eq)]
-pub(super) struct IntRange {
+pub(crate) struct IntRange {
     range: RangeInclusive<u128>,
     /// Keeps the bias used for encoding the range. It depends on the type of the range and
     /// possibly the pointer size of the current architecture. The algorithm ensures we never
@@ -284,32 +285,21 @@ impl IntRange {
             return;
         }
 
-        let overlaps: Vec<_> = pats
+        let overlap: Vec<_> = pats
             .filter_map(|pat| Some((pat.ctor().as_int_range()?, pat.span())))
             .filter(|(range, _)| self.suspicious_intersection(range))
-            .map(|(range, span)| (self.intersection(&range).unwrap(), span))
+            .map(|(range, span)| Overlap {
+                range: self.intersection(&range).unwrap().to_pat(pcx.cx.tcx, pcx.ty),
+                span,
+            })
             .collect();
 
-        if !overlaps.is_empty() {
-            pcx.cx.tcx.struct_span_lint_hir(
+        if !overlap.is_empty() {
+            pcx.cx.tcx.emit_spanned_lint(
                 lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
                 hir_id,
                 pcx.span,
-                "multiple patterns overlap on their endpoints",
-                |lint| {
-                    for (int_range, span) in overlaps {
-                        lint.span_label(
-                            span,
-                            &format!(
-                                "this range overlaps on `{}`...",
-                                int_range.to_pat(pcx.cx.tcx, pcx.ty)
-                            ),
-                        );
-                    }
-                    lint.span_label(pcx.span, "... with this range");
-                    lint.note("you likely meant to write mutually exclusive ranges");
-                    lint
-                },
+                OverlappingRangeEndpoints { overlap, range: pcx.span },
             );
         }
     }

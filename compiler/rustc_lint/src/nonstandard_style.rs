@@ -1,7 +1,10 @@
+use crate::lints::{
+    NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
+    NonUpperCaseGlobal, NonUpperCaseGlobalSub,
+};
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_errors::{fluent, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
@@ -136,30 +139,17 @@ impl NonCamelCaseTypes {
         let name = ident.name.as_str();
 
         if !is_camel_case(name) {
-            cx.struct_span_lint(
+            let cc = to_camel_case(name);
+            let sub = if *name != cc {
+                NonCamelCaseTypeSub::Suggestion { span: ident.span, replace: cc }
+            } else {
+                NonCamelCaseTypeSub::Label { span: ident.span }
+            };
+            cx.emit_spanned_lint(
                 NON_CAMEL_CASE_TYPES,
                 ident.span,
-                fluent::lint_non_camel_case_type,
-                |lint| {
-                    let cc = to_camel_case(name);
-                    // We cannot provide meaningful suggestions
-                    // if the characters are in the category of "Lowercase Letter".
-                    if *name != cc {
-                        lint.span_suggestion(
-                            ident.span,
-                            fluent::suggestion,
-                            to_camel_case(name),
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        lint.span_label(ident.span, fluent::label);
-                    }
-
-                    lint.set_arg("sort", sort);
-                    lint.set_arg("name", name);
-                    lint
-                },
-            )
+                NonCamelCaseType { sort, name, sub },
+            );
         }
     }
 }
@@ -294,47 +284,37 @@ impl NonSnakeCase {
         let name = ident.name.as_str();
 
         if !is_snake_case(name) {
-            cx.struct_span_lint(NON_SNAKE_CASE, ident.span, fluent::lint_non_snake_case, |lint| {
-                let sc = NonSnakeCase::to_snake_case(name);
-                // We cannot provide meaningful suggestions
-                // if the characters are in the category of "Uppercase Letter".
-                if name != sc {
-                    // We have a valid span in almost all cases, but we don't have one when linting a crate
-                    // name provided via the command line.
-                    if !ident.span.is_dummy() {
-                        let sc_ident = Ident::from_str_and_span(&sc, ident.span);
-                        let (message, suggestion) = if sc_ident.is_reserved() {
-                            // We shouldn't suggest a reserved identifier to fix non-snake-case identifiers.
-                            // Instead, recommend renaming the identifier entirely or, if permitted,
-                            // escaping it to create a raw identifier.
-                            if sc_ident.name.can_be_raw() {
-                                (fluent::rename_or_convert_suggestion, sc_ident.to_string())
-                            } else {
-                                lint.note(fluent::cannot_convert_note);
-                                (fluent::rename_suggestion, String::new())
+            let span = ident.span;
+            let sc = NonSnakeCase::to_snake_case(name);
+            // We cannot provide meaningful suggestions
+            // if the characters are in the category of "Uppercase Letter".
+            let sub = if name != sc {
+                // We have a valid span in almost all cases, but we don't have one when linting a crate
+                // name provided via the command line.
+                if !span.is_dummy() {
+                    let sc_ident = Ident::from_str_and_span(&sc, span);
+                    if sc_ident.is_reserved() {
+                        // We shouldn't suggest a reserved identifier to fix non-snake-case identifiers.
+                        // Instead, recommend renaming the identifier entirely or, if permitted,
+                        // escaping it to create a raw identifier.
+                        if sc_ident.name.can_be_raw() {
+                            NonSnakeCaseDiagSub::RenameOrConvertSuggestion {
+                                span,
+                                suggestion: sc_ident,
                             }
                         } else {
-                            (fluent::convert_suggestion, sc.clone())
-                        };
-
-                        lint.span_suggestion(
-                            ident.span,
-                            message,
-                            suggestion,
-                            Applicability::MaybeIncorrect,
-                        );
+                            NonSnakeCaseDiagSub::SuggestionAndNote { span }
+                        }
                     } else {
-                        lint.help(fluent::help);
+                        NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion: sc.clone() }
                     }
                 } else {
-                    lint.span_label(ident.span, fluent::label);
+                    NonSnakeCaseDiagSub::Help
                 }
-
-                lint.set_arg("sort", sort);
-                lint.set_arg("name", name);
-                lint.set_arg("sc", sc);
-                lint
-            });
+            } else {
+                NonSnakeCaseDiagSub::Label { span }
+            };
+            cx.emit_spanned_lint(NON_SNAKE_CASE, span, NonSnakeCaseDiag { sort, name, sc, sub });
         }
     }
 }
@@ -490,30 +470,19 @@ impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_>, sort: &str, ident: &Ident) {
         let name = ident.name.as_str();
         if name.chars().any(|c| c.is_lowercase()) {
-            cx.struct_span_lint(
+            let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
+            // We cannot provide meaningful suggestions
+            // if the characters are in the category of "Lowercase Letter".
+            let sub = if *name != uc {
+                NonUpperCaseGlobalSub::Suggestion { span: ident.span, replace: uc }
+            } else {
+                NonUpperCaseGlobalSub::Label { span: ident.span }
+            };
+            cx.emit_spanned_lint(
                 NON_UPPER_CASE_GLOBALS,
                 ident.span,
-                fluent::lint_non_upper_case_global,
-                |lint| {
-                    let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
-                    // We cannot provide meaningful suggestions
-                    // if the characters are in the category of "Lowercase Letter".
-                    if *name != uc {
-                        lint.span_suggestion(
-                            ident.span,
-                            fluent::suggestion,
-                            uc,
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        lint.span_label(ident.span, fluent::label);
-                    }
-
-                    lint.set_arg("sort", sort);
-                    lint.set_arg("name", name);
-                    lint
-                },
-            )
+                NonUpperCaseGlobal { sort, name, sub },
+            );
         }
     }
 }

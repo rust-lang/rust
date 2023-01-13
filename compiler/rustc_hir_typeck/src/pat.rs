@@ -1,4 +1,4 @@
-use crate::FnCtxt;
+use crate::{FnCtxt, RawTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
@@ -761,6 +761,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_note(sp, format!("{msg}: `{sugg}`"));
                     }
                 }
+                hir::Node::Pat(pt) if let PatKind::TupleStruct(_, pat_arr, _) = pt.kind => {
+                    for i in pat_arr.iter() {
+                        if let PatKind::Ref(the_ref, _) = i.kind
+                        && let PatKind::Binding(mt, _, ident, _) = the_ref.kind {
+                            let hir::BindingAnnotation(_, mtblty) = mt;
+                            err.span_suggestion_verbose(
+                                i.span,
+                                format!("consider removing `&{mutability}` from the pattern"),
+                                mtblty.prefix_str().to_string() + &ident.name.to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                    if let Some((sp, msg, sugg)) = mut_var_suggestion {
+                        err.span_note(sp, format!("{msg}: `{sugg}`"));
+                    }
+                }
                 hir::Node::Param(_) | hir::Node::Arm(_) | hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
                     err.span_suggestion_verbose(
@@ -842,7 +859,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'tcx>,
         qpath: &hir::QPath<'_>,
-        path_resolution: (Res, Option<Ty<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
+        path_resolution: (Res, Option<RawTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
         expected: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {

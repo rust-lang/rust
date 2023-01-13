@@ -66,7 +66,7 @@ fn render(
 
     match ctx.snippet_cap() {
         Some(cap) if needs_bang && !has_call_parens => {
-            let snippet = format!("{}!{}$0{}", escaped_name, bra, ket);
+            let snippet = format!("{escaped_name}!{bra}$0{ket}");
             let lookup = banged_name(&name);
             item.insert_snippet(cap, snippet).lookup_by(lookup);
         }

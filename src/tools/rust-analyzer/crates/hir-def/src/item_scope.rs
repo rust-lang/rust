@@ -96,7 +96,7 @@ pub(crate) enum BuiltinShadowMode {
 /// Legacy macros can only be accessed through special methods like `get_legacy_macros`.
 /// Other methods will only resolve values, types and module scoped macros only.
 impl ItemScope {
-    pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, PerNs)> + 'a {
+    pub fn entries(&self) -> impl Iterator<Item = (&Name, PerNs)> + '_ {
         // FIXME: shadowing
         self.types
             .keys()
@@ -159,18 +159,17 @@ impl ItemScope {
     pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {
         let (def, mut iter) = match item {
             ItemInNs::Macros(def) => {
-                return self
-                    .macros
-                    .iter()
-                    .find_map(|(name, &(other_def, vis))| (other_def == def).then(|| (name, vis)));
+                return self.macros.iter().find_map(|(name, &(other_def, vis))| {
+                    (other_def == def).then_some((name, vis))
+                });
             }
             ItemInNs::Types(def) => (def, self.types.iter()),
             ItemInNs::Values(def) => (def, self.values.iter()),
         };
-        iter.find_map(|(name, &(other_def, vis))| (other_def == def).then(|| (name, vis)))
+        iter.find_map(|(name, &(other_def, vis))| (other_def == def).then_some((name, vis)))
     }
 
-    pub(crate) fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
+    pub(crate) fn traits(&self) -> impl Iterator<Item = TraitId> + '_ {
         self.types
             .values()
             .filter_map(|&(def, _)| match def {
@@ -327,7 +326,7 @@ impl ItemScope {
         changed
     }
 
-    pub(crate) fn resolutions<'a>(&'a self) -> impl Iterator<Item = (Option<Name>, PerNs)> + 'a {
+    pub(crate) fn resolutions(&self) -> impl Iterator<Item = (Option<Name>, PerNs)> + '_ {
         self.entries().map(|(name, res)| (Some(name.clone()), res)).chain(
             self.unnamed_trait_imports
                 .iter()

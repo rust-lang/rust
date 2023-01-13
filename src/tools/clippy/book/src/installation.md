@@ -1,6 +1,6 @@
 # Installation
 
-If you're using `rustup` to install and manage you're Rust toolchains, Clippy is
+If you're using `rustup` to install and manage your Rust toolchains, Clippy is
 usually **already installed**. In that case you can skip this chapter and go to
 the [Usage] chapter.
 

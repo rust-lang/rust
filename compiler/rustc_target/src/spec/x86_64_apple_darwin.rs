@@ -14,7 +14,7 @@ pub fn target() -> Target {
 
     Target {
         // Clang automatically chooses a more specific target based on
-        // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work
+        // MACOSX_DEPLOYMENT_TARGET. To enable cross-language LTO to work
         // correctly, we do too.
         llvm_target: macos_llvm_target(arch).into(),
         pointer_width: 64,

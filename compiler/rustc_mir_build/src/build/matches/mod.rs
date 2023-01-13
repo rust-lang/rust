@@ -1870,7 +1870,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // ```
         // let place = Foo::new();
         // match place { foo if inspect(foo)
-        //     => feed(foo), ...  }
+        //     => feed(foo), ... }
         // ```
         //
         // will be treated as if it were really something like:
@@ -1885,7 +1885,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // ```
         // let place = Foo::new();
         // match place { ref mut foo if inspect(foo)
-        //     => feed(foo), ...  }
+        //     => feed(foo), ... }
         // ```
         //
         // will be treated as if it were really something like:

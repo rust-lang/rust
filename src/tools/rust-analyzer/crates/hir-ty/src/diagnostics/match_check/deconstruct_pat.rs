@@ -372,7 +372,7 @@ impl Constructor {
                     hir_def::AdtId::UnionId(id) => id.into(),
                 }
             }
-            _ => panic!("bad constructor {:?} for adt {:?}", self, adt),
+            _ => panic!("bad constructor {self:?} for adt {adt:?}"),
         }
     }
 

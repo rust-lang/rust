@@ -1,7 +1,12 @@
-use crate::{LateContext, LateLintPass, LintContext};
+use crate::{
+    lints::{
+        ForLoopsOverFalliblesDiag, ForLoopsOverFalliblesLoopSub, ForLoopsOverFalliblesQuestionMark,
+        ForLoopsOverFalliblesSuggestion,
+    },
+    LateContext, LateLintPass, LintContext,
+};
 
 use hir::{Expr, Pat};
-use rustc_errors::{Applicability, DelayDm};
 use rustc_hir as hir;
 use rustc_infer::{infer::TyCtxtInferExt, traits::ObligationCause};
 use rustc_middle::ty::{self, List};
@@ -53,53 +58,29 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             _ => return,
         };
 
-        let msg = DelayDm(|| {
-            format!(
-                "for loop over {article} `{ty}`. This is more readably written as an `if let` statement",
-            )
-        });
-
-        cx.struct_span_lint(FOR_LOOPS_OVER_FALLIBLES, arg.span, msg, |lint| {
-            if let Some(recv) = extract_iterator_next_call(cx, arg)
+        let sub =  if let Some(recv) = extract_iterator_next_call(cx, arg)
             && let Ok(recv_snip) = cx.sess().source_map().span_to_snippet(recv.span)
             {
-                lint.span_suggestion(
-                    recv.span.between(arg.span.shrink_to_hi()),
-                    format!("to iterate over `{recv_snip}` remove the call to `next`"),
-                    ".by_ref()",
-                    Applicability::MaybeIncorrect
-                );
+                ForLoopsOverFalliblesLoopSub::RemoveNext { suggestion: recv.span.between(arg.span.shrink_to_hi()), recv_snip }
             } else {
-                lint.multipart_suggestion_verbose(
-                    "to check pattern in a loop use `while let`",
-                    vec![
-                        // NB can't use `until` here because `expr.span` and `pat.span` have different syntax contexts
-                        (expr.span.with_hi(pat.span.lo()), format!("while let {var}(")),
-                        (pat.span.between(arg.span), ") = ".to_string()),
-                    ],
-                    Applicability::MaybeIncorrect
-                );
-            }
+                ForLoopsOverFalliblesLoopSub::UseWhileLet { start_span: expr.span.with_hi(pat.span.lo()), end_span: pat.span.between(arg.span), var }
+            } ;
+        let question_mark = if suggest_question_mark(cx, adt, substs, expr.span) {
+            Some(ForLoopsOverFalliblesQuestionMark { suggestion: arg.span.shrink_to_hi() })
+        } else {
+            None
+        };
+        let suggestion = ForLoopsOverFalliblesSuggestion {
+            var,
+            start_span: expr.span.with_hi(pat.span.lo()),
+            end_span: pat.span.between(arg.span),
+        };
 
-            if suggest_question_mark(cx, adt, substs, expr.span) {
-                lint.span_suggestion(
-                    arg.span.shrink_to_hi(),
-                    "consider unwrapping the `Result` with `?` to iterate over its contents",
-                    "?",
-                    Applicability::MaybeIncorrect,
-                );
-            }
-
-            lint.multipart_suggestion_verbose(
-                "consider using `if let` to clear intent",
-                vec![
-                    // NB can't use `until` here because `expr.span` and `pat.span` have different syntax contexts
-                    (expr.span.with_hi(pat.span.lo()), format!("if let {var}(")),
-                    (pat.span.between(arg.span), ") = ".to_string()),
-                ],
-                Applicability::MaybeIncorrect,
-            )
-        })
+        cx.emit_spanned_lint(
+            FOR_LOOPS_OVER_FALLIBLES,
+            arg.span,
+            ForLoopsOverFalliblesDiag { article, ty, sub, question_mark, suggestion },
+        );
     }
 }
 

@@ -397,10 +397,10 @@ impl<'tcx> TypeckResults<'tcx> {
 
     /// Returns the type of an expression as a monotype.
     ///
-    /// NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
+    /// NB (1): This is the PRE-ADJUSTMENT TYPE for the expression. That is, in
     /// some cases, we insert `Adjustment` annotations such as auto-deref or
-    /// auto-ref.  The type returned by this function does not consider such
-    /// adjustments.  See `expr_ty_adjusted()` instead.
+    /// auto-ref. The type returned by this function does not consider such
+    /// adjustments. See `expr_ty_adjusted()` instead.
     ///
     /// NB (2): This type doesn't provide type parameter substitutions; e.g., if you
     /// ask for the type of `id` in `id(3)`, it will return `fn(&isize) -> isize`
@@ -626,7 +626,7 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub inferred_ty: Ty<'tcx>,
 }
 
-/// Canonicalized user type annotation.
+/// Canonical user type annotation.
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
 impl<'tcx> CanonicalUserType<'tcx> {
@@ -679,7 +679,7 @@ impl<'tcx> CanonicalUserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 

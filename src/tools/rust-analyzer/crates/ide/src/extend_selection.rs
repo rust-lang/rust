@@ -205,7 +205,7 @@ fn extend_single_word_in_comment_or_string(
     }
 
     let start_idx = before.rfind(non_word_char)? as u32;
-    let end_idx = after.find(non_word_char).unwrap_or_else(|| after.len()) as u32;
+    let end_idx = after.find(non_word_char).unwrap_or(after.len()) as u32;
 
     let from: TextSize = (start_idx + 1).into();
     let to: TextSize = (cursor_position + end_idx).into();

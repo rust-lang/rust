@@ -1,9 +1,13 @@
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
+use crate::lints::{
+    DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAtributeLint, RenamedOrRemovedLint,
+    RenamedOrRemovedLintSuggestion, UnknownLint, UnknownLintSuggestion,
+};
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
+use rustc_errors::{fluent, DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
@@ -15,6 +19,7 @@ use rustc_middle::lint::{
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
+use rustc_session::lint::builtin::{RENAMED_AND_REMOVED_LINTS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS, SINGLE_USE_LIFETIMES, UNFULFILLED_LINT_EXPECTATIONS},
     Level, Lint, LintExpectationId, LintId,
@@ -45,7 +50,7 @@ rustc_index::newtype_index! {
     }
 }
 
-/// Specifications found at this position in the stack.  This map only represents the lints
+/// Specifications found at this position in the stack. This map only represents the lints
 /// found for one set of attributes (like `shallow_lint_levels_on` does).
 ///
 /// We store the level specifications as a linked list.
@@ -158,7 +163,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
     match attrs.map.range(..) {
         // There is only something to do if there are attributes at all.
         [] => {}
-        // Most of the time, there is only one attribute.  Avoid fetching HIR in that case.
+        // Most of the time, there is only one attribute. Avoid fetching HIR in that case.
         [(local_id, _)] => levels.add_id(HirId { owner, local_id: *local_id }),
         // Otherwise, we need to visit the attributes in source code order, so we fetch HIR and do
         // a standard visit.
@@ -583,57 +588,32 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     old_src,
                     id_name
                 );
-
-                let decorate_diag = |diag: &mut Diagnostic| {
-                    diag.span_label(src.span(), "overruled by previous forbid");
-                    match old_src {
-                        LintLevelSource::Default => {
-                            diag.note(&format!(
-                                "`forbid` lint level is the default for {}",
-                                id.to_string()
-                            ));
-                        }
-                        LintLevelSource::Node { span, reason, .. } => {
-                            diag.span_label(span, "`forbid` level set here");
-                            if let Some(rationale) = reason {
-                                diag.note(rationale.as_str());
-                            }
-                        }
-                        LintLevelSource::CommandLine(_, _) => {
-                            diag.note("`forbid` lint level was set on command line");
-                        }
+                let sub = match old_src {
+                    LintLevelSource::Default => {
+                        OverruledAttributeSub::DefaultSource { id: id.to_string() }
                     }
+                    LintLevelSource::Node { span, reason, .. } => {
+                        OverruledAttributeSub::NodeSource { span, reason }
+                    }
+                    LintLevelSource::CommandLine(_, _) => OverruledAttributeSub::CommandLineSource,
                 };
                 if !fcw_warning {
                     self.sess.emit_err(OverruledAttribute {
                         span: src.span(),
                         overruled: src.span(),
-                        lint_level: level.as_str().to_string(),
+                        lint_level: level.as_str(),
                         lint_source: src.name(),
-                        sub: match old_src {
-                            LintLevelSource::Default => {
-                                OverruledAttributeSub::DefaultSource { id: id.to_string() }
-                            }
-                            LintLevelSource::Node { span, reason, .. } => {
-                                OverruledAttributeSub::NodeSource { span, reason }
-                            }
-                            LintLevelSource::CommandLine(_, _) => {
-                                OverruledAttributeSub::CommandLineSource
-                            }
-                        },
+                        sub,
                     });
                 } else {
-                    self.struct_lint(
+                    self.emit_spanned_lint(
                         FORBIDDEN_LINT_GROUPS,
-                        Some(src.span().into()),
-                        format!(
-                            "{}({}) incompatible with previous forbid",
-                            level.as_str(),
-                            src.name(),
-                        ),
-                        |lint| {
-                            decorate_diag(lint);
-                            lint
+                        src.span().into(),
+                        OverruledAtributeLint {
+                            overruled: src.span(),
+                            lint_level: level.as_str(),
+                            lint_source: src.name(),
+                            sub,
                         },
                     );
                 }
@@ -858,25 +838,13 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             }
                             Err((Some(ids), ref new_lint_name)) => {
                                 let lint = builtin::RENAMED_AND_REMOVED_LINTS;
-                                let (lvl, src) = self.provider.get_lint_level(lint, &sess);
-                                struct_lint_level(
-                                    self.sess,
+                                self.emit_spanned_lint(
                                     lint,
-                                    lvl,
-                                    src,
-                                    Some(sp.into()),
-                                    format!(
-                                        "lint name `{}` is deprecated \
-                                         and may not have an effect in the future.",
-                                        name
-                                    ),
-                                    |lint| {
-                                        lint.span_suggestion(
-                                            sp,
-                                            "change it to",
-                                            new_lint_name,
-                                            Applicability::MachineApplicable,
-                                        )
+                                    sp.into(),
+                                    DeprecatedLintName {
+                                        name,
+                                        suggestion: sp,
+                                        replace: &new_lint_name,
                                     },
                                 );
 
@@ -917,54 +885,29 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     _ if !self.warn_about_weird_lints => {}
 
                     CheckLintNameResult::Warning(msg, renamed) => {
-                        let lint = builtin::RENAMED_AND_REMOVED_LINTS;
-                        let (renamed_lint_level, src) = self.provider.get_lint_level(lint, &sess);
-                        struct_lint_level(
-                            self.sess,
-                            lint,
-                            renamed_lint_level,
-                            src,
-                            Some(sp.into()),
-                            msg,
-                            |lint| {
-                                if let Some(new_name) = &renamed {
-                                    lint.span_suggestion(
-                                        sp,
-                                        "use the new name",
-                                        new_name,
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
-                                lint
-                            },
+                        let suggestion =
+                            renamed.as_ref().map(|replace| RenamedOrRemovedLintSuggestion {
+                                suggestion: sp,
+                                replace: replace.as_str(),
+                            });
+                        self.emit_spanned_lint(
+                            RENAMED_AND_REMOVED_LINTS,
+                            sp.into(),
+                            RenamedOrRemovedLint { msg, suggestion },
                         );
                     }
                     CheckLintNameResult::NoLint(suggestion) => {
-                        let lint = builtin::UNKNOWN_LINTS;
-                        let (level, src) = self.provider.get_lint_level(lint, self.sess);
                         let name = if let Some(tool_ident) = tool_ident {
                             format!("{}::{}", tool_ident.name, name)
                         } else {
                             name.to_string()
                         };
-                        struct_lint_level(
-                            self.sess,
-                            lint,
-                            level,
-                            src,
-                            Some(sp.into()),
-                            format!("unknown lint: `{}`", name),
-                            |lint| {
-                                if let Some(suggestion) = suggestion {
-                                    lint.span_suggestion(
-                                        sp,
-                                        "did you mean",
-                                        suggestion,
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
-                                lint
-                            },
+                        let suggestion = suggestion
+                            .map(|replace| UnknownLintSuggestion { suggestion: sp, replace });
+                        self.emit_spanned_lint(
+                            UNKNOWN_LINTS,
+                            sp.into(),
+                            UnknownLint { name, suggestion },
                         );
                     }
                 }
@@ -1010,20 +953,10 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     continue
                 };
 
-                let lint = builtin::UNUSED_ATTRIBUTES;
-                let (lint_level, lint_src) = self.provider.get_lint_level(lint, &self.sess);
-                struct_lint_level(
-                    self.sess,
-                    lint,
-                    lint_level,
-                    lint_src,
-                    Some(lint_attr_span.into()),
-                    format!(
-                        "{}({}) is ignored unless specified at crate level",
-                        level.as_str(),
-                        lint_attr_name
-                    ),
-                    |lint| lint,
+                self.emit_spanned_lint(
+                    UNUSED_ATTRIBUTES,
+                    lint_attr_span.into(),
+                    IgnoredUnlessCrateSpecified { level: level.as_str(), name: lint_attr_name },
                 );
                 // don't set a separate error for every lint in the group
                 break;
@@ -1047,11 +980,10 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     level,
                     src,
                     Some(span.into()),
-                    format!("unknown lint: `{}`", lint_id.lint.name_lower()),
+                    fluent::lint_unknown_gated_lint,
                     |lint| {
-                        lint.note(
-                            &format!("the `{}` lint is unstable", lint_id.lint.name_lower(),),
-                        );
+                        lint.set_arg("name", lint_id.lint.name_lower());
+                        lint.note(fluent::note);
                         add_feature_diagnostics(lint, &self.sess.parse_sess, feature);
                         lint
                     },
@@ -1085,6 +1017,25 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     ) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, span, msg, decorate)
+    }
+
+    pub fn emit_spanned_lint(
+        &self,
+        lint: &'static Lint,
+        span: MultiSpan,
+        decorate: impl for<'a> DecorateLint<'a, ()>,
+    ) {
+        let (level, src) = self.lint_level(lint);
+        struct_lint_level(self.sess, lint, level, src, Some(span), decorate.msg(), |lint| {
+            decorate.decorate_lint(lint)
+        });
+    }
+
+    pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> DecorateLint<'a, ()>) {
+        let (level, src) = self.lint_level(lint);
+        struct_lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
+            decorate.decorate_lint(lint)
+        });
     }
 }
 

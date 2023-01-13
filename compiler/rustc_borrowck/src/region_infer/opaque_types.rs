@@ -262,7 +262,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             return self.tcx.ty_error();
         }
 
-        // Only check this for TAIT. RPIT already supports `src/test/ui/impl-trait/nested-return-type2.rs`
+        // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
         // on stable and we'd break that.
         let OpaqueTyOrigin::TyAlias = origin else {
             return definition_ty;
@@ -318,7 +318,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
         // This is still required for many(half of the tests in ui/type-alias-impl-trait)
         // tests to pass
-        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        let _ = infcx.take_opaque_types();
 
         if errors.is_empty() {
             definition_ty

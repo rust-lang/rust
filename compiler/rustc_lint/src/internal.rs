@@ -1,9 +1,12 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
+use crate::lints::{
+    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistantDocKeyword,
+    QueryInstability, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
+};
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
-use rustc_errors::{fluent, Applicability};
 use rustc_hir::def::Res;
 use rustc_hir::{def_id::DefId, Expr, ExprKind, GenericArg, PatKind, Path, PathSegment, QPath};
 use rustc_hir::{HirId, Impl, Item, ItemKind, Node, Pat, Ty, TyKind};
@@ -29,20 +32,15 @@ impl LateLintPass<'_> for DefaultHashTypes {
             // don't lint imports, only actual usages
             return;
         }
-        let replace = match cx.tcx.get_diagnostic_name(def_id) {
+        let preferred = match cx.tcx.get_diagnostic_name(def_id) {
             Some(sym::HashMap) => "FxHashMap",
             Some(sym::HashSet) => "FxHashSet",
             _ => return,
         };
-        cx.struct_span_lint(
+        cx.emit_spanned_lint(
             DEFAULT_HASH_TYPES,
             path.span,
-            fluent::lint_default_hash_types,
-            |lint| {
-                lint.set_arg("preferred", replace)
-                    .set_arg("used", cx.tcx.item_name(def_id))
-                    .note(fluent::note)
-            },
+            DefaultHashTypesDiag { preferred, used: cx.tcx.item_name(def_id) },
         );
     }
 }
@@ -83,12 +81,11 @@ impl LateLintPass<'_> for QueryStability {
         if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs) {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
-                cx.struct_span_lint(
+                cx.emit_spanned_lint(
                     POTENTIAL_QUERY_INSTABILITY,
                     span,
-                    fluent::lint_query_instability,
-                    |lint| lint.set_arg("query", cx.tcx.item_name(def_id)).note(fluent::note),
-                )
+                    QueryInstability { query: cx.tcx.item_name(def_id) },
+                );
             }
         }
     }
@@ -126,14 +123,8 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
             let span = path.span.with_hi(
                 segment.args.map_or(segment.ident.span, |a| a.span_ext).hi()
             );
-            cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, fluent::lint_tykind_kind, |lint| {
-                lint
-                    .span_suggestion(
-                        span,
-                        fluent::suggestion,
-                        "ty",
-                        Applicability::MaybeIncorrect, // ty maybe needs an import
-                    )
+            cx.emit_spanned_lint(USAGE_OF_TY_TYKIND, path.span, TykindKind {
+                suggestion: span,
             });
         }
     }
@@ -190,39 +181,17 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
 
                     match span {
                         Some(span) => {
-                            cx.struct_span_lint(
-                                USAGE_OF_TY_TYKIND,
-                                path.span,
-                                fluent::lint_tykind_kind,
-                                |lint| lint.span_suggestion(
-                                    span,
-                                    fluent::suggestion,
-                                    "ty",
-                                    Applicability::MaybeIncorrect, // ty maybe needs an import
-                                )
-                            )
+                            cx.emit_spanned_lint(USAGE_OF_TY_TYKIND, path.span, TykindKind {
+                                suggestion: span,
+                            });
                         },
-                        None => cx.struct_span_lint(
-                            USAGE_OF_TY_TYKIND,
-                            path.span,
-                            fluent::lint_tykind,
-                            |lint| lint.help(fluent::help)
-                        )
+                        None => cx.emit_spanned_lint(USAGE_OF_TY_TYKIND, path.span, TykindDiag),
                     }
-                } else if !ty.span.from_expansion() && let Some(t) = is_ty_or_ty_ctxt(cx, &path) {
-                    if path.segments.len() > 1 {
-                        cx.struct_span_lint(USAGE_OF_QUALIFIED_TY, path.span, fluent::lint_ty_qualified, |lint| {
-                            lint
-                                .set_arg("ty", t.clone())
-                                .span_suggestion(
-                                    path.span,
-                                    fluent::suggestion,
-                                    t,
-                                    // The import probably needs to be changed
-                                    Applicability::MaybeIncorrect,
-                                )
-                        })
-                    }
+                } else if !ty.span.from_expansion() && path.segments.len() > 1 && let Some(t) = is_ty_or_ty_ctxt(cx, &path) {
+                    cx.emit_spanned_lint(USAGE_OF_QUALIFIED_TY, path.span, TyQualified {
+                        ty: t.clone(),
+                        suggestion: path.span,
+                    });
                 }
             }
             _ => {}
@@ -303,12 +272,11 @@ impl EarlyLintPass for LintPassImpl {
                         && call_site.ctxt().outer_expn_data().kind
                             != ExpnKind::Macro(MacroKind::Bang, sym::declare_lint_pass)
                     {
-                        cx.struct_span_lint(
+                        cx.emit_spanned_lint(
                             LINT_PASS_IMPL_WITHOUT_MACRO,
                             lint_pass.path.span,
-                            fluent::lint_lintpass_by_hand,
-                            |lint| lint.help(fluent::help),
-                        )
+                            LintPassByHand,
+                        );
                     }
                 }
             }
@@ -338,17 +306,16 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
             if let Some(list) = attr.meta_item_list() {
                 for nested in list {
                     if nested.has_name(sym::keyword) {
-                        let v = nested
+                        let keyword = nested
                             .value_str()
                             .expect("#[doc(keyword = \"...\")] expected a value!");
-                        if is_doc_keyword(v) {
+                        if is_doc_keyword(keyword) {
                             return;
                         }
-                        cx.struct_span_lint(
+                        cx.emit_spanned_lint(
                             EXISTING_DOC_KEYWORD,
                             attr.span,
-                            fluent::lint_non_existant_doc_keyword,
-                            |lint| lint.set_arg("keyword", v).help(fluent::help),
+                            NonExistantDocKeyword { keyword },
                         );
                     }
                 }
@@ -407,12 +374,7 @@ impl LateLintPass<'_> for Diagnostics {
         }
         debug!(?found_impl);
         if !found_parent_with_attr && !found_impl {
-            cx.struct_span_lint(
-                DIAGNOSTIC_OUTSIDE_OF_IMPL,
-                span,
-                fluent::lint_diag_out_of_impl,
-                |lint| lint,
-            )
+            cx.emit_spanned_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, DiagOutOfImpl);
         }
 
         let mut found_diagnostic_message = false;
@@ -428,12 +390,7 @@ impl LateLintPass<'_> for Diagnostics {
         }
         debug!(?found_diagnostic_message);
         if !found_parent_with_attr && !found_diagnostic_message {
-            cx.struct_span_lint(
-                UNTRANSLATABLE_DIAGNOSTIC,
-                span,
-                fluent::lint_untranslatable_diag,
-                |lint| lint,
-            )
+            cx.emit_spanned_lint(UNTRANSLATABLE_DIAGNOSTIC, span, UntranslatableDiag);
         }
     }
 }
@@ -465,9 +422,9 @@ impl LateLintPass<'_> for BadOptAccess {
                 let Some(lit) = item.lit()  &&
                 let ast::LitKind::Str(val, _) = lit.kind
             {
-                cx.struct_span_lint(BAD_OPT_ACCESS, expr.span, val.as_str(), |lint|
-                    lint
-                );
+                cx.emit_spanned_lint(BAD_OPT_ACCESS, expr.span, BadOptAccessDiag {
+                    msg: val.as_str(),
+                });
             }
         }
     }

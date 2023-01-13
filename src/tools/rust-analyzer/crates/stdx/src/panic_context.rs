@@ -25,7 +25,7 @@ impl PanicContext {
                 if !ctx.is_empty() {
                     eprintln!("Panic context:");
                     for frame in ctx.iter() {
-                        eprintln!("> {}\n", frame);
+                        eprintln!("> {frame}\n");
                     }
                 }
                 default_hook(panic_info);
@@ -45,5 +45,5 @@ fn with_ctx(f: impl FnOnce(&mut Vec<String>)) {
     thread_local! {
         static CTX: RefCell<Vec<String>> = RefCell::new(Vec::new());
     }
-    CTX.with(|ctx| f(&mut *ctx.borrow_mut()));
+    CTX.with(|ctx| f(&mut ctx.borrow_mut()));
 }

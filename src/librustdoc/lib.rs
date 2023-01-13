@@ -800,7 +800,8 @@ fn main_args(at_args: &[String]) -> MainResult {
             // FIXME(#83761): Resolver cloning can lead to inconsistencies between data in the
             // two copies because one of the copies can be modified after `TyCtxt` construction.
             let (resolver, resolver_caches) = {
-                let (krate, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
+                let expansion = abort_on_err(queries.expansion(), sess);
+                let (krate, resolver, _) = &*expansion.borrow();
                 let resolver_caches = resolver.borrow_mut().access(|resolver| {
                     collect_intra_doc_links::early_resolve_intra_doc_links(
                         resolver,
@@ -817,7 +818,7 @@ fn main_args(at_args: &[String]) -> MainResult {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).peek_mut();
+            let global_ctxt = abort_on_err(queries.global_ctxt(), sess);
 
             global_ctxt.enter(|tcx| {
                 let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {

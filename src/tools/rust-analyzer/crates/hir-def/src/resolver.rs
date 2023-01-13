@@ -381,7 +381,7 @@ impl Resolver {
         });
         def_map[module_id].scope.legacy_macros().for_each(|(name, macs)| {
             macs.iter().for_each(|&mac| {
-                res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(MacroId::from(mac))));
+                res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)));
             })
         });
         def_map.extern_prelude().for_each(|(name, &def)| {
@@ -517,10 +517,7 @@ impl Scope {
                 });
                 m.def_map[m.module_id].scope.legacy_macros().for_each(|(name, macs)| {
                     macs.iter().for_each(|&mac| {
-                        acc.add(
-                            name,
-                            ScopeDef::ModuleDef(ModuleDefId::MacroId(MacroId::from(mac))),
-                        );
+                        acc.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)));
                     })
                 });
             }

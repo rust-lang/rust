@@ -171,7 +171,7 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult<'_>, assist_la
                     }
                     FileSystemEdit::MoveDir { src, src_id, dst } => {
                         // temporary placeholder for MoveDir since we are not using MoveDir in ide assists yet.
-                        (dst, format!("{:?}\n{:?}", src_id, src))
+                        (dst, format!("{src_id:?}\n{src:?}"))
                     }
                 };
                 let sr = db.file_source_root(dst.anchor);

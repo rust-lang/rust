@@ -637,7 +637,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let closure_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
 
                 // The "inputs" of the closure in the
-                // signature appear as a tuple.  The MIR side
+                // signature appear as a tuple. The MIR side
                 // flattens this tuple.
                 let (&output, tuplized_inputs) =
                     inputs_and_output.skip_binder().split_last().unwrap();

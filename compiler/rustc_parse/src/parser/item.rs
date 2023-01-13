@@ -1454,8 +1454,16 @@ impl<'a> Parser<'a> {
         // struct.
 
         let vdata = if self.token.is_keyword(kw::Where) {
-            generics.where_clause = self.parse_where_clause()?;
-            if self.eat(&token::Semi) {
+            let tuple_struct_body;
+            (generics.where_clause, tuple_struct_body) =
+                self.parse_struct_where_clause(class_name, generics.span)?;
+
+            if let Some(body) = tuple_struct_body {
+                // If we see a misplaced tuple struct body: `struct Foo<T> where T: Copy, (T);`
+                let body = VariantData::Tuple(body, DUMMY_NODE_ID);
+                self.expect_semi()?;
+                body
+            } else if self.eat(&token::Semi) {
                 // If we see a: `struct Foo<T> where T: Copy;` style decl.
                 VariantData::Unit(DUMMY_NODE_ID)
             } else {
@@ -1575,7 +1583,7 @@ impl<'a> Parser<'a> {
         Ok((fields, recovered))
     }
 
-    fn parse_tuple_struct_body(&mut self) -> PResult<'a, Vec<FieldDef>> {
+    pub(super) fn parse_tuple_struct_body(&mut self) -> PResult<'a, Vec<FieldDef>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
         self.parse_paren_comma_seq(|p| {
@@ -2214,7 +2222,8 @@ impl<'a> Parser<'a> {
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
         } else if self.check(&token::OpenDelim(Delimiter::Brace)) || self.token.is_whole_block() {
-            self.parse_inner_attrs_and_block().map(|(attrs, body)| (attrs, Some(body)))?
+            self.parse_block_common(self.token.span, BlockCheckMode::Default, false)
+                .map(|(attrs, body)| (attrs, Some(body)))?
         } else if self.token.kind == token::Eq {
             // Recover `fn foo() = $expr;`.
             self.bump(); // `=`

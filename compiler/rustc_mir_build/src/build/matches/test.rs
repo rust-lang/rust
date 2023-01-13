@@ -456,7 +456,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     span: source_info.span,
 
                     // FIXME(#54571): This constant comes from user input (a
-                    // constant in a pattern).  Are there forms where users can add
+                    // constant in a pattern). Are there forms where users can add
                     // type annotations here?  For example, an associated constant?
                     // Need to experiment.
                     user_ty: None,
@@ -504,7 +504,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// This is used by the overall `match_candidates` algorithm to structure
     /// the match as a whole. See `match_candidates` for more details.
     ///
-    /// FIXME(#29623). In some cases, we have some tricky choices to make.  for
+    /// FIXME(#29623). In some cases, we have some tricky choices to make. for
     /// example, if we are testing that `x == 22`, but the candidate is `x @
     /// 13..55`, what should we do? In the event that the test is true, we know
     /// that the candidate applies, but in the event of false, we don't know

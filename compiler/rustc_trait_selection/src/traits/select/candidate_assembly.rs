@@ -174,7 +174,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter_map(|o| o.to_opt_poly_trait_pred());
+            .filter_map(|p| p.to_opt_poly_trait_pred())
+            .filter(|p| !p.references_error());
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
@@ -254,18 +255,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         match *obligation.self_ty().skip_binder().kind() {
-            ty::Closure(_, closure_substs) => {
+            ty::Closure(def_id, closure_substs) => {
+                let is_const = self.tcx().is_const_fn_raw(def_id);
                 debug!(?kind, ?obligation, "assemble_unboxed_candidates");
                 match self.infcx.closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         debug!(?closure_kind, "assemble_unboxed_candidates");
                         if closure_kind.extends(kind) {
-                            candidates.vec.push(ClosureCandidate);
+                            candidates.vec.push(ClosureCandidate { is_const });
                         }
                     }
                     None => {
                         debug!("assemble_unboxed_candidates: closure_kind not yet known");
-                        candidates.vec.push(ClosureCandidate);
+                        candidates.vec.push(ClosureCandidate { is_const });
                     }
                 }
             }
@@ -396,7 +398,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::Param(..) | ty::Alias(ty::Projection, ..) => {
                     // In these cases, we don't know what the actual
-                    // type is.  Therefore, we cannot break it down
+                    // type is. Therefore, we cannot break it down
                     // into its constituent types. So we don't
                     // consider the `..` impl but instead just add no
                     // candidates: this means that typeck will only

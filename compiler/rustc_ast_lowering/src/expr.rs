@@ -209,6 +209,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Closure(box Closure {
                     binder,
                     capture_clause,
+                    constness,
                     asyncness,
                     movability,
                     fn_decl,
@@ -233,6 +234,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             binder,
                             *capture_clause,
                             e.id,
+                            *constness,
                             *movability,
                             fn_decl,
                             body,
@@ -651,6 +653,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 fn_decl_span: self.lower_span(span),
                 fn_arg_span: None,
                 movability: Some(hir::Movability::Static),
+                constness: hir::Constness::NotConst,
             });
 
             hir::ExprKind::Closure(c)
@@ -689,8 +692,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // call (like the identity function), as otherwise type and lifetime
         // inference have a hard time figuring things out.
         // Without this, we would get:
-        // E0720 in src/test/ui/impl-trait/in-trait/default-body-with-rpit.rs
-        // E0700 in src/test/ui/self/self_lifetime-async.rs
+        // E0720 in tests/ui/impl-trait/in-trait/default-body-with-rpit.rs
+        // E0700 in tests/ui/self/self_lifetime-async.rs
 
         // `future::identity_future`:
         let identity_future =
@@ -890,6 +893,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
+        constness: Const,
         movability: Movability,
         decl: &FnDecl,
         body: &Expr,
@@ -927,6 +931,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
             movability: generator_option,
+            constness: self.lower_constness(constness),
         });
 
         hir::ExprKind::Closure(c)
@@ -1041,6 +1046,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
             movability: None,
+            constness: hir::Constness::NotConst,
         });
         hir::ExprKind::Closure(c)
     }

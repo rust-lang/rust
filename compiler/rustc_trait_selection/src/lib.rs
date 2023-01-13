@@ -35,7 +35,6 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate smallvec;
 
-pub mod autoderef;
 pub mod errors;
 pub mod infer;
 pub mod solve;

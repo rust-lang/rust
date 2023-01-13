@@ -879,7 +879,7 @@ where
                     //
                     // If the niche is a pointer, it's either valid (according
                     // to its type), or null (which the niche field's scalar
-                    // validity range encodes).  This allows using
+                    // validity range encodes). This allows using
                     // `dereferenceable_or_null` for e.g., `Option<&T>`, and
                     // this will continue to work as long as we don't start
                     // using more niches than just null (e.g., the first page of

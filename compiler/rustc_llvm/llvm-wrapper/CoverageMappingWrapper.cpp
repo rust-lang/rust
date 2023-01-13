@@ -28,8 +28,8 @@ extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
   for (size_t i = 0; i < FilenamesLen; i++) {
     FilenameRefs.push_back(std::string(Filenames[i]));
   }
-  auto FilenamesWriter = coverage::CoverageFilenamesSectionWriter(
-    makeArrayRef(FilenameRefs));
+  auto FilenamesWriter =
+      coverage::CoverageFilenamesSectionWriter(ArrayRef<std::string>(FilenameRefs));
   RawRustStringOstream OS(BufferOut);
   FilenamesWriter.write(OS);
 }
@@ -45,15 +45,16 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
   // Convert from FFI representation to LLVM representation.
   SmallVector<coverage::CounterMappingRegion, 0> MappingRegions;
   MappingRegions.reserve(NumMappingRegions);
-  for (const auto &Region : makeArrayRef(RustMappingRegions, NumMappingRegions)) {
+  for (const auto &Region : ArrayRef<LLVMRustCounterMappingRegion>(
+           RustMappingRegions, NumMappingRegions)) {
     MappingRegions.emplace_back(
         Region.Count, Region.FalseCount, Region.FileID, Region.ExpandedFileID,
         Region.LineStart, Region.ColumnStart, Region.LineEnd, Region.ColumnEnd,
         Region.Kind);
   }
   auto CoverageMappingWriter = coverage::CoverageMappingWriter(
-      makeArrayRef(VirtualFileMappingIDs, NumVirtualFileMappingIDs),
-      makeArrayRef(Expressions, NumExpressions),
+      ArrayRef<unsigned>(VirtualFileMappingIDs, NumVirtualFileMappingIDs),
+      ArrayRef<coverage::CounterExpression>(Expressions, NumExpressions),
       MappingRegions);
   RawRustStringOstream OS(BufferOut);
   CoverageMappingWriter.write(OS);

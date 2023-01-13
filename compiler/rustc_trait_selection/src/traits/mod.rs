@@ -102,7 +102,7 @@ pub enum TraitQueryMode {
     /// spans etc. passed in and hence can do reasonable
     /// error reporting on their own.
     Standard,
-    /// Canonicalized queries get dummy spans and hence
+    /// Canonical queries get dummy spans and hence
     /// must generally propagate errors to
     /// pre-canonicalization callsites.
     Canonical,
@@ -449,9 +449,6 @@ pub fn impossible_predicates<'tcx>(
         ocx.register_obligation(obligation);
     }
     let errors = ocx.select_all_or_error();
-
-    // Clean up after ourselves
-    let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
     let result = !errors.is_empty();
     debug!("impossible_predicates = {:?}", result);

@@ -59,10 +59,10 @@ The script accepts commands, flags, and arguments to determine what to do:
   ./x.py test tidy
 
   # execute the UI test suite
-  ./x.py test src/test/ui
+  ./x.py test tests/ui
 
   # execute only some tests in the UI test suite
-  ./x.py test src/test/ui --test-args substring-of-test-name
+  ./x.py test tests/ui --test-args substring-of-test-name
 
   # execute tests in the standard library in stage0
   ./x.py test --stage 0 library/std

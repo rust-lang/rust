@@ -253,6 +253,7 @@ h1 a,
 
 a {
 	color: var(--link-color);
+	text-decoration: none;
 }
 
 ol, ul {
@@ -336,6 +337,10 @@ pre {
 }
 .item-decl pre {
 	overflow-x: auto;
+}
+/* This rule allows to have scrolling on the X axis. */
+.item-decl .type-contents-toggle {
+	contain: initial;
 }
 
 .source .content pre {
@@ -662,10 +667,6 @@ nav.sub {
 	margin: 0 0 15px 0;
 }
 
-a {
-	text-decoration: none;
-}
-
 .small-section-header {
 	/* fields use <span> tags, but should get their own lines */
 	display: block;
@@ -706,7 +707,7 @@ h2.small-section-header > .anchor {
 
 /*  In most contexts we use `overflow-wrap: anywhere` to ensure that we can wrap
 	as much as needed on mobile (see
-	src/test/rustdoc-gui/type-declaration-overflow.goml for an example of why
+	tests/rustdoc-gui/type-declaration-overflow.goml for an example of why
 	this matters). The `anywhere` value means:
 
 	"Soft wrap opportunities introduced by the word break are considered when

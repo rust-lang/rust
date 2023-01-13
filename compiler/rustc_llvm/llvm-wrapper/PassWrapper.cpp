@@ -461,7 +461,7 @@ extern "C" void LLVMRustAddLibraryInfo(LLVMPassManagerRef PMR, LLVMModuleRef M,
 
 extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   // Initializing the command-line options more than once is not allowed. So,
-  // check if they've already been initialized.  (This could happen if we're
+  // check if they've already been initialized. (This could happen if we're
   // being called from rustpkg, for example). If the arguments change, then
   // that's just kinda unfortunate.
   static bool Initialized = false;
@@ -1428,7 +1428,7 @@ LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
 }
 
 // This is what we used to parse upstream bitcode for actual ThinLTO
-// processing.  We'll call this once per module optimized through ThinLTO, and
+// processing. We'll call this once per module optimized through ThinLTO, and
 // it'll be called concurrently on many threads.
 extern "C" LLVMModuleRef
 LLVMRustParseBitcodeForLTO(LLVMContextRef Context,

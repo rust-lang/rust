@@ -23,11 +23,11 @@ impl Signal {
     }
 }
 
-struct Foo(Signal);
+struct NotifyOnDrop(Signal);
 
-impl Drop for Foo {
+impl Drop for NotifyOnDrop {
     fn drop(&mut self) {
-        let Foo(ref f) = *self;
+        let NotifyOnDrop(ref f) = *self;
         f.notify();
     }
 }
@@ -82,18 +82,18 @@ fn states() {
 
 #[test]
 fn smoke_dtor() {
-    thread_local!(static FOO: UnsafeCell<Option<Foo>> = UnsafeCell::new(None));
+    thread_local!(static FOO: UnsafeCell<Option<NotifyOnDrop>> = UnsafeCell::new(None));
     run(&FOO);
-    thread_local!(static FOO2: UnsafeCell<Option<Foo>> = const { UnsafeCell::new(None) });
+    thread_local!(static FOO2: UnsafeCell<Option<NotifyOnDrop>> = const { UnsafeCell::new(None) });
     run(&FOO2);
 
-    fn run(key: &'static LocalKey<UnsafeCell<Option<Foo>>>) {
+    fn run(key: &'static LocalKey<UnsafeCell<Option<NotifyOnDrop>>>) {
         let signal = Signal::default();
         let signal2 = signal.clone();
         let t = thread::spawn(move || unsafe {
             let mut signal = Some(signal2);
             key.with(|f| {
-                *f.get() = Some(Foo(signal.take().unwrap()));
+                *f.get() = Some(NotifyOnDrop(signal.take().unwrap()));
             });
         });
         signal.wait();
@@ -187,13 +187,13 @@ fn self_referential() {
 fn dtors_in_dtors_in_dtors() {
     struct S1(Signal);
     thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
-    thread_local!(static K2: UnsafeCell<Option<Foo>> = UnsafeCell::new(None));
+    thread_local!(static K2: UnsafeCell<Option<NotifyOnDrop>> = UnsafeCell::new(None));
 
     impl Drop for S1 {
         fn drop(&mut self) {
             let S1(ref signal) = *self;
             unsafe {
-                let _ = K2.try_with(|s| *s.get() = Some(Foo(signal.clone())));
+                let _ = K2.try_with(|s| *s.get() = Some(NotifyOnDrop(signal.clone())));
             }
         }
     }
@@ -211,13 +211,13 @@ fn dtors_in_dtors_in_dtors() {
 fn dtors_in_dtors_in_dtors_const_init() {
     struct S1(Signal);
     thread_local!(static K1: UnsafeCell<Option<S1>> = const { UnsafeCell::new(None) });
-    thread_local!(static K2: UnsafeCell<Option<Foo>> = const { UnsafeCell::new(None) });
+    thread_local!(static K2: UnsafeCell<Option<NotifyOnDrop>> = const { UnsafeCell::new(None) });
 
     impl Drop for S1 {
         fn drop(&mut self) {
             let S1(ref signal) = *self;
             unsafe {
-                let _ = K2.try_with(|s| *s.get() = Some(Foo(signal.clone())));
+                let _ = K2.try_with(|s| *s.get() = Some(NotifyOnDrop(signal.clone())));
             }
         }
     }

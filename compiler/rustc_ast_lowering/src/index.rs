@@ -38,7 +38,7 @@ pub(super) fn index_hir<'hir>(
 ) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<LocalDefId, ItemLocalId>) {
     let mut nodes = IndexVec::new();
     // This node's parent should never be accessed: the owner's parent is computed by the
-    // hir_owner_parent query.  Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
+    // hir_owner_parent query. Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
     // used.
     nodes.push(Some(ParentedNode { parent: ItemLocalId::INVALID, node: item.into() }));
     let mut collector = NodeCollector {

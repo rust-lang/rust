@@ -6,7 +6,7 @@ use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, adjustment::Adjust};
+use rustc_middle::ty::{self, adjustment::Adjust, print::with_forced_trimmed_paths};
 use rustc_span::symbol::{sym, Symbol};
 
 use super::CLONE_DOUBLE_REF;
@@ -47,10 +47,10 @@ pub(super) fn check(
                 cx,
                 CLONE_DOUBLE_REF,
                 expr.span,
-                &format!(
+                &with_forced_trimmed_paths!(format!(
                     "using `clone` on a double-reference; \
                     this will copy the reference of type `{ty}` instead of cloning the inner type"
-                ),
+                )),
                 |diag| {
                     if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
                         let mut ty = innermost;
@@ -61,11 +61,11 @@ pub(super) fn check(
                         }
                         let refs = "&".repeat(n + 1);
                         let derefs = "*".repeat(n);
-                        let explicit = format!("<{refs}{ty}>::clone({snip})");
+                        let explicit = with_forced_trimmed_paths!(format!("<{refs}{ty}>::clone({snip})"));
                         diag.span_suggestion(
                             expr.span,
                             "try dereferencing it",
-                            format!("{refs}({derefs}{}).clone()", snip.deref()),
+                            with_forced_trimmed_paths!(format!("{refs}({derefs}{}).clone()", snip.deref())),
                             Applicability::MaybeIncorrect,
                         );
                         diag.span_suggestion(
@@ -129,7 +129,9 @@ pub(super) fn check(
             cx,
             CLONE_ON_COPY,
             expr.span,
-            &format!("using `clone` on type `{ty}` which implements the `Copy` trait"),
+            &with_forced_trimmed_paths!(format!(
+                "using `clone` on type `{ty}` which implements the `Copy` trait"
+            )),
             help,
             sugg,
             app,

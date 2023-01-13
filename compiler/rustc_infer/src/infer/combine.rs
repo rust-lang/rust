@@ -219,7 +219,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// As `3 + 4` contains `N` in its substs, this must not succeed.
     ///
-    /// See `src/test/ui/const-generics/occurs-check/` for more examples where this is relevant.
+    /// See `tests/ui/const-generics/occurs-check/` for more examples where this is relevant.
     #[instrument(level = "debug", skip(self))]
     fn unify_const_variable(
         &self,
@@ -331,7 +331,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         debug_assert!(self.infcx.inner.borrow_mut().type_variables().probe(b_vid).is_unknown());
 
         // Generalize type of `a_ty` appropriately depending on the
-        // direction.  As an example, assume:
+        // direction. As an example, assume:
         //
         // - `a_ty == &'x ?1`, where `'x` is some free region and `?1` is an
         //   inference variable,

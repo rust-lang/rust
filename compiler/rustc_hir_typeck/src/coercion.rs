@@ -13,7 +13,7 @@
 //! useful for freezing mut things (that is, when the expected type is &T
 //! but you have &mut T) and also for avoiding the linearity
 //! of mut things (when the expected is &mut T and you have &mut T). See
-//! the various `src/test/ui/coerce/*.rs` tests for
+//! the various `tests/ui/coerce/*.rs` tests for
 //! examples of where this is useful.
 //!
 //! ## Subtle note
@@ -313,7 +313,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // If we have a parameter of type `&M T_a` and the value
         // provided is `expr`, we will be adding an implicit borrow,
-        // meaning that we convert `f(expr)` to `f(&M *expr)`.  Therefore,
+        // meaning that we convert `f(expr)` to `f(&M *expr)`. Therefore,
         // to type check, we will construct the type that `&M*expr` would
         // yield.
 
@@ -340,7 +340,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 continue;
             }
 
-            // At this point, we have deref'd `a` to `referent_ty`.  So
+            // At this point, we have deref'd `a` to `referent_ty`. So
             // imagine we are coercing from `&'a mut Vec<T>` to `&'b mut [T]`.
             // In the autoderef loop for `&'a mut Vec<T>`, we would get
             // three callbacks:
@@ -371,7 +371,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // - if in sub mode, that means we want to use `'b` (the
             //   region from the target reference) for both
             //   pointers [2]. This is because sub mode (somewhat
-            //   arbitrarily) returns the subtype region.  In the case
+            //   arbitrarily) returns the subtype region. In the case
             //   where we are coercing to a target type, we know we
             //   want to use that target type region (`'b`) because --
             //   for the program to type-check -- it must be the
@@ -383,7 +383,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             //     annotate the region of a borrow), and regionck has
             //     code that adds edges from the region of a borrow
             //     (`'b`, here) into the regions in the borrowed
-            //     expression (`*x`, here).  (Search for "link".)
+            //     expression (`*x`, here). (Search for "link".)
             // - if in lub mode, things can get fairly complicated. The
             //   easiest thing is just to make a fresh
             //   region variable [4], which effectively means we defer
@@ -457,7 +457,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         if ty == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
-            // we started with.  In that case, just skip it
+            // we started with. In that case, just skip it
             // altogether. This is just an optimization.
             //
             // Note that for `&mut`, we DO want to reborrow --
@@ -1476,7 +1476,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             //     if let Some(x) = ... { }
             //
             // we wind up with a second match arm that is like `_ =>
-            // ()`.  That is the case we are considering here. We take
+            // ()`. That is the case we are considering here. We take
             // a different path to get the right "expected, found"
             // message and so forth (and because we know that
             // `expression_ty` will be unit).
@@ -1807,7 +1807,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             // Get the return type.
             && let hir::TyKind::OpaqueDef(..) = ty.kind
         {
-            let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
+            let ty = fcx.astconv().ast_ty_to_ty( ty);
             // Get the `impl Trait`'s `DefId`.
             if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind()
                 // Get the `impl Trait`'s `Item` so that we can get its trait bounds and
@@ -1866,7 +1866,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     fn is_return_ty_unsized<'a>(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
         if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id)
             && let hir::FnRetTy::Return(ty) = fn_decl.output
-            && let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty)
+            && let ty = fcx.astconv().ast_ty_to_ty( ty)
             && let ty::Dynamic(..) = ty.kind()
         {
             return true;

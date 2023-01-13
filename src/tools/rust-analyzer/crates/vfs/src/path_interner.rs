@@ -9,14 +9,9 @@ use rustc_hash::FxHasher;
 use crate::{FileId, VfsPath};
 
 /// Structure to map between [`VfsPath`] and [`FileId`].
+#[derive(Default)]
 pub(crate) struct PathInterner {
     map: IndexSet<VfsPath, BuildHasherDefault<FxHasher>>,
-}
-
-impl Default for PathInterner {
-    fn default() -> Self {
-        Self { map: IndexSet::default() }
-    }
 }
 
 impl PathInterner {

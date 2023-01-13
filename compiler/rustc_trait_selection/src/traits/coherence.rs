@@ -749,7 +749,7 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
     ///
     /// This means that we can completely ignore constants during the orphan check.
     ///
-    /// See `src/test/ui/coherence/const-generics-orphan-check-ok.rs` for examples.
+    /// See `tests/ui/coherence/const-generics-orphan-check-ok.rs` for examples.
     ///
     /// [^1]: This might not hold for function pointers or trait objects in the future.
     /// As these should be quite rare as const arguments and especially rare as impl

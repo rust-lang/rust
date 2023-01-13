@@ -117,7 +117,7 @@ impl Abi {
                 let inner = unsafe { Abi_1_63::from_lib(lib, symbol_name) }?;
                 Ok(Abi::Abi1_63(inner))
             }
-            _ => Err(LoadProcMacroDylibError::UnsupportedABI(info.version_string.clone())),
+            _ => Err(LoadProcMacroDylibError::UnsupportedABI(info.version_string)),
         }
     }
 

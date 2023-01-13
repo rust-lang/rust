@@ -62,7 +62,7 @@ fn fix_path_for_mac(sh: &Shell) -> Result<()> {
         let mut paths = env::split_paths(&vars).collect::<Vec<_>>();
         paths.append(&mut vscode_path);
         let new_paths = env::join_paths(paths).context("build env PATH")?;
-        sh.set_var("PATH", &new_paths);
+        sh.set_var("PATH", new_paths);
     }
 
     Ok(())

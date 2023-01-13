@@ -221,7 +221,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 bx.store(val, cast_dst, self.layout.align.abi);
             } else {
                 // The actual return type is a struct, but the ABI
-                // adaptation code has cast it into some scalar type.  The
+                // adaptation code has cast it into some scalar type. The
                 // code that follows is the only reliable way I have
                 // found to do a transform like i64 -> {i32,i32}.
                 // Basically we dump the data onto the stack then memcpy it.

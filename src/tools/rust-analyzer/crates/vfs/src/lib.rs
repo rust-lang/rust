@@ -59,15 +59,10 @@ pub use paths::{AbsPath, AbsPathBuf};
 /// Handle to a file in [`Vfs`]
 ///
 /// Most functions in rust-analyzer use this when they need to refer to a file.
-#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct FileId(pub u32);
 
 impl stdx::hash::NoHashHashable for FileId {}
-impl std::hash::Hash for FileId {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
 
 /// Storage for all files read by rust-analyzer.
 ///

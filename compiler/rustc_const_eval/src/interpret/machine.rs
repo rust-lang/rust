@@ -180,7 +180,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
 
-    /// Execute `fn_val`.  It is the hook's responsibility to advance the instruction
+    /// Execute `fn_val`. It is the hook's responsibility to advance the instruction
     /// pointer as appropriate.
     fn call_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -439,7 +439,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
-/// (CTFE and ConstProp) use the same instance.  Here, we share that code.
+/// (CTFE and ConstProp) use the same instance. Here, we share that code.
 pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type Provenance = AllocId;
     type ProvenanceExtra = ();

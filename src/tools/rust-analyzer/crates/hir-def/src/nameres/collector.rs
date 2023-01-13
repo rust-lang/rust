@@ -40,7 +40,7 @@ use crate::{
         diagnostics::DefDiagnostic,
         mod_resolution::ModDir,
         path_resolution::ReachedFixedPoint,
-        proc_macro::{ProcMacroDef, ProcMacroKind},
+        proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroDef, ProcMacroKind},
         BuiltinShadowMode, DefMap, ModuleData, ModuleOrigin, ResolveMode,
     },
     path::{ImportAlias, ModPath, PathKind},
@@ -67,7 +67,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         let dep_def_map = db.crate_def_map(dep.crate_id);
         let dep_root = dep_def_map.module_id(dep_def_map.root);
 
-        deps.insert(dep.as_name(), dep_root.into());
+        deps.insert(dep.as_name(), dep_root);
 
         if dep.is_prelude() && !tree_id.is_block() {
             def_map.extern_prelude.insert(dep.as_name(), dep_root);
@@ -1017,7 +1017,7 @@ impl DefCollector<'_> {
                         None => true,
                         Some(old_vis) => {
                             let max_vis = old_vis.max(vis, &self.def_map).unwrap_or_else(|| {
-                                panic!("`Tr as _` imports with unrelated visibilities {:?} and {:?} (trait {:?})", old_vis, vis, tr);
+                                panic!("`Tr as _` imports with unrelated visibilities {old_vis:?} and {vis:?} (trait {tr:?})");
                             });
 
                             if max_vis == old_vis {
@@ -1094,7 +1094,7 @@ impl DefCollector<'_> {
                         ast_id,
                         *expand_to,
                         self.def_map.krate,
-                        &resolver_def_id,
+                        resolver_def_id,
                         &mut |_err| (),
                     );
                     if let Ok(Ok(call_id)) = call_id {
@@ -1110,7 +1110,7 @@ impl DefCollector<'_> {
                         *derive_attr,
                         *derive_pos as u32,
                         self.def_map.krate,
-                        &resolver,
+                        resolver,
                     );
 
                     if let Ok((macro_id, def_id, call_id)) = id {
@@ -1345,7 +1345,7 @@ impl DefCollector<'_> {
                     // Missing proc macros are non-fatal, so they are handled specially.
                     DefDiagnostic::unresolved_proc_macro(module_id, loc.kind.clone(), loc.def.krate)
                 }
-                _ => DefDiagnostic::macro_error(module_id, loc.kind.clone(), err.to_string()),
+                _ => DefDiagnostic::macro_error(module_id, loc.kind, err.to_string()),
             };
 
             self.def_map.diagnostics.push(diag);
@@ -2005,6 +2005,7 @@ impl ModCollector<'_, '_> {
         let ast_id = InFile::new(self.file_id(), mac.ast_id.upcast());
 
         // Case 1: builtin macros
+        let mut helpers_opt = None;
         let attrs = self.item_tree.attrs(self.def_collector.db, krate, ModItem::from(id).into());
         let expander = if attrs.by_key("rustc_builtin_macro").exists() {
             if let Some(expander) = find_builtin_macro(&mac.name) {
@@ -2013,6 +2014,25 @@ impl ModCollector<'_, '_> {
                     Either::Right(it) => MacroExpander::BuiltInEager(it),
                 }
             } else if let Some(expander) = find_builtin_derive(&mac.name) {
+                if let Some(attr) = attrs.by_key("rustc_builtin_macro").tt_values().next() {
+                    // NOTE: The item *may* have both `#[rustc_builtin_macro]` and `#[proc_macro_derive]`,
+                    // in which case rustc ignores the helper attributes from the latter, but it
+                    // "doesn't make sense in practice" (see rust-lang/rust#87027).
+                    if let Some((name, helpers)) =
+                        parse_macro_name_and_helper_attrs(&attr.token_trees)
+                    {
+                        // NOTE: rustc overrides the name if the macro name if it's different from the
+                        // macro name, but we assume it isn't as there's no such case yet. FIXME if
+                        // the following assertion fails.
+                        stdx::always!(
+                            name == mac.name,
+                            "built-in macro {} has #[rustc_builtin_macro] which declares different name {}",
+                            mac.name,
+                            name
+                        );
+                        helpers_opt = Some(helpers);
+                    }
+                }
                 MacroExpander::BuiltInDerive(expander)
             } else if let Some(expander) = find_builtin_attr(&mac.name) {
                 MacroExpander::BuiltInAttr(expander)
@@ -2037,6 +2057,12 @@ impl ModCollector<'_, '_> {
             macro_id,
             &self.item_tree[mac.visibility],
         );
+        if let Some(helpers) = helpers_opt {
+            self.def_collector
+                .def_map
+                .exported_derives
+                .insert(macro_id_to_def_id(self.def_collector.db, macro_id.into()), helpers);
+        }
     }
 
     fn collect_macro_call(&mut self, mac: &MacroCall, container: ItemContainerId) {
@@ -2059,7 +2085,7 @@ impl ModCollector<'_, '_> {
                                 .scope
                                 .get_legacy_macro(name)
                                 .and_then(|it| it.last())
-                                .map(|&it| macro_id_to_def_id(self.def_collector.db, it.into()))
+                                .map(|&it| macro_id_to_def_id(self.def_collector.db, it))
                         },
                     )
                 })

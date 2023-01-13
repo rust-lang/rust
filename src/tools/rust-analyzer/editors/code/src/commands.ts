@@ -788,8 +788,23 @@ export function openDocs(ctx: CtxInit): Cmd {
 
 export function cancelFlycheck(ctx: CtxInit): Cmd {
     return async () => {
+        await ctx.client.sendNotification(ra.cancelFlycheck);
+    };
+}
+
+export function clearFlycheck(ctx: CtxInit): Cmd {
+    return async () => {
+        await ctx.client.sendNotification(ra.clearFlycheck);
+    };
+}
+
+export function runFlycheck(ctx: CtxInit): Cmd {
+    return async () => {
+        const editor = ctx.activeRustEditor;
         const client = ctx.client;
-        await client.sendRequest(ra.cancelFlycheck);
+        const params = editor ? { uri: editor.document.uri.toString() } : null;
+
+        await client.sendNotification(ra.runFlycheck, { textDocument: params });
     };
 }
 
@@ -797,12 +812,12 @@ export function resolveCodeAction(ctx: CtxInit): Cmd {
     return async (params: lc.CodeAction) => {
         const client = ctx.client;
         params.command = undefined;
-        const item = await client?.sendRequest(lc.CodeActionResolveRequest.type, params);
+        const item = await client.sendRequest(lc.CodeActionResolveRequest.type, params);
         if (!item?.edit) {
             return;
         }
         const itemEdit = item.edit;
-        const edit = await client?.protocol2CodeConverter.asWorkspaceEdit(itemEdit);
+        const edit = await client.protocol2CodeConverter.asWorkspaceEdit(itemEdit);
         // filter out all text edits and recreate the WorkspaceEdit without them so we can apply
         // snippet edits on our own
         const lcFileSystemEdit = {

@@ -242,7 +242,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // impl trait is gone in MIR, so check the return type of a const fn by its signature
             // instead of the type of the return place.
             self.span = body.local_decls[RETURN_PLACE].source_info.span;
-            let return_ty = tcx.fn_sig(def_id).output();
+            let return_ty = self.ccx.fn_sig().output();
             self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
@@ -730,6 +730,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             substs,
                             span: *fn_span,
                             from_hir_call: *from_hir_call,
+                            feature: Some(sym::const_trait_impl),
                         });
                         return;
                     }
@@ -782,6 +783,20 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             );
                             return;
                         }
+                        Ok(Some(ImplSource::Closure(data))) => {
+                            if !tcx.is_const_fn_raw(data.closure_def_id) {
+                                self.check_op(ops::FnCallNonConst {
+                                    caller,
+                                    callee,
+                                    substs,
+                                    span: *fn_span,
+                                    from_hir_call: *from_hir_call,
+                                    feature: None,
+                                });
+
+                                return;
+                            }
+                        }
                         Ok(Some(ImplSource::UserDefined(data))) => {
                             let callee_name = tcx.item_name(callee);
                             if let Some(&did) = tcx
@@ -802,6 +817,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     substs,
                                     span: *fn_span,
                                     from_hir_call: *from_hir_call,
+                                    feature: None,
                                 });
                                 return;
                             }
@@ -844,6 +860,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     substs,
                                     span: *fn_span,
                                     from_hir_call: *from_hir_call,
+                                    feature: None,
                                 });
                                 return;
                             }
@@ -903,6 +920,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             substs,
                             span: *fn_span,
                             from_hir_call: *from_hir_call,
+                            feature: None,
                         });
                         return;
                     }

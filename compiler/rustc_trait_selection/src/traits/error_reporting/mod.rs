@@ -1102,15 +1102,19 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
 
                     ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-                    | ty::PredicateKind::Clause(ty::Clause::Projection(..))
                     | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..)) => {
-                        let predicate = self.resolve_vars_if_possible(obligation.predicate);
-                        struct_span_err!(
-                            self.tcx.sess,
+                        span_bug!(
                             span,
-                            E0280,
-                            "the requirement `{}` is not satisfied",
-                            predicate
+                            "outlives clauses should not error outside borrowck. obligation: `{:?}`",
+                            obligation
+                        )
+                    }
+
+                    ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
+                        span_bug!(
+                            span,
+                            "projection clauses should be implied from elsewhere. obligation: `{:?}`",
+                            obligation
                         )
                     }
 
@@ -1720,7 +1724,19 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .and_then(|(predicate, _, normalized_term, expected_term)| {
                     self.maybe_detailed_projection_msg(predicate, normalized_term, expected_term)
                 })
-                .unwrap_or_else(|| format!("type mismatch resolving `{}`", predicate));
+                .unwrap_or_else(|| {
+                    with_forced_trimmed_paths!(format!(
+                        "type mismatch resolving `{}`",
+                        self.resolve_vars_if_possible(predicate)
+                            .print(FmtPrinter::new_with_limit(
+                                self.tcx,
+                                Namespace::TypeNS,
+                                rustc_session::Limit(10),
+                            ))
+                            .unwrap()
+                            .into_buffer()
+                    ))
+                });
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
 
             let secondary_span = match predicate.kind().skip_binder() {
@@ -1751,7 +1767,20 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 kind: hir::ImplItemKind::Type(ty),
                                 ..
                             }),
-                        ) => Some((ty.span, format!("type mismatch resolving `{}`", predicate))),
+                        ) => Some((
+                            ty.span,
+                            with_forced_trimmed_paths!(format!(
+                                "type mismatch resolving `{}`",
+                                self.resolve_vars_if_possible(predicate)
+                                    .print(FmtPrinter::new_with_limit(
+                                        self.tcx,
+                                        Namespace::TypeNS,
+                                        rustc_session::Limit(5),
+                                    ))
+                                    .unwrap()
+                                    .into_buffer()
+                            )),
+                        )),
                         _ => None,
                     }),
                 _ => None,
@@ -2164,7 +2193,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // This is kind of a hack: it frequently happens that some earlier
                 // error prevents types from being fully inferred, and then we get
                 // a bunch of uninteresting errors saying something like "<generic
-                // #0> doesn't implement Sized".  It may even be true that we
+                // #0> doesn't implement Sized". It may even be true that we
                 // could just skip over all checks where the self-ty is an
                 // inference variable, but I was afraid that there might be an
                 // inference variable created, registered as an obligation, and

@@ -38,13 +38,13 @@ LL |     t.clone();
    |
    = note: `-D clippy::clone-on-copy` implied by `-D warnings`
 
-error: using `clone` on type `std::option::Option<T>` which implements the `Copy` trait
+error: using `clone` on type `Option<T>` which implements the `Copy` trait
   --> $DIR/unnecessary_clone.rs:42:5
    |
 LL |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
-error: using `clone` on a double-reference; this will copy the reference of type `&std::vec::Vec<i32>` instead of cloning the inner type
+error: using `clone` on a double-reference; this will copy the reference of type `&Vec<i32>` instead of cloning the inner type
   --> $DIR/unnecessary_clone.rs:48:22
    |
 LL |     let z: &Vec<_> = y.clone();
@@ -57,10 +57,10 @@ LL |     let z: &Vec<_> = &(*y).clone();
    |                      ~~~~~~~~~~~~~
 help: or try being explicit if you are sure, that you want to clone a reference
    |
-LL |     let z: &Vec<_> = <&std::vec::Vec<i32>>::clone(y);
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let z: &Vec<_> = <&Vec<i32>>::clone(y);
+   |                      ~~~~~~~~~~~~~~~~~~~~~
 
-error: using `clone` on type `many_derefs::E` which implements the `Copy` trait
+error: using `clone` on type `E` which implements the `Copy` trait
   --> $DIR/unnecessary_clone.rs:84:20
    |
 LL |         let _: E = a.clone();

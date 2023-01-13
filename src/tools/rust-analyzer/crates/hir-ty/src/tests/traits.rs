@@ -1389,6 +1389,22 @@ fn foo<const C: u8, T>() -> (impl FnOnce(&str, T), impl Trait<u8>) {
 }
 
 #[test]
+fn return_pos_impl_trait_in_projection() {
+    // Note that the unused type param `X` is significant; see #13307.
+    check_no_mismatches(
+        r#"
+//- minicore: sized
+trait Future { type Output; }
+impl Future for () { type Output = i32; }
+type Foo<F> = (<F as Future>::Output, F);
+fn foo<X>() -> Foo<impl Future<Output = ()>> {
+    (0, ())
+}
+"#,
+    )
+}
+
+#[test]
 fn dyn_trait() {
     check_infer(
         r#"
@@ -4082,5 +4098,70 @@ where
 }
 
     "#,
+    );
+}
+
+#[test]
+fn bin_op_with_scalar_fallback() {
+    // Extra impls are significant so that chalk doesn't give us definite guidances.
+    check_types(
+        r#"
+//- minicore: add
+use core::ops::Add;
+
+struct Vec2<T>(T, T);
+
+impl Add for Vec2<i32> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output { loop {} }
+}
+impl Add for Vec2<u32> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output { loop {} }
+}
+impl Add for Vec2<f32> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output { loop {} }
+}
+impl Add for Vec2<f64> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output { loop {} }
+}
+
+fn test() {
+    let a = Vec2(1, 2);
+    let b = Vec2(3, 4);
+    let c = a + b;
+      //^ Vec2<i32>
+    let a = Vec2(1., 2.);
+    let b = Vec2(3., 4.);
+    let c = a + b;
+      //^ Vec2<f64>
+}
+"#,
+    );
+}
+
+#[test]
+fn trait_method_with_scalar_fallback() {
+    check_types(
+        r#"
+trait Trait {
+    type Output;
+    fn foo(&self) -> Self::Output;
+}
+impl<T> Trait for T {
+    type Output = T;
+    fn foo(&self) -> Self::Output { loop {} }
+}
+fn test() {
+    let a = 42;
+    let b = a.foo();
+      //^ i32
+    let a = 3.14;
+    let b = a.foo();
+      //^ f64
+}
+"#,
     );
 }

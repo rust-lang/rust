@@ -325,7 +325,9 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
 
                 // Finally, resolve all regions.
                 let outlives_env = OutlivesEnvironment::new(param_env);
-                let _ = infcx.check_region_obligations_and_report_errors(impl_did, &outlives_env);
+                let _ = infcx
+                    .err_ctxt()
+                    .check_region_obligations_and_report_errors(impl_did, &outlives_env);
             }
         }
         _ => {
@@ -436,7 +438,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             // when this coercion occurs, we would be changing the
             // field `ptr` from a thin pointer of type `*mut [i32;
             // 3]` to a fat pointer of type `*mut [i32]` (with
-            // extra data `3`).  **The purpose of this check is to
+            // extra data `3`). **The purpose of this check is to
             // make sure that we know how to do this conversion.**
             //
             // To check if this impl is legal, we would walk down
@@ -565,7 +567,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
 
     // Finally, resolve all regions.
     let outlives_env = OutlivesEnvironment::new(param_env);
-    let _ = infcx.check_region_obligations_and_report_errors(impl_did, &outlives_env);
+    let _ = infcx.err_ctxt().check_region_obligations_and_report_errors(impl_did, &outlives_env);
 
     CoerceUnsizedInfo { custom_kind: kind }
 }

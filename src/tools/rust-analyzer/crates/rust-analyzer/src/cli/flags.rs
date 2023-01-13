@@ -255,7 +255,7 @@ impl FromStr for OutputFormat {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "csv" => Ok(Self::Csv),
-            _ => Err(format!("unknown output format `{}`", s)),
+            _ => Err(format!("unknown output format `{s}`")),
         }
     }
 }

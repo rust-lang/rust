@@ -364,7 +364,7 @@ impl VirtualPath {
             path = &path["../".len()..];
         }
         path = path.trim_start_matches("./");
-        res.0 = format!("{}/{}", res.0, path);
+        res.0 = format!("{}/{path}", res.0);
         Some(res)
     }
 

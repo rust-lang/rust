@@ -148,9 +148,14 @@ impl<'t> Parser<'t> {
         kinds.contains(self.current())
     }
 
-    /// Checks if the current token is contextual keyword with text `t`.
+    /// Checks if the current token is contextual keyword `kw`.
     pub(crate) fn at_contextual_kw(&self, kw: SyntaxKind) -> bool {
         self.inp.contextual_kind(self.pos) == kw
+    }
+
+    /// Checks if the nth token is contextual keyword `kw`.
+    pub(crate) fn nth_at_contextual_kw(&self, n: usize, kw: SyntaxKind) -> bool {
+        self.inp.contextual_kind(self.pos + n) == kw
     }
 
     /// Starts a new node in the syntax tree. All nodes and tokens
@@ -162,7 +167,7 @@ impl<'t> Parser<'t> {
         Marker::new(pos)
     }
 
-    /// Consume the next token if `kind` matches.
+    /// Consume the next token. Panics if the parser isn't currently at `kind`.
     pub(crate) fn bump(&mut self, kind: SyntaxKind) {
         assert!(self.eat(kind));
     }
@@ -205,7 +210,7 @@ impl<'t> Parser<'t> {
         if self.eat(kind) {
             return true;
         }
-        self.error(format!("expected {:?}", kind));
+        self.error(format!("expected {kind:?}"));
         false
     }
 
@@ -237,6 +242,7 @@ impl<'t> Parser<'t> {
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
         self.pos += n_raw_tokens as usize;
+        self.steps.set(0);
         self.push_event(Event::Token { kind, n_raw_tokens });
     }
 

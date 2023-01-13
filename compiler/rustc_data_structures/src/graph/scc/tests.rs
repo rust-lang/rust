@@ -84,7 +84,7 @@ fn test_find_state_2() {
     // 0 -> 1 -> 2 -> 1
     //
     // and at this point detect a cycle. The state of 2 will thus be
-    // `InCycleWith { 1 }`.  We will then visit the 1 -> 3 edge, which
+    // `InCycleWith { 1 }`. We will then visit the 1 -> 3 edge, which
     // will attempt to visit 0 as well, thus going to the state
     // `InCycleWith { 0 }`. Finally, node 1 will complete; the lowest
     // depth of any successor was 3 which had depth 0, and thus it

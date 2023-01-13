@@ -411,7 +411,7 @@ impl CargoWorkspace {
         CargoWorkspace { packages, targets, workspace_root }
     }
 
-    pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + ExactSizeIterator + 'a {
+    pub fn packages(&self) -> impl Iterator<Item = Package> + ExactSizeIterator + '_ {
         self.packages.iter().map(|(id, _pkg)| id)
     }
 
@@ -427,7 +427,7 @@ impl CargoWorkspace {
     }
 
     pub fn package_flag(&self, package: &PackageData) -> String {
-        if self.is_unique(&*package.name) {
+        if self.is_unique(&package.name) {
             package.name.clone()
         } else {
             format!("{}:{}", package.name, package.version)
@@ -517,7 +517,7 @@ fn cargo_config_build_target(
     cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())
-        .args(&["-Z", "unstable-options", "config", "get", "build.target"])
+        .args(["-Z", "unstable-options", "config", "get", "build.target"])
         .env("RUSTC_BOOTSTRAP", "1");
     // if successful we receive `build.target = "target-triple"`
     // or `build.target = ["<target 1>", ..]`

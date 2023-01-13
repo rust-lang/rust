@@ -110,7 +110,7 @@ fn highlight_references(
         .and_then(|decl| decl.focus_range)
         .map(|range| {
             let category =
-                references::decl_mutability(&def, node, range).then(|| ReferenceCategory::Write);
+                references::decl_mutability(&def, node, range).then_some(ReferenceCategory::Write);
             HighlightedRange { range, category }
         });
         if let Some(hl_range) = hl_range {
@@ -365,7 +365,7 @@ mod tests {
 
         let mut expected = annotations
             .into_iter()
-            .map(|(r, access)| (r.range, (!access.is_empty()).then(|| access)))
+            .map(|(r, access)| (r.range, (!access.is_empty()).then_some(access)))
             .collect::<Vec<_>>();
 
         let mut actual = hls
@@ -759,6 +759,23 @@ fn foo() ->$0 u32 {
         }
         0
      // ^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_inner_tail_exit_points_loops() {
+        check(
+            r#"
+fn foo() ->$0 u32 {
+    'foo: while { return 0; true } {
+               // ^^^^^^
+        break 'foo 0;
+     // ^^^^^
+        return 0;
+     // ^^^^^^
     }
 }
 "#,

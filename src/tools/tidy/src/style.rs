@@ -45,6 +45,9 @@ C++ code used llvm_unreachable, which triggers undefined behavior
 when executed when assertions are disabled.
 Use llvm::report_fatal_error for increased robustness.";
 
+const DOUBLE_SPACE_AFTER_DOT: &str = r"\
+Use a single space after dots in comments.";
+
 const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "// @!has",
     "// @has",
@@ -64,6 +67,8 @@ const PROBLEMATIC_CONSTS: &[u32] = &[
     184594741, 2880289470, 2881141438, 2965027518, 2976579765, 3203381950, 3405691582, 3405697037,
     3735927486, 3735932941, 4027431614, 4276992702,
 ];
+
+const INTERNAL_COMPILER_DOCS_LINE: &str = "#### This error code is internal to the compiler and will not be emitted with normal Rust code.";
 
 /// Parser states for `line_is_url`.
 #[derive(Clone, Copy, PartialEq)]
@@ -133,6 +138,8 @@ fn long_line_is_ok(extension: &str, is_error_code: bool, max_columns: usize, lin
         "ftl" => true,
         // non-error code markdown is allowed to be any length
         "md" if !is_error_code => true,
+        // HACK(Ezrashaw): there is no way to split a markdown header over multiple lines
+        "md" if line == INTERNAL_COMPILER_DOCS_LINE => true,
         _ => line_is_url(is_error_code, max_columns, line) || should_ignore(line),
     }
 }
@@ -242,7 +249,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             // This list should ideally be sourced from rustfmt.toml but we don't want to add a toml
             // parser to tidy.
             !file.ancestors().any(|a| {
-                a.ends_with("src/test") ||
+                (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists()) ||
                     a.ends_with("src/doc/book")
             });
 
@@ -273,6 +280,10 @@ pub fn check(path: &Path, bad: &mut bool) {
         // Enable testing ICE's that require specific (untidy)
         // file formats easily eg. `issue-1234-ignore-tidy.rs`
         if filename.contains("ignore-tidy") {
+            return;
+        }
+        // apfloat shouldn't be changed because of license problems
+        if is_in(file, "compiler", "rustc_apfloat") {
             return;
         }
         let mut skip_cr = contains_ignore_directive(can_contain, &contents, "cr");
@@ -320,9 +331,10 @@ pub fn check(path: &Path, bad: &mut bool) {
 
             if trimmed.contains("dbg!")
                 && !trimmed.starts_with("//")
-                && !file
-                    .ancestors()
-                    .any(|a| a.ends_with("src/test") || a.ends_with("library/alloc/tests"))
+                && !file.ancestors().any(|a| {
+                    (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
+                        || a.ends_with("library/alloc/tests")
+                })
                 && filename != "tests.rs"
             {
                 suppressible_tidy_err!(
@@ -399,6 +411,19 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
             if filename.ends_with(".cpp") && line.contains("llvm_unreachable") {
                 err(LLVM_UNREACHABLE_INFO);
+            }
+
+            // For now only enforce in compiler
+            let is_compiler = || file.components().any(|c| c.as_os_str() == "compiler");
+            if is_compiler()
+                && line.contains("//")
+                && line
+                    .chars()
+                    .collect::<Vec<_>>()
+                    .windows(4)
+                    .any(|cs| matches!(cs, ['.', ' ', ' ', last] if last.is_alphabetic()))
+            {
+                err(DOUBLE_SPACE_AFTER_DOT)
             }
         }
         if leading_new_lines {

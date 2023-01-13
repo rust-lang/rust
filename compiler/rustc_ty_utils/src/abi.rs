@@ -35,7 +35,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
             // parameters unused if they show up in the signature, but not in the `mir::Body`
             // (i.e. due to being inside a projection that got normalized, see
-            // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
+            // `tests/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
             // track of a polymorphization `ParamEnv` to allow normalizing later.
             //
             // We normalize the `fn_sig` again after substituting at a later point.
@@ -254,12 +254,12 @@ fn adjust_for_rust_scalar<'tcx>(
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
             // `noalias` for it. This can be turned off using an unstable flag.
             // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
-            let noalias_for_box = cx.tcx.sess.opts.unstable_opts.box_noalias.unwrap_or(true);
+            let noalias_for_box = cx.tcx.sess.opts.unstable_opts.box_noalias;
 
             // LLVM prior to version 12 had known miscompiles in the presence of noalias attributes
             // (see #54878), so it was conditionally disabled, but we don't support earlier
             // versions at all anymore. We still support turning it off using -Zmutable-noalias.
-            let noalias_mut_ref = cx.tcx.sess.opts.unstable_opts.mutable_noalias.unwrap_or(true);
+            let noalias_mut_ref = cx.tcx.sess.opts.unstable_opts.mutable_noalias;
 
             // `&mut` pointer parameters never alias other parameters,
             // or mutable global data

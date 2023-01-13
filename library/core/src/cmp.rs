@@ -1234,17 +1234,23 @@ where
     F: ~const Destruct,
     K: ~const Destruct,
 {
-    const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
-        f: &mut F,
-        (v1, v2): (&T, &T),
-    ) -> Ordering
-    where
-        T: ~const Destruct,
-        K: ~const Destruct,
-    {
-        f(v1).cmp(&f(v2))
+    cfg_if! {
+        if #[cfg(bootstrap)] {
+            const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
+                f: &mut F,
+                (v1, v2): (&T, &T),
+            ) -> Ordering
+            where
+                T: ~const Destruct,
+                K: ~const Destruct,
+            {
+                f(v1).cmp(&f(v2))
+            }
+            min_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
+        } else {
+            min_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
+        }
     }
-    min_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
 }
 
 /// Compares and returns the maximum of two values.

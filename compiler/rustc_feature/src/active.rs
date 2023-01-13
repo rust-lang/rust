@@ -254,7 +254,6 @@ declare_features! (
     (active, bpf_target_feature, "1.54.0", Some(44839), None),
     (active, cmpxchg16b_target_feature, "1.32.0", Some(44839), None),
     (active, ermsb_target_feature, "1.49.0", Some(44839), None),
-    (active, f16c_target_feature, "1.36.0", Some(44839), None),
     (active, hexagon_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
     (active, movbe_target_feature, "1.34.0", Some(44839), None),
@@ -282,8 +281,6 @@ declare_features! (
     (active, abi_avr_interrupt, "1.45.0", Some(69664), None),
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (active, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391), None),
-    /// Allows using the `efiapi` ABI.
-    (active, abi_efiapi, "1.40.0", Some(65815), None),
     /// Allows `extern "msp430-interrupt" fn()`.
     (active, abi_msp430_interrupt, "1.16.0", Some(38487), None),
     /// Allows `extern "ptx-*" fn()`.
@@ -342,7 +339,9 @@ declare_features! (
     (active, collapse_debuginfo, "1.65.0", Some(100758), None),
     /// Allows `async {}` expressions in const contexts.
     (active, const_async_blocks, "1.53.0", Some(85368), None),
-    // Allows limiting the evaluation steps of const expressions
+    /// Allows `const || {}` closures in const contexts.
+    (incomplete, const_closures, "CURRENT_RUSTC_VERSION", Some(106003), None),
+    /// Allows limiting the evaluation steps of const expressions
     (active, const_eval_limit, "1.43.0", Some(67217), None),
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),
@@ -374,6 +373,8 @@ declare_features! (
     (active, deprecated_safe, "1.61.0", Some(94978), None),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
+    /// Controls errors in trait implementations.
+    (active, do_not_recommend, "1.67.0", Some(51992), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (active, doc_auto_cfg, "1.58.0", Some(43781), None),
     /// Allows `#[doc(cfg(...))]`.

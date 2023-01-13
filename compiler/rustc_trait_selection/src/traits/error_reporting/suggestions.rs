@@ -5,7 +5,6 @@ use super::{
     PredicateObligation,
 };
 
-use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
 use crate::traits::{NormalizeExt, ObligationCtxt};
 
@@ -36,7 +35,7 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeVisitable, TypeckResults,
 };
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span, DUMMY_SP};
+use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use std::ops::Deref;
 
@@ -750,26 +749,30 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             if let ty::Ref(region, base_ty, mutbl) = *real_ty.skip_binder().kind() {
-                let mut autoderef = Autoderef::new(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.body_id,
-                    span,
-                    base_ty,
-                );
-                if let Some(steps) = autoderef.find_map(|(ty, steps)| {
-                    // Re-add the `&`
-                    let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
+                let autoderef = (self.autoderef_steps)(base_ty);
+                if let Some(steps) =
+                    autoderef.into_iter().enumerate().find_map(|(steps, (ty, obligations))| {
+                        // Re-add the `&`
+                        let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
 
-                    // Remapping bound vars here
-                    let real_trait_pred_and_ty =
-                        real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, ty));
-                    let obligation = self.mk_trait_obligation_with_new_self_ty(
-                        obligation.param_env,
-                        real_trait_pred_and_ty,
-                    );
-                    Some(steps).filter(|_| self.predicate_may_hold(&obligation))
-                }) {
+                        // Remapping bound vars here
+                        let real_trait_pred_and_ty =
+                            real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, ty));
+                        let obligation = self.mk_trait_obligation_with_new_self_ty(
+                            obligation.param_env,
+                            real_trait_pred_and_ty,
+                        );
+                        if obligations
+                            .iter()
+                            .chain([&obligation])
+                            .all(|obligation| self.predicate_may_hold(obligation))
+                        {
+                            Some(steps)
+                        } else {
+                            None
+                        }
+                    })
+                {
                     if steps > 0 {
                         // Don't care about `&mut` because `DerefMut` is used less
                         // often and user will not expect autoderef happens.
@@ -1358,57 +1361,117 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
-        let span = obligation.cause.span;
+        let mut span = obligation.cause.span;
+        let mut trait_pred = trait_pred;
+        let mut code = obligation.cause.code();
+        while let Some((c, Some(parent_trait_pred))) = code.parent() {
+            // We want the root obligation, in order to detect properly handle
+            // `for _ in &mut &mut vec![] {}`.
+            code = c;
+            trait_pred = parent_trait_pred;
+        }
+        while span.desugaring_kind().is_some() {
+            // Remove all the hir desugaring contexts while maintaining the macro contexts.
+            span.remove_mark();
+        }
+        let mut expr_finder = super::FindExprBySpan::new(span);
+        let Some(hir::Node::Expr(body)) = self.tcx.hir().find(obligation.cause.body_id) else {
+            return false;
+        };
+        expr_finder.visit_expr(&body);
+        let mut maybe_suggest = |suggested_ty, count, suggestions| {
+            // Remapping bound vars here
+            let trait_pred_and_suggested_ty =
+                trait_pred.map_bound(|trait_pred| (trait_pred, suggested_ty));
 
-        let mut suggested = false;
-        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-            let refs_number =
-                snippet.chars().filter(|c| !c.is_whitespace()).take_while(|c| *c == '&').count();
-            if let Some('\'') = snippet.chars().filter(|c| !c.is_whitespace()).nth(refs_number) {
-                // Do not suggest removal of borrow from type arguments.
-                return false;
+            let new_obligation = self.mk_trait_obligation_with_new_self_ty(
+                obligation.param_env,
+                trait_pred_and_suggested_ty,
+            );
+
+            if self.predicate_may_hold(&new_obligation) {
+                let msg = if count == 1 {
+                    "consider removing the leading `&`-reference".to_string()
+                } else {
+                    format!("consider removing {count} leading `&`-references")
+                };
+
+                err.multipart_suggestion_verbose(
+                    &msg,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                );
+                true
+            } else {
+                false
             }
+        };
 
-            // Skipping binder here, remapping below
-            let mut suggested_ty = trait_pred.self_ty().skip_binder();
+        // Maybe suggest removal of borrows from types in type parameters, like in
+        // `src/test/ui/not-panic/not-panic-safe.rs`.
+        let mut count = 0;
+        let mut suggestions = vec![];
+        // Skipping binder here, remapping below
+        let mut suggested_ty = trait_pred.self_ty().skip_binder();
+        if let Some(mut hir_ty) = expr_finder.ty_result {
+            while let hir::TyKind::Ref(_, mut_ty) = &hir_ty.kind {
+                count += 1;
+                let span = hir_ty.span.until(mut_ty.ty.span);
+                suggestions.push((span, String::new()));
 
-            for refs_remaining in 0..refs_number {
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
                     break;
                 };
                 suggested_ty = *inner_ty;
 
-                // Remapping bound vars here
-                let trait_pred_and_suggested_ty =
-                    trait_pred.map_bound(|trait_pred| (trait_pred, suggested_ty));
+                hir_ty = mut_ty.ty;
 
-                let new_obligation = self.mk_trait_obligation_with_new_self_ty(
-                    obligation.param_env,
-                    trait_pred_and_suggested_ty,
-                );
-
-                if self.predicate_may_hold(&new_obligation) {
-                    let sp = self
-                        .tcx
-                        .sess
-                        .source_map()
-                        .span_take_while(span, |c| c.is_whitespace() || *c == '&');
-
-                    let remove_refs = refs_remaining + 1;
-
-                    let msg = if remove_refs == 1 {
-                        "consider removing the leading `&`-reference".to_string()
-                    } else {
-                        format!("consider removing {} leading `&`-references", remove_refs)
-                    };
-
-                    err.span_suggestion_short(sp, &msg, "", Applicability::MachineApplicable);
-                    suggested = true;
-                    break;
+                if maybe_suggest(suggested_ty, count, suggestions.clone()) {
+                    return true;
                 }
             }
         }
-        suggested
+
+        // Maybe suggest removal of borrows from expressions, like in `for i in &&&foo {}`.
+        let Some(mut expr) = expr_finder.result else { return false; };
+        let mut count = 0;
+        let mut suggestions = vec![];
+        // Skipping binder here, remapping below
+        let mut suggested_ty = trait_pred.self_ty().skip_binder();
+        'outer: loop {
+            while let hir::ExprKind::AddrOf(_, _, borrowed) = expr.kind {
+                count += 1;
+                let span = if expr.span.eq_ctxt(borrowed.span) {
+                    expr.span.until(borrowed.span)
+                } else {
+                    expr.span.with_hi(expr.span.lo() + BytePos(1))
+                };
+                suggestions.push((span, String::new()));
+
+                let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
+                    break 'outer;
+                };
+                suggested_ty = *inner_ty;
+
+                expr = borrowed;
+
+                if maybe_suggest(suggested_ty, count, suggestions.clone()) {
+                    return true;
+                }
+            }
+            if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                && let hir::def::Res::Local(hir_id) = path.res
+                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(hir_id)
+                && let Some(hir::Node::Local(local)) = self.tcx.hir().find_parent(binding.hir_id)
+                && let None = local.ty
+                && let Some(binding_expr) = local.init
+            {
+                expr = binding_expr;
+            } else {
+                break 'outer;
+            }
+        }
+        false
     }
 
     fn suggest_remove_await(&self, obligation: &PredicateObligation<'tcx>, err: &mut Diagnostic) {
@@ -1519,6 +1582,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
                     if points_at_arg && mutability.is_not() && refs_number > 0 {
+                        // If we have a call like foo(&mut buf), then don't suggest foo(&mut mut buf)
+                        if snippet
+                            .trim_start_matches(|c: char| c.is_whitespace() || c == '&')
+                            .starts_with("mut")
+                        {
+                            return;
+                        }
                         err.span_suggestion_verbose(
                             sp,
                             "consider changing this borrow's mutability",
@@ -2189,7 +2259,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // generator interior are not generally known, so we
             // want to erase them when comparing (and anyway,
             // `Send` and other bounds are generally unaffected by
-            // the choice of region).  When erasing regions, we
+            // the choice of region). When erasing regions, we
             // also have to erase late-bound regions. This is
             // because the types that appear in the generator
             // interior generally contain "bound regions" to
@@ -2205,7 +2275,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         // Get the typeck results from the infcx if the generator is the function we are currently
-        // type-checking; otherwise, get them by performing a query.  This is needed to avoid
+        // type-checking; otherwise, get them by performing a query. This is needed to avoid
         // cycles. If we can't use resolved types because the generator comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
         let generator_data = match &self.typeck_results {
@@ -2615,11 +2685,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             ObligationCauseCode::ObjectCastObligation(concrete_ty, object_ty) => {
-                err.note(&format!(
-                    "required for the cast from `{}` to the object type `{}`",
-                    self.ty_to_string(concrete_ty),
-                    self.ty_to_string(object_ty)
-                ));
+                let (concrete_ty, concrete_file) =
+                    self.tcx.short_ty_string(self.resolve_vars_if_possible(concrete_ty));
+                let (object_ty, object_file) =
+                    self.tcx.short_ty_string(self.resolve_vars_if_possible(object_ty));
+                err.note(&with_forced_trimmed_paths!(format!(
+                    "required for the cast from `{concrete_ty}` to the object type `{object_ty}`",
+                )));
+                if let Some(file) = concrete_file {
+                    err.note(&format!(
+                        "the full name for the casted type has been written to '{}'",
+                        file.display(),
+                    ));
+                }
+                if let Some(file) = object_file {
+                    err.note(&format!(
+                        "the full name for the object type has been written to '{}'",
+                        file.display(),
+                    ));
+                }
             }
             ObligationCauseCode::Coercion { source: _, target } => {
                 err.note(&format!("required by cast to type `{}`", self.ty_to_string(target)));
@@ -2942,7 +3026,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // FIXME: we should do something else so that it works even on crate foreign
                         // auto traits.
                         is_auto_trait = matches!(is_auto, hir::IsAuto::Yes);
-                        err.span_note(ident.span, &msg)
+                        err.span_note(ident.span, &msg);
                     }
                     Some(Node::Item(hir::Item {
                         kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
@@ -2953,9 +3037,29 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             spans.push(trait_ref.path.span);
                         }
                         spans.push(self_ty.span);
-                        err.span_note(spans, &msg)
+                        let mut spans: MultiSpan = spans.into();
+                        if matches!(
+                            self_ty.span.ctxt().outer_expn_data().kind,
+                            ExpnKind::Macro(MacroKind::Derive, _)
+                        ) || matches!(
+                            of_trait.as_ref().map(|t| t.path.span.ctxt().outer_expn_data().kind),
+                            Some(ExpnKind::Macro(MacroKind::Derive, _))
+                        ) {
+                            spans.push_span_label(
+                                data.span,
+                                "unsatisfied trait bound introduced in this `derive` macro",
+                            );
+                        } else if !data.span.is_dummy() && !data.span.overlaps(self_ty.span) {
+                            spans.push_span_label(
+                                data.span,
+                                "unsatisfied trait bound introduced here",
+                            );
+                        }
+                        err.span_note(spans, &msg);
                     }
-                    _ => err.note(&msg),
+                    _ => {
+                        err.note(&msg);
+                    }
                 };
 
                 if let Some(file) = file {

@@ -247,3 +247,24 @@ mod issue6312 {
         }
     }
 }
+
+struct Collection {
+    items: Vec<i32>,
+    len: usize,
+}
+
+impl Default for Collection {
+    fn default() -> Self {
+        Self {
+            items: vec![1, 2, 3],
+            len: 0,
+        }
+    }
+}
+
+#[allow(clippy::redundant_closure_call)]
+fn issue10136() {
+    let mut c = Collection::default();
+    // don't lint, since c.items was used to calculate this value
+    c.len = (|| c.items.len())();
+}

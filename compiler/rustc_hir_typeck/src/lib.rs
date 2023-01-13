@@ -205,7 +205,7 @@ fn typeck_with_fallback<'tcx>(
 
         if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
-                <dyn AstConv<'_>>::ty_of_fn(&fcx, id, header.unsafety, header.abi, decl, None, None)
+                fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
             } else {
                 tcx.fn_sig(def_id)
             };
@@ -220,7 +220,7 @@ fn typeck_with_fallback<'tcx>(
         } else {
             let expected_type = body_ty
                 .and_then(|ty| match ty.kind {
-                    hir::TyKind::Infer => Some(<dyn AstConv<'_>>::ast_ty_to_ty(&fcx, ty)),
+                    hir::TyKind::Infer => Some(fcx.astconv().ast_ty_to_ty(ty)),
                     _ => None,
                 })
                 .unwrap_or_else(|| match tcx.hir().get(id) {
@@ -297,7 +297,7 @@ fn typeck_with_fallback<'tcx>(
         fcx.resolve_generator_interiors(def_id.to_def_id());
 
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
-            let ty = fcx.normalize_ty(span, ty);
+            let ty = fcx.normalize(span, ty);
             fcx.require_type_is_sized(ty, span, code);
         }
 

@@ -20,6 +20,7 @@
 //!     derive:
 //!     drop:
 //!     eq: sized
+//!     error: fmt
 //!     fmt: result
 //!     fn:
 //!     from: sized
@@ -29,13 +30,16 @@
 //!     index: sized
 //!     iterator: option
 //!     iterators: iterator, fn
+//!     non_zero:
 //!     option:
 //!     ord: eq, option
 //!     pin:
 //!     range:
 //!     result:
+//!     send: sized
 //!     sized:
 //!     slice:
+//!     sync: sized
 //!     try:
 //!     unsize: sized
 
@@ -46,6 +50,24 @@ pub mod marker {
     #[rustc_specialization_trait]
     pub trait Sized {}
     // endregion:sized
+
+    // region:send
+    pub unsafe auto trait Send {}
+
+    impl<T: ?Sized> !Send for *const T {}
+    impl<T: ?Sized> !Send for *mut T {}
+    // region:sync
+    unsafe impl<T: Sync + ?Sized> Send for &T {}
+    unsafe impl<T: Send + ?Sized> Send for &mut T {}
+    // endregion:sync
+    // endregion:send
+
+    // region:sync
+    pub unsafe auto trait Sync {}
+
+    impl<T: ?Sized> !Sync for *const T {}
+    impl<T: ?Sized> !Sync for *mut T {}
+    // endregion:sync
 
     // region:unsize
     #[lang = "unsize"]
@@ -91,7 +113,7 @@ pub mod default {
         fn default() -> Self;
     }
     // region:derive
-    #[rustc_builtin_macro]
+    #[rustc_builtin_macro(Default, attributes(default))]
     pub macro Default($item:item) {}
     // endregion:derive
 }
@@ -360,6 +382,12 @@ pub mod ops {
         type Output;
         fn add(self, rhs: Rhs) -> Self::Output;
     }
+
+    #[lang = "add_assign"]
+    #[const_trait]
+    pub trait AddAssign<Rhs = Self> {
+        fn add_assign(&mut self, rhs: Rhs);
+    }
     // endregion:add
 
     // region:generator
@@ -436,6 +464,9 @@ pub mod fmt {
     pub type Result = Result<(), Error>;
     pub struct Formatter<'a>;
     pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
+    pub trait Display {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
 }
@@ -680,6 +711,15 @@ mod macros {
 }
 // endregion:derive
 
+// region:non_zero
+pub mod num {
+    #[repr(transparent)]
+    #[rustc_layout_scalar_valid_range_start(1)]
+    #[rustc_nonnull_optimization_guaranteed]
+    pub struct NonZeroU8(u8);
+}
+// endregion:non_zero
+
 // region:bool_impl
 #[lang = "bool"]
 impl bool {
@@ -693,6 +733,17 @@ impl bool {
 }
 // endregion:bool_impl
 
+// region:error
+pub mod error {
+    #[rustc_has_incoherent_inherent_impls]
+    pub trait Error: crate::fmt::Debug + crate::fmt::Display {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            None
+        }
+    }
+}
+// endregion:error
+
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
@@ -705,7 +756,9 @@ pub mod prelude {
             iter::{IntoIterator, Iterator},     // :iterator
             macros::builtin::derive,            // :derive
             marker::Copy,                       // :copy
+            marker::Send,                       // :send
             marker::Sized,                      // :sized
+            marker::Sync,                       // :sync
             mem::drop,                          // :drop
             ops::Drop,                          // :drop
             ops::{Fn, FnMut, FnOnce},           // :fn

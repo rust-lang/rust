@@ -809,7 +809,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
                     // SomeTrait` is in fact a supertrait of the
                     // current trait. In that case, this type is
                     // legal, because the type `X` will be specified
-                    // in the object type.  Note that we can just use
+                    // in the object type. Note that we can just use
                     // direct equality here because all of these types
                     // are part of the formal parameter listing, and
                     // hence there should be no inference variables.

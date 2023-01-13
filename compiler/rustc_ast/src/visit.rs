@@ -836,6 +836,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             binder,
             capture_clause: _,
             asyncness: _,
+            constness: _,
             movability: _,
             fn_decl,
             body,

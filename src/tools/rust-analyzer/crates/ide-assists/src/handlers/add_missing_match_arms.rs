@@ -326,7 +326,7 @@ impl ExtendedEnum {
 fn resolve_enum_def(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> Option<ExtendedEnum> {
     sema.type_of_expr(expr)?.adjusted().autoderef(sema.db).find_map(|ty| match ty.as_adt() {
         Some(Adt::Enum(e)) => Some(ExtendedEnum::Enum(e)),
-        _ => ty.is_bool().then(|| ExtendedEnum::Bool),
+        _ => ty.is_bool().then_some(ExtendedEnum::Bool),
     })
 }
 
@@ -344,7 +344,7 @@ fn resolve_tuple_of_enum_def(
                 // For now we only handle expansion for a tuple of enums. Here
                 // we map non-enum items to None and rely on `collect` to
                 // convert Vec<Option<hir::Enum>> into Option<Vec<hir::Enum>>.
-                _ => ty.is_bool().then(|| ExtendedEnum::Bool),
+                _ => ty.is_bool().then_some(ExtendedEnum::Bool),
             })
         })
         .collect()

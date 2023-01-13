@@ -153,7 +153,7 @@ impl<'a> InferenceContext<'a> {
     ) -> Ty {
         let mut expected = self.resolve_ty_shallow(expected);
 
-        if is_non_ref_pat(&self.body, pat) {
+        if is_non_ref_pat(self.body, pat) {
             let mut pat_adjustments = Vec::new();
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
                 pat_adjustments.push(expected.clone());
@@ -220,7 +220,7 @@ impl<'a> InferenceContext<'a> {
                 ),
             Pat::Record { path: p, args: fields, ellipsis: _ } => {
                 let subs = fields.iter().map(|f| (f.name.clone(), f.pat));
-                self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat.into(), subs)
+                self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat, subs)
             }
             Pat::Path(path) => {
                 // FIXME use correct resolver for the surrounding expression

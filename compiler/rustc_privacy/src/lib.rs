@@ -1755,7 +1755,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         // clauses that the compiler inferred. We only want to
         // consider the ones that the user wrote. This is important
         // for the inferred outlives rules; see
-        // `src/test/ui/rfc-2093-infer-outlives/privacy.rs`.
+        // `tests/ui/rfc-2093-infer-outlives/privacy.rs`.
         self.visit_predicates(self.tcx.explicit_predicates_of(self.item_def_id));
         self
     }

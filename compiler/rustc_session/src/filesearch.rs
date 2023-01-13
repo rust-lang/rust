@@ -155,7 +155,7 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
 /// This function checks if sysroot is found using env::args().next(), and if it
 /// is not found, finds sysroot from current rustc_driver dll.
 pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
-    // Follow symlinks.  If the resolved path is relative, make it absolute.
+    // Follow symlinks. If the resolved path is relative, make it absolute.
     fn canonicalize(path: PathBuf) -> PathBuf {
         let path = fs::canonicalize(&path).unwrap_or(path);
         // See comments on this target function, but the gist is that

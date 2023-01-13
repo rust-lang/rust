@@ -1307,6 +1307,7 @@ impl Expr {
 pub struct Closure {
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
+    pub constness: Const,
     pub asyncness: Async,
     pub movability: Movability,
     pub fn_decl: P<FnDecl>,

@@ -180,7 +180,7 @@ fn make_tuple_field_list(
 ) -> Option<ast::FieldList> {
     let args = call_expr.arg_list()?.args();
     let tuple_fields = args.map(|arg| {
-        let ty = expr_ty(ctx, arg, &scope).unwrap_or_else(make::ty_placeholder);
+        let ty = expr_ty(ctx, arg, scope).unwrap_or_else(make::ty_placeholder);
         make::tuple_field(None, ty)
     });
     Some(make::tuple_field_list(tuple_fields).into())

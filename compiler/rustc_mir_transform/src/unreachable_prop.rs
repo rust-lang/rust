@@ -87,7 +87,7 @@ where
                 // unless otherwise is unreachable, in which case deleting a normal branch causes it to be merged with
                 // the otherwise, keeping its unreachable.
                 // This looses information about reachability causing worse codegen.
-                // For example (see src/test/codegen/match-optimizes-away.rs)
+                // For example (see tests/codegen/match-optimizes-away.rs)
                 //
                 // pub enum Two { A, B }
                 // pub fn identity(x: Two) -> Two {

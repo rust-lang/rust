@@ -379,15 +379,10 @@ fn compile_error_expand(
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
     let err = match &*tt.token_trees {
-        [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => {
-            let text = it.text.as_str();
-            if text.starts_with('"') && text.ends_with('"') {
-                // FIXME: does not handle raw strings
-                ExpandError::Other(text[1..text.len() - 1].into())
-            } else {
-                ExpandError::Other("`compile_error!` argument must be a string".into())
-            }
-        }
+        [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => match unquote_str(it) {
+            Some(unquoted) => ExpandError::Other(unquoted.into()),
+            None => ExpandError::Other("`compile_error!` argument must be a string".into()),
+        },
         _ => ExpandError::Other("`compile_error!` argument must be a string".into()),
     };
 
@@ -454,7 +449,7 @@ fn concat_bytes_expand(
                 match token.kind() {
                     syntax::SyntaxKind::BYTE => bytes.push(token.text().to_string()),
                     syntax::SyntaxKind::BYTE_STRING => {
-                        let components = unquote_byte_string(lit).unwrap_or_else(Vec::new);
+                        let components = unquote_byte_string(lit).unwrap_or_default();
                         components.into_iter().for_each(|x| bytes.push(x.to_string()));
                     }
                     _ => {
@@ -676,7 +671,7 @@ fn option_env_expand(
 
     let expanded = match get_env_inner(db, arg_id, &key) {
         None => quote! { #DOLLAR_CRATE::option::Option::None::<&str> },
-        Some(s) => quote! { #DOLLAR_CRATE::option::Some(#s) },
+        Some(s) => quote! { #DOLLAR_CRATE::option::Option::Some(#s) },
     };
 
     ExpandResult::ok(ExpandedEager::new(expanded))
