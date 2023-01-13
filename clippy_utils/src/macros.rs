@@ -711,8 +711,8 @@ pub struct FormatSpec<'tcx> {
     pub fill: Option<char>,
     /// Optionally specified alignment.
     pub align: Alignment,
-    /// Packed version of various flags provided, see [`rustc_parse_format::Flag`].
-    pub flags: u32,
+    /// Whether all flag options are set to default (no flags specified).
+    pub no_flags: bool,
     /// Represents either the maximum width or the integer precision.
     pub precision: Count<'tcx>,
     /// The minimum width, will be padded according to `width`/`align`
@@ -728,7 +728,7 @@ impl<'tcx> FormatSpec<'tcx> {
         Some(Self {
             fill: spec.fill,
             align: spec.align,
-            flags: spec.flags,
+            no_flags: spec.sign.is_none() && !spec.alternate && !spec.zero_pad && spec.debug_hex.is_none(),
             precision: Count::new(
                 FormatParamUsage::Precision,
                 spec.precision,
@@ -773,7 +773,7 @@ impl<'tcx> FormatSpec<'tcx> {
         self.width.is_implied()
             && self.precision.is_implied()
             && self.align == Alignment::AlignUnknown
-            && self.flags == 0
+            && self.no_flags
     }
 }
 
