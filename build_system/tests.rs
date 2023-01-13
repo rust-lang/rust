@@ -26,24 +26,10 @@ impl TestCase {
 
 const NO_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::new("build.mini_core", &|runner| {
-        runner.run_rustc([
-            "example/mini_core.rs",
-            "--crate-name",
-            "mini_core",
-            "--crate-type",
-            "lib,dylib",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/mini_core.rs", "--crate-type", "lib,dylib"]);
     }),
     TestCase::new("build.example", &|runner| {
-        runner.run_rustc([
-            "example/example.rs",
-            "--crate-type",
-            "lib",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/example.rs", "--crate-type", "lib"]);
     }),
     TestCase::new("jit.mini_core_hello_world", &|runner| {
         let mut jit_cmd = runner.rustc_command([
@@ -53,8 +39,6 @@ const NO_SYSROOT_SUITE: &[TestCase] = &[
             "example/mini_core_hello_world.rs",
             "--cfg",
             "jit",
-            "--target",
-            &runner.target_compiler.triple,
         ]);
         jit_cmd.env("CG_CLIF_JIT_ARGS", "abc bcd");
         spawn_and_wait(jit_cmd);
@@ -67,69 +51,30 @@ const NO_SYSROOT_SUITE: &[TestCase] = &[
             "example/mini_core_hello_world.rs",
             "--cfg",
             "jit",
-            "--target",
-            &runner.target_compiler.triple,
         ]);
         jit_cmd.env("CG_CLIF_JIT_ARGS", "abc bcd");
         spawn_and_wait(jit_cmd);
     }),
     TestCase::new("aot.mini_core_hello_world", &|runner| {
-        runner.run_rustc([
-            "example/mini_core_hello_world.rs",
-            "--crate-name",
-            "mini_core_hello_world",
-            "--crate-type",
-            "bin",
-            "-g",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/mini_core_hello_world.rs"]);
         runner.run_out_command("mini_core_hello_world", ["abc", "bcd"]);
     }),
 ];
 
 const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::new("aot.arbitrary_self_types_pointers_and_wrappers", &|runner| {
-        runner.run_rustc([
-            "example/arbitrary_self_types_pointers_and_wrappers.rs",
-            "--crate-name",
-            "arbitrary_self_types_pointers_and_wrappers",
-            "--crate-type",
-            "bin",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/arbitrary_self_types_pointers_and_wrappers.rs"]);
         runner.run_out_command("arbitrary_self_types_pointers_and_wrappers", []);
     }),
     TestCase::new("aot.issue_91827_extern_types", &|runner| {
-        runner.run_rustc([
-            "example/issue-91827-extern-types.rs",
-            "--crate-name",
-            "issue_91827_extern_types",
-            "--crate-type",
-            "bin",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
-        runner.run_out_command("issue_91827_extern_types", []);
+        runner.run_rustc(["example/issue-91827-extern-types.rs"]);
+        runner.run_out_command("issue-91827-extern-types", []);
     }),
     TestCase::new("build.alloc_system", &|runner| {
-        runner.run_rustc([
-            "example/alloc_system.rs",
-            "--crate-type",
-            "lib",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/alloc_system.rs", "--crate-type", "lib"]);
     }),
     TestCase::new("aot.alloc_example", &|runner| {
-        runner.run_rustc([
-            "example/alloc_example.rs",
-            "--crate-type",
-            "bin",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/alloc_example.rs"]);
         runner.run_out_command("alloc_example", []);
     }),
     TestCase::new("jit.std_example", &|runner| {
@@ -138,8 +83,6 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "-Cllvm-args=mode=jit",
             "-Cprefer-dynamic",
             "example/std_example.rs",
-            "--target",
-            &runner.target_compiler.triple,
         ]);
 
         eprintln!("[JIT-lazy] std_example");
@@ -148,83 +91,34 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "-Cllvm-args=mode=jit-lazy",
             "-Cprefer-dynamic",
             "example/std_example.rs",
-            "--target",
-            &runner.target_compiler.triple,
         ]);
     }),
     TestCase::new("aot.std_example", &|runner| {
-        runner.run_rustc([
-            "example/std_example.rs",
-            "--crate-type",
-            "bin",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/std_example.rs"]);
         runner.run_out_command("std_example", ["arg"]);
     }),
     TestCase::new("aot.dst_field_align", &|runner| {
-        runner.run_rustc([
-            "example/dst-field-align.rs",
-            "--crate-name",
-            "dst_field_align",
-            "--crate-type",
-            "bin",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
-        runner.run_out_command("dst_field_align", []);
+        runner.run_rustc(["example/dst-field-align.rs"]);
+        runner.run_out_command("dst-field-align", []);
     }),
     TestCase::new("aot.subslice-patterns-const-eval", &|runner| {
-        runner.run_rustc([
-            "example/subslice-patterns-const-eval.rs",
-            "--crate-type",
-            "bin",
-            "-Cpanic=abort",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/subslice-patterns-const-eval.rs"]);
         runner.run_out_command("subslice-patterns-const-eval", []);
     }),
     TestCase::new("aot.track-caller-attribute", &|runner| {
-        runner.run_rustc([
-            "example/track-caller-attribute.rs",
-            "--crate-type",
-            "bin",
-            "-Cpanic=abort",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/track-caller-attribute.rs"]);
         runner.run_out_command("track-caller-attribute", []);
     }),
     TestCase::new("aot.float-minmax-pass", &|runner| {
-        runner.run_rustc([
-            "example/float-minmax-pass.rs",
-            "--crate-type",
-            "bin",
-            "-Cpanic=abort",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/float-minmax-pass.rs"]);
         runner.run_out_command("float-minmax-pass", []);
     }),
     TestCase::new("aot.mod_bench", &|runner| {
-        runner.run_rustc([
-            "example/mod_bench.rs",
-            "--crate-type",
-            "bin",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/mod_bench.rs"]);
         runner.run_out_command("mod_bench", []);
     }),
     TestCase::new("aot.issue-72793", &|runner| {
-        runner.run_rustc([
-            "example/issue-72793.rs",
-            "--crate-type",
-            "bin",
-            "--target",
-            &runner.target_compiler.triple,
-        ]);
+        runner.run_rustc(["example/issue-72793.rs"]);
         runner.run_out_command("issue-72793", []);
     }),
 ];
@@ -501,6 +395,9 @@ impl TestRunner {
         cmd.arg("--out-dir");
         cmd.arg(format!("{}", BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs).display()));
         cmd.arg("-Cdebuginfo=2");
+        cmd.arg("--target");
+        cmd.arg(&self.target_compiler.triple);
+        cmd.arg("-Cpanic=abort");
         cmd.args(args);
         cmd
     }
