@@ -86,6 +86,10 @@ fn find_duplicates(body: &Body<'_>, limit: usize) -> FxHashMap<BasicBlock, Basic
             continue;
         }
 
+        if bbd.terminator().kind != TerminatorKind::Return {
+            continue;
+        }
+
         let to_hash = BasicBlockHashable { basic_block_data: bbd };
         let entry = same_hashes.entry(to_hash);
         match entry {
