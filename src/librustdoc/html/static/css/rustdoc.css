@@ -1214,16 +1214,20 @@ a.test-arrow:hover {
 	content: "\00a0";
 }
 
-.notable .docblock {
+.notable .content {
 	margin: 0.25em 0.5em;
 }
 
-.notable .docblock pre, .notable .docblock code {
+.notable .content pre, .notable .content code {
 	background: transparent;
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
 	white-space: pre-wrap;
+}
+
+.notable .content > h3:first-child {
+	margin: 0 0 5px 0;
 }
 
 .search-failed {

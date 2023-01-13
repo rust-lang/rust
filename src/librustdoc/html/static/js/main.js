@@ -847,7 +847,7 @@ function loadCss(cssUrl) {
         window.hideAllModals(false);
         const ty = e.getAttribute("data-ty");
         const wrapper = document.createElement("div");
-        wrapper.innerHTML = "<div class=\"docblock\">" + window.NOTABLE_TRAITS[ty] + "</div>";
+        wrapper.innerHTML = "<div class=\"content\">" + window.NOTABLE_TRAITS[ty] + "</div>";
         wrapper.className = "notable popover";
         const focusCatcher = document.createElement("div");
         focusCatcher.setAttribute("tabindex", "0");
