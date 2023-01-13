@@ -103,6 +103,7 @@ impl CargoProject {
         RelPath::BUILD.join(self.target).to_path(dirs)
     }
 
+    #[must_use]
     fn base_cmd(&self, command: &str, cargo: &Path, dirs: &Dirs) -> Command {
         let mut cmd = Command::new(cargo);
 
@@ -115,6 +116,7 @@ impl CargoProject {
         cmd
     }
 
+    #[must_use]
     fn build_cmd(&self, command: &str, compiler: &Compiler, dirs: &Dirs) -> Command {
         let mut cmd = self.base_cmd(command, &compiler.cargo, dirs);
 
@@ -189,6 +191,16 @@ pub(crate) fn hyperfine_command(
     bench.arg(a).arg(b);
 
     bench
+}
+
+#[must_use]
+pub(crate) fn git_command<'a>(repo_dir: impl Into<Option<&'a Path>>, cmd: &str) -> Command {
+    let mut git_cmd = Command::new("git");
+    git_cmd.arg("-c").arg("user.name=Dummy").arg("-c").arg("user.email=dummy@example.com").arg(cmd);
+    if let Some(repo_dir) = repo_dir.into() {
+        git_cmd.current_dir(repo_dir);
+    }
+    git_cmd
 }
 
 #[track_caller]
