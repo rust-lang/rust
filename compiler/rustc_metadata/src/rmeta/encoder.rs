@@ -4,8 +4,8 @@ use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
 use rustc_ast::Attribute;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+// use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
@@ -1895,7 +1895,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         //let tcx = self.tcx;
         let fx_hash_map = self.tcx.impls_in_crate(LOCAL_CRATE).to_owned();
         /*
-        TODO(robert): this is the new way to compute impls_in_crate; is it the same as what we had before?
+        todo: this is the new way to compute impls_in_crate; is it the same as what we had before?
         let tcx = self.tcx;
         let mut fx_hash_map: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
             FxHashMap::default();
@@ -2317,8 +2317,8 @@ pub fn provide(providers: &mut Providers) {
                 FxIndexMap::default();
 
             for id in tcx.hir().items() {
-                if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
-                    if let Some(trait_ref) = tcx.impl_trait_ref(id.def_id.to_def_id()) {
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
+                    if let Some(trait_ref) = tcx.impl_trait_ref(id.owner_id.to_def_id()) {
                         let simplified_self_ty = fast_reject::simplify_type(
                             tcx,
                             trait_ref.self_ty(),
@@ -2328,7 +2328,7 @@ pub fn provide(providers: &mut Providers) {
                         fx_hash_map
                             .entry(trait_ref.def_id)
                             .or_default()
-                            .push((id.def_id.to_def_id(), simplified_self_ty));
+                            .push((id.owner_id.to_def_id(), simplified_self_ty));
                     }
                 }
             }

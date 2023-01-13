@@ -1810,7 +1810,7 @@ rustc_queries! {
     }
 
     /// A list of all traits in a crate mapped to their impls in that crate.
-    query impls_in_crate(_: CrateNum) -> &'tcx FxIndexMap<DefId, Vec<(DefId, Option<rustc_middle::ty::fast_reject::SimplifiedTypeGen<DefId>>)>> {
+    query impls_in_crate(_: CrateNum) -> &'tcx FxIndexMap<DefId, Vec<(DefId, Option<rustc_middle::ty::fast_reject::SimplifiedType>)>> {
         eval_always
         desc { "fetching trait to impl map in a crate" }
         separate_provide_extern
