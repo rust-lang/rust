@@ -2102,9 +2102,7 @@ impl<'test> TestCx<'test> {
                 .parent()
                 .unwrap() // chop off `ui`
                 .parent()
-                .unwrap() // chop off `test`
-                .parent()
-                .unwrap(); // chop off `src`
+                .unwrap(); // chop off `tests`
             args.push(src.join("src/etc/wasm32-shim.js").display().to_string());
         }
 
@@ -2932,7 +2930,7 @@ impl<'test> TestCx<'test> {
 
     fn run_rmake_test(&self) {
         let cwd = env::current_dir().unwrap();
-        let src_root = self.config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
+        let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
         let src_root = cwd.join(&src_root);
 
         let tmpdir = cwd.join(self.output_base_name());
@@ -3548,8 +3546,8 @@ impl<'test> TestCx<'test> {
         normalize_path(parent_dir, "$DIR");
 
         let source_bases = &[
-            // Source base on the current filesystem (calculated as parent of `src/test/$suite`):
-            Some(self.config.src_base.parent().unwrap().parent().unwrap().parent().unwrap().into()),
+            // Source base on the current filesystem (calculated as parent of `tests/$suite`):
+            Some(self.config.src_base.parent().unwrap().parent().unwrap().into()),
             // Source base on the sysroot (from the src components downloaded by `download-rustc`):
             Some(self.config.sysroot_base.join("lib").join("rustlib").join("src").join("rust")),
             // Virtual `/rustc/$sha` remapped paths (if `remap-debuginfo` is enabled):

@@ -140,14 +140,9 @@ impl FileSetConfig {
 }
 
 /// Builder for [`FileSetConfig`].
+#[derive(Default)]
 pub struct FileSetConfigBuilder {
     roots: Vec<Vec<VfsPath>>,
-}
-
-impl Default for FileSetConfigBuilder {
-    fn default() -> Self {
-        FileSetConfigBuilder { roots: Vec::new() }
-    }
 }
 
 impl FileSetConfigBuilder {

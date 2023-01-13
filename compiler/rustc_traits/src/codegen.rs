@@ -1,5 +1,5 @@
 // This file contains various trait resolution methods used by codegen.
-// They all assume regions can be erased and monomorphic types.  It
+// They all assume regions can be erased and monomorphic types. It
 // seems likely that they should eventually be merged into more
 // general routines.
 
@@ -82,7 +82,7 @@ pub fn codegen_select_candidate<'tcx>(
     // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
     // as they will get constrained elsewhere, too.
     // (ouz-a) This is required for `type-alias-impl-trait/assoc-projection-ice.rs` to pass
-    let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+    let _ = infcx.take_opaque_types();
 
     Ok(&*tcx.arena.alloc(impl_source))
 }

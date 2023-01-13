@@ -120,12 +120,12 @@ trigger_files = [
     "src/rustdoc-json-types",
 
     # Tests
-    "src/test/rustdoc",
-    "src/test/rustdoc-ui",
-    "src/test/rustdoc-gui",
-    "src/test/rustdoc-js",
-    "src/test/rustdoc-js-std",
-    "src/test/rustdoc-json",
+    "tests/rustdoc",
+    "tests/rustdoc-ui",
+    "tests/rustdoc-gui",
+    "tests/rustdoc-js",
+    "tests/rustdoc-js-std",
+    "tests/rustdoc-json",
 
     # Internal tooling
     "src/etc/htmldocck.py",
@@ -143,7 +143,7 @@ exclude_labels = [
 trigger_files = [
     "src/librustdoc/json/",
     "src/rustdoc-json-types",
-    "src/test/rustdoc-json",
+    "tests/rustdoc-json",
     "src/tools/jsondocck",
     "src/tools/jsondoclint",
 ]
@@ -154,7 +154,7 @@ trigger_files = [
     "compiler",
 
     # Tests
-    "src/test/ui",
+    "tests/ui",
 ]
 exclude_labels = [
     "T-*",
@@ -248,6 +248,11 @@ trigger_files = [
 
 [autolabel."S-waiting-on-review"]
 new_pr = true
+
+[autolabel."WG-trait-system-refactor"]
+trigger_files = [
+    "compiler/rustc_trait_selection/solve"
+]
 
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
@@ -344,14 +349,14 @@ cc = ["@BoxyUwU"]
 
 [mentions."compiler/rustc_trait_selection/src/solve/"]
 message = "Some changes occurred to the core trait solver"
-cc = ["@lcnr"]
+cc = ["@rust-lang/initiative-trait-system-refactor"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/engine.rs"]
 message = """
 Some changes occurred in engine.rs, potentially modifying the public API \
 of `ObligationCtxt`.
 """
-cc = ["@lcnr"]
+cc = ["@lcnr", "@compiler-errors"]
 
 [mentions."compiler/rustc_error_codes/src/error_codes.rs"]
 message = "Some changes occurred in diagnostic error codes"
@@ -466,6 +471,7 @@ compiler-team = [
     "@lcnr",
     "@nagisa",
     "@wesleywiser",
+    "@michaelwoerister",
 ]
 compiler-team-contributors = [
     "@compiler-errors",
@@ -473,6 +479,7 @@ compiler-team-contributors = [
     "@jackh726",
     "@TaKO8Ki",
     "@Nilstrieb",
+    "@WaffleLapkin",
 ]
 compiler = [
     "compiler-team",
@@ -487,12 +494,10 @@ libs = [
 ]
 bootstrap = [
     "@Mark-Simulacrum",
-    "@jyn514",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
     "@pietroalbini",
-    "@jyn514",
 ]
 rustdoc = [
     "@jsha",
@@ -603,7 +608,7 @@ fallback = [
 "/src/llvm-project" =                        ["@cuviper"]
 "/src/rustdoc-json-types" =                  ["rustdoc"]
 "/src/stage0.json" =                         ["bootstrap"]
-"/src/test/ui" =                             ["compiler"]
+"/tests/ui" =                                ["compiler"]
 "/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
 "/src/tools/compiletest" =                   ["bootstrap"]
 "/src/tools/linkchecker" =                   ["@ehuss"]

@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
@@ -24,6 +23,7 @@ pub(crate) fn build_index<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> String {
     let mut itemid_to_pathid = FxHashMap::default();
+    let mut primitives = FxHashMap::default();
     let mut crate_paths = vec![];
 
     // Attach all orphan items to the type's definition if the type
@@ -78,42 +78,16 @@ pub(crate) fn build_index<'tcx>(
     // First, on function signatures
     let mut search_index = std::mem::replace(&mut cache.search_index, Vec::new());
     for item in search_index.iter_mut() {
-        fn convert_render_type(
+        fn insert_into_map<F: std::hash::Hash + Eq>(
             ty: &mut RenderType,
-            cache: &mut Cache,
-            itemid_to_pathid: &mut FxHashMap<ItemId, usize>,
+            map: &mut FxHashMap<F, usize>,
+            itemid: F,
             lastpathid: &mut usize,
             crate_paths: &mut Vec<(ItemType, Symbol)>,
+            item_type: ItemType,
+            path: Symbol,
         ) {
-            if let Some(generics) = &mut ty.generics {
-                for item in generics {
-                    convert_render_type(item, cache, itemid_to_pathid, lastpathid, crate_paths);
-                }
-            }
-            let Cache { ref paths, ref external_paths, .. } = *cache;
-            let Some(id) = ty.id.clone() else {
-                assert!(ty.generics.is_some());
-                return;
-            };
-            let (itemid, path, item_type) = match id {
-                RenderTypeId::DefId(defid) => {
-                    if let Some(&(ref fqp, item_type)) =
-                        paths.get(&defid).or_else(|| external_paths.get(&defid))
-                    {
-                        (ItemId::DefId(defid), *fqp.last().unwrap(), item_type)
-                    } else {
-                        ty.id = None;
-                        return;
-                    }
-                }
-                RenderTypeId::Primitive(primitive) => (
-                    ItemId::Primitive(primitive, LOCAL_CRATE),
-                    primitive.as_sym(),
-                    ItemType::Primitive,
-                ),
-                RenderTypeId::Index(_) => return,
-            };
-            match itemid_to_pathid.entry(itemid) {
+            match map.entry(itemid) {
                 Entry::Occupied(entry) => ty.id = Some(RenderTypeId::Index(*entry.get())),
                 Entry::Vacant(entry) => {
                     let pathid = *lastpathid;
@@ -124,12 +98,72 @@ pub(crate) fn build_index<'tcx>(
                 }
             }
         }
+
+        fn convert_render_type(
+            ty: &mut RenderType,
+            cache: &mut Cache,
+            itemid_to_pathid: &mut FxHashMap<ItemId, usize>,
+            primitives: &mut FxHashMap<Symbol, usize>,
+            lastpathid: &mut usize,
+            crate_paths: &mut Vec<(ItemType, Symbol)>,
+        ) {
+            if let Some(generics) = &mut ty.generics {
+                for item in generics {
+                    convert_render_type(
+                        item,
+                        cache,
+                        itemid_to_pathid,
+                        primitives,
+                        lastpathid,
+                        crate_paths,
+                    );
+                }
+            }
+            let Cache { ref paths, ref external_paths, .. } = *cache;
+            let Some(id) = ty.id.clone() else {
+                assert!(ty.generics.is_some());
+                return;
+            };
+            match id {
+                RenderTypeId::DefId(defid) => {
+                    if let Some(&(ref fqp, item_type)) =
+                        paths.get(&defid).or_else(|| external_paths.get(&defid))
+                    {
+                        insert_into_map(
+                            ty,
+                            itemid_to_pathid,
+                            ItemId::DefId(defid),
+                            lastpathid,
+                            crate_paths,
+                            item_type,
+                            *fqp.last().unwrap(),
+                        );
+                    } else {
+                        ty.id = None;
+                    }
+                }
+                RenderTypeId::Primitive(primitive) => {
+                    let sym = primitive.as_sym();
+                    insert_into_map(
+                        ty,
+                        primitives,
+                        sym,
+                        lastpathid,
+                        crate_paths,
+                        ItemType::Primitive,
+                        sym,
+                    );
+                }
+                RenderTypeId::Index(_) => {}
+            }
+        }
         if let Some(search_type) = &mut item.search_type {
             for item in &mut search_type.inputs {
                 convert_render_type(
                     item,
                     cache,
                     &mut itemid_to_pathid,
+                    &mut primitives,
                     &mut lastpathid,
                     &mut crate_paths,
                 );
@@ -139,6 +173,7 @@ pub(crate) fn build_index<'tcx>(
                     item,
                     cache,
                     &mut itemid_to_pathid,
+                    &mut primitives,
                     &mut lastpathid,
                     &mut crate_paths,
                 );

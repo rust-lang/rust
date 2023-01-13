@@ -86,8 +86,18 @@ pub enum Spacing {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
+    /// Identifier or keyword. Unlike rustc, we keep "r#" prefix when it represents a raw identifier.
     pub text: SmolStr,
     pub id: TokenId,
+}
+
+impl Ident {
+    /// Constructor intended to be used only by proc macro server. `text` should not contain raw
+    /// identifier prefix.
+    pub fn new_with_is_raw(text: SmolStr, id: TokenId, is_raw: bool) -> Self {
+        let text = if is_raw { SmolStr::from_iter(["r#", &text]) } else { text };
+        Ident { text, id }
+    }
 }
 
 impl Leaf {
@@ -105,15 +115,15 @@ fn print_debug_subtree(f: &mut fmt::Formatter<'_>, subtree: &Subtree, level: usi
 
     let aux = match subtree.delimiter.map(|it| (it.kind, it.id.0)) {
         None => "$".to_string(),
-        Some((DelimiterKind::Parenthesis, id)) => format!("() {}", id),
-        Some((DelimiterKind::Brace, id)) => format!("{{}} {}", id),
-        Some((DelimiterKind::Bracket, id)) => format!("[] {}", id),
+        Some((DelimiterKind::Parenthesis, id)) => format!("() {id}"),
+        Some((DelimiterKind::Brace, id)) => format!("{{}} {id}"),
+        Some((DelimiterKind::Bracket, id)) => format!("[] {id}"),
     };
 
     if subtree.token_trees.is_empty() {
-        write!(f, "{}SUBTREE {}", align, aux)?;
+        write!(f, "{align}SUBTREE {aux}")?;
     } else {
-        writeln!(f, "{}SUBTREE {}", align, aux)?;
+        writeln!(f, "{align}SUBTREE {aux}")?;
         for (idx, child) in subtree.token_trees.iter().enumerate() {
             print_debug_token(f, child, level + 1)?;
             if idx != subtree.token_trees.len() - 1 {
@@ -130,7 +140,7 @@ fn print_debug_token(f: &mut fmt::Formatter<'_>, tkn: &TokenTree, level: usize) 
 
     match tkn {
         TokenTree::Leaf(leaf) => match leaf {
-            Leaf::Literal(lit) => write!(f, "{}LITERAL {} {}", align, lit.text, lit.id.0)?,
+            Leaf::Literal(lit) => write!(f, "{align}LITERAL {} {}", lit.text, lit.id.0)?,
             Leaf::Punct(punct) => write!(
                 f,
                 "{}PUNCH   {} [{}] {}",
@@ -139,7 +149,7 @@ fn print_debug_token(f: &mut fmt::Formatter<'_>, tkn: &TokenTree, level: usize) 
                 if punct.spacing == Spacing::Alone { "alone" } else { "joint" },
                 punct.id.0
             )?,
-            Leaf::Ident(ident) => write!(f, "{}IDENT   {} {}", align, ident.text, ident.id.0)?,
+            Leaf::Ident(ident) => write!(f, "{align}IDENT   {} {}", ident.text, ident.id.0)?,
         },
         TokenTree::Subtree(subtree) => {
             print_debug_subtree(f, subtree, level)?;
@@ -302,7 +312,7 @@ pub fn pretty(tkns: &[TokenTree]) -> String {
                     Some(DelimiterKind::Parenthesis) => ("(", ")"),
                     Some(DelimiterKind::Bracket) => ("[", "]"),
                 };
-                format!("{}{}{}", open, content, close)
+                format!("{open}{content}{close}")
             }
         }
     }

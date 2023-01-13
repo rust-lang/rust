@@ -934,7 +934,8 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == 'help':
         sys.argv = [sys.argv[0], '-h'] + sys.argv[2:]
 
-    help_triggered = len(sys.argv) == 1 or any(x in ["-h", "--help", "--version"] for x in sys.argv)
+    help_triggered = (
+        '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
         bootstrap(help_triggered)
         if not help_triggered:

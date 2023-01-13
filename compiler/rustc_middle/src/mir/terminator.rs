@@ -74,7 +74,7 @@ impl SwitchTargets {
     }
 
     /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
-    /// specific value.  This cannot fail, as it'll return the `otherwise`
+    /// specific value. This cannot fail, as it'll return the `otherwise`
     /// branch if there's not a specific match for the value.
     pub fn target_for_value(&self, value: u128) -> BasicBlock {
         self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())

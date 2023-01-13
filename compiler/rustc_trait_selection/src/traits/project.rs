@@ -148,7 +148,7 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
                 }
 
                 // Prefer where-clauses. As in select, if there are multiple
-                // candidates, we prefer where-clause candidates over impls.  This
+                // candidates, we prefer where-clause candidates over impls. This
                 // may seem a bit surprising, since impls are the source of
                 // "truth" in some sense, but in fact some of the impls that SEEM
                 // applicable are not, because of nested obligations. Where
@@ -282,7 +282,7 @@ fn project_and_unify_type<'cx, 'tcx>(
     };
     debug!(?normalized, ?obligations, "project_and_unify_type result");
     let actual = obligation.predicate.term;
-    // For an example where this is necessary see src/test/ui/impl-trait/nested-return-type2.rs
+    // For an example where this is necessary see tests/ui/impl-trait/nested-return-type2.rs
     // This allows users to omit re-mentioning all bounds on an associated type and just use an
     // `impl Trait` for the assoc type to add more bounds.
     let InferOk { value: actual, obligations: new } =
@@ -1034,7 +1034,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
         }
         Err(ProjectionCacheEntry::InProgress) => {
             // Under lazy normalization, this can arise when
-            // bootstrapping.  That is, imagine an environment with a
+            // bootstrapping. That is, imagine an environment with a
             // where-clause like `A::B == u32`. Now, if we are asked
             // to normalize `A::B`, we will want to check the
             // where-clauses in scope. So we will try to unify `A::B`

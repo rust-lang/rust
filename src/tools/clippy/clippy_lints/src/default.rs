@@ -11,6 +11,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -98,9 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             if let ty::Adt(def, ..) = expr_ty.kind();
             if !is_from_proc_macro(cx, expr);
             then {
-                // TODO: Work out a way to put "whatever the imported way of referencing
-                // this type in this file" rather than a fully-qualified type.
-                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did()));
+                let replacement = with_forced_trimmed_paths!(format!("{}::default()", cx.tcx.def_path_str(def.did())));
                 span_lint_and_sugg(
                     cx,
                     DEFAULT_TRAIT_ACCESS,
@@ -170,7 +169,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 // find out if and which field was set by this `consecutive_statement`
                 if let Some((field_ident, assign_rhs)) = field_reassigned_by_stmt(consecutive_statement, binding_name) {
                     // interrupt and cancel lint if assign_rhs references the original binding
-                    if contains_name(binding_name, assign_rhs) {
+                    if contains_name(binding_name, assign_rhs, cx) {
                         cancel_lint = true;
                         break;
                     }

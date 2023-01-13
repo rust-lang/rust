@@ -60,6 +60,7 @@ trivially_parameterized_over_tcx! {
     ty::ImplPolarity,
     ty::ReprOptions,
     ty::TraitDef,
+    ty::UnusedGenericParams,
     ty::Visibility<DefIndex>,
     ty::adjustment::CoerceUnsizedInfo,
     ty::fast_reject::SimplifiedType,

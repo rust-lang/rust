@@ -8,7 +8,7 @@ use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
 use rustc_span::Symbol;
 
 pub use self::qualifs::Qualif;
@@ -63,6 +63,17 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
 
     fn is_async(&self) -> bool {
         self.tcx.asyncness(self.def_id()).is_async()
+    }
+
+    pub fn fn_sig(&self) -> PolyFnSig<'tcx> {
+        let did = self.def_id().to_def_id();
+        if self.tcx.is_closure(did) {
+            let ty = self.tcx.type_of(did);
+            let ty::Closure(_, substs) = ty.kind() else { bug!("type_of closure not ty::Closure") };
+            substs.as_closure().sig()
+        } else {
+            self.tcx.fn_sig(did)
+        }
     }
 }
 

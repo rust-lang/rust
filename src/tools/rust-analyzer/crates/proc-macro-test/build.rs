@@ -63,7 +63,7 @@ fn main() {
     };
 
     cmd.current_dir(&staging_dir)
-        .args(&["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
+        .args(["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
         // Explicit override the target directory to avoid using the same one which the parent
         // cargo is using, or we'll deadlock.
         // This can happen when `CARGO_TARGET_DIR` is set or global config forces all cargo
@@ -71,7 +71,7 @@ fn main() {
         .arg("--target-dir")
         .arg(&target_dir);
 
-    println!("Running {:?}", cmd);
+    println!("Running {cmd:?}");
 
     let output = cmd.output().unwrap();
     if !output.status.success() {
@@ -85,16 +85,13 @@ fn main() {
 
     let mut artifact_path = None;
     for message in Message::parse_stream(output.stdout.as_slice()) {
-        match message.unwrap() {
-            Message::CompilerArtifact(artifact) => {
-                if artifact.target.kind.contains(&"proc-macro".to_string()) {
-                    let repr = format!("{} {}", name, version);
-                    if artifact.package_id.repr.starts_with(&repr) {
-                        artifact_path = Some(PathBuf::from(&artifact.filenames[0]));
-                    }
+        if let Message::CompilerArtifact(artifact) = message.unwrap() {
+            if artifact.target.kind.contains(&"proc-macro".to_string()) {
+                let repr = format!("{name} {version}");
+                if artifact.package_id.repr.starts_with(&repr) {
+                    artifact_path = Some(PathBuf::from(&artifact.filenames[0]));
                 }
             }
-            _ => (), // Unknown message
         }
     }
 

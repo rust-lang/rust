@@ -439,7 +439,7 @@ trait VidValuePair<'tcx>: Debug {
     fn value_ty(&self) -> Ty<'tcx>;
 
     /// Extract the scopes that apply to whichever side of the tuple
-    /// the vid was found on.  See the comment where this is called
+    /// the vid was found on. See the comment where this is called
     /// for more details on why we want them.
     fn vid_scopes<'r, D: TypeRelatingDelegate<'tcx>>(
         &self,
@@ -831,7 +831,7 @@ where
 /// (these are not explicitly present in the ty representation right
 /// now). This visitor handles that: it descends the type, tracking
 /// binder depth, and finds late-bound regions targeting the
-/// `for<..`>.  For each of those, it creates an entry in
+/// `for<..`>. For each of those, it creates an entry in
 /// `bound_region_scope`.
 struct ScopeInstantiator<'me, 'tcx> {
     next_region: &'me mut dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx>,

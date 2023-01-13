@@ -37,7 +37,7 @@ use ide_db::{
     traits::get_missing_assoc_items, SymbolKind,
 };
 use syntax::{
-    ast::{self, edit_in_place::AttrsOwnerEdit},
+    ast::{self, edit_in_place::AttrsOwnerEdit, HasTypeBounds},
     AstNode, SyntaxElement, SyntaxKind, TextRange, T,
 };
 use text_edit::TextEdit;
@@ -190,7 +190,7 @@ fn add_function_impl(
     };
 
     let mut item = CompletionItem::new(completion_kind, replacement_range, label);
-    item.lookup_by(format!("fn {}", fn_name))
+    item.lookup_by(format!("fn {fn_name}"))
         .set_documentation(func.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
 
@@ -205,11 +205,11 @@ fn add_function_impl(
             let function_decl = function_declaration(&transformed_fn, source.file_id.is_macro());
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snippet = format!("{} {{\n    $0\n}}", function_decl);
+                    let snippet = format!("{function_decl} {{\n    $0\n}}");
                     item.snippet_edit(cap, TextEdit::replace(replacement_range, snippet));
                 }
                 None => {
-                    let header = format!("{} {{", function_decl);
+                    let header = format!("{function_decl} {{");
                     item.text_edit(TextEdit::replace(replacement_range, header));
                 }
             };
@@ -249,10 +249,10 @@ fn add_type_alias_impl(
 ) {
     let alias_name = type_alias.name(ctx.db).unescaped().to_smol_str();
 
-    let label = format!("type {} =", alias_name);
+    let label = format!("type {alias_name} =");
 
     let mut item = CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label);
-    item.lookup_by(format!("type {}", alias_name))
+    item.lookup_by(format!("type {alias_name}"))
         .set_documentation(type_alias.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
 
@@ -265,10 +265,21 @@ fn add_type_alias_impl(
             };
 
             let start = transformed_ty.syntax().text_range().start();
-            let Some(end) = transformed_ty
-                .eq_token()
-                .map(|tok| tok.text_range().start())
-                .or(transformed_ty.semicolon_token().map(|tok| tok.text_range().start())) else { return };
+
+            let end = if let Some(end) =
+                transformed_ty.colon_token().map(|tok| tok.text_range().start())
+            {
+                end
+            } else if let Some(end) = transformed_ty.eq_token().map(|tok| tok.text_range().start())
+            {
+                end
+            } else if let Some(end) =
+                transformed_ty.semicolon_token().map(|tok| tok.text_range().start())
+            {
+                end
+            } else {
+                return;
+            };
 
             let len = end - start;
             let mut decl = transformed_ty.syntax().text().slice(..len).to_string();
@@ -279,7 +290,7 @@ fn add_type_alias_impl(
 
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snippet = format!("{}$0;", decl);
+                    let snippet = format!("{decl}$0;");
                     item.snippet_edit(cap, TextEdit::replace(replacement_range, snippet));
                 }
                 None => {
@@ -310,10 +321,10 @@ fn add_const_impl(
                 };
 
                 let label = make_const_compl_syntax(&transformed_const, source.file_id.is_macro());
-                let replacement = format!("{} ", label);
+                let replacement = format!("{label} ");
 
                 let mut item = CompletionItem::new(SymbolKind::Const, replacement_range, label);
-                item.lookup_by(format!("const {}", const_name))
+                item.lookup_by(format!("const {const_name}"))
                     .set_documentation(const_.docs(ctx.db))
                     .set_relevance(CompletionRelevance {
                         is_item_from_trait: true,
@@ -322,7 +333,7 @@ fn add_const_impl(
                 match ctx.config.snippet_cap {
                     Some(cap) => item.snippet_edit(
                         cap,
-                        TextEdit::replace(replacement_range, format!("{}$0;", replacement)),
+                        TextEdit::replace(replacement_range, format!("{replacement}$0;")),
                     ),
                     None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
                 };
@@ -834,11 +845,10 @@ trait Test {{
 struct T;
 
 impl Test for T {{
-    {}
-    {}
+    {hint}
+    {next_sibling}
 }}
-"#,
-                    hint, next_sibling
+"#
                 ),
                 &format!(
                     r#"
@@ -850,11 +860,10 @@ trait Test {{
 struct T;
 
 impl Test for T {{
-    {}
-    {}
+    {completed}
+    {next_sibling}
 }}
-"#,
-                    completed, next_sibling
+"#
                 ),
             )
         };
@@ -894,10 +903,9 @@ struct T;
 impl Foo for T {{
     // Comment
     #[bar]
-    {}
+    {hint}
 }}
-"#,
-                    hint
+"#
                 ),
                 &format!(
                     r#"
@@ -911,10 +919,9 @@ struct T;
 impl Foo for T {{
     // Comment
     #[bar]
-    {}
+    {completed}
 }}
-"#,
-                    completed
+"#
                 ),
             )
         };

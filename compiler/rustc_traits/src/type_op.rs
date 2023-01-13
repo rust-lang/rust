@@ -4,8 +4,8 @@ use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable};
-use rustc_middle::ty::{ParamEnvAnd, Predicate, ToPredicate};
-use rustc_middle::ty::{UserSelfTy, UserSubsts};
+use rustc_middle::ty::{ParamEnvAnd, Predicate};
+use rustc_middle::ty::{UserSelfTy, UserSubsts, UserType};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
@@ -50,13 +50,46 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     key: ParamEnvAnd<'tcx, AscribeUserType<'tcx>>,
     span: Option<Span>,
 ) -> Result<(), NoSolution> {
-    let (param_env, AscribeUserType { mir_ty, def_id, user_substs }) = key.into_parts();
-    debug!(
-        "type_op_ascribe_user_type: mir_ty={:?} def_id={:?} user_substs={:?}",
-        mir_ty, def_id, user_substs
-    );
+    let (param_env, AscribeUserType { mir_ty, user_ty }) = key.into_parts();
+    debug!("type_op_ascribe_user_type: mir_ty={:?} user_ty={:?}", mir_ty, user_ty);
     let span = span.unwrap_or(DUMMY_SP);
+    match user_ty {
+        UserType::Ty(user_ty) => relate_mir_and_user_ty(ocx, param_env, span, mir_ty, user_ty)?,
+        UserType::TypeOf(def_id, user_substs) => {
+            relate_mir_and_user_substs(ocx, param_env, span, mir_ty, def_id, user_substs)?
+        }
+    };
+    Ok(())
+}
 
+#[instrument(level = "debug", skip(ocx, param_env, span))]
+fn relate_mir_and_user_ty<'tcx>(
+    ocx: &ObligationCtxt<'_, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    span: Span,
+    mir_ty: Ty<'tcx>,
+    user_ty: Ty<'tcx>,
+) -> Result<(), NoSolution> {
+    let cause = ObligationCause::dummy_with_span(span);
+    let user_ty = ocx.normalize(&cause, param_env, user_ty);
+    ocx.eq(&cause, param_env, mir_ty, user_ty)?;
+
+    // FIXME(#104764): We should check well-formedness before normalization.
+    let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(user_ty.into()));
+    ocx.register_obligation(Obligation::new(ocx.infcx.tcx, cause, param_env, predicate));
+
+    Ok(())
+}
+
+#[instrument(level = "debug", skip(ocx, param_env, span))]
+fn relate_mir_and_user_substs<'tcx>(
+    ocx: &ObligationCtxt<'_, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    span: Span,
+    mir_ty: Ty<'tcx>,
+    def_id: hir::def_id::DefId,
+    user_substs: UserSubsts<'tcx>,
+) -> Result<(), NoSolution> {
     let UserSubsts { user_self_ty, substs } = user_substs;
     let tcx = ocx.infcx.tcx;
     let cause = ObligationCause::dummy_with_span(span);
@@ -91,13 +124,13 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     }
 
     if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
+        let self_ty = ocx.normalize(&cause, param_env, self_ty);
         let impl_self_ty = tcx.bound_type_of(impl_def_id).subst(tcx, substs);
         let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
 
         ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;
 
-        let predicate: Predicate<'tcx> =
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(impl_self_ty.into())).to_predicate(tcx);
+        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(impl_self_ty.into()));
         ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, predicate));
     }
 
@@ -112,8 +145,7 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     // them?  This would only be relevant if some input
     // type were ill-formed but did not appear in `ty`,
     // which...could happen with normalization...
-    let predicate: Predicate<'tcx> =
-        ty::Binder::dummy(ty::PredicateKind::WellFormed(ty.into())).to_predicate(tcx);
+    let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(ty.into()));
     ocx.register_obligation(Obligation::new(tcx, cause, param_env, predicate));
     Ok(())
 }

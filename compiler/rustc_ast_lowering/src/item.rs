@@ -523,7 +523,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //
                 // The first two are produced by recursively invoking
                 // `lower_use_tree` (and indeed there may be things
-                // like `use foo::{a::{b, c}}` and so forth).  They
+                // like `use foo::{a::{b, c}}` and so forth). They
                 // wind up being directly added to
                 // `self.items`. However, the structure of this
                 // function also requires us to return one item, and
@@ -1239,7 +1239,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_constness(&mut self, c: Const) -> hir::Constness {
+    pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {
         match c {
             Const::Yes(_) => hir::Constness::Const,
             Const::No => hir::Constness::NotConst,

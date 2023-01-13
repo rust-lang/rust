@@ -1,7 +1,12 @@
-use crate::{EarlyContext, EarlyLintPass, LintContext};
+use crate::{
+    lints::{
+        HiddenUnicodeCodepointsDiag, HiddenUnicodeCodepointsDiagLabels,
+        HiddenUnicodeCodepointsDiagSub,
+    },
+    EarlyContext, EarlyLintPass, LintContext,
+};
 use ast::util::unicode::{contains_text_flow_control_chars, TEXT_FLOW_CONTROL_CHARS};
 use rustc_ast as ast;
-use rustc_errors::{fluent, Applicability, SuggestionStyle};
 use rustc_span::{BytePos, Span, Symbol};
 
 declare_lint! {
@@ -60,55 +65,19 @@ impl HiddenUnicodeCodepoints {
             })
             .collect();
 
-        cx.struct_span_lint(
+        let count = spans.len();
+        let labels = point_at_inner_spans
+            .then_some(HiddenUnicodeCodepointsDiagLabels { spans: spans.clone() });
+        let sub = if point_at_inner_spans && !spans.is_empty() {
+            HiddenUnicodeCodepointsDiagSub::Escape { spans }
+        } else {
+            HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
+        };
+
+        cx.emit_spanned_lint(
             TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
             span,
-            fluent::lint_hidden_unicode_codepoints,
-            |lint| {
-                lint.set_arg("label", label);
-                lint.set_arg("count", spans.len());
-                lint.span_label(span, fluent::label);
-                lint.note(fluent::note);
-                if point_at_inner_spans {
-                    for (c, span) in &spans {
-                        lint.span_label(*span, format!("{:?}", c));
-                    }
-                }
-                if point_at_inner_spans && !spans.is_empty() {
-                    lint.multipart_suggestion_with_style(
-                        fluent::suggestion_remove,
-                        spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
-                        Applicability::MachineApplicable,
-                        SuggestionStyle::HideCodeAlways,
-                    );
-                    lint.multipart_suggestion(
-                        fluent::suggestion_escape,
-                        spans
-                            .into_iter()
-                            .map(|(c, span)| {
-                                let c = format!("{:?}", c);
-                                (span, c[1..c.len() - 1].to_string())
-                            })
-                            .collect(),
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
-                    // should do the same here to provide the same good suggestions as we do for
-                    // literals above.
-                    lint.set_arg(
-                        "escaped",
-                        spans
-                            .into_iter()
-                            .map(|(c, _)| format!("{:?}", c))
-                            .collect::<Vec<String>>()
-                            .join(", "),
-                    );
-                    lint.note(fluent::suggestion_remove);
-                    lint.note(fluent::no_suggestion_note_escape);
-                }
-                lint
-            },
+            HiddenUnicodeCodepointsDiag { label, count, span_label: span, labels, sub },
         );
     }
 }

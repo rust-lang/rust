@@ -37,6 +37,21 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> OnUnimplementedNote;
 }
 
+/// The symbols which are always allowed in a format string
+static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
+    kw::SelfUpper,
+    sym::ItemContext,
+    sym::from_method,
+    sym::from_desugaring,
+    sym::direct,
+    sym::cause,
+    sym::integral,
+    sym::integer_,
+    sym::float,
+    sym::_Self,
+    sym::crate_local,
+];
+
 impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
@@ -543,38 +558,26 @@ impl<'tcx> OnUnimplementedFormatString {
                 Piece::NextArgument(a) => match a.position {
                     Position::ArgumentNamed(s) => {
                         match Symbol::intern(s) {
-                            // `{Self}` is allowed
-                            kw::SelfUpper => (),
                             // `{ThisTraitsName}` is allowed
                             s if s == trait_name => (),
-                            // `{from_method}` is allowed
-                            sym::from_method => (),
-                            // `{from_desugaring}` is allowed
-                            sym::from_desugaring => (),
-                            // `{ItemContext}` is allowed
-                            sym::ItemContext => (),
-                            // `{integral}` and `{integer}` and `{float}` are allowed
-                            sym::integral | sym::integer_ | sym::float => (),
+                            s if ALLOWED_FORMAT_SYMBOLS.contains(&s) => (),
                             // So is `{A}` if A is a type parameter
-                            s => match generics.params.iter().find(|param| param.name == s) {
-                                Some(_) => (),
-                                None => {
-                                    let reported = struct_span_err!(
-                                        tcx.sess,
-                                        span,
-                                        E0230,
-                                        "there is no parameter `{}` on {}",
-                                        s,
-                                        if trait_def_id == item_def_id {
-                                            format!("trait `{}`", trait_name)
-                                        } else {
-                                            "impl".to_string()
-                                        }
-                                    )
-                                    .emit();
-                                    result = Err(reported);
-                                }
-                            },
+                            s if generics.params.iter().any(|param| param.name == s) => (),
+                            s => {
+                                result = Err(struct_span_err!(
+                                    tcx.sess,
+                                    span,
+                                    E0230,
+                                    "there is no parameter `{}` on {}",
+                                    s,
+                                    if trait_def_id == item_def_id {
+                                        format!("trait `{}`", trait_name)
+                                    } else {
+                                        "impl".to_string()
+                                    }
+                                )
+                                .emit());
+                            }
                         }
                     }
                     // `{:1}` and `{}` are not to be used

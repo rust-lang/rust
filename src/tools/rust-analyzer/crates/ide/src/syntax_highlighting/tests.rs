@@ -1028,6 +1028,26 @@ macro_rules! test {}
     let _ = analysis.highlight(HL_CONFIG, file_id).unwrap();
 }
 
+#[test]
+fn highlight_callable_no_crash() {
+    // regression test for #13838.
+    let (analysis, file_id) = fixture::file(
+        r#"
+//- minicore: fn, sized
+impl<A, F: ?Sized> FnOnce<A> for &F
+where
+    F: Fn<A>,
+{
+    type Output = F::Output;
+}
+
+trait Trait {}
+fn foo(x: &fn(&dyn Trait)) {}
+"#,
+    );
+    let _ = analysis.highlight(HL_CONFIG, file_id).unwrap();
+}
+
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.

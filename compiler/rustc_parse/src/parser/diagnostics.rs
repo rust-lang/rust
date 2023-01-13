@@ -12,9 +12,10 @@ use crate::errors::{
     IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, ParenthesesInForHead,
     ParenthesesInForHeadSugg, PatternMethodParamWithoutBody, QuestionMarkInType,
     QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
-    StructLiteralBodyWithoutPathSugg, SuggEscapeToUseAsIdentifier, SuggRemoveComma,
-    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead,
+    StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
+    SuggEscapeToUseAsIdentifier, SuggRemoveComma, UnexpectedConstInGenericParam,
+    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
+    UseEqInstead,
 };
 
 use crate::lexer::UnmatchedBrace;
@@ -623,12 +624,15 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         s: BlockCheckMode,
+        maybe_struct_name: token::Token,
+        can_be_struct_literal: bool,
     ) -> Option<PResult<'a, P<Block>>> {
         if self.token.is_ident() && self.look_ahead(1, |t| t == &token::Colon) {
             // We might be having a struct literal where people forgot to include the path:
             // fn foo() -> Foo {
             //     field: value,
             // }
+            info!(?maybe_struct_name, ?self.token);
             let mut snapshot = self.create_snapshot_for_diagnostic();
             let path = Path {
                 segments: ThinVec::new(),
@@ -648,13 +652,6 @@ impl<'a> Parser<'a> {
                     //     field: value,
                     // } }
                     err.delay_as_bug();
-                    self.sess.emit_err(StructLiteralBodyWithoutPath {
-                        span: expr.span,
-                        sugg: StructLiteralBodyWithoutPathSugg {
-                            before: expr.span.shrink_to_lo(),
-                            after: expr.span.shrink_to_hi(),
-                        },
-                    });
                     self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
                         vec![self.mk_stmt_err(expr.span)],
@@ -662,7 +659,25 @@ impl<'a> Parser<'a> {
                         lo.to(self.prev_token.span),
                     );
                     tail.could_be_bare_literal = true;
-                    Ok(tail)
+                    if maybe_struct_name.is_ident() && can_be_struct_literal {
+                        // Account for `if Example { a: one(), }.is_pos() {}`.
+                        Err(self.sess.create_err(StructLiteralNeedingParens {
+                            span: maybe_struct_name.span.to(expr.span),
+                            sugg: StructLiteralNeedingParensSugg {
+                                before: maybe_struct_name.span.shrink_to_lo(),
+                                after: expr.span.shrink_to_hi(),
+                            },
+                        }))
+                    } else {
+                        self.sess.emit_err(StructLiteralBodyWithoutPath {
+                            span: expr.span,
+                            sugg: StructLiteralBodyWithoutPathSugg {
+                                before: expr.span.shrink_to_lo(),
+                                after: expr.span.shrink_to_hi(),
+                            },
+                        });
+                        Ok(tail)
+                    }
                 }
                 (Err(err), Ok(tail)) => {
                     // We have a block tail that contains a somehow valid type ascription expr.

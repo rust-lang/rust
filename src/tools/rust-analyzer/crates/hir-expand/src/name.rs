@@ -62,7 +62,7 @@ impl<'a> UnescapedName<'a> {
                     it.clone()
                 }
             }
-            Repr::TupleField(it) => SmolStr::new(&it.to_string()),
+            Repr::TupleField(it) => SmolStr::new(it.to_string()),
         }
     }
 }
@@ -139,7 +139,7 @@ impl Name {
     pub fn to_smol_str(&self) -> SmolStr {
         match &self.0 {
             Repr::Text(it) => it.clone(),
-            Repr::TupleField(it) => SmolStr::new(&it.to_string()),
+            Repr::TupleField(it) => SmolStr::new(it.to_string()),
         }
     }
 
@@ -338,44 +338,6 @@ pub mod known {
         test_case,
         recursion_limit,
         feature,
-        // Safe intrinsics
-        abort,
-        add_with_overflow,
-        black_box,
-        bitreverse,
-        bswap,
-        caller_location,
-        ctlz,
-        ctpop,
-        cttz,
-        discriminant_value,
-        forget,
-        likely,
-        maxnumf32,
-        maxnumf64,
-        min_align_of_val,
-        min_align_of,
-        minnumf32,
-        minnumf64,
-        mul_with_overflow,
-        needs_drop,
-        ptr_guaranteed_eq,
-        ptr_guaranteed_ne,
-        rotate_left,
-        rotate_right,
-        rustc_peek,
-        saturating_add,
-        saturating_sub,
-        size_of_val,
-        size_of,
-        sub_with_overflow,
-        type_id,
-        type_name,
-        unlikely,
-        variant_count,
-        wrapping_add,
-        wrapping_mul,
-        wrapping_sub,
         // known methods of lang items
         eq,
         ne,
@@ -419,6 +381,8 @@ pub mod known {
         shr,
         sub_assign,
         sub,
+        unsafe_cell,
+        va_list
     );
 
     // self/Self cannot be used as an identifier

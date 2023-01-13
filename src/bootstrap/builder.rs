@@ -191,9 +191,9 @@ pub enum PathSet {
     /// A "suite" of paths.
     ///
     /// These can match as a path suffix (like `Set`), or as a prefix. For
-    /// example, a command-line value of `src/test/ui/abi/variadic-ffi.rs`
-    /// will match `src/test/ui`. A command-line value of `ui` would also
-    /// match `src/test/ui`.
+    /// example, a command-line value of `tests/ui/abi/variadic-ffi.rs`
+    /// will match `tests/ui`. A command-line value of `ui` would also
+    /// match `tests/ui`.
     Suite(TaskPath),
 }
 

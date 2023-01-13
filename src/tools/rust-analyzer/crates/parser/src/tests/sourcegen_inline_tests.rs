@@ -23,7 +23,7 @@ fn sourcegen_parser_tests() {
         // ok is never actually read, but it needs to be specified to create a Test in existing_tests
         let existing = existing_tests(&tests_dir, true);
         for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
-            panic!("Test is deleted: {}", t);
+            panic!("Test is deleted: {t}");
         }
 
         let mut new_idx = existing.len() + 1;
@@ -31,7 +31,7 @@ fn sourcegen_parser_tests() {
             let path = match existing.get(name) {
                 Some((path, _test)) => path.clone(),
                 None => {
-                    let file_name = format!("{:04}_{}.rs", new_idx, name);
+                    let file_name = format!("{new_idx:04}_{name}.rs");
                     new_idx += 1;
                     tests_dir.join(file_name)
                 }
@@ -116,7 +116,7 @@ fn existing_tests(dir: &Path, ok: bool) -> HashMap<String, (PathBuf, Test)> {
         let text = fs::read_to_string(&path).unwrap();
         let test = Test { name: name.clone(), text, ok };
         if let Some(old) = res.insert(name, (path, test)) {
-            println!("Duplicate test: {:?}", old);
+            println!("Duplicate test: {old:?}");
         }
     }
     res

@@ -163,7 +163,7 @@ fn _format(
 ) -> Option<String> {
     use ide_db::base_db::{FileLoader, SourceDatabase};
     // hack until we get hygiene working (same character amount to preserve formatting as much as possible)
-    const DOLLAR_CRATE_REPLACE: &str = &"__r_a_";
+    const DOLLAR_CRATE_REPLACE: &str = "__r_a_";
     let expansion = expansion.replace("$crate", DOLLAR_CRATE_REPLACE);
     let (prefix, suffix) = match kind {
         SyntaxKind::MACRO_PAT => ("fn __(", ": u32);"),

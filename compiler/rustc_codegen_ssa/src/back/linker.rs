@@ -544,7 +544,7 @@ impl<'a> Linker for GccLinker<'a> {
         // link times negatively.
         //
         // -dead_strip can't be part of the pre_link_args because it's also used
-        // for partial linking when using multiple codegen units (-r).  So we
+        // for partial linking when using multiple codegen units (-r). So we
         // insert it here.
         if self.sess.target.is_like_osx {
             self.linker_arg("-dead_strip");

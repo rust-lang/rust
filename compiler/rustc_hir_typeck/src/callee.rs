@@ -1,4 +1,4 @@
-use super::method::probe::{IsSuggestion, Mode, ProbeScope};
+use super::method::probe::ProbeScope;
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
@@ -8,6 +8,7 @@ use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, 
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::{
     infer,
     traits::{self, Obligation},
@@ -25,7 +26,6 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -496,15 +496,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
             let Ok(pick) = self
-            .probe_for_name(
-                Mode::MethodCall,
+            .lookup_probe_for_diagnostic(
                 segment.ident,
-                IsSuggestion(true),
                 callee_ty,
-                call_expr.hir_id,
+                call_expr,
                 // We didn't record the in scope traits during late resolution
                 // so we need to probe AllTraits unfortunately
                 ProbeScope::AllTraits,
+                expected.only_has_type(self),
             ) else {
                 return None;
             };

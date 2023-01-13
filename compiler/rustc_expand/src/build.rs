@@ -533,6 +533,7 @@ impl<'a> ExtCtxt<'a> {
             ast::ExprKind::Closure(Box::new(ast::Closure {
                 binder: ast::ClosureBinder::NotPresent,
                 capture_clause: ast::CaptureBy::Ref,
+                constness: ast::Const::No,
                 asyncness: ast::Async::No,
                 movability: ast::Movability::Movable,
                 fn_decl,

@@ -26,6 +26,7 @@ use crate::utils::{last_line_width, left_most_sub_expr, stmt_expr, NodeIdExt};
 
 pub(crate) fn rewrite_closure(
     binder: &ast::ClosureBinder,
+    constness: ast::Const,
     capture: ast::CaptureBy,
     is_async: &ast::Async,
     movability: ast::Movability,
@@ -38,7 +39,7 @@ pub(crate) fn rewrite_closure(
     debug!("rewrite_closure {:?}", body);
 
     let (prefix, extra_offset) = rewrite_closure_fn_decl(
-        binder, capture, is_async, movability, fn_decl, body, span, context, shape,
+        binder, constness, capture, is_async, movability, fn_decl, body, span, context, shape,
     )?;
     // 1 = space between `|...|` and body.
     let body_shape = shape.offset_left(extra_offset)?;
@@ -230,6 +231,7 @@ fn rewrite_closure_block(
 // Return type is (prefix, extra_offset)
 fn rewrite_closure_fn_decl(
     binder: &ast::ClosureBinder,
+    constness: ast::Const,
     capture: ast::CaptureBy,
     asyncness: &ast::Async,
     movability: ast::Movability,
@@ -250,6 +252,12 @@ fn rewrite_closure_fn_decl(
         ast::ClosureBinder::NotPresent => "".to_owned(),
     };
 
+    let const_ = if matches!(constness, ast::Const::Yes(_)) {
+        "const "
+    } else {
+        ""
+    };
+
     let immovable = if movability == ast::Movability::Static {
         "static "
     } else {
@@ -264,7 +272,7 @@ fn rewrite_closure_fn_decl(
     // 4 = "|| {".len(), which is overconservative when the closure consists of
     // a single expression.
     let nested_shape = shape
-        .shrink_left(binder.len() + immovable.len() + is_async.len() + mover.len())?
+        .shrink_left(binder.len() + const_.len() + immovable.len() + is_async.len() + mover.len())?
         .sub_width(4)?;
 
     // 1 = |
@@ -302,7 +310,10 @@ fn rewrite_closure_fn_decl(
         .tactic(tactic)
         .preserve_newline(true);
     let list_str = write_list(&item_vec, &fmt)?;
-    let mut prefix = format!("{}{}{}{}|{}|", binder, immovable, is_async, mover, list_str);
+    let mut prefix = format!(
+        "{}{}{}{}{}|{}|",
+        binder, const_, immovable, is_async, mover, list_str
+    );
 
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
@@ -329,6 +340,7 @@ pub(crate) fn rewrite_last_closure(
     if let ast::ExprKind::Closure(ref closure) = expr.kind {
         let ast::Closure {
             ref binder,
+            constness,
             capture_clause,
             ref asyncness,
             movability,
@@ -349,6 +361,7 @@ pub(crate) fn rewrite_last_closure(
         };
         let (prefix, extra_offset) = rewrite_closure_fn_decl(
             binder,
+            constness,
             capture_clause,
             asyncness,
             movability,

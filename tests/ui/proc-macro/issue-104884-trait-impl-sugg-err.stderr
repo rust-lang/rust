@@ -1,0 +1,39 @@
+error[E0277]: can't compare `PriorityQueue<T>` with `PriorityQueue<T>`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:13:10
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |          ^^^^^^^^^^ no implementation for `PriorityQueue<T> == PriorityQueue<T>`
+   |
+   = help: the trait `PartialEq` is not implemented for `PriorityQueue<T>`
+note: required by a bound in `PartialOrd`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `PriorityQueue<T>: Eq` is not satisfied
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:13:22
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |                      ^^^^^^^ the trait `Eq` is not implemented for `PriorityQueue<T>`
+   |
+note: required by a bound in `Ord`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the derive macro `AddImpl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: can't compare `T` with `T`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:13:22
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |                      ^^^^^^^ no implementation for `T < T` and `T > T`
+   |
+note: required for `PriorityQueue<T>` to implement `PartialOrd`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:13:10
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |          ^^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+note: required by a bound in `Ord`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the derive macro `AddImpl` which comes from the expansion of the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

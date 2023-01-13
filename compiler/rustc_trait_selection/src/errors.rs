@@ -1,7 +1,6 @@
 use rustc_errors::{fluent, ErrorGuaranteed, Handler, IntoDiagnostic};
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::{self, PolyTraitRef, Ty};
-use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -19,18 +18,6 @@ pub struct UnableToConstructConstantValue<'a> {
     #[primary_span]
     pub span: Span,
     pub unevaluated: ty::UnevaluatedConst<'a>,
-}
-
-#[derive(Diagnostic)]
-#[help]
-#[diag(trait_selection_auto_deref_reached_recursion_limit, code = "E0055")]
-pub struct AutoDerefReachedRecursionLimit<'a> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub ty: Ty<'a>,
-    pub suggested_limit: Limit,
-    pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]

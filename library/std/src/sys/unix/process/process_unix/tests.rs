@@ -3,7 +3,7 @@ use crate::panic::catch_unwind;
 use crate::process::Command;
 
 // Many of the other aspects of this situation, including heap alloc concurrency
-// safety etc., are tested in src/test/ui/process/process-panic-after-fork.rs
+// safety etc., are tested in tests/ui/process/process-panic-after-fork.rs
 
 #[test]
 fn exitstatus_display_tests() {

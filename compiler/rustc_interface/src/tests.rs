@@ -715,7 +715,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(asm_comments, true);
     tracked!(assume_incomplete_release, true);
     tracked!(binary_dep_depinfo, true);
-    tracked!(box_noalias, Some(false));
+    tracked!(box_noalias, false);
     tracked!(
         branch_protection,
         Some(BranchProtection {
@@ -754,7 +754,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
-    tracked!(mutable_noalias, Some(true));
+    tracked!(mutable_noalias, false);
     tracked!(no_generate_arange_section, true);
     tracked!(no_jump_tables, true);
     tracked!(no_link, true);

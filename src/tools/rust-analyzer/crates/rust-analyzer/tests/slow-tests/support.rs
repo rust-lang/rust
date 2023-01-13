@@ -216,7 +216,7 @@ impl Server {
     fn send_request_(&self, r: Request) -> Value {
         let id = r.id.clone();
         self.client.sender.send(r.clone().into()).unwrap();
-        while let Some(msg) = self.recv().unwrap_or_else(|Timeout| panic!("timeout: {:?}", r)) {
+        while let Some(msg) = self.recv().unwrap_or_else(|Timeout| panic!("timeout: {r:?}")) {
             match msg {
                 Message::Request(req) => {
                     if req.method == "client/registerCapability" {
@@ -228,19 +228,19 @@ impl Server {
                             continue;
                         }
                     }
-                    panic!("unexpected request: {:?}", req)
+                    panic!("unexpected request: {req:?}")
                 }
                 Message::Notification(_) => (),
                 Message::Response(res) => {
                     assert_eq!(res.id, id);
                     if let Some(err) = res.error {
-                        panic!("error response: {:#?}", err);
+                        panic!("error response: {err:#?}");
                     }
                     return res.result.unwrap();
                 }
             }
         }
-        panic!("no response for {:?}", r);
+        panic!("no response for {r:?}");
     }
     pub(crate) fn wait_until_workspace_is_loaded(self) -> Server {
         self.wait_for_message_cond(1, &|msg: &Message| match msg {

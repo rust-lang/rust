@@ -148,7 +148,7 @@ rustc_index::newtype_index! {
     /// that is, within a `hir::Item`, `hir::TraitItem`, or `hir::ImplItem`. There is no
     /// guarantee that the numerical value of a given `ItemLocalId` corresponds to
     /// the node's position within the owning item in any way, but there is a
-    /// guarantee that the `LocalItemId`s within an owner occupy a dense range of
+    /// guarantee that the `ItemLocalId`s within an owner occupy a dense range of
     /// integers starting at zero, so a mapping that maps all or most nodes within
     /// an "item-like" to something else can be implemented by a `Vec` instead of a
     /// tree or hash map.
@@ -161,7 +161,7 @@ impl ItemLocalId {
     pub const INVALID: ItemLocalId = ItemLocalId::MAX;
 }
 
-// Safety: Ord is implement as just comparing the LocalItemId's numerical
+// Safety: Ord is implement as just comparing the ItemLocalId's numerical
 // values and these are not changed by (de-)serialization.
 unsafe impl StableOrd for ItemLocalId {}
 

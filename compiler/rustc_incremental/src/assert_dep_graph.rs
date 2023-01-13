@@ -368,7 +368,7 @@ fn walk_between<'q>(
 ) -> FxHashSet<DepKind> {
     // This is a bit tricky. We want to include a node only if it is:
     // (a) reachable from a source and (b) will reach a target. And we
-    // have to be careful about cycles etc.  Luckily efficiency is not
+    // have to be careful about cycles etc. Luckily efficiency is not
     // a big concern!
 
     #[derive(Copy, Clone, PartialEq)]

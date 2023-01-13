@@ -2,6 +2,10 @@ parse_struct_literal_body_without_path =
     struct literal body without path
     .suggestion = you might have forgotten to add the struct literal inside the block
 
+parse_struct_literal_needing_parens =
+    invalid struct literal
+    .suggestion = you might need to surround the struct literal in parentheses
+
 parse_maybe_report_ambiguous_plus =
     ambiguous `+` in a type
     .suggestion = use parentheses to disambiguate
@@ -368,3 +372,9 @@ parse_maybe_fn_typo_with_impl = you might have meant to write `impl` instead of 
 
 parse_expected_fn_path_found_fn_keyword = expected identifier, found keyword `fn`
     .suggestion = use `Fn` to refer to the trait
+
+parse_where_clause_before_tuple_struct_body = where clauses are not allowed before tuple struct bodies
+    .label = unexpected where clause
+    .name_label = while parsing this tuple struct
+    .body_label = the struct body
+    .suggestion = move the body before the where clause

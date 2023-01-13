@@ -6,6 +6,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
+use rustc_index::bit_set::FiniteBitSet;
 use rustc_macros::HashStable;
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::Symbol;
@@ -711,7 +712,7 @@ fn polymorphize<'tcx>(
     }
 
     InternalSubsts::for_item(tcx, def_id, |param, _| {
-        let is_unused = unused.contains(param.index).unwrap_or(false);
+        let is_unused = unused.is_unused(param.index);
         debug!("polymorphize: param={:?} is_unused={:?}", param, is_unused);
         match param.kind {
             // Upvar case: If parameter is a type parameter..
@@ -733,7 +734,7 @@ fn polymorphize<'tcx>(
             // Simple case: If parameter is a const or type parameter..
             ty::GenericParamDefKind::Const { .. } | ty::GenericParamDefKind::Type { .. } if
                 // ..and is within range and unused..
-                unused.contains(param.index).unwrap_or(false) =>
+                unused.is_unused(param.index) =>
                     // ..then use the identity for this parameter.
                     tcx.mk_param_from_def(param),
 
@@ -755,14 +756,14 @@ fn needs_fn_once_adapter_shim(
             Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
-            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
+            // The closure fn `llfn` is a `fn(&self, ...)`. We want a
             // `fn(&mut self, ...)`. In fact, at codegen time, these are
             // basically the same thing, so we can just return llfn.
             Ok(false)
         }
         (ty::ClosureKind::Fn | ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
             // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
-            // self, ...)`.  We want a `fn(self, ...)`. We can produce
+            // self, ...)`. We want a `fn(self, ...)`. We can produce
             // this by doing something like:
             //
             //     fn call_once(self, ...) { call_mut(&self, ...) }
@@ -772,5 +773,38 @@ fn needs_fn_once_adapter_shim(
             Ok(true)
         }
         (ty::ClosureKind::FnMut | ty::ClosureKind::FnOnce, _) => Err(()),
+    }
+}
+
+// Set bits represent unused generic parameters.
+// An empty set indicates that all parameters are used.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Decodable, Encodable, HashStable)]
+pub struct UnusedGenericParams(FiniteBitSet<u32>);
+
+impl UnusedGenericParams {
+    pub fn new_all_unused(amount: u32) -> Self {
+        let mut bitset = FiniteBitSet::new_empty();
+        bitset.set_range(0..amount);
+        Self(bitset)
+    }
+
+    pub fn new_all_used() -> Self {
+        Self(FiniteBitSet::new_empty())
+    }
+
+    pub fn mark_used(&mut self, idx: u32) {
+        self.0.clear(idx);
+    }
+
+    pub fn is_unused(&self, idx: u32) -> bool {
+        self.0.contains(idx).unwrap_or(false)
+    }
+
+    pub fn is_used(&self, idx: u32) -> bool {
+        !self.is_unused(idx)
+    }
+
+    pub fn all_used(&self) -> bool {
+        self.0.is_empty()
     }
 }

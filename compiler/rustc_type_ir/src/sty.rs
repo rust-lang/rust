@@ -807,7 +807,7 @@ where
 ///
 /// Note that inference variables and bound regions are not included
 /// in this diagram. In the case of inference variables, they should
-/// be inferred to some other region from the diagram.  In the case of
+/// be inferred to some other region from the diagram. In the case of
 /// bound regions, they are excluded because they don't make sense to
 /// include -- the diagram indicates the relationship between free
 /// regions.

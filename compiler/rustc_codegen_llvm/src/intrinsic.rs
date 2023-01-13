@@ -654,7 +654,7 @@ fn codegen_gnu_try<'ll>(
         // Type indicator for the exception being thrown.
         //
         // The first value in this tuple is a pointer to the exception object
-        // being thrown.  The second value is a "selector" indicating which of
+        // being thrown. The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
         bx.switch_to_block(catch);
@@ -718,7 +718,7 @@ fn codegen_emcc_try<'ll>(
         // Type indicator for the exception being thrown.
         //
         // The first value in this tuple is a pointer to the exception object
-        // being thrown.  The second value is a "selector" indicating which of
+        // being thrown. The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         bx.switch_to_block(catch);
         let tydesc = bx.eh_catch_typeinfo();

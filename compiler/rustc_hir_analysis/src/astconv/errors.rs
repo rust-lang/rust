@@ -267,7 +267,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
                 // This would otherwise cause an invalid suggestion. For an example, look at
-                // `src/test/ui/issues/issue-28344.rs` where instead of the following:
+                // `tests/ui/issues/issue-28344.rs` where instead of the following:
                 //
                 //   error[E0191]: the value of the associated type `Output`
                 //                 (from trait `std::ops::BitXor`) must be specified
@@ -331,7 +331,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             if potential_assoc_types.len() == assoc_items.len() {
                 // When the amount of missing associated types equals the number of
-                // extra type arguments present.  A suggesting to replace the generic args with
+                // extra type arguments present. A suggesting to replace the generic args with
                 // associated types is already emitted.
                 already_has_generics_args_suggestion = true;
             } else if let (Ok(snippet), false) =

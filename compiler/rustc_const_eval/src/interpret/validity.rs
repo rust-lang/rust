@@ -175,7 +175,7 @@ fn write_path(out: &mut String, path: &[PathElem]) {
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
             // `.<deref>` does not match Rust syntax, but it is more readable for long paths -- and
-            // some of the other items here also are not Rust syntax.  Actually we can't
+            // some of the other items here also are not Rust syntax. Actually we can't
             // even use the usual syntax because we are just showing the projections,
             // not the root.
             Deref => write!(out, ".<deref>"),
@@ -484,7 +484,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     }
 
     /// Check if this is a value of primitive type, and if yes check the validity of the value
-    /// at that type.  Return `true` if the type is indeed primitive.
+    /// at that type. Return `true` if the type is indeed primitive.
     fn try_visit_primitive(
         &mut self,
         value: &OpTy<'tcx, M::Provenance>,
@@ -623,7 +623,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // Can only happen during CTFE.
                 // We support 2 kinds of ranges here: full range, and excluding zero.
                 if start == 1 && end == max_value {
-                    // Only null is the niche.  So make sure the ptr is NOT null.
+                    // Only null is the niche. So make sure the ptr is NOT null.
                     if self.ecx.scalar_may_be_null(scalar)? {
                         throw_validation_failure!(self.path,
                             { "a potentially null pointer" }
@@ -759,7 +759,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // Recursively walk the value at its type.
         self.walk_value(op)?;
 
-        // *After* all of this, check the ABI.  We need to check the ABI to handle
+        // *After* all of this, check the ABI. We need to check the ABI to handle
         // types like `NonNull` where the `Scalar` info is more restrictive than what
         // the fields say (`rustc_layout_scalar_valid_range_start`).
         // But in most cases, this will just propagate what the fields say,
@@ -857,10 +857,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // Optimization: we just check the entire range at once.
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
-                // In run-time mode, we accept pointers in here.  This is actually more
+                // In run-time mode, we accept pointers in here. This is actually more
                 // permissive than a per-element check would be, e.g., we accept
                 // a &[u8] that contains a pointer even though bytewise checking would
-                // reject it.  However, that's good: We don't inherently want
+                // reject it. However, that's good: We don't inherently want
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
                 // We also accept uninit, for consistency with the slow path.

@@ -82,6 +82,7 @@ pub fn collect_lib_features(base_src_path: &Path) -> Features {
 
 pub fn check(
     src_path: &Path,
+    tests_path: &Path,
     compiler_path: &Path,
     lib_path: &Path,
     bad: &mut bool,
@@ -95,10 +96,10 @@ pub fn check(
 
     walk_many(
         &[
-            &src_path.join("test/ui"),
-            &src_path.join("test/ui-fulldeps"),
-            &src_path.join("test/rustdoc-ui"),
-            &src_path.join("test/rustdoc"),
+            &tests_path.join("ui"),
+            &tests_path.join("ui-fulldeps"),
+            &tests_path.join("rustdoc-ui"),
+            &tests_path.join("rustdoc"),
         ],
         &mut filter_dirs,
         &mut |entry, contents| {
@@ -480,7 +481,7 @@ fn map_lib_features(
 ) {
     walk(
         base_src_path,
-        &mut |path| filter_dirs(path) || path.ends_with("src/test"),
+        &mut |path| filter_dirs(path) || path.ends_with("tests"),
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();

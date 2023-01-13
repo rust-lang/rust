@@ -38,34 +38,12 @@ fn foo() {
     }
 
     #[test]
-    fn try_blocks_are_borders() {
-        check_diagnostics(
-            r#"
-fn foo() {
-    'a: loop {
-        try {
-                break;
-              //^^^^^ error: break outside of loop
-                break 'a;
-              //^^^^^^^^ error: break outside of loop
-                continue;
-              //^^^^^^^^ error: continue outside of loop
-                continue 'a;
-              //^^^^^^^^^^^ error: continue outside of loop
-        };
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
     fn async_blocks_are_borders() {
         check_diagnostics(
             r#"
 fn foo() {
     'a: loop {
-        try {
+        async {
                 break;
               //^^^^^ error: break outside of loop
                 break 'a;
@@ -87,7 +65,7 @@ fn foo() {
             r#"
 fn foo() {
     'a: loop {
-        try {
+        || {
                 break;
               //^^^^^ error: break outside of loop
                 break 'a;
@@ -115,6 +93,24 @@ fn foo() {
             continue;
             continue 'a;
         }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn try_blocks_pass_through() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    'a: loop {
+        try {
+                break;
+                break 'a;
+                continue;
+                continue 'a;
+        };
     }
 }
 "#,

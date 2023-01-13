@@ -1,0 +1,40 @@
+error[E0277]: `[async fn body@$DIR/async.rs:14:29: 16:2]` is not a future
+LL |LL | |LL | | }
+
+
+error[E0277]: the size for values of type `<[async fn body@$DIR/async.rs:14:29: 16:2] as Future>::Output` cannot be known at compilation time
+LL |LL | |LL | | }
+
+
+error[E0277]: `[async fn body@$DIR/async.rs:14:29: 16:2]` is not a future
+LL | async fn foo(x: u32) -> u32 {
+
+error: internal compiler error: compiler/rustc_trait_selection/src/traits/error_reporting/mod.rs:1114:25: projection clauses should be implied from elsewhere. obligation: `Obligation(predicate=Binder(ProjectionPredicate(AliasTy { substs: [[async fn body@$DIR/async.rs:14:29: 16:2]], def_id: ...), _use_mk_alias_ty_instead: () }, Term::Ty(u32)), []), depth=0)`
+LL | async fn foo(x: u32) -> u32 {
+
+
+stack backtrace:
+
+
+
+
+
+
+
+
+
+query stack during panic:
+#0 [typeck] type-checking `foo`
+#1 [thir_body] building THIR for `foo`
+#2 [mir_built] building MIR for `foo`
+#3 [unsafety_check_result] unsafety-checking `foo`
+#4 [mir_const] preparing `foo` for borrow checking
+#5 [mir_promoted] processing MIR for `foo`
+#6 [mir_borrowck] borrow-checking `foo`
+#7 [type_of] computing type of `foo::{opaque#0}`
+#8 [check_mod_item_types] checking item types in top-level module
+#9 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

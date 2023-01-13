@@ -433,7 +433,7 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, ut::NoError> {
         match (value1, value2) {
             // We never equate two type variables, both of which
-            // have known types.  Instead, we recursively equate
+            // have known types. Instead, we recursively equate
             // those types.
             (&TypeVariableValue::Known { .. }, &TypeVariableValue::Known { .. }) => {
                 bug!("equating two type variables, both of which have known types")

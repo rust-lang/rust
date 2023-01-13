@@ -487,13 +487,13 @@ Arguments:
     This subcommand accepts a number of paths to test directories that
     should be compiled and run. For example:
 
-        ./x.py test src/test/ui
+        ./x.py test tests/ui
         ./x.py test library/std --test-args hash_map
         ./x.py test library/std --stage 0 --no-doc
-        ./x.py test src/test/ui --bless
-        ./x.py test src/test/ui --compare-mode chalk
+        ./x.py test tests/ui --bless
+        ./x.py test tests/ui --compare-mode chalk
 
-    Note that `test src/test/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
+    Note that `test tests/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
     just like `build library/std --stage N` it tests the compiler produced by the previous
     stage.
 

@@ -5,8 +5,8 @@ pub fn opts() -> TargetOptions {
         LinkerFlavor::Unix(Cc::Yes),
         &[
             // The illumos libc contains a stack unwinding implementation, as
-            // does libgcc_s.  The latter implementation includes several
-            // additional symbols that are not always in base libc.  To force
+            // does libgcc_s. The latter implementation includes several
+            // additional symbols that are not always in base libc. To force
             // the consistent use of just one unwinder, we ensure libc appears
             // after libgcc_s in the NEEDED list for the resultant binary by
             // ignoring any attempts to add it as a dynamic dependency until the
@@ -17,7 +17,7 @@ pub fn opts() -> TargetOptions {
             "-lc",
             // LLVM will insert calls to the stack protector functions
             // "__stack_chk_fail" and "__stack_chk_guard" into code in native
-            // object files.  Some platforms include these symbols directly in
+            // object files. Some platforms include these symbols directly in
             // libc, but at least historically these have been provided in
             // libssp.so on illumos and Solaris systems.
             "-lssp",
@@ -40,16 +40,16 @@ pub fn opts() -> TargetOptions {
         // cleanup handlers (in C, this would be something along the lines of:
         // void register_callback(void (*fn)(void *), void *arg);
         // (see src/libstd/sys/unix/fast_thread_local.rs) that is currently
-        // missing in illumos.  For now at least, we must fallback to using
+        // missing in illumos. For now at least, we must fallback to using
         // pthread_{get,set}specific.
         //has_thread_local: true,
 
         // FIXME: Currently, rust is invoking cc to link, which ends up
-        // causing these to get included twice.  We should eventually transition
+        // causing these to get included twice. We should eventually transition
         // to having rustc invoke ld directly, in which case these will need to
         // be uncommented.
         //
-        // We want XPG6 behavior from libc and libm.  See standards(5)
+        // We want XPG6 behavior from libc and libm. See standards(5)
         //pre_link_objects_exe: vec![
         //    "/usr/lib/amd64/values-Xc.o".into(),
         //    "/usr/lib/amd64/values-xpg6.o".into(),

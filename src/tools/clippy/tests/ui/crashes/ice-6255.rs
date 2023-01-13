@@ -1,4 +1,4 @@
-// originally from rustc ./src/test/ui/macros/issue-78325-inconsistent-resolution.rs
+// originally from rustc ./tests/ui/macros/issue-78325-inconsistent-resolution.rs
 // inconsistent resolution for a macro
 
 macro_rules! define_other_core {

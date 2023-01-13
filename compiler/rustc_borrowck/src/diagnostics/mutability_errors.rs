@@ -264,7 +264,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         ProjectionElem::Deref,
                     ],
             } => {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
 
                 if let Some(span) = get_mut_span_in_struct_field(
                     self.infcx.tcx,
@@ -290,7 +290,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .unwrap_or(false) =>
             {
                 let decl = &self.body.local_decls[local];
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
                 if let Some(mir::Statement {
                     source_info,
                     kind:
@@ -639,7 +639,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             PlaceRef { local: _, projection: [.., ProjectionElem::Deref] } => {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
 
                 match opt_source {
                     Some(BorrowedContentSource::OverloadedDeref(ty)) => {
@@ -1212,7 +1212,7 @@ fn suggest_ampmut<'tcx>(
     {
         let lt_name = &src[1..ws_pos];
         let ty = &src[ws_pos..];
-        return (true, highlight_span, format!("&{} mut{}", lt_name, ty));
+        return (true, highlight_span, format!("&{lt_name} mut{ty}"));
     }
 
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();

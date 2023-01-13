@@ -3,6 +3,7 @@ import * as lc from "vscode-languageclient/node";
 
 import * as commands from "./commands";
 import { CommandFactory, Ctx, fetchWorkspace } from "./ctx";
+import * as diagnostics from "./diagnostics";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
 
@@ -48,28 +49,50 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
         ctx.pushExtCleanup(activateTaskProvider(ctx.config));
     }
 
+    const diagnosticProvider = new diagnostics.TextDocumentProvider(ctx);
     ctx.pushExtCleanup(
         vscode.workspace.registerTextDocumentContentProvider(
-            "rust-analyzer-diagnostics-view",
-            new (class implements vscode.TextDocumentContentProvider {
-                async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
-                    const diags = ctx.client?.diagnostics?.get(
-                        vscode.Uri.parse(uri.fragment, true)
-                    );
-                    if (!diags) {
-                        return "Unable to find original rustc diagnostic";
-                    }
-
-                    const diag = diags[parseInt(uri.query)];
-                    if (!diag) {
-                        return "Unable to find original rustc diagnostic";
-                    }
-                    const rendered = (diag as unknown as { data?: { rendered?: string } }).data
-                        ?.rendered;
-                    return rendered ?? "Unable to find original rustc diagnostic";
-                }
-            })()
+            diagnostics.URI_SCHEME,
+            diagnosticProvider
         )
+    );
+
+    const decorationProvider = new diagnostics.AnsiDecorationProvider(ctx);
+    ctx.pushExtCleanup(decorationProvider);
+
+    async function decorateVisibleEditors(document: vscode.TextDocument) {
+        for (const editor of vscode.window.visibleTextEditors) {
+            if (document === editor.document) {
+                await decorationProvider.provideDecorations(editor);
+            }
+        }
+    }
+
+    vscode.workspace.onDidChangeTextDocument(
+        async (event) => await decorateVisibleEditors(event.document),
+        null,
+        ctx.subscriptions
+    );
+    vscode.workspace.onDidOpenTextDocument(decorateVisibleEditors, null, ctx.subscriptions);
+    vscode.window.onDidChangeActiveTextEditor(
+        async (editor) => {
+            if (editor) {
+                diagnosticProvider.triggerUpdate(editor.document.uri);
+                await decorateVisibleEditors(editor.document);
+            }
+        },
+        null,
+        ctx.subscriptions
+    );
+    vscode.window.onDidChangeVisibleTextEditors(
+        async (visibleEditors) => {
+            for (const editor of visibleEditors) {
+                diagnosticProvider.triggerUpdate(editor.document.uri);
+                await decorationProvider.provideDecorations(editor);
+            }
+        },
+        null,
+        ctx.subscriptions
     );
 
     vscode.workspace.onDidChangeWorkspaceFolders(
@@ -79,7 +102,7 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
     );
     vscode.workspace.onDidChangeConfiguration(
         async (_) => {
-            await ctx.client?.sendNotification("workspace/didChangeConfiguration", {
+            await ctx.client?.sendNotification(lc.DidChangeConfigurationNotification.type, {
                 settings: "",
             });
         },
@@ -150,6 +173,8 @@ function createCommands(): Record<string, CommandFactory> {
         moveItemUp: { enabled: commands.moveItemUp },
         moveItemDown: { enabled: commands.moveItemDown },
         cancelFlycheck: { enabled: commands.cancelFlycheck },
+        clearFlycheck: { enabled: commands.clearFlycheck },
+        runFlycheck: { enabled: commands.runFlycheck },
         ssr: { enabled: commands.ssr },
         serverVersion: { enabled: commands.serverVersion },
         // Internal commands which are invoked by the server.

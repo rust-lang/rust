@@ -76,7 +76,7 @@ pub fn obligations<'tcx>(
 }
 
 /// Returns the obligations that make this trait reference
-/// well-formed.  For example, if there is a trait `Set` defined like
+/// well-formed. For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
 pub fn trait_obligations<'tcx>(
@@ -232,7 +232,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // The obligation comes not from the current `impl` nor the `trait` being implemented,
             // but rather from a "second order" obligation, where an associated type has a
             // projection coming from another associated type. See
-            // `src/test/ui/associated-types/point-at-type-on-obligation-failure.rs` and
+            // `tests/ui/associated-types/point-at-type-on-obligation-failure.rs` and
             // `traits-assoc-type-in-supertrait-bad.rs`.
             if let Some(ty::Alias(ty::Projection, projection_ty)) = proj.term.ty().map(|ty| ty.kind())
                 && let Some(&impl_item_id) =
@@ -640,7 +640,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     // hidden type that is not actually well formed and
                     // can cause compiler crashes when the user abuses unsafe
                     // code to procure such a closure.
-                    // See src/test/ui/type-alias-impl-trait/wf_check_closures.rs
+                    // See tests/ui/type-alias-impl-trait/wf_check_closures.rs
                     let obligations = self.nominal_obligations(did, substs);
                     self.out.extend(obligations);
                 }

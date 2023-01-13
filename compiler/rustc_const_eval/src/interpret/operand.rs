@@ -488,7 +488,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(OpTy { op, layout: place.layout, align: Some(place.align) })
     }
 
-    /// Evaluate a place with the goal of reading from it.  This lets us sometimes
+    /// Evaluate a place with the goal of reading from it. This lets us sometimes
     /// avoid allocations.
     pub fn eval_place_to_op(
         &self,

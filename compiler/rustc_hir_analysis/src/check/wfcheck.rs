@@ -1,4 +1,6 @@
+use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
+
 use hir::def::DefKind;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
@@ -22,7 +24,6 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -116,7 +117,9 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     let outlives_environment =
         OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
 
-    let _ = infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
+    let _ = infcx
+        .err_ctxt()
+        .check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {

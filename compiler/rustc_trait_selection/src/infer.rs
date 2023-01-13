@@ -4,7 +4,7 @@ use crate::traits::{self, ObligationCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::infer::canonical::{Canonical, CanonicalizedQueryResponse, QueryResponse};
+use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
 use rustc_middle::traits::query::Fallible;
 use rustc_middle::ty::{self, Ty, TypeFoldable, TypeVisitable};
 use rustc_middle::ty::{GenericArg, ToPredicate};
@@ -102,7 +102,7 @@ pub trait InferCtxtBuilderExt<'tcx> {
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
         operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
+    ) -> Fallible<CanonicalQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
         R: Debug + TypeFoldable<'tcx>,
@@ -130,7 +130,7 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
         operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
+    ) -> Fallible<CanonicalQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
         R: Debug + TypeFoldable<'tcx>,
