@@ -9,8 +9,6 @@ LL | trait Foo<T, T = T> {}
 error[E0412]: cannot find type `dyn` in this scope
   --> $DIR/issue-86756.rs:5:10
    |
-LL | fn eq<A, B>() {
-   |           - help: you might be missing a type parameter: `, dyn`
 LL |     eq::<dyn, Foo>
    |          ^^^ not found in this scope
 
