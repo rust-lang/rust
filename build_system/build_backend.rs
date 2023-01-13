@@ -5,7 +5,7 @@ use super::path::{Dirs, RelPath};
 use super::rustc_info::get_file_name;
 use super::utils::{is_ci, CargoProject, Compiler};
 
-static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
+pub(crate) static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
 
 pub(crate) fn build_backend(
     dirs: &Dirs,

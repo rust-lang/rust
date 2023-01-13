@@ -16,13 +16,22 @@ pub(crate) fn prepare(dirs: &Dirs) {
     }
     std::fs::create_dir_all(RelPath::DOWNLOAD.to_path(dirs)).unwrap();
 
+    spawn_and_wait(super::build_backend::CG_CLIF.fetch("cargo", dirs));
+
     prepare_sysroot(dirs);
+    spawn_and_wait(super::build_sysroot::STANDARD_LIBRARY.fetch("cargo", dirs));
+    spawn_and_wait(super::tests::LIBCORE_TESTS.fetch("cargo", dirs));
 
     super::abi_cafe::ABI_CAFE_REPO.fetch(dirs);
+    spawn_and_wait(super::abi_cafe::ABI_CAFE.fetch("cargo", dirs));
     super::tests::RAND_REPO.fetch(dirs);
+    spawn_and_wait(super::tests::RAND.fetch("cargo", dirs));
     super::tests::REGEX_REPO.fetch(dirs);
+    spawn_and_wait(super::tests::REGEX.fetch("cargo", dirs));
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
+    spawn_and_wait(super::tests::PORTABLE_SIMD.fetch("cargo", dirs));
     super::bench::SIMPLE_RAYTRACER_REPO.fetch(dirs);
+    spawn_and_wait(super::bench::SIMPLE_RAYTRACER.fetch("cargo", dirs));
 }
 
 fn prepare_sysroot(dirs: &Dirs) {

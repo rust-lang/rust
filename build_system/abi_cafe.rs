@@ -10,7 +10,7 @@ use super::SysrootKind;
 pub(crate) static ABI_CAFE_REPO: GitRepo =
     GitRepo::github("Gankra", "abi-cafe", "4c6dc8c9c687e2b3a760ff2176ce236872b37212", "abi-cafe");
 
-static ABI_CAFE: CargoProject = CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe");
+pub(crate) static ABI_CAFE: CargoProject = CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe");
 
 pub(crate) fn run(
     channel: &str,

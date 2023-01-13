@@ -97,12 +97,12 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) static RAND_REPO: GitRepo =
     GitRepo::github("rust-random", "rand", "0f933f9c7176e53b2a3c7952ded484e1783f0bf1", "rand");
 
-static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand");
+pub(crate) static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand");
 
 pub(crate) static REGEX_REPO: GitRepo =
     GitRepo::github("rust-lang", "regex", "341f207c1071f7290e3f228c710817c280c8dca1", "regex");
 
-static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex");
+pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex");
 
 pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
@@ -111,10 +111,10 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "portable-simd",
 );
 
-static PORTABLE_SIMD: CargoProject =
+pub(crate) static PORTABLE_SIMD: CargoProject =
     CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable_simd");
 
-static LIBCORE_TESTS: CargoProject =
+pub(crate) static LIBCORE_TESTS: CargoProject =
     CargoProject::new(&SYSROOT_SRC.join("library/core/tests"), "core_tests");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
