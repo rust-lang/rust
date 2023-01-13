@@ -68,33 +68,21 @@ fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
             args.extend(remaining_args);
 
             // Correct the indexes that refer to the arguments after the newly inserted arguments.
-            for piece in &mut fmt.template {
-                if let FormatArgsPiece::Placeholder(placeholder) = piece
-                    && let Ok(index) = &mut placeholder.argument.index
-                    && *index >= old_arg_offset
-                {
+            for_all_argument_indexes(&mut fmt.template, |index| {
+                if *index >= old_arg_offset {
                     *index -= old_arg_offset;
                     *index += new_arg_offset;
                 }
-            }
+            });
 
             // Now merge the placeholders:
 
             let rest = fmt.template.split_off(i + 1);
             fmt.template.pop(); // remove the placeholder for the nested fmt args.
-
-            for piece in fmt2.template.drain(..) {
-                match piece {
-                    FormatArgsPiece::Literal(s) => fmt.template.push(FormatArgsPiece::Literal(s)),
-                    FormatArgsPiece::Placeholder(mut p) => {
-                        // Correct the index to refer to the right place into the outer argument list.
-                        if let Ok(n) = &mut p.argument.index {
-                            *n += arg_index;
-                        }
-                        fmt.template.push(FormatArgsPiece::Placeholder(p));
-                    }
-                }
-            }
+            // Insert the pieces from the nested format args, but correct any
+            // placeholders to point to the correct argument index.
+            for_all_argument_indexes(&mut fmt2.template, |index| *index += arg_index);
+            fmt.template.append(&mut fmt2.template);
             fmt.template.extend(rest);
 
             // Don't increment `i` here, so we recurse into the newly added pieces.
@@ -150,16 +138,17 @@ fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
         // Drop all the arguments that are marked for removal.
         let mut remove_it = remove.iter();
         fmt.arguments.all_args_mut().retain(|_| remove_it.next() != Some(&Some(true)));
+        // Calculate the mapping of old to new indexes for the remaining arguments.
+        let index_map: Vec<usize> = remove
+            .into_iter()
+            .scan(0, |i, remove| {
+                let mapped = *i;
+                *i += (remove != Some(true)) as usize;
+                Some(mapped)
+            })
+            .collect();
         // Correct the indexes that refer to arguments that have shifted position.
-        for piece in &mut fmt.template {
-            let FormatArgsPiece::Placeholder(placeholder) = piece else { continue };
-            let Ok(arg_index) = &mut placeholder.argument.index else { continue };
-            for i in 0..*arg_index {
-                if remove[i] == Some(true) {
-                    *arg_index -= 1;
-                }
-            }
-        }
+        for_all_argument_indexes(&mut fmt.template, |index| *index = index_map[*index]);
     }
 
     fmt
@@ -571,4 +560,23 @@ fn may_contain_yield_point(e: &ast::Expr) -> bool {
     let mut visitor = MayContainYieldPoint(false);
     visitor.visit_expr(e);
     visitor.0
+}
+
+fn for_all_argument_indexes(template: &mut [FormatArgsPiece], mut f: impl FnMut(&mut usize)) {
+    for piece in template {
+        let FormatArgsPiece::Placeholder(placeholder) = piece else { continue };
+        if let Ok(index) = &mut placeholder.argument.index {
+            f(index);
+        }
+        if let Some(FormatCount::Argument(FormatArgPosition { index: Ok(index), .. })) =
+            &mut placeholder.format_options.width
+        {
+            f(index);
+        }
+        if let Some(FormatCount::Argument(FormatArgPosition { index: Ok(index), .. })) =
+            &mut placeholder.format_options.precision
+        {
+            f(index);
+        }
+    }
 }
