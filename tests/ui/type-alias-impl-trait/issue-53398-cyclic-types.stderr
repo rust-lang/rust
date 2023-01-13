@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `Foo: Sized`
+error[E0275]: overflow evaluating the requirement `Foo well-formed`
   --> $DIR/issue-53398-cyclic-types.rs:5:13
    |
 LL | fn foo() -> Foo {

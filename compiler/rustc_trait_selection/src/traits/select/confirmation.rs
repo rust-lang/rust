@@ -619,7 +619,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         .map_bound(|(trait_ref, _)| trait_ref);
 
         let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
+
+        // Require the output to be well formed as it is otherwise possible to have an
+        // impl with an associated type which isn't well formed, which is unsound.
+        //
+        // FIXME: using `no_bound_vars` as we cannot deal with implied bounds for late-bound
+        // lifetimes right now.
+        //
+        // FIXME: move this to the wf requirements of function definitions themselves instead.
+        if let Some(return_ty) = sig.output().no_bound_vars() {
+            nested.push(Obligation::new(
+                tcx,
+                cause.clone(),
+                obligation.param_env,
+                ty::Binder::dummy(ty::PredicateKind::WellFormed(return_ty.into())),
+            ));
+        }
+        
 
         if obligation.is_const() && !is_const {
             // function is a trait method
