@@ -36,6 +36,8 @@ jobs:
 
         cat Cargo.toml
 
+        cargo fetch
+
     - name: Build without unstable features
       # This is the config rust-lang/rust uses for builds
       run: ./y.rs build --no-unstable-features
