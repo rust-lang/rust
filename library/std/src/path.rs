@@ -3177,9 +3177,9 @@ impl<'a> IntoIterator for &'a Path {
 }
 
 macro_rules! impl_cmp {
-    ($lhs:ty, $rhs: ty) => {
+    (<$($life:lifetime),*> $lhs:ty, $rhs: ty) => {
         #[stable(feature = "partialeq_path", since = "1.6.0")]
-        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+        impl<$($life),*> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 <Path as PartialEq>::eq(self, other)
@@ -3187,7 +3187,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "partialeq_path", since = "1.6.0")]
-        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+        impl<$($life),*> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 <Path as PartialEq>::eq(self, other)
@@ -3195,7 +3195,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+        impl<$($life),*> PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
                 <Path as PartialOrd>::partial_cmp(self, other)
@@ -3203,7 +3203,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+        impl<$($life),*> PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
                 <Path as PartialOrd>::partial_cmp(self, other)
@@ -3212,16 +3212,16 @@ macro_rules! impl_cmp {
     };
 }
 
-impl_cmp!(PathBuf, Path);
-impl_cmp!(PathBuf, &'a Path);
-impl_cmp!(Cow<'a, Path>, Path);
-impl_cmp!(Cow<'a, Path>, &'b Path);
-impl_cmp!(Cow<'a, Path>, PathBuf);
+impl_cmp!(<> PathBuf, Path);
+impl_cmp!(<'a> PathBuf, &'a Path);
+impl_cmp!(<'a> Cow<'a, Path>, Path);
+impl_cmp!(<'a, 'b> Cow<'a, Path>, &'b Path);
+impl_cmp!(<'a> Cow<'a, Path>, PathBuf);
 
 macro_rules! impl_cmp_os_str {
-    ($lhs:ty, $rhs: ty) => {
+    (<$($life:lifetime),*> $lhs:ty, $rhs: ty) => {
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+        impl<$($life),*> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 <Path as PartialEq>::eq(self, other.as_ref())
@@ -3229,7 +3229,7 @@ macro_rules! impl_cmp_os_str {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+        impl<$($life),*> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 <Path as PartialEq>::eq(self.as_ref(), other)
@@ -3237,7 +3237,7 @@ macro_rules! impl_cmp_os_str {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+        impl<$($life),*> PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
                 <Path as PartialOrd>::partial_cmp(self, other.as_ref())
@@ -3245,7 +3245,7 @@ macro_rules! impl_cmp_os_str {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+        impl<$($life),*> PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
                 <Path as PartialOrd>::partial_cmp(self.as_ref(), other)
@@ -3254,20 +3254,20 @@ macro_rules! impl_cmp_os_str {
     };
 }
 
-impl_cmp_os_str!(PathBuf, OsStr);
-impl_cmp_os_str!(PathBuf, &'a OsStr);
-impl_cmp_os_str!(PathBuf, Cow<'a, OsStr>);
-impl_cmp_os_str!(PathBuf, OsString);
-impl_cmp_os_str!(Path, OsStr);
-impl_cmp_os_str!(Path, &'a OsStr);
-impl_cmp_os_str!(Path, Cow<'a, OsStr>);
-impl_cmp_os_str!(Path, OsString);
-impl_cmp_os_str!(&'a Path, OsStr);
-impl_cmp_os_str!(&'a Path, Cow<'b, OsStr>);
-impl_cmp_os_str!(&'a Path, OsString);
-impl_cmp_os_str!(Cow<'a, Path>, OsStr);
-impl_cmp_os_str!(Cow<'a, Path>, &'b OsStr);
-impl_cmp_os_str!(Cow<'a, Path>, OsString);
+impl_cmp_os_str!(<> PathBuf, OsStr);
+impl_cmp_os_str!(<'a> PathBuf, &'a OsStr);
+impl_cmp_os_str!(<'a> PathBuf, Cow<'a, OsStr>);
+impl_cmp_os_str!(<> PathBuf, OsString);
+impl_cmp_os_str!(<> Path, OsStr);
+impl_cmp_os_str!(<'a> Path, &'a OsStr);
+impl_cmp_os_str!(<'a> Path, Cow<'a, OsStr>);
+impl_cmp_os_str!(<> Path, OsString);
+impl_cmp_os_str!(<'a> &'a Path, OsStr);
+impl_cmp_os_str!(<'a, 'b> &'a Path, Cow<'b, OsStr>);
+impl_cmp_os_str!(<'a> &'a Path, OsString);
+impl_cmp_os_str!(<'a> Cow<'a, Path>, OsStr);
+impl_cmp_os_str!(<'a, 'b> Cow<'a, Path>, &'b OsStr);
+impl_cmp_os_str!(<'a> Cow<'a, Path>, OsString);
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 impl fmt::Display for StripPrefixError {
