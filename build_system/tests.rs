@@ -169,9 +169,10 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
                 REGEX.source_dir(&runner.dirs).join("examples").join("regexdna-input.txt"),
             )
             .unwrap();
-            let expected_path =
-                REGEX.source_dir(&runner.dirs).join("examples").join("regexdna-output.txt");
-            let expected = fs::read_to_string(&expected_path).unwrap();
+            let expected = fs::read_to_string(
+                REGEX.source_dir(&runner.dirs).join("examples").join("regexdna-output.txt"),
+            )
+            .unwrap();
 
             let output = spawn_and_wait_with_input(run_cmd, input);
             // Make sure `[codegen mono items] start` doesn't poison the diff
@@ -184,20 +185,9 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
             let output_matches = expected.lines().eq(output.lines());
             if !output_matches {
-                let res_path = REGEX.source_dir(&runner.dirs).join("res.txt");
-                fs::write(&res_path, &output).unwrap();
-
-                if cfg!(windows) {
-                    println!("Output files don't match!");
-                    println!("Expected Output:\n{}", expected);
-                    println!("Actual Output:\n{}", output);
-                } else {
-                    let mut diff = Command::new("diff");
-                    diff.arg("-u");
-                    diff.arg(res_path);
-                    diff.arg(expected_path);
-                    spawn_and_wait(diff);
-                }
+                println!("Output files don't match!");
+                println!("Expected Output:\n{}", expected);
+                println!("Actual Output:\n{}", output);
 
                 std::process::exit(1);
             }
