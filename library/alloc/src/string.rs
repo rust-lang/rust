@@ -594,6 +594,41 @@ where
         }
     }
 
+    /// Like `from_utf8_lossy`, but this honors COOP_PREFERRED.
+    #[unstable(feature = "compile_check_struct_with_const_generic_added_associated_function", reason = "confirm_or_fix_the_function_name", issue = "none")]
+    pub fn from_utf8_lossy_coop_or_not(v: &[u8]) -> Cow<'_, str, COOP_PREFERRED> {
+        let mut iter = Utf8Chunks::new(v);
+
+        let first_valid = if let Some(chunk) = iter.next() {
+            let valid = chunk.valid();
+            if chunk.invalid().is_empty() {
+                debug_assert_eq!(valid.len(), v.len());
+                return Cow::Borrowed(valid);
+            }
+            valid
+        } else {
+            return Cow::Borrowed("");
+        };
+
+        const REPLACEMENT: &str = "\u{FFFD}";
+
+        #[allow(unused_braces)]
+        let mut res = String::<COOP_PREFERRED>::with_capacity(v.len());
+        res.push_str(first_valid);
+        res.push_str(REPLACEMENT);
+
+        for chunk in iter {
+            res.push_str(chunk.valid());
+            if !chunk.invalid().is_empty() {
+                res.push_str(REPLACEMENT);
+            }
+        }
+
+        Cow::Owned(res)
+    }
+}
+
+impl String {
     /// Converts a slice of bytes to a string, including invalid characters.
     ///
     /// Strings are made of bytes ([`u8`]), and a slice of bytes
@@ -643,39 +678,22 @@ where
     ///
     /// assert_eq!("Hello �World", output);
     /// ```
+    /// @FIXME Should this return Cow<'_, str, false> instead, so it's both
+    /// - backwards compatible, and
+    /// - independent of DEFAULT_COOP_PREFERRED (for backwards compatbility)? But `String` (and others) use default, too.
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str, COOP_PREFERRED> {
-        let mut iter = Utf8Chunks::new(v);
-
-        let first_valid = if let Some(chunk) = iter.next() {
-            let valid = chunk.valid();
-            if chunk.invalid().is_empty() {
-                debug_assert_eq!(valid.len(), v.len());
-                return Cow::Borrowed(valid);
-            }
-            valid
-        } else {
-            return Cow::Borrowed("");
-        };
-
-        const REPLACEMENT: &str = "\u{FFFD}";
-
-        let mut res = String::<COOP_PREFERRED>::with_capacity(v.len());
-        res.push_str(first_valid);
-        res.push_str(REPLACEMENT);
-
-        for chunk in iter {
-            res.push_str(chunk.valid());
-            if !chunk.invalid().is_empty() {
-                res.push_str(REPLACEMENT);
-            }
-        }
-
-        Cow::Owned(res)
+    #[allow(unused_braces)]
+    pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str, {DEFAULT_COOP_PREFERRED!()}> {
+        String::<{DEFAULT_COOP_PREFERRED!()}>::from_utf8_lossy_coop_or_not(v)
     }
+}
 
+impl<const COOP_PREFERRED: bool> String<COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
     ///

@@ -1126,7 +1126,7 @@ impl CStr {
     where    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
     {
         // false = no need for co-alloc metadata, since it would get lost once converted to the slice.
-        String::<COOP_PREFERRED>::from_utf8_lossy(self.to_bytes())
+        String::<COOP_PREFERRED>::from_utf8_lossy_coop_or_not(self.to_bytes())
     }
 
     /// Converts a <code>[Box]<[CStr]></code> into a [`CString`] without copying or allocating.
