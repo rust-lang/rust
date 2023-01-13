@@ -3,10 +3,10 @@ use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
-use rustc_data_structures::fingerprint::Fingerprint;
+//use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
@@ -1895,23 +1895,25 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_impls(&mut self) -> LazyArray<TraitImpls> {
         debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
-        let tcx = self.tcx;
+        //let tcx = self.tcx;
         let fx_hash_map = self.tcx.impls_in_crate(LOCAL_CRATE).to_owned();
 
-        let mut all_impls: Vec<_> = fx_hash_map.into_iter().collect();
+        let all_impls: Vec<_> = fx_hash_map.into_iter().collect();
 
         // Bring everything into deterministic order for hashing
-        all_impls.sort_by_cached_key(|&(trait_def_id, _)| tcx.def_path_hash(trait_def_id));
+        // SORT-TEST
+        //all_impls.sort_by_cached_key(|&(trait_def_id, _)| tcx.def_path_hash(trait_def_id));
 
         let all_impls: Vec<_> = all_impls
             .into_iter()
-            .map(|(trait_def_id, mut impls)| {
+            .map(|(trait_def_id, impls)| {
                 // Bring everything into deterministic order for hashing
-                impls.sort_by_cached_key(|&(index, _)| {
-                    tcx.hir().def_path_hash(LocalDefId {
-                        local_def_index: index.expect_local().local_def_index,
-                    })
-                });
+                // SORT-TEST
+                //impls.sort_by_cached_key(|&(index, _)| {
+                //    tcx.hir().def_path_hash(LocalDefId {
+                //        local_def_index: index.expect_local().local_def_index,
+                //    })
+                //});
 
                 let impls: Vec<_> = impls
                     .iter()
@@ -1932,14 +1934,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let mut all_impls: Vec<_> = tcx.crate_inherent_impls(()).incoherent_impls.iter().collect();
-        tcx.with_stable_hashing_context(|mut ctx| {
-            all_impls.sort_by_cached_key(|&(&simp, _)| {
-                let mut hasher = StableHasher::new();
-                simp.hash_stable(&mut ctx, &mut hasher);
-                hasher.finish::<Fingerprint>()
-            })
-        });
+        let all_impls: Vec<_> = tcx.crate_inherent_impls(()).incoherent_impls.iter().collect();
+        // SORT-TEST
+        // tcx.with_stable_hashing_context(|mut ctx| {
+        //     all_impls.sort_by_cached_key(|&(&simp, _)| {
+        //         let mut hasher = StableHasher::new();
+        //         simp.hash_stable(&mut ctx, &mut hasher);
+        //         hasher.finish::<Fingerprint>()
+        //     })
+        // });
         let all_impls: Vec<_> = all_impls
             .into_iter()
             .map(|(&simp, impls)| {
