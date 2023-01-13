@@ -31,6 +31,7 @@ fn prepare_sysroot(dirs: &Dirs) {
 
     eprintln!("[COPY] sysroot src");
 
+    // FIXME ensure builds error out or update the copy if any of the files copied here change
     BUILD_SYSROOT.ensure_fresh(dirs);
     copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &BUILD_SYSROOT.to_path(dirs));
 
