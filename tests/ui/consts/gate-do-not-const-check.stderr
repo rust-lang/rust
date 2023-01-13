@@ -1,0 +1,11 @@
+error[E0658]: this is an internal attribute that will never be stable
+  --> $DIR/gate-do-not-const-check.rs:1:1
+   |
+LL | #[rustc_do_not_const_check]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
