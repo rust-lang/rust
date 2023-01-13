@@ -14,6 +14,13 @@ use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use crate::lang_items::Duplicate;
 
+#[derive(Diagnostic)]
+#[diag(passes_incorrect_do_not_recommend_location)]
+pub struct IncorrectDoNotRecommendLocation {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub struct OuterCrateLevelAttr;
