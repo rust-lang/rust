@@ -139,7 +139,7 @@ h1, h2, h3, h4 {
 .docblock > h6:first-child {
 	margin-top: 0;
 }
-h1.fqn {
+.main-heading h1 {
 	margin: 0;
 	padding: 0;
 	flex-grow: 1;
