@@ -1,9 +1,8 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
-use std::collections::hash_map::Entry;
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
@@ -140,23 +139,27 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_cleanup_control_flow(&self) {
         let doms = self.body.basic_blocks.dominators();
         let mut post_contract_node = FxHashMap::default();
+        // Reusing the allocation across invocations of the closure
+        let mut dom_path = vec![];
         let mut get_post_contract_node = |mut bb| {
-            if let Some(res) = post_contract_node.get(&bb) {
-                return *res;
-            }
-            let mut dom_path = vec![];
-            while self.body.basic_blocks[bb].is_cleanup {
+            let root = loop {
+                if let Some(root) = post_contract_node.get(&bb) {
+                    break *root;
+                }
+                let parent = doms.immediate_dominator(bb);
                 dom_path.push(bb);
-                bb = doms.immediate_dominator(bb);
-            }
-            let root = *dom_path.last().unwrap();
-            for bb in dom_path {
+                if !self.body.basic_blocks[parent].is_cleanup {
+                    break bb;
+                }
+                bb = parent;
+            };
+            for bb in dom_path.drain(..) {
                 post_contract_node.insert(bb, root);
             }
             root
         };
 
-        let mut parent = FxHashMap::default();
+        let mut parent = IndexVec::from_elem(None, &self.body.basic_blocks);
         for (bb, bb_data) in self.body.basic_blocks.iter_enumerated() {
             if !bb_data.is_cleanup || !self.reachable_blocks.contains(bb) {
                 continue;
@@ -167,21 +170,47 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if s == bb {
                     continue;
                 }
-                match parent.entry(bb) {
-                    Entry::Vacant(e) => {
-                        e.insert(s);
+                let parent = &mut parent[bb];
+                match parent {
+                    None => {
+                        *parent = Some(s);
                     }
-                    Entry::Occupied(e) if s != *e.get() => self.fail(
+                    Some(e) if *e == s => (),
+                    Some(e) => self.fail(
                         Location { block: bb, statement_index: 0 },
                         format!(
                             "Cleanup control flow violation: The blocks dominated by {:?} have edges to both {:?} and {:?}",
                             bb,
                             s,
-                            *e.get()
+                            *e
                         )
                     ),
-                    Entry::Occupied(_) => (),
                 }
+            }
+        }
+
+        // Check for cycles
+        let mut stack = FxHashSet::default();
+        for i in 0..parent.len() {
+            let mut bb = BasicBlock::from_usize(i);
+            stack.clear();
+            stack.insert(bb);
+            loop {
+                let Some(parent )= parent[bb].take() else {
+                    break
+                };
+                let no_cycle = stack.insert(parent);
+                if !no_cycle {
+                    self.fail(
+                        Location { block: bb, statement_index: 0 },
+                        format!(
+                            "Cleanup control flow violation: Cycle involving edge {:?} -> {:?}",
+                            bb, parent,
+                        ),
+                    );
+                    break;
+                }
+                bb = parent;
             }
         }
     }
