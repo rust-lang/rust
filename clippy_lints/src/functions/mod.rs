@@ -344,7 +344,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```rust
     /// trait MyTrait {}
-    /// fn foo<T: A>(a: A) {
+    /// fn foo<T: MyTrait>(a: T) {
     /// 	// [...]
     /// }
     /// ```
