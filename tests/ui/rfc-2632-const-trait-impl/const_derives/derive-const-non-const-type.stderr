@@ -7,6 +7,7 @@ LL | pub struct S(A);
    |              ^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

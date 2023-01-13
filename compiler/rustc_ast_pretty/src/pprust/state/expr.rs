@@ -399,6 +399,7 @@ impl<'a> State<'a> {
             ast::ExprKind::Closure(box ast::Closure {
                 binder,
                 capture_clause,
+                constness,
                 asyncness,
                 movability,
                 fn_decl,
@@ -407,6 +408,7 @@ impl<'a> State<'a> {
                 fn_arg_span: _,
             }) => {
                 self.print_closure_binder(binder);
+                self.print_constness(*constness);
                 self.print_movability(*movability);
                 self.print_asyncness(*asyncness);
                 self.print_capture_clause(*capture_clause);

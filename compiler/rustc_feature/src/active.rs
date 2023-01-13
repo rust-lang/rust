@@ -339,7 +339,9 @@ declare_features! (
     (active, collapse_debuginfo, "1.65.0", Some(100758), None),
     /// Allows `async {}` expressions in const contexts.
     (active, const_async_blocks, "1.53.0", Some(85368), None),
-    // Allows limiting the evaluation steps of const expressions
+    /// Allows `const || {}` closures in const contexts.
+    (incomplete, const_closures, "CURRENT_RUSTC_VERSION", Some(106003), None),
+    /// Allows limiting the evaluation steps of const expressions
     (active, const_eval_limit, "1.43.0", Some(67217), None),
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),

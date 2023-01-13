@@ -111,6 +111,7 @@ pub struct FnCallNonConst<'tcx> {
     pub substs: SubstsRef<'tcx>,
     pub span: Span,
     pub from_hir_call: bool,
+    pub feature: Option<Symbol>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
@@ -119,7 +120,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         ccx: &ConstCx<'_, 'tcx>,
         _: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let FnCallNonConst { caller, callee, substs, span, from_hir_call } = *self;
+        let FnCallNonConst { caller, callee, substs, span, from_hir_call, feature } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
 
         let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
@@ -317,6 +318,13 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
              tuple structs and tuple variants",
             ccx.const_kind(),
         ));
+
+        if let Some(feature) = feature && ccx.tcx.sess.is_nightly_build() {
+            err.help(&format!(
+                "add `#![feature({})]` to the crate attributes to enable",
+                feature,
+            ));
+        }
 
         if let ConstContext::Static(_) = ccx.const_kind() {
             err.note("consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell");

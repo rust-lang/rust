@@ -126,6 +126,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                     g(ExprKind::Closure(Box::new(Closure {
                         binder: ClosureBinder::NotPresent,
                         capture_clause: CaptureBy::Value,
+                        constness: Const::No,
                         asyncness: Async::No,
                         movability: Movability::Movable,
                         fn_decl: decl.clone(),

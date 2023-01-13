@@ -1325,7 +1325,10 @@ impl<'a> Parser<'a> {
             self.parse_array_or_repeat_expr(Delimiter::Bracket)
         } else if self.check_path() {
             self.parse_path_start_expr()
-        } else if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
+        } else if self.check_keyword(kw::Move)
+            || self.check_keyword(kw::Static)
+            || self.check_const_closure()
+        {
             self.parse_closure_expr()
         } else if self.eat_keyword(kw::If) {
             self.parse_if_expr()
@@ -2065,6 +2068,8 @@ impl<'a> Parser<'a> {
             ClosureBinder::NotPresent
         };
 
+        let constness = self.parse_constness(Case::Sensitive);
+
         let movability =
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
@@ -2111,6 +2116,7 @@ impl<'a> Parser<'a> {
             ExprKind::Closure(Box::new(ast::Closure {
                 binder,
                 capture_clause,
+                constness,
                 asyncness,
                 movability,
                 fn_decl,

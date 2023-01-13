@@ -485,7 +485,9 @@ impl<'hir> Map<'hir> {
             BodyOwnerKind::Static(mt) => ConstContext::Static(mt),
 
             BodyOwnerKind::Fn if self.tcx.is_constructor(def_id.to_def_id()) => return None,
-            BodyOwnerKind::Fn if self.tcx.is_const_fn_raw(def_id.to_def_id()) => {
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure
+                if self.tcx.is_const_fn_raw(def_id.to_def_id()) =>
+            {
                 ConstContext::ConstFn
             }
             BodyOwnerKind::Fn if self.tcx.is_const_default_method(def_id.to_def_id()) => {
