@@ -33,9 +33,8 @@ use core::task::{Context, Poll};
 /// assert_sync(State {
 ///     future: async {
 ///         let cell = Cell::new(1);
-///         let cell_ref = &cell;
 ///         other().await;
-///         let value = cell_ref.get();
+///         let value = cell.get();
 ///     }
 /// });
 /// ```
@@ -55,10 +54,9 @@ use core::task::{Context, Poll};
 ///
 /// assert_sync(State {
 ///     future: Exclusive::new(async {
-///         let cell = Cell::new(1);
-///         let cell_ref = &cell;
+///         let mut cell = Cell::new(1);
 ///         other().await;
-///         let value = cell_ref.get();
+///         let value = cell.get();
 ///     })
 /// });
 /// ```
@@ -87,7 +85,7 @@ pub struct Exclusive<T: ?Sized> {
 
 // See `Exclusive`'s docs for justification.
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-unsafe impl<T: ?Sized> Sync for Exclusive<T> {}
+unsafe impl<T: ?Sized + Send> Sync for Exclusive<T> {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T: ?Sized> fmt::Debug for Exclusive<T> {
