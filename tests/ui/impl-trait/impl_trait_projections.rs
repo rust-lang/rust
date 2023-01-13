@@ -11,7 +11,7 @@ fn path_parametrized_type_is_allowed() -> option::Option<impl Debug> {
 
 fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
 //~^ ERROR `impl Trait` is not allowed in path parameters
-//~^^ ERROR ambiguous associated type
+//~| ERROR `impl Trait` is not allowed in path parameters
     x.next().unwrap()
 }
 
