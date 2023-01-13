@@ -1,4 +1,4 @@
-// no-system-llvm: needs #92110
+// min-llvm-version: 14.0.0
 // compile-flags: -Cno-prepopulate-passes
 #![crate_type = "lib"]
 
