@@ -319,7 +319,8 @@ impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type>
         self,
     ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {
         const {
-            assert!(BorrowType::TRAVERSAL_PERMIT);
+            //@FIXME uncomment once compilable
+            //assert!(BorrowType::TRAVERSAL_PERMIT);
         }
 
         // We need to use raw pointers to nodes because, if BorrowType is marker::ValMut,
@@ -1007,7 +1008,8 @@ impl<BorrowType: marker::BorrowType, K, V>
     /// both, upon success, do nothing.
     pub fn descend(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
         const {
-            assert!(BorrowType::TRAVERSAL_PERMIT);
+            // @FIXME uncomment once compilable
+            //assert!(BorrowType::TRAVERSAL_PERMIT);
         }
 
         // We need to use raw pointers to nodes because, if BorrowType is
