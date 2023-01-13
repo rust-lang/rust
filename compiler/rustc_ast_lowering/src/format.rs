@@ -97,11 +97,11 @@ fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
 ///
 /// Turns
 ///
-/// `format_args!("Hello, {}! {}", "World", 123)`
+/// `format_args!("Hello, {}! {} {}", "World", 123, x)`
 ///
 /// into
 ///
-/// `format_args!("Hello, World! {}", 123)`.
+/// `format_args!("Hello, World! 123 {}", x)`.
 fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
     let mut was_inlined = vec![false; fmt.arguments.all_args().len()];
     let mut inlined_anything = false;
@@ -109,18 +109,31 @@ fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
     for i in 0..fmt.template.len() {
         let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i] else { continue };
         let Ok(arg_index) = placeholder.argument.index else { continue };
+
+        let mut literal = None;
+
         if let FormatTrait::Display = placeholder.format_trait
             && placeholder.format_options == Default::default()
             && let arg = fmt.arguments.all_args()[arg_index].expr.peel_parens_and_refs()
             && let ExprKind::Lit(lit) = arg.kind
-            && let token::LitKind::Str | token::LitKind::StrRaw(_) = lit.kind
-            && let Ok(LitKind::Str(s, _)) = LitKind::from_token_lit(lit)
         {
+            if let token::LitKind::Str | token::LitKind::StrRaw(_) = lit.kind
+                && let Ok(LitKind::Str(s, _)) = LitKind::from_token_lit(lit)
+            {
+                literal = Some(s);
+            } else if let token::LitKind::Integer = lit.kind
+                && let Ok(LitKind::Int(n, _)) = LitKind::from_token_lit(lit)
+            {
+                literal = Some(Symbol::intern(&n.to_string()));
+            }
+        }
+
+        if let Some(literal) = literal {
             // Now we need to mutate the outer FormatArgs.
             // If this is the first time, this clones the outer FormatArgs.
             let fmt = fmt.to_mut();
             // Replace the placeholder with the literal.
-            fmt.template[i] = FormatArgsPiece::Literal(s);
+            fmt.template[i] = FormatArgsPiece::Literal(literal);
             was_inlined[arg_index] = true;
             inlined_anything = true;
         }
