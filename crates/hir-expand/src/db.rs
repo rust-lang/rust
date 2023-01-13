@@ -25,7 +25,7 @@ use crate::{
 /// an error will be emitted.
 ///
 /// Actual max for `analysis-stats .` at some point: 30672.
-static TOKEN_LIMIT: Limit = Limit::new(524_288);
+static TOKEN_LIMIT: Limit = Limit::new(1_048_576);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
