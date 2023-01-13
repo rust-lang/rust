@@ -225,7 +225,7 @@ fn expand_format_args<'hir>(
     // we don't do this, because an ArgumentV1 cannot be kept across yield points.
     //
     // This is an optimization, speeding up compilation about 1-2% in some cases.
-    // See https://perf.rust-lang.org/compare.html?start=5dbee4d3a6728eb4530fb66c9775834438ecec74&end=e36affffe97378a0027b4bcfbb18d27356164ed0&stat=instructions:u
+    // See https://github.com/rust-lang/rust/pull/106770#issuecomment-1380790609
     let use_simple_array = argmap.len() == arguments.len()
         && argmap.iter().enumerate().all(|(i, &(j, _))| i == j)
         && arguments.iter().skip(1).all(|arg| !may_contain_yield_point(&arg.expr));
