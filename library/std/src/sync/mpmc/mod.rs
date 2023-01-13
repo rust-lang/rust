@@ -43,7 +43,7 @@ mod zero;
 use crate::fmt;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::time::{Duration, Instant};
-use error::*;
+pub use error::*;
 
 /// Creates a channel of unbounded capacity.
 ///
