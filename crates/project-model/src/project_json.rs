@@ -23,7 +23,6 @@
 //!
 //! To support this use case, we need to make _something_ configurable. To avoid
 //! a [midlayer mistake](https://lwn.net/Articles/336262/), we allow configuring
-//! [midlayer mistake](https://lwn.net/Articles/336262/), we allow configuring
 //! the lowest possible layer. `ProjectJson` is essentially a hook to just set
 //! that global singleton in-memory data structure. It is optimized for power,
 //! not for convenience (you'd be using cargo anyway if you wanted nice things,
