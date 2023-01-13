@@ -131,8 +131,8 @@ impl FormatArguments {
         &self.arguments[..]
     }
 
-    pub fn all_args_mut(&mut self) -> &mut [FormatArgument] {
-        &mut self.arguments[..]
+    pub fn all_args_mut(&mut self) -> &mut Vec<FormatArgument> {
+        &mut self.arguments
     }
 }
 

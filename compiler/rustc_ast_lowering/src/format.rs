@@ -7,13 +7,111 @@ use rustc_hir as hir;
 use rustc_span::{
     sym,
     symbol::{kw, Ident},
-    Span,
+    Span, Symbol,
 };
+use std::borrow::Cow;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
-        expand_format_args(self, sp, fmt)
+        let fmt = flatten_format_args(fmt);
+        expand_format_args(self, sp, &fmt)
     }
+}
+
+/// Flattens nested `format_args!()` into one.
+///
+/// Turns
+///
+/// `format_args!("a {} {} {}.", 1, format_args!("b{}!", 2), 3)`
+///
+/// into
+///
+/// `format_args!("a {} b{}! {}.", 1, 2, 3)`.
+fn flatten_format_args(fmt: &FormatArgs) -> Cow<'_, FormatArgs> {
+    let mut fmt = Cow::Borrowed(fmt);
+    let mut i = 0;
+    while i < fmt.template.len() {
+        if let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i]
+            && let FormatTrait::Display | FormatTrait::Debug = &placeholder.format_trait
+            && let Ok(arg_index) = placeholder.argument.index
+            && let arg = &fmt.arguments.all_args()[arg_index].expr
+            && let ExprKind::FormatArgs(_) = &arg.kind
+            // Check that this argument is not used by any other placeholders.
+            && fmt.template.iter().enumerate().all(|(j, p)|
+                i == j ||
+                !matches!(p, FormatArgsPiece::Placeholder(placeholder)
+                    if placeholder.argument.index == Ok(arg_index))
+            )
+        {
+            // Now we need to mutate the outer FormatArgs.
+            // If this is the first time, this clones the outer FormatArgs.
+            let fmt = fmt.to_mut();
+
+            // Take the inner FormatArgs out of the outer arguments, and
+            // replace it by the inner arguments. (We can't just put those at
+            // the end, because we need to preserve the order of evaluation.)
+
+            let args = fmt.arguments.all_args_mut();
+            let remaining_args = args.split_off(arg_index + 1);
+            let old_arg_offset = args.len();
+            let fmt2 = args.pop().unwrap().expr.into_inner(); // The inner FormatArgs.
+            let ExprKind::FormatArgs(fmt2) = fmt2.kind else { unreachable!() };
+            let mut fmt2 = fmt2.into_inner();
+
+            args.append(fmt2.arguments.all_args_mut());
+            let new_arg_offset = args.len();
+            args.extend(remaining_args);
+
+            // Correct the indexes that refer to the arguments after the newly inserted arguments.
+            for piece in &mut fmt.template {
+                if let FormatArgsPiece::Placeholder(placeholder) = piece
+                    && let Ok(index) = &mut placeholder.argument.index
+                    && *index >= old_arg_offset
+                {
+                    *index -= old_arg_offset;
+                    *index += new_arg_offset;
+                }
+            }
+
+            // Now merge the placeholders:
+
+            let mut rest = fmt.template.split_off(i + 1);
+            fmt.template.pop(); // remove the placeholder for the nested fmt args.
+
+            // Coalesce adjacent literals.
+            if let Some(FormatArgsPiece::Literal(s1)) = fmt.template.last() &&
+               let Some(FormatArgsPiece::Literal(s2)) = fmt2.template.first_mut()
+            {
+                *s2 = Symbol::intern(&(s1.as_str().to_owned() + s2.as_str()));
+                fmt.template.pop();
+            }
+            if let Some(FormatArgsPiece::Literal(s1)) = fmt2.template.last() &&
+               let Some(FormatArgsPiece::Literal(s2)) = rest.first_mut()
+            {
+                *s2 = Symbol::intern(&(s1.as_str().to_owned() + s2.as_str()));
+                fmt2.template.pop();
+            }
+
+            for piece in fmt2.template {
+                match piece {
+                    FormatArgsPiece::Literal(s) => fmt.template.push(FormatArgsPiece::Literal(s)),
+                    FormatArgsPiece::Placeholder(mut p) => {
+                        // Correct the index to refer to the right place into the outer argument list.
+                        if let Ok(n) = &mut p.argument.index {
+                            *n += arg_index;
+                        }
+                        fmt.template.push(FormatArgsPiece::Placeholder(p));
+                    }
+                }
+            }
+            fmt.template.extend(rest);
+
+            // Don't increment `i` here, so we recurse into the newly added pieces.
+        } else {
+            i += 1;
+        }
+    }
+    fmt
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
