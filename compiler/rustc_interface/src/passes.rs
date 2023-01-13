@@ -817,23 +817,26 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 arena,
                 hir_arena,
-                untracked_resolutions,
                 untracked,
-                krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
                 queries.as_dyn(),
                 rustc_query_impl::query_callbacks(arena),
-                crate_name,
-                outputs,
             )
         })
     });
 
     let mut qcx = QueryContext { gcx };
     qcx.enter(|tcx| {
-        tcx.feed_unit_query()
-            .resolver_for_lowering(tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)))
+        let feed = tcx.feed_unit_query();
+        feed.resolver_for_lowering(
+            tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
+        );
+        feed.resolutions(tcx.arena.alloc(untracked_resolutions));
+        feed.output_filenames(tcx.arena.alloc(std::sync::Arc::new(outputs)));
+        feed.features_query(sess.features_untracked());
+        let feed = tcx.feed_local_crate();
+        feed.crate_name(crate_name);
     });
     qcx
 }

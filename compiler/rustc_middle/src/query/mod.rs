@@ -27,12 +27,12 @@ rustc_queries! {
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
-        eval_always
+        feedable
         no_hash
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering(_: ()) -> &'tcx Steal<ty::ResolverAstLowering> {
+    query resolver_for_lowering(_: ()) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
         feedable
         no_hash
         desc { "getting the resolver for lowering" }
@@ -1673,7 +1673,7 @@ rustc_queries! {
 
     /// Gets the name of the crate.
     query crate_name(_: CrateNum) -> Symbol {
-        eval_always
+        feedable
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
@@ -1857,7 +1857,7 @@ rustc_queries! {
     /// This query returns an `&Arc` because codegen backends need the value even after the `TyCtxt`
     /// has been destroyed.
     query output_filenames(_: ()) -> &'tcx Arc<OutputFilenames> {
-        eval_always
+        feedable
         desc { "getting output filenames" }
     }
 
@@ -2041,7 +2041,7 @@ rustc_queries! {
     }
 
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
-        eval_always
+        feedable
         desc { "looking up enabled feature gates" }
     }
 
