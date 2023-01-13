@@ -103,10 +103,8 @@ fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
 ///
 /// `format_args!("Hello, World! {}", 123)`.
 fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
-    // None: Not sure yet.
-    // Some(true): Remove, because it was inlined. (Might be set to false later if it is used in another way.)
-    // Some(false): Do not remove, because some non-inlined placeholder uses it.
-    let mut remove = vec![None; fmt.arguments.all_args().len()];
+    let mut was_inlined = vec![false; fmt.arguments.all_args().len()];
+    let mut inlined_anything = false;
 
     for i in 0..fmt.template.len() {
         let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i] else { continue };
@@ -123,30 +121,34 @@ fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
             let fmt = fmt.to_mut();
             // Replace the placeholder with the literal.
             fmt.template[i] = FormatArgsPiece::Literal(s);
-            // Only remove it wasn't set to 'do not remove'.
-            remove[arg_index].get_or_insert(true);
-        } else {
-            // Never remove an argument that's used by a non-inlined placeholder,
-            // even if this argument is inlined in another place.
-            remove[arg_index] = Some(false);
+            was_inlined[arg_index] = true;
+            inlined_anything = true;
         }
     }
 
     // Remove the arguments that were inlined.
-    if remove.iter().any(|&x| x == Some(true)) {
+    if inlined_anything {
         let fmt = fmt.to_mut();
+
+        let mut remove = was_inlined;
+
+        // Don't remove anything that's still used.
+        for_all_argument_indexes(&mut fmt.template, |index| remove[*index] = false);
+
         // Drop all the arguments that are marked for removal.
         let mut remove_it = remove.iter();
-        fmt.arguments.all_args_mut().retain(|_| remove_it.next() != Some(&Some(true)));
+        fmt.arguments.all_args_mut().retain(|_| remove_it.next() != Some(&true));
+
         // Calculate the mapping of old to new indexes for the remaining arguments.
         let index_map: Vec<usize> = remove
             .into_iter()
             .scan(0, |i, remove| {
                 let mapped = *i;
-                *i += (remove != Some(true)) as usize;
+                *i += !remove as usize;
                 Some(mapped)
             })
             .collect();
+
         // Correct the indexes that refer to arguments that have shifted position.
         for_all_argument_indexes(&mut fmt.template, |index| *index = index_map[*index]);
     }
