@@ -7,6 +7,7 @@ use either::Either;
 use hir::{known, HasVisibility, HirDisplay, HirWrite, ModuleDef, ModuleDefId, Semantics};
 use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
 use itertools::Itertools;
+use smallvec::{smallvec, SmallVec};
 use stdx::never;
 use syntax::{
     ast::{self, AstNode},
@@ -83,7 +84,7 @@ pub enum AdjustmentHintsMode {
     PreferPostfix,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
     BindingModeHint,
     ChainingHint,
@@ -102,9 +103,15 @@ pub enum InlayKind {
 
 #[derive(Debug)]
 pub struct InlayHint {
+    /// The text range this inlay hint applies to.
     pub range: TextRange,
+    /// The kind of this inlay hint. This is used to determine side and padding of the hint for
+    /// rendering purposes.
     pub kind: InlayKind,
+    /// The actual label to show in the inlay hint.
     pub label: InlayHintLabel,
+    /// The tooltip to show when hovering over the inlay hint, this may invoke other actions like
+    /// hover requests to show.
     pub tooltip: Option<InlayTooltip>,
 }
 
@@ -117,7 +124,7 @@ pub enum InlayTooltip {
 
 #[derive(Default)]
 pub struct InlayHintLabel {
-    pub parts: Vec<InlayHintLabelPart>,
+    pub parts: SmallVec<[InlayHintLabelPart; 1]>,
 }
 
 impl InlayHintLabel {
@@ -145,13 +152,13 @@ impl InlayHintLabel {
 
 impl From<String> for InlayHintLabel {
     fn from(s: String) -> Self {
-        Self { parts: vec![InlayHintLabelPart { text: s, linked_location: None }] }
+        Self { parts: smallvec![InlayHintLabelPart { text: s, linked_location: None }] }
     }
 }
 
 impl From<&str> for InlayHintLabel {
     fn from(s: &str) -> Self {
-        Self { parts: vec![InlayHintLabelPart { text: s.into(), linked_location: None }] }
+        Self { parts: smallvec![InlayHintLabelPart { text: s.into(), linked_location: None }] }
     }
 }
 

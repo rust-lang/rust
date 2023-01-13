@@ -5,6 +5,7 @@
 //! ```
 use hir::{HirDisplay, Semantics};
 use ide_db::{base_db::FileRange, RootDatabase};
+use smallvec::smallvec;
 use syntax::{
     ast::{self, AstNode, HasName},
     match_ast, SyntaxKind, SyntaxNode, T,
@@ -116,7 +117,9 @@ pub(super) fn hints(
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBraceHint,
-        label: InlayHintLabel { parts: vec![InlayHintLabelPart { text: label, linked_location }] },
+        label: InlayHintLabel {
+            parts: smallvec![InlayHintLabelPart { text: label, linked_location }],
+        },
         tooltip: None, // provided by label part location
     });
 
