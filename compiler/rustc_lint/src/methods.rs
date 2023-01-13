@@ -1,7 +1,7 @@
+use crate::lints::CStringPtr;
 use crate::LateContext;
 use crate::LateLintPass;
 use crate::LintContext;
-use rustc_errors::fluent;
 use rustc_hir::{Expr, ExprKind, PathSegment};
 use rustc_middle::ty;
 use rustc_span::{symbol::sym, ExpnKind, Span};
@@ -90,16 +90,10 @@ fn lint_cstring_as_ptr(
         if cx.tcx.is_diagnostic_item(sym::Result, def.did()) {
             if let ty::Adt(adt, _) = substs.type_at(0).kind() {
                 if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did()) {
-                    cx.struct_span_lint(
+                    cx.emit_spanned_lint(
                         TEMPORARY_CSTRING_AS_PTR,
                         as_ptr_span,
-                        fluent::lint_cstring_ptr,
-                        |diag| {
-                            diag.span_label(as_ptr_span, fluent::as_ptr_label)
-                                .span_label(unwrap.span, fluent::unwrap_label)
-                                .note(fluent::note)
-                                .help(fluent::help)
-                        },
+                        CStringPtr { as_ptr: as_ptr_span, unwrap: unwrap.span },
                     );
                 }
             }

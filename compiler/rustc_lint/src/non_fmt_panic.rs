@@ -1,3 +1,4 @@
+use crate::lints::{NonFmtPanicBraces, NonFmtPanicUnused};
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_errors::{fluent, Applicability};
@@ -118,6 +119,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         arg_span = expn.call_site;
     }
 
+    #[allow(rustc::diagnostic_outside_of_impl)]
     cx.struct_span_lint(NON_FMT_PANICS, arg_span, fluent::lint_non_fmt_panic, |lint| {
         lint.set_arg("name", symbol);
         lint.note(fluent::note);
@@ -253,25 +255,14 @@ fn check_panic_str<'tcx>(
                 .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
                 .collect(),
         };
-        cx.struct_span_lint(NON_FMT_PANICS, arg_spans, fluent::lint_non_fmt_panic_unused, |lint| {
-            lint.set_arg("count", n_arguments);
-            lint.note(fluent::note);
-            if is_arg_inside_call(arg.span, span) {
-                lint.span_suggestion(
-                    arg.span.shrink_to_hi(),
-                    fluent::add_args_suggestion,
-                    ", ...",
-                    Applicability::HasPlaceholders,
-                );
-                lint.span_suggestion(
-                    arg.span.shrink_to_lo(),
-                    fluent::add_fmt_suggestion,
-                    "\"{}\", ",
-                    Applicability::MachineApplicable,
-                );
-            }
-            lint
-        });
+        cx.emit_spanned_lint(
+            NON_FMT_PANICS,
+            arg_spans,
+            NonFmtPanicUnused {
+                count: n_arguments,
+                suggestion: is_arg_inside_call(arg.span, span).then_some(arg.span),
+            },
+        );
     } else {
         let brace_spans: Option<Vec<_>> =
             snippet.filter(|s| s.starts_with('"') || s.starts_with("r#")).map(|s| {
@@ -281,22 +272,12 @@ fn check_panic_str<'tcx>(
                     .collect()
             });
         let count = brace_spans.as_ref().map(|v| v.len()).unwrap_or(/* any number >1 */ 2);
-        cx.struct_span_lint(
+        cx.emit_spanned_lint(
             NON_FMT_PANICS,
             brace_spans.unwrap_or_else(|| vec![span]),
-            fluent::lint_non_fmt_panic_braces,
-            |lint| {
-                lint.set_arg("count", count);
-                lint.note(fluent::note);
-                if is_arg_inside_call(arg.span, span) {
-                    lint.span_suggestion(
-                        arg.span.shrink_to_lo(),
-                        fluent::suggestion,
-                        "\"{}\", ",
-                        Applicability::MachineApplicable,
-                    );
-                }
-                lint
+            NonFmtPanicBraces {
+                count,
+                suggestion: is_arg_inside_call(arg.span, span).then_some(arg.span.shrink_to_lo()),
             },
         );
     }
