@@ -45,16 +45,34 @@
 use std::env::{self, VarError};
 use std::fmt::{self, Display};
 use std::io::{self, IsTerminal};
+use tracing_core::{Event, Subscriber};
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
+use tracing_subscriber::fmt::{
+    format::{self, FormatEvent, FormatFields},
+    FmtContext,
+};
 use tracing_subscriber::layer::SubscriberExt;
 
 pub fn init_rustc_env_logger() -> Result<(), Error> {
-    init_env_logger("RUSTC_LOG")
+    init_rustc_env_logger_with_backtrace_option(&None)
+}
+
+pub fn init_rustc_env_logger_with_backtrace_option(
+    backtrace_target: &Option<String>,
+) -> Result<(), Error> {
+    init_env_logger_with_backtrace_option("RUSTC_LOG", backtrace_target)
 }
 
 /// In contrast to `init_rustc_env_logger` this allows you to choose an env var
 /// other than `RUSTC_LOG`.
 pub fn init_env_logger(env: &str) -> Result<(), Error> {
+    init_env_logger_with_backtrace_option(env, &None)
+}
+
+pub fn init_env_logger_with_backtrace_option(
+    env: &str,
+    backtrace_target: &Option<String>,
+) -> Result<(), Error> {
     let filter = match env::var(env) {
         Ok(env) => EnvFilter::new(env),
         _ => EnvFilter::default().add_directive(Directive::from(LevelFilter::WARN)),
@@ -88,9 +106,45 @@ pub fn init_env_logger(env: &str) -> Result<(), Error> {
     let layer = layer.with_thread_ids(true).with_thread_names(true);
 
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    match backtrace_target {
+        Some(str) => {
+            let fmt_layer = tracing_subscriber::fmt::layer()
+                .with_writer(io::stderr)
+                .without_time()
+                .event_format(BacktraceFormatter { backtrace_target: str.to_string() });
+            let subscriber = subscriber.with(fmt_layer);
+            tracing::subscriber::set_global_default(subscriber).unwrap();
+        }
+        None => {
+            tracing::subscriber::set_global_default(subscriber).unwrap();
+        }
+    };
 
     Ok(())
+}
+
+struct BacktraceFormatter {
+    backtrace_target: String,
+}
+
+impl<S, N> FormatEvent<S, N> for BacktraceFormatter
+where
+    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
+{
+    fn format_event(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        mut writer: format::Writer<'_>,
+        event: &Event<'_>,
+    ) -> fmt::Result {
+        let target = event.metadata().target();
+        if !target.contains(&self.backtrace_target) {
+            return Ok(());
+        }
+        let backtrace = std::backtrace::Backtrace::capture();
+        writeln!(writer, "stack backtrace: \n{:?}", backtrace)
+    }
 }
 
 pub fn stdout_isatty() -> bool {

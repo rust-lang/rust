@@ -4033,10 +4033,10 @@ declare_lint! {
     ///
     /// This can be used to implement an unsound API if used incorrectly.
     pub IMPLIED_BOUNDS_ENTAILMENT,
-    Warn,
+    Deny,
     "impl method assumes more implied bounds than its corresponding trait method",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #105572 <https://github.com/rust-lang/rust/issues/105572>",
-        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
 }

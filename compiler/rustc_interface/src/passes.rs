@@ -1,7 +1,8 @@
 use crate::errors::{
     CantEmitMIR, EmojiIdentifier, ErrorWritingDependencies, FerrisIdentifier,
     GeneratedFileConflictsWithDirectory, InputFileWouldBeOverWritten, MixedBinCrate,
-    MixedProcMacroCrate, OutDirError, ProcMacroDocWithoutArg, TempsDirError,
+    MixedProcMacroCrate, OutDirError, ProcMacroCratePanicAbort, ProcMacroDocWithoutArg,
+    TempsDirError,
 };
 use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
@@ -36,6 +37,7 @@ use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
+use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 
 use std::any::Any;
@@ -378,6 +380,10 @@ pub fn configure_and_expand(
         if is_proc_macro_crate {
             sess.emit_err(MixedProcMacroCrate);
         }
+    }
+
+    if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
+        sess.emit_warning(ProcMacroCratePanicAbort);
     }
 
     // For backwards compatibility, we don't try to run proc macro injection

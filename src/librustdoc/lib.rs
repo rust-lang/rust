@@ -772,7 +772,6 @@ fn main_args(at_args: &[String]) -> MainResult {
     let crate_version = options.crate_version.clone();
 
     let output_format = options.output_format;
-    let externs = options.externs.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
@@ -805,9 +804,7 @@ fn main_args(at_args: &[String]) -> MainResult {
                 let resolver_caches = resolver.borrow_mut().access(|resolver| {
                     collect_intra_doc_links::early_resolve_intra_doc_links(
                         resolver,
-                        sess,
                         krate,
-                        externs,
                         render_options.document_private,
                     )
                 });
