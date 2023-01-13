@@ -1,5 +1,7 @@
 // aux-build:test-macros.rs
 // compile-flags: -Z span-debug
+// revisions: local remapped
+// [remapped]compile-flags: --remap-path-prefix={{src-base}}=remapped
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;
