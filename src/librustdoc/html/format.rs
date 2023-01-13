@@ -569,7 +569,7 @@ fn generate_macro_def_id_path(
     root_path: Option<&str>,
 ) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     let tcx = cx.shared.tcx;
-    let crate_name = tcx.crate_name(def_id.krate).to_string();
+    let crate_name = tcx.crate_name(def_id.krate);
     let cache = cx.cache();
 
     let fqp: Vec<Symbol> = tcx
@@ -584,7 +584,7 @@ fn generate_macro_def_id_path(
             }
         })
         .collect();
-    let mut relative = fqp.iter().map(|elem| elem.to_string());
+    let mut relative = fqp.iter().copied();
     let cstore = CStore::from_tcx(tcx);
     // We need this to prevent a `panic` when this function is used from intra doc links...
     if !cstore.has_crate_data(def_id.krate) {
@@ -602,9 +602,9 @@ fn generate_macro_def_id_path(
     };
 
     let mut path = if is_macro_2 {
-        once(crate_name.clone()).chain(relative).collect()
+        once(crate_name).chain(relative).collect()
     } else {
-        vec![crate_name.clone(), relative.next_back().unwrap()]
+        vec![crate_name, relative.next_back().unwrap()]
     };
     if path.len() < 2 {
         // The minimum we can have is the crate name followed by the macro name. If shorter, then
@@ -614,17 +614,22 @@ fn generate_macro_def_id_path(
     }
 
     if let Some(last) = path.last_mut() {
-        *last = format!("macro.{}.html", last);
+        *last = Symbol::intern(&format!("macro.{}.html", last.as_str()));
     }
 
     let url = match cache.extern_locations[&def_id.krate] {
         ExternalLocation::Remote(ref s) => {
             // `ExternalLocation::Remote` always end with a `/`.
-            format!("{}{}", s, path.join("/"))
+            format!("{}{}", s, path.iter().map(|p| p.as_str()).join("/"))
         }
         ExternalLocation::Local => {
             // `root_path` always end with a `/`.
-            format!("{}{}/{}", root_path.unwrap_or(""), crate_name, path.join("/"))
+            format!(
+                "{}{}/{}",
+                root_path.unwrap_or(""),
+                crate_name,
+                path.iter().map(|p| p.as_str()).join("/")
+            )
         }
         ExternalLocation::Unknown => {
             debug!("crate {} not in cache when linkifying macros", crate_name);
