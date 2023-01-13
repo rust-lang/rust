@@ -46,7 +46,7 @@ impl<T> Slot<T> {
     fn wait_write(&self) {
         let backoff = Backoff::new();
         while self.state.load(Ordering::Acquire) & WRITE == 0 {
-            backoff.snooze();
+            backoff.spin_heavy();
         }
     }
 }
@@ -82,7 +82,7 @@ impl<T> Block<T> {
             if !next.is_null() {
                 return next;
             }
-            backoff.snooze();
+            backoff.spin_heavy();
         }
     }
 
@@ -191,7 +191,7 @@ impl<T> Channel<T> {
 
             // If we reached the end of the block, wait until the next one is installed.
             if offset == BLOCK_CAP {
-                backoff.snooze();
+                backoff.spin_heavy();
                 tail = self.tail.index.load(Ordering::Acquire);
                 block = self.tail.block.load(Ordering::Acquire);
                 continue;
@@ -247,7 +247,7 @@ impl<T> Channel<T> {
                     return true;
                 },
                 Err(_) => {
-                    backoff.spin();
+                    backoff.spin_light();
                     tail = self.tail.index.load(Ordering::Acquire);
                     block = self.tail.block.load(Ordering::Acquire);
                 }
@@ -286,7 +286,7 @@ impl<T> Channel<T> {
 
             // If we reached the end of the block, wait until the next one is installed.
             if offset == BLOCK_CAP {
-                backoff.snooze();
+                backoff.spin_heavy();
                 head = self.head.index.load(Ordering::Acquire);
                 block = self.head.block.load(Ordering::Acquire);
                 continue;
@@ -320,7 +320,7 @@ impl<T> Channel<T> {
             // The block can be null here only if the first message is being sent into the channel.
             // In that case, just wait until it gets initialized.
             if block.is_null() {
-                backoff.snooze();
+                backoff.spin_heavy();
                 head = self.head.index.load(Ordering::Acquire);
                 block = self.head.block.load(Ordering::Acquire);
                 continue;
@@ -351,7 +351,7 @@ impl<T> Channel<T> {
                     return true;
                 },
                 Err(_) => {
-                    backoff.spin();
+                    backoff.spin_light();
                     head = self.head.index.load(Ordering::Acquire);
                     block = self.head.block.load(Ordering::Acquire);
                 }
@@ -542,7 +542,7 @@ impl<T> Channel<T> {
             // New updates to tail will be rejected by MARK_BIT and aborted unless it's
             // at boundary. We need to wait for the updates take affect otherwise there
             // can be memory leaks.
-            backoff.snooze();
+            backoff.spin_heavy();
             tail = self.tail.index.load(Ordering::Acquire);
         }
 
