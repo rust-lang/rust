@@ -180,12 +180,21 @@ This lint has the following configuration variables:
             })
     }
 
-    fn get_markdown_table(&self) -> String {
+    fn configs_to_markdown(&self, map_fn: fn(&ClippyConfiguration) -> String) -> String {
         self.config
             .iter()
             .filter(|config| config.deprecation_reason.is_none())
-            .map(ClippyConfiguration::to_markdown_table_entry)
+            .filter(|config| !config.lints.is_empty())
+            .map(map_fn)
             .join("\n")
+    }
+
+    fn get_markdown_docs(&self) -> String {
+        format!(
+            "## Lint Configuration Options\n| <div style=\"width:290px\">Option</div> | Default Value |\n|--|--|\n{}\n\n{}\n",
+            self.configs_to_markdown(ClippyConfiguration::to_markdown_table_entry),
+            self.configs_to_markdown(ClippyConfiguration::to_markdown_paragraph),
+        )
     }
 }
 
@@ -230,12 +239,7 @@ impl Drop for MetadataCollector {
             .create(true)
             .open(MARKDOWN_OUTPUT_FILE)
             .unwrap();
-        writeln!(
-            file,
-            "## Lint Configuration\n\n| Option | Default | Description | Lints |\n|--|--|--|--|\n{}\n",
-            self.get_markdown_table()
-        )
-        .unwrap();
+        writeln!(file, "{}", self.get_markdown_docs(),).unwrap();
     }
 }
 
@@ -537,23 +541,26 @@ impl ClippyConfiguration {
         }
     }
 
-    fn to_markdown_table_entry(&self) -> String {
+    fn to_markdown_paragraph(&self) -> String {
         format!(
-            "| {} | `{}` | {} | {} |",
+            "### {}\n{}\n\n**Default Value:** `{}` (`{}`)\n\n{}\n\n",
             self.name,
-            self.default,
             self.doc
-                .split('.')
-                .next()
-                .unwrap_or("")
-                .replace('|', "\\|")
-                .replace("\n    ", " "),
+                .lines()
+                .map(|line| line.strip_prefix("    ").unwrap_or(line))
+                .join("\n"),
+            self.default,
+            self.config_type,
             self.lints
                 .iter()
                 .map(|name| name.to_string().split_whitespace().next().unwrap().to_string())
-                .map(|name| format!("[{name}](https://rust-lang.github.io/rust-clippy/master/index.html#{name})"))
-                .join(" ")
+                .map(|name| format!("* [{name}](https://rust-lang.github.io/rust-clippy/master/index.html#{name})"))
+                .join("\n"),
         )
+    }
+
+    fn to_markdown_table_entry(&self) -> String {
+        format!("| [{}](#{}) | `{}` |", self.name, self.name, self.default)
     }
 }
 

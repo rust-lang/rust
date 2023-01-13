@@ -10,11 +10,10 @@ avoid-breaking-exported-api = false
 disallowed-names = ["toto", "tata", "titi"]
 ```
 
-See the [list of configurable lints](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration),
-the lint descriptions contain the names and meanings of these configuration variables.
-
-See [table of lint configurations](./lint_configuration.md)
-to see what configuration options you can set and the lints they configure.
+The [table of configurations](./lint_configuration.md)
+contains all config values, their default, and a list of lints they affect.
+Each [configurable lint](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration)
+, also contains information about these values.
 
 For configurations that are a list type with default values such as
 [disallowed-names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names),
