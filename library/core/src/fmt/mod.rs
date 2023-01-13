@@ -484,9 +484,26 @@ pub struct Arguments<'a> {
 }
 
 impl<'a> Arguments<'a> {
-    /// Get the formatted string, if it has no arguments to be formatted.
+    /// Get the formatted string, if it has no arguments to be formatted at runtime.
     ///
-    /// This can be used to avoid allocations in the most trivial case.
+    /// This can be used to avoid allocations in some cases.
+    ///
+    /// # Guarantees
+    ///
+    /// For `format_args!("just a literal")`, this function is guaranteed to
+    /// return `Some("just a literal")`.
+    ///
+    /// For most cases with placeholders, this function will return `None`.
+    ///
+    /// However, the compiler may perform optimizations that can cause this
+    /// function to return `Some(_)` even if the format string contains
+    /// placeholders. For example, `format_args!("Hello, {}!", "world")` may be
+    /// optimized to `format_args!("Hello, world!")`, such that `as_str()`
+    /// returns `Some("Hello, world!")`.
+    ///
+    /// The behavior for anything but the trivial case (without placeholders)
+    /// is not guaranteed, and should not be relied upon for anything other
+    /// than optimization.
     ///
     /// # Examples
     ///
@@ -507,7 +524,7 @@ impl<'a> Arguments<'a> {
     /// ```rust
     /// assert_eq!(format_args!("hello").as_str(), Some("hello"));
     /// assert_eq!(format_args!("").as_str(), Some(""));
-    /// assert_eq!(format_args!("{}", 1).as_str(), None);
+    /// assert_eq!(format_args!("{:?}", std::env::current_dir()).as_str(), None);
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
