@@ -24,10 +24,7 @@ jobs:
         EOF
 
     - name: Prepare dependencies
-      run: |
-        git config --global user.email "user@example.com"
-        git config --global user.name "User"
-        ./y.rs prepare
+      run: ./y.rs prepare
 
     - name: Test
       run: ./scripts/test_bootstrap.sh
@@ -51,10 +48,7 @@ jobs:
         EOF
 
     - name: Prepare dependencies
-      run: |
-        git config --global user.email "user@example.com"
-        git config --global user.name "User"
-        ./y.rs prepare
+      run: ./y.rs prepare
 
     - name: Test
       run: ./scripts/test_rustc_tests.sh
