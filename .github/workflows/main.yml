@@ -91,10 +91,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
 
-    - name: Windows setup
-      if: matrix.os == 'windows-latest'
-      run: git config --global core.autocrlf false
-
     - name: Use sparse cargo registry
       run: |
         cat >> ~/.cargo/config.toml <<EOF

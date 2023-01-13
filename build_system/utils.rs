@@ -196,7 +196,14 @@ pub(crate) fn hyperfine_command(
 #[must_use]
 pub(crate) fn git_command<'a>(repo_dir: impl Into<Option<&'a Path>>, cmd: &str) -> Command {
     let mut git_cmd = Command::new("git");
-    git_cmd.arg("-c").arg("user.name=Dummy").arg("-c").arg("user.email=dummy@example.com").arg(cmd);
+    git_cmd
+        .arg("-c")
+        .arg("user.name=Dummy")
+        .arg("-c")
+        .arg("user.email=dummy@example.com")
+        .arg("-c")
+        .arg("core.autocrlf=false")
+        .arg(cmd);
     if let Some(repo_dir) = repo_dir.into() {
         git_cmd.current_dir(repo_dir);
     }
