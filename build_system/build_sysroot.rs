@@ -17,7 +17,7 @@ pub(crate) fn build_sysroot(
     channel: &str,
     sysroot_kind: SysrootKind,
     cg_clif_dylib_src: &Path,
-    host_triple: &str,
+    host_compiler: &Compiler,
     target_triple: &str,
 ) {
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
@@ -53,7 +53,7 @@ pub(crate) fn build_sysroot(
 
     let default_sysroot = super::rustc_info::get_default_sysroot();
 
-    let host_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(host_triple).join("lib");
+    let host_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(&host_compiler.triple).join("lib");
     let target_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(target_triple).join("lib");
     fs::create_dir_all(&host_rustlib_lib).unwrap();
     fs::create_dir_all(&target_rustlib_lib).unwrap();
@@ -83,7 +83,7 @@ pub(crate) fn build_sysroot(
         SysrootKind::None => {} // Nothing to do
         SysrootKind::Llvm => {
             for file in fs::read_dir(
-                default_sysroot.join("lib").join("rustlib").join(host_triple).join("lib"),
+                default_sysroot.join("lib").join("rustlib").join(&host_compiler.triple).join("lib"),
             )
             .unwrap()
             {
@@ -103,7 +103,7 @@ pub(crate) fn build_sysroot(
                 try_hard_link(&file, host_rustlib_lib.join(file.file_name().unwrap()));
             }
 
-            if target_triple != host_triple {
+            if target_triple != host_compiler.triple {
                 for file in fs::read_dir(
                     default_sysroot.join("lib").join("rustlib").join(target_triple).join("lib"),
                 )
@@ -115,9 +115,15 @@ pub(crate) fn build_sysroot(
             }
         }
         SysrootKind::Clif => {
-            build_clif_sysroot_for_triple(dirs, channel, host_triple, &cg_clif_dylib_path, None);
+            build_clif_sysroot_for_triple(
+                dirs,
+                channel,
+                host_compiler.clone(),
+                &cg_clif_dylib_path,
+                None,
+            );
 
-            if host_triple != target_triple {
+            if host_compiler.triple != target_triple {
                 // When cross-compiling it is often necessary to manually pick the right linker
                 let linker = match target_triple {
                     "aarch64-unknown-linux-gnu" => Some("aarch64-linux-gnu-gcc"),
@@ -127,7 +133,11 @@ pub(crate) fn build_sysroot(
                 build_clif_sysroot_for_triple(
                     dirs,
                     channel,
-                    target_triple,
+                    {
+                        let mut target_compiler = host_compiler.clone();
+                        target_compiler.triple = target_triple.to_owned();
+                        target_compiler
+                    },
                     &cg_clif_dylib_path,
                     linker,
                 );
@@ -155,7 +165,7 @@ static STANDARD_LIBRARY: CargoProject = CargoProject::new(&BUILD_SYSROOT, "build
 fn build_clif_sysroot_for_triple(
     dirs: &Dirs,
     channel: &str,
-    triple: &str,
+    mut compiler: Compiler,
     cg_clif_dylib_path: &Path,
     linker: Option<&str>,
 ) {
@@ -177,7 +187,7 @@ fn build_clif_sysroot_for_triple(
         }
     }
 
-    let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(triple).join(channel);
+    let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join(channel);
 
     if !super::config::get_bool("keep_sysroot") {
         // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
@@ -188,7 +198,7 @@ fn build_clif_sysroot_for_triple(
     }
 
     // Build sysroot
-    let mut rustflags = "-Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
+    let mut rustflags = " -Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
     rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
     rustflags.push_str(&format!(" --sysroot={}", DIST_DIR.to_path(dirs).to_str().unwrap()));
     if channel == "release" {
@@ -198,8 +208,7 @@ fn build_clif_sysroot_for_triple(
         use std::fmt::Write;
         write!(rustflags, " -Clinker={}", linker).unwrap();
     }
-    let mut compiler = Compiler::with_triple(triple.to_owned());
-    compiler.rustflags = rustflags;
+    compiler.rustflags += &rustflags;
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
     if channel == "release" {
         build_cmd.arg("--release");
@@ -219,7 +228,7 @@ fn build_clif_sysroot_for_triple(
         };
         try_hard_link(
             entry.path(),
-            RUSTLIB_DIR.to_path(dirs).join(triple).join("lib").join(entry.file_name()),
+            RUSTLIB_DIR.to_path(dirs).join(&compiler.triple).join("lib").join(entry.file_name()),
         );
     }
 }

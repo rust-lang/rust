@@ -385,10 +385,11 @@ pub(crate) fn run_tests(
     channel: &str,
     sysroot_kind: SysrootKind,
     cg_clif_dylib: &Path,
-    host_triple: &str,
+    host_compiler: &Compiler,
     target_triple: &str,
 ) {
-    let runner = TestRunner::new(dirs.clone(), host_triple.to_string(), target_triple.to_string());
+    let runner =
+        TestRunner::new(dirs.clone(), host_compiler.triple.clone(), target_triple.to_string());
 
     if config::get_bool("testsuite.no_sysroot") {
         build_sysroot::build_sysroot(
@@ -396,7 +397,7 @@ pub(crate) fn run_tests(
             channel,
             SysrootKind::None,
             cg_clif_dylib,
-            &host_triple,
+            host_compiler,
             &target_triple,
         );
 
@@ -415,7 +416,7 @@ pub(crate) fn run_tests(
             channel,
             sysroot_kind,
             cg_clif_dylib,
-            &host_triple,
+            host_compiler,
             &target_triple,
         );
     }
@@ -445,7 +446,7 @@ impl TestRunner {
     pub fn new(dirs: Dirs, host_triple: String, target_triple: String) -> Self {
         let is_native = host_triple == target_triple;
         let jit_supported =
-            target_triple.contains("x86_64") && is_native && !host_triple.contains("windows");
+            is_native && host_triple.contains("x86_64") && !host_triple.contains("windows");
 
         let mut rustflags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());
         let mut runner = vec![];

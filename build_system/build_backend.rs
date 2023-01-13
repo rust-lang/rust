@@ -10,10 +10,10 @@ static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
 pub(crate) fn build_backend(
     dirs: &Dirs,
     channel: &str,
-    host_triple: &str,
+    host_compiler: &Compiler,
     use_unstable_features: bool,
 ) -> PathBuf {
-    let mut cmd = CG_CLIF.build(&Compiler::host(), dirs);
+    let mut cmd = CG_CLIF.build(&host_compiler, dirs);
 
     cmd.env("CARGO_BUILD_INCREMENTAL", "true"); // Force incr comp even in release mode
 
@@ -48,7 +48,7 @@ pub(crate) fn build_backend(
 
     CG_CLIF
         .target_dir(dirs)
-        .join(host_triple)
+        .join(&host_compiler.triple)
         .join(channel)
         .join(get_file_name("rustc_codegen_cranelift", "dylib"))
 }

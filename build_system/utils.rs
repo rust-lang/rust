@@ -5,10 +5,9 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{
-    get_cargo_path, get_host_triple, get_rustc_path, get_rustdoc_path, get_wrapper_file_name,
-};
+use super::rustc_info::{get_cargo_path, get_rustc_path, get_rustdoc_path, get_wrapper_file_name};
 
+#[derive(Clone, Debug)]
 pub(crate) struct Compiler {
     pub(crate) cargo: PathBuf,
     pub(crate) rustc: PathBuf,
@@ -20,19 +19,7 @@ pub(crate) struct Compiler {
 }
 
 impl Compiler {
-    pub(crate) fn host() -> Compiler {
-        Compiler {
-            cargo: get_cargo_path(),
-            rustc: get_rustc_path(),
-            rustdoc: get_rustdoc_path(),
-            rustflags: String::new(),
-            rustdocflags: String::new(),
-            triple: get_host_triple(),
-            runner: vec![],
-        }
-    }
-
-    pub(crate) fn with_triple(triple: String) -> Compiler {
+    pub(crate) fn llvm_with_triple(triple: String) -> Compiler {
         Compiler {
             cargo: get_cargo_path(),
             rustc: get_rustc_path(),
