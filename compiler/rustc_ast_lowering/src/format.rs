@@ -75,22 +75,8 @@ fn flatten_format_args(fmt: &FormatArgs) -> Cow<'_, FormatArgs> {
 
             // Now merge the placeholders:
 
-            let mut rest = fmt.template.split_off(i + 1);
+            let rest = fmt.template.split_off(i + 1);
             fmt.template.pop(); // remove the placeholder for the nested fmt args.
-
-            // Coalesce adjacent literals.
-            if let Some(FormatArgsPiece::Literal(s1)) = fmt.template.last() &&
-               let Some(FormatArgsPiece::Literal(s2)) = fmt2.template.first_mut()
-            {
-                *s2 = Symbol::intern(&(s1.as_str().to_owned() + s2.as_str()));
-                fmt.template.pop();
-            }
-            if let Some(FormatArgsPiece::Literal(s1)) = fmt2.template.last() &&
-               let Some(FormatArgsPiece::Literal(s2)) = rest.first_mut()
-            {
-                *s2 = Symbol::intern(&(s1.as_str().to_owned() + s2.as_str()));
-                fmt2.template.pop();
-            }
 
             for piece in fmt2.template {
                 match piece {
@@ -288,10 +274,24 @@ fn expand_format_args<'hir>(
     macsp: Span,
     fmt: &FormatArgs,
 ) -> hir::ExprKind<'hir> {
+    let mut incomplete_lit = String::new();
     let lit_pieces =
         ctx.arena.alloc_from_iter(fmt.template.iter().enumerate().filter_map(|(i, piece)| {
             match piece {
-                &FormatArgsPiece::Literal(s) => Some(ctx.expr_str(fmt.span, s)),
+                &FormatArgsPiece::Literal(s) => {
+                    // Coalesce adjacent literal pieces.
+                    if let Some(FormatArgsPiece::Literal(_)) = fmt.template.get(i + 1) {
+                        incomplete_lit.push_str(s.as_str());
+                        None
+                    } else if !incomplete_lit.is_empty() {
+                        incomplete_lit.push_str(s.as_str());
+                        let s = Symbol::intern(&incomplete_lit);
+                        incomplete_lit.clear();
+                        Some(ctx.expr_str(fmt.span, s))
+                    } else {
+                        Some(ctx.expr_str(fmt.span, s))
+                    }
+                }
                 &FormatArgsPiece::Placeholder(_) => {
                     // Inject empty string before placeholders when not already preceded by a literal piece.
                     if i == 0 || matches!(fmt.template[i - 1], FormatArgsPiece::Placeholder(_)) {
