@@ -885,6 +885,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
+        // It doesn't make sense to make this suggestion outside of typeck...
+        // (also autoderef will ICE...)
+        if self.typeck_results.is_none() {
+            return false;
+        }
+
         if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = obligation.predicate.kind().skip_binder()
             && Some(trait_pred.def_id()) == self.tcx.lang_items().sized_trait()
         {
@@ -1104,13 +1110,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         found: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
         // Autoderef is useful here because sometimes we box callables, etc.
-        let Some((def_id_or_name, output, inputs)) = Autoderef::new(
-            self,
-            param_env,
-            hir_id,
-            DUMMY_SP,
-            found,
-        ).silence_errors().find_map(|(found, _)| {
+        let Some((def_id_or_name, output, inputs)) = (self.autoderef_steps)(found).into_iter().find_map(|(found, _)| {
             match *found.kind() {
                 ty::FnPtr(fn_sig) =>
                     Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs())),
