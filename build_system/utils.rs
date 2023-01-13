@@ -5,10 +5,9 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{
-    get_cargo_path, get_host_triple, get_rustc_path, get_rustdoc_path, get_wrapper_file_name,
-};
+use super::rustc_info::{get_cargo_path, get_rustc_path, get_rustdoc_path, get_wrapper_file_name};
 
+#[derive(Clone, Debug)]
 pub(crate) struct Compiler {
     pub(crate) cargo: PathBuf,
     pub(crate) rustc: PathBuf,
@@ -20,19 +19,7 @@ pub(crate) struct Compiler {
 }
 
 impl Compiler {
-    pub(crate) fn host() -> Compiler {
-        Compiler {
-            cargo: get_cargo_path(),
-            rustc: get_rustc_path(),
-            rustdoc: get_rustdoc_path(),
-            rustflags: String::new(),
-            rustdocflags: String::new(),
-            triple: get_host_triple(),
-            runner: vec![],
-        }
-    }
-
-    pub(crate) fn with_triple(triple: String) -> Compiler {
+    pub(crate) fn llvm_with_triple(triple: String) -> Compiler {
         Compiler {
             cargo: get_cargo_path(),
             rustc: get_rustc_path(),
@@ -60,6 +47,38 @@ impl Compiler {
             runner: vec![],
         }
     }
+
+    pub(crate) fn set_cross_linker_and_runner(&mut self) {
+        match self.triple.as_str() {
+            "aarch64-unknown-linux-gnu" => {
+                // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
+                self.rustflags += " -Clinker=aarch64-linux-gnu-gcc";
+                self.rustdocflags += " -Clinker=aarch64-linux-gnu-gcc";
+                self.runner = vec![
+                    "qemu-aarch64".to_owned(),
+                    "-L".to_owned(),
+                    "/usr/aarch64-linux-gnu".to_owned(),
+                ];
+            }
+            "s390x-unknown-linux-gnu" => {
+                // We are cross-compiling for s390x. Use the correct linker and run tests in qemu.
+                self.rustflags += " -Clinker=s390x-linux-gnu-gcc";
+                self.rustdocflags += " -Clinker=s390x-linux-gnu-gcc";
+                self.runner = vec![
+                    "qemu-s390x".to_owned(),
+                    "-L".to_owned(),
+                    "/usr/s390x-linux-gnu".to_owned(),
+                ];
+            }
+            "x86_64-pc-windows-gnu" => {
+                // We are cross-compiling for Windows. Run tests in wine.
+                self.runner = vec!["wine".to_owned()];
+            }
+            _ => {
+                println!("Unknown non-native platform");
+            }
+        }
+    }
 }
 
 pub(crate) struct CargoProject {
@@ -84,6 +103,7 @@ impl CargoProject {
         RelPath::BUILD.join(self.target).to_path(dirs)
     }
 
+    #[must_use]
     fn base_cmd(&self, command: &str, cargo: &Path, dirs: &Dirs) -> Command {
         let mut cmd = Command::new(cargo);
 
@@ -91,11 +111,13 @@ impl CargoProject {
             .arg("--manifest-path")
             .arg(self.manifest_path(dirs))
             .arg("--target-dir")
-            .arg(self.target_dir(dirs));
+            .arg(self.target_dir(dirs))
+            .arg("--frozen");
 
         cmd
     }
 
+    #[must_use]
     fn build_cmd(&self, command: &str, compiler: &Compiler, dirs: &Dirs) -> Command {
         let mut cmd = self.base_cmd(command, &compiler.cargo, dirs);
 
@@ -170,6 +192,23 @@ pub(crate) fn hyperfine_command(
     bench.arg(a).arg(b);
 
     bench
+}
+
+#[must_use]
+pub(crate) fn git_command<'a>(repo_dir: impl Into<Option<&'a Path>>, cmd: &str) -> Command {
+    let mut git_cmd = Command::new("git");
+    git_cmd
+        .arg("-c")
+        .arg("user.name=Dummy")
+        .arg("-c")
+        .arg("user.email=dummy@example.com")
+        .arg("-c")
+        .arg("core.autocrlf=false")
+        .arg(cmd);
+    if let Some(repo_dir) = repo_dir.into() {
+        git_cmd.current_dir(repo_dir);
+    }
+    git_cmd
 }
 
 #[track_caller]

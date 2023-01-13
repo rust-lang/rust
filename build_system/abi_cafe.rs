@@ -10,23 +10,18 @@ use super::SysrootKind;
 pub(crate) static ABI_CAFE_REPO: GitRepo =
     GitRepo::github("Gankra", "abi-cafe", "4c6dc8c9c687e2b3a760ff2176ce236872b37212", "abi-cafe");
 
-static ABI_CAFE: CargoProject = CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe");
+pub(crate) static ABI_CAFE: CargoProject =
+    CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe");
 
 pub(crate) fn run(
     channel: &str,
     sysroot_kind: SysrootKind,
     dirs: &Dirs,
     cg_clif_dylib: &Path,
-    host_triple: &str,
-    target_triple: &str,
+    host_compiler: &Compiler,
 ) {
     if !config::get_bool("testsuite.abi-cafe") {
         eprintln!("[SKIP] abi-cafe");
-        return;
-    }
-
-    if host_triple != target_triple {
-        eprintln!("[SKIP] abi-cafe (cross-compilation not supported)");
         return;
     }
 
@@ -36,15 +31,15 @@ pub(crate) fn run(
         channel,
         sysroot_kind,
         cg_clif_dylib,
-        host_triple,
-        target_triple,
+        host_compiler,
+        &host_compiler.triple,
     );
 
     eprintln!("Running abi-cafe");
 
     let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
 
-    let mut cmd = ABI_CAFE.run(&Compiler::host(), dirs);
+    let mut cmd = ABI_CAFE.run(host_compiler, dirs);
     cmd.arg("--");
     cmd.arg("--pairs");
     cmd.args(pairs);

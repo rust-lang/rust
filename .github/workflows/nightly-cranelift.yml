@@ -13,11 +13,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Prepare dependencies
+    - name: Use sparse cargo registry
       run: |
-        git config --global user.email "user@example.com"
-        git config --global user.name "User"
-        ./y.rs prepare
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
+
+    - name: Prepare dependencies
+      run: ./y.rs prepare
 
     - name: Patch Cranelift
       run: |
@@ -31,6 +35,8 @@ jobs:
         sed -i 's/object = { version = "0.27.0"/object = { version = "0.28.0"/' Cargo.toml
 
         cat Cargo.toml
+
+        cargo fetch
 
     - name: Build without unstable features
       # This is the config rust-lang/rust uses for builds

@@ -8,9 +8,9 @@ If not please open an issue.
 ## Building and testing
 
 ```bash
-$ git clone https://github.com/bjorn3/rustc_codegen_cranelift.git
+$ git clone https://github.com/bjorn3/rustc_codegen_cranelift
 $ cd rustc_codegen_cranelift
-$ ./y.rs prepare # download and patch sysroot src and install hyperfine for benchmarking
+$ ./y.rs prepare
 $ ./y.rs build
 ```
 
@@ -20,13 +20,12 @@ To run the test suite replace the last command with:
 $ ./test.sh
 ```
 
-This will implicitly build cg_clif too. Both `y.rs build` and `test.sh` accept a `--debug` argument to
-build in debug mode.
+For more docs on how to build and test see [build_system/usage.txt](build_system/usage.txt) or the help message of `./y.rs`.
 
-Alternatively you can download a pre built version from [GHA]. It is listed in the artifacts section
+Alternatively you can download a pre built version from [Github Actions]. It is listed in the artifacts section
 of workflow runs. Unfortunately due to GHA restrictions you need to be logged in to access it.
 
-[GHA]: https://github.com/bjorn3/rustc_codegen_cranelift/actions?query=branch%3Amaster+event%3Apush+is%3Asuccess
+[Github Actions]: https://github.com/bjorn3/rustc_codegen_cranelift/actions?query=branch%3Amaster+event%3Apush+is%3Asuccess
 
 ## Usage
 

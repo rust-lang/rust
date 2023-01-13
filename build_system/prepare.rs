@@ -8,7 +8,7 @@ use crate::build_system::rustc_info::get_default_sysroot;
 use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
 use super::path::{Dirs, RelPath};
 use super::rustc_info::get_rustc_version;
-use super::utils::{copy_dir_recursively, retry_spawn_and_wait, spawn_and_wait};
+use super::utils::{copy_dir_recursively, git_command, retry_spawn_and_wait, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
     if RelPath::DOWNLOAD.to_path(dirs).exists() {
@@ -16,13 +16,22 @@ pub(crate) fn prepare(dirs: &Dirs) {
     }
     std::fs::create_dir_all(RelPath::DOWNLOAD.to_path(dirs)).unwrap();
 
+    spawn_and_wait(super::build_backend::CG_CLIF.fetch("cargo", dirs));
+
     prepare_sysroot(dirs);
+    spawn_and_wait(super::build_sysroot::STANDARD_LIBRARY.fetch("cargo", dirs));
+    spawn_and_wait(super::tests::LIBCORE_TESTS.fetch("cargo", dirs));
 
     super::abi_cafe::ABI_CAFE_REPO.fetch(dirs);
+    spawn_and_wait(super::abi_cafe::ABI_CAFE.fetch("cargo", dirs));
     super::tests::RAND_REPO.fetch(dirs);
+    spawn_and_wait(super::tests::RAND.fetch("cargo", dirs));
     super::tests::REGEX_REPO.fetch(dirs);
+    spawn_and_wait(super::tests::REGEX.fetch("cargo", dirs));
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
+    spawn_and_wait(super::tests::PORTABLE_SIMD.fetch("cargo", dirs));
     super::bench::SIMPLE_RAYTRACER_REPO.fetch(dirs);
+    spawn_and_wait(super::bench::SIMPLE_RAYTRACER.fetch("cargo", dirs));
 }
 
 fn prepare_sysroot(dirs: &Dirs) {
@@ -31,6 +40,7 @@ fn prepare_sysroot(dirs: &Dirs) {
 
     eprintln!("[COPY] sysroot src");
 
+    // FIXME ensure builds error out or update the copy if any of the files copied here change
     BUILD_SYSROOT.ensure_fresh(dirs);
     copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &BUILD_SYSROOT.to_path(dirs));
 
@@ -95,14 +105,14 @@ impl GitRepo {
 fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     eprintln!("[CLONE] {}", repo);
     // Ignore exit code as the repo may already have been checked out
-    Command::new("git").arg("clone").arg(repo).arg(&download_dir).spawn().unwrap().wait().unwrap();
+    git_command(None, "clone").arg(repo).arg(download_dir).spawn().unwrap().wait().unwrap();
 
-    let mut clean_cmd = Command::new("git");
-    clean_cmd.arg("checkout").arg("--").arg(".").current_dir(&download_dir);
+    let mut clean_cmd = git_command(download_dir, "checkout");
+    clean_cmd.arg("--").arg(".");
     spawn_and_wait(clean_cmd);
 
-    let mut checkout_cmd = Command::new("git");
-    checkout_cmd.arg("checkout").arg("-q").arg(rev).current_dir(download_dir);
+    let mut checkout_cmd = git_command(download_dir, "checkout");
+    checkout_cmd.arg("-q").arg(rev);
     spawn_and_wait(checkout_cmd);
 }
 
@@ -158,25 +168,16 @@ fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo:
 }
 
 fn init_git_repo(repo_dir: &Path) {
-    let mut git_init_cmd = Command::new("git");
-    git_init_cmd.arg("init").arg("-q").current_dir(repo_dir);
+    let mut git_init_cmd = git_command(repo_dir, "init");
+    git_init_cmd.arg("-q");
     spawn_and_wait(git_init_cmd);
 
-    let mut git_add_cmd = Command::new("git");
-    git_add_cmd.arg("add").arg(".").current_dir(repo_dir);
+    let mut git_add_cmd = git_command(repo_dir, "add");
+    git_add_cmd.arg(".");
     spawn_and_wait(git_add_cmd);
 
-    let mut git_commit_cmd = Command::new("git");
-    git_commit_cmd
-        .arg("-c")
-        .arg("user.name=Dummy")
-        .arg("-c")
-        .arg("user.email=dummy@example.com")
-        .arg("commit")
-        .arg("-m")
-        .arg("Initial commit")
-        .arg("-q")
-        .current_dir(repo_dir);
+    let mut git_commit_cmd = git_command(repo_dir, "commit");
+    git_commit_cmd.arg("-m").arg("Initial commit").arg("-q");
     spawn_and_wait(git_commit_cmd);
 }
 
@@ -211,16 +212,8 @@ fn apply_patches(dirs: &Dirs, crate_name: &str, target_dir: &Path) {
             target_dir.file_name().unwrap(),
             patch.file_name().unwrap()
         );
-        let mut apply_patch_cmd = Command::new("git");
-        apply_patch_cmd
-            .arg("-c")
-            .arg("user.name=Dummy")
-            .arg("-c")
-            .arg("user.email=dummy@example.com")
-            .arg("am")
-            .arg(patch)
-            .arg("-q")
-            .current_dir(target_dir);
+        let mut apply_patch_cmd = git_command(target_dir, "am");
+        apply_patch_cmd.arg(patch).arg("-q");
         spawn_and_wait(apply_patch_cmd);
     }
 }

@@ -21,11 +21,11 @@ pub(crate) static SIMPLE_RAYTRACER_LLVM: CargoProject =
 pub(crate) static SIMPLE_RAYTRACER: CargoProject =
     CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer");
 
-pub(crate) fn benchmark(dirs: &Dirs) {
-    benchmark_simple_raytracer(dirs);
+pub(crate) fn benchmark(dirs: &Dirs, host_compiler: &Compiler) {
+    benchmark_simple_raytracer(dirs, host_compiler);
 }
 
-fn benchmark_simple_raytracer(dirs: &Dirs) {
+fn benchmark_simple_raytracer(dirs: &Dirs, host_compiler: &Compiler) {
     if std::process::Command::new("hyperfine").output().is_err() {
         eprintln!("Hyperfine not installed");
         eprintln!("Hint: Try `cargo install hyperfine` to install hyperfine");
@@ -33,8 +33,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs) {
     }
 
     eprintln!("[LLVM BUILD] simple-raytracer");
-    let host_compiler = Compiler::host();
-    let build_cmd = SIMPLE_RAYTRACER_LLVM.build(&host_compiler, dirs);
+    let build_cmd = SIMPLE_RAYTRACER_LLVM.build(host_compiler, dirs);
     spawn_and_wait(build_cmd);
     fs::copy(
         SIMPLE_RAYTRACER_LLVM

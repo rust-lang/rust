@@ -2,7 +2,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
-use self::utils::is_ci;
+use self::utils::{is_ci, Compiler};
 
 mod abi_cafe;
 mod bench;
@@ -15,32 +15,8 @@ mod rustc_info;
 mod tests;
 mod utils;
 
-const USAGE: &str = r#"The build system of cg_clif.
-
-USAGE:
-    ./y.rs prepare [--out-dir DIR]
-    ./y.rs build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
-    ./y.rs test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
-    ./y.rs bench [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
-
-OPTIONS:
-    --sysroot none|clif|llvm
-            Which sysroot libraries to use:
-            `none` will not include any standard library in the sysroot.
-            `clif` will build the standard library using Cranelift.
-            `llvm` will use the pre-compiled standard library of rustc which is compiled with LLVM.
-
-    --out-dir DIR
-            Specify the directory in which the download, build and dist directories are stored.
-            By default this is the working directory.
-
-    --no-unstable-features
-            fSome features are not yet ready for production usage. This option will disable these
-            features. This includes the JIT mode and inline assembly support.
-"#;
-
 fn usage() {
-    eprintln!("{USAGE}");
+    eprintln!("{}", include_str!("usage.txt"));
 }
 
 macro_rules! arg_error {
@@ -121,24 +97,16 @@ pub fn main() {
         }
     }
 
-    let host_triple = if let Ok(host_triple) = std::env::var("HOST_TRIPLE") {
-        host_triple
-    } else if let Some(host_triple) = config::get_value("host") {
-        host_triple
-    } else {
-        rustc_info::get_host_triple()
-    };
-    let target_triple = if let Ok(target_triple) = std::env::var("TARGET_TRIPLE") {
-        if target_triple != "" {
-            target_triple
-        } else {
-            host_triple.clone() // Empty target triple can happen on GHA
-        }
-    } else if let Some(target_triple) = config::get_value("target") {
-        target_triple
-    } else {
-        host_triple.clone()
-    };
+    let host_compiler = Compiler::llvm_with_triple(
+        std::env::var("HOST_TRIPLE")
+            .ok()
+            .or_else(|| config::get_value("host"))
+            .unwrap_or_else(|| rustc_info::get_host_triple()),
+    );
+    let target_triple = std::env::var("TARGET_TRIPLE")
+        .ok()
+        .or_else(|| config::get_value("target"))
+        .unwrap_or_else(|| host_compiler.triple.clone());
 
     // FIXME allow changing the location of these dirs using cli arguments
     let current_dir = std::env::current_dir().unwrap();
@@ -167,7 +135,7 @@ pub fn main() {
     }
 
     let cg_clif_dylib =
-        build_backend::build_backend(&dirs, channel, &host_triple, use_unstable_features);
+        build_backend::build_backend(&dirs, channel, &host_compiler, use_unstable_features);
     match command {
         Command::Prepare => {
             // Handled above
@@ -178,18 +146,16 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &cg_clif_dylib,
-                &host_triple,
+                &host_compiler,
                 &target_triple,
             );
 
-            abi_cafe::run(
-                channel,
-                sysroot_kind,
-                &dirs,
-                &cg_clif_dylib,
-                &host_triple,
-                &target_triple,
-            );
+            if host_compiler.triple == target_triple {
+                abi_cafe::run(channel, sysroot_kind, &dirs, &cg_clif_dylib, &host_compiler);
+            } else {
+                eprintln!("[SKIP] abi-cafe (cross-compilation not supported)");
+                return;
+            }
         }
         Command::Build => {
             build_sysroot::build_sysroot(
@@ -197,7 +163,7 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &cg_clif_dylib,
-                &host_triple,
+                &host_compiler,
                 &target_triple,
             );
         }
@@ -207,10 +173,10 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &cg_clif_dylib,
-                &host_triple,
+                &host_compiler,
                 &target_triple,
             );
-            bench::benchmark(&dirs);
+            bench::benchmark(&dirs, &host_compiler);
         }
     }
 }
