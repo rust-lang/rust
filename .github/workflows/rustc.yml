@@ -10,19 +10,18 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Cache cargo registry and index
-      uses: actions/cache@v3
-      with:
-        path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-        key: ${{ runner.os }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
-
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Use sparse cargo registry
+      run: |
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
 
     - name: Prepare dependencies
       run: |
@@ -38,19 +37,18 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Cache cargo registry and index
-      uses: actions/cache@v3
-      with:
-        path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-        key: ${{ runner.os }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
-
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Use sparse cargo registry
+      run: |
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
 
     - name: Prepare dependencies
       run: |

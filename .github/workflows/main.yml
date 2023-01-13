@@ -62,14 +62,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Cache cargo registry and index
-      uses: actions/cache@v3
-      with:
-        path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
-
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
@@ -102,6 +94,13 @@ jobs:
     - name: Windows setup
       if: matrix.os == 'windows-latest'
       run: git config --global core.autocrlf false
+
+    - name: Use sparse cargo registry
+      run: |
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
 
     - name: Prepare dependencies
       run: ./y.rs prepare

@@ -13,6 +13,13 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Use sparse cargo registry
+      run: |
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
+
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
