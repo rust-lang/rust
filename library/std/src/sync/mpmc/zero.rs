@@ -57,7 +57,7 @@ impl<T> Packet<T> {
     fn wait_ready(&self) {
         let backoff = Backoff::new();
         while !self.ready.load(Ordering::Acquire) {
-            backoff.snooze();
+            backoff.spin_heavy();
         }
     }
 }

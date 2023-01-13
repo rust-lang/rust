@@ -1,5 +1,6 @@
 use super::*;
 use crate::env;
+use crate::sync::mpmc::SendTimeoutError;
 use crate::thread;
 use crate::time::Duration;
 
@@ -39,6 +40,13 @@ fn recv_timeout() {
     assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Err(RecvTimeoutError::Timeout));
     tx.send(1).unwrap();
     assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Ok(1));
+}
+
+#[test]
+fn send_timeout() {
+    let (tx, _rx) = sync_channel::<i32>(1);
+    assert_eq!(tx.send_timeout(1, Duration::from_millis(1)), Ok(()));
+    assert_eq!(tx.send_timeout(1, Duration::from_millis(1)), Err(SendTimeoutError::Timeout(1)));
 }
 
 #[test]
