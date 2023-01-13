@@ -299,7 +299,7 @@ pub(crate) fn build_index<'tcx>(
             )?;
             crate_data.serialize_field(
                 "p",
-                &self.paths.iter().map(|(it, s)| (it, s.to_string())).collect::<Vec<_>>(),
+                &self.paths.iter().map(|(it, s)| (it, s.as_str())).collect::<Vec<_>>(),
             )?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
