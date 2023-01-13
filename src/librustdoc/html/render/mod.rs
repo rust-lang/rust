@@ -100,7 +100,7 @@ pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 #[derive(Debug)]
 pub(crate) struct IndexItem {
     pub(crate) ty: ItemType,
-    pub(crate) name: String,
+    pub(crate) name: Symbol,
     pub(crate) path: String,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
