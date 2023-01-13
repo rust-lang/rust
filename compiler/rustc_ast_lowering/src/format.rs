@@ -34,7 +34,7 @@ fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
         if let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i]
             && let FormatTrait::Display | FormatTrait::Debug = &placeholder.format_trait
             && let Ok(arg_index) = placeholder.argument.index
-            && let arg = &fmt.arguments.all_args()[arg_index].expr
+            && let arg = fmt.arguments.all_args()[arg_index].expr.peel_parens_and_refs()
             && let ExprKind::FormatArgs(_) = &arg.kind
             // Check that this argument is not used by any other placeholders.
             && fmt.template.iter().enumerate().all(|(j, p)|
@@ -54,9 +54,14 @@ fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
             let args = fmt.arguments.all_args_mut();
             let remaining_args = args.split_off(arg_index + 1);
             let old_arg_offset = args.len();
-            let fmt2 = args.pop().unwrap().expr.into_inner(); // The inner FormatArgs.
-            let ExprKind::FormatArgs(fmt2) = fmt2.kind else { unreachable!() };
-            let mut fmt2 = fmt2.into_inner();
+            let mut fmt2 = &mut args.pop().unwrap().expr; // The inner FormatArgs.
+            let fmt2 = loop { // Unwrap the Expr to get to the FormatArgs.
+                match &mut fmt2.kind {
+                    ExprKind::Paren(inner) | ExprKind::AddrOf(BorrowKind::Ref, _, inner) => fmt2 = inner,
+                    ExprKind::FormatArgs(fmt2) => break fmt2,
+                    _ => unreachable!(),
+                }
+            };
 
             args.append(fmt2.arguments.all_args_mut());
             let new_arg_offset = args.len();
@@ -78,7 +83,7 @@ fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
             let rest = fmt.template.split_off(i + 1);
             fmt.template.pop(); // remove the placeholder for the nested fmt args.
 
-            for piece in fmt2.template {
+            for piece in fmt2.template.drain(..) {
                 match piece {
                     FormatArgsPiece::Literal(s) => fmt.template.push(FormatArgsPiece::Literal(s)),
                     FormatArgsPiece::Placeholder(mut p) => {
@@ -119,7 +124,8 @@ fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
         let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i] else { continue };
         let Ok(arg_index) = placeholder.argument.index else { continue };
         if let FormatTrait::Display = placeholder.format_trait
-            && let ExprKind::Lit(lit) = fmt.arguments.all_args()[arg_index].expr.kind
+            && let arg = fmt.arguments.all_args()[arg_index].expr.peel_parens_and_refs()
+            && let ExprKind::Lit(lit) = arg.kind
             && let token::LitKind::Str | token::LitKind::StrRaw(_) = lit.kind
             && let Ok(LitKind::Str(s, _)) = LitKind::from_token_lit(lit)
         {
