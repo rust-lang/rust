@@ -15,32 +15,8 @@ mod rustc_info;
 mod tests;
 mod utils;
 
-const USAGE: &str = r#"The build system of cg_clif.
-
-USAGE:
-    ./y.rs prepare [--out-dir DIR]
-    ./y.rs build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
-    ./y.rs test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
-    ./y.rs bench [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
-
-OPTIONS:
-    --sysroot none|clif|llvm
-            Which sysroot libraries to use:
-            `none` will not include any standard library in the sysroot.
-            `clif` will build the standard library using Cranelift.
-            `llvm` will use the pre-compiled standard library of rustc which is compiled with LLVM.
-
-    --out-dir DIR
-            Specify the directory in which the download, build and dist directories are stored.
-            By default this is the working directory.
-
-    --no-unstable-features
-            fSome features are not yet ready for production usage. This option will disable these
-            features. This includes the JIT mode and inline assembly support.
-"#;
-
 fn usage() {
-    eprintln!("{USAGE}");
+    eprintln!("{}", include_str!("usage.txt"));
 }
 
 macro_rules! arg_error {
