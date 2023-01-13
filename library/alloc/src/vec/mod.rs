@@ -419,14 +419,15 @@ pub struct Vec<
     len: usize,
 }
 
+/// "Cooperative" Vector. Preferring co-alloc API (if Global alloc supports it).
 #[unstable(feature = "global_co_alloc_covec", issue = "none")]
-pub type CoVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
+pub type CoVec<T, A = Global> =
     Vec<T, A, true>;
 
 /// "Plain" Vec. Not "cooperative" - not carrying extra data to assist the allocator.
 /// FIXME after cleanup, see if we still use this in core:: and/or alloc::
 #[unstable(feature = "global_co_alloc_plvec", issue = "none")]
-pub type PlVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
+pub type PlVec<T, A = Global> =
     Vec<T, A, false>;
 
 /// "Default" Vec. Either "cooperative" or not - as specified by `DEFAULT_COOP_PREFERRED`. The
@@ -434,14 +435,14 @@ pub type PlVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: All
 /// author considered using `CoVec` or `PlVec`, but left it to default instead.
 #[unstable(feature = "global_co_alloc_defvec", issue = "none")]
 #[allow(unused_braces)]
-pub type DefVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
+pub type DefVec<T, A = Global> =
     Vec<T, A, {DEFAULT_COOP_PREFERRED!()}>;
 
 /// "Weighted cooperative" Vec. Weight means how much it wants to cooperate (with the allocator). 0
 /// = always pack; u8::MAX = always cooperate (if `Global` supports it).
 /// @FIXME A `pub const` threshold.
 #[unstable(feature = "global_co_alloc_vec", issue = "none")]
-pub type WeVec<T, const weight: u8> = Vec<T, Global, { weight > 127 }>;
+pub type WeVec<T, const WEIGHT: u8> = Vec<T, Global, { WEIGHT > 127 }>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inherent methods
