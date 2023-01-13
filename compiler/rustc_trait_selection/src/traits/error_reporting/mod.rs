@@ -2252,8 +2252,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     Ok(None) => {
                         let ambiguities =
                             ambiguity::recompute_applicable_impls(self.infcx, &obligation);
-                        let has_non_region_infer =
-                            trait_ref.skip_binder().substs.types().any(|t| !t.is_ty_infer());
+                        let has_non_region_infer = trait_ref
+                            .skip_binder()
+                            .substs
+                            .types()
+                            .any(|t| !t.is_ty_or_numeric_infer());
                         // It doesn't make sense to talk about applicable impls if there are more
                         // than a handful of them.
                         if ambiguities.len() > 1 && ambiguities.len() < 10 && has_non_region_infer {
