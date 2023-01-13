@@ -114,34 +114,46 @@ fn diagnostic_hir_wf_check<'tcx>(
     // Get the starting `hir::Ty` using our `WellFormedLoc`.
     // We will walk 'into' this type to try to find
     // a more precise span for our predicate.
-    let ty = match loc {
+    let tys = match loc {
         WellFormedLoc::Ty(_) => match hir.get(hir_id) {
             hir::Node::ImplItem(item) => match item.kind {
-                hir::ImplItemKind::Type(ty) => Some(ty),
-                hir::ImplItemKind::Const(ty, _) => Some(ty),
+                hir::ImplItemKind::Type(ty) => vec![ty],
+                hir::ImplItemKind::Const(ty, _) => vec![ty],
                 ref item => bug!("Unexpected ImplItem {:?}", item),
             },
             hir::Node::TraitItem(item) => match item.kind {
-                hir::TraitItemKind::Type(_, ty) => ty,
-                hir::TraitItemKind::Const(ty, _) => Some(ty),
+                hir::TraitItemKind::Type(_, ty) => ty.into_iter().collect(),
+                hir::TraitItemKind::Const(ty, _) => vec![ty],
                 ref item => bug!("Unexpected TraitItem {:?}", item),
             },
             hir::Node::Item(item) => match item.kind {
-                hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _) => Some(ty),
-                hir::ItemKind::Impl(ref impl_) => {
-                    assert!(impl_.of_trait.is_none(), "Unexpected trait impl: {:?}", impl_);
-                    Some(impl_.self_ty)
-                }
+                hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _) => vec![ty],
+                hir::ItemKind::Impl(ref impl_) => match &impl_.of_trait {
+                    Some(t) => t
+                        .path
+                        .segments
+                        .last()
+                        .iter()
+                        .flat_map(|seg| seg.args().args)
+                        .filter_map(|arg| {
+                            if let hir::GenericArg::Type(ty) = arg { Some(*ty) } else { None }
+                        })
+                        .chain([impl_.self_ty])
+                        .collect(),
+                    None => {
+                        vec![impl_.self_ty]
+                    }
+                },
                 ref item => bug!("Unexpected item {:?}", item),
             },
-            hir::Node::Field(field) => Some(field.ty),
+            hir::Node::Field(field) => vec![field.ty],
             hir::Node::ForeignItem(ForeignItem {
                 kind: ForeignItemKind::Static(ty, _), ..
-            }) => Some(*ty),
+            }) => vec![*ty],
             hir::Node::GenericParam(hir::GenericParam {
                 kind: hir::GenericParamKind::Type { default: Some(ty), .. },
                 ..
-            }) => Some(*ty),
+            }) => vec![*ty],
             ref node => bug!("Unexpected node {:?}", node),
         },
         WellFormedLoc::Param { function: _, param_idx } => {
@@ -149,16 +161,16 @@ fn diagnostic_hir_wf_check<'tcx>(
             // Get return type
             if param_idx as usize == fn_decl.inputs.len() {
                 match fn_decl.output {
-                    hir::FnRetTy::Return(ty) => Some(ty),
+                    hir::FnRetTy::Return(ty) => vec![ty],
                     // The unit type `()` is always well-formed
-                    hir::FnRetTy::DefaultReturn(_span) => None,
+                    hir::FnRetTy::DefaultReturn(_span) => vec![],
                 }
             } else {
-                Some(&fn_decl.inputs[param_idx as usize])
+                vec![&fn_decl.inputs[param_idx as usize]]
             }
         }
     };
-    if let Some(ty) = ty {
+    for ty in tys {
         visitor.visit_ty(ty);
     }
     visitor.cause
