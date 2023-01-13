@@ -1055,7 +1055,7 @@ fn fmt_type<'cx>(
                 _ => String::new(),
             };
             let m = mutability.print_with_space();
-            let amp = if f.alternate() { "&".to_string() } else { "&amp;".to_string() };
+            let amp = if f.alternate() { "&" } else { "&amp;" };
             match **ty {
                 clean::DynTrait(ref bounds, ref trait_lt)
                     if bounds.len() > 1 || trait_lt.is_some() =>
