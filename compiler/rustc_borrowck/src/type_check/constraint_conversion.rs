@@ -1,10 +1,10 @@
-use rustc_infer::infer::canonical::QueryOutlivesConstraint;
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
-use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub(crate) struct ConstraintConversion<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     /// Each RBP `GK: 'a` is assumed to be true. These encode
@@ -38,12 +38,13 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     locations: Locations,
     span: Span,
     category: ConstraintCategory<'tcx>,
+    from_closure: bool,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
 
 impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     pub(crate) fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: ty::Region<'tcx>,
@@ -64,6 +65,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             span,
             category,
             constraints,
+            from_closure: false,
         }
     }
 
@@ -81,12 +83,62 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
         self.constraints.member_constraints = tmp;
 
-        for query_constraint in outlives {
-            self.convert(query_constraint);
+        for (predicate, constraint_category) in outlives {
+            // At the moment, we never generate any "higher-ranked"
+            // region constraints like `for<'a> 'a: 'b`. At some point
+            // when we move to universes, we will, and this assertion
+            // will start to fail.
+            let predicate = predicate.no_bound_vars().unwrap_or_else(|| {
+                bug!("query_constraint {:?} contained bound vars", predicate,);
+            });
+
+            self.convert(predicate, *constraint_category);
         }
     }
 
-    pub(super) fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
+    /// Given an instance of the closure type, this method instantiates the "extra" requirements
+    /// that we computed for the closure. This has the effect of adding new outlives obligations
+    /// to existing region variables in `closure_substs`.
+    #[instrument(skip(self), level = "debug")]
+    pub fn apply_closure_requirements(
+        &mut self,
+        closure_requirements: &ClosureRegionRequirements<'tcx>,
+        closure_def_id: DefId,
+        closure_substs: ty::SubstsRef<'tcx>,
+    ) {
+        // Extract the values of the free regions in `closure_substs`
+        // into a vector.  These are the regions that we will be
+        // relating to one another.
+        let closure_mapping = &UniversalRegions::closure_mapping(
+            self.tcx,
+            closure_substs,
+            closure_requirements.num_external_vids,
+            closure_def_id.expect_local(),
+        );
+        debug!(?closure_mapping);
+
+        // Create the predicates.
+        let backup = (self.category, self.span, self.from_closure);
+        self.from_closure = true;
+        for outlives_requirement in &closure_requirements.outlives_requirements {
+            let outlived_region = closure_mapping[outlives_requirement.outlived_free_region];
+            let subject = match outlives_requirement.subject {
+                ClosureOutlivesSubject::Region(re) => closure_mapping[re].into(),
+                ClosureOutlivesSubject::Ty(ty) => ty.into(),
+            };
+
+            self.category = outlives_requirement.category;
+            self.span = outlives_requirement.blame_span;
+            self.convert(ty::OutlivesPredicate(subject, outlived_region), self.category);
+        }
+        (self.category, self.span, self.from_closure) = backup;
+    }
+
+    fn convert(
+        &mut self,
+        predicate: ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>,
+        constraint_category: ConstraintCategory<'tcx>,
+    ) {
         debug!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.
@@ -94,19 +146,12 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             tcx, region_bound_pairs, implicit_region_bound, param_env, ..
         } = *self;
 
-        // At the moment, we never generate any "higher-ranked"
-        // region constraints like `for<'a> 'a: 'b`. At some point
-        // when we move to universes, we will, and this assertion
-        // will start to fail.
-        let ty::OutlivesPredicate(k1, r2) = query_constraint.no_bound_vars().unwrap_or_else(|| {
-            bug!("query_constraint {:?} contained bound vars", query_constraint,);
-        });
-
+        let ty::OutlivesPredicate(k1, r2) = predicate;
         match k1.unpack() {
             GenericArgKind::Lifetime(r1) => {
                 let r1_vid = self.to_region_vid(r1);
                 let r2_vid = self.to_region_vid(r2);
-                self.add_outlives(r1_vid, r2_vid);
+                self.add_outlives(r1_vid, r2_vid, constraint_category);
             }
 
             GenericArgKind::Type(t1) => {
@@ -121,13 +166,10 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     Some(implicit_region_bound),
                     param_env,
                 )
-                .type_must_outlive(origin, t1, r2);
+                .type_must_outlive(origin, t1, r2, constraint_category);
             }
 
-            GenericArgKind::Const(_) => {
-                // Consts cannot outlive one another, so we
-                // don't need to handle any relations here.
-            }
+            GenericArgKind::Const(_) => unreachable!(),
         }
     }
 
@@ -157,7 +199,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         verify_bound: VerifyBound<'tcx>,
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
-        TypeTest { generic_kind, lower_bound, locations: self.locations, verify_bound }
+        TypeTest { generic_kind, lower_bound, span: self.span, verify_bound }
     }
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
@@ -168,14 +210,24 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
-    fn add_outlives(&mut self, sup: ty::RegionVid, sub: ty::RegionVid) {
+    fn add_outlives(
+        &mut self,
+        sup: ty::RegionVid,
+        sub: ty::RegionVid,
+        category: ConstraintCategory<'tcx>,
+    ) {
+        let category = match self.category {
+            ConstraintCategory::Boring | ConstraintCategory::BoringNoLocation => category,
+            _ => self.category,
+        };
         self.constraints.outlives_constraints.push(OutlivesConstraint {
             locations: self.locations,
-            category: self.category,
+            category,
             span: self.span,
             sub,
             sup,
             variance_info: ty::VarianceDiagInfo::default(),
+            from_closure: self.from_closure,
         });
     }
 
@@ -191,10 +243,11 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         _origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
+        constraint_category: ConstraintCategory<'tcx>,
     ) {
         let b = self.to_region_vid(b);
         let a = self.to_region_vid(a);
-        self.add_outlives(b, a);
+        self.add_outlives(b, a, constraint_category);
     }
 
     fn push_verify(

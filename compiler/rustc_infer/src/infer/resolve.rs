@@ -1,6 +1,6 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
-use rustc_middle::mir;
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
 use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable, TypeVisitable};
@@ -16,12 +16,12 @@ use std::ops::ControlFlow;
 /// useful for printing messages etc but also required at various
 /// points for correctness.
 pub struct OpportunisticVarResolver<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> OpportunisticVarResolver<'a, 'tcx> {
     #[inline]
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
         OpportunisticVarResolver { infcx }
     }
 }
@@ -32,7 +32,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.has_infer_types_or_consts() {
+        if !t.has_non_region_infer() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t = self.infcx.shallow_resolve(t);
@@ -41,16 +41,12 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: Const<'tcx>) -> Const<'tcx> {
-        if !ct.has_infer_types_or_consts() {
+        if !ct.has_non_region_infer() {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
             let ct = self.infcx.shallow_resolve(ct);
             ct.super_fold_with(self)
         }
-    }
-
-    fn fold_mir_const(&mut self, constant: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
-        constant.super_fold_with(self)
     }
 }
 
@@ -62,11 +58,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
 /// If you want to resolve type and const variables as well, call
 /// [InferCtxt::resolve_vars_if_possible] first.
 pub struct OpportunisticRegionResolver<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> OpportunisticRegionResolver<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
         OpportunisticRegionResolver { infcx }
     }
 }
@@ -115,48 +111,77 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
 /// type variables that don't yet have a value. The first unresolved type is stored.
 /// It does not construct the fully resolved type (which might
 /// involve some hashing and so forth).
-pub struct UnresolvedTypeFinder<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+pub struct UnresolvedTypeOrConstFinder<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> UnresolvedTypeFinder<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
-        UnresolvedTypeFinder { infcx }
+impl<'a, 'tcx> UnresolvedTypeOrConstFinder<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
+        UnresolvedTypeOrConstFinder { infcx }
     }
 }
 
-impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
-    type BreakTy = (Ty<'tcx>, Option<Span>);
+impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeOrConstFinder<'a, 'tcx> {
+    type BreakTy = (ty::Term<'tcx>, Option<Span>);
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         let t = self.infcx.shallow_resolve(t);
-        if t.has_infer_types() {
-            if let ty::Infer(infer_ty) = *t.kind() {
-                // Since we called `shallow_resolve` above, this must
-                // be an (as yet...) unresolved inference variable.
-                let ty_var_span = if let ty::TyVar(ty_vid) = infer_ty {
-                    let mut inner = self.infcx.inner.borrow_mut();
-                    let ty_vars = &inner.type_variables();
-                    if let TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::TypeParameterDefinition(_, _),
-                        span,
-                    } = *ty_vars.var_origin(ty_vid)
-                    {
-                        Some(span)
-                    } else {
-                        None
-                    }
+        if let ty::Infer(infer_ty) = *t.kind() {
+            // Since we called `shallow_resolve` above, this must
+            // be an (as yet...) unresolved inference variable.
+            let ty_var_span = if let ty::TyVar(ty_vid) = infer_ty {
+                let mut inner = self.infcx.inner.borrow_mut();
+                let ty_vars = &inner.type_variables();
+                if let TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeParameterDefinition(_, _),
+                    span,
+                } = *ty_vars.var_origin(ty_vid)
+                {
+                    Some(span)
                 } else {
                     None
-                };
-                ControlFlow::Break((t, ty_var_span))
+                }
             } else {
-                // Otherwise, visit its contents.
-                t.super_visit_with(self)
-            }
-        } else {
-            // All type variables in inference types must already be resolved,
-            // - no need to visit the contents, continue visiting.
+                None
+            };
+            ControlFlow::Break((t.into(), ty_var_span))
+        } else if !t.has_non_region_infer() {
+            // All const/type variables in inference types must already be resolved,
+            // no need to visit the contents.
             ControlFlow::CONTINUE
+        } else {
+            // Otherwise, keep visiting.
+            t.super_visit_with(self)
+        }
+    }
+
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let ct = self.infcx.shallow_resolve(ct);
+        if let ty::ConstKind::Infer(i) = ct.kind() {
+            // Since we called `shallow_resolve` above, this must
+            // be an (as yet...) unresolved inference variable.
+            let ct_var_span = if let ty::InferConst::Var(vid) = i {
+                let mut inner = self.infcx.inner.borrow_mut();
+                let ct_vars = &mut inner.const_unification_table();
+                if let ConstVariableOrigin {
+                    span,
+                    kind: ConstVariableOriginKind::ConstParameterDefinition(_, _),
+                } = ct_vars.probe_value(vid).origin
+                {
+                    Some(span)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            ControlFlow::Break((ct.into(), ct_var_span))
+        } else if !ct.has_non_region_infer() {
+            // All const/type variables in inference types must already be resolved,
+            // no need to visit the contents.
+            ControlFlow::CONTINUE
+        } else {
+            // Otherwise, keep visiting.
+            ct.super_visit_with(self)
         }
     }
 }
@@ -167,7 +192,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
 /// Full type resolution replaces all type and region variables with
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
-pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>, value: T) -> FixupResult<'tcx, T>
+pub fn fully_resolve<'tcx, T>(infcx: &InferCtxt<'tcx>, value: T) -> FixupResult<'tcx, T>
 where
     T: TypeFoldable<'tcx>,
 {
@@ -177,7 +202,7 @@ where
 // N.B. This type is not public because the protocol around checking the
 // `err` field is not enforceable otherwise.
 struct FullTypeResolver<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {

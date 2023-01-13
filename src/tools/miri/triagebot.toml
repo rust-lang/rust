@@ -1,0 +1,11 @@
+[relabel]
+allow-unauthenticated = [
+    "A-*",
+    "C-*",
+    "E-*",
+    "I-*",
+    "S-*",
+ ]
+
+# Gives us the commands 'ready', 'author', 'blocked'
+[shortcut]

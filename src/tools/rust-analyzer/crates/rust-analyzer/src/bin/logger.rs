@@ -81,9 +81,9 @@ impl Logger {
                 Registry::default()
                     .with(
                         self.filter
-                            .add_directive(format!("chalk_solve={}", val).parse()?)
-                            .add_directive(format!("chalk_ir={}", val).parse()?)
-                            .add_directive(format!("chalk_recursive={}", val).parse()?),
+                            .add_directive(format!("chalk_solve={val}").parse()?)
+                            .add_directive(format!("chalk_ir={val}").parse()?)
+                            .add_directive(format!("chalk_recursive={val}").parse()?),
                     )
                     .with(ra_fmt_layer)
                     .with(chalk_layer)
@@ -124,7 +124,7 @@ where
             Some(log) => log.target(),
             None => event.metadata().target(),
         };
-        write!(writer, "[{} {}] ", level, target)?;
+        write!(writer, "[{level} {target}] ")?;
 
         // Write spans and fields of each span
         ctx.visit_spans(|span| {
@@ -132,7 +132,7 @@ where
 
             let ext = span.extensions();
 
-            // `FormattedFields` is a a formatted representation of the span's
+            // `FormattedFields` is a formatted representation of the span's
             // fields, which is stored in its extensions by the `fmt` layer's
             // `new_span` method. The fields will have been formatted
             // by the same field formatter that's provided to the event
@@ -140,7 +140,7 @@ where
             let fields = &ext.get::<FormattedFields<N>>().expect("will never be `None`");
 
             if !fields.is_empty() {
-                write!(writer, "{{{}}}", fields)?;
+                write!(writer, "{{{fields}}}")?;
             }
             write!(writer, ": ")?;
 

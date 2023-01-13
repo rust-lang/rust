@@ -249,7 +249,7 @@ fn dump_graph(query: &DepGraphQuery) {
         // dump a .txt file with just the edges:
         let txt_path = format!("{}.txt", path);
         let mut file = BufWriter::new(File::create(&txt_path).unwrap());
-        for &(ref source, ref target) in &edges {
+        for (source, target) in &edges {
             write!(file, "{:?} -> {:?}\n", source, target).unwrap();
         }
     }
@@ -432,10 +432,7 @@ fn walk_between<'q>(
     }
 }
 
-fn filter_edges<'q>(
-    query: &'q DepGraphQuery,
-    nodes: &FxHashSet<DepKind>,
-) -> Vec<(DepKind, DepKind)> {
+fn filter_edges(query: &DepGraphQuery, nodes: &FxHashSet<DepKind>) -> Vec<(DepKind, DepKind)> {
     let uniq: FxHashSet<_> = query
         .edges()
         .into_iter()

@@ -1,6 +1,7 @@
 use super::SINGLE_ELEMENT_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, snippet_with_applicability};
+use clippy_utils::visitors::contains_break_or_continue;
 use if_chain::if_chain;
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_ast::Mutability;
@@ -67,6 +68,7 @@ pub(super) fn check<'tcx>(
     if_chain! {
         if let ExprKind::Block(block, _) = body.kind;
         if !block.stmts.is_empty();
+        if !contains_break_or_continue(body);
         then {
             let mut applicability = Applicability::MachineApplicable;
             let pat_snip = snippet_with_applicability(cx, pat.span, "..", &mut applicability);

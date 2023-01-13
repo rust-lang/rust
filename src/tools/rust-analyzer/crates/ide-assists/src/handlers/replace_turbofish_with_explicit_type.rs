@@ -42,7 +42,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
     let r_angle = generic_args.r_angle_token()?;
     let turbofish_range = TextRange::new(colon2.text_range().start(), r_angle.text_range().end());
 
-    let turbofish_args: Vec<GenericArg> = generic_args.generic_args().into_iter().collect();
+    let turbofish_args: Vec<GenericArg> = generic_args.generic_args().collect();
 
     // Find type of ::<_>
     if turbofish_args.len() != 1 {
@@ -79,7 +79,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
             "Replace turbofish with explicit type",
             TextRange::new(initializer_start, turbofish_range.end()),
             |builder| {
-                builder.insert(ident_range.end(), format!(": {}", returned_type));
+                builder.insert(ident_range.end(), format!(": {returned_type}"));
                 builder.delete(turbofish_range);
             },
         );

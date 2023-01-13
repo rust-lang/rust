@@ -19,7 +19,7 @@ pub enum SizeKind {
     Min,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FieldInfo {
     pub name: Symbol,
     pub offset: u64,
@@ -33,6 +33,7 @@ pub enum DataTypeKind {
     Union,
     Enum,
     Closure,
+    Generator,
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]
@@ -114,7 +115,7 @@ impl CodeStats {
 
             let struct_like = match kind {
                 DataTypeKind::Struct | DataTypeKind::Closure => true,
-                DataTypeKind::Enum | DataTypeKind::Union => false,
+                DataTypeKind::Enum | DataTypeKind::Union | DataTypeKind::Generator => false,
             };
             for (i, variant_info) in variants.into_iter().enumerate() {
                 let VariantInfo { ref name, kind: _, align: _, size, ref fields } = *variant_info;

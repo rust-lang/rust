@@ -2,7 +2,7 @@ use std::env;
 use std::str::FromStr;
 
 fn bool_env_var(key: &str) -> bool {
-    env::var(key).as_ref().map(|val| &**val) == Ok("1")
+    env::var(key).as_deref() == Ok("1")
 }
 
 /// The mode to use for compilation.

@@ -66,5 +66,29 @@ error: avoid using `collect()` when not needed
 LL |     sample.iter().collect::<BinaryHeap<_>>().is_empty();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
 
-error: aborting due to 11 previous errors
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:40:27
+   |
+LL |     let _ = sample.iter().collect::<HashSet<_>>().is_empty();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:41:27
+   |
+LL |     let _ = sample.iter().collect::<HashSet<_>>().contains(&&0);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == &0)`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:63:27
+   |
+LL |     let _ = sample.iter().collect::<VecWrapper<_>>().is_empty();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:64:27
+   |
+LL |     let _ = sample.iter().collect::<VecWrapper<_>>().contains(&&0);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == &0)`
+
+error: aborting due to 15 previous errors
 

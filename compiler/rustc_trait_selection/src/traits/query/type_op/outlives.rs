@@ -1,4 +1,4 @@
-use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
+use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
 use crate::traits::query::dropck_outlives::{trivial_dropck_outlives, DropckOutlivesResult};
 use crate::traits::query::Fallible;
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
@@ -30,8 +30,8 @@ impl<'tcx> super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self::QueryResponse>> {
+        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+    ) -> Fallible<CanonicalQueryResponse<'tcx, Self::QueryResponse>> {
         // Subtle: note that we are not invoking
         // `infcx.at(...).dropck_outlives(...)` here, but rather the
         // underlying `dropck_outlives` query. This same underlying

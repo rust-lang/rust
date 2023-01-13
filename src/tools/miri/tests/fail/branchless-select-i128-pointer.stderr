@@ -1,0 +1,19 @@
+error: Undefined Behavior: constructing invalid value: encountered a dangling reference (address $HEX is unallocated)
+  --> $DIR/branchless-select-i128-pointer.rs:LL:CC
+   |
+LL | /             transmute::<_, &str>(
+LL | |
+LL | |                 !mask & transmute::<_, TwoPtrs>("false !")
+LL | |                     | mask & transmute::<_, TwoPtrs>("true !"),
+LL | |             )
+   | |_____________^ constructing invalid value: encountered a dangling reference (address $HEX is unallocated)
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/branchless-select-i128-pointer.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

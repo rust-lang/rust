@@ -37,7 +37,7 @@ fn check(ra_fixture: &str, expect: Expect) {
     let content = analysis.db.file_text(position.file_id);
     let hovered_element = &content[hover.range];
 
-    let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
     expect.assert_eq(&actual)
 }
 
@@ -58,7 +58,7 @@ fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
     let content = analysis.db.file_text(position.file_id);
     let hovered_element = &content[hover.range];
 
-    let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
     expect.assert_eq(&actual)
 }
 
@@ -79,7 +79,7 @@ fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
     let content = analysis.db.file_text(position.file_id);
     let hovered_element = &content[hover.range];
 
-    let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
     expect.assert_eq(&actual)
 }
 
@@ -523,6 +523,27 @@ fn main() { }
 }
 
 #[test]
+fn hover_field_offset() {
+    // Hovering over the field when instantiating
+    check(
+        r#"
+struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
+"#,
+        expect![[r#"
+            *field_a*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            field_a: u8 // size = 1, align = 1, offset = 4
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_shows_struct_field_info() {
     // Hovering over the field when instantiating
     check(
@@ -534,16 +555,16 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *field_a*
+            *field_a*
 
-                ```rust
-                test::Foo
-                ```
+            ```rust
+            test::Foo
+            ```
 
-                ```rust
-                field_a: u32
-                ```
-            "#]],
+            ```rust
+            field_a: u32 // size = 4, align = 4, offset = 0
+            ```
+        "#]],
     );
 
     // Hovering over the field in the definition
@@ -556,16 +577,16 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *field_a*
+            *field_a*
 
-                ```rust
-                test::Foo
-                ```
+            ```rust
+            test::Foo
+            ```
 
-                ```rust
-                field_a: u32
-                ```
-            "#]],
+            ```rust
+            field_a: u32 // size = 4, align = 4, offset = 0
+            ```
+        "#]],
     );
 }
 
@@ -698,6 +719,7 @@ fn hover_enum_variant() {
     check(
         r#"
 enum Option<T> {
+    Some(T)
     /// The None variant
     Non$0e
 }
@@ -1507,30 +1529,30 @@ struct Bar;
 
 fn foo() { let bar = Ba$0r; }
 "#,
-        expect![[r##"
-                *Bar*
+        expect![[r#"
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                struct Bar
-                ```
+            ```rust
+            struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                This is an example
-                multiline doc
+            This is an example
+            multiline doc
 
-                # Example
+            # Example
 
-                ```
-                let five = 5;
+            ```
+            let five = 5;
 
-                assert_eq!(6, my_crate::add_one(5));
-                ```
-            "##]],
+            assert_eq!(6, my_crate::add_one(5));
+            ```
+        "#]],
     );
 }
 
@@ -1544,20 +1566,20 @@ struct Bar;
 fn foo() { let bar = Ba$0r; }
 "#,
         expect![[r#"
-                *Bar*
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                struct Bar
-                ```
+            ```rust
+            struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                bar docs
-            "#]],
+            bar docs
+        "#]],
     );
 }
 
@@ -1573,22 +1595,22 @@ struct Bar;
 fn foo() { let bar = Ba$0r; }
 "#,
         expect![[r#"
-                *Bar*
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                struct Bar
-                ```
+            ```rust
+            struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                bar docs 0
-                bar docs 1
-                bar docs 2
-            "#]],
+            bar docs 0
+            bar docs 1
+            bar docs 2
+        "#]],
     );
 }
 
@@ -1601,20 +1623,20 @@ pub struct Foo;
 pub struct B$0ar
 "#,
         expect![[r#"
-                *Bar*
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub struct Bar
-                ```
+            ```rust
+            pub struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                [external](https://www.google.com)
-            "#]],
+            [external](https://www.google.com)
+        "#]],
     );
 }
 
@@ -1628,20 +1650,20 @@ pub struct Foo;
 pub struct B$0ar
 "#,
         expect![[r#"
-                *Bar*
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub struct Bar
-                ```
+            ```rust
+            pub struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                [baz](Baz)
-            "#]],
+            [baz](Baz)
+        "#]],
     );
 }
 
@@ -2959,7 +2981,7 @@ fn main() {
             ```
 
             ```rust
-            f: i32
+            f: i32 // size = 4, align = 4, offset = 0
             ```
         "#]],
     );
@@ -3528,7 +3550,270 @@ impl<const LEN: usize> Foo<LEN$0> {}
 }
 
 #[test]
+fn hover_const_eval_variant() {
+    // show hex for <10
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    /// This is a doc
+    A$0 = 1 << 3,
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            A = 8
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // show hex for >10
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    /// This is a doc
+    A$0 = (1 << 3) + (1 << 2),
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            A = 12 (0xC)
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // enums in const eval
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    A = 1,
+    /// This is a doc
+    B$0 = E::A as u8 + 1,
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            B = 2
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // unspecified variant should increment by one
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    A = 4,
+    /// This is a doc
+    B$0,
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            B = 5
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_eval() {
+    check(
+        r#"
+trait T {
+    const B: bool = false;
+}
+impl T for <()> {
+    /// true
+    const B: bool = true;
+}
+fn main() {
+    <()>::B$0;
+}
+"#,
+        expect![[r#"
+        *B*
+
+        ```rust
+        test
+        ```
+
+        ```rust
+        const B: bool = true
+        ```
+
+        ---
+
+        true
+    "#]],
+    );
+
+    check(
+        r#"
+struct A {
+    i: i32
+};
+
+trait T {
+    const AA: A = A {
+        i: 1
+    };
+}
+impl T for i32 {
+    const AA: A = A {
+        i: 2
+    }
+}
+fn main() {
+    <i32>::AA$0;
+}
+"#,
+        expect![[r#"
+        *AA*
+
+        ```rust
+        test
+        ```
+
+        ```rust
+        const AA: A = A {
+                i: 2
+            }
+        ```
+    "#]],
+    );
+
+    check(
+        r#"
+trait T {
+    /// false
+    const B: bool = false;
+}
+impl T for () {
+    /// true
+    const B: bool = true;
+}
+fn main() {
+    T::B$0;
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const B: bool = false
+            ```
+
+            ---
+
+            false
+        "#]],
+    );
+
+    check(
+        r#"
+trait T {
+    /// false
+    const B: bool = false;
+}
+impl T for () {
+}
+fn main() {
+    <()>::B$0;
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const B: bool = false
+            ```
+
+            ---
+
+            false
+        "#]],
+    );
+
+    check(
+        r#"
+trait T {
+    /// false
+    const B: bool = false;
+}
+impl T for () {
+    /// true
+    const B: bool = true;
+}
+impl T for i32 {}
+fn main() {
+    <i32>::B$0;
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const B: bool = false
+            ```
+
+            ---
+
+            false
+        "#]],
+    );
+
     // show hex for <10
     check(
         r#"
@@ -3795,6 +4080,37 @@ const FOO$0: f64 = 1.0f64;
 }
 
 #[test]
+fn hover_const_eval_in_generic_trait() {
+    // Doesn't compile, but we shouldn't crash.
+    check(
+        r#"
+trait Trait<T> {
+    const FOO: bool = false;
+}
+struct S<T>(T);
+impl<T> Trait<T> for S<T> {
+    const FOO: bool = true;
+}
+
+fn test() {
+    S::FOO$0;
+}
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: bool = true
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_pat() {
     check(
         r#"
@@ -3816,6 +4132,35 @@ fn foo() {
 
             ```rust
             const FOO: usize = 3
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+enum E {
+    /// This is a doc
+    A = 3,
+}
+fn foo(e: E) {
+    match e {
+        E::A$0 => (),
+        _ => ()
+    }
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            A = 3
             ```
 
             ---
@@ -4067,20 +4412,20 @@ pub fn gimme() -> theitem::TheItem {
 }
 "#,
         expect![[r#"
-                *[`TheItem`]*
+            *[`TheItem`]*
 
-                ```rust
-                test::theitem
-                ```
+            ```rust
+            test::theitem
+            ```
 
-                ```rust
-                pub struct TheItem
-                ```
+            ```rust
+            pub struct TheItem // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                This is the item. Cool!
-            "#]],
+            This is the item. Cool!
+        "#]],
     );
 }
 
@@ -4215,20 +4560,20 @@ mod string {
 }
 "#,
         expect![[r#"
-                *String*
+            *String*
 
-                ```rust
-                main
-                ```
+            ```rust
+            main
+            ```
 
-                ```rust
-                struct String
-                ```
+            ```rust
+            struct String // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                Custom `String` type.
-            "#]],
+            Custom `String` type.
+        "#]],
     )
 }
 
@@ -4889,7 +5234,7 @@ foo_macro!(
             ```
 
             ```rust
-            pub struct Foo
+            pub struct Foo // size = 0, align = 1
             ```
 
             ---
@@ -4904,7 +5249,7 @@ fn hover_intra_in_attr() {
     check(
         r#"
 #[doc = "Doc comment for [`Foo$0`]"]
-pub struct Foo;
+pub struct Foo(i32);
 "#,
         expect![[r#"
             *[`Foo`]*
@@ -4914,7 +5259,7 @@ pub struct Foo;
             ```
 
             ```rust
-            pub struct Foo
+            pub struct Foo // size = 4, align = 4
             ```
 
             ---
@@ -5020,6 +5365,28 @@ enum Enum {
 }
 
 #[test]
+fn hover_record_variant_field() {
+    check(
+        r#"
+enum Enum {
+    RecordV { field$0: u32 }
+}
+"#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            test::RecordV
+            ```
+
+            ```rust
+            field: u32 // size = 4, align = 4
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_trait_impl_assoc_item_def_doc_forwarding() {
     check(
         r#"
@@ -5109,6 +5476,99 @@ fn f() {
 
             ```rust
             fn deref(&self) -> &Self::Target
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn static_const_macro_expanded_body() {
+    check(
+        r#"
+macro_rules! m {
+    () => {
+        pub const V: i8 = {
+            let e = 123;
+            f(e) // Prevent const eval from evaluating this constant, we want to print the body's code.
+        };
+    };
+}
+m!();
+fn main() { $0V; }
+"#,
+        expect![[r#"
+            *V*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub const V: i8 = {
+              let e = 123;
+              f(e)
+            }
+            ```
+        "#]],
+    );
+    check(
+        r#"
+macro_rules! m {
+    () => {
+        pub static V: i8 = {
+            let e = 123;
+        };
+    };
+}
+m!();
+fn main() { $0V; }
+"#,
+        expect![[r#"
+            *V*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub static V: i8 = {
+              let e = 123;
+            }
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_rest_pat() {
+    check(
+        r#"
+struct Struct {a: u32, b: u32, c: u8, d: u16};
+
+fn main() {
+    let Struct {a, c, .$0.} = Struct {a: 1, b: 2, c: 3, d: 4};
+}
+"#,
+        expect![[r#"
+            *..*
+            ```rust
+            .., b: u32, d: u16
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+struct Struct {a: u32, b: u32, c: u8, d: u16};
+
+fn main() {
+    let Struct {a, b, c, d, .$0.} = Struct {a: 1, b: 2, c: 3, d: 4};
+}
+"#,
+        expect![[r#"
+            *..*
+            ```rust
+            ..
             ```
         "#]],
     );

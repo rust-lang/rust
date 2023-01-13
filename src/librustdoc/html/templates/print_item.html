@@ -1,18 +1,16 @@
 <div class="main-heading"> {#- -#}
     <h1 class="fqn"> {#- -#}
-        <span class="in-band"> {#- -#}
-            {{-typ-}}
-            {#- The breadcrumbs of the item path, like std::string -#}
-            {%- for component in path_components -%}
-            <a href="{{component.path|safe}}index.html">{{component.name}}</a>::<wbr>
-            {%- endfor -%}
-            <a class="{{item_type}}" href="#">{{name}}</a> {#- -#}
-            <button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"> {#- -#}
-                <img src="{{static_root_path|safe}}clipboard{{page.resource_suffix}}.svg" {# -#}
-                    width="19" height="18" {# -#}
-                    alt="Copy item path"> {#- -#}
-            </button> {#- -#}
-        </span> {#- -#}
+        {{-typ-}}
+        {#- The breadcrumbs of the item path, like std::string -#}
+        {%- for component in path_components -%}
+        <a href="{{component.path|safe}}index.html">{{component.name}}</a>::<wbr>
+        {%- endfor -%}
+        <a class="{{item_type}}" href="#">{{name}}</a> {#- -#}
+        <button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"> {#- -#}
+        <img src="{{static_root_path|safe}}{{clipboard_svg}}" {# -#}
+                width="19" height="18" {# -#}
+                alt="Copy item path"> {#- -#}
+        </button> {#- -#}
     </h1> {#- -#}
     <span class="out-of-band"> {#- -#}
         {% if !stability_since_raw.is_empty() %}
@@ -23,8 +21,8 @@
                 <a class="srclink" href="{{href|safe}}">source</a> · {# -#}
             {%- else -%}
         {%- endmatch -%}
-        <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs"> {#- -#}
-            [<span class="inner">&#x2212;</span>] {#- -#}
-        </a> {#- -#}
+        <button id="toggle-all-docs" title="collapse all docs"> {#- -#}
+            [<span>&#x2212;</span>] {#- -#}
+        </button> {#- -#}
     </span> {#- -#}
 </div> {#- -#}

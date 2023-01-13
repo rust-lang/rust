@@ -1,0 +1,59 @@
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:8:13
+   |
+LL |     if let 0... = 1 {}
+   |             ^^^ help: use `..` instead
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:9:13
+   |
+LL |     if let 0..= = 1 {}
+   |             ^^^ help: use `..` instead
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:11:13
+   |
+LL |     if let X... = 1 {}
+   |             ^^^ help: use `..` instead
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:12:13
+   |
+LL |     if let X..= = 1 {}
+   |             ^^^ help: use `..` instead
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:18:19
+   |
+LL |             let $e...;
+   |                   ^^^ help: use `..` instead
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:19:19
+   |
+LL |             let $e..=;
+   |                   ^^^ help: use `..` instead
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0586`.

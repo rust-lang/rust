@@ -174,8 +174,12 @@ fn import_edits(ctx: &CompletionContext<'_>, requires: &[GreenNode]) -> Option<V
             hir::PathResolution::Def(def) => def.into(),
             _ => return None,
         };
-        let path =
-            ctx.module.find_use_path_prefixed(ctx.db, item, ctx.config.insert_use.prefix_kind)?;
+        let path = ctx.module.find_use_path_prefixed(
+            ctx.db,
+            item,
+            ctx.config.insert_use.prefix_kind,
+            ctx.config.prefer_no_std,
+        )?;
         Some((path.len() > 1).then(|| LocatedImport::new(path.clone(), item, item, None)))
     };
     let mut res = Vec::with_capacity(requires.len());
@@ -195,7 +199,7 @@ fn validate_snippet(
 ) -> Option<(Box<[GreenNode]>, String, Option<Box<str>>)> {
     let mut imports = Vec::with_capacity(requires.len());
     for path in requires.iter() {
-        let use_path = ast::SourceFile::parse(&format!("use {};", path))
+        let use_path = ast::SourceFile::parse(&format!("use {path};"))
             .syntax_node()
             .descendants()
             .find_map(ast::Path::cast)?;

@@ -2,9 +2,8 @@ use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{sym, Symbol};
+use rustc_span::Symbol;
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate, ItemId, PrimitiveType};
 use crate::core::DocContext;
@@ -15,6 +14,7 @@ use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::search_index::get_function_type_for_search;
 use crate::html::render::IndexItem;
+use crate::visit_lib::RustdocEffectiveVisibilities;
 
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
@@ -62,7 +62,7 @@ pub(crate) struct Cache {
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
     /// should show up in documentation about trait implementations.
-    pub(crate) traits: FxHashMap<DefId, clean::TraitWithExtraInfo>,
+    pub(crate) traits: FxHashMap<DefId, clean::Trait>,
 
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
@@ -77,8 +77,8 @@ pub(crate) struct Cache {
 
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
-    // the access levels from the privacy check pass.
-    pub(crate) access_levels: AccessLevels<DefId>,
+    // the effective visibilities from the privacy check pass.
+    pub(crate) effective_visibilities: RustdocEffectiveVisibilities,
 
     /// The version of the crate being documented, if given from the `--crate-version` flag.
     pub(crate) crate_version: Option<String>,
@@ -132,8 +132,8 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    pub(crate) fn new(access_levels: AccessLevels<DefId>, document_private: bool) -> Self {
-        Cache { access_levels, document_private, ..Cache::default() }
+    pub(crate) fn new(document_private: bool) -> Self {
+        Cache { document_private, ..Cache::default() }
     }
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
@@ -225,12 +225,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
-            self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| {
-                clean::TraitWithExtraInfo {
-                    trait_: *t.clone(),
-                    is_notable: item.attrs.has_doc_flag(sym::notable_trait),
-                }
-            });
+            self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| (**t).clone());
         }
 
         // Collect all the implementors of traits.
@@ -321,21 +316,28 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         let desc = item.doc_value().map_or_else(String::new, |x| {
                             short_markdown_summary(x.as_str(), &item.link_names(self.cache))
                         });
-                        self.cache.search_index.push(IndexItem {
-                            ty: item.type_(),
-                            name: s.to_string(),
-                            path: join_with_double_colon(path),
-                            desc,
-                            parent,
-                            parent_idx: None,
-                            search_type: get_function_type_for_search(
-                                &item,
-                                self.tcx,
-                                clean_impl_generics(self.cache.parent_stack.last()).as_ref(),
-                                self.cache,
-                            ),
-                            aliases: item.attrs.get_doc_aliases(),
-                        });
+                        let ty = item.type_();
+                        let name = s.to_string();
+                        if ty != ItemType::StructField || u16::from_str_radix(&name, 10).is_err() {
+                            // In case this is a field from a tuple struct, we don't add it into
+                            // the search index because its name is something like "0", which is
+                            // not useful for rustdoc search.
+                            self.cache.search_index.push(IndexItem {
+                                ty,
+                                name,
+                                path: join_with_double_colon(path),
+                                desc,
+                                parent,
+                                parent_idx: None,
+                                search_type: get_function_type_for_search(
+                                    &item,
+                                    self.tcx,
+                                    clean_impl_generics(self.cache.parent_stack.last()).as_ref(),
+                                    self.cache,
+                                ),
+                                aliases: item.attrs.get_doc_aliases(),
+                            });
+                        }
                     }
                 }
                 (Some(parent), None) if is_inherent_impl_item => {
@@ -386,7 +388,10 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // paths map if there was already an entry present and we're
                     // not a public item.
                     if !self.cache.paths.contains_key(&item.item_id.expect_def_id())
-                        || self.cache.access_levels.is_public(item.item_id.expect_def_id())
+                        || self
+                            .cache
+                            .effective_visibilities
+                            .is_directly_public(self.tcx, item.item_id.expect_def_id())
                     {
                         self.cache.paths.insert(
                             item.item_id.expect_def_id(),

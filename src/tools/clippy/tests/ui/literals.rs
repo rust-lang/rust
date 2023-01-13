@@ -40,3 +40,10 @@ fn main() {
     let ok26 = 0x6_A0_BF;
     let ok27 = 0b1_0010_0101;
 }
+
+fn issue9651() {
+    // lint but octal form is not possible here
+    let _ = 08;
+    let _ = 09;
+    let _ = 089;
+}

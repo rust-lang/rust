@@ -30,6 +30,11 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
         "Lub"
     }
 
+    fn intercrate(&self) -> bool {
+        assert!(!self.fields.infcx.intercrate);
+        false
+    }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.fields.tcx()
     }
@@ -40,6 +45,10 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         self.a_is_expected
+    }
+
+    fn mark_ambiguous(&mut self) {
+        bug!("mark_ambiguous used outside of coherence");
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
@@ -94,6 +103,11 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
+        // LUB of a binder and itself is just itself
+        if a == b {
+            return Ok(a);
+        }
+
         debug!("binders(a={:?}, b={:?})", a, b);
         if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
             // When higher-ranked types are involved, computing the LUB is
@@ -119,7 +133,7 @@ impl<'tcx> ConstEquateRelation<'tcx> for Lub<'_, '_, 'tcx> {
 }
 
 impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Lub<'combine, 'infcx, 'tcx> {
-    fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'tcx> {
+    fn infcx(&self) -> &'infcx InferCtxt<'tcx> {
         self.fields.infcx
     }
 

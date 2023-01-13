@@ -100,7 +100,7 @@ macro_rules! iterator {
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn pre_dec_end(&mut self, offset: usize) -> * $raw_mut T {
-                if mem::size_of::<T>() == 0 {
+                if T::IS_ZST {
                     zst_shrink!(self, offset);
                     self.ptr.as_ptr()
                 } else {
@@ -140,7 +140,7 @@ macro_rules! iterator {
                 // since we check if the iterator is empty first.
                 unsafe {
                     assume(!self.ptr.as_ptr().is_null());
-                    if mem::size_of::<T>() != 0 {
+                    if !<T>::IS_ZST {
                         assume(!self.end.is_null());
                     }
                     if is_empty!(self) {
@@ -166,7 +166,7 @@ macro_rules! iterator {
             fn nth(&mut self, n: usize) -> Option<$elem> {
                 if n >= len!(self) {
                     // This iterator is now empty.
-                    if mem::size_of::<T>() == 0 {
+                    if T::IS_ZST {
                         // We have to do it this way as `ptr` may never be 0, but `end`
                         // could be (due to wrapping).
                         self.end = self.ptr.as_ptr();
@@ -355,7 +355,7 @@ macro_rules! iterator {
                 // empty first.
                 unsafe {
                     assume(!self.ptr.as_ptr().is_null());
-                    if mem::size_of::<T>() != 0 {
+                    if !<T>::IS_ZST {
                         assume(!self.end.is_null());
                     }
                     if is_empty!(self) {

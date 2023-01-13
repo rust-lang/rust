@@ -11,6 +11,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -98,14 +99,12 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             if let ty::Adt(def, ..) = expr_ty.kind();
             if !is_from_proc_macro(cx, expr);
             then {
-                // TODO: Work out a way to put "whatever the imported way of referencing
-                // this type in this file" rather than a fully-qualified type.
-                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did()));
+                let replacement = with_forced_trimmed_paths!(format!("{}::default()", cx.tcx.def_path_str(def.did())));
                 span_lint_and_sugg(
                     cx,
                     DEFAULT_TRAIT_ACCESS,
                     expr.span,
-                    &format!("calling `{}` is more clear than this expression", replacement),
+                    &format!("calling `{replacement}` is more clear than this expression"),
                     "try",
                     replacement,
                     Applicability::Unspecified, // First resolve the TODO above
@@ -170,7 +169,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 // find out if and which field was set by this `consecutive_statement`
                 if let Some((field_ident, assign_rhs)) = field_reassigned_by_stmt(consecutive_statement, binding_name) {
                     // interrupt and cancel lint if assign_rhs references the original binding
-                    if contains_name(binding_name, assign_rhs) {
+                    if contains_name(binding_name, assign_rhs, cx) {
                         cancel_lint = true;
                         break;
                     }
@@ -210,7 +209,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .map(|(field, rhs)| {
                         // extract and store the assigned value for help message
                         let value_snippet = snippet_with_macro_callsite(cx, rhs.span, "..");
-                        format!("{}: {}", field, value_snippet)
+                        format!("{field}: {value_snippet}")
                     })
                     .collect::<Vec<String>>()
                     .join(", ");
@@ -227,7 +226,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                             .map(ToString::to_string)
                             .collect::<Vec<_>>()
                             .join(", ");
-                        format!("{}::<{}>", adt_def_ty_name, &tys_str)
+                        format!("{adt_def_ty_name}::<{}>", &tys_str)
                     } else {
                         binding_type.to_string()
                     }
@@ -235,12 +234,12 @@ impl<'tcx> LateLintPass<'tcx> for Default {
 
                 let sugg = if ext_with_default {
                     if field_list.is_empty() {
-                        format!("{}::default()", binding_type)
+                        format!("{binding_type}::default()")
                     } else {
-                        format!("{} {{ {}, ..Default::default() }}", binding_type, field_list)
+                        format!("{binding_type} {{ {field_list}, ..Default::default() }}")
                     }
                 } else {
-                    format!("{} {{ {} }}", binding_type, field_list)
+                    format!("{binding_type} {{ {field_list} }}")
                 };
 
                 // span lint once per statement that binds default
@@ -250,10 +249,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     first_assign.unwrap().span,
                     "field assignment outside of initializer for an instance created with Default::default()",
                     Some(local.span),
-                    &format!(
-                        "consider initializing the variable with `{}` and removing relevant reassignments",
-                        sugg
-                    ),
+                    &format!("consider initializing the variable with `{sugg}` and removing relevant reassignments"),
                 );
                 self.reassigned_linted.insert(span);
             }

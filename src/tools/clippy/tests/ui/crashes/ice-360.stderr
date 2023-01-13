@@ -18,8 +18,8 @@ error: empty `loop {}` wastes CPU cycles
 LL |         loop {}
    |         ^^^^^^^
    |
-   = note: `-D clippy::empty-loop` implied by `-D warnings`
    = help: you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body
+   = note: `-D clippy::empty-loop` implied by `-D warnings`
 
 error: aborting due to 2 previous errors
 

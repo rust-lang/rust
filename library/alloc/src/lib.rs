@@ -3,7 +3,7 @@
 //! This library provides smart pointers and collections for managing
 //! heap-allocated values.
 //!
-//! This library, like libcore, normally doesn’t need to be used directly
+//! This library, like core, normally doesn’t need to be used directly
 //! since its contents are re-exported in the [`std` crate](../std/index.html).
 //! Crates that use the `#![no_std]` attribute however will typically
 //! not depend on `std`, so they’d use this crate instead.
@@ -69,17 +69,20 @@
     any(not(feature = "miri-test-libstd"), test, doctest),
     no_global_oom_handling,
     not(no_global_oom_handling),
+    not(no_rc),
+    not(no_sync),
     target_has_atomic = "ptr"
 ))]
 #![no_std]
 #![needs_allocator]
-// To run liballoc tests without x.py without ending up with two copies of liballoc, Miri needs to be
+// To run alloc tests without x.py without ending up with two copies of alloc, Miri needs to be
 // able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
 // rustc itself never sets the feature, so this line has no affect there.
 #![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 //
 // Lints:
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(fuzzy_provenance_casts)]
 #![warn(deprecated_in_future)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
@@ -97,7 +100,7 @@
 #![feature(coerce_unsized)]
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![feature(const_box)]
-#![cfg_attr(not(no_global_oom_handling), feature(const_btree_new))]
+#![cfg_attr(not(no_global_oom_handling), feature(const_btree_len))]
 #![feature(const_cow_is_borrowed)]
 #![feature(const_convert)]
 #![feature(const_size_of_val)]
@@ -107,35 +110,40 @@
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_refs_to_cell)]
 #![feature(core_intrinsics)]
+#![feature(core_panic)]
 #![feature(const_eval_select)]
 #![feature(const_pin)]
+#![feature(const_waker)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
-#![cfg_attr(not(bootstrap), feature(error_generic_member_access))]
-#![cfg_attr(not(bootstrap), feature(error_in_core))]
+#![feature(error_generic_member_access)]
+#![feature(error_in_core)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(hasher_prefixfree_extras)]
+#![feature(inline_const)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
+#![feature(iter_repeat_n)]
 #![feature(layout_for_ptr)]
-#![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(maybe_uninit_uninit_array_transpose)]
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
 #![feature(pointer_byte_offsets)]
-#![cfg_attr(not(bootstrap), feature(provide_any))]
+#![feature(provide_any)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(ptr_sub_ptr)]
 #![feature(receiver_trait)]
 #![feature(saturating_int_impl)]
 #![feature(set_ptr_value)]
+#![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]
 #![feature(slice_group_by)]
 #![feature(slice_ptr_get)]
@@ -146,6 +154,7 @@
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_trait_v2)]
+#![feature(tuple_trait)]
 #![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
@@ -169,7 +178,6 @@
 #![cfg_attr(not(test), feature(generator_trait))]
 #![feature(hashmap_internals)]
 #![feature(lang_items)]
-#![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -184,6 +192,7 @@
 #![feature(unsized_fn_params)]
 #![feature(c_unwind)]
 #![feature(with_negative_coherence)]
+#![cfg_attr(test, feature(panic_update_hook))]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]
@@ -200,6 +209,8 @@
 extern crate std;
 #[cfg(test)]
 extern crate test;
+#[cfg(test)]
+mod testing;
 
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]
@@ -224,16 +235,17 @@ mod boxed {
 }
 pub mod borrow;
 pub mod collections;
-#[cfg(not(no_global_oom_handling))]
+#[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;
 pub mod fmt;
+#[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;
 pub mod str;
 pub mod string;
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 pub mod sync;
-#[cfg(all(not(no_global_oom_handling), target_has_atomic = "ptr"))]
+#[cfg(all(not(no_global_oom_handling), not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 pub mod task;
 #[cfg(test)]
 mod tests;
@@ -243,4 +255,21 @@ pub mod vec;
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
 pub mod __export {
     pub use core::format_args;
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Not used in all configurations
+pub(crate) mod test_helpers {
+    /// Copied from `std::test_helpers::test_rng`, since these tests rely on the
+    /// seed not being the same for every RNG invocation too.
+    pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
+        use std::hash::{BuildHasher, Hash, Hasher};
+        let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+        std::panic::Location::caller().hash(&mut hasher);
+        let hc64 = hasher.finish();
+        let seed_vec =
+            hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<crate::vec::Vec<u8>>();
+        let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
+        rand::SeedableRng::from_seed(seed)
+    }
 }

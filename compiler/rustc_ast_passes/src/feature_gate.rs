@@ -1,15 +1,15 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocConstraint, AssocConstraintKind, NodeId};
-use rustc_ast::{PatKind, RangeEnd, VariantData};
+use rustc_ast::{PatKind, RangeEnd};
 use rustc_errors::{struct_span_err, Applicability, StashKey};
-use rustc_feature::Features;
-use rustc_feature::{AttributeGate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
-use rustc_session::parse::{feature_err, feature_warn};
+use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
+use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_target::spec::abi;
 
 macro_rules! gate_feature_fn {
     ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $help: expr) => {{
@@ -84,210 +84,26 @@ impl<'a> PostExpansionVisitor<'a> {
             }
         }
 
-        match symbol_unescaped.as_str() {
-            // Stable
-            "Rust" | "C" | "cdecl" | "stdcall" | "fastcall" | "aapcs" | "win64" | "sysv64"
-            | "system" => {}
-            "rust-intrinsic" => {
-                gate_feature_post!(&self, intrinsics, span, "intrinsics are subject to change");
-            }
-            "platform-intrinsic" => {
-                gate_feature_post!(
-                    &self,
-                    platform_intrinsics,
+        match abi::is_enabled(&self.features, span, symbol_unescaped.as_str()) {
+            Ok(()) => (),
+            Err(abi::AbiDisabled::Unstable { feature, explain }) => {
+                feature_err_issue(
+                    &self.sess.parse_sess,
+                    feature,
                     span,
-                    "platform intrinsics are experimental and possibly buggy"
-                );
+                    GateIssue::Language,
+                    explain,
+                )
+                .emit();
             }
-            "vectorcall" => {
-                gate_feature_post!(
-                    &self,
-                    abi_vectorcall,
-                    span,
-                    "vectorcall is experimental and subject to change"
-                );
-            }
-            "thiscall" => {
-                gate_feature_post!(
-                    &self,
-                    abi_thiscall,
-                    span,
-                    "thiscall is experimental and subject to change"
-                );
-            }
-            "rust-call" => {
-                gate_feature_post!(
-                    &self,
-                    unboxed_closures,
-                    span,
-                    "rust-call ABI is subject to change"
-                );
-            }
-            "rust-cold" => {
-                gate_feature_post!(
-                    &self,
-                    rust_cold_cc,
-                    span,
-                    "rust-cold is experimental and subject to change"
-                );
-            }
-            "ptx-kernel" => {
-                gate_feature_post!(
-                    &self,
-                    abi_ptx,
-                    span,
-                    "PTX ABIs are experimental and subject to change"
-                );
-            }
-            "unadjusted" => {
-                gate_feature_post!(
-                    &self,
-                    abi_unadjusted,
-                    span,
-                    "unadjusted ABI is an implementation detail and perma-unstable"
-                );
-            }
-            "msp430-interrupt" => {
-                gate_feature_post!(
-                    &self,
-                    abi_msp430_interrupt,
-                    span,
-                    "msp430-interrupt ABI is experimental and subject to change"
-                );
-            }
-            "x86-interrupt" => {
-                gate_feature_post!(
-                    &self,
-                    abi_x86_interrupt,
-                    span,
-                    "x86-interrupt ABI is experimental and subject to change"
-                );
-            }
-            "amdgpu-kernel" => {
-                gate_feature_post!(
-                    &self,
-                    abi_amdgpu_kernel,
-                    span,
-                    "amdgpu-kernel ABI is experimental and subject to change"
-                );
-            }
-            "avr-interrupt" | "avr-non-blocking-interrupt" => {
-                gate_feature_post!(
-                    &self,
-                    abi_avr_interrupt,
-                    span,
-                    "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change"
-                );
-            }
-            "efiapi" => {
-                gate_feature_post!(
-                    &self,
-                    abi_efiapi,
-                    span,
-                    "efiapi ABI is experimental and subject to change"
-                );
-            }
-            "C-cmse-nonsecure-call" => {
-                gate_feature_post!(
-                    &self,
-                    abi_c_cmse_nonsecure_call,
-                    span,
-                    "C-cmse-nonsecure-call ABI is experimental and subject to change"
-                );
-            }
-            "C-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "C-unwind ABI is experimental and subject to change"
-                );
-            }
-            "stdcall-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "stdcall-unwind ABI is experimental and subject to change"
-                );
-            }
-            "system-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "system-unwind ABI is experimental and subject to change"
-                );
-            }
-            "thiscall-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "thiscall-unwind ABI is experimental and subject to change"
-                );
-            }
-            "cdecl-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "cdecl-unwind ABI is experimental and subject to change"
-                );
-            }
-            "fastcall-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "fastcall-unwind ABI is experimental and subject to change"
-                );
-            }
-            "vectorcall-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "vectorcall-unwind ABI is experimental and subject to change"
-                );
-            }
-            "aapcs-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "aapcs-unwind ABI is experimental and subject to change"
-                );
-            }
-            "win64-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "win64-unwind ABI is experimental and subject to change"
-                );
-            }
-            "sysv64-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "sysv64-unwind ABI is experimental and subject to change"
-                );
-            }
-            "wasm" => {
-                gate_feature_post!(
-                    &self,
-                    wasm_abi,
-                    span,
-                    "wasm ABI is experimental and subject to change"
-                );
-            }
-            abi => {
+            Err(abi::AbiDisabled::Unrecognized) => {
                 if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
                     self.sess.parse_sess.span_diagnostic.delay_span_bug(
                         span,
-                        &format!("unrecognized ABI not caught in lowering: {}", abi),
+                        &format!(
+                            "unrecognized ABI not caught in lowering: {}",
+                            symbol_unescaped.as_str()
+                        ),
                     );
                 }
             }
@@ -297,65 +113,6 @@ impl<'a> PostExpansionVisitor<'a> {
     fn check_extern(&self, ext: ast::Extern, constness: ast::Const) {
         if let ast::Extern::Explicit(abi, _) = ext {
             self.check_abi(abi, constness);
-        }
-    }
-
-    fn maybe_report_invalid_custom_discriminants(&self, variants: &[ast::Variant]) {
-        let has_fields = variants.iter().any(|variant| match variant.data {
-            VariantData::Tuple(..) | VariantData::Struct(..) => true,
-            VariantData::Unit(..) => false,
-        });
-
-        let discriminant_spans = variants
-            .iter()
-            .filter(|variant| match variant.data {
-                VariantData::Tuple(..) | VariantData::Struct(..) => false,
-                VariantData::Unit(..) => true,
-            })
-            .filter_map(|variant| variant.disr_expr.as_ref().map(|c| c.value.span))
-            .collect::<Vec<_>>();
-
-        if !discriminant_spans.is_empty() && has_fields {
-            let mut err = feature_err(
-                &self.sess.parse_sess,
-                sym::arbitrary_enum_discriminant,
-                discriminant_spans.clone(),
-                "custom discriminant values are not allowed in enums with tuple or struct variants",
-            );
-            for sp in discriminant_spans {
-                err.span_label(sp, "disallowed custom discriminant");
-            }
-            for variant in variants.iter() {
-                match &variant.data {
-                    VariantData::Struct(..) => {
-                        err.span_label(variant.span, "struct variant defined here");
-                    }
-                    VariantData::Tuple(..) => {
-                        err.span_label(variant.span, "tuple variant defined here");
-                    }
-                    VariantData::Unit(..) => {}
-                }
-            }
-            err.emit();
-        }
-    }
-
-    fn check_gat(&self, generics: &ast::Generics, span: Span) {
-        if !generics.params.is_empty() {
-            gate_feature_post!(
-                &self,
-                generic_associated_types,
-                span,
-                "generic associated types are unstable"
-            );
-        }
-        if !generics.where_clause.predicates.is_empty() {
-            gate_feature_post!(
-                &self,
-                generic_associated_types,
-                span,
-                "where clauses on associated types are unstable"
-            );
         }
     }
 
@@ -441,8 +198,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {
-        match i.kind {
-            ast::ItemKind::ForeignMod(ref foreign_module) => {
+        match &i.kind {
+            ast::ItemKind::ForeignMod(foreign_module) => {
                 if let Some(abi) = foreign_module.abi {
                     self.check_abi(abi, ast::Const::No);
                 }
@@ -476,28 +233,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Enum(ast::EnumDef { ref variants, .. }, ..) => {
-                for variant in variants {
-                    match (&variant.data, &variant.disr_expr) {
-                        (ast::VariantData::Unit(..), _) => {}
-                        (_, Some(disr_expr)) => gate_feature_post!(
-                            &self,
-                            arbitrary_enum_discriminant,
-                            disr_expr.value.span,
-                            "discriminants on non-unit variants are experimental"
-                        ),
-                        _ => {}
-                    }
-                }
-
-                let has_feature = self.features.arbitrary_enum_discriminant;
-                if !has_feature && !i.span.allows_unstable(sym::arbitrary_enum_discriminant) {
-                    self.maybe_report_invalid_custom_discriminants(&variants);
-                }
-            }
-
-            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, ref of_trait, .. }) => {
-                if let ast::ImplPolarity::Negative(span) = polarity {
+            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, of_trait, .. }) => {
+                if let &ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
                         negative_impls,
@@ -530,7 +267,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ref ty), .. }) => {
+            ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ty), .. }) => {
                 self.check_impl_trait(&ty)
             }
 
@@ -565,13 +302,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
-        match ty.kind {
-            ast::TyKind::BareFn(ref bare_fn_ty) => {
+        match &ty.kind {
+            ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
                 self.check_extern(bare_fn_ty.ext, ast::Const::No);
             }
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
+            }
+            ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::DynStar, ..) => {
+                gate_feature_post!(&self, dyn_star, ty.span, "dyn* trait objects are unstable");
             }
             _ => {}
         }
@@ -579,7 +319,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FnRetTy) {
-        if let ast::FnRetTy::Ty(ref output_ty) = *ret_ty {
+        if let ast::FnRetTy::Ty(output_ty) = ret_ty {
             if let ast::TyKind::Never = output_ty.kind {
                 // Do nothing.
             } else {
@@ -645,6 +385,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
+            ast::ExprKind::Closure(box ast::Closure { constness: ast::Const::Yes(_), .. }) => {
+                gate_feature_post!(
+                    &self,
+                    const_closures,
+                    e.span,
+                    "const closures are experimental"
+                );
+            }
             _ => {}
         }
         visit::walk_expr(self, e)
@@ -661,7 +409,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     if let PatKind::Range(Some(_), None, Spanned { .. }) = inner_pat.kind {
                         gate_feature_post!(
                             &self,
-                            half_open_range_patterns,
+                            half_open_range_patterns_in_slices,
                             pat.span,
                             "`X..` patterns in slices are experimental"
                         );
@@ -699,7 +447,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_post!(&self, c_variadic, span, "C-variadic functions are unstable");
         }
 
-        visit::walk_fn(self, fn_kind, span)
+        visit::walk_fn(self, fn_kind)
     }
 
     fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {
@@ -715,9 +463,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
-        let is_fn = match i.kind {
+        let is_fn = match &i.kind {
             ast::AssocItemKind::Fn(_) => true,
-            ast::AssocItemKind::TyAlias(box ast::TyAlias { ref generics, ref ty, .. }) => {
+            ast::AssocItemKind::Type(box ast::TyAlias { ty, .. }) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,
@@ -729,7 +477,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if let Some(ty) = ty {
                     self.check_impl_trait(ty);
                 }
-                self.check_gat(generics, i.span);
                 false
             }
             _ => false,
@@ -790,7 +537,10 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
-    gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
+    gate_all!(
+        half_open_range_patterns_in_slices,
+        "half-open range patterns in slices are unstable"
+    );
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(associated_const_equality, "associated const equality is incomplete");
@@ -888,7 +638,7 @@ fn check_incompatible_features(sess: &Session) {
             {
                 let spans = vec![f1_span, f2_span];
                 sess.struct_span_err(
-                    spans.clone(),
+                    spans,
                     &format!(
                         "features `{}` and `{}` are incompatible, using them at the same time \
                         is not allowed",

@@ -1,15 +1,18 @@
-use crate::spec::{cvs, LinkerFlavor, TargetOptions};
+use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
+use std::borrow::Cow;
 
 pub fn opts() -> TargetOptions {
     // We cannot use `-nodefaultlibs` because compiler-rt has to be passed
     // as a path since it's not added to linker search path by the default.
     // There were attempts to make it behave like libgcc (so one can just use -l<name>)
     // but LLVM maintainers rejected it: https://reviews.llvm.org/D51440
-    let pre_link_args =
-        TargetOptions::link_args(LinkerFlavor::Gcc, &["-nolibc", "--unwindlib=none"]);
+    let pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        &["-nolibc", "--unwindlib=none"],
+    );
     // Order of `late_link_args*` does not matter with LLD.
     let late_link_args = TargetOptions::link_args(
-        LinkerFlavor::Gcc,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         &["-lmingw32", "-lmingwex", "-lmsvcrt", "-lkernel32", "-luser32"],
     );
 
@@ -34,7 +37,10 @@ pub fn opts() -> TargetOptions {
         eh_frame_header: false,
         no_default_libraries: false,
         has_thread_local: true,
-
+        // FIXME(davidtwco): Support Split DWARF on Windows GNU - may require LLVM changes to
+        // output DWO, despite using DWARF, doesn't use ELF..
+        debuginfo_kind: DebuginfoKind::Pdb,
+        supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
         ..Default::default()
     }
 }

@@ -23,10 +23,30 @@ pub(crate) fn get_host_triple() -> String {
         .to_owned()
 }
 
+pub(crate) fn get_cargo_path() -> PathBuf {
+    let cargo_path = Command::new("rustup")
+        .stderr(Stdio::inherit())
+        .args(&["which", "cargo"])
+        .output()
+        .unwrap()
+        .stdout;
+    Path::new(String::from_utf8(cargo_path).unwrap().trim()).to_owned()
+}
+
 pub(crate) fn get_rustc_path() -> PathBuf {
     let rustc_path = Command::new("rustup")
         .stderr(Stdio::inherit())
         .args(&["which", "rustc"])
+        .output()
+        .unwrap()
+        .stdout;
+    Path::new(String::from_utf8(rustc_path).unwrap().trim()).to_owned()
+}
+
+pub(crate) fn get_rustdoc_path() -> PathBuf {
+    let rustc_path = Command::new("rustup")
+        .stderr(Stdio::inherit())
+        .args(&["which", "rustdoc"])
         .output()
         .unwrap()
         .stdout;
@@ -65,7 +85,7 @@ pub(crate) fn get_file_name(crate_name: &str, crate_type: &str) -> String {
 }
 
 /// Similar to `get_file_name`, but converts any dashes (`-`) in the `crate_name` to
-/// underscores (`_`). This is specially made for the the rustc and cargo wrappers
+/// underscores (`_`). This is specially made for the rustc and cargo wrappers
 /// which have a dash in the name, and that is not allowed in a crate name.
 pub(crate) fn get_wrapper_file_name(crate_name: &str, crate_type: &str) -> String {
     let crate_name = crate_name.replace('-', "_");

@@ -1,5 +1,6 @@
 // run-rustfix
 #![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
+#![allow(clippy::unnecessary_cast)]
 
 fn main() {
     let x = 3f32;

@@ -5,7 +5,9 @@ use crate::task::{Context, Poll};
 
 /// Creates a future that wraps a function returning [`Poll`].
 ///
-/// Polling the future delegates to the wrapped function.
+/// Polling the future delegates to the wrapped function. If the returned future is pinned, then the
+/// captured environment of the wrapped function is also pinned in-place, so as long as the closure
+/// does not move out of its captures it can soundly create pinned references to them.
 ///
 /// # Examples
 ///
@@ -41,7 +43,7 @@ pub struct PollFn<F> {
 }
 
 #[stable(feature = "future_poll_fn", since = "1.64.0")]
-impl<F> Unpin for PollFn<F> {}
+impl<F: Unpin> Unpin for PollFn<F> {}
 
 #[stable(feature = "future_poll_fn", since = "1.64.0")]
 impl<F> fmt::Debug for PollFn<F> {
@@ -57,7 +59,8 @@ where
 {
     type Output = T;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        (&mut self.f)(cx)
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        // SAFETY: We are not moving out of the pinned field.
+        (unsafe { &mut self.get_unchecked_mut().f })(cx)
     }
 }

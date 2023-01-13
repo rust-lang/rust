@@ -51,14 +51,14 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
         Some(field) => {
             let field_name = field.name()?;
             let field_ty = field.ty()?;
-            (format!("{}", field_name), field_ty, field.syntax().text_range())
+            (field_name.to_string(), field_ty, field.syntax().text_range())
         }
         None => {
             let field = ctx.find_node_at_offset::<ast::TupleField>()?;
             let field_list = ctx.find_node_at_offset::<ast::TupleFieldList>()?;
             let field_list_index = field_list.fields().position(|it| it == field)?;
             let field_ty = field.ty()?;
-            (format!("{}", field_list_index), field_ty, field.syntax().text_range())
+            (field_list_index.to_string(), field_ty, field.syntax().text_range())
         }
     };
 
@@ -77,11 +77,11 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     for method in methods {
         let adt = ast::Adt::Struct(strukt.clone());
         let name = method.name(ctx.db()).to_string();
-        let impl_def = find_struct_impl(ctx, &adt, &name).flatten();
+        let impl_def = find_struct_impl(ctx, &adt, &[name]).flatten();
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
-            format!("Generate delegate for `{}.{}()`", field_name, method.name(ctx.db())),
+            format!("Generate delegate for `{field_name}.{}()`", method.name(ctx.db())),
             target,
             |builder| {
                 // Create the function
@@ -104,9 +104,11 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     make::name_ref(&method_name.to_string()),
                     arg_list,
                 );
-                let body = make::block_expr([], Some(tail_expr));
                 let ret_type = method_source.ret_type();
                 let is_async = method_source.async_token().is_some();
+                let tail_expr_finished =
+                    if is_async { make::expr_await(tail_expr) } else { tail_expr };
+                let body = make::block_expr([], Some(tail_expr_finished));
                 let f = make::fn_(vis, name, type_params, params, body, ret_type, is_async)
                     .indent(ast::edit::IndentLevel(1))
                     .clone_for_update();
@@ -151,7 +153,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                             Some(cap) => {
                                 let offset = strukt.syntax().text_range().end();
                                 let snippet = render_snippet(cap, impl_def.syntax(), cursor);
-                                let snippet = format!("\n\n{}", snippet);
+                                let snippet = format!("\n\n{snippet}");
                                 builder.insert_snippet(cap, offset, snippet);
                             }
                             None => {
@@ -306,7 +308,7 @@ struct Person<T> {
 
 impl<T> Person<T> {
     $0pub(crate) async fn age<J, 'a>(&'a mut self, ty: T, arg: J) -> T {
-        self.age.age(ty, arg)
+        self.age.age(ty, arg).await
     }
 }"#,
         );

@@ -80,10 +80,10 @@ impl Res {
         }
     }
 
-    fn def_id(self, tcx: TyCtxt<'_>) -> DefId {
+    fn def_id(self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self {
-            Res::Def(_, id) => id,
-            Res::Primitive(prim) => *PrimitiveType::primitive_locations(tcx).get(&prim).unwrap(),
+            Res::Def(_, id) => Some(id),
+            Res::Primitive(prim) => PrimitiveType::primitive_locations(tcx).get(&prim).copied(),
         }
     }
 
@@ -402,6 +402,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })
             .and_then(|self_id| match tcx.def_kind(self_id) {
                 DefKind::Impl => self.def_id_to_res(self_id),
+                DefKind::Use => None,
                 def_kind => Some(Res::Def(def_kind, self_id)),
             })
     }
@@ -537,11 +538,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
                 Res::from_def_id(self.cx.tcx, did)
             }
-            ty::Projection(_)
+            ty::Alias(..)
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
-            | ty::Opaque(..)
             | ty::Dynamic(..)
             | ty::Param(_)
             | ty::Bound(..)
@@ -1127,10 +1127,10 @@ impl LinkCollector<'_, '_> {
                     }
                 }
 
-                Some(ItemLink {
+                res.def_id(self.cx.tcx).map(|page_id| ItemLink {
                     link: ori_link.link.clone(),
                     link_text: link_text.clone(),
-                    page_id: res.def_id(self.cx.tcx),
+                    page_id,
                     fragment,
                 })
             }
@@ -1202,8 +1202,8 @@ impl LinkCollector<'_, '_> {
                 item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
             })
         {
-            if self.cx.tcx.privacy_access_levels(()).is_exported(src_id)
-                && !self.cx.tcx.privacy_access_levels(()).is_exported(dst_id)
+            if self.cx.tcx.effective_visibilities(()).is_exported(src_id)
+                && !self.cx.tcx.effective_visibilities(()).is_exported(dst_id)
             {
                 privacy_error(self.cx, diag_info, path_str);
             }
@@ -1609,9 +1609,7 @@ fn report_diagnostic(
 
     let sp = item.attr_span(tcx);
 
-    tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
-        let mut diag = lint.build(msg);
-
+    tcx.struct_span_lint_hir(lint, hir_id, sp, msg, |lint| {
         let span =
             super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs).map(|sp| {
                 if dox.as_bytes().get(link_range.start) == Some(&b'`')
@@ -1624,7 +1622,7 @@ fn report_diagnostic(
             });
 
         if let Some(sp) = span {
-            diag.set_span(sp);
+            lint.set_span(sp);
         } else {
             // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
             //                       ^     ~~~~
@@ -1634,7 +1632,7 @@ fn report_diagnostic(
             let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
             // Print the line containing the `link_range` and manually mark it with '^'s.
-            diag.note(&format!(
+            lint.note(&format!(
                 "the link appears in this line:\n\n{line}\n\
                      {indicator: <before$}{indicator:^<found$}",
                 line = line,
@@ -1644,9 +1642,9 @@ fn report_diagnostic(
             ));
         }
 
-        decorate(&mut diag, span);
+        decorate(lint, span);
 
-        diag.emit();
+        lint
     });
 }
 
@@ -1774,7 +1772,6 @@ fn resolution_failure(
 
                     // Otherwise, it must be an associated item or variant
                     let res = partial_res.expect("None case was handled by `last_found_module`");
-                    let name = res.name(tcx);
                     let kind = match res {
                         Res::Def(kind, _) => Some(kind),
                         Res::Primitive(_) => None,
@@ -1816,6 +1813,7 @@ fn resolution_failure(
                     } else {
                         "associated item"
                     };
+                    let name = res.name(tcx);
                     let note = format!(
                         "the {} `{}` has no {} named `{}`",
                         res.descr(),
@@ -1895,7 +1893,7 @@ fn disambiguator_error(
     diag_info.link_range = disambiguator_range;
     report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, _sp| {
         let msg = format!(
-            "see {}/rustdoc/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators",
+            "see {}/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators",
             crate::DOC_RUST_LANG_ORG_CHANNEL
         );
         diag.note(&msg);

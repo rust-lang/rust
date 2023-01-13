@@ -4,7 +4,6 @@
  */
 
 use crate::mir::*;
-use crate::ty::subst::Subst;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_target::abi::VariantIdx;
@@ -33,8 +32,9 @@ impl<'tcx> PlaceTy<'tcx> {
     /// not carry a `Ty` for `T`.)
     ///
     /// Note that the resulting type has not been normalized.
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: Field) -> Ty<'tcx> {
-        let answer = match self.ty.kind() {
+        match self.ty.kind() {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
@@ -48,16 +48,14 @@ impl<'tcx> PlaceTy<'tcx> {
             }
             ty::Tuple(tys) => tys[f.index()],
             _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
-        };
-        debug!("field_ty self: {:?} f: {:?} yields: {:?}", self, f, answer);
-        answer
+        }
     }
 
     /// Convenience wrapper around `projection_ty_core` for
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty)
+        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty, |_, ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -71,6 +69,7 @@ impl<'tcx> PlaceTy<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         elem: &ProjectionElem<V, T>,
         mut handle_field: impl FnMut(&Self, Field, T) -> Ty<'tcx>,
+        mut handle_opaque_cast: impl FnMut(&Self, T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
         V: ::std::fmt::Debug,
@@ -109,6 +108,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
             ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
+            ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast(&self, ty)),
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer
@@ -233,7 +233,7 @@ impl<'tcx> Operand<'tcx> {
     {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
-            &Operand::Constant(ref c) => c.literal.ty(),
+            Operand::Constant(c) => c.literal.ty(),
         }
     }
 }

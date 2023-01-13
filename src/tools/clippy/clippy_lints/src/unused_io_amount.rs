@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::{is_try, match_trait_method, paths};
+use clippy_utils::{is_trait_method, is_try, match_trait_method, paths};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -46,9 +47,8 @@ declare_lint_pass!(UnusedIoAmount => [UNUSED_IO_AMOUNT]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
-        let expr = match s.kind {
-            hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr) => expr,
-            _ => return,
+        let (hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr)) = s.kind else {
+            return
         };
 
         match expr.kind {
@@ -116,13 +116,13 @@ fn check_method_call(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Exp
             match_trait_method(cx, call, &paths::FUTURES_IO_ASYNCREADEXT)
                 || match_trait_method(cx, call, &paths::TOKIO_IO_ASYNCREADEXT)
         } else {
-            match_trait_method(cx, call, &paths::IO_READ)
+            is_trait_method(cx, call, sym::IoRead)
         };
         let write_trait = if is_await {
             match_trait_method(cx, call, &paths::FUTURES_IO_ASYNCWRITEEXT)
                 || match_trait_method(cx, call, &paths::TOKIO_IO_ASYNCWRITEEXT)
         } else {
-            match_trait_method(cx, call, &paths::IO_WRITE)
+            is_trait_method(cx, call, sym::IoWrite)
         };
 
         match (read_trait, write_trait, symbol, is_await) {

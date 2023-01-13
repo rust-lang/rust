@@ -244,10 +244,10 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                         matches!(
                             node,
                             hir::Node::Variant(hir::Variant {
-                                data: hir::VariantData::Tuple(_, _),
+                                data: hir::VariantData::Tuple(_, _, _),
                                 ..
                             }) | hir::Node::Item(hir::Item {
-                                kind: hir::ItemKind::Struct(hir::VariantData::Tuple(_, _), _),
+                                kind: hir::ItemKind::Struct(hir::VariantData::Tuple(_, _, _), _),
                                 ..
                             })
                         )

@@ -44,6 +44,12 @@ impl<T: ?Sized> !Send for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Send for *mut T {}
 
+// Most instances arise automatically, but this instance is needed to link up `T: Sync` with
+// `&T: Send` (and it also removes the unsound default instance `T Send` -> `&T: Send` that would
+// otherwise exist).
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Sync + ?Sized> Send for &T {}
+
 /// Types with a constant size known at compile time.
 ///
 /// All type parameters have an implicit bound of `Sized`. The special syntax
@@ -81,6 +87,7 @@ impl<T: ?Sized> !Send for *mut T {}
 /// ```
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
+#[doc(alias = "?", alias = "?Sized")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented(
@@ -89,6 +96,7 @@ impl<T: ?Sized> !Send for *mut T {}
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 #[rustc_specialization_trait]
+#[rustc_deny_explicit_impl]
 pub trait Sized {
     // Empty.
 }
@@ -118,8 +126,9 @@ pub trait Sized {
 /// [`Rc`]: ../../std/rc/struct.Rc.html
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
 /// [nomicon-coerce]: ../../nomicon/coercions.html
-#[unstable(feature = "unsize", issue = "27732")]
+#[unstable(feature = "unsize", issue = "18598")]
 #[lang = "unsize"]
+#[rustc_deny_explicit_impl]
 pub trait Unsize<T: ?Sized> {
     // Empty.
 }
@@ -482,64 +491,6 @@ impl<T: ?Sized> !Sync for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Sync for *mut T {}
 
-macro_rules! impls {
-    ($t: ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> Hash for $t<T> {
-            #[inline]
-            fn hash<H: Hasher>(&self, _: &mut H) {}
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::PartialEq for $t<T> {
-            fn eq(&self, _other: &$t<T>) -> bool {
-                true
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::Eq for $t<T> {}
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::PartialOrd for $t<T> {
-            fn partial_cmp(&self, _other: &$t<T>) -> Option<cmp::Ordering> {
-                Option::Some(cmp::Ordering::Equal)
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::Ord for $t<T> {
-            fn cmp(&self, _other: &$t<T>) -> cmp::Ordering {
-                cmp::Ordering::Equal
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> Copy for $t<T> {}
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> Clone for $t<T> {
-            fn clone(&self) -> Self {
-                Self
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-        impl<T: ?Sized> const Default for $t<T> {
-            fn default() -> Self {
-                Self
-            }
-        }
-
-        #[unstable(feature = "structural_match", issue = "31434")]
-        impl<T: ?Sized> StructuralPartialEq for $t<T> {}
-
-        #[unstable(feature = "structural_match", issue = "31434")]
-        impl<T: ?Sized> StructuralEq for $t<T> {}
-    };
-}
-
 /// Zero-sized type used to mark things that "act like" they own a `T`.
 ///
 /// Adding a `PhantomData<T>` field to your type tells the compiler that your
@@ -672,19 +623,70 @@ macro_rules! impls {
 /// (ideally) or `PhantomData<*const T>` (if no lifetime applies), so
 /// as not to indicate ownership.
 ///
+/// ## Layout
+///
+/// For all `T`, the following are guaranteed:
+/// * `size_of::<PhantomData<T>>() == 0`
+/// * `align_of::<PhantomData<T>>() == 1`
+///
 /// [drop check]: ../../nomicon/dropck.html
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T: ?Sized>;
 
-impls! { PhantomData }
-
-mod impls {
-    #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<T: Sync + ?Sized> Send for &T {}
-    #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<T: Send + ?Sized> Send for &mut T {}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Hash for PhantomData<T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, _: &mut H) {}
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::PartialEq for PhantomData<T> {
+    fn eq(&self, _other: &PhantomData<T>) -> bool {
+        true
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::Eq for PhantomData<T> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::PartialOrd for PhantomData<T> {
+    fn partial_cmp(&self, _other: &PhantomData<T>) -> Option<cmp::Ordering> {
+        Option::Some(cmp::Ordering::Equal)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::Ord for PhantomData<T> {
+    fn cmp(&self, _other: &PhantomData<T>) -> cmp::Ordering {
+        cmp::Ordering::Equal
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Copy for PhantomData<T> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Clone for PhantomData<T> {
+    fn clone(&self) -> Self {
+        Self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl<T: ?Sized> const Default for PhantomData<T> {
+    fn default() -> Self {
+        Self
+    }
+}
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<T: ?Sized> StructuralPartialEq for PhantomData<T> {}
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<T: ?Sized> StructuralEq for PhantomData<T> {}
 
 /// Compiler-internal trait used to indicate the type of enum discriminants.
 ///
@@ -699,6 +701,7 @@ mod impls {
     reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
 )]
 #[lang = "discriminant_kind"]
+#[rustc_deny_explicit_impl]
 pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
@@ -798,7 +801,28 @@ impl<T: ?Sized> Unpin for *mut T {}
 #[unstable(feature = "const_trait_impl", issue = "67792")]
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[const_trait]
+#[rustc_deny_explicit_impl]
 pub trait Destruct {}
+
+/// A marker for tuple types.
+///
+/// The implementation of this trait is built-in and cannot be implemented
+/// for any user type.
+#[unstable(feature = "tuple_trait", issue = "none")]
+#[lang = "tuple_trait"]
+#[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
+#[rustc_deny_explicit_impl]
+pub trait Tuple {}
+
+/// A marker for things
+#[unstable(feature = "pointer_sized_trait", issue = "none")]
+#[lang = "pointer_sized"]
+#[rustc_on_unimplemented(
+    message = "`{Self}` needs to be a pointer-sized type",
+    label = "`{Self}` needs to be a pointer-sized type"
+)]
+pub trait PointerSized {}
 
 /// Implementations of `Copy` for primitive types.
 ///

@@ -6,8 +6,8 @@ LL | |     bar.a = bar.b;
 LL | |     bar.b = temp;
    | |________________^ help: try: `std::mem::swap(&mut bar.a, &mut bar.b)`
    |
-   = note: `-D clippy::manual-swap` implied by `-D warnings`
    = note: or maybe you should use `std::mem::replace`?
+   = note: `-D clippy::manual-swap` implied by `-D warnings`
 
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:36:5
@@ -96,8 +96,8 @@ LL | /     a = b;
 LL | |     b = a;
    | |_________^ help: try: `std::mem::swap(&mut a, &mut b)`
    |
-   = note: `-D clippy::almost-swapped` implied by `-D warnings`
    = note: or maybe you should use `std::mem::replace`?
+   = note: `-D clippy::almost-swapped` implied by `-D warnings`
 
 error: this looks like you are trying to swap `c.0` and `a`
   --> $DIR/swap.rs:140:5

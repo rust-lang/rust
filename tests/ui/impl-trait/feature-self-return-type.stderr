@@ -1,0 +1,39 @@
+error[E0597]: `bar` does not live long enough
+  --> $DIR/feature-self-return-type.rs:23:22
+   |
+LL |         let x = {
+   |             - borrow later stored here
+LL |             let bar = 22;
+LL |             Foo::new(&bar).into()
+   |                      ^^^^ borrowed value does not live long enough
+LL |
+LL |         };
+   |         - `bar` dropped here while still borrowed
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/feature-self-return-type.rs:63:17
+   |
+LL |         let x = {
+   |             - borrow later stored here
+LL |             let y = ();
+LL |             foo(&y)
+   |                 ^^ borrowed value does not live long enough
+LL |
+LL |         };
+   |         - `y` dropped here while still borrowed
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/feature-self-return-type.rs:95:17
+   |
+LL |         let x = {
+   |             - borrow later stored here
+LL |             let y = ();
+LL |             foo(&y)
+   |                 ^^ borrowed value does not live long enough
+LL |
+LL |         };
+   |         - `y` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

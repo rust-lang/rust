@@ -18,9 +18,12 @@ const LICENSES: &[&str] = &[
     "ISC",
     "Unlicense/MIT",
     "Unlicense OR MIT",
-    "0BSD OR MIT OR Apache-2.0", // adler license
-    "Zlib OR Apache-2.0 OR MIT", // tinyvec
-    "MIT OR Zlib OR Apache-2.0", // miniz_oxide
+    "0BSD OR MIT OR Apache-2.0",                // adler license
+    "Zlib OR Apache-2.0 OR MIT",                // tinyvec
+    "MIT OR Apache-2.0 OR Zlib",                // tinyvec_macros
+    "MIT OR Zlib OR Apache-2.0",                // miniz_oxide
+    "(MIT OR Apache-2.0) AND Unicode-DFS-2016", // unicode_ident
+    "Unicode-DFS-2016",                         // tinystr and icu4x
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -28,23 +31,27 @@ const LICENSES: &[&str] = &[
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
 const EXCEPTIONS: &[(&str, &str)] = &[
-    ("mdbook", "MPL-2.0"),            // mdbook
-    ("openssl", "Apache-2.0"),        // cargo, mdbook
-    ("colored", "MPL-2.0"),           // rustfmt
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // cargo/... (because of serde)
-    ("bytesize", "Apache-2.0"),       // cargo
-    ("im-rc", "MPL-2.0+"),            // cargo
-    ("sized-chunks", "MPL-2.0+"),     // cargo via im-rc
-    ("bitmaps", "MPL-2.0+"),          // cargo via im-rc
-    ("instant", "BSD-3-Clause"),      // rustc_driver/tracing-subscriber/parking_lot
-    ("snap", "BSD-3-Clause"),         // rustc
+    ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
+    ("mdbook", "MPL-2.0"),                                   // mdbook
+    ("openssl", "Apache-2.0"),                               // cargo, mdbook
+    ("colored", "MPL-2.0"),                                  // rustfmt
+    ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
+    ("bytesize", "Apache-2.0"),                              // cargo
+    ("im-rc", "MPL-2.0+"),                                   // cargo
+    ("sized-chunks", "MPL-2.0+"),                            // cargo via im-rc
+    ("bitmaps", "MPL-2.0+"),                                 // cargo via im-rc
+    ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),    // cargo via pasetors
+    ("subtle", "BSD-3-Clause"),                              // cargo via pasetors
+    ("instant", "BSD-3-Clause"), // rustc_driver/tracing-subscriber/parking_lot
+    ("snap", "BSD-3-Clause"),    // rustc
     ("fluent-langneg", "Apache-2.0"), // rustc (fluent translations)
-    ("self_cell", "Apache-2.0"),      // rustc (fluent translations)
+    ("self_cell", "Apache-2.0"), // rustc (fluent translations)
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
     ("dunce", "CC0-1.0"),            // cargo (dev dependency)
     ("similar", "Apache-2.0"),       // cargo (dev dependency)
     ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
+    ("dissimilar", "Apache-2.0"),    // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
@@ -52,6 +59,7 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-egraph", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-isle", "Apache-2.0 WITH LLVM-exception"),
@@ -62,6 +70,7 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("mach", "BSD-2-Clause"),
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
+    ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
 ];
 
 const EXCEPTIONS_BOOTSTRAP: &[(&str, &str)] = &[
@@ -72,25 +81,24 @@ const EXCEPTIONS_BOOTSTRAP: &[(&str, &str)] = &[
 /// these and all their dependencies *must not* be in the exception list.
 const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort", "panic_unwind"];
 
-/// Crates whose dependencies must be explicitly permitted.
-const RESTRICTED_DEPENDENCY_CRATES: &[&str] = &["rustc_driver", "rustc_codegen_llvm"];
-
 /// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
 ///
 /// This list is here to provide a speed-bump to adding a new dependency to
 /// rustc. Please check with the compiler team before adding an entry.
-const PERMITTED_DEPENDENCIES: &[&str] = &[
+const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "addr2line",
     "adler",
     "ahash",
     "aho-corasick",
     "annotate-snippets",
     "ansi_term",
+    "ar_archive_writer",
     "arrayvec",
     "atty",
     "autocfg",
     "bitflags",
     "block-buffer",
+    "bumpalo", // Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "cc",
     "cfg-if",
     "chalk-derive",
@@ -98,6 +106,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "chalk-ir",
     "chalk-solve",
     "chrono",
+    "convert_case", // dependency of derive_more
     "compiler_builtins",
     "cpufeatures",
     "crc32fast",
@@ -108,14 +117,17 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "crypto-common",
     "cstr",
     "datafrog",
-    "difference",
+    "derive_more",
     "digest",
+    "displaydoc",
+    "dissimilar",
     "dlmalloc",
     "either",
     "ena",
     "env_logger",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
+    "fastrand",
     "filetime",
     "fixedbitset",
     "flate2",
@@ -131,6 +143,11 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "hashbrown",
     "hermit-abi",
     "humantime",
+    "icu_list",
+    "icu_locid",
+    "icu_provider",
+    "icu_provider_adapters",
+    "icu_provider_macros",
     "if_chain",
     "indexmap",
     "instant",
@@ -139,10 +156,12 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "itertools",
     "itoa",
     "jobserver",
+    "js-sys", // Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "lazy_static",
     "libc",
     "libloading",
     "libz-sys",
+    "litemap",
     "lock_api",
     "log",
     "matchers",
@@ -176,7 +195,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "rand",
     "rand_chacha",
     "rand_core",
-    "rand_hc",
     "rand_xorshift",
     "rand_xoshiro",
     "redox_syscall",
@@ -206,6 +224,8 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "snap",
     "stable_deref_trait",
     "stacker",
+    "static_assertions",
+    "subtle", // dependency of cargo (via pasetors)
     "syn",
     "synstructure",
     "tempfile",
@@ -218,6 +238,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "time",
     "tinystr",
     "tinyvec",
+    "tinyvec_macros",
     "thin-vec",
     "tracing",
     "tracing-attributes",
@@ -225,6 +246,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "tracing-log",
     "tracing-subscriber",
     "tracing-tree",
+    "twox-hash",
     "type-map",
     "typenum",
     "unic-char-property",
@@ -236,6 +258,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "unic-langid-macros",
     "unic-langid-macros-impl",
     "unic-ucd-version",
+    "unicode-ident",
     "unicode-normalization",
     "unicode-script",
     "unicode-security",
@@ -245,20 +268,35 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "valuable",
     "version_check",
     "wasi",
+    // vvv Included in Cargo's dep graph but only activated on wasm32-*-unknown.
+    "wasm-bindgen",
+    "wasm-bindgen-backend",
+    "wasm-bindgen-macro",
+    "wasm-bindgen-macro-support",
+    "wasm-bindgen-shared",
+    // ^^^ Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
+    "writeable",
     // this is a false-positive: it's only used by rustfmt, but because it's enabled through a
     // feature, tidy thinks it's used by rustc as well.
     "yansi-term",
+    "yoke",
+    "yoke-derive",
+    "zerofrom",
+    "zerofrom-derive",
+    "zerovec",
+    "zerovec-derive",
 ];
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "ahash",
     "anyhow",
-    "ar",
+    "arrayvec",
     "autocfg",
+    "bumpalo",
     "bitflags",
     "byteorder",
     "cfg-if",
@@ -266,6 +304,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-codegen",
     "cranelift-codegen-meta",
     "cranelift-codegen-shared",
+    "cranelift-egraph",
     "cranelift-entity",
     "cranelift-frontend",
     "cranelift-isle",
@@ -274,6 +313,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-native",
     "cranelift-object",
     "crc32fast",
+    "fallible-iterator",
     "fxhash",
     "getrandom",
     "gimli",
@@ -290,9 +330,11 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "region",
     "slice-group-by",
     "smallvec",
+    "stable_deref_trait",
     "target-lexicon",
     "version_check",
     "wasi",
+    "wasmtime-jit-icache-coherence",
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",
@@ -305,7 +347,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 ];
 
 const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
-    // These two crates take quite a long time to build, so don't allow two versions of them
+    // This crate takes quite a long time to build, so don't allow two versions of them
     // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
     // under control.
     "cargo",
@@ -322,12 +364,12 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let metadata = t!(cmd.exec());
     let runtime_ids = compute_runtime_crates(&metadata);
-    check_exceptions(&metadata, EXCEPTIONS, runtime_ids, bad);
-    check_dependencies(
+    check_license_exceptions(&metadata, EXCEPTIONS, runtime_ids, bad);
+    check_permitted_dependencies(
         &metadata,
-        "main workspace",
-        PERMITTED_DEPENDENCIES,
-        RESTRICTED_DEPENDENCY_CRATES,
+        "rustc",
+        PERMITTED_RUSTC_DEPENDENCIES,
+        &["rustc_driver", "rustc_codegen_llvm"],
         bad,
     );
     check_crate_duplicate(&metadata, FORBIDDEN_TO_HAVE_DUPLICATES, bad);
@@ -340,8 +382,8 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let metadata = t!(cmd.exec());
     let runtime_ids = HashSet::new();
-    check_exceptions(&metadata, EXCEPTIONS_CRANELIFT, runtime_ids, bad);
-    check_dependencies(
+    check_license_exceptions(&metadata, EXCEPTIONS_CRANELIFT, runtime_ids, bad);
+    check_permitted_dependencies(
         &metadata,
         "cranelift",
         PERMITTED_CRANELIFT_DEPENDENCIES,
@@ -356,13 +398,13 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let metadata = t!(cmd.exec());
     let runtime_ids = HashSet::new();
-    check_exceptions(&metadata, EXCEPTIONS_BOOTSTRAP, runtime_ids, bad);
+    check_license_exceptions(&metadata, EXCEPTIONS_BOOTSTRAP, runtime_ids, bad);
 }
 
 /// Check that all licenses are in the valid list in `LICENSES`.
 ///
-/// Packages listed in `EXCEPTIONS` are allowed for tools.
-fn check_exceptions(
+/// Packages listed in `exceptions` are allowed for tools.
+fn check_license_exceptions(
     metadata: &Metadata,
     exceptions: &[(&str, &str)],
     runtime_ids: HashSet<&PackageId>,
@@ -432,11 +474,11 @@ fn check_exceptions(
     }
 }
 
-/// Checks the dependency of `RESTRICTED_DEPENDENCY_CRATES` at the given path. Changes `bad` to
+/// Checks the dependency of `restricted_dependency_crates` at the given path. Changes `bad` to
 /// `true` if a check failed.
 ///
-/// Specifically, this checks that the dependencies are on the `PERMITTED_DEPENDENCIES`.
-fn check_dependencies(
+/// Specifically, this checks that the dependencies are on the `permitted_dependencies`.
+fn check_permitted_dependencies(
     metadata: &Metadata,
     descr: &str,
     permitted_dependencies: &[&'static str],

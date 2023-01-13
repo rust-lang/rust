@@ -1,0 +1,29 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-polarity.rs:5:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0751]: found both positive and negative implementation of trait `Foo` for type `u8`:
+  --> $DIR/specialization-polarity.rs:10:1
+   |
+LL | impl<T> Foo for T {}
+   | ----------------- positive implementation here
+LL | impl !Foo for u8 {}
+   | ^^^^^^^^^^^^^^^^ negative implementation here
+
+error[E0751]: found both positive and negative implementation of trait `Bar` for type `u8`:
+  --> $DIR/specialization-polarity.rs:15:1
+   |
+LL | impl<T> !Bar for T {}
+   | ------------------ negative implementation here
+LL | impl Bar for u8 {}
+   | ^^^^^^^^^^^^^^^ positive implementation here
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0751`.

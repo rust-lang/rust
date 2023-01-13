@@ -140,7 +140,7 @@ impl char {
     /// assert_eq!(None, c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+    #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
     #[must_use]
     #[inline]
     pub const fn from_u32(i: u32) -> Option<char> {
@@ -183,7 +183,7 @@ impl char {
     /// assert_eq!('❤', c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+    #[rustc_const_unstable(feature = "const_char_from_u32_unchecked", issue = "89259")]
     #[must_use]
     #[inline]
     pub const unsafe fn from_u32_unchecked(i: u32) -> char {
@@ -241,7 +241,7 @@ impl char {
     /// let _c = char::from_digit(1, 37);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+    #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
     #[must_use]
     #[inline]
     pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
@@ -338,7 +338,7 @@ impl char {
     /// let _ = '1'.to_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+    #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -597,9 +597,14 @@ impl char {
     /// Returns the number of 16-bit code units this `char` would need if
     /// encoded in UTF-16.
     ///
+    /// That number of code units is always either 1 or 2, for unicode scalar values in
+    /// the [basic multilingual plane] or [supplementary planes] respectively.
+    ///
     /// See the documentation for [`len_utf8()`] for more explanation of this
     /// concept. This function is a mirror, but for UTF-16 instead of UTF-8.
     ///
+    /// [basic multilingual plane]: http://www.unicode.org/glossary/#basic_multilingual_plane
+    /// [supplementary planes]: http://www.unicode.org/glossary/#supplementary_planes
     /// [`len_utf8()`]: #method.len_utf8
     ///
     /// # Examples
@@ -1442,6 +1447,38 @@ impl char {
     #[inline]
     pub const fn is_ascii_digit(&self) -> bool {
         matches!(*self, '0'..='9')
+    }
+
+    /// Checks if the value is an ASCII octal digit:
+    /// U+0030 '0' ..= U+0037 '7'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_ascii_octdigit)]
+    ///
+    /// let uppercase_a = 'A';
+    /// let a = 'a';
+    /// let zero = '0';
+    /// let seven = '7';
+    /// let nine = '9';
+    /// let percent = '%';
+    /// let lf = '\n';
+    ///
+    /// assert!(!uppercase_a.is_ascii_octdigit());
+    /// assert!(!a.is_ascii_octdigit());
+    /// assert!(zero.is_ascii_octdigit());
+    /// assert!(seven.is_ascii_octdigit());
+    /// assert!(!nine.is_ascii_octdigit());
+    /// assert!(!percent.is_ascii_octdigit());
+    /// assert!(!lf.is_ascii_octdigit());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[inline]
+    pub const fn is_ascii_octdigit(&self) -> bool {
+        matches!(*self, '0'..='7')
     }
 
     /// Checks if the value is an ASCII hexadecimal digit:

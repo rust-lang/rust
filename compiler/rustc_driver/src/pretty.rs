@@ -329,7 +329,7 @@ impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
             let typeck_results = self.maybe_typeck_results.get().or_else(|| {
                 self.tcx
                     .hir()
-                    .maybe_body_owned_by(expr.hir_id.owner)
+                    .maybe_body_owned_by(expr.hir_id.owner.def_id)
                     .map(|body_id| self.tcx.typeck_body(body_id))
             });
 
@@ -360,7 +360,7 @@ fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
 
 fn write_or_print(out: &str, ofile: Option<&Path>, sess: &Session) {
     match ofile {
-        None => print!("{}", out),
+        None => print!("{out}"),
         Some(p) => {
             if let Err(e) = std::fs::write(p, out) {
                 sess.emit_fatal(UnprettyDumpFail {
@@ -396,12 +396,13 @@ pub fn print_after_parsing(
                     annotation.pp_ann(),
                     false,
                     parse.edition,
+                    &sess.parse_sess.attr_id_generator,
                 )
             })
         }
         AstTree(PpAstTreeMode::Normal) => {
             debug!("pretty printing AST tree");
-            format!("{:#?}", krate)
+            format!("{krate:#?}")
         }
         _ => unreachable!(),
     };
@@ -438,13 +439,14 @@ pub fn print_after_hir_lowering<'tcx>(
                     annotation.pp_ann(),
                     true,
                     parse.edition,
+                    &sess.parse_sess.attr_id_generator,
                 )
             })
         }
 
         AstTree(PpAstTreeMode::Expanded) => {
             debug!("pretty-printing expanded AST");
-            format!("{:#?}", krate)
+            format!("{krate:#?}")
         }
 
         Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, hir_map| {
@@ -500,7 +502,7 @@ fn print_with_analysis(
 
         ThirTree => {
             let mut out = String::new();
-            abort_on_err(rustc_typeck::check_crate(tcx), tcx.sess);
+            abort_on_err(rustc_hir_analysis::check_crate(tcx), tcx.sess);
             debug!("pretty printing THIR tree");
             for did in tcx.hir().body_owners() {
                 let _ = writeln!(

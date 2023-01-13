@@ -11,7 +11,7 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::SubregionOrigin;
 use crate::infer::TyCtxt;
 
-use rustc_errors::AddSubdiagnostic;
+use rustc_errors::AddToDiagnostic;
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir::Ty;
 use rustc_middle::ty::Region;

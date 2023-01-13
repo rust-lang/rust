@@ -2,11 +2,12 @@ pub use self::Mode::*;
 
 use std::ffi::OsString;
 use std::fmt;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 
-use crate::util::PathBufExt;
+use crate::util::{add_dylib_path, PathBufExt};
 use lazycell::LazyCell;
 use test::ColorConfig;
 
@@ -203,6 +204,9 @@ pub struct Config {
     /// The jsondocck executable.
     pub jsondocck_path: Option<String>,
 
+    /// The jsondoclint executable.
+    pub jsondoclint_path: Option<String>,
+
     /// The LLVM `FileCheck` binary path.
     pub llvm_filecheck: Option<PathBuf>,
 
@@ -226,6 +230,9 @@ pub struct Config {
     /// The directory where programs should be built
     pub build_base: PathBuf,
 
+    /// The directory containing the compiler sysroot
+    pub sysroot_base: PathBuf,
+
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
@@ -233,7 +240,7 @@ pub struct Config {
     pub mode: Mode,
 
     /// The test suite (essentially which directory is running, but without the
-    /// directory prefix such as src/test)
+    /// directory prefix such as tests)
     pub suite: String,
 
     /// The debugger to use in debuginfo mode. Unset otherwise.
@@ -266,18 +273,14 @@ pub struct Config {
     pub runtool: Option<String>,
 
     /// Flags to pass to the compiler when building for the host
-    pub host_rustcflags: Option<String>,
+    pub host_rustcflags: Vec<String>,
 
     /// Flags to pass to the compiler when building for the target
-    pub target_rustcflags: Option<String>,
+    pub target_rustcflags: Vec<String>,
 
     /// Whether tests should be optimized by default. Individual test-suites and test files may
     /// override this setting.
     pub optimize_tests: bool,
-
-    /// What panic strategy the target is built with.  Unwind supports Abort, but
-    /// not vice versa.
-    pub target_panic: PanicStrategy,
 
     /// Target system to be tested
     pub target: String,
@@ -386,7 +389,7 @@ impl Config {
     }
 
     fn target_cfg(&self) -> &TargetCfg {
-        self.target_cfg.borrow_with(|| TargetCfg::new(&self.rustc_path, &self.target))
+        self.target_cfg.borrow_with(|| TargetCfg::new(self))
     }
 
     pub fn matches_arch(&self, arch: &str) -> bool {
@@ -423,6 +426,10 @@ impl Config {
         *&self.target_cfg().pointer_width
     }
 
+    pub fn can_unwind(&self) -> bool {
+        self.target_cfg().panic == PanicStrategy::Unwind
+    }
+
     pub fn has_asm_support(&self) -> bool {
         static ASM_SUPPORTED_ARCHS: &[&str] = &[
             "x86", "x86_64", "arm", "aarch64", "riscv32",
@@ -443,6 +450,7 @@ pub struct TargetCfg {
     families: Vec<String>,
     pointer_width: u32,
     endian: Endian,
+    panic: PanicStrategy,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -452,20 +460,23 @@ pub enum Endian {
 }
 
 impl TargetCfg {
-    fn new(rustc_path: &Path, target: &str) -> TargetCfg {
-        let output = match Command::new(rustc_path)
+    fn new(config: &Config) -> TargetCfg {
+        let mut command = Command::new(&config.rustc_path);
+        add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+        let output = match command
             .arg("--print=cfg")
             .arg("--target")
-            .arg(target)
+            .arg(&config.target)
+            .args(&config.target_rustcflags)
             .output()
         {
             Ok(output) => output,
-            Err(e) => panic!("error: failed to get cfg info from {:?}: {e}", rustc_path),
+            Err(e) => panic!("error: failed to get cfg info from {:?}: {e}", config.rustc_path),
         };
         if !output.status.success() {
             panic!(
                 "error: failed to get cfg info from {:?}\n--- stdout\n{}\n--- stderr\n{}",
-                rustc_path,
+                config.rustc_path,
                 String::from_utf8(output.stdout).unwrap(),
                 String::from_utf8(output.stderr).unwrap(),
             );
@@ -478,6 +489,7 @@ impl TargetCfg {
         let mut families = Vec::new();
         let mut pointer_width = None;
         let mut endian = None;
+        let mut panic = None;
         for line in print_cfg.lines() {
             if let Some((name, value)) = line.split_once('=') {
                 let value = value.trim_matches('"');
@@ -495,6 +507,13 @@ impl TargetCfg {
                             s => panic!("unexpected {s}"),
                         })
                     }
+                    "panic" => {
+                        panic = match value {
+                            "abort" => Some(PanicStrategy::Abort),
+                            "unwind" => Some(PanicStrategy::Unwind),
+                            s => panic!("unexpected {s}"),
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -507,6 +526,7 @@ impl TargetCfg {
             families,
             pointer_width: pointer_width.unwrap(),
             endian: endian.unwrap(),
+            panic: panic.unwrap(),
         }
     }
 }
@@ -597,6 +617,6 @@ pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option
 
 /// Absolute path to the directory to use for incremental compilation. Example:
 ///   /path/to/build/host-triple/test/ui/relative/testname.mode/testname.inc
-pub fn incremental_dir(config: &Config, testpaths: &TestPaths) -> PathBuf {
-    output_base_name(config, testpaths, None).with_extension("inc")
+pub fn incremental_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+    output_base_name(config, testpaths, revision).with_extension("inc")
 }

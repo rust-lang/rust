@@ -5,19 +5,18 @@ pub struct Mutex {
     locked: Cell<bool>,
 }
 
-pub type MovableMutex = Mutex;
-
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {} // no threads on this platform
 
 impl Mutex {
     #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Mutex {
         Mutex { locked: Cell::new(false) }
     }
 
     #[inline]
-    pub unsafe fn lock(&self) {
+    pub fn lock(&self) {
         assert_eq!(self.locked.replace(true), false, "cannot recursively acquire mutex");
     }
 
@@ -27,7 +26,7 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
+    pub fn try_lock(&self) -> bool {
         self.locked.replace(true) == false
     }
 }

@@ -3,7 +3,8 @@ use super::HashMap;
 use super::RandomState;
 use crate::assert_matches::assert_matches;
 use crate::cell::RefCell;
-use rand::{thread_rng, Rng};
+use crate::test_helpers::test_rng;
+use rand::Rng;
 use realstd::collections::TryReserveErrorKind::*;
 
 // https://github.com/rust-lang/rust/issues/62301
@@ -710,16 +711,16 @@ fn test_entry_take_doesnt_corrupt() {
     }
 
     let mut m = HashMap::new();
-    let mut rng = thread_rng();
+    let mut rng = test_rng();
 
     // Populate the map with some items.
     for _ in 0..50 {
-        let x = rng.gen_range(-10, 10);
+        let x = rng.gen_range(-10..10);
         m.insert(x, ());
     }
 
     for _ in 0..1000 {
-        let x = rng.gen_range(-10, 10);
+        let x = rng.gen_range(-10..10);
         match m.entry(x) {
             Vacant(_) => {}
             Occupied(e) => {
@@ -1114,4 +1115,10 @@ fn from_array() {
     // If you make a change that causes this line to no longer infer,
     // that's a problem!
     let _must_not_require_type_annotation = HashMap::from([(1, 2)]);
+}
+
+#[test]
+fn const_with_hasher() {
+    const X: HashMap<(), (), ()> = HashMap::with_hasher(());
+    assert_eq!(X.len(), 0);
 }

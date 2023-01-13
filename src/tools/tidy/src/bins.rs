@@ -21,6 +21,7 @@ mod os_impl {
 
 #[cfg(unix)]
 mod os_impl {
+    use crate::walk::{filter_dirs, walk_no_read};
     use std::fs;
     use std::os::unix::prelude::*;
     use std::path::Path;
@@ -100,10 +101,10 @@ mod os_impl {
 
         const ALLOWED: &[&str] = &["configure", "x"];
 
-        crate::walk_no_read(
+        walk_no_read(
             path,
             &mut |path| {
-                crate::filter_dirs(path)
+                filter_dirs(path)
                     || path.ends_with("src/etc")
                     // This is a list of directories that we almost certainly
                     // don't need to walk. A future PR will likely want to

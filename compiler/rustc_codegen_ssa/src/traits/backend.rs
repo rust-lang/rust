@@ -119,7 +119,7 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         tcx: TyCtxt<'tcx>,
         module_name: &str,
         kind: AllocatorKind,
-        has_alloc_error_handler: bool,
+        alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module;
     /// This generates the codegen unit and returns it along with
     /// a `u64` giving an estimate of the unit's processing cost.
@@ -134,8 +134,6 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         opt_level: config::OptLevel,
         target_features: &[String],
     ) -> TargetMachineFactoryFn<Self>;
-    fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str;
-    fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str>;
 
     fn spawn_thread<F, T>(_time_trace: bool, f: F) -> std::thread::JoinHandle<T>
     where

@@ -86,7 +86,6 @@ use crate::fx::FxHashMap;
 
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
-use std::convert::Into;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -158,30 +157,21 @@ pub struct SelfProfilerRef {
     // actually enabled.
     event_filter_mask: EventFilter,
 
-    // Print verbose generic activities to stdout
+    // Print verbose generic activities to stderr?
     print_verbose_generic_activities: bool,
-
-    // Print extra verbose generic activities to stdout
-    print_extra_verbose_generic_activities: bool,
 }
 
 impl SelfProfilerRef {
     pub fn new(
         profiler: Option<Arc<SelfProfiler>>,
         print_verbose_generic_activities: bool,
-        print_extra_verbose_generic_activities: bool,
     ) -> SelfProfilerRef {
         // If there is no SelfProfiler then the filter mask is set to NONE,
         // ensuring that nothing ever tries to actually access it.
         let event_filter_mask =
             profiler.as_ref().map_or(EventFilter::empty(), |p| p.event_filter_mask);
 
-        SelfProfilerRef {
-            profiler,
-            event_filter_mask,
-            print_verbose_generic_activities,
-            print_extra_verbose_generic_activities,
-        }
+        SelfProfilerRef { profiler, event_filter_mask, print_verbose_generic_activities }
     }
 
     /// This shim makes sure that calls only get executed if the filter mask
@@ -201,7 +191,7 @@ impl SelfProfilerRef {
             F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
         {
             let profiler = profiler_ref.profiler.as_ref().unwrap();
-            f(&**profiler)
+            f(profiler)
         }
 
         if self.event_filter_mask.contains(event_filter) {
@@ -214,30 +204,24 @@ impl SelfProfilerRef {
     /// Start profiling a verbose generic activity. Profiling continues until the
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "verbose" generic activities also print a timing entry to
-    /// stdout if the compiler is invoked with -Ztime or -Ztime-passes.
-    pub fn verbose_generic_activity<'a>(
-        &'a self,
-        event_label: &'static str,
-    ) -> VerboseTimingGuard<'a> {
+    /// stderr if the compiler is invoked with -Ztime-passes.
+    pub fn verbose_generic_activity(&self, event_label: &'static str) -> VerboseTimingGuard<'_> {
         let message =
             if self.print_verbose_generic_activities { Some(event_label.to_owned()) } else { None };
 
         VerboseTimingGuard::start(message, self.generic_activity(event_label))
     }
 
-    /// Start profiling an extra verbose generic activity. Profiling continues until the
-    /// VerboseTimingGuard returned from this call is dropped. In addition to recording
-    /// a measureme event, "extra verbose" generic activities also print a timing entry to
-    /// stdout if the compiler is invoked with -Ztime-passes.
-    pub fn extra_verbose_generic_activity<'a, A>(
-        &'a self,
+    /// Like `verbose_generic_activity`, but with an extra arg.
+    pub fn verbose_generic_activity_with_arg<A>(
+        &self,
         event_label: &'static str,
         event_arg: A,
-    ) -> VerboseTimingGuard<'a>
+    ) -> VerboseTimingGuard<'_>
     where
         A: Borrow<str> + Into<String>,
     {
-        let message = if self.print_extra_verbose_generic_activities {
+        let message = if self.print_verbose_generic_activities {
             Some(format!("{}({})", event_label, event_arg.borrow()))
         } else {
             None
@@ -478,7 +462,7 @@ impl SelfProfilerRef {
 
     pub fn with_profiler(&self, f: impl FnOnce(&SelfProfiler)) {
         if let Some(profiler) = &self.profiler {
-            f(&profiler)
+            f(profiler)
         }
     }
 
@@ -561,7 +545,7 @@ impl SelfProfiler {
         // length can behave as a source of entropy for heap addresses, when
         // ASLR is disabled and the heap is otherwise determinic.
         let pid: u32 = process::id();
-        let filename = format!("{}-{:07}.rustc_profile", crate_name, pid);
+        let filename = format!("{crate_name}-{pid:07}.rustc_profile");
         let path = output_directory.join(&filename);
         let profiler =
             Profiler::with_counter(&path, measureme::counters::Counter::by_name(counter_name)?)?;
@@ -745,27 +729,9 @@ impl Drop for VerboseTimingGuard<'_> {
         if let Some((start_time, start_rss, ref message)) = self.start_and_message {
             let end_rss = get_resident_set_size();
             let dur = start_time.elapsed();
-
-            if should_print_passes(dur, start_rss, end_rss) {
-                print_time_passes_entry(&message, dur, start_rss, end_rss);
-            }
+            print_time_passes_entry(message, dur, start_rss, end_rss);
         }
     }
-}
-
-fn should_print_passes(dur: Duration, start_rss: Option<usize>, end_rss: Option<usize>) -> bool {
-    if dur.as_millis() > 5 {
-        return true;
-    }
-
-    if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
-        let change_rss = end_rss.abs_diff(start_rss);
-        if change_rss > 0 {
-            return true;
-        }
-    }
-
-    false
 }
 
 pub fn print_time_passes_entry(
@@ -774,6 +740,26 @@ pub fn print_time_passes_entry(
     start_rss: Option<usize>,
     end_rss: Option<usize>,
 ) {
+    // Print the pass if its duration is greater than 5 ms, or it changed the
+    // measured RSS.
+    let is_notable = || {
+        if dur.as_millis() > 5 {
+            return true;
+        }
+
+        if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
+            let change_rss = end_rss.abs_diff(start_rss);
+            if change_rss > 0 {
+                return true;
+            }
+        }
+
+        false
+    };
+    if !is_notable() {
+        return;
+    }
+
     let rss_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as usize;
     let rss_change_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as i128;
 

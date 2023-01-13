@@ -873,3 +873,33 @@ impl ast::MatchGuard {
         support::child(&self.syntax)
     }
 }
+
+impl From<ast::Item> for ast::AnyHasAttrs {
+    fn from(node: ast::Item) -> Self {
+        Self::new(node)
+    }
+}
+
+impl From<ast::AssocItem> for ast::AnyHasAttrs {
+    fn from(node: ast::AssocItem) -> Self {
+        Self::new(node)
+    }
+}
+
+impl From<ast::Variant> for ast::AnyHasAttrs {
+    fn from(node: ast::Variant) -> Self {
+        Self::new(node)
+    }
+}
+
+impl From<ast::RecordField> for ast::AnyHasAttrs {
+    fn from(node: ast::RecordField) -> Self {
+        Self::new(node)
+    }
+}
+
+impl From<ast::TupleField> for ast::AnyHasAttrs {
+    fn from(node: ast::TupleField) -> Self {
+        Self::new(node)
+    }
+}

@@ -10,7 +10,7 @@ fn main() {
     writeln!(v, r"{}", r"{hello}");
     writeln!(v, "{}", '\'');
     writeln!(v, "{}", '"');
-    writeln!(v, r"{}", '"'); // don't lint
+    writeln!(v, r"{}", '"');
     writeln!(v, r"{}", '\'');
     writeln!(
         v,
@@ -24,4 +24,11 @@ fn main() {
         {} \\ {}",
         "1", "2", "3",
     );
+    writeln!(v, "{}", "\\");
+    writeln!(v, r"{}", "\\");
+    writeln!(v, r#"{}"#, "\\");
+    writeln!(v, "{}", r"\");
+    writeln!(v, "{}", "\r");
+    writeln!(v, r#"{}{}"#, '#', '"'); // hard mode
+    writeln!(v, r"{}", "\r"); // should not lint
 }

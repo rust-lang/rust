@@ -4,8 +4,8 @@ error: this looks like you are trying to use `.. -= ..`, but you really are doin
 LL |     a =- 35;
    |      ^^^^
    |
-   = note: `-D clippy::suspicious-assignment-formatting` implied by `-D warnings`
    = note: to remove this lint, use either `-=` or `= -`
+   = note: `-D clippy::suspicious-assignment-formatting` implied by `-D warnings`
 
 error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
   --> $DIR/formatting.rs:17:6
@@ -29,8 +29,8 @@ error: possibly missing a comma here
 LL |         -1, -2, -3 // <= no comma here
    |                   ^
    |
-   = note: `-D clippy::possible-missing-comma` implied by `-D warnings`
    = note: to remove this lint, add a comma or write the expr in a single line
+   = note: `-D clippy::possible-missing-comma` implied by `-D warnings`
 
 error: possibly missing a comma here
   --> $DIR/formatting.rs:33:19

@@ -1,0 +1,25 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/issue-101465.rs:20:18
+   |
+LL | /     match true {
+LL | |         true => B,
+   | |                 - this is found to be of type `B`
+LL | |         false => C,
+   | |                  ^ expected struct `B`, found struct `C`
+LL | |
+LL | |     }
+   | |_____- `match` arms have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn foo() -> Box<dyn Tr> {
+   |             ~~~~~~~   +
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         true => Box::new(B),
+LL ~         false => Box::new(C),
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

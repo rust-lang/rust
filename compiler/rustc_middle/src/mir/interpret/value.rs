@@ -1,5 +1,6 @@
-use std::convert::{TryFrom, TryInto};
 use std::fmt;
+
+use either::{Either, Left, Right};
 
 use rustc_apfloat::{
     ieee::{Double, Single},
@@ -8,7 +9,7 @@ use rustc_apfloat::{
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
+use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
     AllocId, AllocRange, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
@@ -18,16 +19,16 @@ use super::{
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
 pub struct ConstAlloc<'tcx> {
-    // the value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
-    // (so you can use `AllocMap::unwrap_memory`).
+    /// The value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
+    /// (so you can use `AllocMap::unwrap_memory`).
     pub alloc_id: AllocId,
     pub ty: Ty<'tcx>,
 }
 
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
+#[derive(HashStable, Lift)]
 pub enum ConstValue<'tcx> {
     /// Used only for types with `layout::abi::Scalar` ABI.
     ///
@@ -52,22 +53,6 @@ pub enum ConstValue<'tcx> {
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstValue<'_>, 32);
-
-impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
-    type Lifted = ConstValue<'tcx>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ConstValue<'tcx>> {
-        Some(match self {
-            ConstValue::Scalar(s) => ConstValue::Scalar(s),
-            ConstValue::ZeroSized => ConstValue::ZeroSized,
-            ConstValue::Slice { data, start, end } => {
-                ConstValue::Slice { data: tcx.lift(data)?, start, end }
-            }
-            ConstValue::ByRef { alloc, offset } => {
-                ConstValue::ByRef { alloc: tcx.lift(alloc)?, offset }
-            }
-        })
-    }
-}
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
@@ -124,7 +109,7 @@ impl<'tcx> ConstValue<'tcx> {
 ///
 /// These variants would be private if there was a convenient way to achieve that in Rust.
 /// Do *not* match on a `Scalar`! Use the various `to_*` methods instead.
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
 pub enum Scalar<Prov = AllocId> {
     /// The raw bytes of a simple value.
@@ -309,10 +294,10 @@ impl<Prov> Scalar<Prov> {
     pub fn to_bits_or_ptr_internal(
         self,
         target_size: Size,
-    ) -> Result<Result<u128, Pointer<Prov>>, ScalarSizeMismatch> {
+    ) -> Result<Either<u128, Pointer<Prov>>, ScalarSizeMismatch> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         Ok(match self {
-            Scalar::Int(int) => Ok(int.to_bits(target_size).map_err(|size| {
+            Scalar::Int(int) => Left(int.to_bits(target_size).map_err(|size| {
                 ScalarSizeMismatch { target_size: target_size.bytes(), data_size: size.bytes() }
             })?),
             Scalar::Ptr(ptr, sz) => {
@@ -322,7 +307,7 @@ impl<Prov> Scalar<Prov> {
                         data_size: sz.into(),
                     });
                 }
-                Err(ptr)
+                Right(ptr)
             }
         })
     }
@@ -334,8 +319,8 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
             .to_bits_or_ptr_internal(cx.pointer_size())
             .map_err(|s| err_ub!(ScalarSizeMismatch(s)))?
         {
-            Err(ptr) => Ok(ptr.into()),
-            Ok(bits) => {
+            Right(ptr) => Ok(ptr.into()),
+            Left(bits) => {
                 let addr = u64::try_from(bits).unwrap();
                 Ok(Pointer::from_addr(addr))
             }

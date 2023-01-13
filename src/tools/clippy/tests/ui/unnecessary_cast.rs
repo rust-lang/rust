@@ -41,6 +41,17 @@ fn main() {
     // do not lint cast to alias type
     1 as I32Alias;
     &1 as &I32Alias;
+
+    // issue #9960
+    macro_rules! bind_var {
+        ($id:ident, $e:expr) => {{
+            let $id = 0usize;
+            let _ = $e != 0usize;
+            let $id = 0isize;
+            let _ = $e != 0usize;
+        }}
+    }
+    bind_var!(x, (x as usize) + 1);
 }
 
 type I32Alias = i32;
@@ -85,6 +96,9 @@ mod fixable {
 
         let _ = 1 as I32Alias;
         let _ = &1 as &I32Alias;
+
+        let x = 1i32;
+        let _ = &(x as i32);
     }
 
     type I32Alias = i32;
@@ -96,5 +110,23 @@ mod fixable {
         let _: i64 = -(1.0) as i64;
 
         let _ = -(1 + 1) as i64;
+    }
+
+    fn issue_9563() {
+        let _: f64 = (-8.0 as f64).exp();
+        #[allow(clippy::precedence)]
+        let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
+    }
+
+    fn issue_9562_non_literal() {
+        fn foo() -> f32 {
+            0.
+        }
+
+        let _num = foo() as f32;
+    }
+
+    fn issue_9603() {
+        let _: f32 = -0x400 as f32;
     }
 }

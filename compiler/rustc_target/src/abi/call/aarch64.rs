@@ -1,6 +1,27 @@
 use crate::abi::call::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
 use crate::abi::{HasDataLayout, TyAbiInterface};
 
+/// Given integer-types M and register width N (e.g. M=u16 and N=32 bits), the
+/// `ParamExtension` policy specifies how a uM value should be treated when
+/// passed via register or stack-slot of width N. See also rust-lang/rust#97463.
+#[derive(Copy, Clone, PartialEq)]
+pub enum ParamExtension {
+    /// Indicates that when passing an i8/i16, either as a function argument or
+    /// as a return value, it must be sign-extended to 32 bits, and likewise a
+    /// u8/u16 must be zero-extended to 32-bits. (This variant is here to
+    /// accommodate Apple's deviation from the usual AArch64 ABI as defined by
+    /// ARM.)
+    ///
+    /// See also: <https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly>
+    ExtendTo32Bits,
+
+    /// Indicates that no sign- nor zero-extension is performed: if a value of
+    /// type with bitwidth M is passed as function argument or return value,
+    /// then M bits are copied into the least significant M bits, and the
+    /// remaining bits of the register (or word of memory) are untouched.
+    NoExtension,
+}
+
 fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>) -> Option<Uniform>
 where
     Ty: TyAbiInterface<'a, C> + Copy,
@@ -24,13 +45,16 @@ where
     })
 }
 
-fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, param_policy: ParamExtension)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
     if !ret.layout.is_aggregate() {
-        ret.extend_integer_width_to(32);
+        match param_policy {
+            ParamExtension::ExtendTo32Bits => ret.extend_integer_width_to(32),
+            ParamExtension::NoExtension => {}
+        }
         return;
     }
     if let Some(uniform) = is_homogeneous_aggregate(cx, ret) {
@@ -46,13 +70,16 @@ where
     ret.make_indirect();
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, param_policy: ParamExtension)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
     if !arg.layout.is_aggregate() {
-        arg.extend_integer_width_to(32);
+        match param_policy {
+            ParamExtension::ExtendTo32Bits => arg.extend_integer_width_to(32),
+            ParamExtension::NoExtension => {}
+        }
         return;
     }
     if let Some(uniform) = is_homogeneous_aggregate(cx, arg) {
@@ -68,19 +95,19 @@ where
     arg.make_indirect();
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, param_policy: ParamExtension)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret);
+        classify_ret(cx, &mut fn_abi.ret, param_policy);
     }
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg(cx, arg);
+        classify_arg(cx, arg, param_policy);
     }
 }

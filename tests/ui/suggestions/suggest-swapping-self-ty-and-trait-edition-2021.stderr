@@ -1,0 +1,48 @@
+error[E0404]: expected trait, found struct `Struct`
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:12:13
+   |
+LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
+   |             ^^^^^^^^^ not a trait
+   |
+help: `impl` items mention the trait being implemented first and the type it is being implemented for second
+   |
+LL | impl<'a, T> Trait<'a, T> for Struct<T> {}
+   |             ~~~~~~~~~~~~     ~~~~~~~~~
+
+error[E0404]: expected trait, found enum `Enum`
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:16:13
+   |
+LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
+   |             ^^^^^^^ not a trait
+   |
+help: `impl` items mention the trait being implemented first and the type it is being implemented for second
+   |
+LL | impl<'a, T> Trait<'a, T> for Enum<T> {}
+   |             ~~~~~~~~~~~~     ~~~~~~~
+
+error[E0404]: expected trait, found union `Union`
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:19:13
+   |
+LL | impl<'a, T> Union<T> for Trait<'a, T> {}
+   |             ^^^^^^^^ not a trait
+   |
+help: `impl` items mention the trait being implemented first and the type it is being implemented for second
+   |
+LL | impl<'a, T> Trait<'a, T> for Union<T> {}
+   |             ~~~~~~~~~~~~     ~~~~~~~~
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:12:27
+   |
+LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
+   |                           ^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
+   |                           +++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0404, E0782.
+For more information about an error, try `rustc --explain E0404`.

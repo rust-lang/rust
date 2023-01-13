@@ -1,5 +1,5 @@
 error: use of `offset` with a `usize` casted to an `isize`
-  --> $DIR/ptr_offset_with_cast.rs:12:17
+  --> $DIR/ptr_offset_with_cast.rs:13:17
    |
 LL |         let _ = ptr.offset(offset_usize as isize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr.add(offset_usize)`
@@ -7,7 +7,7 @@ LL |         let _ = ptr.offset(offset_usize as isize);
    = note: `-D clippy::ptr-offset-with-cast` implied by `-D warnings`
 
 error: use of `wrapping_offset` with a `usize` casted to an `isize`
-  --> $DIR/ptr_offset_with_cast.rs:16:17
+  --> $DIR/ptr_offset_with_cast.rs:17:17
    |
 LL |         let _ = ptr.wrapping_offset(offset_usize as isize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr.wrapping_add(offset_usize)`

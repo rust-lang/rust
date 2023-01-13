@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_INT_TO_CHAR,
                 e.span,
-                &format!("transmute from a `{}` to a `char`", from_ty),
+                &format!("transmute from a `{from_ty}` to a `char`"),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, arg, "..");
                     let arg = if let ty::Int(_) = from_ty.kind() {
@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
                     diag.span_suggestion(
                         e.span,
                         "consider using",
-                        format!("std::char::from_u32({}).unwrap()", arg),
+                        format!("std::char::from_u32({arg}).unwrap()"),
                         Applicability::Unspecified,
                     );
                 },

@@ -2,6 +2,7 @@
 // normalize-stderr-test: "Clippy version: .*" -> "Clippy version: foo"
 // normalize-stderr-test: "internal_lints.rs:\d*:\d*" -> "internal_lints.rs"
 // normalize-stderr-test: "', .*clippy_lints" -> "', clippy_lints"
+// normalize-stderr-test: "'rustc'" -> "'<unnamed>'"
 
 #![deny(clippy::internal)]
 #![allow(clippy::missing_clippy_version_attribute)]

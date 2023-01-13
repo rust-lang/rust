@@ -4,7 +4,7 @@ use expect_test::{expect, Expect};
 use crate::tests::{check_edit, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{}{}", BASE_ITEMS_FIXTURE, ra_fixture));
+    let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"));
     expect.assert_eq(&actual)
 }
 
@@ -667,6 +667,45 @@ fn main() {
 "#,
         expect![[r#"
             fn test() fn() -> Zulu
+        "#]],
+    );
+}
+
+#[test]
+fn varaiant_with_struct() {
+    check_empty(
+        r#"
+pub struct YoloVariant {
+    pub f: usize
+}
+
+pub enum HH {
+    Yolo(YoloVariant),
+}
+
+fn brr() {
+    let t = HH::Yolo(Y$0);
+}
+"#,
+        expect![[r#"
+            en HH
+            fn brr()           fn()
+            st YoloVariant
+            st YoloVariant {…} YoloVariant { f: usize }
+            bt u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
         "#]],
     );
 }

@@ -1,8 +1,0 @@
-error: expected identifier, found keyword `let`
-  --> $DIR/removed-syntax-field-let.rs:2:5
-   |
-LL |     let foo: (),
-   |     ^^^ expected identifier, found keyword
-
-error: aborting due to previous error
-

@@ -25,6 +25,7 @@ mod sysroot;
 mod workspace;
 mod rustc_cfg;
 mod build_scripts;
+mod target_data_layout;
 
 #[cfg(test)]
 mod tests;
@@ -42,8 +43,8 @@ use rustc_hash::FxHashSet;
 pub use crate::{
     build_scripts::WorkspaceBuildScripts,
     cargo_workspace::{
-        CargoConfig, CargoWorkspace, Package, PackageData, PackageDependency, RustcSource, Target,
-        TargetData, TargetKind, UnsetTestCrates,
+        CargoConfig, CargoFeatures, CargoWorkspace, Package, PackageData, PackageDependency,
+        RustcSource, Target, TargetData, TargetKind, UnsetTestCrates,
     },
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},
@@ -67,7 +68,7 @@ impl ProjectManifest {
         if path.file_name().unwrap_or_default() == "Cargo.toml" {
             return Ok(ProjectManifest::CargoToml(path));
         }
-        bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display())
+        bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display());
     }
 
     pub fn discover_single(path: &AbsPath) -> Result<ProjectManifest> {
@@ -78,7 +79,7 @@ impl ProjectManifest {
         };
 
         if !candidates.is_empty() {
-            bail!("more than one project")
+            bail!("more than one project");
         }
         Ok(res)
     }
@@ -145,7 +146,7 @@ impl ProjectManifest {
 }
 
 fn utf8_stdout(mut cmd: Command) -> Result<String> {
-    let output = cmd.output().with_context(|| format!("{:?} failed", cmd))?;
+    let output = cmd.output().with_context(|| format!("{cmd:?} failed"))?;
     if !output.status.success() {
         match String::from_utf8(output.stderr) {
             Ok(stderr) if !stderr.is_empty() => {
@@ -156,4 +157,18 @@ fn utf8_stdout(mut cmd: Command) -> Result<String> {
     }
     let stdout = String::from_utf8(output.stdout)?;
     Ok(stdout.trim().to_string())
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum InvocationStrategy {
+    Once,
+    #[default]
+    PerWorkspace,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum InvocationLocation {
+    Root(AbsPathBuf),
+    #[default]
+    Workspace,
 }

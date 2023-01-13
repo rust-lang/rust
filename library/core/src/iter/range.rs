@@ -1150,19 +1150,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         self.spec_try_fold(init, f)
     }
 
-    #[inline]
-    fn fold<B, F>(mut self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(f)).unwrap()
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 
     #[inline]
     fn last(mut self) -> Option<A> {
@@ -1230,19 +1218,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         self.spec_try_rfold(init, f)
     }
 
-    #[inline]
-    fn rfold<B, F>(mut self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_rfold(init, ok(f)).unwrap()
-    }
+    impl_fold_via_try_fold! { rfold -> try_rfold }
 }
 
 // Safety: See above implementation for `ops::Range<A>`

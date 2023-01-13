@@ -1,11 +1,10 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
-use crate::const_prop::CanConstProp;
-use crate::const_prop::ConstPropMachine;
-use crate::const_prop::ConstPropMode;
-use crate::MirLint;
-use rustc_const_eval::const_eval::ConstEvalErr;
+use std::cell::Cell;
+
+use either::{Left, Right};
+
 use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
     self, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
@@ -16,25 +15,28 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    AssertKind, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, Location, Operand, Place,
-    Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator,
-    TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, BinOp, Body, Constant, Local, LocalDecl, Location, Operand, Place, Rvalue,
+    SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
+    UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{
-    self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitable,
-};
+use rustc_middle::ty::InternalSubsts;
+use rustc_middle::ty::{self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 use rustc_trait_selection::traits;
-use std::cell::Cell;
+
+use crate::const_prop::CanConstProp;
+use crate::const_prop::ConstPropMachine;
+use crate::const_prop::ConstPropMode;
+use crate::MirLint;
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
 /// Needed for #66397, because otherwise we eval into large places and that can cause OOM or just
 /// Severely regress performance.
 const MAX_ALLOC_LIMIT: u64 = 1024;
+
 pub struct ConstProp;
 
 impl<'tcx> MirLint<'tcx> for ConstProp {
@@ -201,7 +203,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // I don't know how return types can seem to be unsized but this happens in the
             // `type/type-unsatisfiable.rs` test.
             .filter(|ret_layout| {
-                !ret_layout.is_unsized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
+                ret_layout.is_sized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
             })
             .unwrap_or_else(|| ecx.layout_of(tcx.types.unit).unwrap());
 
@@ -246,7 +248,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
         Some(match self.ecx.read_immediate_raw(&op) {
-            Ok(Ok(imm)) => imm.into(),
+            Ok(Left(imm)) => imm.into(),
             _ => op,
         })
     }
@@ -269,7 +271,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         // Overwrite the PC -- whatever the interpreter does to it does not make any sense anyway.
-        self.ecx.frame_mut().loc = Err(source_info.span);
+        self.ecx.frame_mut().loc = Right(source_info.span);
         match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
@@ -294,39 +296,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        match self.ecx.mir_const_to_op(&c.literal, None) {
-            Ok(op) => Some(op),
-            Err(error) => {
-                let tcx = self.ecx.tcx.at(c.span);
-                let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
-                if let Some(lint_root) = self.lint_root(source_info) {
-                    let lint_only = match c.literal {
-                        ConstantKind::Ty(ct) => match ct.kind() {
-                            // Promoteds must lint and not error as the user didn't ask for them
-                            ConstKind::Unevaluated(ty::Unevaluated {
-                                def: _,
-                                substs: _,
-                                promoted: Some(_),
-                            }) => true,
-                            // Out of backwards compatibility we cannot report hard errors in unused
-                            // generic functions using associated constants of the generic parameters.
-                            _ => c.literal.needs_subst(),
-                        },
-                        ConstantKind::Val(_, ty) => ty.needs_subst(),
-                    };
-                    if lint_only {
-                        // Out of backwards compatibility we cannot report hard errors in unused
-                        // generic functions using associated constants of the generic parameters.
-                        err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(c.span));
-                    } else {
-                        err.report_as_error(tcx, "erroneous constant used");
-                    }
-                } else {
-                    err.report_as_error(tcx, "erroneous constant used");
-                }
-                None
-            }
-        }
+        self.use_ecx(source_info, |this| this.ecx.eval_mir_constant(&c.literal, Some(c.span), None))
     }
 
     /// Returns the value, if any, of evaluating `place`.
@@ -352,10 +322,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         panic: AssertKind<impl std::fmt::Debug>,
     ) {
         if let Some(lint_root) = self.lint_root(source_info) {
-            self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
-                let mut err = lint.build(message);
-                err.span_label(source_info.span, format!("{:?}", panic));
-                err.emit();
+            self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, message, |lint| {
+                lint.span_label(source_info.span, format!("{:?}", panic))
             });
         }
     }
@@ -524,7 +492,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
         if !rvalue
             .ty(&self.ecx.frame().body.local_decls, *self.ecx.tcx)
-            .is_sized(self.ecx.tcx, self.param_env)
+            .is_sized(*self.ecx.tcx, self.param_env)
         {
             // the interpreter doesn't support unsized locals (only unsized arguments),
             // but rustc does (in a kinda broken way), so we have to skip them here

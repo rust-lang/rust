@@ -8,35 +8,40 @@
 //! We then strip all the code marked with other flags.
 //!
 //! Available flags:
-//!     sized:
-//!     unsize: sized
-//!     coerce_unsized: unsize
-//!     slice:
-//!     range:
-//!     deref: sized
-//!     deref_mut: deref
-//!     index: sized
-//!     fn:
-//!     try:
-//!     pin:
-//!     future: pin
-//!     option:
-//!     result:
-//!     iterator: option
-//!     iterators: iterator, fn
-//!     default: sized
-//!     hash:
-//!     clone: sized
-//!     copy: clone
-//!     from: sized
-//!     eq: sized
-//!     ord: eq, option
-//!     derive:
-//!     fmt: result
-//!     bool_impl: option, fn
 //!     add:
 //!     as_ref: sized
+//!     bool_impl: option, fn
+//!     clone: sized
+//!     coerce_unsized: unsize
+//!     copy: clone
+//!     default: sized
+//!     deref_mut: deref
+//!     deref: sized
+//!     derive:
 //!     drop:
+//!     eq: sized
+//!     error: fmt
+//!     fmt: result
+//!     fn:
+//!     from: sized
+//!     future: pin
+//!     generator: pin
+//!     hash:
+//!     index: sized
+//!     iterator: option
+//!     iterators: iterator, fn
+//!     non_zero:
+//!     option:
+//!     ord: eq, option
+//!     pin:
+//!     range:
+//!     result:
+//!     send: sized
+//!     sized:
+//!     slice:
+//!     sync: sized
+//!     try:
+//!     unsize: sized
 
 pub mod marker {
     // region:sized
@@ -45,6 +50,24 @@ pub mod marker {
     #[rustc_specialization_trait]
     pub trait Sized {}
     // endregion:sized
+
+    // region:send
+    pub unsafe auto trait Send {}
+
+    impl<T: ?Sized> !Send for *const T {}
+    impl<T: ?Sized> !Send for *mut T {}
+    // region:sync
+    unsafe impl<T: Sync + ?Sized> Send for &T {}
+    unsafe impl<T: Send + ?Sized> Send for &mut T {}
+    // endregion:sync
+    // endregion:send
+
+    // region:sync
+    pub unsafe auto trait Sync {}
+
+    impl<T: ?Sized> !Sync for *const T {}
+    impl<T: ?Sized> !Sync for *mut T {}
+    // endregion:sync
 
     // region:unsize
     #[lang = "unsize"]
@@ -90,7 +113,7 @@ pub mod default {
         fn default() -> Self;
     }
     // region:derive
-    #[rustc_builtin_macro]
+    #[rustc_builtin_macro(Default, attributes(default))]
     pub macro Default($item:item) {}
     // endregion:derive
 }
@@ -181,6 +204,19 @@ pub mod ops {
             #[lang = "deref_target"]
             type Target: ?Sized;
             fn deref(&self) -> &Self::Target;
+        }
+
+        impl<T: ?Sized> Deref for &T {
+            type Target = T;
+            fn deref(&self) -> &T {
+                loop {}
+            }
+        }
+        impl<T: ?Sized> Deref for &mut T {
+            type Target = T;
+            fn deref(&self) -> &T {
+                loop {}
+            }
         }
         // region:deref_mut
         #[lang = "deref_mut"]
@@ -346,7 +382,34 @@ pub mod ops {
         type Output;
         fn add(self, rhs: Rhs) -> Self::Output;
     }
+
+    #[lang = "add_assign"]
+    #[const_trait]
+    pub trait AddAssign<Rhs = Self> {
+        fn add_assign(&mut self, rhs: Rhs);
+    }
     // endregion:add
+
+    // region:generator
+    mod generator {
+        use crate::pin::Pin;
+
+        #[lang = "generator"]
+        pub trait Generator<R = ()> {
+            type Yield;
+            #[lang = "generator_return"]
+            type Return;
+            fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return>;
+        }
+
+        #[lang = "generator_state"]
+        pub enum GeneratorState<Y, R> {
+            Yielded(Y),
+            Complete(R),
+        }
+    }
+    pub use self::generator::{Generator, GeneratorState};
+    // endregion:generator
 }
 
 // region:eq
@@ -403,6 +466,9 @@ pub mod fmt {
     pub trait Debug {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
+    pub trait Display {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
 }
 // endregion:fmt
 
@@ -455,6 +521,19 @@ pub mod pin {
     pub struct Pin<P> {
         pointer: P,
     }
+    impl<P> Pin<P> {
+        pub fn new(pointer: P) -> Pin<P> {
+            loop {}
+        }
+    }
+    // region:deref
+    impl<P: crate::ops::Deref> crate::ops::Deref for Pin<P> {
+        type Target = P::Target;
+        fn deref(&self) -> &P::Target {
+            loop {}
+        }
+    }
+    // endregion:deref
 }
 // endregion:pin
 
@@ -536,7 +615,7 @@ pub mod iter {
             }
         }
     }
-    pub use self::adapters::{Take, FilterMap};
+    pub use self::adapters::{FilterMap, Take};
 
     mod sources {
         mod repeat {
@@ -632,6 +711,15 @@ mod macros {
 }
 // endregion:derive
 
+// region:non_zero
+pub mod num {
+    #[repr(transparent)]
+    #[rustc_layout_scalar_valid_range_start(1)]
+    #[rustc_nonnull_optimization_guaranteed]
+    pub struct NonZeroU8(u8);
+}
+// endregion:non_zero
+
 // region:bool_impl
 #[lang = "bool"]
 impl bool {
@@ -645,6 +733,17 @@ impl bool {
 }
 // endregion:bool_impl
 
+// region:error
+pub mod error {
+    #[rustc_has_incoherent_inherent_impls]
+    pub trait Error: crate::fmt::Debug + crate::fmt::Display {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            None
+        }
+    }
+}
+// endregion:error
+
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
@@ -657,7 +756,9 @@ pub mod prelude {
             iter::{IntoIterator, Iterator},     // :iterator
             macros::builtin::derive,            // :derive
             marker::Copy,                       // :copy
+            marker::Send,                       // :send
             marker::Sized,                      // :sized
+            marker::Sync,                       // :sync
             mem::drop,                          // :drop
             ops::Drop,                          // :drop
             ops::{Fn, FnMut, FnOnce},           // :fn

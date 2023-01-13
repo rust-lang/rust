@@ -1,7 +1,7 @@
 use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -10,7 +10,7 @@ use rustc_span::Span;
 use std::fmt;
 use std::iter;
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     pub fn report_extra_impl_obligation(
         &self,
         error_span: Span,
@@ -56,7 +56,7 @@ pub fn report_object_safety_error<'tcx>(
     );
     err.span_label(span, format!("`{}` cannot be made into an object", trait_str));
 
-    let mut reported_violations = FxHashSet::default();
+    let mut reported_violations = FxIndexSet::default();
     let mut multi_span = vec![];
     let mut messages = vec![];
     for violation in violations {

@@ -101,7 +101,7 @@ impl Step for Std {
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!(
-            "Checking stage{} std artifacts ({} -> {})",
+            "Checking stage{} library artifacts ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
         run_cargo(
@@ -111,6 +111,7 @@ impl Step for Std {
             &libstd_stamp(builder, compiler, target),
             vec![],
             true,
+            false,
         );
 
         // We skip populating the sysroot in non-zero stage because that'll lead
@@ -157,7 +158,7 @@ impl Step for Std {
         }
 
         builder.info(&format!(
-            "Checking stage{} std test/bench/example targets ({} -> {})",
+            "Checking stage{} library test/bench/example targets ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
         run_cargo(
@@ -167,6 +168,7 @@ impl Step for Std {
             &libstd_test_stamp(builder, compiler, target),
             vec![],
             true,
+            false,
         );
     }
 }
@@ -243,6 +245,7 @@ impl Step for Rustc {
             &librustc_stamp(builder, compiler, target),
             vec![],
             true,
+            false,
         );
 
         let libdir = builder.sysroot_libdir(compiler, target);
@@ -303,6 +306,7 @@ impl Step for CodegenBackend {
             &codegen_backend_stamp(builder, compiler, target, backend),
             vec![],
             true,
+            false,
         );
     }
 }
@@ -359,7 +363,15 @@ impl Step for RustAnalyzer {
             "Checking stage{} {} artifacts ({} -> {})",
             compiler.stage, "rust-analyzer", &compiler.host.triple, target.triple
         ));
-        run_cargo(builder, cargo, args(builder), &stamp(builder, compiler, target), vec![], true);
+        run_cargo(
+            builder,
+            cargo,
+            args(builder),
+            &stamp(builder, compiler, target),
+            vec![],
+            true,
+            false,
+        );
 
         /// Cargo's output path in a given stage, compiled by a particular
         /// compiler for the specified target.
@@ -432,6 +444,7 @@ macro_rules! tool_check_step {
                     &stamp(builder, compiler, target),
                     vec![],
                     true,
+                    false,
                 );
 
                 /// Cargo's output path in a given stage, compiled by a particular
@@ -451,14 +464,16 @@ macro_rules! tool_check_step {
 }
 
 tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
-// Clippy and Rustfmt are hybrids. They are external tools, but use a git subtree instead
+// Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
 tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
-tool_check_step!(Miri, "src/tools/miri", SourceType::Submodule);
+tool_check_step!(Miri, "src/tools/miri", SourceType::InTree);
+tool_check_step!(CargoMiri, "src/tools/miri/cargo-miri", SourceType::InTree);
 tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
 tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);
+tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools", SourceType::InTree);
 
 tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
 

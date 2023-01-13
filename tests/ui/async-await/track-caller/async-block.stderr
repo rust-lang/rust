@@ -1,0 +1,12 @@
+error[E0739]: attribute should be applied to a function definition
+  --> $DIR/async-block.rs:6:13
+   |
+LL |       let _ = #[track_caller] async {
+   |  _____________^^^^^^^^^^^^^^^_-
+LL | |
+LL | |     };
+   | |_____- not a function definition
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0739`.

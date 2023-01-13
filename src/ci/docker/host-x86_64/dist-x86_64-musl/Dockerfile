@@ -16,7 +16,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   gdb \
   patch \
   libssl-dev \
-  pkg-config
+  pkg-config \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build/
 

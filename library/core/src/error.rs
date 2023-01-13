@@ -1,5 +1,5 @@
 #![doc = include_str!("error.md")]
-#![unstable(feature = "error_in_core", issue = "none")]
+#![unstable(feature = "error_in_core", issue = "103765")]
 
 #[cfg(test)]
 mod tests;
@@ -493,8 +493,8 @@ impl Error for crate::char::ParseCharError {
     }
 }
 
-#[unstable(feature = "duration_checked_float", issue = "83400")]
-impl Error for crate::time::FromFloatSecsError {}
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
+impl Error for crate::time::TryFromFloatSecsError {}
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl Error for crate::ffi::FromBytesWithNulError {
@@ -506,3 +506,6 @@ impl Error for crate::ffi::FromBytesWithNulError {
 
 #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
 impl Error for crate::ffi::FromBytesUntilNulError {}
+
+#[unstable(feature = "get_many_mut", issue = "104642")]
+impl<const N: usize> Error for crate::slice::GetManyMutError<N> {}

@@ -11,6 +11,7 @@ include!("../dylib_util.rs");
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
+    let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
@@ -54,14 +55,20 @@ fn main() {
         arg.push(&linker);
         cmd.arg(arg);
     }
-    if env::var_os("RUSTDOC_FUSE_LD_LLD").is_some() {
+    if let Ok(no_threads) = env::var("RUSTDOC_LLD_NO_THREADS") {
         cmd.arg("-Clink-arg=-fuse-ld=lld");
-        if cfg!(windows) {
-            cmd.arg("-Clink-arg=-Wl,/threads:1");
-        } else {
-            cmd.arg("-Clink-arg=-Wl,--threads=1");
-        }
+        cmd.arg(format!("-Clink-arg=-Wl,{}", no_threads));
     }
+    // Cargo doesn't pass RUSTDOCFLAGS to proc_macros:
+    // https://github.com/rust-lang/cargo/issues/4423
+    // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
+    // We also declare that the flag is expected, which we need to do to not
+    // get warnings about it being unexpected.
+    if stage == "0" {
+        cmd.arg("--cfg=bootstrap");
+    }
+    cmd.arg("-Zunstable-options");
+    cmd.arg("--check-cfg=values(bootstrap)");
 
     if verbose > 1 {
         eprintln!(

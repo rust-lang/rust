@@ -1,0 +1,237 @@
+error[E0446]: private type `Priv` in public interface
+  --> $DIR/private-inferred-type.rs:61:36
+   |
+LL |     struct Priv;
+   |     ----------- `Priv` declared as private
+...
+LL |     impl TraitWithAssocTy for u8 { type AssocTy = Priv; }
+   |                                    ^^^^^^^^^^^^ can't leak private type
+
+error[E0446]: private type `S2` in public interface
+  --> $DIR/private-inferred-type.rs:83:9
+   |
+LL |     struct S2;
+   |     --------- `S2` declared as private
+...
+LL |         type Target = S2Alias;
+   |         ^^^^^^^^^^^ can't leak private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:97:9
+   |
+LL |     let _: m::Alias;
+   |         ^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:97:12
+   |
+LL |     let _: m::Alias;
+   |            ^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:99:13
+   |
+LL |     let _: <m::Alias as m::TraitWithAssocTy>::AssocTy;
+   |             ^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:100:5
+   |
+LL |     m::Alias {};
+   |     ^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:101:5
+   |
+LL |     m::Pub { 0: m::Alias {} };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:103:5
+   |
+LL |     m::Pub::static_method;
+   |     ^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:104:5
+   |
+LL |     m::Pub::INHERENT_ASSOC_CONST;
+   |     ^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:105:5
+   |
+LL |     m::Pub(0u8).method_with_substs::<m::Alias>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:106:17
+   |
+LL |     m::Pub(0u8).method_with_priv_params(loop{});
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:107:5
+   |
+LL |     <m::Alias as m::TraitWithAssocConst>::TRAIT_ASSOC_CONST;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:108:6
+   |
+LL |     <m::Pub<m::Alias>>::INHERENT_ASSOC_CONST;
+   |      ^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:109:5
+   |
+LL |     <m::Pub<m::Alias>>::INHERENT_ASSOC_CONST_GENERIC_SELF;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:110:5
+   |
+LL |     <m::Pub<m::Alias>>::static_method_generic_self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:112:5
+   |
+LL |     u8::pub_method;
+   |     ^^^^^^^^^^^^^^ private type
+
+error: type `S2` is private
+  --> $DIR/private-inferred-type.rs:114:5
+   |
+LL |     adjust::S1.method_s3();
+   |     ^^^^^^^^^^ private type
+
+error: type `fn() {priv_fn}` is private
+  --> $DIR/private-inferred-type.rs:39:9
+   |
+LL |         priv_fn;
+   |         ^^^^^^^ private type
+...
+LL |     m::m!();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: type `PrivEnum` is private
+  --> $DIR/private-inferred-type.rs:41:9
+   |
+LL |         PrivEnum::Variant;
+   |         ^^^^^^^^^^^^^^^^^ private type
+...
+LL |     m::m!();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: type `fn() {<u8 as PrivTrait>::method}` is private
+  --> $DIR/private-inferred-type.rs:43:9
+   |
+LL |         <u8 as PrivTrait>::method;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ private type
+...
+LL |     m::m!();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: type `fn(u8) -> PrivTupleStruct {PrivTupleStruct}` is private
+  --> $DIR/private-inferred-type.rs:45:9
+   |
+LL |         PrivTupleStruct;
+   |         ^^^^^^^^^^^^^^^ private type
+...
+LL |     m::m!();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: type `fn(u8) -> PubTupleStruct {PubTupleStruct}` is private
+  --> $DIR/private-inferred-type.rs:47:9
+   |
+LL |         PubTupleStruct;
+   |         ^^^^^^^^^^^^^^ private type
+...
+LL |     m::m!();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: type `for<'a> fn(&'a Pub<u8>) {Pub::<u8>::priv_method}` is private
+  --> $DIR/private-inferred-type.rs:49:18
+   |
+LL |         Pub(0u8).priv_method();
+   |                  ^^^^^^^^^^^ private type
+...
+LL |     m::m!();
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: trait `Trait` is private
+  --> $DIR/private-inferred-type.rs:118:5
+   |
+LL |     m::leak_anon1();
+   |     ^^^^^^^^^^^^^^^ private trait
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:119:5
+   |
+LL |     m::leak_anon2();
+   |     ^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:120:5
+   |
+LL |     m::leak_anon3();
+   |     ^^^^^^^^^^^^^^^ private type
+
+error: trait `Trait` is private
+  --> $DIR/private-inferred-type.rs:122:5
+   |
+LL |     m::leak_dyn1();
+   |     ^^^^^^^^^^^^^^ private trait
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:123:5
+   |
+LL |     m::leak_dyn2();
+   |     ^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:124:5
+   |
+LL |     m::leak_dyn3();
+   |     ^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:127:13
+   |
+LL |     let a = m::Alias {};
+   |             ^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:128:17
+   |
+LL |     let mut b = a;
+   |                 ^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:129:9
+   |
+LL |     b = a;
+   |         ^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type.rs:130:11
+   |
+LL |     match a {
+   |           ^ private type
+
+error: aborting due to 33 previous errors
+
+For more information about this error, try `rustc --explain E0446`.

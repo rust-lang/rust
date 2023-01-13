@@ -11,15 +11,17 @@ pub use rustc_query_system::dep_graph::{
     SerializedDepNodeIndex, WorkProduct, WorkProductId,
 };
 
-pub use dep_node::{label_strs, DepKind, DepKindStruct, DepNode, DepNodeExt};
+pub use dep_node::{label_strs, DepKind, DepNode, DepNodeExt};
 pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
+
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
 pub type TaskDepsRef<'a> = rustc_query_system::dep_graph::TaskDepsRef<'a, DepKind>;
 pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery<DepKind>;
 pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
 pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
+pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCtxt<'tcx>>;
 
 impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
@@ -91,50 +93,8 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         self.sess
     }
 
-    #[inline(always)]
-    fn fingerprint_style(&self, kind: DepKind) -> rustc_query_system::dep_graph::FingerprintStyle {
-        kind.fingerprint_style(*self)
-    }
-
-    #[inline(always)]
-    fn is_eval_always(&self, kind: DepKind) -> bool {
-        self.query_kind(kind).is_eval_always
-    }
-
-    fn try_force_from_dep_node(&self, dep_node: DepNode) -> bool {
-        debug!("try_force_from_dep_node({:?}) --- trying to force", dep_node);
-
-        // We must avoid ever having to call `force_from_dep_node()` for a
-        // `DepNode::codegen_unit`:
-        // Since we cannot reconstruct the query key of a `DepNode::codegen_unit`, we
-        // would always end up having to evaluate the first caller of the
-        // `codegen_unit` query that *is* reconstructible. This might very well be
-        // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
-        // to re-trigger calling the `codegen_unit` query with the right key. At
-        // that point we would already have re-done all the work we are trying to
-        // avoid doing in the first place.
-        // The solution is simple: Just explicitly call the `codegen_unit` query for
-        // each CGU, right after partitioning. This way `try_mark_green` will always
-        // hit the cache instead of having to go through `force_from_dep_node`.
-        // This assertion makes sure, we actually keep applying the solution above.
-        debug_assert!(
-            dep_node.kind != DepKind::codegen_unit,
-            "calling force_from_dep_node() on DepKind::codegen_unit"
-        );
-
-        let cb = self.query_kind(dep_node.kind);
-        if let Some(f) = cb.force_from_dep_node {
-            f(*self, dep_node);
-            true
-        } else {
-            false
-        }
-    }
-
-    fn try_load_from_on_disk_cache(&self, dep_node: DepNode) {
-        let cb = self.query_kind(dep_node.kind);
-        if let Some(f) = cb.try_load_from_on_disk_cache {
-            f(*self, dep_node)
-        }
+    #[inline]
+    fn dep_kind_info(&self, dep_kind: DepKind) -> &DepKindStruct<'tcx> {
+        &self.query_kinds[dep_kind as usize]
     }
 }

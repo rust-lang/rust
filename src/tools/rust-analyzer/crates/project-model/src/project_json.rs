@@ -110,14 +110,17 @@ impl ProjectJson {
                 .collect::<Vec<_>>(),
         }
     }
+
     /// Returns the number of crates in the project.
     pub fn n_crates(&self) -> usize {
         self.crates.len()
     }
+
     /// Returns an iterator over the crates in the project.
     pub fn crates(&self) -> impl Iterator<Item = (CrateId, &Crate)> + '_ {
         self.crates.iter().enumerate().map(|(idx, krate)| (CrateId(idx as u32), krate))
     }
+
     /// Returns the path to the project's root folder.
     pub fn path(&self) -> &AbsPath {
         &self.project_root
@@ -194,5 +197,5 @@ where
     D: de::Deserializer<'de>,
 {
     let name = String::deserialize(de)?;
-    CrateName::new(&name).map_err(|err| de::Error::custom(format!("invalid crate name: {:?}", err)))
+    CrateName::new(&name).map_err(|err| de::Error::custom(format!("invalid crate name: {err:?}")))
 }

@@ -1,6 +1,5 @@
 use std::fmt;
 use std::hash::Hash;
-use std::iter::FromIterator;
 
 use super::map::SsoHashMap;
 
@@ -27,7 +26,7 @@ pub struct SsoHashSet<T> {
     map: SsoHashMap<T, ()>,
 }
 
-/// Adapter function used ot return
+/// Adapter function used to return
 /// result if SsoHashMap functions into
 /// result SsoHashSet should return.
 #[inline(always)]

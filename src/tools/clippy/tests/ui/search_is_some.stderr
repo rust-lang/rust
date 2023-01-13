@@ -8,8 +8,8 @@ LL | |                           }
 LL | |                    ).is_some();
    | |______________________________^
    |
-   = note: `-D clippy::search-is-some` implied by `-D warnings`
    = help: this is more succinctly expressed by calling `any()`
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
 
 error: called `is_some()` after searching an `Iterator` with `position`
   --> $DIR/search_is_some.rs:20:13

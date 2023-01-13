@@ -39,10 +39,12 @@ cfg_if::cfg_if! {
 // https://github.com/aosp-mirror/platform_bionic/blob/ad8dcd6023294b646e5a8288c0ed431b0845da49/libc/include/android/legacy_signal_inlines.h
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
+        #[allow(dead_code)]
         pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
             set.write_bytes(0u8, 1);
             return 0;
         }
+
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
             use crate::{
@@ -142,6 +144,7 @@ pub enum ChildStdio {
     Null,
 }
 
+#[derive(Debug)]
 pub enum Stdio {
     Inherit,
     Null,
@@ -508,16 +511,68 @@ impl ChildStdio {
 }
 
 impl fmt::Debug for Command {
+    // show all attributes but `self.closures` which does not implement `Debug`
+    // and `self.argv` which is not useful for debugging
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.program != self.args[0] {
-            write!(f, "[{:?}] ", self.program)?;
-        }
-        write!(f, "{:?}", self.args[0])?;
+        if f.alternate() {
+            let mut debug_command = f.debug_struct("Command");
+            debug_command.field("program", &self.program).field("args", &self.args);
+            if !self.env.is_unchanged() {
+                debug_command.field("env", &self.env);
+            }
 
-        for arg in &self.args[1..] {
-            write!(f, " {:?}", arg)?;
+            if self.cwd.is_some() {
+                debug_command.field("cwd", &self.cwd);
+            }
+            if self.uid.is_some() {
+                debug_command.field("uid", &self.uid);
+            }
+            if self.gid.is_some() {
+                debug_command.field("gid", &self.gid);
+            }
+
+            if self.groups.is_some() {
+                debug_command.field("groups", &self.groups);
+            }
+
+            if self.stdin.is_some() {
+                debug_command.field("stdin", &self.stdin);
+            }
+            if self.stdout.is_some() {
+                debug_command.field("stdout", &self.stdout);
+            }
+            if self.stderr.is_some() {
+                debug_command.field("stderr", &self.stderr);
+            }
+            if self.pgroup.is_some() {
+                debug_command.field("pgroup", &self.pgroup);
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                debug_command.field("create_pidfd", &self.create_pidfd);
+            }
+
+            debug_command.finish()
+        } else {
+            if let Some(ref cwd) = self.cwd {
+                write!(f, "cd {cwd:?} && ")?;
+            }
+            for (key, value_opt) in self.get_envs() {
+                if let Some(value) = value_opt {
+                    write!(f, "{}={value:?} ", key.to_string_lossy())?;
+                }
+            }
+            if self.program != self.args[0] {
+                write!(f, "[{:?}] ", self.program)?;
+            }
+            write!(f, "{:?}", self.args[0])?;
+
+            for arg in &self.args[1..] {
+                write!(f, " {:?}", arg)?;
+            }
+            Ok(())
         }
-        Ok(())
     }
 }
 

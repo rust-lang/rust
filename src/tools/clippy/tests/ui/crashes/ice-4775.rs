@@ -1,3 +1,5 @@
+#![allow(clippy::uninlined_format_args)]
+
 pub struct ArrayWrapper<const N: usize>([usize; N]);
 
 impl<const N: usize> ArrayWrapper<{ N }> {

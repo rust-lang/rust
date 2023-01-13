@@ -1,10 +1,10 @@
 //! Unification and canonicalization logic.
 
-use std::{fmt, mem, sync::Arc};
+use std::{fmt, iter, mem, sync::Arc};
 
 use chalk_ir::{
     cast::Cast, fold::TypeFoldable, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy,
-    IntTy, NoSolution, TyVariableKind, UniverseIndex,
+    IntTy, TyVariableKind, UniverseIndex,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
@@ -128,9 +128,13 @@ pub(crate) fn unify(
     ))
 }
 
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct TypeVariableData {
-    diverging: bool,
+bitflags::bitflags! {
+    #[derive(Default)]
+    pub(crate) struct TypeVariableFlags: u8 {
+        const DIVERGING = 1 << 0;
+        const INTEGER = 1 << 1;
+        const FLOAT = 1 << 2;
+    }
 }
 
 type ChalkInferenceTable = chalk_solve::infer::InferenceTable<Interner>;
@@ -140,14 +144,14 @@ pub(crate) struct InferenceTable<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment>,
     var_unification_table: ChalkInferenceTable,
-    type_variable_table: Vec<TypeVariableData>,
+    type_variable_table: Vec<TypeVariableFlags>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
 }
 
 pub(crate) struct InferenceTableSnapshot {
     var_table_snapshot: chalk_solve::infer::InferenceSnapshot<Interner>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
-    type_variable_table_snapshot: Vec<TypeVariableData>,
+    type_variable_table_snapshot: Vec<TypeVariableFlags>,
 }
 
 impl<'a> InferenceTable<'a> {
@@ -169,19 +173,19 @@ impl<'a> InferenceTable<'a> {
     /// result.
     pub(super) fn propagate_diverging_flag(&mut self) {
         for i in 0..self.type_variable_table.len() {
-            if !self.type_variable_table[i].diverging {
+            if !self.type_variable_table[i].contains(TypeVariableFlags::DIVERGING) {
                 continue;
             }
             let v = InferenceVar::from(i as u32);
             let root = self.var_unification_table.inference_var_root(v);
             if let Some(data) = self.type_variable_table.get_mut(root.index() as usize) {
-                data.diverging = true;
+                *data |= TypeVariableFlags::DIVERGING;
             }
         }
     }
 
     pub(super) fn set_diverging(&mut self, iv: InferenceVar, diverging: bool) {
-        self.type_variable_table[iv.index() as usize].diverging = diverging;
+        self.type_variable_table[iv.index() as usize].set(TypeVariableFlags::DIVERGING, diverging);
     }
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
@@ -189,7 +193,7 @@ impl<'a> InferenceTable<'a> {
             _ if self
                 .type_variable_table
                 .get(iv.index() as usize)
-                .map_or(false, |data| data.diverging) =>
+                .map_or(false, |data| data.contains(TypeVariableFlags::DIVERGING)) =>
             {
                 TyKind::Never
             }
@@ -247,10 +251,8 @@ impl<'a> InferenceTable<'a> {
     }
 
     fn extend_type_variable_table(&mut self, to_index: usize) {
-        self.type_variable_table.extend(
-            (0..1 + to_index - self.type_variable_table.len())
-                .map(|_| TypeVariableData { diverging: false }),
-        );
+        let count = to_index - self.type_variable_table.len() + 1;
+        self.type_variable_table.extend(iter::repeat(TypeVariableFlags::default()).take(count));
     }
 
     fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {
@@ -258,7 +260,15 @@ impl<'a> InferenceTable<'a> {
         // Chalk might have created some type variables for its own purposes that we don't know about...
         self.extend_type_variable_table(var.index() as usize);
         assert_eq!(var.index() as usize, self.type_variable_table.len() - 1);
-        self.type_variable_table[var.index() as usize].diverging = diverging;
+        let flags = self.type_variable_table.get_mut(var.index() as usize).unwrap();
+        if diverging {
+            *flags |= TypeVariableFlags::DIVERGING;
+        }
+        if matches!(kind, TyVariableKind::Integer) {
+            *flags |= TypeVariableFlags::INTEGER;
+        } else if matches!(kind, TyVariableKind::Float) {
+            *flags |= TypeVariableFlags::FLOAT;
+        }
         var.to_ty_with_kind(Interner, kind)
     }
 
@@ -331,7 +341,6 @@ impl<'a> InferenceTable<'a> {
             &mut resolve::Resolver { table: self, var_stack, fallback },
             DebruijnIndex::INNERMOST,
         )
-        .expect("fold failed unexpectedly")
     }
 
     pub(crate) fn resolve_completely<T>(&mut self, t: T) -> T
@@ -341,8 +350,53 @@ impl<'a> InferenceTable<'a> {
         self.resolve_with_fallback(t, &|_, _, d, _| d)
     }
 
-    /// Unify two types and register new trait goals that arise from that.
-    pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+    /// Apply a fallback to unresolved scalar types. Integer type variables and float type
+    /// variables are replaced with i32 and f64, respectively.
+    ///
+    /// This method is only intended to be called just before returning inference results (i.e. in
+    /// `InferenceContext::resolve_all()`).
+    ///
+    /// FIXME: This method currently doesn't apply fallback to unconstrained general type variables
+    /// whereas rustc replaces them with `()` or `!`.
+    pub(super) fn fallback_if_possible(&mut self) {
+        let int_fallback = TyKind::Scalar(Scalar::Int(IntTy::I32)).intern(Interner);
+        let float_fallback = TyKind::Scalar(Scalar::Float(FloatTy::F64)).intern(Interner);
+
+        let scalar_vars: Vec<_> = self
+            .type_variable_table
+            .iter()
+            .enumerate()
+            .filter_map(|(index, flags)| {
+                let kind = if flags.contains(TypeVariableFlags::INTEGER) {
+                    TyVariableKind::Integer
+                } else if flags.contains(TypeVariableFlags::FLOAT) {
+                    TyVariableKind::Float
+                } else {
+                    return None;
+                };
+
+                // FIXME: This is not really the nicest way to get `InferenceVar`s. Can we get them
+                // without directly constructing them from `index`?
+                let var = InferenceVar::from(index as u32).to_ty(Interner, kind);
+                Some(var)
+            })
+            .collect();
+
+        for var in scalar_vars {
+            let maybe_resolved = self.resolve_ty_shallow(&var);
+            if let TyKind::InferenceVar(_, kind) = maybe_resolved.kind(Interner) {
+                let fallback = match kind {
+                    TyVariableKind::Integer => &int_fallback,
+                    TyVariableKind::Float => &float_fallback,
+                    TyVariableKind::General => unreachable!(),
+                };
+                self.unify(&var, fallback);
+            }
+        }
+    }
+
+    /// Unify two relatable values (e.g. `Ty`) and register new trait goals that arise from that.
+    pub(crate) fn unify<T: ?Sized + Zip<Interner>>(&mut self, ty1: &T, ty2: &T) -> bool {
         let result = match self.try_unify(ty1, ty2) {
             Ok(r) => r,
             Err(_) => return false,
@@ -351,9 +405,13 @@ impl<'a> InferenceTable<'a> {
         true
     }
 
-    /// Unify two types and return new trait goals arising from it, so the
+    /// Unify two relatable values (e.g. `Ty`) and return new trait goals arising from it, so the
     /// caller needs to deal with them.
-    pub(crate) fn try_unify<T: Zip<Interner>>(&mut self, t1: &T, t2: &T) -> InferResult<()> {
+    pub(crate) fn try_unify<T: ?Sized + Zip<Interner>>(
+        &mut self,
+        t1: &T,
+        t2: &T,
+    ) -> InferResult<()> {
         match self.var_unification_table.relate(
             Interner,
             &self.db,
@@ -452,13 +510,14 @@ impl<'a> InferenceTable<'a> {
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
         use chalk_ir::fold::TypeFolder;
+
+        #[derive(chalk_derive::FallibleTypeFolder)]
+        #[has_interner(Interner)]
         struct VarFudger<'a, 'b> {
             table: &'a mut InferenceTable<'b>,
             highest_known_var: InferenceVar,
         }
         impl<'a, 'b> TypeFolder<Interner> for VarFudger<'a, 'b> {
-            type Error = NoSolution;
-
             fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
                 self
             }
@@ -472,24 +531,24 @@ impl<'a> InferenceTable<'a> {
                 var: chalk_ir::InferenceVar,
                 kind: TyVariableKind,
                 _outer_binder: chalk_ir::DebruijnIndex,
-            ) -> chalk_ir::Fallible<chalk_ir::Ty<Interner>> {
-                Ok(if var < self.highest_known_var {
+            ) -> chalk_ir::Ty<Interner> {
+                if var < self.highest_known_var {
                     var.to_ty(Interner, kind)
                 } else {
                     self.table.new_type_var()
-                })
+                }
             }
 
             fn fold_inference_lifetime(
                 &mut self,
                 var: chalk_ir::InferenceVar,
                 _outer_binder: chalk_ir::DebruijnIndex,
-            ) -> chalk_ir::Fallible<chalk_ir::Lifetime<Interner>> {
-                Ok(if var < self.highest_known_var {
+            ) -> chalk_ir::Lifetime<Interner> {
+                if var < self.highest_known_var {
                     var.to_lifetime(Interner)
                 } else {
                     self.table.new_lifetime_var()
-                })
+                }
             }
 
             fn fold_inference_const(
@@ -497,12 +556,12 @@ impl<'a> InferenceTable<'a> {
                 ty: chalk_ir::Ty<Interner>,
                 var: chalk_ir::InferenceVar,
                 _outer_binder: chalk_ir::DebruijnIndex,
-            ) -> chalk_ir::Fallible<chalk_ir::Const<Interner>> {
-                Ok(if var < self.highest_known_var {
+            ) -> chalk_ir::Const<Interner> {
+                if var < self.highest_known_var {
                     var.to_const(Interner, ty)
                 } else {
                     self.table.new_const_var(ty)
-                })
+                }
             }
         }
 
@@ -512,7 +571,6 @@ impl<'a> InferenceTable<'a> {
         self.rollback_to(snapshot);
         result
             .fold_with(&mut VarFudger { table: self, highest_known_var }, DebruijnIndex::INNERMOST)
-            .expect("fold_with with VarFudger")
     }
 
     /// This checks whether any of the free variables in the `canonicalized`
@@ -598,11 +656,14 @@ impl<'a> InferenceTable<'a> {
             .build();
 
         let projection = {
-            let b = TyBuilder::assoc_type_projection(self.db, output_assoc_type);
+            let b = TyBuilder::subst_for_def(self.db, fn_once_trait, None);
             if b.remaining() != 2 {
                 return None;
             }
-            b.push(ty.clone()).push(arg_ty).build()
+            let fn_once_subst = b.push(ty.clone()).push(arg_ty).build();
+
+            TyBuilder::assoc_type_projection(self.db, output_assoc_type, Some(fn_once_subst))
+                .build()
         };
 
         let trait_env = self.trait_env.env.clone();
@@ -636,21 +697,24 @@ mod resolve {
     use chalk_ir::{
         cast::Cast,
         fold::{TypeFoldable, TypeFolder},
-        Fallible, NoSolution,
     };
     use hir_def::type_ref::ConstScalar;
 
-    pub(super) struct Resolver<'a, 'b, F> {
+    #[derive(chalk_derive::FallibleTypeFolder)]
+    #[has_interner(Interner)]
+    pub(super) struct Resolver<
+        'a,
+        'b,
+        F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
+    > {
         pub(super) table: &'a mut InferenceTable<'b>,
         pub(super) var_stack: &'a mut Vec<InferenceVar>,
         pub(super) fallback: F,
     }
-    impl<'a, 'b, 'i, F> TypeFolder<Interner> for Resolver<'a, 'b, F>
+    impl<'a, 'b, F> TypeFolder<Interner> for Resolver<'a, 'b, F>
     where
-        F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg + 'i,
+        F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
     {
-        type Error = NoSolution;
-
         fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
             self
         }
@@ -664,20 +728,19 @@ mod resolve {
             var: InferenceVar,
             kind: TyVariableKind,
             outer_binder: DebruijnIndex,
-        ) -> Fallible<Ty> {
+        ) -> Ty {
             let var = self.table.var_unification_table.inference_var_root(var);
             if self.var_stack.contains(&var) {
                 // recursive type
                 let default = self.table.fallback_value(var, kind).cast(Interner);
-                return Ok((self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                return (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
                     .assert_ty_ref(Interner)
-                    .clone());
+                    .clone();
             }
             let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
                 // known_ty may contain other variables that are known by now
                 self.var_stack.push(var);
-                let result =
-                    known_ty.fold_with(self, outer_binder).expect("fold failed unexpectedly");
+                let result = known_ty.fold_with(self, outer_binder);
                 self.var_stack.pop();
                 result.assert_ty_ref(Interner).clone()
             } else {
@@ -686,7 +749,7 @@ mod resolve {
                     .assert_ty_ref(Interner)
                     .clone()
             };
-            Ok(result)
+            result
         }
 
         fn fold_inference_const(
@@ -694,7 +757,7 @@ mod resolve {
             ty: Ty,
             var: InferenceVar,
             outer_binder: DebruijnIndex,
-        ) -> Fallible<Const> {
+        ) -> Const {
             let var = self.table.var_unification_table.inference_var_root(var);
             let default = ConstData {
                 ty: ty.clone(),
@@ -704,35 +767,33 @@ mod resolve {
             .cast(Interner);
             if self.var_stack.contains(&var) {
                 // recursive
-                return Ok((self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
+                return (self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
                     .assert_const_ref(Interner)
-                    .clone());
+                    .clone();
             }
-            let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
+            if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
                 // known_ty may contain other variables that are known by now
                 self.var_stack.push(var);
-                let result =
-                    known_ty.fold_with(self, outer_binder).expect("fold failed unexpectedly");
+                let result = known_ty.fold_with(self, outer_binder);
                 self.var_stack.pop();
                 result.assert_const_ref(Interner).clone()
             } else {
                 (self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
                     .assert_const_ref(Interner)
                     .clone()
-            };
-            Ok(result)
+            }
         }
 
         fn fold_inference_lifetime(
             &mut self,
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
-        ) -> Fallible<Lifetime> {
+        ) -> Lifetime {
             // fall back all lifetimes to 'static -- currently we don't deal
             // with any lifetimes, but we can sometimes get some lifetime
             // variables through Chalk's unification, and this at least makes
             // sure we don't leak them outside of inference
-            Ok(crate::static_lifetime())
+            crate::static_lifetime()
         }
     }
 }

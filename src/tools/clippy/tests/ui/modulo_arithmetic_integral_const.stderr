@@ -4,9 +4,9 @@ error: you are using modulo operator on constants with different signs: `-1 % 2`
 LL |     -1 % 2;
    |     ^^^^^^
    |
-   = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
    = note: double check for expected result especially when interoperating with different languages
    = note: or consider using `rem_euclid` or similar function
+   = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
 
 error: you are using modulo operator on constants with different signs: `1 % -2`
   --> $DIR/modulo_arithmetic_integral_const.rs:12:5

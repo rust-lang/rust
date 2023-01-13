@@ -7,10 +7,6 @@ xflags::xflags! {
 
     /// Run custom build command.
     cmd xtask {
-        default cmd help {
-            /// Print help information.
-            optional -h, --help
-        }
 
         /// Install rust-analyzer server or editor plugin.
         cmd install {
@@ -38,13 +34,20 @@ xflags::xflags! {
         cmd dist {
             optional --client-patch-version version: String
         }
+        /// Read a changelog AsciiDoc file and update the GitHub Releases entry in Markdown.
+        cmd publish-release-notes {
+            /// Only run conversion and show the result.
+            optional --dry-run
+            /// Target changelog file.
+            required changelog: String
+        }
         cmd metrics {
             optional --dry-run
         }
         /// Builds a benchmark version of rust-analyzer and puts it into `./target`.
-        cmd bb
+        cmd bb {
             required suffix: String
-        {}
+        }
     }
 }
 
@@ -58,19 +61,14 @@ pub struct Xtask {
 
 #[derive(Debug)]
 pub enum XtaskCmd {
-    Help(Help),
     Install(Install),
     FuzzTests(FuzzTests),
     Release(Release),
     Promote(Promote),
     Dist(Dist),
+    PublishReleaseNotes(PublishReleaseNotes),
     Metrics(Metrics),
     Bb(Bb),
-}
-
-#[derive(Debug)]
-pub struct Help {
-    pub help: bool,
 }
 
 #[derive(Debug)]
@@ -101,6 +99,13 @@ pub struct Dist {
 }
 
 #[derive(Debug)]
+pub struct PublishReleaseNotes {
+    pub changelog: String,
+
+    pub dry_run: bool,
+}
+
+#[derive(Debug)]
 pub struct Metrics {
     pub dry_run: bool,
 }
@@ -111,7 +116,10 @@ pub struct Bb {
 }
 
 impl Xtask {
-    pub const HELP: &'static str = Self::HELP_;
+    #[allow(dead_code)]
+    pub fn from_env_or_exit() -> Self {
+        Self::from_env_or_exit_()
+    }
 
     #[allow(dead_code)]
     pub fn from_env() -> xflags::Result<Self> {

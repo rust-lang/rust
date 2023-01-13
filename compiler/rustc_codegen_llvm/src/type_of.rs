@@ -140,7 +140,7 @@ fn struct_llfields<'a, 'tcx>(
         prev_effective_align = effective_field_align;
     }
     let padding_used = result.len() > field_count;
-    if !layout.is_unsized() && field_count > 0 {
+    if layout.is_sized() && field_count > 0 {
         if offset > layout.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
         }

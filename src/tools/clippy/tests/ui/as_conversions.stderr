@@ -4,8 +4,8 @@ error: using a potentially dangerous silent `as` conversion
 LL |     let i = 0u32 as u64;
    |             ^^^^^^^^^^^
    |
-   = note: `-D clippy::as-conversions` implied by `-D warnings`
    = help: consider using a safe wrapper for this conversion
+   = note: `-D clippy::as-conversions` implied by `-D warnings`
 
 error: using a potentially dangerous silent `as` conversion
   --> $DIR/as_conversions.rs:17:13

@@ -58,14 +58,15 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path = module.find_use_path(ctx.db(), ModuleDef::Trait(trait_))?;
+    let trait_path =
+        module.find_use_path(ctx.db(), ModuleDef::Trait(trait_), ctx.config.prefer_no_std)?;
 
     let field_type = field.ty()?;
     let field_name = field.name()?;
     let target = field.syntax().text_range();
     acc.add(
         AssistId("generate_deref", AssistKind::Generate),
-        format!("Generate `{:?}` impl using `{}`", deref_type_to_generate, field_name),
+        format!("Generate `{deref_type_to_generate:?}` impl using `{field_name}`"),
         target,
         |edit| {
             generate_edit(
@@ -84,8 +85,7 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let field = ctx.find_node_at_offset::<ast::TupleField>()?;
     let field_list = ctx.find_node_at_offset::<ast::TupleFieldList>()?;
-    let field_list_index =
-        field_list.syntax().children().into_iter().position(|s| &s == field.syntax())?;
+    let field_list_index = field_list.syntax().children().position(|s| &s == field.syntax())?;
 
     let deref_type_to_generate = match existing_deref_impl(&ctx.sema, &strukt) {
         None => DerefType::Deref,
@@ -98,13 +98,14 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path = module.find_use_path(ctx.db(), ModuleDef::Trait(trait_))?;
+    let trait_path =
+        module.find_use_path(ctx.db(), ModuleDef::Trait(trait_), ctx.config.prefer_no_std)?;
 
     let field_type = field.ty()?;
     let target = field.syntax().text_range();
     acc.add(
         AssistId("generate_deref", AssistKind::Generate),
-        format!("Generate `{:?}` impl using `{}`", deref_type_to_generate, field.syntax()),
+        format!("Generate `{deref_type_to_generate:?}` impl using `{field}`"),
         target,
         |edit| {
             generate_edit(
@@ -130,18 +131,16 @@ fn generate_edit(
     let start_offset = strukt.syntax().text_range().end();
     let impl_code = match deref_type {
         DerefType::Deref => format!(
-            r#"    type Target = {0};
+            r#"    type Target = {field_type_syntax};
 
     fn deref(&self) -> &Self::Target {{
-        &self.{1}
+        &self.{field_name}
     }}"#,
-            field_type_syntax, field_name
         ),
         DerefType::DerefMut => format!(
             r#"    fn deref_mut(&mut self) -> &mut Self::Target {{
-        &mut self.{}
+        &mut self.{field_name}
     }}"#,
-            field_name
         ),
     };
     let strukt_adt = ast::Adt::Struct(strukt);

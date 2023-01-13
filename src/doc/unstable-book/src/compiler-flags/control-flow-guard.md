@@ -39,7 +39,7 @@ It is strongly recommended to also enable CFG checks for all linked libraries, i
 
 To enable CFG in the standard library, use the [cargo `-Z build-std` functionality][build-std] to recompile the standard library with the same configuration options as the main program.
 
-[build-std]: https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std
+[build-std]: ../../cargo/reference/unstable.html#build-std
 
 For example:
 ```cmd

@@ -114,7 +114,7 @@
                 return $scope.levels[lint.level];
             };
 
-            var GROUPS_FILTER_DEFAULT = {
+            const GROUPS_FILTER_DEFAULT = {
                 cargo: true,
                 complexity: true,
                 correctness: true,
@@ -125,8 +125,12 @@
                 restriction: true,
                 style: true,
                 suspicious: true,
+            }
+
+            $scope.groups = {
+                ...GROUPS_FILTER_DEFAULT
             };
-            $scope.groups = GROUPS_FILTER_DEFAULT;
+
             const THEMES_DEFAULT = {
                 light: "Light",
                 rust: "Rust",
@@ -161,6 +165,13 @@
                     if (groups.hasOwnProperty(key)) {
                         groups[key] = value;
                     }
+                }
+            };
+
+            $scope.resetGroupsToDefault = function () {
+                const groups = $scope.groups;
+                for (const [key, value] of Object.entries(GROUPS_FILTER_DEFAULT)) {
+                    groups[key] = value;
                 }
             };
 

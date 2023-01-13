@@ -1,0 +1,8 @@
+error: unexpected expression: `5z`
+  --> $DIR/issue-104620.rs:3:16
+   |
+LL | #![rustc_dummy=5z]
+   |                ^^
+
+error: aborting due to previous error
+

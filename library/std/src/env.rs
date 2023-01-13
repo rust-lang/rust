@@ -570,6 +570,13 @@ impl Error for JoinPathsError {
 ///
 /// [msdn]: https://docs.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectorya
 ///
+/// # Deprecation
+///
+/// This function is deprecated because the behaviour on Windows is not correct.
+/// The 'HOME' environment variable is not standard on Windows, and may not produce
+/// desired results; for instance, under Cygwin or Mingw it will return `/home/you`
+/// when it should return `C:\Users\you`.
+///
 /// # Examples
 ///
 /// ```
@@ -582,7 +589,7 @@ impl Error for JoinPathsError {
 /// ```
 #[deprecated(
     since = "1.29.0",
-    note = "This function's behavior is unexpected and probably not what you want. \
+    note = "This function's behavior may be unexpected on Windows. \
             Consider using a crate from crates.io instead."
 )]
 #[must_use]
@@ -603,7 +610,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// # Platform-specific behavior
 ///
 /// On Unix, returns the value of the `TMPDIR` environment variable if it is
-/// set, otherwise for non-Android it returns `/tmp`. If Android, since there
+/// set, otherwise for non-Android it returns `/tmp`. On Android, since there
 /// is no global temporary folder (it is usually allocated per-app), it returns
 /// `/data/local/tmp`.
 /// On Windows, the behavior is equivalent to that of [`GetTempPath2`][GetTempPath2] /

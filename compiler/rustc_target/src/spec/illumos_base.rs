@@ -1,8 +1,8 @@
-use crate::spec::{cvs, FramePointer, LinkerFlavor, TargetOptions};
+use crate::spec::{cvs, Cc, FramePointer, LinkerFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let late_link_args = TargetOptions::link_args(
-        LinkerFlavor::Gcc,
+        LinkerFlavor::Unix(Cc::Yes),
         &[
             // The illumos libc contains a stack unwinding implementation, as
             // does libgcc_s.  The latter implementation includes several
@@ -30,7 +30,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         families: cvs!["unix"],
         is_like_solaris: true,
-        linker_is_gnu: false,
+        linker_flavor: LinkerFlavor::Unix(Cc::Yes),
         limit_rdylib_exports: false, // Linker doesn't support this
         frame_pointer: FramePointer::Always,
         eh_frame_header: false,

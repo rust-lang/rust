@@ -1,0 +1,12 @@
+[package]
+name = "cdylib"
+version = "0.1.0"
+authors = ["Miri Team"]
+edition = "2018"
+
+[lib]
+# cargo-miri used to handle `cdylib` crate-type specially (https://github.com/rust-lang/miri/pull/1577).
+crate-type = ["cdylib"]
+
+[dependencies]
+byteorder = "1.0" # to test dependencies of sub-crates

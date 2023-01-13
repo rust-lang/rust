@@ -116,6 +116,15 @@ fn generate_enum_projection_method(
     assist_description: &str,
     props: ProjectionProps,
 ) -> Option<()> {
+    let ProjectionProps {
+        fn_name_prefix,
+        self_param,
+        return_prefix,
+        return_suffix,
+        happy_case,
+        sad_case,
+    } = props;
+
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let variant_name = variant.name()?;
     let parent_enum = ast::Adt::Enum(variant.parent_enum());
@@ -125,7 +134,7 @@ fn generate_enum_projection_method(
             let (field,) = record.fields().collect_tuple()?;
             let name = field.name()?.to_string();
             let ty = field.ty()?;
-            let pattern_suffix = format!(" {{ {} }}", name);
+            let pattern_suffix = format!(" {{ {name} }}");
             (pattern_suffix, ty, name)
         }
         ast::StructKind::Tuple(tuple) => {
@@ -136,11 +145,10 @@ fn generate_enum_projection_method(
         ast::StructKind::Unit => return None,
     };
 
-    let fn_name =
-        format!("{}_{}", props.fn_name_prefix, &to_lower_snake_case(&variant_name.text()));
+    let fn_name = format!("{fn_name_prefix}_{}", &to_lower_snake_case(&variant_name.text()));
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(ctx, &parent_enum, &fn_name)?;
+    let impl_def = find_struct_impl(ctx, &parent_enum, &[fn_name.clone()])?;
 
     let target = variant.syntax().text_range();
     acc.add_group(
@@ -149,26 +157,24 @@ fn generate_enum_projection_method(
         assist_description,
         target,
         |builder| {
-            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
+            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{v} "));
+
+            let field_type_syntax = field_type.syntax();
+
+            let must_use = if ctx.config.assist_emit_must_use {
+                "#[must_use]\n    "
+            } else {
+                ""
+            };
+
             let method = format!(
-                "    {0}fn {1}({2}) -> {3}{4}{5} {{
-        if let Self::{6}{7} = self {{
-            {8}({9})
+                "    {must_use}{vis}fn {fn_name}({self_param}) -> {return_prefix}{field_type_syntax}{return_suffix} {{
+        if let Self::{variant_name}{pattern_suffix} = self {{
+            {happy_case}({bound_name})
         }} else {{
-            {10}
+            {sad_case}
         }}
-    }}",
-                vis,
-                fn_name,
-                props.self_param,
-                props.return_prefix,
-                field_type.syntax(),
-                props.return_suffix,
-                variant_name,
-                pattern_suffix,
-                props.happy_case,
-                bound_name,
-                props.sad_case,
+    }}"
             );
 
             add_method_to_adt(builder, &parent_enum, impl_def, &method);

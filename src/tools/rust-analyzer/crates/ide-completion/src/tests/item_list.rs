@@ -1,10 +1,10 @@
 //! Completion tests for item list position.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
+use crate::tests::{check_edit, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{}{}", BASE_ITEMS_FIXTURE, ra_fixture));
+    let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"));
     expect.assert_eq(&actual)
 }
 
@@ -244,4 +244,124 @@ impl Test for () {
             kw self::
         "#]],
     );
+}
+
+#[test]
+fn after_unit_struct() {
+    check(
+        r#"struct S; f$0"#,
+        expect![[r#"
+            ma makro!(…)           macro_rules! makro
+            md module
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw fn
+            kw impl
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            sn macro_rules
+            sn tfn (Test function)
+            sn tmod (Test module)
+        "#]],
+    );
+}
+
+#[test]
+fn type_in_impl_trait() {
+    check_edit(
+        "type O",
+        r"
+struct A;
+trait B {
+type O: ?Sized;
+}
+impl B for A {
+$0
+}
+",
+        r#"
+struct A;
+trait B {
+type O: ?Sized;
+}
+impl B for A {
+type O = $0;
+}
+"#,
+    );
+    check_edit(
+        "type O",
+        r"
+struct A;
+trait B {
+type O;
+}
+impl B for A {
+$0
+}
+",
+        r#"
+struct A;
+trait B {
+type O;
+}
+impl B for A {
+type O = $0;
+}
+"#,
+    );
+    check_edit(
+        "type O",
+        r"
+struct A;
+trait B {
+type O: ?Sized = u32;
+}
+impl B for A {
+$0
+}
+",
+        r#"
+struct A;
+trait B {
+type O: ?Sized = u32;
+}
+impl B for A {
+type O = $0;
+}
+"#,
+    );
+    check_edit(
+        "type O",
+        r"
+struct A;
+trait B {
+type O = u32;
+}
+impl B for A {
+$0
+}
+",
+        r"
+struct A;
+trait B {
+type O = u32;
+}
+impl B for A {
+type O = $0;
+}
+",
+    )
 }

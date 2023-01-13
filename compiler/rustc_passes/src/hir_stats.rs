@@ -121,7 +121,7 @@ impl<'k> StatCollector<'k> {
 
     fn print(&self, title: &str, prefix: &str) {
         let mut nodes: Vec<_> = self.nodes.iter().collect();
-        nodes.sort_by_key(|&(_, ref node)| node.stats.count * node.stats.size);
+        nodes.sort_by_key(|(_, node)| node.stats.count * node.stats.size);
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
 
@@ -147,7 +147,7 @@ impl<'k> StatCollector<'k> {
             );
             if !node.subnodes.is_empty() {
                 let mut subnodes: Vec<_> = node.subnodes.iter().collect();
-                subnodes.sort_by_key(|&(_, ref subnode)| subnode.count * subnode.size);
+                subnodes.sort_by_key(|(_, subnode)| subnode.count * subnode.size);
 
                 for (label, subnode) in subnodes {
                     let size = subnode.count * subnode.size;
@@ -324,7 +324,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Slice,
                 Array,
                 Ptr,
-                Rptr,
+                Ref,
                 BareFn,
                 Never,
                 Tup,
@@ -362,14 +362,14 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         fk: hir_visit::FnKind<'v>,
         fd: &'v hir::FnDecl<'v>,
         b: hir::BodyId,
-        s: Span,
+        _: Span,
         id: hir::HirId,
     ) {
         self.record("FnDecl", Id::None, fd);
-        hir_visit::walk_fn(self, fk, fd, b, s, id)
+        hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
-    fn visit_use(&mut self, p: &'v hir::Path<'v>, hir_id: hir::HirId) {
+    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: hir::HirId) {
         // This is `visit_use`, but the type is `Path` so record it that way.
         self.record("Path", Id::None, p);
         hir_visit::walk_use(self, p, hir_id)
@@ -391,7 +391,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         record_variants!(
             (self, ii, ii.kind, Id::Node(ii.hir_id()), hir, ImplItem, ImplItemKind),
-            [Const, Fn, TyAlias]
+            [Const, Fn, Type]
         );
         hir_visit::walk_impl_item(self, ii)
     }
@@ -442,19 +442,19 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'v>, _id: hir::HirId) {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v hir::PathSegment<'v>) {
+    fn visit_path_segment(&mut self, path_segment: &'v hir::PathSegment<'v>) {
         self.record("PathSegment", Id::None, path_segment);
-        hir_visit::walk_path_segment(self, path_span, path_segment)
+        hir_visit::walk_path_segment(self, path_segment)
     }
 
-    fn visit_generic_args(&mut self, sp: Span, ga: &'v hir::GenericArgs<'v>) {
+    fn visit_generic_args(&mut self, ga: &'v hir::GenericArgs<'v>) {
         self.record("GenericArgs", Id::None, ga);
-        hir_visit::walk_generic_args(self, sp, ga)
+        hir_visit::walk_generic_args(self, ga)
     }
 
     fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding<'v>) {
@@ -560,13 +560,14 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_expr(&mut self, e: &'v ast::Expr) {
+        #[rustfmt::skip]
         record_variants!(
             (self, e, e.kind, Id::None, ast, Expr, ExprKind),
             [
                 Box, Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
                 If, While, ForLoop, Loop, Match, Closure, Block, Async, Await, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
-                InlineAsm, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet, Err
+                InlineAsm, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet, IncludedBytes, Err
             ]
         );
         ast_visit::walk_expr(self, e)
@@ -579,7 +580,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Slice,
                 Array,
                 Ptr,
-                Rptr,
+                Ref,
                 BareFn,
                 Never,
                 Tup,
@@ -612,15 +613,15 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_where_predicate(self, p)
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, s: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, _: Span, _: NodeId) {
         self.record("FnDecl", Id::None, fk.decl());
-        ast_visit::walk_fn(self, fk, s)
+        ast_visit::walk_fn(self, fk)
     }
 
     fn visit_assoc_item(&mut self, i: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
         record_variants!(
             (self, i, i.kind, Id::None, ast, AssocItem, AssocItemKind),
-            [Const, Fn, TyAlias, MacCall]
+            [Const, Fn, Type, MacCall]
         );
         ast_visit::walk_assoc_item(self, i, ctxt);
     }
@@ -652,21 +653,21 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     // one non-inline use (in `ast::Path::segments`). The latter case is more
     // common than the former case, so we implement this visitor and tolerate
     // the double counting in the former case.
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v ast::PathSegment) {
+    fn visit_path_segment(&mut self, path_segment: &'v ast::PathSegment) {
         self.record("PathSegment", Id::None, path_segment);
-        ast_visit::walk_path_segment(self, path_span, path_segment)
+        ast_visit::walk_path_segment(self, path_segment)
     }
 
     // `GenericArgs` has one inline use (in `ast::AssocConstraint::gen_args`) and one
     // non-inline use (in `ast::PathSegment::args`). The latter case is more
     // common, so we implement `visit_generic_args` and tolerate the double
     // counting in the former case.
-    fn visit_generic_args(&mut self, sp: Span, g: &'v ast::GenericArgs) {
+    fn visit_generic_args(&mut self, g: &'v ast::GenericArgs) {
         record_variants!(
             (self, g, g, Id::None, ast, GenericArgs, GenericArgs),
             [AngleBracketed, Parenthesized]
         );
-        ast_visit::walk_generic_args(self, sp, g)
+        ast_visit::walk_generic_args(self, g)
     }
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {

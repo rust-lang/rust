@@ -23,7 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config \
   xz-utils \
   lld \
-  clang
+  clang \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -45,4 +46,4 @@ ENV RUST_CONFIGURE_ARGS \
 
 ENV SCRIPT \
   python3 ../x.py --stage 2 build && \
-  python3 ../x.py --stage 2 test src/test/run-make-fulldeps --test-args clang
+  python3 ../x.py --stage 2 test tests/run-make-fulldeps --test-args clang

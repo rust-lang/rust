@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 //! As part of generating the regions, if you enable `-Zdump-mir=nll`,
 //! we will generate an annotated copy of the MIR that includes the
 //! state of region inference. This code handles emitting the region
@@ -74,8 +76,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
         constraints.sort_by_key(|c| (c.sup, c.sub));
         for constraint in &constraints {
-            let OutlivesConstraint { sup, sub, locations, category, span, variance_info: _ } =
-                constraint;
+            let OutlivesConstraint { sup, sub, locations, category, span, .. } = constraint;
             let (name, arg) = match locations {
                 Locations::All(span) => {
                     ("All", tcx.sess.source_map().span_to_embeddable_string(*span))

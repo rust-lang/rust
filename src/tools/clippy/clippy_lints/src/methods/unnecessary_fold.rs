@@ -49,15 +49,12 @@ pub(super) fn check(
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = if replacement_has_args {
                     format!(
-                        "{replacement}(|{s}| {r})",
-                        replacement = replacement_method_name,
-                        s = second_arg_ident,
+                        "{replacement_method_name}(|{second_arg_ident}| {r})",
                         r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
                     )
                 } else {
                     format!(
-                        "{replacement}()",
-                        replacement = replacement_method_name,
+                        "{replacement_method_name}()",
                     )
                 };
 

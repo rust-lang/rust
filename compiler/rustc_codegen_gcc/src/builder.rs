@@ -444,11 +444,23 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block.end_with_switch(None, value, default_block, &gcc_cases);
     }
 
-    fn invoke(&mut self, typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+    fn invoke(
+        &mut self,
+        typ: Type<'gcc>,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        func: RValue<'gcc>,
+        args: &[RValue<'gcc>],
+        then: Block<'gcc>,
+        catch: Block<'gcc>,
+        _funclet: Option<&Funclet>,
+    ) -> RValue<'gcc> {
         // TODO(bjorn3): Properly implement unwinding.
-        let call_site = self.call(typ, func, args, None);
+        let call_site = self.call(typ, None, func, args, None);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(None, condition, then, catch);
+        if let Some(_fn_abi) = fn_abi {
+            // TODO(bjorn3): Apply function attributes
+        }
         call_site
     }
 
@@ -643,11 +655,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.current_func().new_local(None, aligned_type, &format!("stack_var_{}", self.stack_var_count.get())).get_address(None)
     }
 
-    fn dynamic_alloca(&mut self, _ty: Type<'gcc>, _align: Align) -> RValue<'gcc> {
-        unimplemented!();
-    }
-
-    fn array_alloca(&mut self, _ty: Type<'gcc>, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
+    fn byte_array_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
         unimplemented!();
     }
 
@@ -747,11 +755,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         OperandRef { val, layout: place.layout }
     }
 
-    fn write_operand_repeatedly(mut self, cg_elem: OperandRef<'tcx, RValue<'gcc>>, count: u64, dest: PlaceRef<'tcx, RValue<'gcc>>) -> Self {
+    fn write_operand_repeatedly(&mut self, cg_elem: OperandRef<'tcx, RValue<'gcc>>, count: u64, dest: PlaceRef<'tcx, RValue<'gcc>>) {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(&mut self, zero).llval;
-        let end = dest.project_index(&mut self, count).llval;
+        let start = dest.project_index(self, zero).llval;
+        let end = dest.project_index(self, count).llval;
 
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
@@ -770,14 +778,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         self.switch_to_block(body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
-        cg_elem.val.store(&mut self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
+        cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
         let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
         self.llbb().add_assignment(None, current, next);
         self.br(header_bb);
 
         self.switch_to_block(next_bb);
-        self
     }
 
     fn range_metadata(&mut self, _load: RValue<'gcc>, _range: WrappingRange) {
@@ -1112,18 +1119,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
-        let field1 = self.context.new_field(None, self.u8_type.make_pointer(), "landing_pad_field_1");
-        let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
-        let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
-        self.current_func().new_local(None, struct_type.as_type(), "landing_pad")
-            .to_rvalue()
+    fn cleanup_landing_pad(&mut self, _pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+        (
+            self.current_func().new_local(None, self.u8_type.make_pointer(), "landing_pad0")
+                .to_rvalue(),
+            self.current_func().new_local(None, self.i32_type, "landing_pad1").to_rvalue(),
+        )
         // TODO(antoyo): Properly implement unwinding.
         // the above is just to make the compilation work as it seems
         // rustc_codegen_ssa now calls the unwinding builder methods even on panic=abort.
     }
 
-    fn resume(&mut self, _exn: RValue<'gcc>) {
+    fn resume(&mut self, _exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
         // TODO(bjorn3): Properly implement unwinding.
         self.unreachable();
     }
@@ -1227,16 +1234,27 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn call(&mut self, _typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], funclet: Option<&Funclet>) -> RValue<'gcc> {
+    fn call(
+        &mut self,
+        _typ: Type<'gcc>,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        func: RValue<'gcc>,
+        args: &[RValue<'gcc>],
+        funclet: Option<&Funclet>,
+    ) -> RValue<'gcc> {
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute(func) };
-        if self.functions.borrow().values().find(|value| **value == gcc_func).is_some() {
+        let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
             self.function_call(func, args, funclet)
         }
         else {
             // If it's a not function that was defined, it's a function pointer.
             self.function_ptr_call(func, args, funclet)
+        };
+        if let Some(_fn_abi) = fn_abi {
+            // TODO(bjorn3): Apply function attributes
         }
+        call
     }
 
     fn zext(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {

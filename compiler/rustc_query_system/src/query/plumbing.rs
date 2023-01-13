@@ -2,9 +2,9 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
+use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex};
+use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
-use crate::query::config::{QueryDescription, QueryVTable};
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use crate::values::Value;
@@ -19,6 +19,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
+use std::borrow::Borrow;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
@@ -27,26 +28,29 @@ use std::mem;
 use std::ptr;
 use thin_vec::ThinVec;
 
-pub struct QueryState<K> {
+use super::QueryConfig;
+
+pub struct QueryState<K, D: DepKind> {
     #[cfg(parallel_compiler)]
-    active: Sharded<FxHashMap<K, QueryResult>>,
+    active: Sharded<FxHashMap<K, QueryResult<D>>>,
     #[cfg(not(parallel_compiler))]
-    active: Lock<FxHashMap<K, QueryResult>>,
+    active: Lock<FxHashMap<K, QueryResult<D>>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
-enum QueryResult {
+enum QueryResult<D: DepKind> {
     /// An already executing query. The query job can be used to await for its completion.
-    Started(QueryJob),
+    Started(QueryJob<D>),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
     /// silently panic.
     Poisoned,
 }
 
-impl<K> QueryState<K>
+impl<K, D> QueryState<K, D>
 where
     K: Eq + Hash + Clone + Debug,
+    D: DepKind,
 {
     pub fn all_inactive(&self) -> bool {
         #[cfg(parallel_compiler)]
@@ -60,11 +64,11 @@ where
         }
     }
 
-    pub fn try_collect_active_jobs<CTX: Copy>(
+    pub fn try_collect_active_jobs<Qcx: Copy>(
         &self,
-        tcx: CTX,
-        make_query: fn(CTX, K) -> QueryStackFrame,
-        jobs: &mut QueryMap,
+        qcx: Qcx,
+        make_query: fn(Qcx, K) -> QueryStackFrame<D>,
+        jobs: &mut QueryMap<D>,
     ) -> Option<()> {
         #[cfg(parallel_compiler)]
         {
@@ -74,7 +78,7 @@ where
             for shard in shards.iter() {
                 for (k, v) in shard.iter() {
                     if let QueryResult::Started(ref job) = *v {
-                        let query = make_query(tcx, k.clone());
+                        let query = make_query(qcx, k.clone());
                         jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
                     }
                 }
@@ -88,7 +92,7 @@ where
             // really hurt much.)
             for (k, v) in self.active.try_lock()?.iter() {
                 if let QueryResult::Started(ref job) = *v {
-                    let query = make_query(tcx, k.clone());
+                    let query = make_query(qcx, k.clone());
                     jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
                 }
             }
@@ -98,55 +102,56 @@ where
     }
 }
 
-impl<K> Default for QueryState<K> {
-    fn default() -> QueryState<K> {
+impl<K, D: DepKind> Default for QueryState<K, D> {
+    fn default() -> QueryState<K, D> {
         QueryState { active: Default::default() }
     }
 }
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-struct JobOwner<'tcx, K>
+struct JobOwner<'tcx, K, D: DepKind>
 where
     K: Eq + Hash + Clone,
 {
-    state: &'tcx QueryState<K>,
+    state: &'tcx QueryState<K, D>,
     key: K,
     id: QueryJobId,
 }
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<CTX, V, R>(
-    tcx: CTX,
-    error: CycleError,
+fn mk_cycle<Qcx, V, R, D: DepKind>(
+    qcx: Qcx,
+    cycle_error: CycleError<D>,
     handler: HandleCycleError,
     cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
 where
-    CTX: QueryContext,
-    V: std::fmt::Debug + Value<CTX::DepContext>,
+    Qcx: QueryContext + crate::query::HasDepContext<DepKind = D>,
+    V: std::fmt::Debug + Value<Qcx::DepContext, Qcx::DepKind>,
     R: Clone,
 {
-    let error = report_cycle(tcx.dep_context().sess(), error);
-    let value = handle_cycle_error(*tcx.dep_context(), error, handler);
+    let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
+    let value = handle_cycle_error(*qcx.dep_context(), &cycle_error, error, handler);
     cache.store_nocache(value)
 }
 
-fn handle_cycle_error<CTX, V>(
-    tcx: CTX,
+fn handle_cycle_error<Tcx, V>(
+    tcx: Tcx,
+    cycle_error: &CycleError<Tcx::DepKind>,
     mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
     handler: HandleCycleError,
 ) -> V
 where
-    CTX: DepContext,
-    V: Value<CTX>,
+    Tcx: DepContext,
+    V: Value<Tcx, Tcx::DepKind>,
 {
     use HandleCycleError::*;
     match handler {
         Error => {
             error.emit();
-            Value::from_cycle_error(tcx)
+            Value::from_cycle_error(tcx, &cycle_error.cycle)
         }
         Fatal => {
             error.emit();
@@ -155,12 +160,12 @@ where
         }
         DelayBug => {
             error.delay_as_bug();
-            Value::from_cycle_error(tcx)
+            Value::from_cycle_error(tcx, &cycle_error.cycle)
         }
     }
 }
 
-impl<'tcx, K> JobOwner<'tcx, K>
+impl<'tcx, K, D: DepKind> JobOwner<'tcx, K, D>
 where
     K: Eq + Hash + Clone,
 {
@@ -173,14 +178,14 @@ where
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    fn try_start<'b, CTX>(
-        tcx: &'b CTX,
-        state: &'b QueryState<K>,
+    fn try_start<'b, Qcx>(
+        qcx: &'b Qcx,
+        state: &'b QueryState<K, Qcx::DepKind>,
         span: Span,
         key: K,
-    ) -> TryGetJob<'b, K>
+    ) -> TryGetJob<'b, K, D>
     where
-        CTX: QueryContext,
+        Qcx: QueryContext + crate::query::HasDepContext<DepKind = D>,
     {
         #[cfg(parallel_compiler)]
         let mut state_lock = state.active.get_shard_by_value(&key).lock();
@@ -190,8 +195,8 @@ where
 
         match lock.entry(key) {
             Entry::Vacant(entry) => {
-                let id = tcx.next_job_id();
-                let job = tcx.current_query_job();
+                let id = qcx.next_job_id();
+                let job = qcx.current_query_job();
                 let job = QueryJob::new(id, span, job);
 
                 let key = entry.key().clone();
@@ -210,8 +215,8 @@ where
                         // If we are single-threaded we know that we have cycle error,
                         // so we just return the error.
                         return TryGetJob::Cycle(id.find_cycle_in_stack(
-                            tcx.try_collect_active_jobs().unwrap(),
-                            &tcx.current_query_job(),
+                            qcx.try_collect_active_jobs().unwrap(),
+                            &qcx.current_query_job(),
                             span,
                         ));
                     }
@@ -220,7 +225,7 @@ where
                         // For parallel queries, we'll block and wait until the query running
                         // in another thread has completed. Record how long we wait in the
                         // self-profiler.
-                        let query_blocked_prof_timer = tcx.dep_context().profiler().query_blocked();
+                        let query_blocked_prof_timer = qcx.dep_context().profiler().query_blocked();
 
                         // Get the latch out
                         let latch = job.latch();
@@ -229,7 +234,7 @@ where
 
                         // With parallel queries we might just have to wait on some other
                         // thread.
-                        let result = latch.wait_on(tcx.current_query_job(), span);
+                        let result = latch.wait_on(qcx.current_query_job(), span);
 
                         match result {
                             Ok(()) => TryGetJob::JobCompleted(query_blocked_prof_timer),
@@ -275,9 +280,10 @@ where
     }
 }
 
-impl<'tcx, K> Drop for JobOwner<'tcx, K>
+impl<'tcx, K, D> Drop for JobOwner<'tcx, K, D>
 where
     K: Eq + Hash + Clone,
+    D: DepKind,
 {
     #[inline(never)]
     #[cold]
@@ -303,19 +309,20 @@ where
 }
 
 #[derive(Clone)]
-pub(crate) struct CycleError {
+pub(crate) struct CycleError<D: DepKind> {
     /// The query and related span that uses the cycle.
-    pub usage: Option<(Span, QueryStackFrame)>,
-    pub cycle: Vec<QueryInfo>,
+    pub usage: Option<(Span, QueryStackFrame<D>)>,
+    pub cycle: Vec<QueryInfo<D>>,
 }
 
 /// The result of `try_start`.
-enum TryGetJob<'tcx, K>
+enum TryGetJob<'tcx, K, D>
 where
     K: Eq + Hash + Clone,
+    D: DepKind,
 {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
-    NotYetStarted(JobOwner<'tcx, K>),
+    NotYetStarted(JobOwner<'tcx, K, D>),
 
     /// The query was already completed.
     /// Returns the result of the query and its dep-node index
@@ -324,7 +331,7 @@ where
     JobCompleted(TimingGuard<'tcx>),
 
     /// Trying to execute the query resulted in a cycle.
-    Cycle(CycleError),
+    Cycle(CycleError<D>),
 }
 
 /// Checks if the query is already computed and in the cache.
@@ -332,16 +339,16 @@ where
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
 #[inline]
-pub fn try_get_cached<'a, CTX, C, R, OnHit>(
-    tcx: CTX,
-    cache: &'a C,
+pub fn try_get_cached<Tcx, C, R, OnHit>(
+    tcx: Tcx,
+    cache: &C,
     key: &C::Key,
     // `on_hit` can be called while holding a lock to the query cache
     on_hit: OnHit,
 ) -> Result<R, ()>
 where
     C: QueryCache,
-    CTX: DepContext,
+    Tcx: DepContext,
     OnHit: FnOnce(&C::Stored) -> R,
 {
     cache.lookup(&key, |value, index| {
@@ -353,29 +360,42 @@ where
     })
 }
 
-fn try_execute_query<CTX, C>(
-    tcx: CTX,
-    state: &QueryState<C::Key>,
-    cache: &C,
+fn try_execute_query<Q, Qcx>(
+    qcx: Qcx,
+    state: &QueryState<Q::Key, Qcx::DepKind>,
+    cache: &Q::Cache,
     span: Span,
-    key: C::Key,
-    dep_node: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVTable<CTX, C::Key, C::Value>,
-) -> (C::Stored, Option<DepNodeIndex>)
+    key: Q::Key,
+    dep_node: Option<DepNode<Qcx::DepKind>>,
+) -> (Q::Stored, Option<DepNodeIndex>)
 where
-    C: QueryCache,
-    C::Key: Clone + DepNodeParams<CTX::DepContext>,
-    C::Value: Value<CTX::DepContext>,
-    CTX: QueryContext,
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
 {
-    match JobOwner::<'_, C::Key>::try_start(&tcx, state, span, key.clone()) {
+    match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, span, key.clone()) {
         TryGetJob::NotYetStarted(job) => {
-            let (result, dep_node_index) = execute_job(tcx, key, dep_node, query, job.id);
+            let (result, dep_node_index) =
+                execute_job::<Q, Qcx>(qcx, key.clone(), dep_node, job.id);
+            if Q::FEEDABLE {
+                // We may have put a value inside the cache from inside the execution.
+                // Verify that it has the same hash as what we have now, to ensure consistency.
+                let _ = cache.lookup(&key, |cached_result, _| {
+                    let hasher = Q::HASH_RESULT.expect("feedable forbids no_hash");
+
+                    let old_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| hasher(&mut hcx, cached_result.borrow()));
+                    let new_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| hasher(&mut hcx, &result));
+                    debug_assert_eq!(
+                        old_hash, new_hash,
+                        "Computed query value for {:?}({:?}) is inconsistent with fed value,\ncomputed={:#?}\nfed={:#?}",
+                        Q::DEP_KIND, key, result, cached_result,
+                    );
+                });
+            }
             let result = job.complete(cache, result, dep_node_index);
             (result, Some(dep_node_index))
         }
         TryGetJob::Cycle(error) => {
-            let result = mk_cycle(tcx, error, query.handle_cycle_error, cache);
+            let result = mk_cycle(qcx, error, Q::HANDLE_CYCLE_ERROR, cache);
             (result, None)
         }
         #[cfg(parallel_compiler)]
@@ -384,8 +404,8 @@ where
                 .lookup(&key, |value, index| (value.clone(), index))
                 .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
 
-            if std::intrinsics::unlikely(tcx.dep_context().profiler().enabled()) {
-                tcx.dep_context().profiler().query_cache_hit(index.into());
+            if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
+                qcx.dep_context().profiler().query_cache_hit(index.into());
             }
             query_blocked_prof_timer.finish_with_query_invocation_id(index.into());
 
@@ -394,61 +414,60 @@ where
     }
 }
 
-fn execute_job<CTX, K, V>(
-    tcx: CTX,
-    key: K,
-    mut dep_node_opt: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVTable<CTX, K, V>,
+fn execute_job<Q, Qcx>(
+    qcx: Qcx,
+    key: Q::Key,
+    mut dep_node_opt: Option<DepNode<Qcx::DepKind>>,
     job_id: QueryJobId,
-) -> (V, DepNodeIndex)
+) -> (Q::Value, DepNodeIndex)
 where
-    K: Clone + DepNodeParams<CTX::DepContext>,
-    V: Debug,
-    CTX: QueryContext,
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
 {
-    let dep_graph = tcx.dep_context().dep_graph();
+    let dep_graph = qcx.dep_context().dep_graph();
 
     // Fast path for when incr. comp. is off.
     if !dep_graph.is_fully_enabled() {
-        let prof_timer = tcx.dep_context().profiler().query_provider();
-        let result = tcx.start_query(job_id, query.depth_limit, None, || {
-            query.compute(*tcx.dep_context(), key)
+        let prof_timer = qcx.dep_context().profiler().query_provider();
+        let result = qcx.start_query(job_id, Q::DEPTH_LIMIT, None, || {
+            Q::compute(qcx, &key)(*qcx.dep_context(), key)
         });
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
         return (result, dep_node_index);
     }
 
-    if !query.anon && !query.eval_always {
+    if !Q::ANON && !Q::EVAL_ALWAYS {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node =
-            dep_node_opt.get_or_insert_with(|| query.to_dep_node(*tcx.dep_context(), &key));
+            dep_node_opt.get_or_insert_with(|| Q::construct_dep_node(*qcx.dep_context(), &key));
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        if let Some(ret) = tcx.start_query(job_id, false, None, || {
-            try_load_from_disk_and_cache_in_memory(tcx, &key, &dep_node, query)
+        if let Some(ret) = qcx.start_query(job_id, false, None, || {
+            try_load_from_disk_and_cache_in_memory::<Q, Qcx>(qcx, &key, &dep_node)
         }) {
             return ret;
         }
     }
 
-    let prof_timer = tcx.dep_context().profiler().query_provider();
+    let prof_timer = qcx.dep_context().profiler().query_provider();
     let diagnostics = Lock::new(ThinVec::new());
 
     let (result, dep_node_index) =
-        tcx.start_query(job_id, query.depth_limit, Some(&diagnostics), || {
-            if query.anon {
-                return dep_graph.with_anon_task(*tcx.dep_context(), query.dep_kind, || {
-                    query.compute(*tcx.dep_context(), key)
+        qcx.start_query(job_id, Q::DEPTH_LIMIT, Some(&diagnostics), || {
+            if Q::ANON {
+                return dep_graph.with_anon_task(*qcx.dep_context(), Q::DEP_KIND, || {
+                    Q::compute(qcx, &key)(*qcx.dep_context(), key)
                 });
             }
 
             // `to_dep_node` is expensive for some `DepKind`s.
             let dep_node =
-                dep_node_opt.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
+                dep_node_opt.unwrap_or_else(|| Q::construct_dep_node(*qcx.dep_context(), &key));
 
-            dep_graph.with_task(dep_node, *tcx.dep_context(), key, query.compute, query.hash_result)
+            let task = Q::compute(qcx, &key);
+            dep_graph.with_task(dep_node, *qcx.dep_context(), key, task, Q::HASH_RESULT)
         });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -457,56 +476,54 @@ where
     let side_effects = QuerySideEffects { diagnostics };
 
     if std::intrinsics::unlikely(!side_effects.is_empty()) {
-        if query.anon {
-            tcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
+        if Q::ANON {
+            qcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
         } else {
-            tcx.store_side_effects(dep_node_index, side_effects);
+            qcx.store_side_effects(dep_node_index, side_effects);
         }
     }
 
     (result, dep_node_index)
 }
 
-fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
-    tcx: CTX,
-    key: &K,
-    dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVTable<CTX, K, V>,
-) -> Option<(V, DepNodeIndex)>
+fn try_load_from_disk_and_cache_in_memory<Q, Qcx>(
+    qcx: Qcx,
+    key: &Q::Key,
+    dep_node: &DepNode<Qcx::DepKind>,
+) -> Option<(Q::Value, DepNodeIndex)>
 where
-    K: Clone,
-    CTX: QueryContext,
-    V: Debug,
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
 {
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
-    let dep_graph = tcx.dep_context().dep_graph();
-    let (prev_dep_node_index, dep_node_index) = dep_graph.try_mark_green(tcx, &dep_node)?;
+    let dep_graph = qcx.dep_context().dep_graph();
+    let (prev_dep_node_index, dep_node_index) = dep_graph.try_mark_green(qcx, &dep_node)?;
 
     debug_assert!(dep_graph.is_green(dep_node));
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if query.cache_on_disk {
-        let prof_timer = tcx.dep_context().profiler().incr_cache_loading();
+    if let Some(try_load_from_disk) = Q::try_load_from_disk(qcx, &key) {
+        let prof_timer = qcx.dep_context().profiler().incr_cache_loading();
 
         // The call to `with_query_deserialization` enforces that no new `DepNodes`
         // are created during deserialization. See the docs of that method for more
         // details.
-        let result = dep_graph
-            .with_query_deserialization(|| query.try_load_from_disk(tcx, prev_dep_node_index));
+        let result =
+            dep_graph.with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if let Some(result) = result {
             if std::intrinsics::unlikely(
-                tcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
+                qcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
             ) {
                 dep_graph.mark_debug_loaded_from_disk(*dep_node)
             }
 
-            let prev_fingerprint = tcx
+            let prev_fingerprint = qcx
                 .dep_context()
                 .dep_graph()
                 .prev_fingerprint_of(dep_node)
@@ -520,9 +537,9 @@ where
             // give us some coverage of potential bugs though.
             let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
             if std::intrinsics::unlikely(
-                try_verify || tcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
+                try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
             ) {
-                incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
+                incremental_verify_ich(*qcx.dep_context(), &result, dep_node, Q::HASH_RESULT);
             }
 
             return Some((result, dep_node_index));
@@ -531,18 +548,17 @@ where
         // We always expect to find a cached result for things that
         // can be forced from `DepNode`.
         debug_assert!(
-            !tcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
-            "missing on-disk cache entry for {:?}",
-            dep_node
+            !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
+            "missing on-disk cache entry for {dep_node:?}"
         );
     }
 
     // We could not load a result from the on-disk cache, so
     // recompute.
-    let prof_timer = tcx.dep_context().profiler().query_provider();
+    let prof_timer = qcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = dep_graph.with_ignore(|| query.compute(*tcx.dep_context(), key.clone()));
+    let result = dep_graph.with_ignore(|| Q::compute(qcx, key)(*qcx.dep_context(), key.clone()));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -555,35 +571,41 @@ where
     //
     // See issue #82920 for an example of a miscompilation that would get turned into
     // an ICE by this check
-    incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
+    incremental_verify_ich(*qcx.dep_context(), &result, dep_node, Q::HASH_RESULT);
 
     Some((result, dep_node_index))
 }
 
-fn incremental_verify_ich<CTX, K, V: Debug>(
-    tcx: CTX::DepContext,
+#[instrument(skip(tcx, result, hash_result), level = "debug")]
+pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
+    tcx: Tcx,
     result: &V,
-    dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVTable<CTX, K, V>,
-) where
-    CTX: QueryContext,
+    dep_node: &DepNode<Tcx::DepKind>,
+    hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+) -> Fingerprint
+where
+    Tcx: DepContext,
 {
     assert!(
         tcx.dep_graph().is_green(dep_node),
-        "fingerprint for green query instance not loaded from cache: {:?}",
-        dep_node,
+        "fingerprint for green query instance not loaded from cache: {dep_node:?}",
     );
 
-    debug!("BEGIN verify_ich({:?})", dep_node);
-    let new_hash = query.hash_result.map_or(Fingerprint::ZERO, |f| {
+    let new_hash = hash_result.map_or(Fingerprint::ZERO, |f| {
         tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
     });
+
     let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
-    debug!("END verify_ich({:?})", dep_node);
 
     if Some(new_hash) != old_hash {
-        incremental_verify_ich_cold(tcx.sess(), DebugArg::from(&dep_node), DebugArg::from(&result));
+        incremental_verify_ich_failed(
+            tcx.sess(),
+            DebugArg::from(&dep_node),
+            DebugArg::from(&result),
+        );
     }
+
+    new_hash
 }
 
 // This DebugArg business is largely a mirror of std::fmt::ArgumentV1, which is
@@ -628,13 +650,7 @@ impl std::fmt::Debug for DebugArg<'_> {
 // different implementations for LLVM to chew on (and filling up the final
 // binary, too).
 #[cold]
-fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: DebugArg<'_>) {
-    let run_cmd = if let Some(crate_name) = &sess.opts.crate_name {
-        format!("`cargo clean -p {}` or `cargo clean`", crate_name)
-    } else {
-        "`cargo clean`".to_string()
-    };
-
+fn incremental_verify_ich_failed(sess: &Session, dep_node: DebugArg<'_>, result: DebugArg<'_>) {
     // When we emit an error message and panic, we try to debug-print the `DepNode`
     // and query result. Unfortunately, this can cause us to run additional queries,
     // which may result in another fingerprint mismatch while we're in the middle
@@ -650,11 +666,17 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
     if old_in_panic {
         sess.emit_err(crate::error::Reentrant);
     } else {
+        let run_cmd = if let Some(crate_name) = &sess.opts.crate_name {
+            format!("`cargo clean -p {crate_name}` or `cargo clean`")
+        } else {
+            "`cargo clean`".to_string()
+        };
+
         sess.emit_err(crate::error::IncrementCompilation {
             run_cmd,
-            dep_node: format!("{:?}", dep_node),
+            dep_node: format!("{dep_node:?}"),
         });
-        panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
+        panic!("Found unstable fingerprints for {dep_node:?}: {result:?}");
     }
 
     INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));
@@ -669,26 +691,22 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
 ///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
-fn ensure_must_run<CTX, K, V>(
-    tcx: CTX,
-    key: &K,
-    query: &QueryVTable<CTX, K, V>,
-) -> (bool, Option<DepNode<CTX::DepKind>>)
+fn ensure_must_run<Q, Qcx>(qcx: Qcx, key: &Q::Key) -> (bool, Option<DepNode<Qcx::DepKind>>)
 where
-    K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
-    CTX: QueryContext,
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
 {
-    if query.eval_always {
+    if Q::EVAL_ALWAYS {
         return (true, None);
     }
 
     // Ensuring an anonymous query makes no sense
-    assert!(!query.anon);
+    assert!(!Q::ANON);
 
-    let dep_node = query.to_dep_node(*tcx.dep_context(), key);
+    let dep_node = Q::construct_dep_node(*qcx.dep_context(), key);
 
-    let dep_graph = tcx.dep_context().dep_graph();
-    match dep_graph.try_mark_green(tcx, &dep_node) {
+    let dep_graph = qcx.dep_context().dep_graph();
+    match dep_graph.try_mark_green(qcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -700,7 +718,7 @@ where
         }
         Some((_, dep_node_index)) => {
             dep_graph.read_index(dep_node_index);
-            tcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
+            qcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
             (false, None)
         }
     }
@@ -712,16 +730,15 @@ pub enum QueryMode {
     Ensure,
 }
 
-pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
+pub fn get_query<Q, Qcx, D>(qcx: Qcx, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
 where
-    Q: QueryDescription<CTX>,
-    Q::Key: DepNodeParams<CTX::DepContext>,
-    Q::Value: Value<CTX::DepContext>,
-    CTX: QueryContext,
+    D: DepKind,
+    Q: QueryConfig<Qcx>,
+    Q::Value: Value<Qcx::DepContext, D>,
+    Qcx: QueryContext,
 {
-    let query = Q::make_vtable(tcx, &key);
     let dep_node = if let QueryMode::Ensure = mode {
-        let (must_run, dep_node) = ensure_must_run(tcx, &key, &query);
+        let (must_run, dep_node) = ensure_must_run::<Q, _>(qcx, &key);
         if !must_run {
             return None;
         }
@@ -730,34 +747,33 @@ where
         None
     };
 
-    let (result, dep_node_index) = try_execute_query(
-        tcx,
-        Q::query_state(tcx),
-        Q::query_cache(tcx),
+    let (result, dep_node_index) = try_execute_query::<Q, Qcx>(
+        qcx,
+        Q::query_state(qcx),
+        Q::query_cache(qcx),
         span,
         key,
         dep_node,
-        &query,
     );
     if let Some(dep_node_index) = dep_node_index {
-        tcx.dep_context().dep_graph().read_index(dep_node_index)
+        qcx.dep_context().dep_graph().read_index(dep_node_index)
     }
     Some(result)
 }
 
-pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, dep_node: DepNode<CTX::DepKind>)
+pub fn force_query<Q, Qcx, D>(qcx: Qcx, key: Q::Key, dep_node: DepNode<Qcx::DepKind>)
 where
-    Q: QueryDescription<CTX>,
-    Q::Key: DepNodeParams<CTX::DepContext>,
-    Q::Value: Value<CTX::DepContext>,
-    CTX: QueryContext,
+    D: DepKind,
+    Q: QueryConfig<Qcx>,
+    Q::Value: Value<Qcx::DepContext, D>,
+    Qcx: QueryContext,
 {
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
-    let cache = Q::query_cache(tcx);
+    let cache = Q::query_cache(qcx);
     let cached = cache.lookup(&key, |_, index| {
-        if std::intrinsics::unlikely(tcx.dep_context().profiler().enabled()) {
-            tcx.dep_context().profiler().query_cache_hit(index.into());
+        if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
+            qcx.dep_context().profiler().query_cache_hit(index.into());
         }
     });
 
@@ -766,9 +782,8 @@ where
         Err(()) => {}
     }
 
-    let query = Q::make_vtable(tcx, &key);
-    let state = Q::query_state(tcx);
-    debug_assert!(!query.anon);
+    let state = Q::query_state(qcx);
+    debug_assert!(!Q::ANON);
 
-    try_execute_query(tcx, state, cache, DUMMY_SP, key, Some(dep_node), &query);
+    try_execute_query::<Q, _>(qcx, state, cache, DUMMY_SP, key, Some(dep_node));
 }

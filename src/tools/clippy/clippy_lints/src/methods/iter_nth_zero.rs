@@ -10,7 +10,7 @@ use rustc_span::sym;
 
 use super::ITER_NTH_ZERO;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
     if_chain! {
         if is_trait_method(cx, expr, sym::Iterator);
         if let Some((Constant::Int(0), _)) = constant(cx, cx.typeck_results(), arg);

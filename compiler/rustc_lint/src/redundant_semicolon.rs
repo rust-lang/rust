@@ -1,6 +1,5 @@
-use crate::{EarlyContext, EarlyLintPass, LintContext};
+use crate::{lints::RedundantSemicolonsDiag, EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast::{Block, StmtKind};
-use rustc_errors::{fluent, Applicability};
 use rustc_span::Span;
 
 declare_lint! {
@@ -48,11 +47,10 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
             return;
         }
 
-        cx.struct_span_lint(REDUNDANT_SEMICOLONS, span, |lint| {
-            lint.build(fluent::lint::redundant_semicolons)
-                .set_arg("multiple", multiple)
-                .span_suggestion(span, fluent::lint::suggestion, "", Applicability::MaybeIncorrect)
-                .emit();
-        });
+        cx.emit_spanned_lint(
+            REDUNDANT_SEMICOLONS,
+            span,
+            RedundantSemicolonsDiag { multiple, suggestion: span },
+        );
     }
 }

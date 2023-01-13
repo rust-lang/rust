@@ -53,6 +53,7 @@ pub(crate) fn complete_mod(
     let existing_mod_declarations = current_module
         .children(ctx.db)
         .filter_map(|module| Some(module.name(ctx.db)?.to_string()))
+        .filter(|module| module != ctx.original_token.text())
         .collect::<FxHashSet<_>>();
 
     let module_declaration_file =
@@ -348,6 +349,25 @@ fn ignored_bar() {}
             expect![[r#"
                 md bar;
                 md foo;
+            "#]],
+        );
+    }
+
+    #[test]
+    fn semi_colon_completion() {
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+//- /foo.rs
+mod bar {
+    mod baz$0
+}
+//- /foo/bar/baz.rs
+fn baz() {}
+"#,
+            expect![[r#"
+                md baz;
             "#]],
         );
     }

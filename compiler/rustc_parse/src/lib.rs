@@ -3,8 +3,8 @@
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
@@ -15,8 +15,7 @@ extern crate tracing;
 use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::Attribute;
-use rustc_ast::{AttrItem, MetaItem};
+use rustc_ast::{AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic, FatalError, Level, PResult};
@@ -33,12 +32,15 @@ use parser::{emit_unclosed_delims, make_unclosed_delims_error, Parser};
 pub mod lexer;
 pub mod validate_attr;
 
+mod errors;
+
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
 
-/// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
+/// A variant of 'panictry!' that works on a `Vec<Diagnostic>` instead of a single
+/// `DiagnosticBuilder`.
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => {{
         use rustc_errors::FatalError;
@@ -254,10 +256,12 @@ pub fn parse_cfg_attr(
     parse_sess: &ParseSess,
 ) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
     match attr.get_normal_item().args {
-        ast::MacArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
+        ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
+            if !tokens.is_empty() =>
+        {
             let msg = "wrong `cfg_attr` delimiters";
             crate::validate_attr::check_meta_bad_delim(parse_sess, dspan, delim, msg);
-            match parse_in(parse_sess, tts.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
+            match parse_in(parse_sess, tokens.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
                 Err(mut e) => {
                     e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))

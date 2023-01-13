@@ -130,10 +130,9 @@ pub struct UnsafetyCheckResult {
 }
 
 rustc_index::newtype_index! {
-    pub struct GeneratorSavedLocal {
-        derive [HashStable]
-        DEBUG_FORMAT = "_{}",
-    }
+    #[derive(HashStable)]
+    #[debug_format = "_{}"]
+    pub struct GeneratorSavedLocal {}
 }
 
 /// The layout of generator state.
@@ -327,7 +326,7 @@ rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 ///
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, HashStable, Lift, TypeVisitable, TypeFoldable)]
 pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
@@ -369,7 +368,7 @@ pub enum ConstraintCategory<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
 pub enum ReturnConstraint {
     Normal,
     ClosureUpvar(Field),
@@ -392,16 +391,9 @@ pub enum ClosureOutlivesSubject<'tcx> {
     Region(ty::RegionVid),
 }
 
-/// The constituent parts of a type level constant of kind ADT or array.
-#[derive(Copy, Clone, Debug, HashStable)]
-pub struct DestructuredConst<'tcx> {
-    pub variant: Option<VariantIdx>,
-    pub fields: &'tcx [ty::Const<'tcx>],
-}
-
 /// The constituent parts of a mir constant of kind ADT or array.
 #[derive(Copy, Clone, Debug, HashStable)]
-pub struct DestructuredMirConstant<'tcx> {
+pub struct DestructuredConstant<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ConstantKind<'tcx>],
 }

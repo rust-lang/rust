@@ -232,8 +232,13 @@ pub(crate) fn token_as_doc_comment(doc_token: &SyntaxToken) -> Option<DocComment
     (match_ast! {
         match doc_token {
             ast::Comment(comment) => TextSize::try_from(comment.prefix().len()).ok(),
-            ast::String(string) => doc_token.parent_ancestors().find_map(ast::Attr::cast)
-                .filter(|attr| attr.simple_name().as_deref() == Some("doc")).and_then(|_| string.open_quote_text_range().map(|it| it.len())),
+            ast::String(string) => {
+                doc_token.parent_ancestors().find_map(ast::Attr::cast).filter(|attr| attr.simple_name().as_deref() == Some("doc"))?;
+                if doc_token.parent_ancestors().find_map(ast::MacroCall::cast).filter(|mac| mac.path().and_then(|p| p.segment()?.name_ref()).as_ref().map(|n| n.text()).as_deref() == Some("include_str")).is_some() {
+                    return None;
+                }
+                string.open_quote_text_range().map(|it| it.len())
+            },
             _ => None,
         }
     }).map(|prefix_len| DocCommentToken { prefix_len, doc_token: doc_token.clone() })
@@ -268,7 +273,7 @@ impl DocCommentToken {
             let (in_expansion_range, link, ns) =
                 extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
                     let mapped = doc_mapping.map(range)?;
-                    (mapped.value.contains(abs_in_expansion_offset)).then(|| (mapped.value, link, ns))
+                    (mapped.value.contains(abs_in_expansion_offset)).then_some((mapped.value, link, ns))
                 })?;
             // get the relative range to the doc/attribute in the expansion
             let in_expansion_relative_range = in_expansion_range - descended_prefix_len - token_start;
@@ -280,7 +285,7 @@ impl DocCommentToken {
     }
 }
 
-fn broken_link_clone_cb<'a>(link: BrokenLink<'a>) -> Option<(CowStr<'a>, CowStr<'a>)> {
+fn broken_link_clone_cb(link: BrokenLink<'_>) -> Option<(CowStr<'_>, CowStr<'_>)> {
     Some((/*url*/ link.reference.clone(), /*title*/ link.reference))
 }
 
@@ -448,7 +453,7 @@ fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
             })?
         }
     };
-    Url::parse(&base).ok()?.join(&format!("{}/", display_name)).ok()
+    Url::parse(&base).ok()?.join(&format!("{display_name}/")).ok()
 }
 
 /// Get the filename and extension generated for a symbol by rustdoc.
@@ -483,7 +488,7 @@ fn filename_and_frag_for_def(
                 Some(kw) => {
                     format!("keyword.{}.html", kw.trim_matches('"'))
                 }
-                None => format!("{}/index.html", name),
+                None => format!("{name}/index.html"),
             },
             None => String::from("index.html"),
         },

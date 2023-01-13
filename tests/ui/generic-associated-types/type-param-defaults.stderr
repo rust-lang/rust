@@ -1,0 +1,20 @@
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/type-param-defaults.rs:6:16
+   |
+LL |     type Assoc<T = u32>;
+   |                ^^^^^^^
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/type-param-defaults.rs:11:16
+   |
+LL |     type Assoc<T = u32> = u64;
+   |                ^^^^^^^
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/type-param-defaults.rs:16:16
+   |
+LL |     type Assoc<T = u32> = T;
+   |                ^^^^^^^
+
+error: aborting due to 3 previous errors
+

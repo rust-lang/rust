@@ -17,6 +17,7 @@ use crate::MemFlags;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
+use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
 use rustc_target::spec::HasTargetSpec;
 
@@ -71,6 +72,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn invoke(
         &mut self,
         llty: Self::Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
         args: &[Self::Value],
         then: Self::BasicBlock,
@@ -133,8 +135,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: Scalar) -> Self::Value;
 
     fn alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
-    fn dynamic_alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
-    fn array_alloca(&mut self, ty: Self::Type, len: Self::Value, align: Align) -> Self::Value;
+    fn byte_array_alloca(&mut self, len: Self::Value, align: Align) -> Self::Value;
 
     fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
     fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
@@ -150,11 +151,11 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     /// Called for Rvalue::Repeat when the elem is neither a ZST nor optimizable using memset.
     fn write_operand_repeatedly(
-        self,
+        &mut self,
         elem: OperandRef<'tcx, Self::Value>,
         count: u64,
         dest: PlaceRef<'tcx, Self::Value>,
-    ) -> Self;
+    );
 
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
@@ -270,8 +271,8 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn set_personality_fn(&mut self, personality: Self::Value);
 
     // These are used by everyone except msvc
-    fn cleanup_landing_pad(&mut self, ty: Self::Type, pers_fn: Self::Value) -> Self::Value;
-    fn resume(&mut self, exn: Self::Value);
+    fn cleanup_landing_pad(&mut self, pers_fn: Self::Value) -> (Self::Value, Self::Value);
+    fn resume(&mut self, exn0: Self::Value, exn1: Self::Value);
 
     // These are used only by msvc
     fn cleanup_pad(&mut self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
@@ -320,6 +321,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn call(
         &mut self,
         llty: Self::Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,

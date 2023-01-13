@@ -6,6 +6,7 @@
 use super::{BasicBlock, Constant, Field, Local, SwitchTargets, UserTypeProjection};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
+use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty};
@@ -82,10 +83,31 @@ pub enum MirPhase {
     ///    access to. This occurs in generator bodies. Such locals do not behave like other locals,
     ///    because they eg may be aliased in surprising ways. Runtime MIR has no such special locals -
     ///    all generator bodies are lowered and so all places that look like locals really are locals.
-    ///  - Const prop lints: The lint pass which reports eg `200_u8 + 200_u8` as an error is run as a
-    ///    part of analysis to runtime MIR lowering. This means that transformations which may supress
-    ///    such errors may not run on analysis MIR.
+    ///
+    /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part
+    /// of analysis to runtime MIR lowering. To ensure lints are reported reliably, this means that
+    /// transformations which may suppress such errors should not run on analysis MIR.
     Runtime(RuntimePhase),
+}
+
+impl MirPhase {
+    pub fn name(&self) -> &'static str {
+        match *self {
+            MirPhase::Built => "built",
+            MirPhase::Analysis(AnalysisPhase::Initial) => "analysis",
+            MirPhase::Analysis(AnalysisPhase::PostCleanup) => "analysis-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
+            MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
+        }
+    }
+
+    pub fn reveal(&self) -> Reveal {
+        match *self {
+            MirPhase::Built | MirPhase::Analysis(_) => Reveal::UserFacing,
+            MirPhase::Runtime(_) => Reveal::All,
+        }
+    }
 }
 
 /// See [`MirPhase::Analysis`].
@@ -298,8 +320,10 @@ pub enum StatementKind<'tcx> {
     /// <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/> for
     /// more details.
     ///
-    /// For code that is not specific to stacked borrows, you should consider retags to read
-    /// and modify the place in an opaque way.
+    /// For code that is not specific to stacked borrows, you should consider retags to read and
+    /// modify the place in an opaque way.
+    ///
+    /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
     Retag(RetagKind, Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
@@ -386,7 +410,7 @@ impl std::fmt::Display for NonDivergingIntrinsic<'_> {
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub enum RetagKind {
-    /// The initial retag when entering a function.
+    /// The initial retag of arguments when entering a function.
     FnEntry,
     /// Retag preparing for a two-phase borrow.
     TwoPhase,
@@ -488,7 +512,7 @@ pub struct CopyNonOverlapping<'tcx> {
 ///     must also be `cleanup`. This is a part of the type system and checked statically, so it is
 ///     still an error to have such an edge in the CFG even if it's known that it won't be taken at
 ///     runtime.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum TerminatorKind<'tcx> {
     /// Block has one successor; we continue execution there.
     Goto { target: BasicBlock },
@@ -504,12 +528,6 @@ pub enum TerminatorKind<'tcx> {
     SwitchInt {
         /// The discriminant value being tested.
         discr: Operand<'tcx>,
-
-        /// The type of value being tested.
-        /// This is always the same as the type of `discr`.
-        /// FIXME: remove this redundant information. Currently, it is relied on by pretty-printing.
-        switch_ty: Ty<'tcx>,
-
         targets: SwitchTargets,
     },
 
@@ -546,14 +564,13 @@ pub enum TerminatorKind<'tcx> {
     Unreachable,
 
     /// The behavior of this statement differs significantly before and after drop elaboration.
-    /// After drop elaboration, `Drop` executes the drop glue for the specified place, after which
-    /// it continues execution/unwinds at the given basic blocks. It is possible that executing drop
-    /// glue is special - this would be part of Rust's memory model. (**FIXME**: due we have an
-    /// issue tracking if drop glue has any interesting semantics in addition to those of a function
-    /// call?)
     ///
-    /// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically, the
-    /// `Drop` will be executed if...
+    /// After drop elaboration: `Drop` terminators are a complete nop for types that have no drop
+    /// glue. For other types, `Drop` terminators behave exactly like a call to
+    /// `core::mem::drop_in_place` with a pointer to the given place.
+    ///
+    /// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically,
+    /// the `Drop` will be executed if...
     ///
     /// **Needs clarification**: End of that sentence. This in effect should document the exact
     /// behavior of drop elaboration. The following sounds vaguely right, but I'm not quite sure:
@@ -741,7 +758,7 @@ pub enum TerminatorKind<'tcx> {
 }
 
 /// Information about an assertion failure.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum AssertKind<O> {
     BoundsCheck { len: O, index: O },
     Overflow(BinOp, O, O),
@@ -829,6 +846,9 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///    generator has more than one variant, the parent place's variant index must be set, indicating
 ///    which variant is being used. If it has just one variant, the variant index may or may not be
 ///    included - the single possible variant is inferred if it is not included.
+///  - [`OpaqueCast`](ProjectionElem::OpaqueCast): This projection changes the place's type to the
+///    given one, and makes no other changes. A `OpaqueCast` projection on any type other than an
+///    opaque type from the current crate is not well-formed.
 ///  - [`ConstantIndex`](ProjectionElem::ConstantIndex): Computes an offset in units of `T` into the
 ///    place as described in the documentation for the `ProjectionElem`. The resulting address is
 ///    the parent's address plus that offset, and the type is `T`. This is only legal if the parent
@@ -863,7 +883,7 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///
 /// Rust currently requires that every place obey those two rules. This is checked by MIRI and taken
 /// advantage of by codegen (via `gep inbounds`). That is possibly subject to change.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Place<'tcx> {
     pub local: Local,
 
@@ -872,7 +892,7 @@ pub struct Place<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum ProjectionElem<V, T> {
     Deref,
     Field(Field, T),
@@ -928,6 +948,10 @@ pub enum ProjectionElem<V, T> {
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
     Downcast(Option<Symbol>, VariantIdx),
+
+    /// Like an explicit cast from an opaque type to a concrete type, but without
+    /// requiring an intermediate variable.
+    OpaqueCast(T),
 }
 
 /// Alias for projections as they appear in places, where the base is a place
@@ -955,7 +979,7 @@ pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 /// **Needs clarifiation:** Is loading a place that has its variant index set well-formed? Miri
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum Operand<'tcx> {
     /// Creates a value by loading the given place.
     ///
@@ -986,7 +1010,7 @@ pub enum Operand<'tcx> {
 /// Computing any rvalue begins by evaluating the places and operands in some order (**Needs
 /// clarification**: Which order?). These are then used to produce a "value" - the same kind of
 /// value that an [`Operand`] produces.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum Rvalue<'tcx> {
     /// Yields the operand unchanged
     Use(Operand<'tcx>),
@@ -1139,11 +1163,18 @@ pub enum CastKind {
     /// All sorts of pointer-to-pointer casts. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
     Pointer(PointerCast),
-    /// Remaining unclassified casts.
-    Misc,
+    /// Cast into a dyn* object.
+    DynStar,
+    IntToInt,
+    FloatToInt,
+    FloatToFloat,
+    IntToFloat,
+    PtrToPtr,
+    FnPtrToPtr,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum AggregateKind<'tcx> {
     /// The type is of the element
     Array(Ty<'tcx>),
@@ -1170,7 +1201,8 @@ pub enum NullOp {
     AlignOf,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
     Not,
@@ -1178,7 +1210,8 @@ pub enum UnOp {
     Neg,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum BinOp {
     /// The `+` operator (addition)
     Add,
@@ -1230,11 +1263,11 @@ pub enum BinOp {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
-    // These are in alphabetical order, which is easy to maintain.
-    #[cfg(not(bootstrap))]
+    // tidy-alphabetical-start
     static_assert_size!(AggregateKind<'_>, 40);
     static_assert_size!(Operand<'_>, 24);
     static_assert_size!(Place<'_>, 16);
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
+    // tidy-alphabetical-end
 }

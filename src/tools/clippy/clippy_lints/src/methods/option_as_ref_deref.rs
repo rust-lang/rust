@@ -1,27 +1,27 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{match_def_path, meets_msrv, msrvs, path_to_local_id, paths, peel_blocks};
+use clippy_utils::{match_def_path, path_to_local_id, paths, peel_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_semver::RustcVersion;
 use rustc_span::sym;
 
 use super::OPTION_AS_REF_DEREF;
 
 /// lint use of `_.as_ref().map(Deref::deref)` for `Option`s
-pub(super) fn check<'tcx>(
-    cx: &LateContext<'tcx>,
+pub(super) fn check(
+    cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     as_ref_recv: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,
     is_mut: bool,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) {
-    if !meets_msrv(msrv, msrvs::OPTION_AS_DEREF) {
+    if !msrv.meets(msrvs::OPTION_AS_DEREF) {
         return;
     }
 
@@ -32,8 +32,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    let deref_aliases: [&[&str]; 9] = [
-        &paths::DEREF_TRAIT_METHOD,
+    let deref_aliases: [&[&str]; 8] = [
         &paths::DEREF_MUT_TRAIT_METHOD,
         &paths::CSTRING_AS_C_STR,
         &paths::OS_STRING_AS_OS_STR,
@@ -45,12 +44,14 @@ pub(super) fn check<'tcx>(
     ];
 
     let is_deref = match map_arg.kind {
-        hir::ExprKind::Path(ref expr_qpath) => cx
-            .qpath_res(expr_qpath, map_arg.hir_id)
-            .opt_def_id()
-            .map_or(false, |fun_def_id| {
-                deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
-            }),
+        hir::ExprKind::Path(ref expr_qpath) => {
+            cx.qpath_res(expr_qpath, map_arg.hir_id)
+                .opt_def_id()
+                .map_or(false, |fun_def_id| {
+                    cx.tcx.is_diagnostic_item(sym::deref_method, fun_def_id)
+                        || deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
+                })
+        },
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let closure_body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(closure_body.value);
@@ -68,7 +69,8 @@ pub(super) fn check<'tcx>(
                         if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
                         then {
                             let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap();
-                            deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
+                            cx.tcx.is_diagnostic_item(sym::deref_method, method_did)
+                                || deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
                         } else {
                             false
                         }
@@ -98,13 +100,12 @@ pub(super) fn check<'tcx>(
             format!(".as_ref().map({})", snippet(cx, map_arg.span, ".."))
         };
         let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
-        let hint = format!("{}.{}()", snippet(cx, as_ref_recv.span, ".."), method_hint);
-        let suggestion = format!("try using {} instead", method_hint);
+        let hint = format!("{}.{method_hint}()", snippet(cx, as_ref_recv.span, ".."));
+        let suggestion = format!("try using {method_hint} instead");
 
         let msg = format!(
-            "called `{0}` on an Option value. This can be done more directly \
-            by calling `{1}` instead",
-            current_method, hint
+            "called `{current_method}` on an Option value. This can be done more directly \
+            by calling `{hint}` instead"
         );
         span_lint_and_sugg(
             cx,

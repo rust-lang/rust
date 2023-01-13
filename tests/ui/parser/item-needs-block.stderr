@@ -1,0 +1,26 @@
+error: expected `{}`, found `;`
+  --> $DIR/item-needs-block.rs:1:12
+   |
+LL | trait Trait;
+   |            ^
+   |
+   = help: try using `{}` instead
+
+error: expected `{}`, found `;`
+  --> $DIR/item-needs-block.rs:4:18
+   |
+LL | impl Trait for ();
+   |                  ^
+   |
+   = help: try using `{}` instead
+
+error: expected `{}`, found `;`
+  --> $DIR/item-needs-block.rs:7:10
+   |
+LL | enum Enum;
+   |          ^
+   |
+   = help: try using `{}` instead
+
+error: aborting due to 3 previous errors
+

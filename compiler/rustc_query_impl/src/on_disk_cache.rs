@@ -1,8 +1,9 @@
 use crate::QueryCtxt;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::vec::{Idx, IndexVec};
@@ -118,12 +119,11 @@ pub type EncodedDepNodeIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 struct SourceFileIndex(u32);
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Encodable, Decodable)]
-pub struct AbsoluteBytePos(u32);
+pub struct AbsoluteBytePos(u64);
 
 impl AbsoluteBytePos {
     fn new(pos: usize) -> AbsoluteBytePos {
-        debug_assert!(pos <= u32::MAX as usize);
-        AbsoluteBytePos(pos as u32)
+        AbsoluteBytePos(pos.try_into().expect("Incremental cache file size overflowed u64."))
     }
 
     fn to_usize(self) -> usize {
@@ -227,7 +227,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         *self.serialized_data.write() = None;
     }
 
-    fn serialize<'tcx>(&self, tcx: TyCtxt<'tcx>, encoder: FileEncoder) -> FileEncodeResult {
+    fn serialize(&self, tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
@@ -787,12 +787,18 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
         d.tcx.def_path_hash_to_def_id(def_path_hash, &mut || {
-            panic!("Failed to convert DefPathHash {:?}", def_path_hash)
+            panic!("Failed to convert DefPathHash {def_path_hash:?}")
         })
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx FxHashSet<LocalDefId> {
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        RefDecodable::decode(d)
+    }
+}
+
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx FxHashMap<DefId, Ty<'tcx>> {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
@@ -806,13 +812,13 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [ty::abstract_const::Node<'tcx>] {
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
@@ -842,6 +848,7 @@ impl_ref_decoder! {<'tcx>
     rustc_span::def_id::DefId,
     rustc_span::def_id::LocalDefId,
     (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
+    ty::DeducedParamAttrs,
 }
 
 //- ENCODING -------------------------------------------------------------------
@@ -958,7 +965,7 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for Symbol {
                     s.emit_str(self.as_str());
                 }
                 Entry::Occupied(o) => {
-                    let x = o.get().clone();
+                    let x = *o.get();
                     s.emit_u8(SYMBOL_OFFSET);
                     s.emit_usize(x);
                 }
@@ -1055,13 +1062,13 @@ pub fn encode_query_results<'a, 'tcx, CTX, Q>(
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
     CTX: QueryContext + 'tcx,
-    Q: super::QueryDescription<CTX>,
+    Q: super::QueryConfig<CTX>,
     Q::Value: Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = tcx
         .dep_context()
         .profiler()
-        .extra_verbose_generic_activity("encode_query_results_for", std::any::type_name::<Q>());
+        .verbose_generic_activity_with_arg("encode_query_results_for", std::any::type_name::<Q>());
 
     assert!(Q::query_state(tcx).all_inactive());
     let cache = Q::query_cache(tcx);

@@ -8,7 +8,6 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
 use type_op::TypeOpOutput;
@@ -48,7 +47,7 @@ pub(crate) struct CreateResult<'tcx> {
 }
 
 pub(crate) fn create<'tcx>(
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
@@ -86,7 +85,7 @@ impl UniversalRegionRelations<'_> {
     /// outlives `fr` and (b) is not local.
     ///
     /// (*) If there are multiple competing choices, we return all of them.
-    pub(crate) fn non_local_upper_bounds<'a>(&'a self, fr: RegionVid) -> Vec<RegionVid> {
+    pub(crate) fn non_local_upper_bounds(&self, fr: RegionVid) -> Vec<RegionVid> {
         debug!("non_local_upper_bound(fr={:?})", fr);
         let res = self.non_local_bounds(&self.inverse_outlives, fr);
         assert!(!res.is_empty(), "can't find an upper bound!?");
@@ -149,9 +148,9 @@ impl UniversalRegionRelations<'_> {
     /// Helper for `non_local_upper_bounds` and `non_local_lower_bounds`.
     /// Repeatedly invokes `postdom_parent` until we find something that is not
     /// local. Returns `None` if we never do so.
-    fn non_local_bounds<'a>(
+    fn non_local_bounds(
         &self,
-        relation: &'a TransitiveRelation<RegionVid>,
+        relation: &TransitiveRelation<RegionVid>,
         fr0: RegionVid,
     ) -> Vec<RegionVid> {
         // This method assumes that `fr0` is one of the universally
@@ -197,7 +196,7 @@ impl UniversalRegionRelations<'_> {
 }
 
 struct UniversalRegionRelationsBuilder<'this, 'tcx> {
-    infcx: &'this InferCtxt<'this, 'tcx>,
+    infcx: &'this InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     universal_regions: Rc<UniversalRegions<'tcx>>,
     implicit_region_bound: ty::Region<'tcx>,
@@ -219,6 +218,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     }
 
     pub(crate) fn create(mut self) -> CreateResult<'tcx> {
+        let span = self.infcx.tcx.def_span(self.universal_regions.defining_ty.def_id());
         let unnormalized_input_output_tys = self
             .universal_regions
             .unnormalized_input_tys
@@ -247,12 +247,13 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     .and(type_op::normalize::Normalize::new(ty))
                     .fully_perform(self.infcx)
                     .unwrap_or_else(|_| {
-                        self.infcx
+                        let reported = self
+                            .infcx
                             .tcx
                             .sess
-                            .delay_span_bug(DUMMY_SP, &format!("failed to normalize {:?}", ty));
+                            .delay_span_bug(span, &format!("failed to normalize {:?}", ty));
                         TypeOpOutput {
-                            output: self.infcx.tcx.ty_error(),
+                            output: self.infcx.tcx.ty_error_with_guaranteed(reported),
                             constraints: None,
                             error_info: None,
                         }
@@ -301,8 +302,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 &self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
-                Locations::All(DUMMY_SP),
-                DUMMY_SP,
+                Locations::All(span),
+                span,
                 ConstraintCategory::Internal,
                 &mut self.constraints,
             )
@@ -361,6 +362,11 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Projection(projection_b), r_a));
+                }
+
+                OutlivesBound::RegionSubOpaque(r_a, def_id, substs) => {
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Opaque(def_id, substs), r_a));
                 }
             }
         }

@@ -22,7 +22,7 @@ pub(crate) fn check_assert<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
             cx,
             EQ_OP,
             lhs.span.to(rhs.span),
-            &format!("identical args used in this `{}!` macro call", macro_name),
+            &format!("identical args used in this `{macro_name}!` macro call"),
         );
     }
 }

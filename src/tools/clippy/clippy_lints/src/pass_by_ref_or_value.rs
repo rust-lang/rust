@@ -139,7 +139,7 @@ impl<'tcx> PassByRefOrValue {
     }
 
     fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
-        if self.avoid_breaking_exported_api && cx.access_levels.is_exported(def_id) {
+        if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
             return;
         }
 
@@ -184,7 +184,7 @@ impl<'tcx> PassByRefOrValue {
                     if is_copy(cx, ty)
                         && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
                         && size <= self.ref_min_size
-                        && let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind
+                        && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
                         if let Some(typeck) = cx.maybe_typeck_results() {
                             // Don't lint if an unsafe pointer is created.
@@ -209,7 +209,7 @@ impl<'tcx> PassByRefOrValue {
                             cx,
                             TRIVIALLY_COPY_PASS_BY_REF,
                             input.span,
-                            &format!("this argument ({} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)", size, self.ref_min_size),
+                            &format!("this argument ({size} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)", self.ref_min_size),
                             "consider passing by value instead",
                             value_type,
                             Applicability::Unspecified,
@@ -237,7 +237,7 @@ impl<'tcx> PassByRefOrValue {
                                 cx,
                                 LARGE_TYPES_PASSED_BY_VALUE,
                                 input.span,
-                                &format!("this argument ({} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)", size, self.value_max_size),
+                                &format!("this argument ({size} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)", self.value_max_size),
                                 "consider passing by reference instead",
                                 format!("&{}", snippet(cx, input.span, "_")),
                                 Applicability::MaybeIncorrect,
@@ -261,7 +261,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         if let hir::TraitItemKind::Fn(method_sig, _) = &item.kind {
-            self.check_poly_fn(cx, item.def_id, method_sig.decl, None);
+            self.check_poly_fn(cx, item.owner_id.def_id, method_sig.decl, None);
         }
     }
 
@@ -299,7 +299,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+        if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
             if matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)

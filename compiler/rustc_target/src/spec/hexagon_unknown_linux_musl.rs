@@ -1,4 +1,4 @@
-use crate::spec::Target;
+use crate::spec::{Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
@@ -9,7 +9,7 @@ pub fn target() -> Target {
 
     base.crt_static_default = false;
     base.has_rpath = true;
-    base.linker_is_gnu = false;
+    base.linker_flavor = LinkerFlavor::Unix(Cc::Yes);
 
     base.c_enum_min_bits = 8;
 

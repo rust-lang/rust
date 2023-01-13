@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(custom_inner_attributes)]
 #![warn(clippy::manual_split_once)]
 #![allow(unused, clippy::iter_skip_next, clippy::iter_nth_zero)]
 
@@ -127,8 +126,8 @@ fn indirect() -> Option<()> {
     None
 }
 
+#[clippy::msrv = "1.51"]
 fn _msrv_1_51() {
-    #![clippy::msrv = "1.51"]
     // `str::split_once` was stabilized in 1.52. Do not lint this
     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
 
@@ -137,8 +136,8 @@ fn _msrv_1_51() {
     let b = iter.next().unwrap();
 }
 
+#[clippy::msrv = "1.52"]
 fn _msrv_1_52() {
-    #![clippy::msrv = "1.52"]
     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
 
     let mut iter = "a.b.c".splitn(2, '.');

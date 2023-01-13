@@ -89,8 +89,11 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
-    let mut proposed_imports =
-        import_assets.search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind);
+    let mut proposed_imports = import_assets.search_for_imports(
+        &ctx.sema,
+        ctx.config.insert_use.prefix_kind,
+        ctx.config.prefer_no_std,
+    );
     if proposed_imports.is_empty() {
         return None;
     }
@@ -124,10 +127,12 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         .sort_by_key(|import| Reverse(relevance_score(ctx, import, current_module.as_ref())));
 
     for import in proposed_imports {
+        let import_path = import.import_path;
+
         acc.add_group(
             &group_label,
             AssistId("auto_import", AssistKind::QuickFix),
-            format!("Import `{}`", import.import_path),
+            format!("Import `{import_path}`"),
             range,
             |builder| {
                 let scope = match scope.clone() {
@@ -135,7 +140,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                     ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
                     ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
                 };
-                insert_use(&scope, mod_path_to_ast(&import.import_path), &ctx.config.insert_use);
+                insert_use(&scope, mod_path_to_ast(&import_path), &ctx.config.insert_use);
             },
         );
     }
@@ -153,6 +158,8 @@ pub(super) fn find_importable_node(
     {
         ImportAssets::for_method_call(&method_under_caret, &ctx.sema)
             .zip(Some(method_under_caret.syntax().clone().into()))
+    } else if let Some(_) = ctx.find_node_at_offset_with_descend::<ast::Param>() {
+        None
     } else if let Some(pat) = ctx
         .find_node_at_offset_with_descend::<ast::IdentPat>()
         .filter(ast::IdentPat::is_simple_ident)
@@ -196,7 +203,7 @@ fn relevance_score(
         // get the distance between the imported path and the current module
         // (prefer items that are more local)
         Some((item_module, current_module)) => {
-            score -= module_distance_hueristic(db, &current_module, &item_module) as i32;
+            score -= module_distance_hueristic(db, current_module, &item_module) as i32;
         }
 
         // could not find relevant modules, so just use the length of the path as an estimate
@@ -263,6 +270,20 @@ mod tests {
         let labels = assists.iter().map(|assist| assist.label.to_string()).collect::<Vec<_>>();
 
         assert_eq!(labels, order);
+    }
+
+    #[test]
+    fn ignore_parameter_name() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+            mod foo {
+                pub mod bar {}
+            }
+
+            fn foo(bar$0: &str) {}
+            ",
+        );
     }
 
     #[test]

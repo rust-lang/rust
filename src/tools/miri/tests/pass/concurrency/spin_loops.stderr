@@ -1,0 +1,3 @@
+warning: thread support is experimental: the scheduler is not preemptive, and can get stuck in spin loops.
+         (see https://github.com/rust-lang/miri/issues/1388)
+

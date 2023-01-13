@@ -1,5 +1,8 @@
-use crate::{context::LintContext, LateContext, LateLintPass};
-use rustc_errors::fluent;
+use crate::{
+    context::LintContext,
+    lints::{EnumIntrinsicsMemDiscriminate, EnumIntrinsicsMemVariant},
+    LateContext, LateLintPass,
+};
 use rustc_hir as hir;
 use rustc_middle::ty::{visit::TypeVisitable, Ty};
 use rustc_span::{symbol::sym, Span};
@@ -50,26 +53,22 @@ fn enforce_mem_discriminant(
 ) {
     let ty_param = cx.typeck_results().node_substs(func_expr.hir_id).type_at(0);
     if is_non_enum(ty_param) {
-        cx.struct_span_lint(ENUM_INTRINSICS_NON_ENUMS, expr_span, |builder| {
-            builder
-                .build(fluent::lint::enum_intrinsics_mem_discriminant)
-                .set_arg("ty_param", ty_param)
-                .span_note(args_span, fluent::lint::note)
-                .emit();
-        });
+        cx.emit_spanned_lint(
+            ENUM_INTRINSICS_NON_ENUMS,
+            expr_span,
+            EnumIntrinsicsMemDiscriminate { ty_param, note: args_span },
+        );
     }
 }
 
 fn enforce_mem_variant_count(cx: &LateContext<'_>, func_expr: &hir::Expr<'_>, span: Span) {
     let ty_param = cx.typeck_results().node_substs(func_expr.hir_id).type_at(0);
     if is_non_enum(ty_param) {
-        cx.struct_span_lint(ENUM_INTRINSICS_NON_ENUMS, span, |builder| {
-            builder
-                .build(fluent::lint::enum_intrinsics_mem_variant)
-                .set_arg("ty_param", ty_param)
-                .note(fluent::lint::note)
-                .emit();
-        });
+        cx.emit_spanned_lint(
+            ENUM_INTRINSICS_NON_ENUMS,
+            span,
+            EnumIntrinsicsMemVariant { ty_param },
+        );
     }
 }
 

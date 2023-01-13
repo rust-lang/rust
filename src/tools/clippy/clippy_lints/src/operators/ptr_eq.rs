@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
                     expr.span,
                     LINT_MSG,
                     "try",
-                    format!("std::ptr::eq({}, {})", left_snip, right_snip),
+                    format!("std::ptr::eq({left_snip}, {right_snip})"),
                     Applicability::MachineApplicable,
                     );
             }

@@ -14,7 +14,7 @@ fn check_number(ra_fixture: &str, answer: i128) {
     match r {
         ComputedExpr::Literal(Literal::Int(r, _)) => assert_eq!(r, answer),
         ComputedExpr::Literal(Literal::Uint(r, _)) => assert_eq!(r, answer as u128),
-        x => panic!("Expected number but found {:?}", x),
+        x => panic!("Expected number but found {x:?}"),
     }
 }
 
@@ -25,7 +25,6 @@ fn eval_goal(ra_fixture: &str) -> Result<ComputedExpr, ConstEvalError> {
     let scope = &def_map[module_id.local_id].scope;
     let const_id = scope
         .declarations()
-        .into_iter()
         .find_map(|x| match x {
             hir_def::ModuleDefId::ConstId(x) => {
                 if db.const_data(x).name.as_ref()?.to_string() == "GOAL" {
@@ -85,6 +84,49 @@ fn consts() {
     "#,
         6,
     );
+}
+
+#[test]
+fn enums() {
+    check_number(
+        r#"
+    enum E {
+        F1 = 1,
+        F2 = 2 * E::F1 as u8,
+        F3 = 3 * E::F2 as u8,
+    }
+    const GOAL: i32 = E::F3 as u8;
+    "#,
+        6,
+    );
+    check_number(
+        r#"
+    enum E { F1 = 1, F2, }
+    const GOAL: i32 = E::F2 as u8;
+    "#,
+        2,
+    );
+    check_number(
+        r#"
+    enum E { F1, }
+    const GOAL: i32 = E::F1 as u8;
+    "#,
+        0,
+    );
+    let r = eval_goal(
+        r#"
+        enum E { A = 1, }
+        const GOAL: E = E::A;
+        "#,
+    )
+    .unwrap();
+    match r {
+        ComputedExpr::Enum(name, _, Literal::Uint(val, _)) => {
+            assert_eq!(name, "E::A");
+            assert_eq!(val, 1);
+        }
+        x => panic!("Expected enum but found {x:?}"),
+    }
 }
 
 #[test]

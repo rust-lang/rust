@@ -95,7 +95,7 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
             AS_KW | DYN_KW | IMPL_KW | CONST_KW => {
                 mods.push(do_ws(after, tok));
             }
-            T![;] => {
+            T![;] if is_next(|it| it != R_CURLY, true) => {
                 if indent > 0 {
                     mods.push(do_indent(after, tok, indent));
                 }

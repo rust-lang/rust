@@ -1,0 +1,27 @@
+error: transmuting a known null pointer into a function pointer
+  --> $DIR/transmute_null_to_fn.rs:8:23
+   |
+LL |         let _: fn() = std::mem::transmute(0 as *const ());
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this transmute results in undefined behavior
+   |
+   = help: try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value
+   = note: `-D clippy::transmute-null-to-fn` implied by `-D warnings`
+
+error: transmuting a known null pointer into a function pointer
+  --> $DIR/transmute_null_to_fn.rs:9:23
+   |
+LL |         let _: fn() = std::mem::transmute(std::ptr::null::<()>());
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this transmute results in undefined behavior
+   |
+   = help: try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value
+
+error: transmuting a known null pointer into a function pointer
+  --> $DIR/transmute_null_to_fn.rs:19:23
+   |
+LL |         let _: fn() = std::mem::transmute(ZPTR);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ this transmute results in undefined behavior
+   |
+   = help: try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value
+
+error: aborting due to 3 previous errors
+

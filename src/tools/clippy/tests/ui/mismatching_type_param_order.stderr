@@ -4,8 +4,8 @@ error: `Foo` has a similarly named generic type parameter `B` in its declaration
 LL |     impl<B, A> Foo<B, A> {}
    |                    ^
    |
-   = note: `-D clippy::mismatching-type-param-order` implied by `-D warnings`
    = help: try `A`, or a name that does not conflict with `Foo`'s generic params
+   = note: `-D clippy::mismatching-type-param-order` implied by `-D warnings`
 
 error: `Foo` has a similarly named generic type parameter `A` in its declaration, but in a different order
   --> $DIR/mismatching_type_param_order.rs:11:23

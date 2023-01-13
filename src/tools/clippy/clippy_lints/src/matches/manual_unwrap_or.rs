@@ -3,12 +3,14 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::contains_return_break_continue_macro;
-use clippy_utils::{is_lang_ctor, path_to_local_id, sugg};
+use clippy_utils::{is_res_lang_ctor, path_to_local_id, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::LangItem::{OptionNone, ResultErr};
 use rustc_hir::{Arm, Expr, PatKind};
 use rustc_lint::LateContext;
+use rustc_middle::ty::DefIdTree;
 use rustc_span::sym;
 
 use super::MANUAL_UNWRAP_OR;
@@ -42,12 +44,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, scrutinee: 
             span_lint_and_sugg(
                 cx,
                 MANUAL_UNWRAP_OR, expr.span,
-                &format!("this pattern reimplements `{}::unwrap_or`", ty_name),
+                &format!("this pattern reimplements `{ty_name}::unwrap_or`"),
                 "replace with",
                 format!(
-                    "{}.unwrap_or({})",
-                    suggestion,
-                    reindented_or_body,
+                    "{suggestion}.unwrap_or({reindented_or_body})",
                 ),
                 Applicability::MachineApplicable,
             );
@@ -61,15 +61,19 @@ fn applicable_or_arm<'a>(cx: &LateContext<'_>, arms: &'a [Arm<'a>]) -> Option<&'
         if arms.iter().all(|arm| arm.guard.is_none());
         if let Some((idx, or_arm)) = arms.iter().enumerate().find(|(_, arm)| {
             match arm.pat.kind {
-                PatKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
+                PatKind::Path(ref qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone),
                 PatKind::TupleStruct(ref qpath, [pat], _) =>
-                    matches!(pat.kind, PatKind::Wild) && is_lang_ctor(cx, qpath, ResultErr),
+                    matches!(pat.kind, PatKind::Wild)
+                        && is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), ResultErr),
                 _ => false,
             }
         });
         let unwrap_arm = &arms[1 - idx];
         if let PatKind::TupleStruct(ref qpath, [unwrap_pat], _) = unwrap_arm.pat.kind;
-        if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk);
+        if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(qpath, unwrap_arm.pat.hir_id);
+        if let Some(variant_id) = cx.tcx.opt_parent(ctor_id);
+        if cx.tcx.lang_items().option_some_variant() == Some(variant_id)
+            || cx.tcx.lang_items().result_ok_variant() == Some(variant_id);
         if let PatKind::Binding(_, binding_hir_id, ..) = unwrap_pat.kind;
         if path_to_local_id(unwrap_arm.body, binding_hir_id);
         if cx.typeck_results().expr_adjustments(unwrap_arm.body).is_empty();

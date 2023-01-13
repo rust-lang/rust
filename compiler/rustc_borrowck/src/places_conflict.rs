@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::ArtificialField;
 use crate::Overlap;
 use crate::{AccessDepth, Deep, Shallow};
@@ -250,6 +252,7 @@ fn place_components_conflict<'tcx>(
                 | (ProjectionElem::Index { .. }, _, _)
                 | (ProjectionElem::ConstantIndex { .. }, _, _)
                 | (ProjectionElem::Subslice { .. }, _, _)
+                | (ProjectionElem::OpaqueCast { .. }, _, _)
                 | (ProjectionElem::Downcast { .. }, _, _) => {
                     // Recursive case. This can still be disjoint on a
                     // further iteration if this a shallow access and
@@ -315,6 +318,11 @@ fn place_projection_conflict<'tcx>(
         (ProjectionElem::Deref, ProjectionElem::Deref) => {
             // derefs (e.g., `*x` vs. `*x`) - recur.
             debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
+            Overlap::EqualOrDisjoint
+        }
+        (ProjectionElem::OpaqueCast(_), ProjectionElem::OpaqueCast(_)) => {
+            // casts to other types may always conflict irrespective of the type being cast to.
+            debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
             Overlap::EqualOrDisjoint
         }
         (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
@@ -520,6 +528,7 @@ fn place_projection_conflict<'tcx>(
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::OpaqueCast { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(..),
             _,

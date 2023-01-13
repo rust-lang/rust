@@ -384,6 +384,23 @@ impl fmt::Debug for OwnedHandle {
     }
 }
 
+macro_rules! impl_is_terminal {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}
+
+        #[unstable(feature = "is_terminal", issue = "98070")]
+        impl crate::io::IsTerminal for $t {
+            #[inline]
+            fn is_terminal(&self) -> bool {
+                crate::sys::io::is_terminal(self)
+            }
+        }
+    )*}
+}
+
+impl_is_terminal!(BorrowedHandle<'_>, OwnedHandle);
+
 /// A trait to borrow the handle from an underlying object.
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub trait AsHandle {

@@ -1,53 +1,38 @@
 use crate::errors::RegionOriginNote;
-use crate::infer::error_reporting::note_and_explain_region;
-use crate::infer::{self, InferCtxt, SubregionOrigin};
+use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
+use crate::infer::{self, SubregionOrigin};
 use rustc_errors::{
-    fluent, struct_span_err, AddSubdiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    fluent, struct_span_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed,
 };
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Region};
+use rustc_middle::ty::{self, IsSuggestable, Region};
+use rustc_span::symbol::kw;
 
 use super::ObligationCauseAsDiagArg;
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub(super) fn note_region_origin(&self, err: &mut Diagnostic, origin: &SubregionOrigin<'tcx>) {
         match *origin {
             infer::Subtype(ref trace) => RegionOriginNote::WithRequirement {
                 span: trace.cause.span,
                 requirement: ObligationCauseAsDiagArg(trace.cause.clone()),
-                expected_found: self.values_str(trace.values),
+                expected_found: self.values_str(trace.values).map(|(e, f, _, _)| (e, f)),
             }
             .add_to_diagnostic(err),
-            infer::Reborrow(span) => RegionOriginNote::Plain { span, msg: fluent::infer::reborrow }
-                .add_to_diagnostic(err),
-            infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                RegionOriginNote::WithName {
-                    span,
-                    msg: fluent::infer::reborrow,
-                    name: &var_name.to_string(),
-                    continues: false,
-                }
-                .add_to_diagnostic(err);
+            infer::Reborrow(span) => {
+                RegionOriginNote::Plain { span, msg: fluent::infer_reborrow }.add_to_diagnostic(err)
             }
             infer::RelateObjectBound(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::infer::relate_object_bound }
+                RegionOriginNote::Plain { span, msg: fluent::infer_relate_object_bound }
                     .add_to_diagnostic(err);
-            }
-            infer::DataBorrowed(ty, span) => {
-                RegionOriginNote::WithName {
-                    span,
-                    msg: fluent::infer::data_borrowed,
-                    name: &self.ty_to_string(ty),
-                    continues: false,
-                }
-                .add_to_diagnostic(err);
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::infer::reference_outlives_referent,
+                    msg: fluent::infer_reference_outlives_referent,
                     name: &self.ty_to_string(ty),
                     continues: false,
                 }
@@ -56,26 +41,33 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::RelateParamBound(span, ty, opt_span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::infer::relate_param_bound,
+                    msg: fluent::infer_relate_param_bound,
                     name: &self.ty_to_string(ty),
                     continues: opt_span.is_some(),
                 }
                 .add_to_diagnostic(err);
                 if let Some(span) = opt_span {
-                    RegionOriginNote::Plain { span, msg: fluent::infer::relate_param_bound_2 }
+                    RegionOriginNote::Plain { span, msg: fluent::infer_relate_param_bound_2 }
                         .add_to_diagnostic(err);
                 }
             }
             infer::RelateRegionParamBound(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::infer::relate_region_param_bound }
+                RegionOriginNote::Plain { span, msg: fluent::infer_relate_region_param_bound }
                     .add_to_diagnostic(err);
             }
             infer::CompareImplItemObligation { span, .. } => {
-                RegionOriginNote::Plain { span, msg: fluent::infer::compare_impl_item_obligation }
+                RegionOriginNote::Plain { span, msg: fluent::infer_compare_impl_item_obligation }
                     .add_to_diagnostic(err);
             }
             infer::CheckAssociatedTypeBounds { ref parent, .. } => {
                 self.note_region_origin(err, &parent);
+            }
+            infer::AscribeUserTypeProvePredicate(span) => {
+                RegionOriginNote::Plain {
+                    span,
+                    msg: fluent::infer_ascribe_user_type_prove_predicate,
+                }
+                .add_to_diagnostic(err);
             }
         }
     }
@@ -145,33 +137,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.tcx,
                     &mut err,
                     "...but the borrowed content is only valid for ",
-                    sup,
-                    "",
-                    None,
-                );
-                err
-            }
-            infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0313,
-                    "lifetime of borrowed pointer outlives lifetime of captured variable `{}`...",
-                    var_name
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "...the borrowed pointer is valid for ",
-                    sub,
-                    "...",
-                    None,
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    &format!("...but `{}` is only valid for ", var_name),
                     sup,
                     "",
                     None,
@@ -253,32 +218,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 err
             }
-            infer::DataBorrowed(ty, span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0490,
-                    "a value of type `{}` is borrowed for too long",
-                    self.ty_to_string(ty)
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "the type is valid for ",
-                    sub,
-                    "",
-                    None,
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "but the borrow lasts for ",
-                    sup,
-                    "",
-                    None,
-                );
-                err
-            }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
@@ -305,57 +244,120 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 err
             }
-            infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => self
-                .report_extra_impl_obligation(
+            infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => {
+                let mut err = self.report_extra_impl_obligation(
                     span,
                     impl_item_def_id,
                     trait_item_def_id,
                     &format!("`{}: {}`", sup, sub),
-                ),
+                );
+                // We should only suggest rewriting the `where` clause if the predicate is within that `where` clause
+                if let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id)
+                    && generics.where_clause_span.contains(span)
+                {
+                    self.suggest_copy_trait_method_bounds(
+                        trait_item_def_id,
+                        impl_item_def_id,
+                        &mut err,
+                    );
+                }
+                err
+            }
             infer::CheckAssociatedTypeBounds { impl_item_def_id, trait_item_def_id, parent } => {
                 let mut err = self.report_concrete_failure(*parent, sub, sup);
-
                 let trait_item_span = self.tcx.def_span(trait_item_def_id);
                 let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
                 err.span_label(
                     trait_item_span,
                     format!("definition of `{}` from trait", item_name),
                 );
-
-                let trait_predicates = self.tcx.explicit_predicates_of(trait_item_def_id);
-                let impl_predicates = self.tcx.explicit_predicates_of(impl_item_def_id);
-
-                let impl_predicates: rustc_data_structures::fx::FxHashSet<_> =
-                    impl_predicates.predicates.into_iter().map(|(pred, _)| pred).collect();
-                let clauses: Vec<_> = trait_predicates
-                    .predicates
-                    .into_iter()
-                    .filter(|&(pred, _)| !impl_predicates.contains(pred))
-                    .map(|(pred, _)| format!("{}", pred))
-                    .collect();
-
-                if !clauses.is_empty() {
-                    let generics = self.tcx.hir().get_generics(impl_item_def_id).unwrap();
-                    let where_clause_span = generics.tail_span_for_predicate_suggestion();
-
-                    let suggestion = format!(
-                        "{} {}",
-                        generics.add_where_or_trailing_comma(),
-                        clauses.join(", "),
-                    );
-                    err.span_suggestion(
-                        where_clause_span,
-                        &format!(
-                            "try copying {} from the trait",
-                            if clauses.len() > 1 { "these clauses" } else { "this clause" }
-                        ),
-                        suggestion,
-                        rustc_errors::Applicability::MaybeIncorrect,
-                    );
-                }
-
+                self.suggest_copy_trait_method_bounds(
+                    trait_item_def_id,
+                    impl_item_def_id,
+                    &mut err,
+                );
                 err
             }
+            infer::AscribeUserTypeProvePredicate(span) => {
+                let mut err =
+                    struct_span_err!(self.tcx.sess, span, E0478, "lifetime bound not satisfied");
+                note_and_explain_region(
+                    self.tcx,
+                    &mut err,
+                    "lifetime instantiated with ",
+                    sup,
+                    "",
+                    None,
+                );
+                note_and_explain_region(
+                    self.tcx,
+                    &mut err,
+                    "but lifetime must outlive ",
+                    sub,
+                    "",
+                    None,
+                );
+                err
+            }
+        }
+    }
+
+    pub fn suggest_copy_trait_method_bounds(
+        &self,
+        trait_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
+        err: &mut Diagnostic,
+    ) {
+        // FIXME(compiler-errors): Right now this is only being used for region
+        // predicate mismatches. Ideally, we'd use it for *all* predicate mismatches,
+        // but right now it's not really very smart when it comes to implicit `Sized`
+        // predicates and bounds on the trait itself.
+
+        let Some(impl_def_id) =
+            self.tcx.associated_item(impl_item_def_id).impl_container(self.tcx) else { return; };
+        let Some(trait_ref) = self
+            .tcx
+            .impl_trait_ref(impl_def_id)
+            else { return; };
+        let trait_substs = trait_ref
+            // Replace the explicit self type with `Self` for better suggestion rendering
+            .with_self_ty(self.tcx, self.tcx.mk_ty_param(0, kw::SelfUpper))
+            .substs;
+        let trait_item_substs =
+            ty::InternalSubsts::identity_for_item(self.tcx, impl_item_def_id.to_def_id())
+                .rebase_onto(self.tcx, impl_def_id, trait_substs);
+
+        let Ok(trait_predicates) = self
+            .tcx
+            .bound_explicit_predicates_of(trait_item_def_id)
+            .map_bound(|p| p.predicates)
+            .subst_iter_copied(self.tcx, trait_item_substs)
+            .map(|(pred, _)| {
+                if pred.is_suggestable(self.tcx, false) {
+                    Ok(pred.to_string())
+                } else {
+                    Err(())
+                }
+            })
+            .collect::<Result<Vec<_>, ()>>() else { return; };
+
+        let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id) else { return; };
+
+        if trait_predicates.is_empty() {
+            err.span_suggestion_verbose(
+                generics.where_clause_span,
+                "remove the `where` clause",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            let space = if generics.where_clause_span.is_empty() { " " } else { "" };
+            err.span_suggestion_verbose(
+                generics.where_clause_span,
+                "copy the `where` clause predicates from the trait",
+                format!("{space}where {}", trait_predicates.join(", ")),
+                Applicability::MachineApplicable,
+            );
         }
     }
 

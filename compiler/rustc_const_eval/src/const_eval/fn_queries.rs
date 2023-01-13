@@ -41,6 +41,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
             };
             if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
         }
+        hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
         _ => {
             if let Some(fn_kind) = node.fn_kind() {
                 if fn_kind.constness() == hir::Constness::Const {

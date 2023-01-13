@@ -25,6 +25,9 @@ macro_rules! pluralize {
     ($x:expr) => {
         if $x != 1 { "s" } else { "" }
     };
+    ("has", $x:expr) => {
+        if $x == 1 { "has" } else { "have" }
+    };
     ("is", $x:expr) => {
         if $x == 1 { "is" } else { "are" }
     };
@@ -92,7 +95,7 @@ pub enum LintExpectationId {
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
+    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16>, attr_id: Option<AttrId> },
 }
 
 impl LintExpectationId {
@@ -116,13 +119,31 @@ impl LintExpectationId {
 
         *lint_index = new_lint_index
     }
+
+    /// Prepares the id for hashing. Removes references to the ast.
+    /// Should only be called when the id is stable.
+    pub fn normalize(self) -> Self {
+        match self {
+            Self::Stable { hir_id, attr_index, lint_index, .. } => {
+                Self::Stable { hir_id, attr_index, lint_index, attr_id: None }
+            }
+            Self::Unstable { .. } => {
+                unreachable!("`normalize` called when `ExpectationId` is unstable")
+            }
+        }
+    }
 }
 
 impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
+            LintExpectationId::Stable {
+                hir_id,
+                attr_index,
+                lint_index: Some(lint_index),
+                attr_id: _,
+            } => {
                 hir_id.hash_stable(hcx, hasher);
                 attr_index.hash_stable(hcx, hasher);
                 lint_index.hash_stable(hcx, hasher);
@@ -142,9 +163,12 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
     #[inline]
     fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
         match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                (*hir_id, *attr_index, *lint_index)
-            }
+            LintExpectationId::Stable {
+                hir_id,
+                attr_index,
+                lint_index: Some(lint_index),
+                attr_id: _,
+            } => (*hir_id, *attr_index, *lint_index),
             _ => {
                 unreachable!("HashStable should only be called for a filled `LintExpectationId`")
             }
@@ -226,6 +250,19 @@ impl Level {
             sym::deny => Some(Level::Deny),
             sym::forbid => Some(Level::Forbid),
             _ => None,
+        }
+    }
+
+    pub fn to_cmd_flag(self) -> &'static str {
+        match self {
+            Level::Warn => "-W",
+            Level::Deny => "-D",
+            Level::Forbid => "-F",
+            Level::Allow => "-A",
+            Level::ForceWarn(_) => "--force-warn",
+            Level::Expect(_) => {
+                unreachable!("the expect level does not have a commandline flag")
+            }
         }
     }
 
@@ -658,18 +695,21 @@ macro_rules! declare_lint {
 macro_rules! declare_tool_lint {
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
+        $(, @feature_gate = $gate:expr;)?
     ) => (
-        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false}
+        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         report_in_external_macro: $rep:expr
+        $(, @feature_gate = $gate:expr;)?
     ) => (
-         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep}
+         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         $external:expr
+        $(, @feature_gate = $gate:expr;)?
     ) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
@@ -680,8 +720,9 @@ macro_rules! declare_tool_lint {
             report_in_external_macro: $external,
             future_incompatible: None,
             is_plugin: true,
-            feature_gate: None,
+            $(feature_gate: Some($gate),)?
             crate_level_only: false,
+            ..$crate::Lint::default_fields_for_macro()
         };
     );
 }

@@ -8,7 +8,7 @@ documentation = "https://rust-analyzer.github.io/manual.html"
 license = "MIT OR Apache-2.0"
 autobins = false
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.65"
 
 [lib]
 doctest = false
@@ -18,14 +18,14 @@ name = "rust-analyzer"
 path = "src/bin/main.rs"
 
 [dependencies]
-anyhow = "1.0.57"
+anyhow = "1.0.62"
 crossbeam-channel = "0.5.5"
 dissimilar = "1.0.4"
-itertools = "0.10.3"
+itertools = "0.10.5"
 scip = "0.1.1"
-lsp-types = { version = "0.93.1", features = ["proposed"] }
+lsp-types = { version = "=0.93.2", features = ["proposed"] }
 parking_lot = "0.12.1"
-xflags = "0.2.4"
+xflags = "0.3.0"
 oorandom = "11.1.3"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.137", features = ["derive"] }
@@ -33,10 +33,10 @@ serde_json = { version = "1.0.81", features = ["preserve_order"] }
 threadpool = "1.8.1"
 rayon = "1.5.3"
 num_cpus = "1.13.1"
-mimalloc = { version = "0.1.29", default-features = false, optional = true }
-lsp-server = { version = "0.6.0", path = "../../lib/lsp-server" }
+mimalloc = { version = "0.1.30", default-features = false, optional = true }
+lsp-server = { version = "0.7.0", path = "../../lib/lsp-server" }
 tracing = "0.1.35"
-tracing-subscriber = { version = "0.3.14", default-features = false, features = [
+tracing-subscriber = { version = "0.3.16", default-features = false, features = [
     "env-filter",
     "registry",
     "fmt",
@@ -87,7 +87,6 @@ jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
 in-rust-tree = [
     "proc-macro-srv/sysroot-abi",
-    "sourcegen/in-rust-tree",
     "ide/in-rust-tree",
     "syntax/in-rust-tree",
 ]

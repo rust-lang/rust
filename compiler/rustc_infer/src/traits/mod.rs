@@ -10,7 +10,7 @@ pub mod util;
 
 use rustc_hir as hir;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Const, Ty, TyCtxt};
+use rustc_middle::ty::{self, Const, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 
 pub use self::FulfillmentErrorCode::*;
@@ -67,6 +67,14 @@ impl<'tcx> PredicateObligation<'tcx> {
             recursion_depth: self.recursion_depth,
         })
     }
+
+    pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> PredicateObligation<'tcx> {
+        self.param_env = self.param_env.without_const();
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = self.predicate.kind().skip_binder() && trait_pred.is_const_if_const() {
+            self.predicate = tcx.mk_predicate(self.predicate.kind().map_bound(|_| ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred.without_const()))));
+        }
+        self
+    }
 }
 
 impl<'tcx> TraitObligation<'tcx> {
@@ -105,6 +113,8 @@ pub struct FulfillmentError<'tcx> {
 
 #[derive(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
+    /// Inherently impossible to fulfill; this trait is implemented if and only if it is already implemented.
+    CodeCycle(Vec<Obligation<'tcx, ty::Predicate<'tcx>>>),
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
@@ -114,38 +124,41 @@ pub enum FulfillmentErrorCode<'tcx> {
 
 impl<'tcx, O> Obligation<'tcx, O> {
     pub fn new(
+        tcx: TyCtxt<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: O,
+        predicate: impl ToPredicate<'tcx, O>,
     ) -> Obligation<'tcx, O> {
-        Obligation { cause, param_env, recursion_depth: 0, predicate }
+        Self::with_depth(tcx, cause, 0, param_env, predicate)
     }
 
     pub fn with_depth(
+        tcx: TyCtxt<'tcx>,
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: O,
+        predicate: impl ToPredicate<'tcx, O>,
     ) -> Obligation<'tcx, O> {
+        let predicate = predicate.to_predicate(tcx);
         Obligation { cause, param_env, recursion_depth, predicate }
     }
 
     pub fn misc(
+        tcx: TyCtxt<'tcx>,
         span: Span,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: O,
+        trait_ref: impl ToPredicate<'tcx, O>,
     ) -> Obligation<'tcx, O> {
-        Obligation::new(ObligationCause::misc(span, body_id), param_env, trait_ref)
+        Obligation::new(tcx, ObligationCause::misc(span, body_id), param_env, trait_ref)
     }
 
-    pub fn with<P>(&self, value: P) -> Obligation<'tcx, P> {
-        Obligation {
-            cause: self.cause.clone(),
-            param_env: self.param_env,
-            recursion_depth: self.recursion_depth,
-            predicate: value,
-        }
+    pub fn with<P>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        value: impl ToPredicate<'tcx, P>,
+    ) -> Obligation<'tcx, P> {
+        Obligation::with_depth(tcx, self.cause.clone(), self.recursion_depth, self.param_env, value)
     }
 }
 

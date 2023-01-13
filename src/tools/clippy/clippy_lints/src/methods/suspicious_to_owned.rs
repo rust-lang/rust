@@ -5,7 +5,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, print::with_forced_trimmed_paths};
 use rustc_span::sym;
 
 use super::SUSPICIOUS_TO_OWNED;
@@ -24,9 +24,11 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) -
                 cx,
                 SUSPICIOUS_TO_OWNED,
                 expr.span,
-                &format!("this `to_owned` call clones the {0} itself and does not cause the {0} contents to become owned", input_type),
+                &with_forced_trimmed_paths!(format!(
+                    "this `to_owned` call clones the {input_type} itself and does not cause the {input_type} contents to become owned"
+                )),
                 "consider using, depending on intent",
-                format!("{0}.clone()` or `{0}.into_owned()", recv_snip),
+                format!("{recv_snip}.clone()` or `{recv_snip}.into_owned()"),
                 app,
             );
             return true;

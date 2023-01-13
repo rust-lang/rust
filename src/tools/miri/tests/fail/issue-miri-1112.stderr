@@ -1,0 +1,20 @@
+error: Undefined Behavior: constructing invalid value: encountered $HEX[ALLOC]<TAG>, but expected a vtable pointer
+  --> $DIR/issue-miri-1112.rs:LL:CC
+   |
+LL |         let obj = std::mem::transmute::<FatPointer, *mut FunnyPointer>(obj);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered $HEX[ALLOC]<TAG>, but expected a vtable pointer
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `FunnyPointer::from_data_ptr` at $DIR/issue-miri-1112.rs:LL:CC
+note: inside `main`
+  --> $DIR/issue-miri-1112.rs:LL:CC
+   |
+LL |         let _raw: &FunnyPointer = FunnyPointer::from_data_ptr(&hello, &meta as *const _);
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

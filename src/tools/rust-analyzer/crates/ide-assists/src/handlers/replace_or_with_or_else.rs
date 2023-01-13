@@ -62,7 +62,7 @@ pub(crate) fn replace_or_with_or_else(acc: &mut Assists, ctx: &AssistContext<'_>
 
     acc.add(
         AssistId("replace_or_with_or_else", AssistKind::RefactorRewrite),
-        format!("Replace {} with {}", name.text(), replace),
+        format!("Replace {name} with {replace}"),
         call.syntax().text_range(),
         |builder| {
             builder.replace(name.syntax().text_range(), replace);
@@ -75,7 +75,7 @@ fn into_closure(param: &Expr) -> Expr {
     (|| {
         if let ast::Expr::CallExpr(call) = param {
             if call.arg_list()?.args().count() == 0 {
-                Some(call.expr()?.clone())
+                Some(call.expr()?)
             } else {
                 None
             }
@@ -138,7 +138,7 @@ pub(crate) fn replace_or_else_with_or(acc: &mut Assists, ctx: &AssistContext<'_>
 
     acc.add(
         AssistId("replace_or_else_with_or", AssistKind::RefactorRewrite),
-        format!("Replace {} with {}", name.text(), replace),
+        format!("Replace {name} with {replace}"),
         call.syntax().text_range(),
         |builder| {
             builder.replace(name.syntax().text_range(), replace);
@@ -151,7 +151,7 @@ fn into_call(param: &Expr) -> Expr {
     (|| {
         if let ast::Expr::ClosureExpr(closure) = param {
             if closure.param_list()?.params().count() == 0 {
-                Some(closure.body()?.clone())
+                Some(closure.body()?)
             } else {
                 None
             }

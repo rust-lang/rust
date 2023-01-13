@@ -1,0 +1,19 @@
+error[E0107]: missing generics for associated type `SuperTrait::SubType`
+  --> $DIR/issue-76535.rs:39:33
+   |
+LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
+   |                                 ^^^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-76535.rs:9:10
+   |
+LL |     type SubType<'a>: SubTrait where Self: 'a;
+   |          ^^^^^^^ --
+help: add missing lifetime argument
+   |
+LL |     let sub: Box<dyn SuperTrait<SubType<'a> = SubStruct>> = Box::new(SuperStruct::new(0));
+   |                                        ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

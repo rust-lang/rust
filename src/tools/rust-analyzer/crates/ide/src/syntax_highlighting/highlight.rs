@@ -87,9 +87,9 @@ fn punctuation(
     let parent = token.parent();
     let parent_kind = parent.as_ref().map_or(EOF, SyntaxNode::kind);
     match (kind, parent_kind) {
-        (T![?], _) => HlTag::Operator(HlOperator::Other) | HlMod::ControlFlow,
+        (T![?], TRY_EXPR) => HlTag::Operator(HlOperator::Other) | HlMod::ControlFlow,
         (T![&], BIN_EXPR) => HlOperator::Bitwise.into(),
-        (T![&], _) => {
+        (T![&], REF_EXPR) => {
             let h = HlTag::Operator(HlOperator::Other).into();
             let is_unsafe = parent
                 .and_then(ast::RefExpr::cast)
@@ -100,7 +100,9 @@ fn punctuation(
                 h
             }
         }
-        (T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] | T![.], _) => HlOperator::Other.into(),
+        (T![::] | T![->] | T![=>] | T![..] | T![..=] | T![=] | T![@] | T![.], _) => {
+            HlOperator::Other.into()
+        }
         (T![!], MACRO_CALL | MACRO_RULES) => HlPunct::MacroBang.into(),
         (T![!], NEVER_TYPE) => HlTag::BuiltinType.into(),
         (T![!], PREFIX_EXPR) => HlOperator::Logical.into(),
@@ -109,7 +111,7 @@ fn punctuation(
             let is_raw_ptr = (|| {
                 let prefix_expr = parent.and_then(ast::PrefixExpr::cast)?;
                 let expr = prefix_expr.expr()?;
-                sema.type_of_expr(&expr)?.original.is_raw_ptr().then(|| ())
+                sema.type_of_expr(&expr)?.original.is_raw_ptr().then_some(())
             })();
             if let Some(()) = is_raw_ptr {
                 HlTag::Operator(HlOperator::Other) | HlMod::Unsafe
@@ -129,7 +131,7 @@ fn punctuation(
         (T![+=] | T![-=] | T![*=] | T![/=] | T![%=], BIN_EXPR) => {
             Highlight::from(HlOperator::Arithmetic) | HlMod::Mutable
         }
-        (T![|] | T![&] | T![!] | T![^] | T![>>] | T![<<], BIN_EXPR) => HlOperator::Bitwise.into(),
+        (T![|] | T![&] | T![^] | T![>>] | T![<<], BIN_EXPR) => HlOperator::Bitwise.into(),
         (T![|=] | T![&=] | T![^=] | T![>>=] | T![<<=], BIN_EXPR) => {
             Highlight::from(HlOperator::Bitwise) | HlMod::Mutable
         }
@@ -137,7 +139,6 @@ fn punctuation(
         (T![>] | T![<] | T![==] | T![>=] | T![<=] | T![!=], BIN_EXPR) => {
             HlOperator::Comparison.into()
         }
-        (_, PREFIX_EXPR | BIN_EXPR | RANGE_EXPR | RANGE_PAT | REST_PAT) => HlOperator::Other.into(),
         (_, ATTR) => HlTag::AttributeBracket.into(),
         (kind, _) => match kind {
             T!['['] | T![']'] => HlPunct::Bracket,
@@ -173,6 +174,7 @@ fn keyword(
         | T![return]
         | T![while]
         | T![yield] => h | HlMod::ControlFlow,
+        T![do] | T![yeet] if parent_matches::<ast::YeetExpr>(&token) => h | HlMod::ControlFlow,
         T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
         T![unsafe] => h | HlMod::Unsafe,
         T![true] | T![false] => HlTag::BoolLiteral.into(),

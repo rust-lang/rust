@@ -47,7 +47,10 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     // Don't enable the assist if there is a type ascription without any placeholders
     if let Some(ty) = &ascribed_ty {
         let mut contains_infer_ty = false;
-        walk_ty(ty, &mut |ty| contains_infer_ty |= matches!(ty, ast::Type::InferType(_)));
+        walk_ty(ty, &mut |ty| {
+            contains_infer_ty |= matches!(ty, ast::Type::InferType(_));
+            false
+        });
         if !contains_infer_ty {
             cov_mark::hit!(add_explicit_type_not_applicable_if_ty_already_specified);
             return None;
@@ -69,14 +72,14 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     let inferred_type = ty.display_source_code(ctx.db(), module.into()).ok()?;
     acc.add(
         AssistId("add_explicit_type", AssistKind::RefactorRewrite),
-        format!("Insert explicit type `{}`", inferred_type),
+        format!("Insert explicit type `{inferred_type}`"),
         pat_range,
         |builder| match ascribed_ty {
             Some(ascribed_ty) => {
                 builder.replace(ascribed_ty.syntax().text_range(), inferred_type);
             }
             None => {
-                builder.insert(pat_range.end(), format!(": {}", inferred_type));
+                builder.insert(pat_range.end(), format!(": {inferred_type}"));
             }
         },
     )

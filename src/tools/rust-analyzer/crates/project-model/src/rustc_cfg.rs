@@ -3,10 +3,15 @@
 use std::process::Command;
 
 use anyhow::Result;
+use rustc_hash::FxHashMap;
 
 use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath};
 
-pub(crate) fn get(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Vec<CfgFlag> {
+pub(crate) fn get(
+    cargo_toml: Option<&ManifestPath>,
+    target: Option<&str>,
+    extra_env: &FxHashMap<String, String>,
+) -> Vec<CfgFlag> {
     let _p = profile::span("rustc_cfg::get");
     let mut res = Vec::with_capacity(6 * 2 + 1);
 
@@ -18,7 +23,7 @@ pub(crate) fn get(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Ve
         }
     }
 
-    match get_rust_cfgs(cargo_toml, target) {
+    match get_rust_cfgs(cargo_toml, target, extra_env) {
         Ok(rustc_cfgs) => {
             tracing::debug!(
                 "rustc cfgs found: {:?}",
@@ -35,15 +40,20 @@ pub(crate) fn get(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Ve
     res
 }
 
-fn get_rust_cfgs(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Result<String> {
+fn get_rust_cfgs(
+    cargo_toml: Option<&ManifestPath>,
+    target: Option<&str>,
+    extra_env: &FxHashMap<String, String>,
+) -> Result<String> {
     if let Some(cargo_toml) = cargo_toml {
         let mut cargo_config = Command::new(toolchain::cargo());
+        cargo_config.envs(extra_env);
         cargo_config
             .current_dir(cargo_toml.parent())
-            .args(&["-Z", "unstable-options", "rustc", "--print", "cfg"])
+            .args(["rustc", "-Z", "unstable-options", "--print", "cfg"])
             .env("RUSTC_BOOTSTRAP", "1");
         if let Some(target) = target {
-            cargo_config.args(&["--target", target]);
+            cargo_config.args(["--target", target]);
         }
         match utf8_stdout(cargo_config) {
             Ok(it) => return Ok(it),
@@ -52,9 +62,10 @@ fn get_rust_cfgs(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Res
     }
     // using unstable cargo features failed, fall back to using plain rustc
     let mut cmd = Command::new(toolchain::rustc());
-    cmd.args(&["--print", "cfg", "-O"]);
+    cmd.envs(extra_env);
+    cmd.args(["--print", "cfg", "-O"]);
     if let Some(target) = target {
-        cmd.args(&["--target", target]);
+        cmd.args(["--target", target]);
     }
     utf8_stdout(cmd)
 }

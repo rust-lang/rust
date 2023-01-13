@@ -1,4 +1,4 @@
-#![allow(clippy::disallowed_names)]
+#![allow(clippy::disallowed_names, clippy::uninlined_format_args)]
 
 pub fn foo(bar: *const u8) {
     println!("{:#p}", bar);

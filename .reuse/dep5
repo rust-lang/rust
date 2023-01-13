@@ -6,11 +6,6 @@ Files: *
 Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT or Apache-2.0
 
-Files: library/std/src/sync/mpsc/mpsc_queue.rs
-       library/std/src/sync/mpsc/spsc_queue.rs
-Copyright: 2010-2011 Dmitry Vyukov
-License: BSD-2-Clause
-
 Files: src/librustdoc/html/static/fonts/FiraSans*
 Copyright: 2014, Mozilla Foundation, 2014, Telefonica S.A.
 License: OFL-1.1

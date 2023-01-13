@@ -1,7 +1,10 @@
+use crate::lints::{
+    ConfusableIdentifierPair, IdentifierNonAsciiChar, IdentifierUncommonCodepoints,
+    MixedScriptConfusables,
+};
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::fluent;
 use rustc_span::symbol::Symbol;
 
 declare_lint! {
@@ -180,15 +183,11 @@ impl EarlyLintPass for NonAsciiIdents {
                 continue;
             }
             has_non_ascii_idents = true;
-            cx.struct_span_lint(NON_ASCII_IDENTS, sp, |lint| {
-                lint.build(fluent::lint::identifier_non_ascii_char).emit();
-            });
+            cx.emit_spanned_lint(NON_ASCII_IDENTS, sp, IdentifierNonAsciiChar);
             if check_uncommon_codepoints
                 && !symbol_str.chars().all(GeneralSecurityProfile::identifier_allowed)
             {
-                cx.struct_span_lint(UNCOMMON_CODEPOINTS, sp, |lint| {
-                    lint.build(fluent::lint::identifier_uncommon_codepoints).emit();
-                })
+                cx.emit_spanned_lint(UNCOMMON_CODEPOINTS, sp, IdentifierUncommonCodepoints);
             }
         }
 
@@ -216,13 +215,15 @@ impl EarlyLintPass for NonAsciiIdents {
                     .entry(skeleton_sym)
                     .and_modify(|(existing_symbol, existing_span, existing_is_ascii)| {
                         if !*existing_is_ascii || !is_ascii {
-                            cx.struct_span_lint(CONFUSABLE_IDENTS, sp, |lint| {
-                                lint.build(fluent::lint::confusable_identifier_pair)
-                                    .set_arg("existing_sym", *existing_symbol)
-                                    .set_arg("sym", symbol)
-                                    .span_label(*existing_span, fluent::lint::label)
-                                    .emit();
-                            });
+                            cx.emit_spanned_lint(
+                                CONFUSABLE_IDENTS,
+                                sp,
+                                ConfusableIdentifierPair {
+                                    existing_sym: *existing_symbol,
+                                    sym: symbol,
+                                    label: *existing_span,
+                                },
+                            );
                         }
                         if *existing_is_ascii && !is_ascii {
                             *existing_symbol = symbol;
@@ -322,22 +323,19 @@ impl EarlyLintPass for NonAsciiIdents {
                 }
 
                 for ((sp, ch_list), script_set) in lint_reports {
-                    cx.struct_span_lint(MIXED_SCRIPT_CONFUSABLES, sp, |lint| {
-                        let mut includes = String::new();
-                        for (idx, ch) in ch_list.into_iter().enumerate() {
-                            if idx != 0 {
-                                includes += ", ";
-                            }
-                            let char_info = format!("'{}' (U+{:04X})", ch, ch as u32);
-                            includes += &char_info;
+                    let mut includes = String::new();
+                    for (idx, ch) in ch_list.into_iter().enumerate() {
+                        if idx != 0 {
+                            includes += ", ";
                         }
-                        lint.build(fluent::lint::mixed_script_confusables)
-                            .set_arg("set", script_set.to_string())
-                            .set_arg("includes", includes)
-                            .note(fluent::lint::includes_note)
-                            .note(fluent::lint::note)
-                            .emit();
-                    });
+                        let char_info = format!("'{}' (U+{:04X})", ch, ch as u32);
+                        includes += &char_info;
+                    }
+                    cx.emit_spanned_lint(
+                        MIXED_SCRIPT_CONFUSABLES,
+                        sp,
+                        MixedScriptConfusables { set: script_set.to_string(), includes },
+                    );
                 }
             }
         }

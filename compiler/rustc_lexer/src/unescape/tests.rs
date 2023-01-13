@@ -3,8 +3,7 @@ use super::*;
 #[test]
 fn test_unescape_char_bad() {
     fn check(literal_text: &str, expected_error: EscapeError) {
-        let actual_result = unescape_char(literal_text).map_err(|(_offset, err)| err);
-        assert_eq!(actual_result, Err(expected_error));
+        assert_eq!(unescape_char(literal_text), Err(expected_error));
     }
 
     check("", EscapeError::ZeroChars);
@@ -68,8 +67,7 @@ fn test_unescape_char_bad() {
 #[test]
 fn test_unescape_char_good() {
     fn check(literal_text: &str, expected_char: char) {
-        let actual_result = unescape_char(literal_text);
-        assert_eq!(actual_result, Ok(expected_char));
+        assert_eq!(unescape_char(literal_text), Ok(expected_char));
     }
 
     check("a", 'a');
@@ -134,8 +132,7 @@ fn test_unescape_str_good() {
                 }
             }
         });
-        let buf = buf.as_ref().map(|it| it.as_ref());
-        assert_eq!(buf, Ok(expected))
+        assert_eq!(buf.as_deref(), Ok(expected))
     }
 
     check("foo", "foo");
@@ -149,8 +146,7 @@ fn test_unescape_str_good() {
 #[test]
 fn test_unescape_byte_bad() {
     fn check(literal_text: &str, expected_error: EscapeError) {
-        let actual_result = unescape_byte(literal_text).map_err(|(_offset, err)| err);
-        assert_eq!(actual_result, Err(expected_error));
+        assert_eq!(unescape_byte(literal_text), Err(expected_error));
     }
 
     check("", EscapeError::ZeroChars);
@@ -219,8 +215,7 @@ fn test_unescape_byte_bad() {
 #[test]
 fn test_unescape_byte_good() {
     fn check(literal_text: &str, expected_byte: u8) {
-        let actual_result = unescape_byte(literal_text);
-        assert_eq!(actual_result, Ok(expected_byte));
+        assert_eq!(unescape_byte(literal_text), Ok(expected_byte));
     }
 
     check("a", b'a');
@@ -246,16 +241,15 @@ fn test_unescape_byte_good() {
 fn test_unescape_byte_str_good() {
     fn check(literal_text: &str, expected: &[u8]) {
         let mut buf = Ok(Vec::with_capacity(literal_text.len()));
-        unescape_byte_literal(literal_text, Mode::ByteStr, &mut |range, c| {
+        unescape_literal(literal_text, Mode::ByteStr, &mut |range, c| {
             if let Ok(b) = &mut buf {
                 match c {
-                    Ok(c) => b.push(c),
+                    Ok(c) => b.push(byte_from_char(c)),
                     Err(e) => buf = Err((range, e)),
                 }
             }
         });
-        let buf = buf.as_ref().map(|it| it.as_ref());
-        assert_eq!(buf, Ok(expected))
+        assert_eq!(buf.as_deref(), Ok(expected))
     }
 
     check("foo", b"foo");
@@ -280,18 +274,13 @@ fn test_unescape_raw_str() {
 
 #[test]
 fn test_unescape_raw_byte_str() {
-    fn check(literal: &str, expected: &[(Range<usize>, Result<u8, EscapeError>)]) {
+    fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
         let mut unescaped = Vec::with_capacity(literal.len());
-        unescape_byte_literal(literal, Mode::RawByteStr, &mut |range, res| {
-            unescaped.push((range, res))
-        });
+        unescape_literal(literal, Mode::RawByteStr, &mut |range, res| unescaped.push((range, res)));
         assert_eq!(unescaped, expected);
     }
 
     check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))]);
-    check("🦀", &[(0..4, Err(EscapeError::NonAsciiCharInByteString))]);
-    check(
-        "🦀a",
-        &[(0..4, Err(EscapeError::NonAsciiCharInByteString)), (4..5, Ok(byte_from_char('a')))],
-    );
+    check("🦀", &[(0..4, Err(EscapeError::NonAsciiCharInByte))]);
+    check("🦀a", &[(0..4, Err(EscapeError::NonAsciiCharInByte)), (4..5, Ok('a'))]);
 }

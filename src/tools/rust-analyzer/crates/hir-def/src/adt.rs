@@ -6,23 +6,28 @@ use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
-    InFile,
+    HirFileId, InFile,
 };
 use la_arena::{Arena, ArenaMap};
+use rustc_abi::{Integer, IntegerType};
 use syntax::ast::{self, HasName, HasVisibility};
 use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 
 use crate::{
     body::{CfgExpander, LowerCtx},
+    builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
     intern::Interned,
-    item_tree::{AttrOwner, Field, Fields, ItemTree, ModItem, RawVisibilityId},
+    item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
+    layout::{Align, ReprFlags, ReprOptions},
+    nameres::diagnostics::DefDiagnostic,
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
     type_ref::TypeRef,
     visibility::RawVisibility,
-    EnumId, LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StructId, UnionId, VariantId,
+    EnumId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StructId, UnionId,
+    VariantId,
 };
 use cfg::CfgOptions;
 
@@ -31,15 +36,18 @@ use cfg::CfgOptions;
 pub struct StructData {
     pub name: Name,
     pub variant_data: Arc<VariantData>,
-    pub repr: Option<ReprKind>,
+    pub repr: Option<ReprOptions>,
     pub visibility: RawVisibility,
+    pub rustc_has_incoherent_inherent_impls: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub name: Name,
     pub variants: Arena<EnumVariantData>,
+    pub repr: Option<ReprOptions>,
     pub visibility: RawVisibility,
+    pub rustc_has_incoherent_inherent_impls: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,108 +71,252 @@ pub struct FieldData {
     pub visibility: RawVisibility,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ReprKind {
-    Packed,
-    Other,
-}
-
 fn repr_from_value(
     db: &dyn DefDatabase,
     krate: CrateId,
     item_tree: &ItemTree,
     of: AttrOwner,
-) -> Option<ReprKind> {
+) -> Option<ReprOptions> {
     item_tree.attrs(db, krate, of).by_key("repr").tt_values().find_map(parse_repr_tt)
 }
 
-fn parse_repr_tt(tt: &Subtree) -> Option<ReprKind> {
+fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
     match tt.delimiter {
         Some(Delimiter { kind: DelimiterKind::Parenthesis, .. }) => {}
         _ => return None,
     }
 
-    let mut it = tt.token_trees.iter();
-    match it.next()? {
-        TokenTree::Leaf(Leaf::Ident(ident)) if ident.text == "packed" => Some(ReprKind::Packed),
-        _ => Some(ReprKind::Other),
+    let mut flags = ReprFlags::empty();
+    let mut int = None;
+    let mut max_align: Option<Align> = None;
+    let mut min_pack: Option<Align> = None;
+
+    let mut tts = tt.token_trees.iter().peekable();
+    while let Some(tt) = tts.next() {
+        if let TokenTree::Leaf(Leaf::Ident(ident)) = tt {
+            flags.insert(match &*ident.text {
+                "packed" => {
+                    let pack = if let Some(TokenTree::Subtree(tt)) = tts.peek() {
+                        tts.next();
+                        if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
+                            lit.text.parse().unwrap_or_default()
+                        } else {
+                            0
+                        }
+                    } else {
+                        0
+                    };
+                    let pack = Align::from_bytes(pack).unwrap();
+                    min_pack =
+                        Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
+                    ReprFlags::empty()
+                }
+                "align" => {
+                    if let Some(TokenTree::Subtree(tt)) = tts.peek() {
+                        tts.next();
+                        if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
+                            if let Ok(align) = lit.text.parse() {
+                                let align = Align::from_bytes(align).ok();
+                                max_align = max_align.max(align);
+                            }
+                        }
+                    }
+                    ReprFlags::empty()
+                }
+                "C" => ReprFlags::IS_C,
+                "transparent" => ReprFlags::IS_TRANSPARENT,
+                repr => {
+                    if let Some(builtin) = BuiltinInt::from_suffix(repr)
+                        .map(Either::Left)
+                        .or_else(|| BuiltinUint::from_suffix(repr).map(Either::Right))
+                    {
+                        int = Some(match builtin {
+                            Either::Left(bi) => match bi {
+                                BuiltinInt::Isize => IntegerType::Pointer(true),
+                                BuiltinInt::I8 => IntegerType::Fixed(Integer::I8, true),
+                                BuiltinInt::I16 => IntegerType::Fixed(Integer::I16, true),
+                                BuiltinInt::I32 => IntegerType::Fixed(Integer::I32, true),
+                                BuiltinInt::I64 => IntegerType::Fixed(Integer::I64, true),
+                                BuiltinInt::I128 => IntegerType::Fixed(Integer::I128, true),
+                            },
+                            Either::Right(bu) => match bu {
+                                BuiltinUint::Usize => IntegerType::Pointer(false),
+                                BuiltinUint::U8 => IntegerType::Fixed(Integer::I8, false),
+                                BuiltinUint::U16 => IntegerType::Fixed(Integer::I16, false),
+                                BuiltinUint::U32 => IntegerType::Fixed(Integer::I32, false),
+                                BuiltinUint::U64 => IntegerType::Fixed(Integer::I64, false),
+                                BuiltinUint::U128 => IntegerType::Fixed(Integer::I128, false),
+                            },
+                        });
+                    }
+                    ReprFlags::empty()
+                }
+            })
+        }
     }
+
+    Some(ReprOptions { int, align: max_align, pack: min_pack, flags, field_shuffle_seed: 0 })
 }
 
 impl StructData {
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
+        db.struct_data_with_diagnostics(id).0
+    }
+
+    pub(crate) fn struct_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        id: StructId,
+    ) -> (Arc<StructData>, Arc<[DefDiagnostic]>) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
+        let rustc_has_incoherent_inherent_impls = item_tree
+            .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
+            .by_key("rustc_has_incoherent_inherent_impls")
+            .exists();
 
         let strukt = &item_tree[loc.id.value];
-        let variant_data = lower_fields(db, krate, &item_tree, &cfg_options, &strukt.fields, None);
-        Arc::new(StructData {
-            name: strukt.name.clone(),
-            variant_data: Arc::new(variant_data),
-            repr,
-            visibility: item_tree[strukt.visibility].clone(),
-        })
+        let (variant_data, diagnostics) = lower_fields(
+            db,
+            krate,
+            loc.id.file_id(),
+            loc.container.local_id,
+            &item_tree,
+            &cfg_options,
+            &strukt.fields,
+            None,
+        );
+        (
+            Arc::new(StructData {
+                name: strukt.name.clone(),
+                variant_data: Arc::new(variant_data),
+                repr,
+                visibility: item_tree[strukt.visibility].clone(),
+                rustc_has_incoherent_inherent_impls,
+            }),
+            diagnostics.into(),
+        )
     }
+
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
+        db.union_data_with_diagnostics(id).0
+    }
+
+    pub(crate) fn union_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        id: UnionId,
+    ) -> (Arc<StructData>, Arc<[DefDiagnostic]>) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
 
-        let union = &item_tree[loc.id.value];
-        let variant_data = lower_fields(db, krate, &item_tree, &cfg_options, &union.fields, None);
+        let rustc_has_incoherent_inherent_impls = item_tree
+            .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
+            .by_key("rustc_has_incoherent_inherent_impls")
+            .exists();
 
-        Arc::new(StructData {
-            name: union.name.clone(),
-            variant_data: Arc::new(variant_data),
-            repr,
-            visibility: item_tree[union.visibility].clone(),
-        })
+        let union = &item_tree[loc.id.value];
+        let (variant_data, diagnostics) = lower_fields(
+            db,
+            krate,
+            loc.id.file_id(),
+            loc.container.local_id,
+            &item_tree,
+            &cfg_options,
+            &union.fields,
+            None,
+        );
+        (
+            Arc::new(StructData {
+                name: union.name.clone(),
+                variant_data: Arc::new(variant_data),
+                repr,
+                visibility: item_tree[union.visibility].clone(),
+                rustc_has_incoherent_inherent_impls,
+            }),
+            diagnostics.into(),
+        )
     }
 }
 
 impl EnumData {
     pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
+        db.enum_data_with_diagnostics(e).0
+    }
+
+    pub(crate) fn enum_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        e: EnumId,
+    ) -> (Arc<EnumData>, Arc<[DefDiagnostic]>) {
         let loc = e.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let cfg_options = db.crate_graph()[krate].cfg_options.clone();
+        let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
+        let rustc_has_incoherent_inherent_impls = item_tree
+            .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
+            .by_key("rustc_has_incoherent_inherent_impls")
+            .exists();
 
         let enum_ = &item_tree[loc.id.value];
         let mut variants = Arena::new();
+        let mut diagnostics = Vec::new();
         for tree_id in enum_.variants.clone() {
-            if item_tree.attrs(db, krate, tree_id.into()).is_cfg_enabled(&cfg_options) {
-                let var = &item_tree[tree_id];
-                let var_data = lower_fields(
+            let attrs = item_tree.attrs(db, krate, tree_id.into());
+            let var = &item_tree[tree_id];
+            if attrs.is_cfg_enabled(&cfg_options) {
+                let (var_data, field_diagnostics) = lower_fields(
                     db,
                     krate,
+                    loc.id.file_id(),
+                    loc.container.local_id,
                     &item_tree,
                     &cfg_options,
                     &var.fields,
                     Some(enum_.visibility),
                 );
+                diagnostics.extend(field_diagnostics);
 
                 variants.alloc(EnumVariantData {
                     name: var.name.clone(),
                     variant_data: Arc::new(var_data),
                 });
+            } else {
+                diagnostics.push(DefDiagnostic::unconfigured_code(
+                    loc.container.local_id,
+                    InFile::new(loc.id.file_id(), var.ast_id.upcast()),
+                    attrs.cfg().unwrap(),
+                    cfg_options.clone(),
+                ))
             }
         }
 
-        Arc::new(EnumData {
-            name: enum_.name.clone(),
-            variants,
-            visibility: item_tree[enum_.visibility].clone(),
-        })
+        (
+            Arc::new(EnumData {
+                name: enum_.name.clone(),
+                variants,
+                repr,
+                visibility: item_tree[enum_.visibility].clone(),
+                rustc_has_incoherent_inherent_impls,
+            }),
+            diagnostics.into(),
+        )
     }
 
     pub fn variant(&self, name: &Name) -> Option<LocalEnumVariantId> {
         let (id, _) = self.variants.iter().find(|(_id, data)| &data.name == name)?;
         Some(id)
+    }
+
+    pub fn variant_body_type(&self) -> IntegerType {
+        match self.repr {
+            Some(ReprOptions { int: Some(builtin), .. }) => builtin,
+            _ => IntegerType::Pointer(true),
+        }
     }
 }
 
@@ -324,31 +476,64 @@ fn lower_struct(
 fn lower_fields(
     db: &dyn DefDatabase,
     krate: CrateId,
+    current_file_id: HirFileId,
+    container: LocalModuleId,
     item_tree: &ItemTree,
     cfg_options: &CfgOptions,
     fields: &Fields,
     override_visibility: Option<RawVisibilityId>,
-) -> VariantData {
+) -> (VariantData, Vec<DefDiagnostic>) {
+    let mut diagnostics = Vec::new();
     match fields {
         Fields::Record(flds) => {
             let mut arena = Arena::new();
             for field_id in flds.clone() {
-                if item_tree.attrs(db, krate, field_id.into()).is_cfg_enabled(cfg_options) {
-                    arena.alloc(lower_field(item_tree, &item_tree[field_id], override_visibility));
+                let attrs = item_tree.attrs(db, krate, field_id.into());
+                let field = &item_tree[field_id];
+                if attrs.is_cfg_enabled(cfg_options) {
+                    arena.alloc(lower_field(item_tree, field, override_visibility));
+                } else {
+                    diagnostics.push(DefDiagnostic::unconfigured_code(
+                        container,
+                        InFile::new(
+                            current_file_id,
+                            match field.ast_id {
+                                FieldAstId::Record(it) => it.upcast(),
+                                FieldAstId::Tuple(it) => it.upcast(),
+                            },
+                        ),
+                        attrs.cfg().unwrap(),
+                        cfg_options.clone(),
+                    ))
                 }
             }
-            VariantData::Record(arena)
+            (VariantData::Record(arena), diagnostics)
         }
         Fields::Tuple(flds) => {
             let mut arena = Arena::new();
             for field_id in flds.clone() {
-                if item_tree.attrs(db, krate, field_id.into()).is_cfg_enabled(cfg_options) {
-                    arena.alloc(lower_field(item_tree, &item_tree[field_id], override_visibility));
+                let attrs = item_tree.attrs(db, krate, field_id.into());
+                let field = &item_tree[field_id];
+                if attrs.is_cfg_enabled(cfg_options) {
+                    arena.alloc(lower_field(item_tree, field, override_visibility));
+                } else {
+                    diagnostics.push(DefDiagnostic::unconfigured_code(
+                        container,
+                        InFile::new(
+                            current_file_id,
+                            match field.ast_id {
+                                FieldAstId::Record(it) => it.upcast(),
+                                FieldAstId::Tuple(it) => it.upcast(),
+                            },
+                        ),
+                        attrs.cfg().unwrap(),
+                        cfg_options.clone(),
+                    ))
                 }
             }
-            VariantData::Tuple(arena)
+            (VariantData::Tuple(arena), diagnostics)
         }
-        Fields::Unit => VariantData::Unit,
+        Fields::Unit => (VariantData::Unit, diagnostics),
     }
 }
 

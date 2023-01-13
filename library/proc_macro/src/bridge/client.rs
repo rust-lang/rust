@@ -223,10 +223,10 @@ pub(crate) use super::symbol::Symbol;
 
 macro_rules! define_client_side {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
         $(impl $name {
-            $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)* {
+            $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)? {
                 Bridge::with(|bridge| {
                     let mut buf = bridge.cached_buffer.take();
 
@@ -356,7 +356,7 @@ impl<I, O> Clone for Client<I, O> {
 
 fn maybe_install_panic_hook(force_show_panics: bool) {
     // Hide the default panic output within `proc_macro` expansions.
-    // NB. the server can't do this because it may use a different libstd.
+    // NB. the server can't do this because it may use a different std.
     static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
     HIDE_PANICS_DURING_EXPANSION.call_once(|| {
         let prev = panic::take_hook();

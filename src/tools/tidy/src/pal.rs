@@ -30,6 +30,7 @@
 //! platform-specific cfgs are allowed. Not sure yet how to deal with
 //! this in the long term.
 
+use crate::walk::{filter_dirs, walk};
 use std::iter::Iterator;
 use std::path::Path;
 
@@ -67,7 +68,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     // Sanity check that the complex parsing here works.
     let mut saw_target_arch = false;
     let mut saw_cfg_bang = false;
-    super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
+    walk(path, &mut filter_dirs, &mut |entry, contents| {
         let file = entry.path();
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") {

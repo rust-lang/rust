@@ -164,7 +164,7 @@ pub fn expand_include<'cx>(
     Box::new(ExpandResult { p, node_id: cx.current_expansion.lint_node_id })
 }
 
-// include_str! : read the given file, insert it as a literal string expr
+/// `include_str!`: read the given file, insert it as a literal string expr
 pub fn expand_include_str(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -216,7 +216,10 @@ pub fn expand_include_bytes(
         }
     };
     match cx.source_map().load_binary_file(&file) {
-        Ok(bytes) => base::MacEager::expr(cx.expr_byte_str(sp, bytes)),
+        Ok(bytes) => {
+            let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(bytes.into()));
+            base::MacEager::expr(expr)
+        }
         Err(e) => {
             cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
             DummyResult::any(sp)

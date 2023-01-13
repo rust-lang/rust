@@ -38,11 +38,11 @@ pub(crate) enum PathContext {
 pub(crate) fn rewrite_path(
     context: &RewriteContext<'_>,
     path_context: PathContext,
-    qself: Option<&ast::QSelf>,
+    qself: &Option<ptr::P<ast::QSelf>>,
     path: &ast::Path,
     shape: Shape,
 ) -> Option<String> {
-    let skip_count = qself.map_or(0, |x| x.position);
+    let skip_count = qself.as_ref().map_or(0, |x| x.position);
 
     let mut result = if path.is_global() && qself.is_none() && path_context != PathContext::Import {
         "::".to_owned()
@@ -655,7 +655,7 @@ impl Rewrite for ast::PolyTraitRef {
 
 impl Rewrite for ast::TraitRef {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        rewrite_path(context, PathContext::Type, None, &self.path, shape)
+        rewrite_path(context, PathContext::Type, &None, &self.path, shape)
     }
 }
 
@@ -688,7 +688,7 @@ impl Rewrite for ast::Ty {
 
                 rewrite_unary_prefix(context, prefix, &*mt.ty, shape)
             }
-            ast::TyKind::Rptr(ref lifetime, ref mt) => {
+            ast::TyKind::Ref(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
                 let mut result = String::with_capacity(128);
@@ -800,7 +800,7 @@ impl Rewrite for ast::Ty {
                 rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
             }
             ast::TyKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
+                rewrite_path(context, PathContext::Type, q_self, path, shape)
             }
             ast::TyKind::Array(ref ty, ref repeats) => rewrite_pair(
                 &**ty,
@@ -1059,7 +1059,7 @@ pub(crate) fn can_be_overflowed_type(
 ) -> bool {
     match ty.kind {
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
-        ast::TyKind::Rptr(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {
+        ast::TyKind::Ref(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {
             can_be_overflowed_type(context, &*mutty.ty, len)
         }
         _ => false,

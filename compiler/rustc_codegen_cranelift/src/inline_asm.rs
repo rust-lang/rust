@@ -27,7 +27,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         }
 
         // Used by stdarch
-        if template[0] == InlineAsmTemplatePiece::String("movq %rbx, ".to_string())
+        if template[0] == InlineAsmTemplatePiece::String("mov ".to_string())
             && matches!(
                 template[1],
                 InlineAsmTemplatePiece::Placeholder {
@@ -36,24 +36,26 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                     span: _
                 }
             )
-            && template[2] == InlineAsmTemplatePiece::String("\n".to_string())
-            && template[3] == InlineAsmTemplatePiece::String("cpuid".to_string())
-            && template[4] == InlineAsmTemplatePiece::String("\n".to_string())
-            && template[5] == InlineAsmTemplatePiece::String("xchgq %rbx, ".to_string())
+            && template[2] == InlineAsmTemplatePiece::String(", rbx".to_string())
+            && template[3] == InlineAsmTemplatePiece::String("\n".to_string())
+            && template[4] == InlineAsmTemplatePiece::String("cpuid".to_string())
+            && template[5] == InlineAsmTemplatePiece::String("\n".to_string())
+            && template[6] == InlineAsmTemplatePiece::String("xchg ".to_string())
             && matches!(
-                template[6],
+                template[7],
                 InlineAsmTemplatePiece::Placeholder {
                     operand_idx: 0,
                     modifier: Some('r'),
                     span: _
                 }
             )
+            && template[8] == InlineAsmTemplatePiece::String(", rbx".to_string())
         {
             assert_eq!(operands.len(), 4);
             let (leaf, eax_place) = match operands[1] {
                 InlineAsmOperand::InOut {
                     reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
-                    late: true,
+                    late: _,
                     ref in_value,
                     out_place: Some(out_place),
                 } => (
@@ -68,7 +70,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                         InlineAsmRegOrRegClass::RegClass(InlineAsmRegClass::X86(
                             X86InlineAsmRegClass::reg,
                         )),
-                    late: true,
+                    late: _,
                     place: Some(place),
                 } => crate::base::codegen_place(fx, place),
                 _ => unreachable!(),
@@ -76,7 +78,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             let (sub_leaf, ecx_place) = match operands[2] {
                 InlineAsmOperand::InOut {
                     reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
-                    late: true,
+                    late: _,
                     ref in_value,
                     out_place: Some(out_place),
                 } => (
@@ -88,7 +90,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             let edx_place = match operands[3] {
                 InlineAsmOperand::Out {
                     reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
-                    late: true,
+                    late: _,
                     place: Some(place),
                 } => crate::base::codegen_place(fx, place),
                 _ => unreachable!(),

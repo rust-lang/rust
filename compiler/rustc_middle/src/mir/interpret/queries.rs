@@ -4,7 +4,9 @@ use crate::mir;
 use crate::ty::subst::InternalSubsts;
 use crate::ty::visit::TypeVisitable;
 use crate::ty::{self, query::TyCtxtAt, query::TyCtxtEnsure, TyCtxt};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -36,7 +38,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        ct: ty::Unevaluated<'tcx>,
+        ct: mir::UnevaluatedConst<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
@@ -45,11 +47,15 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // When trying to evaluate constants containing inference variables,
         // use `Infcx::const_eval_resolve` instead.
-        if ct.substs.has_infer_types_or_consts() {
+        if ct.substs.has_non_region_infer() {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
+        match ty::Instance::resolve_opt_const_arg(
+            self, param_env,
+            // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
+            ct.def, ct.substs,
+        ) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id(param_env, cid, span)
@@ -63,7 +69,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve_for_typeck(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        ct: ty::Unevaluated<'tcx>,
+        ct: ty::UnevaluatedConst<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
@@ -72,14 +78,36 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // When trying to evaluate constants containing inference variables,
         // use `Infcx::const_eval_resolve` instead.
-        if ct.substs.has_infer_types_or_consts() {
+        if ct.substs.has_non_region_infer() {
             bug!("did not expect inference variables here");
         }
 
         match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
             Ok(Some(instance)) => {
-                let cid = GlobalId { instance, promoted: ct.promoted };
-                self.const_eval_global_id_for_typeck(param_env, cid, span)
+                let cid = GlobalId { instance, promoted: None };
+                self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
+                    // We are emitting the lint here instead of in `is_const_evaluatable`
+                    // as we normalize obligations before checking them, and normalization
+                    // uses this function to evaluate this constant.
+                    //
+                    // @lcnr believes that successfully evaluating even though there are
+                    // used generic parameters is a bug of evaluation, so checking for it
+                    // here does feel somewhat sensible.
+                    if !self.features().generic_const_exprs && ct.substs.has_non_region_param() {
+                        assert!(matches!(self.def_kind(ct.def.did), DefKind::AnonConst));
+                        let mir_body = self.mir_for_ctfe_opt_const_arg(ct.def);
+                        if mir_body.is_polymorphic {
+                            let Some(local_def_id) = ct.def.did.as_local() else { return };
+                            self.struct_span_lint_hir(
+                                lint::builtin::CONST_EVALUATABLE_UNCHECKED,
+                                self.hir().local_def_id_to_hir_id(local_def_id),
+                                self.def_span(ct.def.did),
+                                "cannot use constants which depend on generic parameters in types",
+                                |err| err,
+                            )
+                        }
+                    }
+                })
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
             Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
@@ -147,6 +175,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
 impl<'tcx> TyCtxtAt<'tcx> {
     /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
+    ///
+    /// The span is entirely ignored here, but still helpful for better query cycle errors.
     pub fn eval_static_initializer(
         self,
         def_id: DefId,
@@ -159,6 +189,8 @@ impl<'tcx> TyCtxtAt<'tcx> {
     }
 
     /// Evaluate anything constant-like, returning the allocation of the final memory.
+    ///
+    /// The span is entirely ignored here, but still helpful for better query cycle errors.
     fn eval_to_allocation(
         self,
         gid: GlobalId<'tcx>,
@@ -211,7 +243,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         constant: mir::ConstantKind<'tcx>,
-    ) -> mir::DestructuredMirConstant<'tcx> {
+    ) -> mir::DestructuredConstant<'tcx> {
         self.try_destructure_mir_constant(param_env.and(constant)).unwrap()
     }
 }

@@ -31,7 +31,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                         diag.span_suggestion(
                             expr.span,
                             "use a byte literal instead",
-                            format!("b{}", snippet),
+                            format!("b{snippet}"),
                             applicability,
                         );
                     }

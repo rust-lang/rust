@@ -1,5 +1,5 @@
 use super::*;
-use crate::config::{Config, TargetSelection};
+use crate::config::{Config, DryRun, TargetSelection};
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
@@ -10,7 +10,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
     let mut config = Config::parse(cmd);
     // don't save toolstates
     config.save_toolstates = None;
-    config.dry_run = true;
+    config.dry_run = DryRun::SelfCheck;
 
     // Ignore most submodules, since we don't need them for a dry run.
     // But make sure to check out the `doc` and `rust-analyzer` submodules, since some steps need them
@@ -78,7 +78,7 @@ macro_rules! rustc {
 #[test]
 fn test_valid() {
     // make sure multi suite paths are accepted
-    check_cli(["test", "src/test/ui/attr-start.rs", "src/test/ui/attr-shebang.rs"]);
+    check_cli(["test", "tests/ui/attr-start.rs", "tests/ui/attr-shebang.rs"]);
 }
 
 #[test]
@@ -236,7 +236,7 @@ mod defaults {
     fn doc_default() {
         let mut config = configure("doc", &["A"], &["A"]);
         config.compiler_docs = true;
-        config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
+        config.cmd = Subcommand::Doc { paths: Vec::new(), open: false, json: false };
         let mut cache = run_build(&[], config);
         let a = TargetSelection::from_user("A");
 
@@ -587,7 +587,7 @@ mod dist {
     fn doc_ci() {
         let mut config = configure(&["A"], &["A"]);
         config.compiler_docs = true;
-        config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
+        config.cmd = Subcommand::Doc { paths: Vec::new(), open: false, json: false };
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);

@@ -110,7 +110,7 @@ fn impls_for_trait_item(
         .filter_map(|imp| {
             let item = imp.items(sema.db).iter().find_map(|itm| {
                 let itm_name = itm.name(sema.db)?;
-                (itm_name == fun_name).then(|| *itm)
+                (itm_name == fun_name).then_some(*itm)
             })?;
             item.try_to_nav(sema.db)
         })

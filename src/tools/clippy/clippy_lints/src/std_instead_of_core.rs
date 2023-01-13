@@ -1,6 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{def::Res, HirId, Path, PathSegment};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::DefIdTree;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, symbol::kw, Span};
 
@@ -94,6 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
         if let Res::Def(_, def_id) = path.res
             && let Some(first_segment) = get_first_segment(path)
+            && is_stable(cx, def_id)
         {
             let (lint, msg, help) = match first_segment.ident.name {
                 sym::std => match cx.tcx.crate_name(def_id.krate) {
@@ -144,5 +147,24 @@ fn get_first_segment<'tcx>(path: &Path<'tcx>) -> Option<&'tcx PathSegment<'tcx>>
         [x, y, ..] if x.ident.name == kw::PathRoot => Some(y),
         [x, ..] => Some(x),
         _ => None,
+    }
+}
+
+/// Checks if all ancestors of `def_id` are stable, to avoid linting
+/// [unstable moves](https://github.com/rust-lang/rust/pull/95956)
+fn is_stable(cx: &LateContext<'_>, mut def_id: DefId) -> bool {
+    loop {
+        if cx
+            .tcx
+            .lookup_stability(def_id)
+            .map_or(false, |stability| stability.is_unstable())
+        {
+            return false;
+        }
+
+        match cx.tcx.opt_parent(def_id) {
+            Some(parent) => def_id = parent,
+            None => return true,
+        }
     }
 }

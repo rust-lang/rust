@@ -3,6 +3,9 @@
 #![warn(clippy::len_zero)]
 #![allow(dead_code, unused, clippy::len_without_is_empty)]
 
+extern crate core;
+use core::ops::Deref;
+
 pub struct One;
 struct Wither;
 
@@ -56,6 +59,26 @@ impl WithIsEmpty for Wither {
     }
 }
 
+struct DerefToDerefToString;
+
+impl Deref for DerefToDerefToString {
+    type Target = DerefToString;
+
+    fn deref(&self) -> &Self::Target {
+        &DerefToString {}
+    }
+}
+
+struct DerefToString;
+
+impl Deref for DerefToString {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        "Hello, world!"
+    }
+}
+
 fn main() {
     let x = [1, 2];
     if x.is_empty() {
@@ -63,6 +86,23 @@ fn main() {
     }
 
     if "".is_empty() {}
+
+    let s = "Hello, world!";
+    let s1 = &s;
+    let s2 = &s1;
+    let s3 = &s2;
+    let s4 = &s3;
+    let s5 = &s4;
+    let s6 = &s5;
+    println!("{}", s1.is_empty());
+    println!("{}", s2.is_empty());
+    println!("{}", s3.is_empty());
+    println!("{}", s4.is_empty());
+    println!("{}", s5.is_empty());
+    println!("{}", (s6).is_empty());
+
+    let d2s = DerefToDerefToString {};
+    println!("{}", (**d2s).is_empty());
 
     let y = One;
     if y.len() == 0 {

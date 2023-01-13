@@ -48,6 +48,12 @@ LL +     writeln!(v, "/"");
    |
 
 error: literal with an empty format string
+  --> $DIR/write_literal_2.rs:13:24
+   |
+LL |     writeln!(v, r"{}", '"');
+   |                        ^^^
+
+error: literal with an empty format string
   --> $DIR/write_literal_2.rs:14:24
    |
 LL |     writeln!(v, r"{}", '/'');
@@ -108,5 +114,77 @@ LL ~         {} / 3",
 LL ~         "1", "2",
    |
 
-error: aborting due to 9 previous errors
+error: literal with an empty format string
+  --> $DIR/write_literal_2.rs:27:23
+   |
+LL |     writeln!(v, "{}", "/");
+   |                       ^^^^
+   |
+help: try this
+   |
+LL -     writeln!(v, "{}", "/");
+LL +     writeln!(v, "/");
+   |
+
+error: literal with an empty format string
+  --> $DIR/write_literal_2.rs:28:24
+   |
+LL |     writeln!(v, r"{}", "/");
+   |                        ^^^^
+   |
+help: try this
+   |
+LL -     writeln!(v, r"{}", "/");
+LL +     writeln!(v, r"/");
+   |
+
+error: literal with an empty format string
+  --> $DIR/write_literal_2.rs:29:26
+   |
+LL |     writeln!(v, r#"{}"#, "/");
+   |                          ^^^^
+   |
+help: try this
+   |
+LL -     writeln!(v, r#"{}"#, "/");
+LL +     writeln!(v, r#"/"#);
+   |
+
+error: literal with an empty format string
+  --> $DIR/write_literal_2.rs:30:23
+   |
+LL |     writeln!(v, "{}", r"/");
+   |                       ^^^^
+   |
+help: try this
+   |
+LL -     writeln!(v, "{}", r"/");
+LL +     writeln!(v, "/");
+   |
+
+error: literal with an empty format string
+  --> $DIR/write_literal_2.rs:31:23
+   |
+LL |     writeln!(v, "{}", "/r");
+   |                       ^^^^
+   |
+help: try this
+   |
+LL -     writeln!(v, "{}", "/r");
+LL +     writeln!(v, "/r");
+   |
+
+error: literal with an empty format string
+  --> $DIR/write_literal_2.rs:32:28
+   |
+LL |     writeln!(v, r#"{}{}"#, '#', '"'); // hard mode
+   |                            ^^^
+
+error: literal with an empty format string
+  --> $DIR/write_literal_2.rs:32:33
+   |
+LL |     writeln!(v, r#"{}{}"#, '#', '"'); // hard mode
+   |                                 ^^^
+
+error: aborting due to 17 previous errors
 

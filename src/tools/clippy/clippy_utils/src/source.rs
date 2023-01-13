@@ -2,13 +2,13 @@
 
 #![allow(clippy::module_name_repetitions)]
 
-use crate::line_span;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
+use rustc_session::Session;
 use rustc_span::hygiene;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext};
+use rustc_span::source_map::{original_sp, SourceMap};
+use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext, DUMMY_SP};
 use std::borrow::Cow;
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
@@ -25,11 +25,11 @@ pub fn expr_block<'a, T: LintContext>(
     if expr.span.from_expansion() {
         Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
     } else if let ExprKind::Block(_, _) = expr.kind {
-        Cow::Owned(format!("{}{}", code, string))
+        Cow::Owned(format!("{code}{string}"))
     } else if string.is_empty() {
-        Cow::Owned(format!("{{ {} }}", code))
+        Cow::Owned(format!("{{ {code} }}"))
     } else {
-        Cow::Owned(format!("{{\n{};\n{}\n}}", code, string))
+        Cow::Owned(format!("{{\n{code};\n{string}\n}}"))
     }
 }
 
@@ -53,6 +53,23 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
         snip.find(|c: char| !c.is_whitespace())
             .map(|pos| line_span.lo() + BytePos::from_usize(pos))
     })
+}
+
+/// Extends the span to the beginning of the spans line, incl. whitespaces.
+///
+/// ```rust
+///        let x = ();
+/// //             ^^
+/// // will be converted to
+///        let x = ();
+/// // ^^^^^^^^^^^^^^
+/// ```
+fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
+    let span = original_sp(span, DUMMY_SP);
+    let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
+    let line_no = source_map_and_line.line;
+    let line_start = source_map_and_line.sf.lines(|lines| lines[line_no]);
+    span.with_lo(line_start)
 }
 
 /// Returns the indentation of the line of a span
@@ -189,10 +206,19 @@ pub fn snippet_with_applicability<'a, T: LintContext>(
     default: &'a str,
     applicability: &mut Applicability,
 ) -> Cow<'a, str> {
+    snippet_with_applicability_sess(cx.sess(), span, default, applicability)
+}
+
+fn snippet_with_applicability_sess<'a>(
+    sess: &Session,
+    span: Span,
+    default: &'a str,
+    applicability: &mut Applicability,
+) -> Cow<'a, str> {
     if *applicability != Applicability::Unspecified && span.from_expansion() {
         *applicability = Applicability::MaybeIncorrect;
     }
-    snippet_opt(cx, span).map_or_else(
+    snippet_opt_sess(sess, span).map_or_else(
         || {
             if *applicability == Applicability::MachineApplicable {
                 *applicability = Applicability::HasPlaceholders;
@@ -210,8 +236,12 @@ pub fn snippet_with_macro_callsite<'a, T: LintContext>(cx: &T, span: Span, defau
 }
 
 /// Converts a span to a code snippet. Returns `None` if not available.
-pub fn snippet_opt<T: LintContext>(cx: &T, span: Span) -> Option<String> {
-    cx.sess().source_map().span_to_snippet(span).ok()
+pub fn snippet_opt(cx: &impl LintContext, span: Span) -> Option<String> {
+    snippet_opt_sess(cx.sess(), span)
+}
+
+fn snippet_opt_sess(sess: &Session, span: Span) -> Option<String> {
+    sess.source_map().span_to_snippet(span).ok()
 }
 
 /// Converts a span (from a block) to a code snippet if available, otherwise use default.
@@ -261,8 +291,8 @@ pub fn snippet_block<'a, T: LintContext>(
 
 /// Same as `snippet_block`, but adapts the applicability level by the rules of
 /// `snippet_with_applicability`.
-pub fn snippet_block_with_applicability<'a, T: LintContext>(
-    cx: &T,
+pub fn snippet_block_with_applicability<'a>(
+    cx: &impl LintContext,
     span: Span,
     default: &'a str,
     indent_relative_to: Option<Span>,
@@ -283,7 +313,17 @@ pub fn snippet_block_with_applicability<'a, T: LintContext>(
 ///
 /// This will also return whether or not the snippet is a macro call.
 pub fn snippet_with_context<'a>(
-    cx: &LateContext<'_>,
+    cx: &impl LintContext,
+    span: Span,
+    outer: SyntaxContext,
+    default: &'a str,
+    applicability: &mut Applicability,
+) -> (Cow<'a, str>, bool) {
+    snippet_with_context_sess(cx.sess(), span, outer, default, applicability)
+}
+
+fn snippet_with_context_sess<'a>(
+    sess: &Session,
     span: Span,
     outer: SyntaxContext,
     default: &'a str,
@@ -302,7 +342,7 @@ pub fn snippet_with_context<'a>(
     );
 
     (
-        snippet_with_applicability(cx, span, default, applicability),
+        snippet_with_applicability_sess(sess, span, default, applicability),
         is_macro_call,
     )
 }
@@ -392,6 +432,16 @@ pub fn trim_span(sm: &SourceMap, span: Span) -> Span {
     .span()
 }
 
+/// Expand a span to include a preceding comma
+/// ```rust,ignore
+/// writeln!(o, "")   ->   writeln!(o, "")
+///             ^^                   ^^^^
+/// ```
+pub fn expand_past_previous_comma(cx: &LateContext<'_>, span: Span) -> Span {
+    let extended = cx.sess().source_map().span_extend_to_prev_char(span, ',', true);
+    extended.with_lo(extended.lo() - BytePos(1))
+}
+
 #[cfg(test)]
 mod test {
     use super::{reindent_multiline, without_block_comments};
@@ -466,7 +516,7 @@ mod test {
     #[test]
     fn test_without_block_comments_lines_without_block_comments() {
         let result = without_block_comments(vec!["/*", "", "*/"]);
-        println!("result: {:?}", result);
+        println!("result: {result:?}");
         assert!(result.is_empty());
 
         let result = without_block_comments(vec!["", "/*", "", "*/", "#[crate_type = \"lib\"]", "/*", "", "*/", ""]);

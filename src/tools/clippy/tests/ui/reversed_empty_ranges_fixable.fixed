@@ -1,5 +1,6 @@
 // run-rustfix
 #![warn(clippy::reversed_empty_ranges)]
+#![allow(clippy::uninlined_format_args)]
 
 const ANSWER: i32 = 42;
 

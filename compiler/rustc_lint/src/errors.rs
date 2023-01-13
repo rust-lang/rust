@@ -1,16 +1,19 @@
-use rustc_errors::{fluent, AddSubdiagnostic, ErrorGuaranteed, Handler};
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
-use rustc_session::{lint::Level, SessionDiagnostic};
+use rustc_errors::{
+    fluent, AddToDiagnostic, Diagnostic, ErrorGuaranteed, Handler, IntoDiagnostic,
+    SubdiagnosticMessage,
+};
+use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
 
-#[derive(SessionDiagnostic)]
-#[diag(lint::overruled_attribute, code = "E0453")]
-pub struct OverruledAttribute {
+#[derive(Diagnostic)]
+#[diag(lint_overruled_attribute, code = "E0453")]
+pub struct OverruledAttribute<'a> {
     #[primary_span]
     pub span: Span,
     #[label]
     pub overruled: Span,
-    pub lint_level: String,
+    pub lint_level: &'a str,
     pub lint_source: Symbol,
     #[subdiagnostic]
     pub sub: OverruledAttributeSub,
@@ -22,28 +25,32 @@ pub enum OverruledAttributeSub {
     CommandLineSource,
 }
 
-impl AddSubdiagnostic for OverruledAttributeSub {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+impl AddToDiagnostic for OverruledAttributeSub {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         match self {
             OverruledAttributeSub::DefaultSource { id } => {
-                diag.note(fluent::lint::default_source);
+                diag.note(fluent::lint_default_source);
                 diag.set_arg("id", id);
             }
             OverruledAttributeSub::NodeSource { span, reason } => {
-                diag.span_label(span, fluent::lint::node_source);
+                diag.span_label(span, fluent::lint_node_source);
                 if let Some(rationale) = reason {
+                    #[allow(rustc::untranslatable_diagnostic)]
                     diag.note(rationale.as_str());
                 }
             }
             OverruledAttributeSub::CommandLineSource => {
-                diag.note(fluent::lint::command_line_source);
+                diag.note(fluent::lint_command_line_source);
             }
         }
     }
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(lint::malformed_attribute, code = "E0452")]
+#[derive(Diagnostic)]
+#[diag(lint_malformed_attribute, code = "E0452")]
 pub struct MalformedAttribute {
     #[primary_span]
     pub span: Span,
@@ -51,18 +58,18 @@ pub struct MalformedAttribute {
     pub sub: MalformedAttributeSub,
 }
 
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum MalformedAttributeSub {
-    #[label(lint::bad_attribute_argument)]
+    #[label(lint_bad_attribute_argument)]
     BadAttributeArgument(#[primary_span] Span),
-    #[label(lint::reason_must_be_string_literal)]
+    #[label(lint_reason_must_be_string_literal)]
     ReasonMustBeStringLiteral(#[primary_span] Span),
-    #[label(lint::reason_must_come_last)]
+    #[label(lint_reason_must_come_last)]
     ReasonMustComeLast(#[primary_span] Span),
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(lint::unknown_tool_in_scoped_lint, code = "E0710")]
+#[derive(Diagnostic)]
+#[diag(lint_unknown_tool_in_scoped_lint, code = "E0710")]
 pub struct UnknownToolInScopedLint {
     #[primary_span]
     pub span: Option<Span>,
@@ -72,43 +79,25 @@ pub struct UnknownToolInScopedLint {
     pub is_nightly_build: Option<()>,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(lint::builtin_ellipsis_inclusive_range_patterns, code = "E0783")]
+#[derive(Diagnostic)]
+#[diag(lint_builtin_ellipsis_inclusive_range_patterns, code = "E0783")]
 pub struct BuiltinEllpisisInclusiveRangePatterns {
     #[primary_span]
     pub span: Span,
-    #[suggestion_short(code = "{replace}", applicability = "machine-applicable")]
+    #[suggestion(style = "short", code = "{replace}", applicability = "machine-applicable")]
     pub suggestion: Span,
     pub replace: String,
 }
 
+#[derive(Subdiagnostic)]
+#[note(lint_requested_level)]
 pub struct RequestedLevel {
     pub level: Level,
     pub lint_name: String,
 }
 
-impl AddSubdiagnostic for RequestedLevel {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
-        diag.note(fluent::lint::requested_level);
-        diag.set_arg(
-            "level",
-            match self.level {
-                Level::Allow => "-A",
-                Level::Warn => "-W",
-                Level::ForceWarn(_) => "--force-warn",
-                Level::Deny => "-D",
-                Level::Forbid => "-F",
-                Level::Expect(_) => {
-                    unreachable!("lints with the level of `expect` should not run this code");
-                }
-            },
-        );
-        diag.set_arg("lint_name", self.lint_name);
-    }
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(lint::unsupported_group, code = "E0602")]
+#[derive(Diagnostic)]
+#[diag(lint_unsupported_group, code = "E0602")]
 pub struct UnsupportedGroup {
     pub lint_group: String,
 }
@@ -119,15 +108,15 @@ pub struct CheckNameUnknown {
     pub sub: RequestedLevel,
 }
 
-impl SessionDiagnostic<'_> for CheckNameUnknown {
+impl IntoDiagnostic<'_> for CheckNameUnknown {
     fn into_diagnostic(
         self,
         handler: &Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::lint::check_name_unknown);
+        let mut diag = handler.struct_err(fluent::lint_check_name_unknown);
         diag.code(rustc_errors::error_code!(E0602));
         if let Some(suggestion) = self.suggestion {
-            diag.help(fluent::lint::help);
+            diag.help(fluent::help);
             diag.set_arg("suggestion", suggestion);
         }
         diag.set_arg("lint_name", self.lint_name);
@@ -136,24 +125,24 @@ impl SessionDiagnostic<'_> for CheckNameUnknown {
     }
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(lint::check_name_unknown_tool, code = "E0602")]
+#[derive(Diagnostic)]
+#[diag(lint_check_name_unknown_tool, code = "E0602")]
 pub struct CheckNameUnknownTool {
     pub tool_name: Symbol,
     #[subdiagnostic]
     pub sub: RequestedLevel,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(lint::check_name_warning)]
+#[derive(Diagnostic)]
+#[diag(lint_check_name_warning)]
 pub struct CheckNameWarning {
     pub msg: String,
     #[subdiagnostic]
     pub sub: RequestedLevel,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(lint::check_name_deprecated)]
+#[derive(Diagnostic)]
+#[diag(lint_check_name_deprecated)]
 pub struct CheckNameDeprecated {
     pub lint_name: String,
     pub new_name: String,

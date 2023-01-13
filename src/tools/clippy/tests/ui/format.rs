@@ -1,13 +1,13 @@
 // run-rustfix
-
+#![warn(clippy::useless_format)]
 #![allow(
     unused_tuple_struct_fields,
     clippy::print_literal,
     clippy::redundant_clone,
     clippy::to_string_in_format_args,
-    clippy::needless_borrow
+    clippy::needless_borrow,
+    clippy::uninlined_format_args
 )]
-#![warn(clippy::useless_format)]
 
 struct Foo(pub String);
 
@@ -30,8 +30,6 @@ fn main() {
     format!("{:?}", "foo"); // Don't warn about `Debug`.
     format!("{:8}", "foo");
     format!("{:width$}", "foo", width = 8);
-    format!("{:+}", "foo"); // Warn when the format makes no difference.
-    format!("{:<}", "foo"); // Warn when the format makes no difference.
     format!("foo {}", "bar");
     format!("{} bar", "foo");
 
@@ -40,8 +38,6 @@ fn main() {
     format!("{:?}", arg); // Don't warn about debug.
     format!("{:8}", arg);
     format!("{:width$}", arg, width = 8);
-    format!("{:+}", arg); // Warn when the format makes no difference.
-    format!("{:<}", arg); // Warn when the format makes no difference.
     format!("foo {}", arg);
     format!("{} bar", arg);
 

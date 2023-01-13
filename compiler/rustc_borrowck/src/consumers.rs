@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 //! This file provides API for compiler consumers.
 
 use rustc_hir::def_id::LocalDefId;
@@ -23,17 +25,16 @@ pub use super::{
 ///     can, for example, happen when requesting a body of a `const` function
 ///     because they are evaluated during typechecking. The panic can be avoided
 ///     by overriding the `mir_borrowck` query. You can find a complete example
-///     that shows how to do this at `src/test/run-make/obtain-borrowck/`.
+///     that shows how to do this at `tests/run-make/obtain-borrowck/`.
 ///
 /// *   Polonius is highly unstable, so expect regular changes in its signature or other details.
-pub fn get_body_with_borrowck_facts<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn get_body_with_borrowck_facts(
+    tcx: TyCtxt<'_>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> BodyWithBorrowckFacts<'tcx> {
+) -> BodyWithBorrowckFacts<'_> {
     let (input_body, promoted) = tcx.mir_promoted(def);
-    tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(def.did)).enter(|infcx| {
-        let input_body: &Body<'_> = &input_body.borrow();
-        let promoted: &IndexVec<_, _> = &promoted.borrow();
-        *super::do_mir_borrowck(&infcx, input_body, promoted, true).1.unwrap()
-    })
+    let infcx = tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(def.did)).build();
+    let input_body: &Body<'_> = &input_body.borrow();
+    let promoted: &IndexVec<_, _> = &promoted.borrow();
+    *super::do_mir_borrowck(&infcx, input_body, promoted, true).1.unwrap()
 }

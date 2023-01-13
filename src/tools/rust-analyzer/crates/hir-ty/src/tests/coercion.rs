@@ -123,6 +123,23 @@ fn test() {
 }
 
 #[test]
+fn if_else_adjust_for_branches_discard_type_var() {
+    check_no_mismatches(
+        r#"
+fn test() {
+    let f = || {
+        if true {
+            &""
+        } else {
+            ""
+        }
+    };
+}
+"#,
+    );
+}
+
+#[test]
 fn match_first_coerce() {
     check_no_mismatches(
         r#"
@@ -179,6 +196,22 @@ fn test() {
 
 }
         ",
+    );
+}
+
+#[test]
+fn match_adjust_for_branches_discard_type_var() {
+    check_no_mismatches(
+        r#"
+fn test() {
+    let f = || {
+        match 0i32 {
+            0i32 => &"",
+            _ => "",
+        }
+    };
+}
+"#,
     );
 }
 
@@ -295,6 +328,24 @@ fn foo() {
 }
 
 #[test]
+fn generator_yield_return_coerce() {
+    check_no_mismatches(
+        r#"
+fn test() {
+    let g = || {
+        yield &1u32;
+        yield &&1u32;
+        if true {
+            return &1u32;
+        }
+        &&1u32
+    };
+}
+        "#,
+    );
+}
+
+#[test]
 fn assign_coerce() {
     check_no_mismatches(
         r"
@@ -339,7 +390,7 @@ fn test() {
     let f: fn(u32) -> isize = foo;
                            // ^^^ adjustments: Pointer(ReifyFnPointer)
     let f: unsafe fn(u32) -> isize = foo;
-                                  // ^^^ adjustments: Pointer(ReifyFnPointer)
+                                  // ^^^ adjustments: Pointer(ReifyFnPointer), Pointer(UnsafeFnPointer)
 }",
     );
 }
@@ -370,7 +421,10 @@ fn coerce_closure_to_fn_ptr() {
     check_no_mismatches(
         r"
 fn test() {
-    let f: fn(u32) -> isize = |x| { 1 };
+    let f: fn(u32) -> u32 = |x| x;
+                         // ^^^^^ adjustments: Pointer(ClosureFnPointer(Safe))
+    let f: unsafe fn(u32) -> u32 = |x| x;
+                                // ^^^^^ adjustments: Pointer(ClosureFnPointer(Unsafe))
 }",
     );
 }
@@ -751,5 +805,39 @@ fn main() {
   //^^^^expected V<&S>, got (V<&dyn Tr>,)
 }
         "#,
+    );
+}
+
+#[test]
+fn adjust_comparison_arguments() {
+    check_no_mismatches(
+        r"
+//- minicore: eq
+struct Struct;
+impl core::cmp::PartialEq for Struct {
+    fn eq(&self, other: &Self) -> bool { true }
+}
+fn test() {
+    Struct == Struct;
+ // ^^^^^^ adjustments: Borrow(Ref(Not))
+           // ^^^^^^ adjustments: Borrow(Ref(Not))
+}",
+    );
+}
+
+#[test]
+fn adjust_assign_lhs() {
+    check_no_mismatches(
+        r"
+//- minicore: add
+struct Struct;
+impl core::ops::AddAssign for Struct {
+    fn add_assign(&mut self, other: Self) {}
+}
+fn test() {
+    Struct += Struct;
+ // ^^^^^^ adjustments: Borrow(Ref(Mut))
+           // ^^^^^^ adjustments:
+}",
     );
 }

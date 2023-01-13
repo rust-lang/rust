@@ -26,7 +26,7 @@
 /// to be modified, it can additionally implement [`BorrowMut<T>`].
 ///
 /// Further, when providing implementations for additional traits, it needs
-/// to be considered whether they should behave identical to those of the
+/// to be considered whether they should behave identically to those of the
 /// underlying type as a consequence of acting as a representation of that
 /// underlying type. Generic code typically uses `Borrow<T>` when it relies
 /// on the identical behavior of these additional trait implementations.
@@ -154,6 +154,7 @@
 /// [`String`]: ../../std/string/struct.String.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Borrow"]
+#[const_trait]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.
     ///
@@ -184,6 +185,7 @@ pub trait Borrow<Borrowed: ?Sized> {
 /// an underlying type by providing a mutable reference. See [`Borrow<T>`]
 /// for more information on borrowing as another type.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait BorrowMut<Borrowed: ?Sized>: Borrow<Borrowed> {
     /// Mutably borrows from an owned value.
     ///

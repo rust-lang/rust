@@ -22,12 +22,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::const_closure::ConstFnMutClosure;
 use crate::marker::Destruct;
 
 use self::Ordering::*;
 
-/// Trait for equality comparisons which are [partial equivalence
-/// relations](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
+/// Trait for equality comparisons.
 ///
 /// `x.eq(y)` can also be written `x == y`, and `x.ne(y)` can be written `x != y`.
 /// We use the easier-to-read infix notation in the remainder of this documentation.
@@ -35,6 +35,8 @@ use self::Ordering::*;
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
 /// so floating point types implement `PartialEq` but not [`trait@Eq`].
+/// Formally speaking, when `Rhs == Self`, this trait corresponds to a [partial equivalence
+/// relation](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
 /// Implementations must ensure that `eq` and `ne` are consistent with each other:
 ///
@@ -203,20 +205,10 @@ use self::Ordering::*;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
-#[cfg_attr(
-    bootstrap,
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} == {Rhs}`"
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} == {Rhs}`",
-        append_const_msg,
-    )
+#[rustc_on_unimplemented(
+    message = "can't compare `{Self}` with `{Rhs}`",
+    label = "no implementation for `{Self} == {Rhs}`",
+    append_const_msg
 )]
 #[const_trait]
 #[rustc_diagnostic_item = "PartialEq"]
@@ -338,7 +330,8 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// let result = 2.cmp(&1);
 /// assert_eq!(Ordering::Greater, result);
 /// ```
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, Eq, Debug, Hash)]
+#[derive_const(PartialOrd, Ord, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(i8)]
 pub enum Ordering {
@@ -805,9 +798,12 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        // HACK(fee1-dead): go back to using `self.max_by(other, Ord::cmp)`
-        // when trait methods are allowed to be used when a const closure is
-        // expected.
+        #[cfg(not(bootstrap))]
+        {
+            max_by(self, other, Ord::cmp)
+        }
+
+        #[cfg(bootstrap)]
         match self.cmp(&other) {
             Ordering::Less | Ordering::Equal => other,
             Ordering::Greater => self,
@@ -832,9 +828,12 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        // HACK(fee1-dead): go back to using `self.min_by(other, Ord::cmp)`
-        // when trait methods are allowed to be used when a const closure is
-        // expected.
+        #[cfg(not(bootstrap))]
+        {
+            min_by(self, other, Ord::cmp)
+        }
+
+        #[cfg(bootstrap)]
         match self.cmp(&other) {
             Ordering::Less | Ordering::Equal => self,
             Ordering::Greater => other,
@@ -882,24 +881,6 @@ pub trait Ord: Eq + PartialOrd<Self> {
 #[allow_internal_unstable(core_intrinsics)]
 pub macro Ord($item:item) {
     /* compiler built-in */
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-impl const Ord for Ordering {
-    #[inline]
-    fn cmp(&self, other: &Ordering) -> Ordering {
-        (*self as i32).cmp(&(*other as i32))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-impl const PartialOrd for Ordering {
-    #[inline]
-    fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
-        (*self as i32).partial_cmp(&(*other as i32))
-    }
 }
 
 /// Trait for types that form a [partial order](https://en.wikipedia.org/wiki/Partial_order).
@@ -1063,20 +1044,10 @@ impl const PartialOrd for Ordering {
 #[doc(alias = "<")]
 #[doc(alias = "<=")]
 #[doc(alias = ">=")]
-#[cfg_attr(
-    bootstrap,
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
-        append_const_msg,
-    )
+#[rustc_on_unimplemented(
+    message = "can't compare `{Self}` with `{Rhs}`",
+    label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
+    append_const_msg
 )]
 #[const_trait]
 #[rustc_diagnostic_item = "PartialOrd"]
@@ -1229,7 +1200,12 @@ pub const fn min<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+pub const fn min_by<T, F: ~const FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
+where
+    T: ~const Destruct,
+    F: ~const Destruct,
+{
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v1,
         Ordering::Greater => v2,
@@ -1251,8 +1227,30 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
-    min_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+pub const fn min_by_key<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(v1: T, v2: T, mut f: F) -> T
+where
+    T: ~const Destruct,
+    F: ~const Destruct,
+    K: ~const Destruct,
+{
+    cfg_if! {
+        if #[cfg(bootstrap)] {
+            const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
+                f: &mut F,
+                (v1, v2): (&T, &T),
+            ) -> Ordering
+            where
+                T: ~const Destruct,
+                K: ~const Destruct,
+            {
+                f(v1).cmp(&f(v2))
+            }
+            min_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
+        } else {
+            min_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
+        }
+    }
 }
 
 /// Compares and returns the maximum of two values.
@@ -1293,7 +1291,12 @@ pub const fn max<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+pub const fn max_by<T, F: ~const FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
+where
+    T: ~const Destruct,
+    F: ~const Destruct,
+{
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v2,
         Ordering::Greater => v1,
@@ -1315,8 +1318,24 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
-    max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+pub const fn max_by_key<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(v1: T, v2: T, mut f: F) -> T
+where
+    T: ~const Destruct,
+    F: ~const Destruct,
+    K: ~const Destruct,
+{
+    const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
+        f: &mut F,
+        (v1, v2): (&T, &T),
+    ) -> Ordering
+    where
+        T: ~const Destruct,
+        K: ~const Destruct,
+    {
+        f(v1).cmp(&f(v2))
+    }
+    max_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types

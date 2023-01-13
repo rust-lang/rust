@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_integer_literal;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{def, Expr, ExprKind, PrimTy, QPath, TyKind};
+use rustc_hir::{def, Expr, ExprKind, LangItem, PrimTy, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -60,8 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
             if pathseg.ident.name.as_str() == "from_str_radix";
 
             // check if the second argument is a primitive `10`
-            if let ExprKind::Lit(lit) = &radix.kind;
-            if let rustc_ast::ast::LitKind::Int(10, _) = lit.node;
+            if is_integer_literal(radix, 10);
 
             then {
                 let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
                     exp.span,
                     "this call to `from_str_radix` can be replaced with a call to `str::parse`",
                     "try",
-                    format!("{}.parse::<{}>()", sugg, prim_ty.name_str()),
+                    format!("{sugg}.parse::<{}>()", prim_ty.name_str()),
                     Applicability::MaybeIncorrect
                 );
             }
@@ -98,5 +98,5 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
 
 /// Checks if a Ty is `String` or `&str`
 fn is_ty_stringish(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    is_type_diagnostic_item(cx, ty, sym::String) || is_type_diagnostic_item(cx, ty, sym::str)
+    is_type_lang_item(cx, ty, LangItem::String) || is_type_diagnostic_item(cx, ty, sym::str)
 }

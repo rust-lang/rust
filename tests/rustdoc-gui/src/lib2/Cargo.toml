@@ -1,0 +1,11 @@
+[package]
+name = "lib2"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+implementors = { path = "./implementors" }
+http = { path = "./http" }

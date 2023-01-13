@@ -73,7 +73,10 @@ impl DefMap {
     pub(crate) fn resolve_visibility(
         &self,
         db: &dyn DefDatabase,
+        // module to import to
         original_module: LocalModuleId,
+        // pub(path)
+        //     ^^^^ this
         visibility: &RawVisibility,
     ) -> Option<Visibility> {
         let mut vis = match visibility {
@@ -115,6 +118,7 @@ impl DefMap {
         &self,
         db: &dyn DefDatabase,
         mode: ResolveMode,
+        // module to import to
         mut original_module: LocalModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
@@ -166,8 +170,8 @@ impl DefMap {
     ) -> ResolvePathResult {
         let graph = db.crate_graph();
         let _cx = stdx::panic_context::enter(format!(
-            "DefMap {:?} crate_name={:?} block={:?} path={}",
-            self.krate, graph[self.krate].display_name, self.block, path
+            "DefMap {:?} crate_name={:?} block={:?} path={path}",
+            self.krate, graph[self.krate].display_name, self.block
         ));
 
         let mut segments = path.segments().iter().enumerate();
@@ -361,6 +365,9 @@ impl DefMap {
                     );
                 }
             };
+
+            curr_per_ns = curr_per_ns
+                .filter_visibility(|vis| vis.is_visible_from_def_map(db, self, original_module));
         }
 
         ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None, Some(self.krate))
@@ -383,7 +390,7 @@ impl DefMap {
             .get_legacy_macro(name)
             // FIXME: shadowing
             .and_then(|it| it.last())
-            .map_or_else(PerNs::none, |&m| PerNs::macros(m.into(), Visibility::Public));
+            .map_or_else(PerNs::none, |&m| PerNs::macros(m, Visibility::Public));
         let from_scope = self[module].scope.get(name);
         let from_builtin = match self.block {
             Some(_) => {

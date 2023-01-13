@@ -45,3 +45,9 @@ mod cast_lossless_in_impl {
         }
     }
 }
+
+#[derive(PartialEq, Debug)]
+#[repr(i64)]
+enum Test {
+    A = u32::MAX as i64 + 1,
+}

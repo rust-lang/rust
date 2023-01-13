@@ -35,9 +35,8 @@ struct RevisionInfo<'a> {
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let tests = path.join("test");
-    super::walk(
-        &tests,
+    crate::walk::walk(
+        path,
         &mut |path| path.extension().map(|p| p == "rs") == Some(false),
         &mut |entry, content| {
             let file = entry.path().display();

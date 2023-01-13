@@ -16,6 +16,7 @@ use ide_db::{
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
     RootDatabase,
 };
+use itertools::Itertools;
 use stdx::hash::NoHashHashMap;
 use syntax::{
     algo::find_node_at_offset,
@@ -86,6 +87,7 @@ pub(crate) fn find_all_refs(
                         file_id,
                         refs.into_iter()
                             .map(|file_ref| (file_ref.range, file_ref.category))
+                            .unique()
                             .collect(),
                     )
                 })
@@ -742,7 +744,7 @@ pub struct Foo {
             expect![[r#"
                 foo Module FileId(0) 0..8 4..7
 
-                FileId(0) 14..17
+                FileId(0) 14..17 Import
             "#]],
         );
     }
@@ -760,7 +762,7 @@ use self$0;
             expect![[r#"
                 foo Module FileId(0) 0..8 4..7
 
-                FileId(1) 4..8
+                FileId(1) 4..8 Import
             "#]],
         );
     }
@@ -775,7 +777,7 @@ use self$0;
             expect![[r#"
                 Module FileId(0) 0..10
 
-                FileId(0) 4..8
+                FileId(0) 4..8 Import
             "#]],
         );
     }
@@ -803,7 +805,7 @@ pub(super) struct Foo$0 {
             expect![[r#"
                 Foo Struct FileId(2) 0..41 18..21
 
-                FileId(1) 20..23
+                FileId(1) 20..23 Import
                 FileId(1) 47..50
             "#]],
         );
@@ -966,7 +968,7 @@ fn g() { f(); }
             expect![[r#"
                 f Function FileId(0) 22..31 25..26
 
-                FileId(1) 11..12
+                FileId(1) 11..12 Import
                 FileId(1) 24..25
             "#]],
         );
@@ -1424,9 +1426,9 @@ pub use level1::Foo;
             expect![[r#"
                 Foo Struct FileId(0) 0..15 11..14
 
-                FileId(1) 16..19
-                FileId(2) 16..19
-                FileId(3) 16..19
+                FileId(1) 16..19 Import
+                FileId(2) 16..19 Import
+                FileId(3) 16..19 Import
             "#]],
         );
     }
@@ -1454,7 +1456,7 @@ lib::foo!();
             expect![[r#"
                 foo Macro FileId(1) 0..61 29..32
 
-                FileId(0) 46..49
+                FileId(0) 46..49 Import
                 FileId(2) 0..3
                 FileId(3) 5..8
             "#]],
@@ -1617,7 +1619,7 @@ struct Foo;
             expect![[r#"
                 derive_identity Derive FileId(2) 1..107 45..60
 
-                FileId(0) 17..31
+                FileId(0) 17..31 Import
                 FileId(0) 56..70
             "#]],
         );

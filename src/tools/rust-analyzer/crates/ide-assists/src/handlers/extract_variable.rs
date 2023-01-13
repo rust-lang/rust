@@ -91,13 +91,13 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
             match anchor {
                 Anchor::Before(_) | Anchor::Replace(_) => {
-                    format_to!(buf, "let {}{} = {}", var_modifier, var_name, reference_modifier)
+                    format_to!(buf, "let {var_modifier}{var_name} = {reference_modifier}")
                 }
                 Anchor::WrapInBlock(_) => {
-                    format_to!(buf, "{{ let {} = {}", var_name, reference_modifier)
+                    format_to!(buf, "{{ let {var_name} = {reference_modifier}")
                 }
             };
-            format_to!(buf, "{}", to_extract.syntax());
+            format_to!(buf, "{to_extract}");
 
             if let Anchor::Replace(stmt) = anchor {
                 cov_mark::hit!(test_extract_var_expr_stmt);
@@ -107,8 +107,8 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 match ctx.config.snippet_cap {
                     Some(cap) => {
                         let snip = buf.replace(
-                            &format!("let {}{}", var_modifier, var_name),
-                            &format!("let {}$0{}", var_modifier, var_name),
+                            &format!("let {var_modifier}{var_name}"),
+                            &format!("let {var_modifier}$0{var_name}"),
                         );
                         edit.replace_snippet(cap, expr_range, snip)
                     }
@@ -135,8 +135,8 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             match ctx.config.snippet_cap {
                 Some(cap) => {
                     let snip = buf.replace(
-                        &format!("let {}{}", var_modifier, var_name),
-                        &format!("let {}$0{}", var_modifier, var_name),
+                        &format!("let {var_modifier}{var_name}"),
+                        &format!("let {var_modifier}$0{var_name}"),
                     );
                     edit.insert_snippet(cap, offset, snip)
                 }

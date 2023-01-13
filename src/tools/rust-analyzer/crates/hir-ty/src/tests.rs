@@ -16,7 +16,7 @@ use base_db::{fixture::WithFixture, FileRange, SourceDatabaseExt};
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
-    db::DefDatabase,
+    db::{DefDatabase, InternDatabase},
     expr::{ExprId, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
@@ -94,18 +94,19 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 types.insert(file_range, expected.trim_start_matches("type: ").to_string());
             } else if expected.starts_with("expected") {
                 mismatches.insert(file_range, expected);
-            } else if expected.starts_with("adjustments: ") {
+            } else if expected.starts_with("adjustments:") {
                 adjustments.insert(
                     file_range,
                     expected
-                        .trim_start_matches("adjustments: ")
+                        .trim_start_matches("adjustments:")
+                        .trim()
                         .split(',')
                         .map(|it| it.trim().to_string())
                         .filter(|it| !it.is_empty())
                         .collect(),
                 );
             } else {
-                panic!("unexpected annotation: {}", expected);
+                panic!("unexpected annotation: {expected}");
             }
             had_annotations = true;
         }
@@ -133,6 +134,10 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
         }
         DefWithBodyId::StaticId(it) => {
             let loc = it.lookup(&db);
+            loc.source(&db).value.syntax().text_range().start()
+        }
+        DefWithBodyId::VariantId(it) => {
+            let loc = db.lookup_intern_enum(it.parent);
             loc.source(&db).value.syntax().text_range().start()
         }
     });
@@ -172,17 +177,17 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 assert_eq!(actual, expected);
             }
             if let Some(expected) = adjustments.remove(&range) {
-                if let Some(adjustments) = inference_result.expr_adjustments.get(&expr) {
-                    assert_eq!(
-                        expected,
-                        adjustments
-                            .iter()
-                            .map(|Adjustment { kind, .. }| format!("{:?}", kind))
-                            .collect::<Vec<_>>()
-                    );
-                } else {
-                    panic!("expected {:?} adjustments, found none", expected);
-                }
+                let adjustments = inference_result
+                    .expr_adjustments
+                    .get(&expr)
+                    .map_or_else(Default::default, |it| &**it);
+                assert_eq!(
+                    expected,
+                    adjustments
+                        .iter()
+                        .map(|Adjustment { kind, .. }| format!("{kind:?}"))
+                        .collect::<Vec<_>>()
+                );
             }
         }
 
@@ -388,6 +393,10 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
         }
+        DefWithBodyId::VariantId(it) => {
+            let loc = db.lookup_intern_enum(it.parent);
+            loc.source(&db).value.syntax().text_range().start()
+        }
     });
     for def in defs {
         let (_body, source_map) = db.body_with_source_map(def);
@@ -452,6 +461,18 @@ fn visit_module(
                     cb(def);
                     let body = db.body(def);
                     visit_body(db, &body, cb);
+                }
+                ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
+                    db.enum_data(it)
+                        .variants
+                        .iter()
+                        .map(|(id, _)| hir_def::EnumVariantId { parent: it, local_id: id })
+                        .for_each(|it| {
+                            let def = it.into();
+                            cb(def);
+                            let body = db.body(def);
+                            visit_body(db, &body, cb);
+                        });
                 }
                 ModuleDefId::TraitId(it) => {
                     let trait_data = db.trait_data(it);

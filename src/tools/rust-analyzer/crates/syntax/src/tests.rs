@@ -108,7 +108,7 @@ fn self_hosting_parsing() {
             .into_iter()
             .map(|(path, err)| format!("{}: {:?}\n", path.display(), err[0]))
             .collect::<String>();
-        panic!("Parsing errors:\n{}\n", errors);
+        panic!("Parsing errors:\n{errors}\n");
     }
 }
 
@@ -157,7 +157,7 @@ fn collect_rust_files(root_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, String)>
 /// Collects paths to all `.rs` files from `dir` in a sorted `Vec<PathBuf>`.
 fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
     let mut acc = Vec::new();
-    for file in fs::read_dir(&dir).unwrap() {
+    for file in fs::read_dir(dir).unwrap() {
         let file = file.unwrap();
         let path = file.path();
         if path.extension().unwrap_or_default() == "rs" {
@@ -181,6 +181,6 @@ fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
 /// so this should always be correct.
 fn read_text(path: &Path) -> String {
     fs::read_to_string(path)
-        .unwrap_or_else(|_| panic!("File at {:?} should be valid", path))
+        .unwrap_or_else(|_| panic!("File at {path:?} should be valid"))
         .replace("\r\n", "\n")
 }

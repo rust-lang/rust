@@ -2,9 +2,9 @@
 
 #[macro_use]
 mod utils;
-use expect_test::expect;
-use paths::AbsPathBuf;
 use utils::*;
+
+use expect_test::expect;
 
 #[test]
 fn test_derive_empty() {
@@ -19,7 +19,7 @@ fn test_derive_error() {
         expect![[r##"
             SUBTREE $
               IDENT   compile_error 4294967295
-              PUNCH   ! [joint] 4294967295
+              PUNCH   ! [alone] 4294967295
               SUBTREE () 4294967295
                 LITERAL "#[derive(DeriveError)] struct S ;" 4294967295
               PUNCH   ; [alone] 4294967295"##]],
@@ -63,7 +63,7 @@ fn test_fn_like_macro_clone_raw_ident() {
         "r#async",
         expect![[r#"
             SUBTREE $
-              IDENT   async 4294967295"#]],
+              IDENT   r#async 4294967295"#]],
     );
 }
 
@@ -86,15 +86,13 @@ fn test_fn_like_mk_literals() {
 
 #[test]
 fn test_fn_like_mk_idents() {
-    // FIXME: this test is wrong: raw should be 'r#raw' but ABIs 1.64 and below
-    // simply ignore `is_raw` when implementing the `Ident` interface.
     assert_expand(
         "fn_like_mk_idents",
         r#""#,
         expect![[r#"
             SUBTREE $
               IDENT   standard 4294967295
-              IDENT   raw 4294967295"#]],
+              IDENT   r#raw 4294967295"#]],
     );
 }
 
@@ -109,7 +107,7 @@ fn test_fn_like_macro_clone_literals() {
               PUNCH   , [alone] 4294967295
               LITERAL 2_u32 4294967295
               PUNCH   , [alone] 4294967295
-              PUNCH   - [joint] 4294967295
+              PUNCH   - [alone] 4294967295
               LITERAL 4i64 4294967295
               PUNCH   , [alone] 4294967295
               LITERAL 3.14f32 4294967295
@@ -130,7 +128,7 @@ fn test_attr_macro() {
         expect![[r##"
             SUBTREE $
               IDENT   compile_error 4294967295
-              PUNCH   ! [joint] 4294967295
+              PUNCH   ! [alone] 4294967295
               SUBTREE () 4294967295
                 LITERAL "#[attr_error(some arguments)] mod m {}" 4294967295
               PUNCH   ; [alone] 4294967295"##]],
@@ -156,11 +154,4 @@ fn list_test_macros() {
         DerivePanic [CustomDerive]
         DeriveError [CustomDerive]"#]]
     .assert_eq(&res);
-}
-
-#[test]
-fn test_version_check() {
-    let path = AbsPathBuf::assert(fixtures::proc_macro_test_dylib_path());
-    let info = proc_macro_api::read_dylib_info(&path).unwrap();
-    assert!(info.version.1 >= 50);
 }

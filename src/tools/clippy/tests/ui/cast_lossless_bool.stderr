@@ -78,5 +78,11 @@ error: casting `bool` to `u16` is more cleanly stated with `u16::from(_)`
 LL |     let _ = (true | false) as u16;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `u16::from(true | false)`
 
-error: aborting due to 13 previous errors
+error: casting `bool` to `u8` is more cleanly stated with `u8::from(_)`
+  --> $DIR/cast_lossless_bool.rs:51:13
+   |
+LL |     let _ = true as u8;
+   |             ^^^^^^^^^^ help: try: `u8::from(true)`
+
+error: aborting due to 14 previous errors
 

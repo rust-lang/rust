@@ -3,7 +3,6 @@
 #![feature(associated_type_defaults)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
@@ -11,6 +10,7 @@
 #![feature(rustc_attrs)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -32,8 +32,13 @@ pub mod config;
 pub mod errors;
 pub mod expand;
 pub mod module;
+
+// FIXME(Nilstrieb) Translate proc_macro diagnostics
+#[allow(rustc::untranslatable_diagnostic)]
 pub mod proc_macro;
 
+// FIXME(Nilstrieb) Translate macro_rules diagnostics
+#[allow(rustc::untranslatable_diagnostic)]
 pub(crate) mod mbe;
 
 // HACK(Centril, #64197): These shouldn't really be here.

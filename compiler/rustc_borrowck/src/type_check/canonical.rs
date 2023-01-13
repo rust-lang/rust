@@ -1,13 +1,13 @@
 use std::fmt;
 
-use rustc_infer::infer::canonical::Canonical;
-use rustc_infer::traits::query::NoSolution;
+use rustc_infer::infer::{canonical::Canonical, InferOk};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::{self, ToPredicate, TypeFoldable};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
-use rustc_trait_selection::traits::query::Fallible;
+use rustc_trait_selection::traits::query::{Fallible, NoSolution};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 
 use crate::diagnostics::{ToUniverseInfo, UniverseInfo};
 
@@ -25,7 +25,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// constraints should occur within this method so that those
     /// constraints can be properly localized!**
     #[instrument(skip(self, op), level = "trace")]
-    pub(super) fn fully_perform_op<R, Op>(
+    pub(super) fn fully_perform_op<R: fmt::Debug, Op>(
         &mut self,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
@@ -39,6 +39,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let TypeOpOutput { output, constraints, error_info } = op.fully_perform(self.infcx)?;
 
+        debug!(?output, ?constraints);
+
         if let Some(data) = constraints {
             self.push_region_constraints(locations, category, data);
         }
@@ -50,11 +52,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 Some(error_info) => error_info.to_universe_info(old_universe),
                 None => UniverseInfo::other(),
             };
-            for u in old_universe..universe {
-                self.borrowck_context
-                    .constraints
-                    .universe_causes
-                    .insert(u + 1, universe_info.clone());
+            for u in (old_universe + 1)..=universe {
+                self.borrowck_context.constraints.universe_causes.insert(u, universe_info.clone());
             }
         }
 
@@ -69,15 +68,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        let old_universe = self.infcx.universe();
+
         let (instantiated, _) =
             self.infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
 
-        for u in 0..canonical.max_universe.as_u32() {
-            let info = UniverseInfo::other();
-            self.borrowck_context
-                .constraints
-                .universe_causes
-                .insert(ty::UniverseIndex::from_u32(u), info);
+        for u in (old_universe + 1)..=self.infcx.universe() {
+            self.borrowck_context.constraints.universe_causes.insert(u, UniverseInfo::other());
         }
 
         instantiated
@@ -91,17 +88,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory<'tcx>,
     ) {
         self.prove_predicate(
-            ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
                 trait_ref,
                 constness: ty::BoundConstness::NotConst,
                 polarity: ty::ImplPolarity::Positive,
-            }))
-            .to_predicate(self.tcx()),
+            }))),
             locations,
             category,
         );
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(super) fn normalize_and_prove_instantiated_predicates(
         &mut self,
         // Keep this parameter for now, in case we start using
@@ -116,21 +113,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .zip(instantiated_predicates.spans.into_iter())
         {
             debug!(?predicate);
-            let predicate = self.normalize(predicate, locations);
-            self.prove_predicate(predicate, locations, ConstraintCategory::Predicate(span));
+            let category = ConstraintCategory::Predicate(span);
+            let predicate = self.normalize_with_category(predicate, locations, category);
+            self.prove_predicate(predicate, locations, category);
         }
     }
 
     pub(super) fn prove_predicates(
         &mut self,
-        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
+        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx> + std::fmt::Debug>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
         for predicate in predicates {
-            let predicate = predicate.to_predicate(self.tcx());
-            debug!("prove_predicates(predicate={:?}, locations={:?})", predicate, locations,);
-
             self.prove_predicate(predicate, locations, category);
         }
     }
@@ -138,11 +133,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub(super) fn prove_predicate(
         &mut self,
-        predicate: ty::Predicate<'tcx>,
+        predicate: impl ToPredicate<'tcx> + std::fmt::Debug,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
         let param_env = self.param_env;
+        let predicate = predicate.to_predicate(self.tcx());
         self.fully_perform_op(
             locations,
             category,
@@ -153,20 +149,102 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         })
     }
 
-    #[instrument(skip(self), level = "debug")]
     pub(super) fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
+    where
+        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
+    {
+        self.normalize_with_category(value, location, ConstraintCategory::Boring)
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn normalize_with_category<T>(
+        &mut self,
+        value: T,
+        location: impl NormalizeLocation,
+        category: ConstraintCategory<'tcx>,
+    ) -> T
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
         let param_env = self.param_env;
         self.fully_perform_op(
             location.to_locations(),
-            ConstraintCategory::Boring,
+            category,
             param_env.and(type_op::normalize::Normalize::new(value)),
         )
         .unwrap_or_else(|NoSolution| {
             span_mirbug!(self, NoSolution, "failed to normalize `{:?}`", value);
             value
         })
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn ascribe_user_type(
+        &mut self,
+        mir_ty: Ty<'tcx>,
+        user_ty: ty::UserType<'tcx>,
+        span: Span,
+    ) {
+        // FIXME: Ideally MIR types are normalized, but this is not always true.
+        let mir_ty = self.normalize(mir_ty, Locations::All(span));
+
+        self.fully_perform_op(
+            Locations::All(span),
+            ConstraintCategory::Boring,
+            self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(mir_ty, user_ty)),
+        )
+        .unwrap_or_else(|err| {
+            span_mirbug!(
+                self,
+                span,
+                "ascribe_user_type `{mir_ty:?}=={user_ty:?}` failed with `{err:?}`",
+            );
+        });
+    }
+
+    /// *Incorrectly* skips the WF checks we normally do in `ascribe_user_type`.
+    ///
+    /// FIXME(#104478, #104477): This is a hack for backward-compatibility.
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn ascribe_user_type_skip_wf(
+        &mut self,
+        mir_ty: Ty<'tcx>,
+        user_ty: ty::UserType<'tcx>,
+        span: Span,
+    ) {
+        let ty::UserType::Ty(user_ty) = user_ty else { bug!() };
+
+        // A fast path for a common case with closure input/output types.
+        if let ty::Infer(_) = user_ty.kind() {
+            self.eq_types(user_ty, mir_ty, Locations::All(span), ConstraintCategory::Boring)
+                .unwrap();
+            return;
+        }
+
+        let mir_ty = self.normalize(mir_ty, Locations::All(span));
+        let cause = ObligationCause::dummy_with_span(span);
+        let param_env = self.param_env;
+        let op = |infcx: &'_ _| {
+            let ocx = ObligationCtxt::new_in_snapshot(infcx);
+            let user_ty = ocx.normalize(&cause, param_env, user_ty);
+            ocx.eq(&cause, param_env, user_ty, mir_ty)?;
+            if !ocx.select_all_or_error().is_empty() {
+                return Err(NoSolution);
+            }
+            Ok(InferOk { value: (), obligations: vec![] })
+        };
+
+        self.fully_perform_op(
+            Locations::All(span),
+            ConstraintCategory::Boring,
+            type_op::custom::CustomTypeOp::new(op, || "ascribe_user_type_skip_wf".to_string()),
+        )
+        .unwrap_or_else(|err| {
+            span_mirbug!(
+                self,
+                span,
+                "ascribe_user_type_skip_wf `{mir_ty:?}=={user_ty:?}` failed with `{err:?}`",
+            );
+        });
     }
 }

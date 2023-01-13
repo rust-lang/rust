@@ -1,0 +1,61 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/unusual-rib-combinations.rs:24:15
+   |
+LL | fn d<const C: S>() {}
+   |               ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | fn d<'a, const C: S<'a>>() {}
+   |      +++           ++++
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/unusual-rib-combinations.rs:7:16
+   |
+LL | fn a() -> [u8; foo::()] {
+   |                ^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/unusual-rib-combinations.rs:14:15
+   |
+LL | fn b<const C: u8()>() {}
+   |               ^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/unusual-rib-combinations.rs:18:10
+   |
+LL | fn c<T = u8()>() {}
+   |          ^^^^ only `Fn` traits may use parentheses
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/unusual-rib-combinations.rs:18:6
+   |
+LL | fn c<T = u8()>() {}
+   |      ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+   = note: `#[deny(invalid_type_param_default)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/unusual-rib-combinations.rs:7:16
+   |
+LL | fn a() -> [u8; foo::()] {
+   |                ^^^^^^^ expected `usize`, found fn item
+   |
+   = note: expected type `usize`
+           found fn item `fn() {foo}`
+
+error: `S<'static>` is forbidden as the type of a const generic parameter
+  --> $DIR/unusual-rib-combinations.rs:24:15
+   |
+LL | fn d<const C: S>() {}
+   |               ^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = help: more complex types are supported with `#![feature(adt_const_params)]`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0106, E0214, E0308.
+For more information about an error, try `rustc --explain E0106`.

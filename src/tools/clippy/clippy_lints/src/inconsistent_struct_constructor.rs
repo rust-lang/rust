@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
                 let mut fields_snippet = String::new();
                 let (last_ident, idents) = ordered_fields.split_last().unwrap();
                 for ident in idents {
-                    let _ = write!(fields_snippet, "{}, ", ident);
+                    let _ = write!(fields_snippet, "{ident}, ");
                 }
                 fields_snippet.push_str(&last_ident.to_string());
 
@@ -100,10 +100,8 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
                         String::new()
                     };
 
-                let sugg = format!("{} {{ {}{} }}",
+                let sugg = format!("{} {{ {fields_snippet}{base_snippet} }}",
                     snippet(cx, qpath.span(), ".."),
-                    fields_snippet,
-                    base_snippet,
                     );
 
                 span_lint_and_sugg(

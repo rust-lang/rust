@@ -29,9 +29,9 @@ install_clang() {
   # CFLAGS and CXXFLAGS env variables in main Dockerfile handle sysroot linking
   for arch in x86_64 aarch64; do
     for tool in clang clang++; do
-      ln -s /usr/local/bin/${tool} /usr/local/bin/${arch}-fuchsia-${tool}
+      ln -s /usr/local/bin/${tool} /usr/local/bin/${arch}-unknown-fuchsia-${tool}
     done
-    ln -s /usr/local/bin/llvm-ar /usr/local/bin/${arch}-fuchsia-ar
+    ln -s /usr/local/bin/llvm-ar /usr/local/bin/${arch}-unknown-fuchsia-ar
   done
 
   popd > /dev/null

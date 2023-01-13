@@ -154,10 +154,10 @@
   </Type>
 
   <Type Name="core::time::Duration">
-    <DisplayString>{secs,d}s {nanos,d}ns</DisplayString>
+    <DisplayString>{secs,d}s {nanos.__0,d}ns</DisplayString>
     <Expand>
       <Item Name="seconds">secs,d</Item>
-      <Item Name="nanoseconds">nanos,d</Item>
+      <Item Name="nanoseconds">nanos.__0,d</Item>
     </Expand>
   </Type>
 </AutoVisualizer>

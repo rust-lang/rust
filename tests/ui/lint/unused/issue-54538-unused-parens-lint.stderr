@@ -1,0 +1,295 @@
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:16:9
+   |
+LL |     let (a) = 0;
+   |         ^ ^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-54538-unused-parens-lint.rs:13:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     let (a) = 0;
+LL +     let a = 0;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:17:9
+   |
+LL |     for (a) in 0..1 {}
+   |         ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     for (a) in 0..1 {}
+LL +     for a in 0..1 {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:18:12
+   |
+LL |     if let (a) = 0 {}
+   |            ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     if let (a) = 0 {}
+LL +     if let a = 0 {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:19:15
+   |
+LL |     while let (a) = 0 {}
+   |               ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     while let (a) = 0 {}
+LL +     while let a = 0 {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:20:12
+   |
+LL |     fn foo((a): u8) {}
+   |            ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     fn foo((a): u8) {}
+LL +     fn foo(a: u8) {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:21:14
+   |
+LL |     let _ = |(a): u8| 0;
+   |              ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     let _ = |(a): u8| 0;
+LL +     let _ = |a: u8| 0;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:56:12
+   |
+LL |     if let (0 | 1) = 0 {}
+   |            ^     ^
+   |
+help: remove these parentheses
+   |
+LL -     if let (0 | 1) = 0 {}
+LL +     if let 0 | 1 = 0 {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:57:13
+   |
+LL |     if let ((0 | 1),) = (0,) {}
+   |             ^     ^
+   |
+help: remove these parentheses
+   |
+LL -     if let ((0 | 1),) = (0,) {}
+LL +     if let (0 | 1,) = (0,) {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:58:13
+   |
+LL |     if let [(0 | 1)] = [0] {}
+   |             ^     ^
+   |
+help: remove these parentheses
+   |
+LL -     if let [(0 | 1)] = [0] {}
+LL +     if let [0 | 1] = [0] {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:59:16
+   |
+LL |     if let 0 | (1 | 2) = 0 {}
+   |                ^     ^
+   |
+help: remove these parentheses
+   |
+LL -     if let 0 | (1 | 2) = 0 {}
+LL +     if let 0 | 1 | 2 = 0 {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:61:15
+   |
+LL |     if let TS((0 | 1)) = TS(0) {}
+   |               ^     ^
+   |
+help: remove these parentheses
+   |
+LL -     if let TS((0 | 1)) = TS(0) {}
+LL +     if let TS(0 | 1) = TS(0) {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:63:20
+   |
+LL |     if let NS { f: (0 | 1) } = (NS { f: 0 }) {}
+   |                    ^     ^
+   |
+help: remove these parentheses
+   |
+LL -     if let NS { f: (0 | 1) } = (NS { f: 0 }) {}
+LL +     if let NS { f: 0 | 1 } = (NS { f: 0 }) {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:73:9
+   |
+LL |         (_) => {}
+   |         ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         (_) => {}
+LL +         _ => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:74:9
+   |
+LL |         (y) => {}
+   |         ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         (y) => {}
+LL +         y => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:75:9
+   |
+LL |         (ref r) => {}
+   |         ^     ^
+   |
+help: remove these parentheses
+   |
+LL -         (ref r) => {}
+LL +         ref r => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:76:9
+   |
+LL |         (e @ 1...2) => {}
+   |         ^         ^
+   |
+help: remove these parentheses
+   |
+LL -         (e @ 1...2) => {}
+LL +         e @ 1...2 => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:82:9
+   |
+LL |         (e @ &(1...2)) => {}
+   |         ^            ^
+   |
+help: remove these parentheses
+   |
+LL -         (e @ &(1...2)) => {}
+LL +         e @ &(1...2) => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:83:10
+   |
+LL |         &(_) => {}
+   |          ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         &(_) => {}
+LL +         &_ => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:94:9
+   |
+LL |         (_) => {}
+   |         ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         (_) => {}
+LL +         _ => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:95:9
+   |
+LL |         (y) => {}
+   |         ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         (y) => {}
+LL +         y => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:96:9
+   |
+LL |         (ref r) => {}
+   |         ^     ^
+   |
+help: remove these parentheses
+   |
+LL -         (ref r) => {}
+LL +         ref r => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:97:9
+   |
+LL |         (e @ 1..=2) => {}
+   |         ^         ^
+   |
+help: remove these parentheses
+   |
+LL -         (e @ 1..=2) => {}
+LL +         e @ 1..=2 => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:103:9
+   |
+LL |         (e @ &(1..=2)) => {}
+   |         ^            ^
+   |
+help: remove these parentheses
+   |
+LL -         (e @ &(1..=2)) => {}
+LL +         e @ &(1..=2) => {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:104:10
+   |
+LL |         &(_) => {}
+   |          ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         &(_) => {}
+LL +         &_ => {}
+   |
+
+error: aborting due to 24 previous errors
+

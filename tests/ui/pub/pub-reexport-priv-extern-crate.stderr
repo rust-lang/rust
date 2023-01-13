@@ -1,0 +1,37 @@
+error[E0603]: crate import `core` is private
+  --> $DIR/pub-reexport-priv-extern-crate.rs:10:15
+   |
+LL |     use foo1::core;
+   |               ^^^^ private crate import
+   |
+note: the crate import `core` is defined here
+  --> $DIR/pub-reexport-priv-extern-crate.rs:6:5
+   |
+LL |     extern crate core;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error[E0603]: crate import `core` is private
+  --> $DIR/pub-reexport-priv-extern-crate.rs:17:24
+   |
+LL |     pub use foo2::bar::core;
+   |                        ^^^^ private crate import
+   |
+note: the crate import `core` is defined here
+  --> $DIR/pub-reexport-priv-extern-crate.rs:12:9
+   |
+LL |         extern crate core;
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
+  --> $DIR/pub-reexport-priv-extern-crate.rs:2:9
+   |
+LL | pub use core as reexported_core;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: `#[deny(pub_use_of_private_extern_crate)]` on by default
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

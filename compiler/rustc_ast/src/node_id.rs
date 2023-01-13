@@ -8,12 +8,11 @@ rustc_index::newtype_index! {
     /// This is later turned into [`DefId`] and `HirId` for the HIR.
     ///
     /// [`DefId`]: rustc_span::def_id::DefId
-    pub struct NodeId {
-        DEBUG_FORMAT = "NodeId({})"
-    }
+    #[debug_format = "NodeId({})"]
+    pub struct NodeId {}
 }
 
-rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeId);
+rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeMapEntry, NodeId);
 
 /// The [`NodeId`] used to represent the root of the crate.
 pub const CRATE_NODE_ID: NodeId = NodeId::from_u32(0);

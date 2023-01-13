@@ -13,6 +13,7 @@
 //! move analysis runs after promotion on broken MIR.
 
 use rustc_hir as hir;
+use rustc_middle::mir;
 use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -40,19 +41,14 @@ pub struct PromoteTemps<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
-    fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::Analysis(AnalysisPhase::Initial))
-    }
-
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
         // This does not include MIR that failed const-checking, which we still try to promote.
-        if body.return_ty().references_error() {
-            tcx.sess.delay_span_bug(body.span, "PromoteTemps: MIR had errors");
+        if let Err(_) = body.return_ty().error_reported() {
+            debug!("PromoteTemps: MIR had errors");
             return;
         }
-
         if body.source.promoted.is_some() {
             return;
         }
@@ -220,12 +216,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                     return Err(Unpromotable);
                 }
 
-                // We cannot promote things that need dropping, since the promoted value
-                // would not get dropped.
-                if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
-                    return Err(Unpromotable);
-                }
-
                 Ok(())
             }
             _ => bug!(),
@@ -266,13 +256,17 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
         } else {
-            let span = self.body.local_decls[local].source_info.span;
-            span_bug!(span, "{:?} not promotable, qualif_local shouldn't have been called", local);
+            false
         }
     }
 
     fn validate_local(&mut self, local: Local) -> Result<(), Unpromotable> {
         if let TempState::Defined { location: loc, uses, valid } = self.temps[local] {
+            // We cannot promote things that need dropping, since the promoted value
+            // would not get dropped.
+            if self.qualif_local::<qualifs::NeedsDrop>(local) {
+                return Err(Unpromotable);
+            }
             valid.or_else(|_| {
                 let ok = {
                     let block = &self.body[loc.block];
@@ -322,14 +316,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                 match elem {
                     ProjectionElem::Deref => {
                         let mut promotable = false;
+                        // When a static is used by-value, that gets desugared to `*STATIC_ADDR`,
+                        // and we need to be able to promote this. So check if this deref matches
+                        // that specific pattern.
+
                         // We need to make sure this is a `Deref` of a local with no further projections.
                         // Discussion can be found at
                         // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247
                         if let Some(local) = place_base.as_local() {
-                            // This is a special treatment for cases like *&STATIC where STATIC is a
-                            // global static variable.
-                            // This pattern is generated only when global static variables are directly
-                            // accessed and is qualified for promotion safely.
                             if let TempState::Defined { location, .. } = self.temps[local] {
                                 let def_stmt = self.body[location.block]
                                     .statements
@@ -361,7 +355,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             return Err(Unpromotable);
                         }
                     }
-                    ProjectionElem::Downcast(..) => {
+                    ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
                         return Err(Unpromotable);
                     }
 
@@ -840,21 +834,15 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
                 let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def.did));
-                let _const = tcx.mk_const(ty::ConstS {
-                    ty,
-                    kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                        def,
-                        substs,
-                        promoted: Some(promoted_id),
-                    }),
-                });
+                let uneval = mir::UnevaluatedConst { def, substs, promoted: Some(promoted_id) };
 
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: ConstantKind::from_const(_const, tcx),
+                    literal: ConstantKind::Unevaluated(uneval, ty),
                 }))
             };
+
             let blocks = self.source.basic_blocks.as_mut();
             let local_decls = &mut self.source.local_decls;
             let loc = candidate.location;

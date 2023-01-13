@@ -1,0 +1,11 @@
+warning: public documentation for `private_from_crate_level` links to private item `my_module`
+  --> $DIR/private-from-crate-level.rs:3:6
+   |
+LL | //! [my_module]
+   |      ^^^^^^^^^ this item is private
+   |
+   = note: this link will resolve properly if you pass `--document-private-items`
+   = note: `#[warn(rustdoc::private_intra_doc_links)]` on by default
+
+warning: 1 warning emitted
+

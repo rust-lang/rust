@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 7b710095d773b978
+lsp_ext.rs hash: 45bd7985265725c5
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -18,12 +18,6 @@ Requests which we hope to upstream live under `experimental/` namespace.
 Requests, which are likely to always remain specific to `rust-analyzer` are under `rust-analyzer/` namespace.
 
 If you want to be notified about the changes to this document, subscribe to [#4604](https://github.com/rust-lang/rust-analyzer/issues/4604).
-
-## UTF-8 offsets
-
-rust-analyzer supports clangd's extension for opting into UTF-8 as the coordinate space for offsets (by default, LSP uses UTF-16 offsets).
-
-https://clangd.llvm.org/extensions.html#utf-8-offsets
 
 ## Configuration in `initializationOptions`
 
@@ -465,6 +459,45 @@ Note that this functionality is intended primarily to inform the end user about 
 In particular, it's valid for the client to completely ignore this extension.
 Clients are discouraged from but are allowed to use the `health` status to decide if it's worth sending a request to the server.
 
+### Controlling Flycheck
+
+The flycheck/checkOnSave feature can be controlled via notifications sent by the client to the server.
+
+**Method:** `rust-analyzer/runFlycheck`
+
+**Notification:**
+
+```typescript
+interface RunFlycheckParams {
+    /// The text document whose cargo workspace flycheck process should be started.
+    /// If the document is null or does not belong to a cargo workspace all flycheck processes will be started.
+    textDocument: lc.TextDocumentIdentifier | null;
+}
+```
+
+Triggers the flycheck processes.
+
+
+**Method:** `rust-analyzer/clearFlycheck`
+
+**Notification:**
+
+```typescript
+interface ClearFlycheckParams {}
+```
+
+Clears the flycheck diagnostics.
+
+**Method:** `rust-analyzer/cancelFlycheck`
+
+**Notification:**
+
+```typescript
+interface CancelFlycheckParams {}
+```
+
+Cancels all running flycheck processes.
+
 ## Syntax Tree
 
 **Method:** `rust-analyzer/syntaxTree`
@@ -759,3 +792,29 @@ export interface ClientCommandOptions {
     commands: string[];
 }
 ```
+
+## Colored Diagnostic Output
+
+**Experimental Client Capability:** `{ "colorDiagnosticOutput": boolean }`
+
+If this capability is set, the "full compiler diagnostics" provided by `checkOnSave`
+will include ANSI color and style codes to render the diagnostic in a similar manner
+as `cargo`. This is translated into `--message-format=json-diagnostic-rendered-ansi`
+when flycheck is run, instead of the default `--message-format=json`.
+
+The full compiler rendered diagnostics are included in the server response
+regardless of this capability:
+
+```typescript
+// https://microsoft.github.io/language-server-protocol/specifications/specification-current#diagnostic
+export interface Diagnostic {
+    ...
+    data?: {
+        /**
+         * The human-readable compiler output as it would be printed to a terminal.
+         * Includes ANSI color and style codes if the client has set the experimental
+         * `colorDiagnosticOutput` capability.
+         */
+        rendered?: string;
+    };
+}

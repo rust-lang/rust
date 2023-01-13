@@ -115,7 +115,7 @@ impl<'a> Printer<'a> {
                 w!(self, "{{");
                 self.indented(|this| {
                     for field in fields.clone() {
-                        let Field { visibility, name, type_ref } = &this.tree[field];
+                        let Field { visibility, name, type_ref, ast_id: _ } = &this.tree[field];
                         this.print_attrs_of(field);
                         this.print_visibility(*visibility);
                         w!(this, "{}: ", name);
@@ -129,7 +129,7 @@ impl<'a> Printer<'a> {
                 w!(self, "(");
                 self.indented(|this| {
                     for field in fields.clone() {
-                        let Field { visibility, name, type_ref } = &this.tree[field];
+                        let Field { visibility, name, type_ref, ast_id: _ } = &this.tree[field];
                         this.print_attrs_of(field);
                         this.print_visibility(*visibility);
                         w!(this, "{}: ", name);
@@ -323,7 +323,7 @@ impl<'a> Printer<'a> {
                 self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
                     for variant in variants.clone() {
-                        let Variant { name, fields } = &this.tree[variant];
+                        let Variant { name, fields, ast_id: _ } = &this.tree[variant];
                         this.print_attrs_of(variant);
                         w!(this, "{}", name);
                         this.print_fields(fields);
@@ -375,12 +375,21 @@ impl<'a> Printer<'a> {
                 }
                 w!(self, "trait {}", name);
                 self.print_generic_params(generic_params);
-                self.print_where_clause_and_opening_brace(generic_params);
-                self.indented(|this| {
-                    for item in &**items {
-                        this.print_mod_item((*item).into());
+                match items {
+                    Some(items) => {
+                        self.print_where_clause_and_opening_brace(generic_params);
+                        self.indented(|this| {
+                            for item in &**items {
+                                this.print_mod_item((*item).into());
+                            }
+                        });
                     }
-                });
+                    None => {
+                        w!(self, " = ");
+                        // FIXME: Print the aliased traits
+                        self.print_where_clause_and_opening_brace(generic_params);
+                    }
+                }
                 wln!(self, "}}");
             }
             ModItem::Impl(it) => {

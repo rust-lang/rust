@@ -18,10 +18,11 @@ use std::str;
 
 use serde::Deserialize;
 
+use crate::builder::crate_description;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::config::{LlvmLibunwind, TargetSelection};
+use crate::config::{LlvmLibunwind, RustcLto, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
@@ -46,17 +47,6 @@ impl Std {
     }
 }
 
-/// Return a `-p=x -p=y` string suitable for passing to a cargo invocation.
-fn build_crates_in_set(run: &RunConfig<'_>) -> Interned<Vec<String>> {
-    let mut crates = Vec::new();
-    for krate in &run.paths {
-        let path = krate.assert_single_path();
-        let crate_name = run.builder.crate_paths[&path.path];
-        crates.push(format!("-p={crate_name}"));
-    }
-    INTERNER.intern_list(crates)
-}
-
 impl Step for Std {
     type Output = ();
     const DEFAULT: bool = true;
@@ -76,7 +66,7 @@ impl Step for Std {
         // Build all crates anyway, as if they hadn't passed the other args.
         let has_library =
             run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
-        let crates = if has_library { Default::default() } else { build_crates_in_set(&run) };
+        let crates = if has_library { Default::default() } else { run.cargo_crates_in_set() };
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
@@ -121,7 +111,10 @@ impl Step for Std {
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
             builder.ensure(Std::new(compiler_to_use, target));
-            builder.info(&format!("Uplifting stage1 std ({} -> {})", compiler_to_use.host, target));
+            builder.info(&format!(
+                "Uplifting stage1 library ({} -> {})",
+                compiler_to_use.host, target
+            ));
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
@@ -137,17 +130,24 @@ impl Step for Std {
 
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
         std_cargo(builder, target, compiler.stage, &mut cargo);
+        for krate in &*self.crates {
+            cargo.arg("-p").arg(krate);
+        }
 
         builder.info(&format!(
-            "Building stage{} std artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
+            "Building{} stage{} library artifacts ({} -> {})",
+            crate_description(&self.crates),
+            compiler.stage,
+            &compiler.host,
+            target,
         ));
         run_cargo(
             builder,
             cargo,
-            self.crates.to_vec(),
+            vec![],
             &libstd_stamp(builder, compiler, target),
             target_deps,
+            false,
             false,
         );
 
@@ -206,7 +206,6 @@ fn copy_third_party_objects(
     }
 
     if target == "x86_64-fortanix-unknown-sgx"
-        || target.contains("pc-windows-gnullvm")
         || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
             && (target.contains("linux") || target.contains("fuchsia"))
     {
@@ -322,8 +321,15 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         ""
     };
 
+    let mut features = String::new();
+
+    // Cranelift doesn't support `asm`.
+    if stage != 0 && builder.config.default_codegen_backend().unwrap_or_default() == "cranelift" {
+        features += " compiler-builtins-no-asm";
+    }
+
     if builder.no_std(target) == Some(true) {
-        let mut features = "compiler-builtins-mem".to_string();
+        features += " compiler-builtins-mem";
         if !target.starts_with("bpf") {
             features.push_str(compiler_builtins_c_feature);
         }
@@ -336,7 +342,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
             .arg("--features")
             .arg(features);
     } else {
-        let mut features = builder.std_features(target);
+        features += &builder.std_features(target);
         features.push_str(compiler_builtins_c_feature);
 
         cargo
@@ -430,7 +436,7 @@ impl Step for StdLink {
         let target_compiler = self.target_compiler;
         let target = self.target;
         builder.info(&format!(
-            "Copying stage{} std from stage{} ({} -> {} / {})",
+            "Copying stage{} library from stage{} ({} -> {} / {})",
             target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host, target
         ));
         let libdir = builder.sysroot_libdir(target_compiler, target);
@@ -447,7 +453,7 @@ fn copy_sanitizers(
 ) -> Vec<PathBuf> {
     let runtimes: Vec<native::SanitizerRuntime> = builder.ensure(native::Sanitizers { target });
 
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return Vec::new();
     }
 
@@ -459,7 +465,7 @@ fn copy_sanitizers(
         builder.copy(&runtime.path, &dst);
 
         if target == "x86_64-apple-darwin" || target == "aarch64-apple-darwin" {
-            // Update the library’s install name to reflect that it has has been renamed.
+            // Update the library’s install name to reflect that it has been renamed.
             apple_darwin_update_library_name(&dst, &format!("@rpath/{}", &runtime.name));
             // Upon renaming the install name, the code signature of the file will invalidate,
             // so we will sign it again.
@@ -597,7 +603,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = build_crates_in_set(&run);
+        let crates = run.cargo_crates_in_set();
         run.builder.ensure(Rustc {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
@@ -696,17 +702,48 @@ impl Step for Rustc {
             ));
         }
 
+        // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
+        // and may just be a time sink.
+        if compiler.stage != 0 {
+            match builder.config.rust_lto {
+                RustcLto::Thin | RustcLto::Fat => {
+                    // Since using LTO for optimizing dylibs is currently experimental,
+                    // we need to pass -Zdylib-lto.
+                    cargo.rustflag("-Zdylib-lto");
+                    // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
+                    // compiling dylibs (and their dependencies), even when LTO is enabled for the
+                    // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
+                    let lto_type = match builder.config.rust_lto {
+                        RustcLto::Thin => "thin",
+                        RustcLto::Fat => "fat",
+                        _ => unreachable!(),
+                    };
+                    cargo.rustflag(&format!("-Clto={}", lto_type));
+                    cargo.rustflag("-Cembed-bitcode=yes");
+                }
+                RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+            }
+        }
+
+        for krate in &*self.crates {
+            cargo.arg("-p").arg(krate);
+        }
+
         builder.info(&format!(
-            "Building stage{} compiler artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
+            "Building{} stage{} compiler artifacts ({} -> {})",
+            crate_description(&self.crates),
+            compiler.stage,
+            &compiler.host,
+            target,
         ));
         run_cargo(
             builder,
             cargo,
-            self.crates.to_vec(),
+            vec![],
             &librustc_stamp(builder, compiler, target),
             vec![],
             false,
+            true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
         );
 
         builder.ensure(RustcLink::from_rustc(
@@ -733,7 +770,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
         .env("CFG_VERSION", builder.rust_version());
 
-    if let Some(backend) = builder.config.rust_codegen_backends.get(0) {
+    if let Some(backend) = builder.config.default_codegen_backend() {
         cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);
     }
 
@@ -742,10 +779,10 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
-    if let Some(ref ver_date) = builder.rust_info.commit_date() {
+    if let Some(ref ver_date) = builder.rust_info().commit_date() {
         cargo.env("CFG_VER_DATE", ver_date);
     }
-    if let Some(ref ver_hash) = builder.rust_info.sha() {
+    if let Some(ref ver_hash) = builder.rust_info().sha() {
         cargo.env("CFG_VER_HASH", ver_hash);
     }
     if !builder.unstable_features() {
@@ -784,7 +821,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         if builder.is_rust_llvm(target) {
             cargo.env("LLVM_RUSTLLVM", "1");
         }
-        let llvm_config = builder.ensure(native::Llvm { target });
+        let native::LlvmResult { llvm_config, .. } = builder.ensure(native::Llvm { target });
         cargo.env("LLVM_CONFIG", &llvm_config);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             cargo.env("CFG_LLVM_ROOT", s);
@@ -963,8 +1000,8 @@ impl Step for CodegenBackend {
             "Building stage{} codegen backend {} ({} -> {})",
             compiler.stage, backend, &compiler.host, target
         ));
-        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
-        if builder.config.dry_run {
+        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
+        if builder.config.dry_run() {
             return;
         }
         let mut files = files.into_iter().filter(|f| {
@@ -1012,7 +1049,7 @@ fn copy_codegen_backends_to_sysroot(
     let dst = builder.sysroot_codegen_backends(target_compiler);
     t!(fs::create_dir_all(&dst), dst);
 
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return;
     }
 
@@ -1099,11 +1136,19 @@ impl Step for Sysroot {
     /// 1-3.
     fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
         let compiler = self.compiler;
-        let sysroot = if compiler.stage == 0 {
-            builder.out.join(&compiler.host.triple).join("stage0-sysroot")
-        } else {
-            builder.out.join(&compiler.host.triple).join(format!("stage{}", compiler.stage))
+        let host_dir = builder.out.join(&compiler.host.triple);
+
+        let sysroot_dir = |stage| {
+            if stage == 0 {
+                host_dir.join("stage0-sysroot")
+            } else if builder.download_rustc() && compiler.stage != builder.top_stage {
+                host_dir.join("ci-rustc-sysroot")
+            } else {
+                host_dir.join(format!("stage{}", stage))
+            }
         };
+        let sysroot = sysroot_dir(compiler.stage);
+
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
@@ -1113,6 +1158,17 @@ impl Step for Sysroot {
                 builder.config.build, compiler.host,
                 "Cross-compiling is not yet supported with `download-rustc`",
             );
+
+            // #102002, cleanup old toolchain folders when using download-rustc so people don't use them by accident.
+            for stage in 0..=2 {
+                if stage != compiler.stage {
+                    let dir = sysroot_dir(stage);
+                    if !dir.ends_with("ci-rustc-sysroot") {
+                        let _ = fs::remove_dir_all(dir);
+                    }
+                }
+            }
+
             // Copy the compiler into the correct sysroot.
             let ci_rustc_dir =
                 builder.config.out.join(&*builder.config.build.triple).join("ci-rustc");
@@ -1137,10 +1193,24 @@ impl Step for Sysroot {
             );
             if builder.config.rust_remap_debuginfo {
                 eprintln!(
-                    "warning: some `src/test/ui` tests will fail when lacking `{}`",
+                    "warning: some `tests/ui` tests will fail when lacking `{}`",
                     sysroot_lib_rustlib_src_rust.display(),
                 );
             }
+        }
+        // Same for the rustc-src component.
+        let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
+        t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
+        let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
+        if let Err(e) =
+            symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
+        {
+            eprintln!(
+                "warning: creating symbolic link `{}` to `{}` failed with {}",
+                sysroot_lib_rustlib_rustcsrc_rust.display(),
+                builder.src.display(),
+                e,
+            );
         }
 
         INTERNER.intern_path(sysroot)
@@ -1287,9 +1357,10 @@ impl Step for Assemble {
         }
 
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
-            let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
-            if !builder.config.dry_run {
-                let llvm_bin_dir = output(Command::new(llvm_config_bin).arg("--bindir"));
+            let native::LlvmResult { llvm_config, .. } =
+                builder.ensure(native::Llvm { target: target_compiler.host });
+            if !builder.config.dry_run() {
+                let llvm_bin_dir = output(Command::new(llvm_config).arg("--bindir"));
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 
                 // Since we've already built the LLVM tools, install them to the sysroot.
@@ -1357,8 +1428,9 @@ pub fn run_cargo(
     stamp: &Path,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
     is_check: bool,
+    rlib_only_metadata: bool,
 ) -> Vec<PathBuf> {
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return Vec::new();
     }
 
@@ -1390,13 +1462,35 @@ pub fn run_cargo(
         };
         for filename in filenames {
             // Skip files like executables
-            if !(filename.ends_with(".rlib")
-                || filename.ends_with(".lib")
+            let mut keep = false;
+            if filename.ends_with(".lib")
                 || filename.ends_with(".a")
                 || is_debug_info(&filename)
                 || is_dylib(&filename)
-                || (is_check && filename.ends_with(".rmeta")))
             {
+                // Always keep native libraries, rust dylibs and debuginfo
+                keep = true;
+            }
+            if is_check && filename.ends_with(".rmeta") {
+                // During check builds we need to keep crate metadata
+                keep = true;
+            } else if rlib_only_metadata {
+                if filename.contains("jemalloc_sys") || filename.contains("rustc_smir") {
+                    // jemalloc_sys and rustc_smir are not linked into librustc_driver.so,
+                    // so we need to distribute them as rlib to be able to use them.
+                    keep |= filename.ends_with(".rlib");
+                } else {
+                    // Distribute the rest of the rustc crates as rmeta files only to reduce
+                    // the tarball sizes by about 50%. The object files are linked into
+                    // librustc_driver.so, so it is still possible to link against them.
+                    keep |= filename.ends_with(".rmeta");
+                }
+            } else {
+                // In all other cases keep all rlibs
+                keep |= filename.ends_with(".rlib");
+            }
+
+            if !keep {
                 continue;
             }
 
@@ -1498,7 +1592,7 @@ pub fn stream_cargo(
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     let mut cargo = Command::from(cargo);
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return true;
     }
     // Instruct Cargo to give us json messages on stdout, critically leaving

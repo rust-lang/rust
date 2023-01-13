@@ -80,12 +80,12 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                 // used.
                 let (used, sugg_mac) = if let Some(macro_name) = calling_macro {
                     (
-                        format!("{}!({}(), ...)", macro_name, dest_name),
+                        format!("{macro_name}!({dest_name}(), ...)"),
                         macro_name.replace("write", "print"),
                     )
                 } else {
                     (
-                        format!("{}().write_fmt(...)", dest_name),
+                        format!("{dest_name}().write_fmt(...)"),
                         "print".into(),
                     )
                 };
@@ -100,9 +100,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                     cx,
                     EXPLICIT_WRITE,
                     expr.span,
-                    &format!("use of `{}.unwrap()`", used),
+                    &format!("use of `{used}.unwrap()`"),
                     "try this",
-                    format!("{}{}!({})", prefix, sugg_mac, inputs_snippet),
+                    format!("{prefix}{sugg_mac}!({inputs_snippet})"),
                     applicability,
                 )
             }

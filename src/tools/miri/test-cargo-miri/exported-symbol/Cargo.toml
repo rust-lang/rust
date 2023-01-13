@@ -1,0 +1,11 @@
+[package]
+name = "exported_symbol"
+version = "0.1.0"
+authors = ["Miri Team"]
+edition = "2018"
+
+[dependencies]
+# This will become a transitive dependency of doctests in `test-cargo-miri/src/lib.rs`,
+# and the purpose of the test is to make sure Miri can find a `#[no_mangle]` function in a
+# transitive dependency like `exported_symbol_dep`.
+exported_symbol_dep = { path = "../exported-symbol-dep" }

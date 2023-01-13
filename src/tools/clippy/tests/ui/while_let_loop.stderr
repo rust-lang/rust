@@ -1,5 +1,5 @@
 error: this loop could be written as a `while let` loop
-  --> $DIR/while_let_loop.rs:5:5
+  --> $DIR/while_let_loop.rs:6:5
    |
 LL | /     loop {
 LL | |         if let Some(_x) = y {
@@ -13,7 +13,7 @@ LL | |     }
    = note: `-D clippy::while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
-  --> $DIR/while_let_loop.rs:22:5
+  --> $DIR/while_let_loop.rs:23:5
    |
 LL | /     loop {
 LL | |         match y {
@@ -24,7 +24,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> $DIR/while_let_loop.rs:29:5
+  --> $DIR/while_let_loop.rs:30:5
    |
 LL | /     loop {
 LL | |         let x = match y {
@@ -36,7 +36,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> $DIR/while_let_loop.rs:38:5
+  --> $DIR/while_let_loop.rs:39:5
    |
 LL | /     loop {
 LL | |         let x = match y {
@@ -48,7 +48,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> $DIR/while_let_loop.rs:68:5
+  --> $DIR/while_let_loop.rs:69:5
    |
 LL | /     loop {
 LL | |         let (e, l) = match "".split_whitespace().next() {

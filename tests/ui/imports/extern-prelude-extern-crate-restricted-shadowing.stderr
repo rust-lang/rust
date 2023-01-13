@@ -1,0 +1,33 @@
+error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
+  --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:19:9
+   |
+LL |         extern crate std as core;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | define_other_core!();
+   | -------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0659]: `Vec` is ambiguous
+  --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:13:9
+   |
+LL |         Vec::panic!();
+   |         ^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+note: `Vec` could refer to the crate imported here
+  --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:5:9
+   |
+LL |         extern crate std as Vec;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | define_vec!();
+   | ------------- in this macro invocation
+note: `Vec` could also refer to a struct from prelude
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+   = note: this error originates in the macro `define_vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

@@ -1,4 +1,5 @@
 #![warn(clippy::while_let_loop)]
+#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     let y = Some(true);

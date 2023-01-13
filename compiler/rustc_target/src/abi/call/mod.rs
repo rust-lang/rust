@@ -3,6 +3,7 @@ use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
 use rustc_span::Symbol;
 use std::fmt;
+use std::str::FromStr;
 
 mod aarch64;
 mod amdgpu;
@@ -10,6 +11,7 @@ mod arm;
 mod avr;
 mod bpf;
 mod hexagon;
+mod loongarch;
 mod m68k;
 mod mips;
 mod mips64;
@@ -47,7 +49,7 @@ pub enum PassMode {
     /// Pass the argument indirectly via a hidden pointer.
     /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
-    /// `on_stack` defines that the the value should be passed at a fixed
+    /// `on_stack` defines that the value should be passed at a fixed
     /// stack offset in accordance to the ABI rather than passed using a
     /// pointer. This corresponds to the `byval` LLVM argument attribute.
     Indirect { attrs: ArgAttributes, extra_attrs: Option<ArgAttributes>, on_stack: bool },
@@ -69,12 +71,7 @@ mod attr_impl {
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
             const InReg     = 1 << 5;
-            // Due to past miscompiles in LLVM, we use a separate attribute for
-            // &mut arguments, so that the codegen backend can decide whether
-            // or not to actually emit the attribute. It can also be controlled
-            // with the `-Zmutable-noalias` debugging option.
-            const NoAliasMutRef = 1 << 6;
-            const NoUndef = 1 << 7;
+            const NoUndef = 1 << 6;
         }
     }
 }
@@ -175,12 +172,12 @@ impl Reg {
                 17..=32 => dl.i32_align.abi,
                 33..=64 => dl.i64_align.abi,
                 65..=128 => dl.i128_align.abi,
-                _ => panic!("unsupported integer: {:?}", self),
+                _ => panic!("unsupported integer: {self:?}"),
             },
             RegKind::Float => match self.size.bits() {
                 32 => dl.f32_align.abi,
                 64 => dl.f64_align.abi,
-                _ => panic!("unsupported float: {:?}", self),
+                _ => panic!("unsupported float: {self:?}"),
             },
             RegKind::Vector => dl.vector_align(self.size).abi,
         }
@@ -260,7 +257,7 @@ impl CastTarget {
         let mut size = self.rest.total;
         for i in 0..self.prefix.iter().count() {
             match self.prefix[i] {
-                Some(v) => size += Size { raw: v.size.bytes() },
+                Some(v) => size += v.size,
                 None => {}
             }
         }
@@ -640,7 +637,7 @@ impl fmt::Display for AdjustForForeignAbiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Unsupported { arch, abi } => {
-                write!(f, "target architecture {:?} does not support `extern {}` ABI", arch, abi)
+                write!(f, "target architecture {arch:?} does not support `extern {abi}` ABI")
             }
         }
     }
@@ -685,10 +682,18 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     }
                 }
             },
-            "aarch64" => aarch64::compute_abi_info(cx, self),
+            "aarch64" => {
+                let param_policy = if cx.target_spec().is_like_osx {
+                    aarch64::ParamExtension::ExtendTo32Bits
+                } else {
+                    aarch64::ParamExtension::NoExtension
+                };
+                aarch64::compute_abi_info(cx, self, param_policy)
+            }
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
             "avr" => avr::compute_abi_info(self),
+            "loongarch64" => loongarch::compute_abi_info(cx, self),
             "m68k" => m68k::compute_abi_info(self),
             "mips" => mips::compute_abi_info(cx, self),
             "mips64" => mips64::compute_abi_info(cx, self),
@@ -728,12 +733,40 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     }
 }
 
+impl FromStr for Conv {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "C" => Ok(Conv::C),
+            "Rust" => Ok(Conv::Rust),
+            "RustCold" => Ok(Conv::Rust),
+            "ArmAapcs" => Ok(Conv::ArmAapcs),
+            "CCmseNonSecureCall" => Ok(Conv::CCmseNonSecureCall),
+            "Msp430Intr" => Ok(Conv::Msp430Intr),
+            "PtxKernel" => Ok(Conv::PtxKernel),
+            "X86Fastcall" => Ok(Conv::X86Fastcall),
+            "X86Intr" => Ok(Conv::X86Intr),
+            "X86Stdcall" => Ok(Conv::X86Stdcall),
+            "X86ThisCall" => Ok(Conv::X86ThisCall),
+            "X86VectorCall" => Ok(Conv::X86VectorCall),
+            "X86_64SysV" => Ok(Conv::X86_64SysV),
+            "X86_64Win64" => Ok(Conv::X86_64Win64),
+            "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
+            "AvrInterrupt" => Ok(Conv::AvrInterrupt),
+            "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
+            _ => Err(format!("'{s}' is not a valid value for entry function call convetion.")),
+        }
+    }
+}
+
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(ArgAbi<'_, usize>, 56);
     static_assert_size!(FnAbi<'_, usize>, 80);
+    // tidy-alphabetical-end
 }

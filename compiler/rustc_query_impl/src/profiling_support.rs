@@ -1,3 +1,4 @@
+use crate::QueryCtxt;
 use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
@@ -8,7 +9,7 @@ use rustc_query_system::query::QueryCache;
 use std::fmt::Debug;
 use std::io::Write;
 
-struct QueryKeyStringCache {
+pub(crate) struct QueryKeyStringCache {
     def_id_cache: FxHashMap<DefId, StringId>,
 }
 
@@ -18,18 +19,18 @@ impl QueryKeyStringCache {
     }
 }
 
-struct QueryKeyStringBuilder<'p, 'c, 'tcx> {
+struct QueryKeyStringBuilder<'p, 'tcx> {
     profiler: &'p SelfProfiler,
     tcx: TyCtxt<'tcx>,
-    string_cache: &'c mut QueryKeyStringCache,
+    string_cache: &'p mut QueryKeyStringCache,
 }
 
-impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
+impl<'p, 'tcx> QueryKeyStringBuilder<'p, 'tcx> {
     fn new(
         profiler: &'p SelfProfiler,
         tcx: TyCtxt<'tcx>,
-        string_cache: &'c mut QueryKeyStringCache,
-    ) -> QueryKeyStringBuilder<'p, 'c, 'tcx> {
+        string_cache: &'p mut QueryKeyStringCache,
+    ) -> QueryKeyStringBuilder<'p, 'tcx> {
         QueryKeyStringBuilder { profiler, tcx, string_cache }
     }
 
@@ -98,7 +99,7 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
 }
 
 trait IntoSelfProfilingString {
-    fn to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_, '_>) -> StringId;
+    fn to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId;
 }
 
 // The default implementation of `IntoSelfProfilingString` just uses `Debug`
@@ -108,68 +109,50 @@ trait IntoSelfProfilingString {
 impl<T: Debug> IntoSelfProfilingString for T {
     default fn to_self_profile_string(
         &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
+        builder: &mut QueryKeyStringBuilder<'_, '_>,
     ) -> StringId {
-        let s = format!("{:?}", self);
+        let s = format!("{self:?}");
         builder.profiler.alloc_string(&s[..])
     }
 }
 
 impl<T: SpecIntoSelfProfilingString> IntoSelfProfilingString for T {
-    fn to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_, '_>) -> StringId {
+    fn to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         self.spec_to_self_profile_string(builder)
     }
 }
 
 #[rustc_specialization_trait]
 trait SpecIntoSelfProfilingString: Debug {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId;
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId;
 }
 
 impl SpecIntoSelfProfilingString for DefId {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         builder.def_id_to_string_id(*self)
     }
 }
 
 impl SpecIntoSelfProfilingString for CrateNum {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         builder.def_id_to_string_id(self.as_def_id())
     }
 }
 
 impl SpecIntoSelfProfilingString for DefIndex {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         builder.def_id_to_string_id(DefId { krate: LOCAL_CRATE, index: *self })
     }
 }
 
 impl SpecIntoSelfProfilingString for LocalDefId {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         builder.def_id_to_string_id(DefId { krate: LOCAL_CRATE, index: self.local_def_index })
     }
 }
 
 impl<T: SpecIntoSelfProfilingString> SpecIntoSelfProfilingString for WithOptConstParam<T> {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         // We print `WithOptConstParam` values as tuples to make them shorter
         // and more readable, without losing information:
         //
@@ -204,10 +187,7 @@ where
     T0: SpecIntoSelfProfilingString,
     T1: SpecIntoSelfProfilingString,
 {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         let val0 = self.0.to_self_profile_string(builder);
         let val1 = self.1.to_self_profile_string(builder);
 
@@ -226,7 +206,7 @@ where
 /// Allocate the self-profiling query strings for a single query cache. This
 /// method is called from `alloc_self_profile_query_strings` which knows all
 /// the queries via macro magic.
-fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
+pub(crate) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     query_name: &'static str,
     query_cache: &C,
@@ -304,21 +284,9 @@ pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
     }
 
     let mut string_cache = QueryKeyStringCache::new();
+    let queries = QueryCtxt::from_tcx(tcx);
 
-    macro_rules! alloc_once {
-        (
-            $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($K:ty) -> $V:ty,)*
-        ) => {
-            $({
-                alloc_self_profile_query_strings_for_query_cache(
-                    tcx,
-                    stringify!($name),
-                    &tcx.query_caches.$name,
-                    &mut string_cache,
-                );
-            })*
-        }
+    for query in &queries.queries.query_structs {
+        (query.alloc_self_profile_query_strings)(tcx, &mut string_cache);
     }
-
-    rustc_query_append! { alloc_once! }
 }

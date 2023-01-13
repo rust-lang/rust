@@ -9,7 +9,7 @@ use crate::fmt;
 use crate::intrinsics::{assume, exact_div, unchecked_sub};
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::marker::{PhantomData, Send, Sized, Sync};
-use crate::mem;
+use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ptr::NonNull;
 
@@ -91,11 +91,8 @@ impl<'a, T> Iter<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end = if mem::size_of::<T>() == 0 {
-                ptr.wrapping_byte_add(slice.len())
-            } else {
-                ptr.add(slice.len())
-            };
+            let end =
+                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
         }
@@ -127,6 +124,7 @@ impl<'a, T> Iter<'a, T> {
     /// ```
     #[must_use]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
+    #[inline]
     pub fn as_slice(&self) -> &'a [T] {
         self.make_slice()
     }
@@ -146,6 +144,7 @@ iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
+    #[inline]
     fn clone(&self) -> Self {
         Iter { ptr: self.ptr, end: self.end, _marker: self._marker }
     }
@@ -153,6 +152,7 @@ impl<T> Clone for Iter<'_, T> {
 
 #[stable(feature = "slice_iter_as_ref", since = "1.13.0")]
 impl<T> AsRef<[T]> for Iter<'_, T> {
+    #[inline]
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }
@@ -227,11 +227,8 @@ impl<'a, T> IterMut<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end = if mem::size_of::<T>() == 0 {
-                ptr.wrapping_byte_add(slice.len())
-            } else {
-                ptr.add(slice.len())
-            };
+            let end =
+                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr), end, _marker: PhantomData }
         }
@@ -303,6 +300,7 @@ impl<'a, T> IterMut<'a, T> {
     /// ```
     #[must_use]
     #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
+    #[inline]
     pub fn as_slice(&self) -> &[T] {
         self.make_slice()
     }
@@ -351,6 +349,7 @@ impl<'a, T> IterMut<'a, T> {
 
 #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
 impl<T> AsRef<[T]> for IterMut<'_, T> {
+    #[inline]
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }
@@ -1835,6 +1834,20 @@ impl<'a, T> ChunksExact<'a, T> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.chunks_exact(2);
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// assert_eq!(iter.next(), Some(&['l', 'o'][..]));
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// assert_eq!(iter.next(), Some(&['r', 'e'][..]));
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// ```
     #[must_use]
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     pub fn remainder(&self) -> &'a [T] {
@@ -2870,7 +2883,7 @@ unsafe impl<T> Sync for RChunksMut<'_, T> where T: Sync {}
 /// ```
 ///
 /// [`rchunks_exact`]: slice::rchunks_exact
-/// [`remainder`]: ChunksExact::remainder
+/// [`remainder`]: RChunksExact::remainder
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -2893,6 +2906,20 @@ impl<'a, T> RChunksExact<'a, T> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.rchunks_exact(2);
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// assert_eq!(iter.next(), Some(&['e', 'm'][..]));
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// assert_eq!(iter.next(), Some(&['o', 'r'][..]));
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// ```
     #[must_use]
     #[stable(feature = "rchunks", since = "1.31.0")]
     pub fn remainder(&self) -> &'a [T] {
@@ -3032,7 +3059,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExact<'a, T> {
 /// ```
 ///
 /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
-/// [`into_remainder`]: ChunksExactMut::into_remainder
+/// [`into_remainder`]: RChunksExactMut::into_remainder
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]

@@ -145,9 +145,11 @@ pub mod solaris;
 pub mod solid;
 #[cfg(target_os = "vxworks")]
 pub mod vxworks;
+#[cfg(target_os = "watchos")]
+pub(crate) mod watchos;
 
 #[cfg(any(unix, target_os = "wasi", doc))]
-mod fd;
+pub mod fd;
 
 #[cfg(any(target_os = "linux", target_os = "android", doc))]
 mod net;

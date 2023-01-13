@@ -59,7 +59,7 @@ impl DebugContext {
 
         let producer = format!(
             "cg_clif (rustc {}, cranelift {})",
-            rustc_interface::util::version_str().unwrap_or("unknown version"),
+            rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
             cranelift_codegen::VERSION,
         );
         let comp_dir = tcx

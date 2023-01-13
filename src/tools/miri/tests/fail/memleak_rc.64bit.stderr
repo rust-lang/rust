@@ -1,0 +1,11 @@
+The following memory was leaked: ALLOC (Rust heap, size: 32, align: 8) {
+$stripped$
+$stripped$
+}
+
+error: the evaluated program leaked memory
+
+note: pass `-Zmiri-ignore-leaks` to disable this check
+
+error: aborting due to previous error
+

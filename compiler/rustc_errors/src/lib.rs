@@ -5,14 +5,17 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
+#![feature(is_terminal)]
 #![feature(adt_const_params)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(never_type)]
 #![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
+#![feature(yeet_expr)]
+#![feature(try_blocks)]
+#![feature(box_patterns)]
+#![feature(error_reporter)]
 #![allow(incomplete_features)]
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -27,12 +30,12 @@ use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};
 use registry::Registry;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent, fluent_bundle, DiagnosticMessage, FluentBundle,
+    fallback_fluent_bundle, fluent, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
     LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
     DEFAULT_LOCALE_RESOURCES,
 };
@@ -42,34 +45,41 @@ use rustc_span::HashStableContext;
 use rustc_span::{Loc, Span};
 
 use std::borrow::Cow;
+use std::error::Report;
+use std::fmt;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::panic;
 use std::path::Path;
-use std::{error, fmt};
 
 use termcolor::{Color, ColorSpec};
 
 pub mod annotate_snippet_emitter_writer;
 mod diagnostic;
 mod diagnostic_builder;
+mod diagnostic_impls;
 pub mod emitter;
+pub mod error;
 pub mod json;
 mod lock;
 pub mod registry;
 mod snippet;
 mod styled_buffer;
+#[cfg(test)]
+mod tests;
 pub mod translation;
 
+pub use diagnostic_builder::IntoDiagnostic;
 pub use snippet::Style;
 
-pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a, ErrorGuaranteed>>;
+pub type PErr<'a> = DiagnosticBuilder<'a, ErrorGuaranteed>;
+pub type PResult<'a, T> = Result<T, PErr<'a>>;
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
-// (See also the comment on `DiagnosticBuilder`'s `diagnostic` field.)
+// (See also the comment on `DiagnosticBuilderInner`'s `diagnostic` field.)
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(PResult<'_, ()>, 16);
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64", not(bootstrap)))]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(PResult<'_, bool>, 16);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
@@ -151,21 +161,20 @@ pub struct SubstitutionHighlight {
 
 impl SubstitutionPart {
     pub fn is_addition(&self, sm: &SourceMap) -> bool {
-        !self.snippet.is_empty()
-            && sm
-                .span_to_snippet(self.span)
-                .map_or(self.span.is_empty(), |snippet| snippet.trim().is_empty())
+        !self.snippet.is_empty() && !self.replaces_meaningful_content(sm)
     }
 
-    pub fn is_deletion(&self) -> bool {
-        self.snippet.trim().is_empty()
+    pub fn is_deletion(&self, sm: &SourceMap) -> bool {
+        self.snippet.trim().is_empty() && self.replaces_meaningful_content(sm)
     }
 
     pub fn is_replacement(&self, sm: &SourceMap) -> bool {
-        !self.snippet.is_empty()
-            && sm
-                .span_to_snippet(self.span)
-                .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
+        !self.snippet.is_empty() && self.replaces_meaningful_content(sm)
+    }
+
+    fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {
+        sm.span_to_snippet(self.span)
+            .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
     }
 }
 
@@ -323,7 +332,7 @@ impl CodeSuggestion {
                         // Account for the difference between the width of the current code and the
                         // snippet being suggested, so that the *later* suggestions are correctly
                         // aligned on the screen.
-                        acc += len as isize - (cur_hi.col.0 - cur_lo.col.0) as isize;
+                        acc += len - (cur_hi.col.0 - cur_lo.col.0) as isize;
                     }
                     prev_hi = cur_hi;
                     prev_line = sf.get_line(prev_hi.line - 1);
@@ -360,22 +369,18 @@ pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
-#[derive(Copy, Clone, Debug)]
 pub struct ExplicitBug;
 
-impl fmt::Display for ExplicitBug {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "parser internal bug")
-    }
-}
-
-impl error::Error for ExplicitBug {}
+/// Signifies that the compiler died with an explicit call to `.delay_*_bug`
+/// rather than a failed assertion, etc.
+pub struct DelayedBugPanic;
 
 pub use diagnostic::{
-    AddSubdiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgFromDisplay,
-    DiagnosticArgValue, DiagnosticId, DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
+    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
+    DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
-pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, LintDiagnosticBuilder};
+pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, Noted};
+pub use diagnostic_impls::{DiagnosticArgFromDisplay, DiagnosticSymbolList};
 use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
@@ -401,7 +406,7 @@ struct HandlerInner {
     warn_count: usize,
     deduplicated_err_count: usize,
     emitter: Box<dyn Emitter + sync::Send>,
-    delayed_span_bugs: Vec<Diagnostic>,
+    delayed_span_bugs: Vec<DelayedDiagnostic>,
     delayed_good_path_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
     /// This is used for the `delayed_good_path_bugs` check.
@@ -412,8 +417,8 @@ struct HandlerInner {
     /// would be unnecessary repetition.
     taught_diagnostics: FxHashSet<DiagnosticId>,
 
-    /// Used to suggest rustc --explain <error code>
-    emitted_diagnostic_codes: FxHashSet<DiagnosticId>,
+    /// Used to suggest rustc --explain `<error code>`
+    emitted_diagnostic_codes: FxIndexSet<DiagnosticId>,
 
     /// This set contains a hash of every diagnostic that has been emitted by
     /// this handler. These hashes is used to avoid emitting the same error
@@ -438,11 +443,11 @@ struct HandlerInner {
     /// have been converted.
     check_unstable_expect_diagnostics: bool,
 
-    /// Expected [`Diagnostic`]s store a [`LintExpectationId`] as part of
+    /// Expected [`Diagnostic`][diagnostic::Diagnostic]s store a [`LintExpectationId`] as part of
     /// the lint level. [`LintExpectationId`]s created early during the compilation
     /// (before `HirId`s have been defined) are not stable and can therefore not be
     /// stored on disk. This buffer stores these diagnostics until the ID has been
-    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`]s are the
+    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`][diagnostic::Diagnostic]s are the
     /// submitted for storage and added to the list of fulfilled expectations.
     unstable_expect_diagnostics: Vec<Diagnostic>,
 
@@ -461,12 +466,22 @@ pub enum StashKey {
     ItemNoType,
     UnderscoreForArrayLengths,
     EarlySyntaxWarning,
+    CallIntoMethod,
+    /// When an invalid lifetime e.g. `'2` should be reinterpreted
+    /// as a char literal in the parser
+    LifetimeIsChar,
+    /// Maybe there was a typo where a comma was forgotten before
+    /// FRU syntax
+    MaybeFruTypo,
+    CallAssocMethod,
 }
 
-fn default_track_diagnostic(_: &Diagnostic) {}
+fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnostic)) {
+    (*f)(d)
+}
 
-pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&Diagnostic)> =
-    AtomicRef::new(&(default_track_diagnostic as fn(&_)));
+pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&mut Diagnostic, &mut dyn FnMut(&mut Diagnostic))> =
+    AtomicRef::new(&(default_track_diagnostic as _));
 
 #[derive(Copy, Clone, Default)]
 pub struct HandlerFlags {
@@ -487,6 +502,8 @@ pub struct HandlerFlags {
     pub macro_backtrace: bool,
     /// If true, identical diagnostics are reported only once.
     pub deduplicate_diagnostics: bool,
+    /// Track where errors are created. Enabled with `-Ztrack-diagnostics`.
+    pub track_diagnostics: bool,
 }
 
 impl Drop for HandlerInner {
@@ -506,7 +523,7 @@ impl Drop for HandlerInner {
         if !self.has_any_message() && !self.suppressed_expected_diag {
             let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
             self.flush_delayed(
-                bugs.into_iter().map(DelayedDiagnostic::decorate),
+                bugs,
                 "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
             );
         }
@@ -554,6 +571,7 @@ impl Handler {
             false,
             None,
             flags.macro_backtrace,
+            flags.track_diagnostics,
         ));
         Self::with_emitter_and_flags(emitter, flags)
     }
@@ -598,6 +616,24 @@ impl Handler {
         }
     }
 
+    /// Translate `message` eagerly with `args`.
+    pub fn eagerly_translate<'a>(
+        &self,
+        message: DiagnosticMessage,
+        args: impl Iterator<Item = DiagnosticArg<'a, 'static>>,
+    ) -> SubdiagnosticMessage {
+        let inner = self.inner.borrow();
+        let args = crate::translation::to_fluent_args(args);
+        SubdiagnosticMessage::Eager(
+            inner
+                .emitter
+                .translate_message(&message, &args)
+                .map_err(Report::new)
+                .unwrap()
+                .to_string(),
+        )
+    }
+
     // This is here to not allow mutation of flags;
     // as of this writing it's only used in tests in librustc_middle.
     pub fn can_emit_warnings(&self) -> bool {
@@ -625,16 +661,23 @@ impl Handler {
         inner.stashed_diagnostics = Default::default();
     }
 
-    /// Stash a given diagnostic with the given `Span` and `StashKey` as the key for later stealing.
+    /// Stash a given diagnostic with the given `Span` and [`StashKey`] as the key.
+    /// Retrieve a stashed diagnostic with `steal_diagnostic`.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
         let mut inner = self.inner.borrow_mut();
-        inner.stash((span, key), diag);
+        inner.stash((span.with_parent(None), key), diag);
     }
 
-    /// Steal a previously stashed diagnostic with the given `Span` and `StashKey` as the key.
+    /// Steal a previously stashed diagnostic with the given `Span` and [`StashKey`] as the key.
     pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_, ()>> {
         let mut inner = self.inner.borrow_mut();
-        inner.steal((span, key)).map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
+        inner
+            .steal((span.with_parent(None), key))
+            .map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
+    }
+
+    pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
+        self.inner.borrow().stashed_diagnostics.get(&(span.with_parent(None), key)).is_some()
     }
 
     /// Emit all stashed diagnostics.
@@ -644,6 +687,7 @@ impl Handler {
 
     /// Construct a builder with the `msg` at the level appropriate for the specific `EmissionGuarantee`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_diagnostic<G: EmissionGuarantee>(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -657,6 +701,7 @@ impl Handler {
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_warn(
         &self,
         span: impl Into<MultiSpan>,
@@ -673,6 +718,7 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
+    #[track_caller]
     pub fn struct_span_warn_with_expectation(
         &self,
         span: impl Into<MultiSpan>,
@@ -686,6 +732,7 @@ impl Handler {
 
     /// Construct a builder at the `Allow` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_allow(
         &self,
         span: impl Into<MultiSpan>,
@@ -699,6 +746,7 @@ impl Handler {
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     /// Also include a code.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_warn_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -716,6 +764,7 @@ impl Handler {
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Warning(None), msg)
     }
@@ -726,6 +775,7 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
+    #[track_caller]
     pub fn struct_warn_with_expectation(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -736,12 +786,14 @@ impl Handler {
 
     /// Construct a builder at the `Allow` level with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Allow, msg)
     }
 
     /// Construct a builder at the `Expect` level with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_expect(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -752,6 +804,7 @@ impl Handler {
 
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_err(
         &self,
         span: impl Into<MultiSpan>,
@@ -764,6 +817,7 @@ impl Handler {
 
     /// Construct a builder at the `Error` level at the given `span`, with the `msg`, and `code`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_err_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -778,6 +832,7 @@ impl Handler {
     /// Construct a builder at the `Error` level with the `msg`.
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -787,12 +842,14 @@ impl Handler {
 
     /// This should only be used by `rustc_middle::lint::struct_lint_level`. Do not use it for hard errors.
     #[doc(hidden)]
+    #[track_caller]
     pub fn struct_err_lint(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Error { lint: true }, msg)
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_err_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -805,6 +862,7 @@ impl Handler {
 
     /// Construct a builder at the `Warn` level with the `msg` and the `code`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_warn_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -817,6 +875,7 @@ impl Handler {
 
     /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_fatal(
         &self,
         span: impl Into<MultiSpan>,
@@ -829,6 +888,7 @@ impl Handler {
 
     /// Construct a builder at the `Fatal` level at the given `span`, with the `msg`, and `code`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_fatal_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -842,6 +902,7 @@ impl Handler {
 
     /// Construct a builder at the `Error` level with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         DiagnosticBuilder::new_fatal(self, msg)
     }
@@ -854,6 +915,7 @@ impl Handler {
 
     /// Construct a builder at the `Note` level with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_note_without_error(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -862,12 +924,14 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.emit_diag_at_span(Diagnostic::new(Fatal, msg), span);
         FatalError.raise()
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_fatal_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -879,6 +943,7 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_err(
         &self,
         span: impl Into<MultiSpan>,
@@ -888,6 +953,7 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_err_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -901,11 +967,13 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.emit_diag_at_span(Diagnostic::new(Warning(None), msg), span);
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_warn_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -919,6 +987,7 @@ impl Handler {
         self.inner.borrow_mut().span_bug(span, msg)
     }
 
+    /// For documentation on this, see `Session::delay_span_bug`.
     #[track_caller]
     pub fn delay_span_bug(
         &self,
@@ -934,10 +1003,12 @@ impl Handler {
         self.inner.borrow_mut().delay_good_path_bug(msg)
     }
 
+    #[track_caller]
     pub fn span_bug_no_panic(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.emit_diag_at_span(Diagnostic::new(Bug, msg), span);
     }
 
+    #[track_caller]
     pub fn span_note_without_error(
         &self,
         span: impl Into<MultiSpan>,
@@ -946,6 +1017,7 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new(Note, msg), span);
     }
 
+    #[track_caller]
     pub fn span_note_diag(
         &self,
         span: Span,
@@ -988,13 +1060,24 @@ impl Handler {
     }
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
         if self.inner.borrow().has_errors_or_lint_errors() {
-            Some(ErrorGuaranteed(()))
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         } else {
             None
         }
     }
-    pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
-        self.inner.borrow().has_errors_or_delayed_span_bugs()
+    pub fn has_errors_or_delayed_span_bugs(&self) -> Option<ErrorGuaranteed> {
+        if self.inner.borrow().has_errors_or_delayed_span_bugs() {
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        } else {
+            None
+        }
+    }
+    pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
+        if self.inner.borrow().is_compilation_going_to_fail() {
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        } else {
+            None
+        }
     }
 
     pub fn print_error_count(&self, registry: &Registry) {
@@ -1024,6 +1107,53 @@ impl Handler {
 
     pub fn emit_diagnostic(&self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
         self.inner.borrow_mut().emit_diagnostic(diagnostic)
+    }
+
+    pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
+        self.create_err(err).emit()
+    }
+
+    pub fn create_err<'a>(
+        &'a self,
+        err: impl IntoDiagnostic<'a>,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        err.into_diagnostic(self)
+    }
+
+    pub fn create_warning<'a>(
+        &'a self,
+        warning: impl IntoDiagnostic<'a, ()>,
+    ) -> DiagnosticBuilder<'a, ()> {
+        warning.into_diagnostic(self)
+    }
+
+    pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
+        self.create_warning(warning).emit()
+    }
+
+    pub fn create_fatal<'a>(
+        &'a self,
+        fatal: impl IntoDiagnostic<'a, !>,
+    ) -> DiagnosticBuilder<'a, !> {
+        fatal.into_diagnostic(self)
+    }
+
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
+        self.create_fatal(fatal).emit()
+    }
+
+    pub fn create_bug<'a>(
+        &'a self,
+        bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
+    ) -> DiagnosticBuilder<'a, diagnostic_builder::Bug> {
+        bug.into_diagnostic(self)
+    }
+
+    pub fn emit_bug<'a>(
+        &'a self,
+        bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
+    ) -> diagnostic_builder::Bug {
+        self.create_bug(bug).emit()
     }
 
     fn emit_diag_at_span(
@@ -1098,6 +1228,12 @@ impl Handler {
         );
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
+
+    pub fn flush_delayed(&self) {
+        let mut inner = self.inner.lock();
+        let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
+        inner.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+    }
 }
 
 impl HandlerInner {
@@ -1105,8 +1241,8 @@ impl HandlerInner {
         self.taught_diagnostics.insert(code.clone())
     }
 
-    fn force_print_diagnostic(&mut self, mut db: Diagnostic) {
-        self.emitter.emit_diagnostic(&mut db);
+    fn force_print_diagnostic(&mut self, db: Diagnostic) {
+        self.emitter.emit_diagnostic(&db);
     }
 
     /// Emit all stashed diagnostics.
@@ -1156,7 +1292,9 @@ impl HandlerInner {
             // once *any* errors were emitted (and truncate `delayed_span_bugs`
             // when an error is first emitted, also), but maybe there's a case
             // in which that's not sound? otherwise this is really inefficient.
-            self.delayed_span_bugs.push(diagnostic.clone());
+            let backtrace = std::backtrace::Backtrace::force_capture();
+            self.delayed_span_bugs
+                .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
 
             if !self.flags.report_delayed_bugs {
                 return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
@@ -1164,12 +1302,16 @@ impl HandlerInner {
         }
 
         if diagnostic.has_future_breakage() {
+            // Future breakages aren't emitted if they're Level::Allowed,
+            // but they still need to be constructed and stashed below,
+            // so they'll trigger the good-path bug check.
+            self.suppressed_expected_diag = true;
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
         if let Some(expectation_id) = diagnostic.level.get_expectation_id() {
             self.suppressed_expected_diag = true;
-            self.fulfilled_expectations.insert(expectation_id);
+            self.fulfilled_expectations.insert(expectation_id.normalize());
         }
 
         if matches!(diagnostic.level, Warning(_))
@@ -1177,67 +1319,69 @@ impl HandlerInner {
             && !diagnostic.is_force_warn()
         {
             if diagnostic.has_future_breakage() {
-                (*TRACK_DIAGNOSTICS)(diagnostic);
+                (*TRACK_DIAGNOSTICS)(diagnostic, &mut |_| {});
             }
             return None;
         }
-
-        (*TRACK_DIAGNOSTICS)(diagnostic);
 
         if matches!(diagnostic.level, Level::Expect(_) | Level::Allow) {
+            (*TRACK_DIAGNOSTICS)(diagnostic, &mut |_| {});
             return None;
         }
 
-        if let Some(ref code) = diagnostic.code {
-            self.emitted_diagnostic_codes.insert(code.clone());
-        }
+        let mut guaranteed = None;
+        (*TRACK_DIAGNOSTICS)(diagnostic, &mut |diagnostic| {
+            if let Some(ref code) = diagnostic.code {
+                self.emitted_diagnostic_codes.insert(code.clone());
+            }
 
-        let already_emitted = |this: &mut Self| {
-            let mut hasher = StableHasher::new();
-            diagnostic.hash(&mut hasher);
-            let diagnostic_hash = hasher.finish();
-            !this.emitted_diagnostics.insert(diagnostic_hash)
-        };
-
-        // Only emit the diagnostic if we've been asked to deduplicate or
-        // haven't already emitted an equivalent diagnostic.
-        if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
-            debug!(?diagnostic);
-            debug!(?self.emitted_diagnostics);
-            let already_emitted_sub = |sub: &mut SubDiagnostic| {
-                debug!(?sub);
-                if sub.level != Level::OnceNote {
-                    return false;
-                }
+            let already_emitted = |this: &mut Self| {
                 let mut hasher = StableHasher::new();
-                sub.hash(&mut hasher);
+                diagnostic.hash(&mut hasher);
                 let diagnostic_hash = hasher.finish();
-                debug!(?diagnostic_hash);
-                !self.emitted_diagnostics.insert(diagnostic_hash)
+                !this.emitted_diagnostics.insert(diagnostic_hash)
             };
 
-            diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
+            // Only emit the diagnostic if we've been asked to deduplicate or
+            // haven't already emitted an equivalent diagnostic.
+            if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
+                debug!(?diagnostic);
+                debug!(?self.emitted_diagnostics);
+                let already_emitted_sub = |sub: &mut SubDiagnostic| {
+                    debug!(?sub);
+                    if sub.level != Level::OnceNote {
+                        return false;
+                    }
+                    let mut hasher = StableHasher::new();
+                    sub.hash(&mut hasher);
+                    let diagnostic_hash = hasher.finish();
+                    debug!(?diagnostic_hash);
+                    !self.emitted_diagnostics.insert(diagnostic_hash)
+                };
 
-            self.emitter.emit_diagnostic(&diagnostic);
+                diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
+
+                self.emitter.emit_diagnostic(diagnostic);
+                if diagnostic.is_error() {
+                    self.deduplicated_err_count += 1;
+                } else if let Warning(_) = diagnostic.level {
+                    self.deduplicated_warn_count += 1;
+                }
+            }
             if diagnostic.is_error() {
-                self.deduplicated_err_count += 1;
-            } else if let Warning(_) = diagnostic.level {
-                self.deduplicated_warn_count += 1;
-            }
-        }
-        if diagnostic.is_error() {
-            if matches!(diagnostic.level, Level::Error { lint: true }) {
-                self.bump_lint_err_count();
+                if matches!(diagnostic.level, Level::Error { lint: true }) {
+                    self.bump_lint_err_count();
+                } else {
+                    self.bump_err_count();
+                }
+
+                guaranteed = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
             } else {
-                self.bump_err_count();
+                self.bump_warn_count();
             }
+        });
 
-            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        } else {
-            self.bump_warn_count();
-
-            None
-        }
+        guaranteed
     }
 
     fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
@@ -1385,6 +1529,10 @@ impl HandlerInner {
         self.err_count() > 0 || self.lint_err_count > 0 || self.warn_count > 0
     }
 
+    fn is_compilation_going_to_fail(&self) -> bool {
+        self.has_errors() || self.lint_err_count > 0 || !self.delayed_span_bugs.is_empty()
+    }
+
     fn abort_if_errors(&mut self) {
         self.emit_stashed_diagnostics();
 
@@ -1393,6 +1541,7 @@ impl HandlerInner {
         }
     }
 
+    #[track_caller]
     fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.emit_diag_at_span(Diagnostic::new(Bug, msg), sp);
         panic::panic_any(ExplicitBug);
@@ -1402,6 +1551,7 @@ impl HandlerInner {
         self.emit_diagnostic(diag.set_span(sp));
     }
 
+    /// For documentation on this, see `Session::delay_span_bug`.
     #[track_caller]
     fn delay_span_bug(
         &mut self,
@@ -1419,7 +1569,6 @@ impl HandlerInner {
         }
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         diagnostic.set_span(sp.into());
-        diagnostic.note(&format!("delayed at {}", std::panic::Location::caller()));
         self.emit_diagnostic(&mut diagnostic).unwrap()
     }
 
@@ -1462,11 +1611,13 @@ impl HandlerInner {
 
     fn flush_delayed(
         &mut self,
-        bugs: impl IntoIterator<Item = Diagnostic>,
+        bugs: impl IntoIterator<Item = DelayedDiagnostic>,
         explanation: impl Into<DiagnosticMessage> + Copy,
     ) {
         let mut no_bugs = true;
-        for mut bug in bugs {
+        for bug in bugs {
+            let mut bug = bug.decorate();
+
             if no_bugs {
                 // Put the overall explanation before the `DelayedBug`s, to
                 // frame them better (e.g. separate warnings from them).
@@ -1489,9 +1640,9 @@ impl HandlerInner {
             self.emit_diagnostic(&mut bug);
         }
 
-        // Panic with `ExplicitBug` to avoid "unexpected panic" messages.
+        // Panic with `DelayedBugPanic` to avoid "unexpected panic" messages.
         if !no_bugs {
-            panic::panic_any(ExplicitBug);
+            panic::panic_any(DelayedBugPanic);
         }
     }
 

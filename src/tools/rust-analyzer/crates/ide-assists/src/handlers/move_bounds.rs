@@ -1,5 +1,9 @@
 use syntax::{
-    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode, HasName, HasTypeBounds},
+    ast::{
+        self,
+        edit_in_place::{GenericParamsOwnerEdit, Removable},
+        make, AstNode, HasName, HasTypeBounds,
+    },
     match_ast,
 };
 

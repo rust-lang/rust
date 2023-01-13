@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![feature(lint_reasons)]
-#![feature(let_else)]
+#![feature(yeet_expr)]
 #![allow(unused)]
 #![allow(
     clippy::if_same_then_else,
@@ -231,6 +231,70 @@ fn needless_return_macro() -> String {
 fn issue_9361() -> i32 {
     #[allow(clippy::integer_arithmetic)]
     return 1 + 2;
+}
+
+fn issue8336(x: i32) -> bool {
+    if x > 0 {
+        println!("something");
+        return true;
+    } else {
+        return false;
+    };
+}
+
+fn issue8156(x: u8) -> u64 {
+    match x {
+        80 => {
+            return 10;
+        },
+        _ => {
+            return 100;
+        },
+    };
+}
+
+// Ideally the compiler should throw `unused_braces` in this case
+fn issue9192() -> i32 {
+    {
+        return 0;
+    };
+}
+
+fn issue9503(x: usize) -> isize {
+    unsafe {
+        if x > 12 {
+            return *(x as *const isize);
+        } else {
+            return !*(x as *const isize);
+        };
+    };
+}
+
+mod issue9416 {
+    pub fn with_newline() {
+        let _ = 42;
+
+        return;
+    }
+
+    #[rustfmt::skip]
+    pub fn oneline() {
+        let _ = 42; return;
+    }
+}
+
+fn issue9947() -> Result<(), String> {
+    do yeet "hello";
+}
+
+// without anyhow, but triggers the same bug I believe
+#[expect(clippy::useless_format)]
+fn issue10051() -> Result<String, String> {
+    if true {
+        return Ok(format!("ok!"));
+    } else {
+        return Err(format!("err!"));
+    }
 }
 
 fn main() {}

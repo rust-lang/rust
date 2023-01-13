@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `page_size`
+  --> $DIR/path-to-method-sugg-unresolved-expr.rs:2:21
+   |
+LL |     let page_size = page_size::get();
+   |                     ^^^^^^^^^ use of undeclared crate or module `page_size`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

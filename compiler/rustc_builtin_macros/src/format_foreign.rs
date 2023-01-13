@@ -13,23 +13,23 @@ pub(crate) mod printf {
 
     impl<'a> Substitution<'a> {
         pub fn as_str(&self) -> &str {
-            match *self {
-                Substitution::Format(ref fmt) => fmt.span,
+            match self {
+                Substitution::Format(fmt) => fmt.span,
                 Substitution::Escape(_) => "%%",
             }
         }
 
         pub fn position(&self) -> Option<InnerSpan> {
-            match *self {
-                Substitution::Format(ref fmt) => Some(fmt.position),
-                Substitution::Escape((start, end)) => Some(InnerSpan::new(start, end)),
+            match self {
+                Substitution::Format(fmt) => Some(fmt.position),
+                &Substitution::Escape((start, end)) => Some(InnerSpan::new(start, end)),
             }
         }
 
         pub fn set_position(&mut self, start: usize, end: usize) {
             match self {
-                Substitution::Format(ref mut fmt) => fmt.position = InnerSpan::new(start, end),
-                Substitution::Escape(ref mut pos) => *pos = (start, end),
+                Substitution::Format(fmt) => fmt.position = InnerSpan::new(start, end),
+                Substitution::Escape(pos) => *pos = (start, end),
             }
         }
 
@@ -38,8 +38,8 @@ pub(crate) mod printf {
         /// This ignores cases where the substitution does not have an exact equivalent, or where
         /// the substitution would be unnecessary.
         pub fn translate(&self) -> Result<String, Option<String>> {
-            match *self {
-                Substitution::Format(ref fmt) => fmt.translate(),
+            match self {
+                Substitution::Format(fmt) => fmt.translate(),
                 Substitution::Escape(_) => Err(None),
             }
         }
@@ -635,23 +635,17 @@ pub mod shell {
         }
 
         pub fn position(&self) -> Option<InnerSpan> {
-            match self {
-                Substitution::Ordinal(_, pos)
-                | Substitution::Name(_, pos)
-                | Substitution::Escape(pos) => Some(InnerSpan::new(pos.0, pos.1)),
-            }
+            let (Self::Ordinal(_, pos) | Self::Name(_, pos) | Self::Escape(pos)) = self;
+            Some(InnerSpan::new(pos.0, pos.1))
         }
 
         pub fn set_position(&mut self, start: usize, end: usize) {
-            match self {
-                Substitution::Ordinal(_, ref mut pos)
-                | Substitution::Name(_, ref mut pos)
-                | Substitution::Escape(ref mut pos) => *pos = (start, end),
-            }
+            let (Self::Ordinal(_, pos) | Self::Name(_, pos) | Self::Escape(pos)) = self;
+            *pos = (start, end);
         }
 
         pub fn translate(&self) -> Result<String, Option<String>> {
-            match *self {
+            match self {
                 Substitution::Ordinal(n, _) => Ok(format!("{{{}}}", n)),
                 Substitution::Name(n, _) => Ok(format!("{{{}}}", n)),
                 Substitution::Escape(_) => Err(None),

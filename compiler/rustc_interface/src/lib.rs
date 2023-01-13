@@ -1,5 +1,5 @@
 #![feature(box_patterns)]
-#![feature(let_else)]
+#![feature(decl_macro)]
 #![feature(internal_output_capture)]
 #![feature(thread_spawn_unchecked)]
 #![feature(once_cell)]

@@ -5,4 +5,3 @@ edition = "2021"
 
 [lib]
 proc-macro = true
-doctest = false

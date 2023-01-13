@@ -1,4 +1,4 @@
-use rustc_ast::{Attribute, MetaItem};
+use rustc_ast::{AttrStyle, Attribute, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_feature::AttributeTemplate;
 use rustc_lint_defs::builtin::DUPLICATE_MACRO_ATTRIBUTES;
@@ -8,8 +8,13 @@ use rustc_span::Symbol;
 pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
     // All the built-in macro attributes are "words" at the moment.
     let template = AttributeTemplate { word: true, ..Default::default() };
-    let attr = ecx.attribute(meta_item.clone());
-    validate_attr::check_builtin_attribute(&ecx.sess.parse_sess, &attr, name, template);
+    validate_attr::check_builtin_meta_item(
+        &ecx.sess.parse_sess,
+        &meta_item,
+        AttrStyle::Outer,
+        name,
+        template,
+    );
 }
 
 /// Emit a warning if the item is annotated with the given attribute. This is used to diagnose when

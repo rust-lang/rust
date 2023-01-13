@@ -9,8 +9,8 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/thir.html
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::RangeEnd;
 use rustc_index::newtype_index;
@@ -36,9 +36,8 @@ macro_rules! thir_with_elements {
         $(
             newtype_index! {
                 #[derive(HashStable)]
-                pub struct $id {
-                    DEBUG_FORMAT = $format
-                }
+                #[debug_format = $format]
+                pub struct $id {}
             }
         )*
 
@@ -73,11 +72,29 @@ macro_rules! thir_with_elements {
     }
 }
 
+pub const UPVAR_ENV_PARAM: ParamId = ParamId::from_u32(0);
+
 thir_with_elements! {
     arms: ArmId => Arm<'tcx> => "a{}",
     blocks: BlockId => Block => "b{}",
     exprs: ExprId => Expr<'tcx> => "e{}",
     stmts: StmtId => Stmt<'tcx> => "s{}",
+    params: ParamId => Param<'tcx> => "p{}",
+}
+
+/// Description of a type-checked function parameter.
+#[derive(Clone, Debug, HashStable)]
+pub struct Param<'tcx> {
+    /// The pattern that appears in the parameter list, or None for implicit parameters.
+    pub pat: Option<Box<Pat<'tcx>>>,
+    /// The possibly inferred type.
+    pub ty: Ty<'tcx>,
+    /// Span of the explicitly provided type, or None if inferred for closures.
+    pub ty_span: Option<Span>,
+    /// Whether this param is `self`, and how it is bound.
+    pub self_kind: Option<hir::ImplicitSelfKind>,
+    /// HirId for lints.
+    pub hir_id: Option<hir::HirId>,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
@@ -185,7 +202,7 @@ pub enum StmtKind<'tcx> {
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
 
-        /// `let pat: ty = <INIT> else { <ELSE> }
+        /// `let pat: ty = <INIT> else { <ELSE> }`
         else_block: Option<BlockId>,
 
         /// The lint level for this `let` statement.
@@ -548,6 +565,21 @@ impl<'tcx> Pat<'tcx> {
     pub fn wildcard_from_ty(ty: Ty<'tcx>) -> Self {
         Pat { ty, span: DUMMY_SP, kind: PatKind::Wild }
     }
+
+    pub fn simple_ident(&self) -> Option<Symbol> {
+        match self.kind {
+            PatKind::Binding { name, mode: BindingMode::ByValue, subpattern: None, .. } => {
+                Some(name)
+            }
+            _ => None,
+        }
+    }
+}
+
+impl<'tcx> IntoDiagnosticArg for Pat<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        format!("{}", self).into_diagnostic_arg()
+    }
 }
 
 #[derive(Clone, Debug, HashStable)]
@@ -724,7 +756,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
-                    if variant.ctor_kind == CtorKind::Fictive {
+                    if variant.ctor.is_none() {
                         write!(f, " {{ ")?;
 
                         let mut printed = 0;
@@ -821,16 +853,13 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    #[cfg(not(bootstrap))]
-    static_assert_size!(Pat<'_>, 64);
-    #[cfg(not(bootstrap))]
-    static_assert_size!(PatKind<'_>, 48);
-    #[cfg(not(bootstrap))]
+    static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 56);
     static_assert_size!(Stmt<'_>, 48);
-    #[cfg(not(bootstrap))]
     static_assert_size!(StmtKind<'_>, 40);
+    // tidy-alphabetical-end
 }

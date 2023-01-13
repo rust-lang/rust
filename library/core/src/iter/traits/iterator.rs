@@ -14,7 +14,7 @@ use super::super::{
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 
-/// An interface for dealing with iterators.
+/// A trait for dealing with iterators.
 ///
 /// This is the main iterator trait. For more about the concept of iterators
 /// generally, please see the [module-level documentation]. In particular, you
@@ -58,6 +58,11 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
               syntax `start..end` or the inclusive range syntax `start..=end`"
     ),
+    on(
+        _Self = "{float}",
+        note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
+              syntax `start..end` or the inclusive range syntax `start..=end`"
+    ),
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
@@ -66,6 +71,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub trait Iterator {
     /// The type of the elements being iterated over.
+    #[rustc_diagnostic_item = "IteratorItem"]
     #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 
@@ -692,7 +698,7 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
     /// assert_eq!(it.next(), Some(NotClone(1)));  // The next element from `v`.
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
-    /// assert_eq!(it.next(), Some(NotClone(2)));  // The last element from from `v`.
+    /// assert_eq!(it.next(), Some(NotClone(2)));  // The last element from `v`.
     /// assert_eq!(it.next(), None);               // The iterator is finished.
     /// ```
     ///
@@ -803,7 +809,7 @@ pub trait Iterator {
     /// (0..5).map(|x| x * 2 + 1)
     ///       .for_each(move |x| tx.send(x).unwrap());
     ///
-    /// let v: Vec<_> =  rx.iter().collect();
+    /// let v: Vec<_> = rx.iter().collect();
     /// assert_eq!(v, vec![1, 3, 5, 7, 9]);
     /// ```
     ///
@@ -1380,8 +1386,8 @@ pub trait Iterator {
         Take::new(self, n)
     }
 
-    /// An iterator adapter similar to [`fold`] that holds internal state and
-    /// produces a new iterator.
+    /// An iterator adapter which, like [`fold`], holds internal state, but
+    /// unlike [`fold`], produces a new iterator.
     ///
     /// [`fold`]: Iterator::fold
     ///
@@ -1393,20 +1399,25 @@ pub trait Iterator {
     ///
     /// On iteration, the closure will be applied to each element of the
     /// iterator and the return value from the closure, an [`Option`], is
-    /// yielded by the iterator.
+    /// returned by the `next` method. Thus the closure can return
+    /// `Some(value)` to yield `value`, or `None` to end the iteration.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let a = [1, 2, 3, 4];
     ///
     /// let mut iter = a.iter().scan(1, |state, &x| {
-    ///     // each iteration, we'll multiply the state by the element
+    ///     // each iteration, we'll multiply the state by the element ...
     ///     *state = *state * x;
     ///
-    ///     // then, we'll yield the negation of the state
+    ///     // ... and terminate if the state exceeds 6
+    ///     if *state > 6 {
+    ///         return None;
+    ///     }
+    ///     // ... else yield the negation of the state
     ///     Some(-*state)
     /// });
     ///
@@ -1506,6 +1517,18 @@ pub trait Iterator {
     ///                           .flat_map(|s| s.chars())
     ///                           .collect();
     /// assert_eq!(merged, "alphabetagamma");
+    /// ```
+    ///
+    /// Flattening works on any `IntoIterator` type, including `Option` and `Result`:
+    ///
+    /// ```
+    /// let options = vec![Some(123), Some(321), None, Some(231)];
+    /// let flattened_options: Vec<_> = options.into_iter().flatten().collect();
+    /// assert_eq!(flattened_options, vec![123, 321, 231]);
+    ///
+    /// let results = vec![Ok(123), Ok(321), Err(456), Ok(231)];
+    /// let flattened_results: Vec<_> = results.into_iter().flatten().collect();
+    /// assert_eq!(flattened_results, vec![123, 321, 231]);
     /// ```
     ///
     /// Flattening only removes one level of nesting at a time:
@@ -1829,6 +1852,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "if you really need to exhaust the iterator, consider `.for_each(drop)` instead"]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "iterator_collect_fn")]
     fn collect<B: FromIterator<Self::Item>>(self) -> B
     where
         Self: Sized,
@@ -2431,22 +2455,13 @@ pub trait Iterator {
     ///
     /// # Example
     ///
-    /// Find the maximum value:
-    ///
     /// ```
-    /// fn find_max<I>(iter: I) -> Option<I::Item>
-    ///     where I: Iterator,
-    ///           I::Item: Ord,
-    /// {
-    ///     iter.reduce(|accum, item| {
-    ///         if accum >= item { accum } else { item }
-    ///     })
-    /// }
-    /// let a = [10, 20, 5, -23, 0];
-    /// let b: [u32; 0] = [];
+    /// let reduced: i32 = (1..10).reduce(|acc, e| acc + e).unwrap();
+    /// assert_eq!(reduced, 45);
     ///
-    /// assert_eq!(find_max(a.iter()), Some(&20));
-    /// assert_eq!(find_max(b.iter()), None);
+    /// // Which is equivalent to doing it with `fold`:
+    /// let folded: i32 = (1..10).fold(0, |acc, e| acc + e);
+    /// assert_eq!(reduced, folded);
     /// ```
     #[inline]
     #[stable(feature = "iterator_fold_self", since = "1.51.0")]
@@ -2661,7 +2676,10 @@ pub trait Iterator {
     /// argument is a double reference. You can see this effect in the
     /// examples below, with `&&x`.
     ///
+    /// If you need the index of the element, see [`position()`].
+    ///
     /// [`Some(element)`]: Some
+    /// [`position()`]: Iterator::position
     ///
     /// # Examples
     ///
@@ -2742,7 +2760,7 @@ pub trait Iterator {
     /// the first true result or the first error.
     ///
     /// The return type of this method depends on the return type of the closure.
-    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>; E>`.
+    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>, E>`.
     /// If you return `Option<bool>` from the closure, you'll get an `Option<Option<Self::Item>>`.
     ///
     /// # Examples
@@ -2906,14 +2924,14 @@ pub trait Iterator {
     /// Stopping at the first `true`:
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let a = [-1, 2, 3, 4];
     ///
     /// let mut iter = a.iter();
     ///
-    /// assert_eq!(iter.rposition(|&x| x == 2), Some(1));
+    /// assert_eq!(iter.rposition(|&x| x >= 2), Some(3));
     ///
     /// // we can still use `iter`, as there are more elements.
-    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.next(), Some(&-1));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -3461,35 +3479,26 @@ pub trait Iterator {
     /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (2 * x).cmp(&y)), Ordering::Greater);
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn cmp_by<I, F>(mut self, other: I, mut cmp: F) -> Ordering
+    fn cmp_by<I, F>(self, other: I, cmp: F) -> Ordering
     where
         Self: Sized,
         I: IntoIterator,
         F: FnMut(Self::Item, I::Item) -> Ordering,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => {
-                    if other.next().is_none() {
-                        return Ordering::Equal;
-                    } else {
-                        return Ordering::Less;
-                    }
-                }
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return Ordering::Greater,
-                Some(val) => val,
-            };
-
-            match cmp(x, y) {
-                Ordering::Equal => (),
-                non_eq => return non_eq,
+        #[inline]
+        fn compare<X, Y, F>(mut cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Ordering>
+        where
+            F: FnMut(X, Y) -> Ordering,
+        {
+            move |x, y| match cmp(x, y) {
+                Ordering::Equal => ControlFlow::CONTINUE,
+                non_eq => ControlFlow::Break(non_eq),
             }
+        }
+
+        match iter_compare(self, other.into_iter(), compare(cmp)) {
+            ControlFlow::Continue(ord) => ord,
+            ControlFlow::Break(ord) => ord,
         }
     }
 
@@ -3546,35 +3555,26 @@ pub trait Iterator {
     /// );
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn partial_cmp_by<I, F>(mut self, other: I, mut partial_cmp: F) -> Option<Ordering>
+    fn partial_cmp_by<I, F>(self, other: I, partial_cmp: F) -> Option<Ordering>
     where
         Self: Sized,
         I: IntoIterator,
         F: FnMut(Self::Item, I::Item) -> Option<Ordering>,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => {
-                    if other.next().is_none() {
-                        return Some(Ordering::Equal);
-                    } else {
-                        return Some(Ordering::Less);
-                    }
-                }
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return Some(Ordering::Greater),
-                Some(val) => val,
-            };
-
-            match partial_cmp(x, y) {
-                Some(Ordering::Equal) => (),
-                non_eq => return non_eq,
+        #[inline]
+        fn compare<X, Y, F>(mut partial_cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Option<Ordering>>
+        where
+            F: FnMut(X, Y) -> Option<Ordering>,
+        {
+            move |x, y| match partial_cmp(x, y) {
+                Some(Ordering::Equal) => ControlFlow::CONTINUE,
+                non_eq => ControlFlow::Break(non_eq),
             }
+        }
+
+        match iter_compare(self, other.into_iter(), compare(partial_cmp)) {
+            ControlFlow::Continue(ord) => Some(ord),
+            ControlFlow::Break(ord) => ord,
         }
     }
 
@@ -3613,28 +3613,25 @@ pub trait Iterator {
     /// assert!(xs.iter().eq_by(&ys, |&x, &y| x * x == y));
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn eq_by<I, F>(mut self, other: I, mut eq: F) -> bool
+    fn eq_by<I, F>(self, other: I, eq: F) -> bool
     where
         Self: Sized,
         I: IntoIterator,
         F: FnMut(Self::Item, I::Item) -> bool,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => return other.next().is_none(),
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return false,
-                Some(val) => val,
-            };
-
-            if !eq(x, y) {
-                return false;
+        #[inline]
+        fn compare<X, Y, F>(mut eq: F) -> impl FnMut(X, Y) -> ControlFlow<()>
+        where
+            F: FnMut(X, Y) -> bool,
+        {
+            move |x, y| {
+                if eq(x, y) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
             }
+        }
+
+        match iter_compare(self, other.into_iter(), compare(eq)) {
+            ControlFlow::Continue(ord) => ord == Ordering::Equal,
+            ControlFlow::Break(()) => false,
         }
     }
 
@@ -3857,6 +3854,46 @@ pub trait Iterator {
         Self: TrustedRandomAccessNoCoerce,
     {
         unreachable!("Always specialized");
+    }
+}
+
+/// Compares two iterators element-wise using the given function.
+///
+/// If `ControlFlow::CONTINUE` is returned from the function, the comparison moves on to the next
+/// elements of both iterators. Returning `ControlFlow::Break(x)` short-circuits the iteration and
+/// returns `ControlFlow::Break(x)`. If one of the iterators runs out of elements,
+/// `ControlFlow::Continue(ord)` is returned where `ord` is the result of comparing the lengths of
+/// the iterators.
+///
+/// Isolates the logic shared by ['cmp_by'](Iterator::cmp_by),
+/// ['partial_cmp_by'](Iterator::partial_cmp_by), and ['eq_by'](Iterator::eq_by).
+#[inline]
+fn iter_compare<A, B, F, T>(mut a: A, mut b: B, f: F) -> ControlFlow<T, Ordering>
+where
+    A: Iterator,
+    B: Iterator,
+    F: FnMut(A::Item, B::Item) -> ControlFlow<T>,
+{
+    #[inline]
+    fn compare<'a, B, X, T>(
+        b: &'a mut B,
+        mut f: impl FnMut(X, B::Item) -> ControlFlow<T> + 'a,
+    ) -> impl FnMut(X) -> ControlFlow<ControlFlow<T, Ordering>> + 'a
+    where
+        B: Iterator,
+    {
+        move |x| match b.next() {
+            None => ControlFlow::Break(ControlFlow::Continue(Ordering::Greater)),
+            Some(y) => f(x, y).map_break(ControlFlow::Break),
+        }
+    }
+
+    match a.try_for_each(compare(&mut b, f)) {
+        ControlFlow::Continue(()) => ControlFlow::Continue(match b.next() {
+            None => Ordering::Equal,
+            Some(_) => Ordering::Less,
+        }),
+        ControlFlow::Break(x) => x,
     }
 }
 

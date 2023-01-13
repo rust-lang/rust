@@ -15,6 +15,7 @@ mod flags;
 mod install;
 mod release;
 mod dist;
+mod publish;
 mod metrics;
 
 use anyhow::bail;
@@ -25,20 +26,18 @@ use std::{
 use xshell::{cmd, Shell};
 
 fn main() -> anyhow::Result<()> {
+    let flags = flags::Xtask::from_env_or_exit();
+
     let sh = &Shell::new()?;
     sh.change_dir(project_root());
 
-    let flags = flags::Xtask::from_env()?;
     match flags.subcommand {
-        flags::XtaskCmd::Help(_) => {
-            println!("{}", flags::Xtask::HELP);
-            Ok(())
-        }
         flags::XtaskCmd::Install(cmd) => cmd.run(sh),
         flags::XtaskCmd::FuzzTests(_) => run_fuzzer(sh),
         flags::XtaskCmd::Release(cmd) => cmd.run(sh),
         flags::XtaskCmd::Promote(cmd) => cmd.run(sh),
         flags::XtaskCmd::Dist(cmd) => cmd.run(sh),
+        flags::XtaskCmd::PublishReleaseNotes(cmd) => cmd.run(sh),
         flags::XtaskCmd::Metrics(cmd) => cmd.run(sh),
         flags::XtaskCmd::Bb(cmd) => {
             {

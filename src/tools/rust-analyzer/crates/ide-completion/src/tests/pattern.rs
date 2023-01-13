@@ -9,7 +9,7 @@ fn check_empty(ra_fixture: &str, expect: Expect) {
 }
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{}\n{}", BASE_ITEMS_FIXTURE, ra_fixture));
+    let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}\n{ra_fixture}"));
     expect.assert_eq(&actual)
 }
 
@@ -711,6 +711,33 @@ impl Ty {
             bn Ty(…)   Ty($1): Ty$0
             kw mut
             kw ref
+        "#]],
+    );
+}
+
+#[test]
+fn through_alias() {
+    check_empty(
+        r#"
+enum Enum<T> {
+    Unit,
+    Tuple(T),
+}
+
+type EnumAlias<T> = Enum<T>;
+
+fn f(x: EnumAlias<u8>) {
+    match x {
+        EnumAlias::$0 => (),
+        _ => (),
+    }
+
+}
+
+"#,
+        expect![[r#"
+            bn Tuple(…) Tuple($1)$0
+            bn Unit     Unit$0
         "#]],
     );
 }

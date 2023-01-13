@@ -246,5 +246,11 @@ error: unnecessary structure name repetition
 LL |             let crate::issue8845::Bar { x, .. } = self;
    |                 ^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 41 previous errors
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:645:17
+   |
+LL |                 E::A => {},
+   |                 ^ help: use the applicable keyword: `Self`
+
+error: aborting due to 42 previous errors
 

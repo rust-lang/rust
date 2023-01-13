@@ -1,8 +1,0 @@
-error: struct fields are separated by `,`
-  --> $DIR/removed-syntax-field-semicolon.rs:2:12
-   |
-LL |     bar: ();
-   |            ^ help: replace `;` with `,`
-
-error: aborting due to previous error
-

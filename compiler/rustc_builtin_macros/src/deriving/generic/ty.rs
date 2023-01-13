@@ -97,7 +97,7 @@ impl Ty {
         match self {
             Ref(ty, mutbl) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
-                cx.ty_rptr(span, raw_ty, None, *mutbl)
+                cx.ty_ref(span, raw_ty, None, *mutbl)
             }
             Path(p) => p.to_ty(cx, span, self_ty, self_generics),
             Self_ => cx.ty_path(self.to_path(cx, span, self_ty, self_generics)),
@@ -115,7 +115,7 @@ impl Ty {
         self_ty: Ident,
         generics: &Generics,
     ) -> ast::Path {
-        match *self {
+        match self {
             Self_ => {
                 let params: Vec<_> = generics
                     .params
@@ -135,7 +135,7 @@ impl Ty {
 
                 cx.path_all(span, false, vec![self_ty], params)
             }
-            Path(ref p) => p.to_path(cx, span, self_ty, generics),
+            Path(p) => p.to_path(cx, span, self_ty, generics),
             Ref(..) => cx.span_bug(span, "ref in a path in generic `derive`"),
             Unit => cx.span_bug(span, "unit in a path in generic `derive`"),
         }
@@ -180,10 +180,7 @@ impl Bounds {
         let params = self
             .bounds
             .iter()
-            .map(|t| {
-                let (name, ref bounds) = *t;
-                mk_ty_param(cx, span, name, &bounds, self_ty, self_generics)
-            })
+            .map(|&(name, ref bounds)| mk_ty_param(cx, span, name, &bounds, self_ty, self_generics))
             .collect();
 
         Generics {

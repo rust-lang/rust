@@ -35,7 +35,7 @@ fn main() {
 
     // NOTE: Since `./configure` generates a `config.toml`, distro maintainers will see the
     // changelog warning, not the `x.py setup` message.
-    let suggest_setup = !config.config.exists() && !matches!(config.cmd, Subcommand::Setup { .. });
+    let suggest_setup = config.config.is_none() && !matches!(config.cmd, Subcommand::Setup { .. });
     if suggest_setup {
         println!("warning: you have not made a `config.toml`");
         println!(

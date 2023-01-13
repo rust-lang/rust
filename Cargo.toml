@@ -4,6 +4,7 @@ members = [
   "library/std",
   "library/test",
   "src/rustdoc-json-types",
+  "src/tools/build_helper",
   "src/tools/cargotest",
   "src/tools/clippy",
   "src/tools/clippy/clippy_dev",
@@ -11,6 +12,7 @@ members = [
   "src/tools/error_index_generator",
   "src/tools/linkchecker",
   "src/tools/lint-docs",
+  "src/tools/miropt-test-tools",
   "src/tools/rustbook",
   "src/tools/unstable-book-gen",
   "src/tools/tidy",
@@ -24,6 +26,8 @@ members = [
   "src/tools/cargo/crates/credential/cargo-credential-1password",
   "src/tools/cargo/crates/credential/cargo-credential-macos-keychain",
   "src/tools/cargo/crates/credential/cargo-credential-wincred",
+  "src/tools/cargo/crates/mdman",
+  # "src/tools/cargo/crates/resolver-tests",
   "src/tools/rustdoc",
   "src/tools/rls",
   "src/tools/rustfmt",
@@ -33,10 +37,13 @@ members = [
   "src/tools/unicode-table-generator",
   "src/tools/expand-yaml-anchors",
   "src/tools/jsondocck",
+  "src/tools/jsondoclint",
   "src/tools/html-checker",
   "src/tools/bump-stage0",
   "src/tools/replace-version-placeholder",
   "src/tools/lld-wrapper",
+  "src/tools/collect-license-metadata",
+  "src/tools/generate-copyright",
 ]
 
 exclude = [
@@ -44,7 +51,7 @@ exclude = [
   "compiler/rustc_codegen_cranelift",
   "compiler/rustc_codegen_gcc",
   "src/bootstrap",
-  "src/test/rustdoc-gui",
+  "tests/rustdoc-gui",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
   # The `x` binary is a thin wrapper that calls `x.py`, which initializes

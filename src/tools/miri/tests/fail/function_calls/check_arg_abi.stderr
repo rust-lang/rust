@@ -1,0 +1,15 @@
+error: Undefined Behavior: calling a function with ABI C using caller ABI Rust
+  --> $DIR/check_arg_abi.rs:LL:CC
+   |
+LL |         let _ = malloc(0);
+   |                 ^^^^^^^^^ calling a function with ABI C using caller ABI Rust
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/check_arg_abi.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

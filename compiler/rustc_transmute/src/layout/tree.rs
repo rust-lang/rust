@@ -284,7 +284,8 @@ pub(crate) mod rustc {
                 }
 
                 ty::Array(ty, len) => {
-                    let len = len.try_eval_usize(tcx, ParamEnv::reveal_all()).unwrap();
+                    let len =
+                        len.try_eval_usize(tcx, ParamEnv::reveal_all()).ok_or(Err::Unspecified)?;
                     let elt = Tree::from_ty(*ty, tcx)?;
                     Ok(std::iter::repeat(elt)
                         .take(len as usize)
@@ -404,7 +405,7 @@ pub(crate) mod rustc {
                 .unwrap();
                 trace!(?discr_layout, "computed discriminant layout");
                 variant_layout = variant_layout.extend(discr_layout).unwrap().0;
-                tree = tree.then(Self::from_disr(discr, tcx, layout_summary.discriminant_size));
+                tree = tree.then(Self::from_discr(discr, tcx, layout_summary.discriminant_size));
             }
 
             // Next come fields.
@@ -435,8 +436,8 @@ pub(crate) mod rustc {
 
             // finally: padding
             let padding_span = trace_span!("adding trailing padding").entered();
-            let padding_needed = layout_summary.total_size - variant_layout.size();
-            if padding_needed > 0 {
+            if layout_summary.total_size > variant_layout.size() {
+                let padding_needed = layout_summary.total_size - variant_layout.size();
                 tree = tree.then(Self::padding(padding_needed));
             };
             drop(padding_span);
@@ -444,11 +445,21 @@ pub(crate) mod rustc {
             Ok(tree)
         }
 
-        pub fn from_disr(discr: Discr<'tcx>, tcx: TyCtxt<'tcx>, size: usize) -> Self {
-            // FIXME(@jswrenn): I'm certain this is missing needed endian nuance.
-            let bytes = discr.val.to_ne_bytes();
-            let bytes = &bytes[..size];
-            Self::Seq(bytes.into_iter().copied().map(|b| Self::from_bits(b)).collect())
+        pub fn from_discr(discr: Discr<'tcx>, tcx: TyCtxt<'tcx>, size: usize) -> Self {
+            use rustc_target::abi::Endian;
+
+            let bytes: [u8; 16];
+            let bytes = match tcx.data_layout.endian {
+                Endian::Little => {
+                    bytes = discr.val.to_le_bytes();
+                    &bytes[..size]
+                }
+                Endian::Big => {
+                    bytes = discr.val.to_be_bytes();
+                    &bytes[bytes.len() - size..]
+                }
+            };
+            Self::Seq(bytes.iter().map(|&b| Self::from_bits(b)).collect())
         }
     }
 

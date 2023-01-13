@@ -1,3 +1,7 @@
+// run-rustfix
+
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 struct FooDefault<'a> {
@@ -237,6 +241,29 @@ pub enum IntOrString {
 impl Default for IntOrString {
     fn default() -> Self {
         IntOrString::Int(0)
+    }
+}
+
+pub enum SimpleEnum {
+    Foo,
+    Bar,
+}
+
+impl Default for SimpleEnum {
+    fn default() -> Self {
+        SimpleEnum::Bar
+    }
+}
+
+pub enum NonExhaustiveEnum {
+    Foo,
+    #[non_exhaustive]
+    Bar,
+}
+
+impl Default for NonExhaustiveEnum {
+    fn default() -> Self {
+        NonExhaustiveEnum::Bar
     }
 }
 

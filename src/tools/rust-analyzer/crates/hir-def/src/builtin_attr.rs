@@ -350,6 +350,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(rustc_const_unstable, Normal, template!(List: r#"feature = "name""#), DuplicatesOk),
     ungated!(rustc_const_stable, Normal, template!(List: r#"feature = "name""#), DuplicatesOk),
+    ungated!(rustc_safe_intrinsic, Normal, template!(List: r#"feature = "name""#), DuplicatesOk),
     gated!(
         allow_internal_unstable, Normal, template!(Word, List: "feat1, feat2, ..."), DuplicatesOk,
         "allow_internal_unstable side-steps feature gating and stability checks",
@@ -379,7 +380,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(rustc_allocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_allocator_nounwind, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    rustc_attr!(rustc_nounwind, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
     gated!(
         alloc_error_handler, Normal, template!(Word), WarnFollowing,
         experimental!(alloc_error_handler)

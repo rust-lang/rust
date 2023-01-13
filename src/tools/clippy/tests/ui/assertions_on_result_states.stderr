@@ -36,5 +36,11 @@ error: called `assert!` with `Result::is_err`
 LL |     assert!(r.is_err());
    |     ^^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap_err()`
 
-error: aborting due to 6 previous errors
+error: called `assert!` with `Result::is_err`
+  --> $DIR/assertions_on_result_states.rs:82:5
+   |
+LL |     assert!(res.is_err())
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: replace with: `res.unwrap_err();`
+
+error: aborting due to 7 previous errors
 

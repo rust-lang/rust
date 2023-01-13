@@ -7,13 +7,15 @@ use super::{
     InferCtxtUndoLogs, MiscVariable, RegionVariableOrigin, Rollback, Snapshot, SubregionOrigin,
 };
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReLateBound, ReVar};
@@ -123,7 +125,7 @@ pub struct RegionConstraintData<'tcx> {
     /// we record the fact that `'a <= 'b` is implied by the fn
     /// signature, and then ignore the constraint when solving
     /// equations. This is a bit of a hack but seems to work.
-    pub givens: FxHashSet<(Region<'tcx>, ty::RegionVid)>,
+    pub givens: FxIndexSet<(Region<'tcx>, ty::RegionVid)>,
 }
 
 /// Represents a constraint that influences the inference process.
@@ -167,7 +169,8 @@ pub struct Verify<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
-    Projection(ty::ProjectionTy<'tcx>),
+    Projection(ty::AliasTy<'tcx>),
+    Opaque(DefId, SubstsRef<'tcx>),
 }
 
 /// Describes the things that some `GenericKind` value `G` is known to
@@ -747,6 +750,9 @@ impl<'tcx> fmt::Debug for GenericKind<'tcx> {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{:?}", p),
             GenericKind::Projection(ref p) => write!(f, "{:?}", p),
+            GenericKind::Opaque(def_id, substs) => ty::tls::with(|tcx| {
+                write!(f, "{}", tcx.def_path_str_with_substs(def_id, tcx.lift(substs).unwrap()))
+            }),
         }
     }
 }
@@ -756,6 +762,9 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{}", p),
             GenericKind::Projection(ref p) => write!(f, "{}", p),
+            GenericKind::Opaque(def_id, substs) => ty::tls::with(|tcx| {
+                write!(f, "{}", tcx.def_path_str_with_substs(def_id, tcx.lift(substs).unwrap()))
+            }),
         }
     }
 }
@@ -764,7 +773,8 @@ impl<'tcx> GenericKind<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
-            GenericKind::Projection(ref p) => tcx.mk_projection(p.item_def_id, p.substs),
+            GenericKind::Projection(ref p) => tcx.mk_projection(p.def_id, p.substs),
+            GenericKind::Opaque(def_id, substs) => tcx.mk_opaque(def_id, substs),
         }
     }
 }

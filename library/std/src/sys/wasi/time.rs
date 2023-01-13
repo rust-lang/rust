@@ -47,8 +47,8 @@ impl SystemTime {
         SystemTime(Duration::from_nanos(ts))
     }
 
-    pub fn to_wasi_timestamp_or_panic(&self) -> wasi::Timestamp {
-        self.0.as_nanos().try_into().expect("time does not fit in WASI timestamp")
+    pub fn to_wasi_timestamp(&self) -> Option<wasi::Timestamp> {
+        self.0.as_nanos().try_into().ok()
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {

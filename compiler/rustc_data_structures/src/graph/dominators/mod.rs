@@ -22,7 +22,7 @@ struct PreOrderFrame<Iter> {
 }
 
 rustc_index::newtype_index! {
-    struct PreorderIndex { .. }
+    struct PreorderIndex {}
 }
 
 pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
@@ -277,12 +277,12 @@ impl<Node: Idx> Dominators<Node> {
     }
 
     pub fn immediate_dominator(&self, node: Node) -> Node {
-        assert!(self.is_reachable(node), "node {:?} is not reachable", node);
+        assert!(self.is_reachable(node), "node {node:?} is not reachable");
         self.immediate_dominators[node].unwrap()
     }
 
     pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
-        assert!(self.is_reachable(node), "node {:?} is not reachable", node);
+        assert!(self.is_reachable(node), "node {node:?} is not reachable");
         Iter { dominators: self, node: Some(node) }
     }
 

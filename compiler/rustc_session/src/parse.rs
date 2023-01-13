@@ -6,14 +6,13 @@ use crate::errors::{FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGat
 use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
 };
-use crate::SessionDiagnostic;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
-    fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
-    DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, MultiSpan, StashKey,
+    fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
+    EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic, MultiSpan, Noted, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -21,6 +20,7 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{Span, Symbol};
 
+use rustc_ast::attr::AttrIdGenerator;
 use std::str;
 
 /// The set of keys (and, optionally, values) that define the compilation
@@ -97,6 +97,7 @@ pub fn feature_err<'a>(
 ///
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer `feature_err`.
+#[track_caller]
 pub fn feature_err_issue<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
@@ -121,7 +122,7 @@ pub fn feature_err_issue<'a>(
 /// Construct a future incompatibility diagnostic for a feature gate.
 ///
 /// This diagnostic is only a warning and *does not cause compilation to fail*.
-pub fn feature_warn<'a>(sess: &'a ParseSess, feature: Symbol, span: Span, explain: &str) {
+pub fn feature_warn(sess: &ParseSess, feature: Symbol, span: Span, explain: &str) {
     feature_warn_issue(sess, feature, span, GateIssue::Language, explain);
 }
 
@@ -133,8 +134,8 @@ pub fn feature_warn<'a>(sess: &'a ParseSess, feature: Symbol, span: Span, explai
 /// Almost always, you want to use this for a language feature. If so, prefer `feature_warn`.
 #[allow(rustc::diagnostic_outside_of_impl)]
 #[allow(rustc::untranslatable_diagnostic)]
-pub fn feature_warn_issue<'a>(
-    sess: &'a ParseSess,
+pub fn feature_warn_issue(
+    sess: &ParseSess,
     feature: Symbol,
     span: Span,
     issue: GateIssue,
@@ -159,7 +160,7 @@ pub fn feature_warn_issue<'a>(
 }
 
 /// Adds the diagnostics for a feature to an existing error.
-pub fn add_feature_diagnostics<'a>(err: &mut Diagnostic, sess: &'a ParseSess, feature: Symbol) {
+pub fn add_feature_diagnostics(err: &mut Diagnostic, sess: &ParseSess, feature: Symbol) {
     add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language);
 }
 
@@ -168,9 +169,9 @@ pub fn add_feature_diagnostics<'a>(err: &mut Diagnostic, sess: &'a ParseSess, fe
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer
 /// `add_feature_diagnostics`.
-pub fn add_feature_diagnostics_for_issue<'a>(
+pub fn add_feature_diagnostics_for_issue(
     err: &mut Diagnostic,
-    sess: &'a ParseSess,
+    sess: &ParseSess,
     feature: Symbol,
     issue: GateIssue,
 ) {
@@ -219,6 +220,8 @@ pub struct ParseSess {
     /// Spans passed to `proc_macro::quote_span`. Each span has a numerical
     /// identifier represented by its position in the vector.
     pub proc_macro_quoted_spans: Lock<Vec<Span>>,
+    /// Used to generate new `AttrId`s. Every `AttrId` is unique.
+    pub attr_id_generator: AttrIdGenerator,
 }
 
 impl ParseSess {
@@ -257,6 +260,7 @@ impl ParseSess {
             type_ascription_path_suggestions: Default::default(),
             assume_incomplete_release: false,
             proc_macro_quoted_spans: Default::default(),
+            attr_id_generator: AttrIdGenerator::new(),
         }
     }
 
@@ -319,16 +323,6 @@ impl ParseSess {
         });
     }
 
-    /// Extend an error with a suggestion to wrap an expression with parentheses to allow the
-    /// parser to continue parsing the following operation as part of the same expression.
-    pub fn expr_parentheses_needed(&self, err: &mut Diagnostic, span: Span) {
-        err.multipart_suggestion(
-            "parentheses are required to parse this as an expression",
-            vec![(span.shrink_to_lo(), "(".to_string()), (span.shrink_to_hi(), ")".to_string())],
-            Applicability::MachineApplicable,
-        );
-    }
-
     pub fn save_proc_macro_span(&self, span: Span) -> usize {
         let mut spans = self.proc_macro_quoted_spans.lock();
         spans.push(span);
@@ -339,42 +333,56 @@ impl ParseSess {
         self.proc_macro_quoted_spans.lock().clone()
     }
 
+    #[track_caller]
     pub fn create_err<'a>(
         &'a self,
-        err: impl SessionDiagnostic<'a>,
+        err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         err.into_diagnostic(&self.span_diagnostic)
     }
 
-    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
+    #[track_caller]
+    pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
         self.create_err(err).emit()
     }
 
+    #[track_caller]
     pub fn create_warning<'a>(
         &'a self,
-        warning: impl SessionDiagnostic<'a, ()>,
+        warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
         warning.into_diagnostic(&self.span_diagnostic)
     }
 
-    pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
+    #[track_caller]
+    pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
         self.create_warning(warning).emit()
+    }
+
+    pub fn create_note<'a>(
+        &'a self,
+        note: impl IntoDiagnostic<'a, Noted>,
+    ) -> DiagnosticBuilder<'a, Noted> {
+        note.into_diagnostic(&self.span_diagnostic)
+    }
+
+    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, Noted>) -> Noted {
+        self.create_note(note).emit()
     }
 
     pub fn create_fatal<'a>(
         &'a self,
-        fatal: impl SessionDiagnostic<'a, !>,
+        fatal: impl IntoDiagnostic<'a, !>,
     ) -> DiagnosticBuilder<'a, !> {
         fatal.into_diagnostic(&self.span_diagnostic)
     }
 
-    pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
         self.create_fatal(fatal).emit()
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
+    #[track_caller]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -383,22 +391,16 @@ impl ParseSess {
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.span_diagnostic.struct_warn(msg)
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         self.span_diagnostic.struct_fatal(msg)
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     pub fn struct_diagnostic<G: EmissionGuarantee>(
         &self,
         msg: impl Into<DiagnosticMessage>,

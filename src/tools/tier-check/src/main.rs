@@ -44,7 +44,23 @@ fn main() {
             target, filename, src
         );
     }
-    if !missing.is_empty() || !extra.is_empty() {
+    // Check target names for unwanted characters like `.` that can cause problems e.g. in Cargo.
+    // See also Tier 3 target policy.
+    // If desired, target names can ignore this check.
+    let ignore_target_names =
+        vec!["thumbv8m.base-none-eabi", "thumbv8m.main-none-eabi", "thumbv8m.main-none-eabihf"];
+    let mut invalid_target_name_found = false;
+    for target in &target_list {
+        if !ignore_target_names.contains(target)
+            && !target.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        {
+            invalid_target_name_found = true;
+            eprintln!(
+                "error: Target name `{target}` contains other characters than ASCII alphanumeric (a-z, A-Z, 0-9), dash (-) or underscore (_)."
+            );
+        }
+    }
+    if !missing.is_empty() || !extra.is_empty() || invalid_target_name_found {
         std::process::exit(1);
     }
 }

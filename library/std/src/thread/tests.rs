@@ -37,6 +37,37 @@ fn test_named_thread() {
         .unwrap();
 }
 
+#[cfg(any(
+    // Note: musl didn't add pthread_getname_np until 1.2.3
+    all(target_os = "linux", target_env = "gnu"),
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "watchos"
+))]
+#[test]
+fn test_named_thread_truncation() {
+    use crate::ffi::CStr;
+
+    let long_name = crate::iter::once("test_named_thread_truncation")
+        .chain(crate::iter::repeat(" yada").take(100))
+        .collect::<String>();
+
+    let result = Builder::new().name(long_name.clone()).spawn(move || {
+        // Rust remembers the full thread name itself.
+        assert_eq!(thread::current().name(), Some(long_name.as_str()));
+
+        // But the system is limited -- make sure we successfully set a truncation.
+        let mut buf = vec![0u8; long_name.len() + 1];
+        unsafe {
+            libc::pthread_getname_np(libc::pthread_self(), buf.as_mut_ptr().cast(), buf.len());
+        }
+        let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
+        assert!(cstr.to_bytes().len() > 0);
+        assert!(long_name.as_bytes().starts_with(cstr.to_bytes()));
+    });
+    result.unwrap().join().unwrap();
+}
+
 #[test]
 #[should_panic]
 fn test_invalid_named_thread() {
@@ -241,6 +272,28 @@ fn test_try_panic_any_message_unit_struct() {
     match thread::spawn(move || panic_any(Juju)).join() {
         Err(ref e) if e.is::<Juju>() => {}
         Err(_) | Ok(()) => panic!(),
+    }
+}
+
+#[test]
+fn test_park_unpark_before() {
+    for _ in 0..10 {
+        thread::current().unpark();
+        thread::park();
+    }
+}
+
+#[test]
+fn test_park_unpark_called_other_thread() {
+    for _ in 0..10 {
+        let th = thread::current();
+
+        let _guard = thread::spawn(move || {
+            super::sleep(Duration::from_millis(50));
+            th.unpark();
+        });
+
+        thread::park();
     }
 }
 

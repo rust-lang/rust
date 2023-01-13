@@ -1,4 +1,4 @@
-use crate::HashStableContext;
+use crate::{HashStableContext, Symbol};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
@@ -10,10 +10,9 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 rustc_index::newtype_index! {
-    pub struct CrateNum {
-        ENCODABLE = custom
-        DEBUG_FORMAT = "crate{}"
-    }
+    #[custom_encodable]
+    #[debug_format = "crate{}"]
+    pub struct CrateNum {}
 }
 
 /// Item definitions in the currently-compiled crate would have the `CrateNum`
@@ -34,7 +33,7 @@ impl CrateNum {
 
 impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.private, f)
+        fmt::Display::fmt(&self.as_u32(), f)
     }
 }
 
@@ -149,9 +148,11 @@ impl StableCrateId {
 
     /// Computes the stable ID for a crate with the given name and
     /// `-Cmetadata` arguments.
-    pub fn new(crate_name: &str, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
+    pub fn new(crate_name: Symbol, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
         let mut hasher = StableHasher::new();
-        crate_name.hash(&mut hasher);
+        // We must hash the string text of the crate name, not the id, as the id is not stable
+        // across builds.
+        crate_name.as_str().hash(&mut hasher);
 
         // We don't want the stable crate ID to depend on the order of
         // -C metadata arguments, so sort them:
@@ -192,13 +193,12 @@ rustc_index::newtype_index! {
     /// A DefIndex is an index into the hir-map for a crate, identifying a
     /// particular definition. It should really be considered an interned
     /// shorthand for a particular DefPath.
+    #[custom_encodable] // (only encodable in metadata)
+    #[debug_format = "DefIndex({})"]
     pub struct DefIndex {
-        ENCODABLE = custom // (only encodable in metadata)
-
-        DEBUG_FORMAT = "DefIndex({})",
         /// The crate root is always assigned index 0 by the AST Map code,
         /// thanks to `NodeCollector::new`.
-        const CRATE_DEF_INDEX = 0,
+        const CRATE_DEF_INDEX = 0;
     }
 }
 
@@ -218,7 +218,9 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 /// index and a def index.
 ///
 /// You can create a `DefId` from a `LocalDefId` using `local_def_id.to_def_id()`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Copy)]
+#[derive(Clone, PartialEq, Eq, Copy)]
+// Don't derive order on 64-bit big-endian, so we can be consistent regardless of field order.
+#[cfg_attr(not(all(target_pointer_width = "64", target_endian = "big")), derive(PartialOrd, Ord))]
 // On below-64 bit systems we can simply use the derived `Hash` impl
 #[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
 #[repr(C)]
@@ -260,6 +262,22 @@ impl Hash for DefId {
     }
 }
 
+// Implement the same comparison as derived with the other field order.
+#[cfg(all(target_pointer_width = "64", target_endian = "big"))]
+impl Ord for DefId {
+    #[inline]
+    fn cmp(&self, other: &DefId) -> std::cmp::Ordering {
+        Ord::cmp(&(self.index, self.krate), &(other.index, other.krate))
+    }
+}
+#[cfg(all(target_pointer_width = "64", target_endian = "big"))]
+impl PartialOrd for DefId {
+    #[inline]
+    fn partial_cmp(&self, other: &DefId) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl DefId {
     /// Makes a local `DefId` from the given `DefIndex`.
     #[inline]
@@ -285,7 +303,7 @@ impl DefId {
         // i.e. don't use closures.
         match self.as_local() {
             Some(local_def_id) => local_def_id,
-            None => panic!("DefId::expect_local: `{:?}` isn't local", self),
+            None => panic!("DefId::expect_local: `{self:?}` isn't local"),
         }
     }
 
@@ -337,7 +355,7 @@ impl fmt::Debug for DefId {
     }
 }
 
-rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefId);
+rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefIdMapEntry, DefId);
 
 /// A `LocalDefId` is equivalent to a `DefId` with `krate == LOCAL_CRATE`. Since
 /// we encode this information in the type, we can ensure at compile time that
@@ -399,7 +417,12 @@ impl<D: Decoder> Decodable<D> for LocalDefId {
     }
 }
 
-rustc_data_structures::define_id_collections!(LocalDefIdMap, LocalDefIdSet, LocalDefId);
+rustc_data_structures::define_id_collections!(
+    LocalDefIdMap,
+    LocalDefIdSet,
+    LocalDefIdMapEntry,
+    LocalDefId
+);
 
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
     #[inline]

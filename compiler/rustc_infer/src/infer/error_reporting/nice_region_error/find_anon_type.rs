@@ -91,13 +91,13 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
             hir::TyKind::TraitObject(bounds, ..) => {
                 for bound in bounds {
                     self.current_index.shift_in(1);
-                    self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                    self.visit_poly_trait_ref(bound);
                     self.current_index.shift_out(1);
                 }
             }
 
-            hir::TyKind::Rptr(ref lifetime, _) => {
-                // the lifetime of the TyRptr
+            hir::TyKind::Ref(ref lifetime, _) => {
+                // the lifetime of the Ref
                 let hir_id = lifetime.hir_id;
                 match (self.tcx.named_region(hir_id), self.bound_region) {
                     // Find the index of the named region that was part of the

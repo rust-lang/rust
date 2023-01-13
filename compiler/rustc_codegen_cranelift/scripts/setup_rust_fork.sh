@@ -10,6 +10,8 @@ git fetch
 git checkout -- .
 git checkout "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
 
+git am ../patches/*-sysroot-*.patch
+
 git apply - <<EOF
 diff --git a/library/alloc/Cargo.toml b/library/alloc/Cargo.toml
 index d95b5b7f17f..00b6f0e3635 100644
@@ -25,24 +27,6 @@ index d95b5b7f17f..00b6f0e3635 100644
  [dev-dependencies]
  rand = "0.7"
  rand_xorshift = "0.2"
-diff --git a/src/tools/compiletest/src/runtest.rs b/src/tools/compiletest/src/runtest.rs
-index 8431aa7b818..a3ff7e68ce5 100644
---- a/src/tools/compiletest/src/runtest.rs
-+++ b/src/tools/compiletest/src/runtest.rs
-@@ -3489,12 +3489,7 @@ fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> S
-         let compiler_src_dir = base_dir.join("compiler");
-         normalize_path(&compiler_src_dir, "$(echo '$COMPILER_DIR')");
-
--        if let Some(virtual_rust_source_base_dir) =
--            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from)
--        {
--            normalize_path(&virtual_rust_source_base_dir.join("library"), "$(echo '$SRC_DIR')");
--            normalize_path(&virtual_rust_source_base_dir.join("compiler"), "$(echo '$COMPILER_DIR')");
--        }
-+        normalize_path(&Path::new("$(cd ../build_sysroot/sysroot_src/library; pwd)"), "$(echo '$SRC_DIR')");
-
-         // Paths into the build directory
-         let test_build_dir = &self.config.build_base;
 EOF
 
 cat > config.toml <<EOF
@@ -52,7 +36,7 @@ changelog-seen = 2
 ninja = false
 
 [build]
-rustc = "$(pwd)/../build/rustc-clif"
+rustc = "$(pwd)/../dist/rustc-clif"
 cargo = "$(rustup which cargo)"
 full-bootstrap = true
 local-rebuild = true
@@ -66,3 +50,9 @@ popd
 
 # FIXME remove once inline asm is fully supported
 export RUSTFLAGS="$RUSTFLAGS --cfg=rustix_use_libc"
+
+export CFG_VIRTUAL_RUST_SOURCE_BASE_DIR="$(cd build_sysroot/sysroot_src; pwd)"
+
+# Allow the testsuite to use llvm tools
+host_triple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
+export LLVM_BIN_DIR="$(rustc --print sysroot)/lib/rustlib/$host_triple/bin"

@@ -1,7 +1,6 @@
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(exact_size_is_empty)]
-#![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(once_cell)]
 #![feature(stmt_expr_attributes)]
@@ -42,6 +41,7 @@ pub mod move_paths;
 pub mod rustc_peek;
 pub mod storage;
 pub mod un_derefer;
+pub mod value_analysis;
 
 pub(crate) mod indexes {
     pub(crate) use super::move_paths::MovePathIndex;

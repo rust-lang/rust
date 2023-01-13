@@ -1,0 +1,38 @@
+error: expected at least one digit in exponent
+  --> $DIR/issue-49746-unicode-confusable-in-float-literal-expt.rs:1:47
+   |
+LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e−11; // m³⋅kg⁻¹⋅s⁻²
+   |                                               ^^^^^^
+
+error: unknown start of token: \u{2212}
+  --> $DIR/issue-49746-unicode-confusable-in-float-literal-expt.rs:1:53
+   |
+LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e−11; // m³⋅kg⁻¹⋅s⁻²
+   |                                                     ^
+   |
+help: Unicode character '−' (Minus Sign) looks like '-' (Minus/Hyphen), but it is not
+   |
+LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e-11; // m³⋅kg⁻¹⋅s⁻²
+   |                                                     ~
+
+error[E0277]: cannot subtract `{integer}` from `{float}` in const contexts
+  --> $DIR/issue-49746-unicode-confusable-in-float-literal-expt.rs:1:53
+   |
+LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e−11; // m³⋅kg⁻¹⋅s⁻²
+   |                                                     ^ no implementation for `{float} - {integer}`
+   |
+   = help: the trait `~const Sub<{integer}>` is not implemented for `{float}`
+   = help: the following other types implement trait `Sub<Rhs>`:
+             <&'a f32 as Sub<f32>>
+             <&'a f64 as Sub<f64>>
+             <&'a i128 as Sub<i128>>
+             <&'a i16 as Sub<i16>>
+             <&'a i32 as Sub<i32>>
+             <&'a i64 as Sub<i64>>
+             <&'a i8 as Sub<i8>>
+             <&'a isize as Sub<isize>>
+           and 48 others
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

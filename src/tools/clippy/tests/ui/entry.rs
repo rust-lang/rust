@@ -1,3 +1,4 @@
+// needs-asm-support
 // run-rustfix
 
 #![allow(unused, clippy::needless_pass_by_value, clippy::collapsible_if)]

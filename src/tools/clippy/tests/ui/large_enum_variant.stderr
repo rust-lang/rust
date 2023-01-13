@@ -167,8 +167,8 @@ error: large size difference between variants
 LL | / enum CopyableLargeEnum {
 LL | |     A(bool),
    | |     ------- the second-largest variant contains at least 1 bytes
-LL | |     B([u128; 4000]),
-   | |     --------------- the largest variant contains at least 64000 bytes
+LL | |     B([u64; 8000]),
+   | |     -------------- the largest variant contains at least 64000 bytes
 LL | | }
    | |_^ the entire enum is at least 64008 bytes
    |
@@ -180,8 +180,8 @@ LL | enum CopyableLargeEnum {
 help: consider boxing the large fields to reduce the total size of the enum
   --> $DIR/large_enum_variant.rs:104:5
    |
-LL |     B([u128; 4000]),
-   |     ^^^^^^^^^^^^^^^
+LL |     B([u64; 8000]),
+   |     ^^^^^^^^^^^^^^
 
 error: large size difference between variants
   --> $DIR/large_enum_variant.rs:107:1
@@ -189,8 +189,8 @@ error: large size difference between variants
 LL | / enum ManuallyCopyLargeEnum {
 LL | |     A(bool),
    | |     ------- the second-largest variant contains at least 1 bytes
-LL | |     B([u128; 4000]),
-   | |     --------------- the largest variant contains at least 64000 bytes
+LL | |     B([u64; 8000]),
+   | |     -------------- the largest variant contains at least 64000 bytes
 LL | | }
    | |_^ the entire enum is at least 64008 bytes
    |
@@ -202,8 +202,8 @@ LL | enum ManuallyCopyLargeEnum {
 help: consider boxing the large fields to reduce the total size of the enum
   --> $DIR/large_enum_variant.rs:109:5
    |
-LL |     B([u128; 4000]),
-   |     ^^^^^^^^^^^^^^^
+LL |     B([u64; 8000]),
+   |     ^^^^^^^^^^^^^^
 
 error: large size difference between variants
   --> $DIR/large_enum_variant.rs:120:1

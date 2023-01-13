@@ -13,7 +13,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty
                 cx,
                 WRONG_TRANSMUTE,
                 e.span,
-                &format!("transmute from a `{}` to a pointer", from_ty),
+                &format!("transmute from a `{from_ty}` to a pointer"),
             );
             true
         },

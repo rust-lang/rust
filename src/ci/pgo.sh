@@ -190,11 +190,40 @@ rm -r $RUSTC_PROFILE_DIRECTORY_ROOT
 # directories ourselves.
 rm -r $BUILD_ARTIFACTS/llvm $BUILD_ARTIFACTS/lld
 
-# This produces the actual final set of artifacts, using both the LLVM and rustc
-# collected profiling data.
-$@ \
-    --rust-profile-use=${RUSTC_PROFILE_MERGED_FILE} \
-    --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE}
+if isLinux; then
+  # Gather BOLT profile (BOLT is currently only available on Linux)
+  python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
+      --stage 2 library/std \
+      --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE} \
+      --llvm-bolt-profile-generate
+
+  BOLT_PROFILE_MERGED_FILE=/tmp/bolt.profdata
+
+  # Here we're profiling Bolt.
+  gather_profiles "Check,Debug,Opt" "Full" \
+  "syn-1.0.89,serde-1.0.136,ripgrep-13.0.0,regex-1.5.5,clap-3.1.6,hyper-0.14.18"
+
+  merge-fdata /tmp/prof.fdata* > ${BOLT_PROFILE_MERGED_FILE}
+
+  echo "BOLT statistics"
+  du -sh /tmp/prof.fdata*
+  du -sh ${BOLT_PROFILE_MERGED_FILE}
+  echo "Profile file count"
+  find /tmp/prof.fdata* -type f | wc -l
+
+  rm -r $BUILD_ARTIFACTS/llvm $BUILD_ARTIFACTS/lld
+
+  # This produces the actual final set of artifacts, using both the LLVM and rustc
+  # collected profiling data.
+  $@ \
+      --rust-profile-use=${RUSTC_PROFILE_MERGED_FILE} \
+      --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE} \
+      --llvm-bolt-profile-use=${BOLT_PROFILE_MERGED_FILE}
+else
+  $@ \
+      --rust-profile-use=${RUSTC_PROFILE_MERGED_FILE} \
+      --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE}
+fi
 
 echo "Rustc binary size"
 ls -la ./build/$PGO_HOST/stage2/bin

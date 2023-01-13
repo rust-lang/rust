@@ -6,8 +6,8 @@ LL | |         unimplemented!()
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
    = help: consider implementing the trait `std::cmp::PartialEq` or choosing a less ambiguous method name
+   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
 
 error: method `from_iter` can be confused for the standard trait method `std::iter::FromIterator::from_iter`
   --> $DIR/method_list_2.rs:30:5

@@ -3,6 +3,7 @@
 ## Table of Contents
 
 * [General](#general)
+* [Adding a new target](#adding-a-new-target)
 * [Tier 3 target policy](#tier-3-target-policy)
 * [Tier 2 target policy](#tier-2-target-policy)
   * [Tier 2 with host tools](#tier-2-with-host-tools)
@@ -104,6 +105,30 @@ indicates something entirely optional, and does not indicate guidance or
 recommendations. This language is based on [IETF RFC
 2119](https://tools.ietf.org/html/rfc2119).
 
+## Adding a new target
+
+New targets typically start as Tier 3 and then can be promoted later.
+To propose addition of a new target, open a pull request on [`rust-lang/rust`]:
+
+- Copy the [Tier 3 target policy](#tier-3-target-policy) to the description
+  and fill it out, see [example][tier3example].
+- Add a new description for the target in `src/doc/rustc/src/platform-support`
+  using the [template][platform_template].
+- Add the target to the [SUMMARY.md][summary] (allows wildcards) and
+  [platform-support.md][platformsupport] (must name all targets verbatim).
+  Link to the created description page.
+- Ensure the pull request is assigned to a member of the [Rust compiler team][rust_compiler_team] by commenting:
+  ```text
+  r? compiler-team
+  ```
+
+[tier3example]: https://github.com/rust-lang/rust/pull/94872
+[platform_template]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/TEMPLATE.md
+[summary]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/SUMMARY.md
+[platformsupport]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support.md
+[rust_compiler_team]: https://www.rust-lang.org/governance/teams/compiler
+[`rust-lang/rust`]: https://github.com/rust-lang/rust
+
 ## Tier 3 target policy
 
 At this tier, the Rust project provides no official support for a target, so we
@@ -133,6 +158,8 @@ approved by the appropriate team for that shared code before acceptance.
     the name of the target makes people extremely likely to form incorrect
     beliefs about what it targets, the name should be changed or augmented to
     disambiguate it.
+  - If possible, use only letters, numbers, dashes and underscores for the name.
+    Periods (`.`) are known to cause issues in Cargo.
 - Tier 3 targets may have unusual requirements to build or use, but must not
   create legal issues or impose onerous legal terms for the Rust project or for
   Rust developers or users.

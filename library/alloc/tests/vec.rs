@@ -7,7 +7,9 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveErrorKind::*;
 use std::fmt::Debug;
+use std::hint;
 use std::iter::InPlaceIterable;
+use std::mem;
 use std::mem::{size_of, swap};
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -1089,7 +1091,8 @@ fn test_into_iter_drop_allocator() {
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            System.deallocate(ptr, layout)
+            // Safety: Invariants passed to caller.
+            unsafe { System.deallocate(ptr, layout) }
         }
     }
 
@@ -1106,8 +1109,31 @@ fn test_into_iter_drop_allocator() {
 
 #[test]
 fn test_into_iter_zst() {
-    for _ in vec![[0u64; 0]].into_iter() {}
-    for _ in vec![[0u64; 0]; 5].into_iter().rev() {}
+    #[derive(Debug, Clone)]
+    struct AlignedZstWithDrop([u64; 0]);
+    impl Drop for AlignedZstWithDrop {
+        fn drop(&mut self) {
+            let addr = self as *mut _ as usize;
+            assert!(hint::black_box(addr) % mem::align_of::<u64>() == 0);
+        }
+    }
+
+    const C: AlignedZstWithDrop = AlignedZstWithDrop([0u64; 0]);
+
+    for _ in vec![C].into_iter() {}
+    for _ in vec![C; 5].into_iter().rev() {}
+
+    let mut it = vec![C, C].into_iter();
+    it.advance_by(1).unwrap();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk::<1>().unwrap();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk::<4>().unwrap_err();
+    drop(it);
 }
 
 #[test]
@@ -1191,48 +1217,53 @@ fn test_from_iter_specialization_panic_during_iteration_drops() {
 }
 
 #[test]
-fn test_from_iter_specialization_panic_during_drop_leaks() {
-    static mut DROP_COUNTER: usize = 0;
+fn test_from_iter_specialization_panic_during_drop_doesnt_leak() {
+    static mut DROP_COUNTER_OLD: [usize; 5] = [0; 5];
+    static mut DROP_COUNTER_NEW: [usize; 2] = [0; 2];
 
     #[derive(Debug)]
-    enum Droppable {
-        DroppedTwice(Box<i32>),
-        PanicOnDrop,
-    }
+    struct Old(usize);
 
-    impl Drop for Droppable {
+    impl Drop for Old {
         fn drop(&mut self) {
-            match self {
-                Droppable::DroppedTwice(_) => {
-                    unsafe {
-                        DROP_COUNTER += 1;
-                    }
-                    println!("Dropping!")
-                }
-                Droppable::PanicOnDrop => {
-                    if !std::thread::panicking() {
-                        panic!();
-                    }
-                }
+            unsafe {
+                DROP_COUNTER_OLD[self.0] += 1;
             }
+
+            if self.0 == 3 {
+                panic!();
+            }
+
+            println!("Dropped Old: {}", self.0);
         }
     }
 
-    let mut to_free: *mut Droppable = core::ptr::null_mut();
-    let mut cap = 0;
+    #[derive(Debug)]
+    struct New(usize);
+
+    impl Drop for New {
+        fn drop(&mut self) {
+            unsafe {
+                DROP_COUNTER_NEW[self.0] += 1;
+            }
+
+            println!("Dropped New: {}", self.0);
+        }
+    }
 
     let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        let mut v = vec![Droppable::DroppedTwice(Box::new(123)), Droppable::PanicOnDrop];
-        to_free = v.as_mut_ptr();
-        cap = v.capacity();
-        let _ = v.into_iter().take(0).collect::<Vec<_>>();
+        let v = vec![Old(0), Old(1), Old(2), Old(3), Old(4)];
+        let _ = v.into_iter().map(|x| New(x.0)).take(2).collect::<Vec<_>>();
     }));
 
-    assert_eq!(unsafe { DROP_COUNTER }, 1);
-    // clean up the leak to keep miri happy
-    unsafe {
-        drop(Vec::from_raw_parts(to_free, 0, cap));
-    }
+    assert_eq!(unsafe { DROP_COUNTER_OLD[0] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[1] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[2] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[3] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[4] }, 1);
+
+    assert_eq!(unsafe { DROP_COUNTER_NEW[0] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_NEW[1] }, 1);
 }
 
 // regression test for issue #85322. Peekable previously implemented InPlaceIterable,

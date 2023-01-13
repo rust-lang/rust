@@ -36,11 +36,8 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 
     // Return early if we've found an existing fn
     let fn_name = to_lower_snake_case(&field_name.to_string());
-    let impl_def = find_struct_impl(
-        ctx,
-        &ast::Adt::Struct(strukt.clone()),
-        format!("set_{}", fn_name).as_str(),
-    )?;
+    let impl_def =
+        find_struct_impl(ctx, &ast::Adt::Struct(strukt.clone()), &[format!("set_{fn_name}")])?;
 
     let target = field.syntax().text_range();
     acc.add_group(
@@ -55,18 +52,12 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                 buf.push('\n');
             }
 
-            let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
+            let vis = strukt.visibility().map_or(String::new(), |v| format!("{v} "));
             format_to!(
                 buf,
-                "    {}fn set_{}(&mut self, {}: {}) {{
-        self.{} = {};
-    }}",
-                vis,
-                fn_name,
-                fn_name,
-                field_ty,
-                fn_name,
-                fn_name,
+                "    {vis}fn set_{fn_name}(&mut self, {fn_name}: {field_ty}) {{
+        self.{fn_name} = {fn_name};
+    }}"
             );
 
             let start_offset = impl_def

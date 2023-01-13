@@ -3,7 +3,7 @@ use rustc_data_structures::profiling::VerboseTimingGuard;
 use std::path::{Path, PathBuf};
 
 impl Session {
-    pub fn timer<'a>(&'a self, what: &'static str) -> VerboseTimingGuard<'a> {
+    pub fn timer(&self, what: &'static str) -> VerboseTimingGuard<'_> {
         self.prof.verbose_generic_activity(what)
     }
     pub fn time<R>(&self, what: &'static str, f: impl FnOnce() -> R) -> R {
@@ -52,6 +52,17 @@ impl NativeLibKind {
             }
             NativeLibKind::RawDylib | NativeLibKind::Unspecified | NativeLibKind::LinkArg => false,
         }
+    }
+
+    pub fn is_statically_included(&self) -> bool {
+        matches!(self, NativeLibKind::Static { .. })
+    }
+
+    pub fn is_dllimport(&self) -> bool {
+        matches!(
+            self,
+            NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified
+        )
     }
 }
 

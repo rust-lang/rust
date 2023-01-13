@@ -4,12 +4,12 @@ error: unsequenced read of `x`
 LL |     } + x;
    |         ^
    |
-   = note: `-D clippy::mixed-read-write-in-expression` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
   --> $DIR/mixed_read_write_in_expression.rs:12:9
    |
 LL |         x = 1;
    |         ^^^^^
+   = note: `-D clippy::mixed-read-write-in-expression` implied by `-D warnings`
 
 error: unsequenced read of `x`
   --> $DIR/mixed_read_write_in_expression.rs:17:5

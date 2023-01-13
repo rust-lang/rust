@@ -198,6 +198,10 @@ impl ChildBySource for EnumId {
 impl ChildBySource for DefWithBodyId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let body = db.body(*self);
+        if let &DefWithBodyId::VariantId(v) = self {
+            VariantId::EnumVariantId(v).child_by_source_to(db, res, file_id)
+        }
+
         for (_, def_map) in body.blocks(db) {
             // All block expressions are merged into the same map, because they logically all add
             // inner items to the containing `DefWithBodyId`.

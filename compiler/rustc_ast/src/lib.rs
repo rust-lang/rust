@@ -13,7 +13,6 @@
 #![feature(const_default_impls)]
 #![feature(const_trait_impl)]
 #![feature(if_let_guard)]
-#![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
@@ -30,6 +29,7 @@ extern crate rustc_macros;
 extern crate tracing;
 
 pub mod util {
+    pub mod case;
     pub mod classify;
     pub mod comments;
     pub mod literal;

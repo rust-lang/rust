@@ -38,7 +38,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'
                             span_lint_and_note(cx,
                                 MATCH_WILD_ERR_ARM,
                                 arm.pat.span,
-                                &format!("`Err({})` matches all errors", ident_bind_name),
+                                &format!("`Err({ident_bind_name})` matches all errors"),
                                 None,
                                 "match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable",
                             );

@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(unused_imports, clippy::redundant_clone)]
+#![allow(unused, clippy::redundant_clone)]
 #![warn(clippy::option_as_ref_deref)]
 
 use std::ffi::{CString, OsString};
@@ -44,4 +44,16 @@ fn main() {
 
     // Issue #5927
     let _ = opt.as_ref().map(std::ops::Deref::deref);
+}
+
+#[clippy::msrv = "1.39"]
+fn msrv_1_39() {
+    let opt = Some(String::from("123"));
+    let _ = opt.as_ref().map(String::as_str);
+}
+
+#[clippy::msrv = "1.40"]
+fn msrv_1_40() {
+    let opt = Some(String::from("123"));
+    let _ = opt.as_ref().map(String::as_str);
 }

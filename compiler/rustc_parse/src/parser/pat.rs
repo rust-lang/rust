@@ -1,5 +1,5 @@
 use super::{ForceCollect, Parser, PathStyle, TrailingToken};
-use crate::parser::diagnostics::RemoveLet;
+use crate::errors::RemoveLet;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
@@ -10,6 +10,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 
@@ -401,6 +402,29 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Path(qself, path)
             }
+        } else if matches!(self.token.kind, token::Lifetime(_))
+            // In pattern position, we're totally fine with using "next token isn't colon"
+            // as a heuristic. We could probably just always try to recover if it's a lifetime,
+            // because we never have `'a: label {}` in a pattern position anyways, but it does
+            // keep us from suggesting something like `let 'a: Ty = ..` => `let 'a': Ty = ..`
+            && !self.look_ahead(1, |token| matches!(token.kind, token::Colon))
+        {
+            // Recover a `'a` as a `'a'` literal
+            let lt = self.expect_lifetime();
+            let (lit, _) =
+                self.recover_unclosed_char(lt.ident, Parser::mk_token_lit_char, |self_| {
+                    let expected = expected.unwrap_or("pattern");
+                    let msg = format!(
+                        "expected {}, found {}",
+                        expected,
+                        super::token_descr(&self_.token)
+                    );
+
+                    let mut err = self_.struct_span_err(self_.token.span, &msg);
+                    err.span_label(self_.token.span, format!("expected {}", expected));
+                    err
+                });
+            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
@@ -465,19 +489,8 @@ impl<'a> Parser<'a> {
         let mut rhs = self.parse_pat_no_top_alt(None)?;
         let sp = lhs.span.to(rhs.span);
 
-        if let PatKind::Ident(_, _, ref mut sub @ None) = rhs.kind {
+        if let PatKind::Ident(_, _, sub @ None) = &mut rhs.kind {
             // The user inverted the order, so help them fix that.
-            let mut applicability = Applicability::MachineApplicable;
-            // FIXME(bindings_after_at): Remove this code when stabilizing the feature.
-            lhs.walk(&mut |p| match p.kind {
-                // `check_match` is unhappy if the subpattern has a binding anywhere.
-                PatKind::Ident(..) => {
-                    applicability = Applicability::MaybeIncorrect;
-                    false // Short-circuit.
-                }
-                _ => true,
-            });
-
             let lhs_span = lhs.span;
             // Move the LHS into the RHS as a subpattern.
             // The RHS is now the full pattern.
@@ -486,7 +499,12 @@ impl<'a> Parser<'a> {
             self.struct_span_err(sp, "pattern on wrong side of `@`")
                 .span_label(lhs_span, "pattern on the left, should be on the right")
                 .span_label(rhs.span, "binding on the right, should be on the left")
-                .span_suggestion(sp, "switch the order", pprust::pat_to_string(&rhs), applicability)
+                .span_suggestion(
+                    sp,
+                    "switch the order",
+                    pprust::pat_to_string(&rhs),
+                    Applicability::MachineApplicable,
+                )
                 .emit();
         } else {
             // The special case above doesn't apply so we may have e.g. `A(x) @ B(y)`.
@@ -575,7 +593,7 @@ impl<'a> Parser<'a> {
         self.recover_additional_muts();
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
-        if let token::Interpolated(ref nt) = self.token.kind {
+        if let token::Interpolated(nt) = &self.token.kind {
             if let token::NtPat(_) = **nt {
                 self.expected_ident_found().emit();
             }
@@ -673,7 +691,7 @@ impl<'a> Parser<'a> {
     /// Parse macro invocation
     fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
-        let args = self.parse_mac_args()?;
+        let args = self.parse_delim_args()?;
         let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
         Ok(PatKind::MacCall(mac))
     }
@@ -693,7 +711,7 @@ impl<'a> Parser<'a> {
 
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
-            self.sess.expr_parentheses_needed(&mut err, *sp);
+            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
 
         Err(err)
@@ -776,8 +794,7 @@ impl<'a> Parser<'a> {
     /// expression syntax `...expr` for splatting in expressions.
     fn parse_pat_range_to(&mut self, mut re: Spanned<RangeEnd>) -> PResult<'a, PatKind> {
         let end = self.parse_pat_range_end()?;
-        self.sess.gated_spans.gate(sym::half_open_range_patterns, re.span.to(self.prev_token.span));
-        if let RangeEnd::Included(ref mut syn @ RangeSyntax::DotDotDot) = &mut re.node {
+        if let RangeEnd::Included(syn @ RangeSyntax::DotDotDot) = &mut re.node {
             *syn = RangeSyntax::DotDotEq;
             self.struct_span_err(re.span, "range-to patterns with `...` are not allowed")
                 .span_suggestion_short(
@@ -799,6 +816,7 @@ impl<'a> Parser<'a> {
                 || t.kind == token::Dot // e.g. `.5` for recovery;
                 || t.can_begin_literal_maybe_minus() // e.g. `42`.
                 || t.is_whole_expr()
+                || t.is_lifetime() // recover `'a` instead of `'a'`
             })
     }
 
@@ -869,7 +887,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
-    fn parse_pat_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
+    fn parse_pat_struct(&mut self, qself: Option<P<QSelf>>, path: Path) -> PResult<'a, PatKind> {
         if qself.is_some() {
             // Feature gate the use of qualified paths in patterns
             self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
@@ -886,7 +904,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse tuple struct or tuple variant pattern (e.g. `Foo(...)` or `Foo::Bar(...)`).
-    fn parse_pat_tuple_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
+    fn parse_pat_tuple_struct(
+        &mut self,
+        qself: Option<P<QSelf>>,
+        path: Path,
+    ) -> PResult<'a, PatKind> {
         let (fields, _) = self.parse_paren_comma_seq(|p| {
             p.parse_pat_allow_top_alt(
                 None,

@@ -1,0 +1,23 @@
+error: function has missing const stability attribute
+  --> $DIR/missing-const-stability.rs:6:1
+   |
+LL | pub const fn foo() {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation has missing const stability attribute
+  --> $DIR/missing-const-stability.rs:28:1
+   |
+LL | / impl const Bar for Foo {
+LL | |
+LL | |     fn fun() {}
+LL | | }
+   | |_^
+
+error: associated function has missing const stability attribute
+  --> $DIR/missing-const-stability.rs:15:5
+   |
+LL |     pub const fn foo() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

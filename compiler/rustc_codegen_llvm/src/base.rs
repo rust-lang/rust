@@ -19,6 +19,8 @@ use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
 
+use cstr::cstr;
+
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
@@ -107,11 +109,14 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             }
 
             // Create the llvm.used and llvm.compiler.used variables.
-            if !cx.used_statics().borrow().is_empty() {
-                cx.create_used_variable()
+            if !cx.used_statics.borrow().is_empty() {
+                cx.create_used_variable_impl(cstr!("llvm.used"), &*cx.used_statics.borrow());
             }
-            if !cx.compiler_used_statics().borrow().is_empty() {
-                cx.create_compiler_used_variable()
+            if !cx.compiler_used_statics.borrow().is_empty() {
+                cx.create_used_variable_impl(
+                    cstr!("llvm.compiler.used"),
+                    &*cx.compiler_used_statics.borrow(),
+                );
             }
 
             // Run replace-all-uses-with for statics that need it. This must

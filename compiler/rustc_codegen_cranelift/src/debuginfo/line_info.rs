@@ -68,9 +68,9 @@ impl DebugContext {
     ) -> (Lrc<SourceFile>, u64, u64) {
         // Based on https://github.com/rust-lang/rust/blob/e369d87b015a84653343032833d65d0545fd3f26/src/librustc_codegen_ssa/mir/mod.rs#L116-L131
         // In order to have a good line stepping behavior in debugger, we overwrite debug
-        // locations of macro expansions with that of the outermost expansion site
-        // (unless the crate is being compiled with `-Z debug-macros`).
-        let span = if !span.from_expansion() || tcx.sess.opts.unstable_opts.debug_macros {
+        // locations of macro expansions with that of the outermost expansion site (when the macro is
+        // annotated with `#[collapse_debuginfo]` or when `-Zdebug-macros` is provided).
+        let span = if tcx.should_collapse_debuginfo(span) {
             span
         } else {
             // Walk up the macro expansion chain until we reach a non-expanded span.

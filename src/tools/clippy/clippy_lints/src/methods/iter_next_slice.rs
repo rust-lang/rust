@@ -37,7 +37,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, cal
                 let suggest = if start_idx == 0 {
                     format!("{}.first()", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability))
                 } else {
-                    format!("{}.get({})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability), start_idx)
+                    format!("{}.get({start_idx})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability))
                 };
                 span_lint_and_sugg(
                     cx,

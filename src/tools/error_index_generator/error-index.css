@@ -27,10 +27,11 @@ pre .tooltip::before {
 	content: " ";
 	position: absolute;
 	top: 50%;
-	left: 16px;
+	left: 2px;
 	margin-top: -5px;
 	border-width: 5px;
 	border-style: solid;
+	height: 0px;
 }
 
 pre .tooltip:hover::before, pre .tooltip:hover::after {

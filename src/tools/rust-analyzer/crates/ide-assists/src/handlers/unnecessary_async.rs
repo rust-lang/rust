@@ -44,6 +44,12 @@ pub(crate) fn unnecessary_async(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     if function.body()?.syntax().descendants().find_map(ast::AwaitExpr::cast).is_some() {
         return None;
     }
+    // Do nothing if the method is a member of trait.
+    if let Some(impl_) = function.syntax().ancestors().nth(2).and_then(ast::Impl::cast) {
+        if let Some(_) = impl_.trait_() {
+            return None;
+        }
+    }
 
     // Remove the `async` keyword plus whitespace after it, if any.
     let async_range = {
@@ -101,7 +107,7 @@ fn find_all_references(
 /// If no await expression is found, returns None.
 fn find_await_expression(ctx: &AssistContext<'_>, nameref: &NameRef) -> Option<ast::AwaitExpr> {
     // From the nameref, walk up the tree to the await expression.
-    let await_expr = if let Some(path) = full_path_of_name_ref(&nameref) {
+    let await_expr = if let Some(path) = full_path_of_name_ref(nameref) {
         // Function calls.
         path.syntax()
             .parent()
@@ -253,5 +259,19 @@ pub async fn f(s: &S) { s.f2() }"#,
     #[test]
     fn does_not_apply_when_not_on_prototype() {
         check_assist_not_applicable(unnecessary_async, "pub async fn f() { $0f2() }")
+    }
+
+    #[test]
+    fn does_not_apply_on_async_trait_method() {
+        check_assist_not_applicable(
+            unnecessary_async,
+            r#"
+trait Trait {
+    async fn foo();
+}
+impl Trait for () {
+    $0async fn foo() {}
+}"#,
+        );
     }
 }

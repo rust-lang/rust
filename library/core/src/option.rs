@@ -72,6 +72,50 @@
 //! }
 //! ```
 //!
+//! # The question mark operator, `?`
+//!
+//! Similar to the [`Result`] type, when writing code that calls many functions that return the
+//! [`Option`] type, handling `Some`/`None` can be tedious. The question mark
+//! operator, [`?`], hides some of the boilerplate of propagating values
+//! up the call stack.
+//!
+//! It replaces this:
+//!
+//! ```
+//! # #![allow(dead_code)]
+//! fn add_last_numbers(stack: &mut Vec<i32>) -> Option<i32> {
+//!     let a = stack.pop();
+//!     let b = stack.pop();
+//!
+//!     match (a, b) {
+//!         (Some(x), Some(y)) => Some(x + y),
+//!         _ => None,
+//!     }
+//! }
+//!
+//! ```
+//!
+//! With this:
+//!
+//! ```
+//! # #![allow(dead_code)]
+//! fn add_last_numbers(stack: &mut Vec<i32>) -> Option<i32> {
+//!     Some(stack.pop()? + stack.pop()?)
+//! }
+//! ```
+//!
+//! *It's much nicer!*
+//!
+//! Ending the expression with [`?`] will result in the [`Some`]'s unwrapped value, unless the
+//! result is [`None`], in which case [`None`] is returned early from the enclosing function.
+//!
+//! [`?`] can be used in functions that return [`Option`] because of the
+//! early return of [`None`] that it provides.
+//!
+//! [`?`]: crate::ops::Try
+//! [`Some`]: Some
+//! [`None`]: None
+//!
 //! # Representation
 //!
 //! Rust guarantees to optimize the following types `T` such that
@@ -512,7 +556,7 @@ use crate::{
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
-#[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Copy, PartialOrd, Eq, Ord, Debug, Hash)]
 #[rustc_diagnostic_item = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
@@ -559,22 +603,25 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_some_with)]
+    /// #![feature(is_some_and)]
     ///
     /// let x: Option<u32> = Some(2);
-    /// assert_eq!(x.is_some_and(|&x| x > 1), true);
+    /// assert_eq!(x.is_some_and(|x| x > 1), true);
     ///
     /// let x: Option<u32> = Some(0);
-    /// assert_eq!(x.is_some_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_some_and(|x| x > 1), false);
     ///
     /// let x: Option<u32> = None;
-    /// assert_eq!(x.is_some_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_some_and(|x| x > 1), false);
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_some_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
-        matches!(self, Some(x) if f(x))
+    #[unstable(feature = "is_some_and", issue = "93050")]
+    pub fn is_some_and(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            None => false,
+            Some(x) => f(x),
+        }
     }
 
     /// Returns `true` if the option is a [`None`] value.
@@ -834,19 +881,12 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Converts a string to an integer, turning poorly-formed strings
-    /// into 0 (the default value for integers). [`parse`] converts
-    /// a string to any other type that implements [`FromStr`], returning
-    /// [`None`] on error.
-    ///
     /// ```
-    /// let good_year_from_input = "1909";
-    /// let bad_year_from_input = "190blarg";
-    /// let good_year = good_year_from_input.parse().ok().unwrap_or_default();
-    /// let bad_year = bad_year_from_input.parse().ok().unwrap_or_default();
+    /// let x: Option<u32> = None;
+    /// let y: Option<u32> = Some(12);
     ///
-    /// assert_eq!(1909, good_year);
-    /// assert_eq!(0, bad_year);
+    /// assert_eq!(x.unwrap_or_default(), 0);
+    /// assert_eq!(y.unwrap_or_default(), 12);
     /// ```
     ///
     /// [default value]: Default::default
@@ -1717,8 +1757,6 @@ impl<T, U> Option<(T, U)> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(unzip_option)]
-    ///
     /// let x = Some((1, "hi"));
     /// let y = None::<(u8, u32)>;
     ///
@@ -1726,8 +1764,13 @@ impl<T, U> Option<(T, U)> {
     /// assert_eq!(y.unzip(), (None, None));
     /// ```
     #[inline]
-    #[unstable(feature = "unzip_option", issue = "87800", reason = "recently added")]
-    pub const fn unzip(self) -> (Option<T>, Option<U>) {
+    #[stable(feature = "unzip_option", since = "1.66.0")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn unzip(self) -> (Option<T>, Option<U>)
+    where
+        T: ~const Destruct,
+        U: ~const Destruct,
+    {
         match self {
             Some((a, b)) => (Some(a), Some(b)),
             None => (None, None),
@@ -2036,6 +2079,72 @@ impl<'a, T> const From<&'a mut Option<T>> for Option<&'a mut T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> crate::marker::StructuralPartialEq for Option<T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: PartialEq> PartialEq for Option<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        SpecOptionPartialEq::eq(self, other)
+    }
+}
+
+#[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
+#[doc(hidden)]
+pub trait SpecOptionPartialEq: Sized {
+    fn eq(l: &Option<Self>, other: &Option<Self>) -> bool;
+}
+
+#[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
+impl<T: PartialEq> SpecOptionPartialEq for T {
+    #[inline]
+    default fn eq(l: &Option<T>, r: &Option<T>) -> bool {
+        match (l, r) {
+            (Some(l), Some(r)) => *l == *r,
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+macro_rules! non_zero_option {
+    ( $( #[$stability: meta] $NZ:ty; )+ ) => {
+        $(
+            #[$stability]
+            impl SpecOptionPartialEq for $NZ {
+                #[inline]
+                fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
+                    l.map(Self::get).unwrap_or(0) == r.map(Self::get).unwrap_or(0)
+                }
+            }
+        )+
+    };
+}
+
+non_zero_option! {
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU8;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU16;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU32;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU64;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU128;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroUsize;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI8;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI16;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI32;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI64;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI128;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroIsize;
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T> SpecOptionPartialEq for crate::ptr::NonNull<T> {
+    #[inline]
+    fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
+        l.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
+            == r.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // The Option Iterators
 /////////////////////////////////////////////////////////////////////////////
@@ -2321,7 +2430,8 @@ impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-impl<T> ops::Residual<T> for Option<convert::Infallible> {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<T> const ops::Residual<T> for Option<convert::Infallible> {
     type TryType = Option<T>;
 }
 

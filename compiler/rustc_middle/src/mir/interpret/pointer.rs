@@ -3,7 +3,6 @@ use super::{AllocId, InterpResult};
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,7 +42,7 @@ pub trait PointerArithmetic: HasDataLayout {
         let val = val as i64;
         // Now wrap-around into the machine_isize range.
         if val > self.machine_isize_max() {
-            // This can only happen the the ptr size is < 64, so we know max_usize_plus_1 fits into
+            // This can only happen if the ptr size is < 64, so we know max_usize_plus_1 fits into
             // i64.
             debug_assert!(self.pointer_size().bits() < 64);
             let max_usize_plus_1 = 1u128 << self.pointer_size().bits();
@@ -103,8 +102,7 @@ impl<T: HasDataLayout> PointerArithmetic for T {}
 /// This trait abstracts over the kind of provenance that is associated with a `Pointer`. It is
 /// mostly opaque; the `Machine` trait extends it with some more operations that also have access to
 /// some global state.
-/// We don't actually care about this `Debug` bound (we use `Provenance::fmt` to format the entire
-/// pointer), but `derive` adds some unnecessary bounds.
+/// The `Debug` rendering is used to distplay bare provenance, and for the default impl of `fmt`.
 pub trait Provenance: Copy + fmt::Debug {
     /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical address.
     /// - If `false`, the offset *must* be relative. This means the bytes representing a pointer are
@@ -115,14 +113,23 @@ pub trait Provenance: Copy + fmt::Debug {
     ///   pointer, and implement ptr-to-int transmutation by stripping provenance.
     const OFFSET_IS_ADDR: bool;
 
-    /// We also use this trait to control whether to abort execution when a pointer is being partially overwritten
-    /// (this avoids a separate trait in `allocation.rs` just for this purpose).
-    const ERR_ON_PARTIAL_PTR_OVERWRITE: bool;
-
     /// Determines how a pointer should be printed.
+    ///
+    /// Default impl is only good for when `OFFSET_IS_ADDR == true`.
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result
     where
-        Self: Sized;
+        Self: Sized,
+    {
+        assert!(Self::OFFSET_IS_ADDR);
+        let (prov, addr) = ptr.into_parts(); // address is absolute
+        write!(f, "{:#x}", addr.bytes())?;
+        if f.alternate() {
+            write!(f, "{prov:#?}")?;
+        } else {
+            write!(f, "{prov:?}")?;
+        }
+        Ok(())
+    }
 
     /// If `OFFSET_IS_ADDR == false`, provenance must always be able to
     /// identify the allocation this ptr points to (i.e., this must return `Some`).
@@ -138,9 +145,6 @@ impl Provenance for AllocId {
     // With the `AllocId` as provenance, the `offset` is interpreted *relative to the allocation*,
     // so ptr-to-int casts are not possible (since we do not know the global physical offset).
     const OFFSET_IS_ADDR: bool = false;
-
-    // For now, do not allow this, so that we keep our options open.
-    const ERR_ON_PARTIAL_PTR_OVERWRITE: bool = true;
 
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Forward `alternate` flag to `alloc_id` printing.
@@ -168,7 +172,7 @@ impl Provenance for AllocId {
 /// Represents a pointer in the Miri engine.
 ///
 /// Pointers are "tagged" with provenance information; typically the `AllocId` they belong to.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
 pub struct Pointer<Prov = AllocId> {
     pub(super) offset: Size, // kept private to avoid accidental misinterpretation (meaning depends on `Prov` type)

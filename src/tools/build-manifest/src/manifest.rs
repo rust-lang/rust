@@ -1,3 +1,4 @@
+use crate::versions::PkgType;
 use crate::Builder;
 use serde::{Serialize, Serializer};
 use std::collections::BTreeMap;
@@ -116,8 +117,8 @@ pub(crate) struct Component {
 }
 
 impl Component {
-    pub(crate) fn from_str(pkg: &str, target: &str) -> Self {
-        Self { pkg: pkg.to_string(), target: target.to_string() }
+    pub(crate) fn from_pkg(pkg: &PkgType, target: &str) -> Self {
+        Self { pkg: pkg.manifest_component_name(), target: target.to_string() }
     }
 }
 

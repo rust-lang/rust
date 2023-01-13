@@ -7,8 +7,8 @@ LL | / #[path = "b.rs"]
 LL | | mod b2;
    | |_______^ loaded again here
    |
-   = note: `-D clippy::duplicate-mod` implied by `-D warnings`
    = help: replace all but one `mod` item with `use` items
+   = note: `-D clippy::duplicate-mod` implied by `-D warnings`
 
 error: file is loaded as a module multiple times: `$DIR/c.rs`
   --> $DIR/main.rs:9:1

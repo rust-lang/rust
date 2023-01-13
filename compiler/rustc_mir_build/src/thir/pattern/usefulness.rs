@@ -291,9 +291,8 @@
 
 use self::ArmType::*;
 use self::Usefulness::*;
-
-use super::check_match::{joined_uncovered_patterns, pattern_not_covered_label};
 use super::deconstruct_pat::{Constructor, DeconstructedPat, Fields, SplitWildcard};
+use crate::errors::{NonExhaustiveOmittedPattern, Uncovered};
 
 use rustc_data_structures::captures::Captures;
 
@@ -324,7 +323,7 @@ pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
+            !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
         } else {
             false
         }
@@ -743,32 +742,6 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
     }
 }
 
-/// Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
-/// is not exhaustive enough.
-///
-/// NB: The partner lint for structs lives in `compiler/rustc_typeck/src/check/pat.rs`.
-fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    scrut_ty: Ty<'tcx>,
-    sp: Span,
-    hir_id: HirId,
-    witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
-) {
-    cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, sp, |build| {
-        let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
-        let mut lint = build.build("some variants are not matched explicitly");
-        lint.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
-        lint.help(
-            "ensure that all variants are matched explicitly by adding the suggested match arms",
-        );
-        lint.note(&format!(
-            "the matched value is of type `{}` and the `non_exhaustive_omitted_patterns` attribute was found",
-            scrut_ty,
-        ));
-        lint.emit();
-    });
-}
-
 /// Algorithm from <http://moscova.inria.fr/~maranget/papers/warn/index.html>.
 /// The algorithm from the paper has been modified to correctly handle empty
 /// types. The changes are:
@@ -842,7 +815,15 @@ fn is_useful<'p, 'tcx>(
             }
         }
     } else {
-        let ty = v.head().ty();
+        let mut ty = v.head().ty();
+
+        // Opaque types can't get destructured/split, but the patterns can
+        // actually hint at hidden types, so we use the patterns' types instead.
+        if let ty::Alias(ty::Opaque, ..) = ty.kind() {
+            if let Some(row) = rows.first() {
+                ty = row.head().ty();
+            }
+        }
         let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
         debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
         let pcx = &PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
@@ -878,7 +859,7 @@ fn is_useful<'p, 'tcx>(
             // that has the potential to trigger the `non_exhaustive_omitted_patterns` lint.
             // To understand the workings checkout `Constructor::split` and `SplitWildcard::new/into_ctors`
             if is_non_exhaustive_and_wild
-                // We check that the match has a wildcard pattern and that that wildcard is useful,
+                // We check that the match has a wildcard pattern and that wildcard is useful,
                 // meaning there are variants that are covered by the wildcard. Without the check
                 // for `witness_preference` the lint would trigger on `if let NonExhaustiveEnum::A = foo {}`
                 && usefulness.is_useful() && matches!(witness_preference, RealArm)
@@ -906,7 +887,19 @@ fn is_useful<'p, 'tcx>(
                         .collect::<Vec<_>>()
                 };
 
-                lint_non_exhaustive_omitted_patterns(pcx.cx, pcx.ty, pcx.span, hir_id, patterns);
+                // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
+                // is not exhaustive enough.
+                //
+                // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
+                cx.tcx.emit_spanned_lint(
+                    NON_EXHAUSTIVE_OMITTED_PATTERNS,
+                    hir_id,
+                    pcx.span,
+                    NonExhaustiveOmittedPattern {
+                        scrut_ty: pcx.ty,
+                        uncovered: Uncovered::new(pcx.span, pcx.cx, patterns),
+                    },
+                );
             }
 
             ret.extend(usefulness);

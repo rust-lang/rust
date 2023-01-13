@@ -343,7 +343,7 @@ impl<T> BTreeSet<T> {
     /// let mut set: BTreeSet<i32> = BTreeSet::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[must_use]
     pub const fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
@@ -786,7 +786,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -797,7 +796,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.first(), Some(&1));
     /// ```
     #[must_use]
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first(&self) -> Option<&T>
     where
         T: Ord,
@@ -813,7 +812,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -824,7 +822,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.last(), Some(&2));
     /// ```
     #[must_use]
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last(&self) -> Option<&T>
     where
         T: Ord,
@@ -838,7 +836,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -849,7 +846,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_first(&mut self) -> Option<T>
     where
         T: Ord,
@@ -863,7 +860,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -874,7 +870,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_last(&mut self) -> Option<T>
     where
         T: Ord,
@@ -1174,7 +1170,11 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn len(&self) -> usize {
         self.map.len()
     }
@@ -1193,7 +1193,11 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }

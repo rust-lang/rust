@@ -75,7 +75,7 @@ pub(crate) fn check_no_fix(ra_fixture: &str) {
     )
     .pop()
     .unwrap();
-    assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {:?}", diagnostic);
+    assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {diagnostic:?}");
 }
 
 pub(crate) fn check_expect(ra_fixture: &str, expect: Expect) {
@@ -102,7 +102,7 @@ pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixtur
     for file_id in files {
         let diagnostics = super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_id);
 
-        let expected = extract_annotations(&*db.file_text(file_id));
+        let expected = extract_annotations(&db.file_text(file_id));
         let mut actual = diagnostics
             .into_iter()
             .map(|d| {

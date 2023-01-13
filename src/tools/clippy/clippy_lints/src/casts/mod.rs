@@ -1,8 +1,10 @@
+mod as_ptr_cast_mut;
 mod as_underscore;
 mod borrow_as_ptr;
 mod cast_abs_to_unsigned;
 mod cast_enum_constructor;
 mod cast_lossless;
+mod cast_nan_to_int;
 mod cast_possible_truncation;
 mod cast_possible_wrap;
 mod cast_precision_loss;
@@ -19,11 +21,11 @@ mod ptr_as_ptr;
 mod unnecessary_cast;
 mod utils;
 
-use clippy_utils::{is_hir_ty_cfg_dependant, meets_msrv, msrvs};
+use clippy_utils::is_hir_ty_cfg_dependant;
+use clippy_utils::msrvs::{self, Msrv};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
@@ -569,6 +571,7 @@ declare_clippy_lint! {
     pedantic,
     "borrowing just to cast to a raw pointer"
 }
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for a raw slice being cast to a slice pointer
@@ -590,19 +593,67 @@ declare_clippy_lint! {
     /// let _: *mut [u8] = std::ptr::slice_from_raw_parts_mut(ptr, len);
     /// ```
     /// [safety requirements]: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
-    #[clippy::version = "1.64.0"]
+    #[clippy::version = "1.65.0"]
     pub CAST_SLICE_FROM_RAW_PARTS,
     suspicious,
     "casting a slice created from a pointer and length to a slice pointer"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the result of a `&self`-taking `as_ptr` being cast to a mutable pointer
+    ///
+    /// ### Why is this bad?
+    /// Since `as_ptr` takes a `&self`, the pointer won't have write permissions unless interior
+    /// mutability is used, making it unlikely that having it as a mutable pointer is correct.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let string = String::with_capacity(1);
+    /// let ptr = string.as_ptr() as *mut u8;
+    /// unsafe { ptr.write(4) }; // UNDEFINED BEHAVIOUR
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let mut string = String::with_capacity(1);
+    /// let ptr = string.as_mut_ptr();
+    /// unsafe { ptr.write(4) };
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub AS_PTR_CAST_MUT,
+    nursery,
+    "casting the result of the `&self`-taking `as_ptr` to a mutabe pointer"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for a known NaN float being cast to an integer
+    ///
+    /// ### Why is this bad?
+    /// NaNs are cast into zero, so one could simply use this and make the
+    /// code more readable. The lint could also hint at a programmer error.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// let _: (0.0_f32 / 0.0) as u64;
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// let _: = 0_u64;
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub CAST_NAN_TO_INT,
+    suspicious,
+    "casting a known floating-point NaN into an integer"
+}
+
 pub struct Casts {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl Casts {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -627,13 +678,15 @@ impl_lint_pass!(Casts => [
     CAST_ABS_TO_UNSIGNED,
     AS_UNDERSCORE,
     BORROW_AS_PTR,
-    CAST_SLICE_FROM_RAW_PARTS
+    CAST_SLICE_FROM_RAW_PARTS,
+    AS_PTR_CAST_MUT,
+    CAST_NAN_TO_INT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !in_external_macro(cx.sess(), expr.span) {
-            ptr_as_ptr::check(cx, expr, self.msrv);
+            ptr_as_ptr::check(cx, expr, &self.msrv);
         }
 
         if expr.span.from_expansion() {
@@ -652,7 +705,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
                 return;
             }
-            cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, self.msrv);
+            cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, &self.msrv);
+            as_ptr_cast_mut::check(cx, expr, cast_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
@@ -663,15 +717,16 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);
                     cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
-                    cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
+                    cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
+                    cast_nan_to_int::check(cx, expr, cast_expr, cast_from, cast_to);
                 }
-                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
+                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_expr, cast_from);
             }
 
             as_underscore::check(cx, expr, cast_to_hir);
 
-            if meets_msrv(self.msrv, msrvs::BORROW_AS_PTR) {
+            if self.msrv.meets(msrvs::BORROW_AS_PTR) {
                 borrow_as_ptr::check(cx, expr, cast_expr, cast_to_hir);
             }
         }
@@ -679,8 +734,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         cast_ref_to_mut::check(cx, expr);
         cast_ptr_alignment::check(cx, expr);
         char_lit_as_u8::check(cx, expr);
-        ptr_as_ptr::check(cx, expr, self.msrv);
-        cast_slice_different_sizes::check(cx, expr, self.msrv);
+        ptr_as_ptr::check(cx, expr, &self.msrv);
+        cast_slice_different_sizes::check(cx, expr, &self.msrv);
     }
 
     extract_msrv_attr!(LateContext);

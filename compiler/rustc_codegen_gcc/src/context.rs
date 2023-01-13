@@ -13,7 +13,7 @@ use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
 use rustc_session::Session;
-use rustc_span::Span;
+use rustc_span::{Span, source_map::respan};
 use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
@@ -88,9 +88,9 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     // TODO(antoyo): improve the SSA API to not require those.
-    // Mapping from function pointer type to indexes of on stack parameters.
+    /// Mapping from function pointer type to indexes of on stack parameters.
     pub on_stack_params: RefCell<FxHashMap<FunctionPtrType<'gcc>, FxHashSet<usize>>>,
-    // Mapping from function to indexes of on stack parameters.
+    /// Mapping from function to indexes of on stack parameters.
     pub on_stack_function_params: RefCell<FxHashMap<Function<'gcc>, FxHashSet<usize>>>,
 
     /// Cache of emitted const globals (value -> global)
@@ -253,7 +253,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {
         let function: Function<'gcc> = unsafe { std::mem::transmute(value) };
-        debug_assert!(self.functions.borrow().values().find(|value| **value == function).is_some(),
+        debug_assert!(self.functions.borrow().values().any(|value| *value == function),
             "{:?} ({:?}) is not a function", value, value.get_type());
         function
     }
@@ -293,7 +293,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
     }
 
-    pub fn sess(&self) -> &Session {
+    pub fn sess(&self) -> &'tcx Session {
         &self.tcx.sess
     }
 
@@ -416,10 +416,6 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.codegen_unit
     }
 
-    fn used_statics(&self) -> &RefCell<Vec<RValue<'gcc>>> {
-        unimplemented!();
-    }
-
     fn set_frame_pointer_type(&self, _llfn: RValue<'gcc>) {
         // TODO(antoyo)
     }
@@ -428,13 +424,10 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn create_used_variable(&self) {
-        unimplemented!();
-    }
-
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
-        if self.get_declared_value("main").is_none() {
-            Some(self.declare_cfn("main", fn_type))
+        let entry_name = self.sess().target.entry_name.as_ref();
+        if self.get_declared_value(entry_name).is_none() {
+            Some(self.declare_entry_fn(entry_name, fn_type, ()))
         }
         else {
             // If the symbol already exists, it is an error: for example, the user wrote
@@ -442,14 +435,6 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             // instead of #[start]
             None
         }
-    }
-
-    fn compiler_used_statics(&self) -> &RefCell<Vec<RValue<'gcc>>> {
-        unimplemented!()
-    }
-
-    fn create_compiler_used_variable(&self) {
-        unimplemented!()
     }
 }
 
@@ -477,7 +462,7 @@ impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(respan(span, err))
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
         }
@@ -495,7 +480,7 @@ impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(respan(span, err))
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {

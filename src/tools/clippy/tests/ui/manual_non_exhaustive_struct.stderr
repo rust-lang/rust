@@ -12,12 +12,12 @@ LL | |         _c: (),
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
 help: remove this field
   --> $DIR/manual_non_exhaustive_struct.rs:8:9
    |
 LL |         _c: (),
    |         ^^^^^^
+   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
 
 error: this seems like a manual implementation of the non-exhaustive pattern
   --> $DIR/manual_non_exhaustive_struct.rs:13:5

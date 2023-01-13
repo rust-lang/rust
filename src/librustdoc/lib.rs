@@ -8,15 +8,14 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
+#![feature(is_terminal)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(test)]
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]
 #![feature(type_alias_impl_trait)]
-#![feature(generic_associated_types)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
@@ -43,6 +42,7 @@ extern crate rustc_errors;
 extern crate rustc_expand;
 extern crate rustc_feature;
 extern crate rustc_hir;
+extern crate rustc_hir_analysis;
 extern crate rustc_hir_pretty;
 extern crate rustc_index;
 extern crate rustc_infer;
@@ -61,7 +61,6 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
-extern crate rustc_typeck;
 extern crate test;
 
 // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
@@ -71,7 +70,7 @@ extern crate jemalloc_sys;
 
 use std::default::Default;
 use std::env::{self, VarError};
-use std::io;
+use std::io::{self, IsTerminal};
 use std::process;
 
 use rustc_driver::abort_on_err;
@@ -156,7 +155,6 @@ pub fn main() {
         }
     }
 
-    rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
 
     // When using CI artifacts (with `download_stage1 = true`), tracing is unconditionally built
@@ -182,7 +180,7 @@ fn init_logging() {
     let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
         Ok("always") => true,
         Ok("never") => false,
-        Ok("auto") | Err(VarError::NotPresent) => atty::is(atty::Stream::Stdout),
+        Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
         Ok(value) => early_error(
             ErrorOutputType::default(),
             &format!("invalid log color value '{}': expected one of always, never, or auto", value),
@@ -461,7 +459,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "human|json|short",
             )
         }),
-        unstable("diagnostic-width", |o| {
+        stable("diagnostic-width", |o| {
             o.optopt(
                 "",
                 "diagnostic-width",
@@ -471,9 +469,6 @@ fn opts() -> Vec<RustcOptGroup> {
         }),
         stable("json", |o| {
             o.optopt("", "json", "Configure the structure of JSON diagnostics", "CONFIG")
-        }),
-        unstable("disable-minification", |o| {
-            o.optflagmulti("", "disable-minification", "Disable minification applied on JS files")
         }),
         stable("allow", |o| o.optmulti("A", "allow", "Set lint allowed", "LINT")),
         stable("warn", |o| o.optmulti("W", "warn", "Set lint warnings", "LINT")),
@@ -613,6 +608,7 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         // deprecated / removed options
+        unstable("disable-minification", |o| o.optflagmulti("", "disable-minification", "removed")),
         stable("plugin-path", |o| {
             o.optmulti(
                 "",
@@ -676,6 +672,36 @@ fn usage(argv0: &str) {
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorGuaranteed>;
 
+fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
+    match res {
+        Ok(()) => diag.has_errors().map_or(Ok(()), Err),
+        Err(err) => {
+            let reported = diag.struct_err(&err).emit();
+            Err(reported)
+        }
+    }
+}
+
+fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
+    krate: clean::Crate,
+    renderopts: config::RenderOptions,
+    cache: formats::cache::Cache,
+    tcx: TyCtxt<'tcx>,
+) -> MainResult {
+    match formats::run_format::<T>(krate, renderopts, cache, tcx) {
+        Ok(_) => tcx.sess.has_errors().map_or(Ok(()), Err),
+        Err(e) => {
+            let mut msg =
+                tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
+            let file = e.file.display().to_string();
+            if !file.is_empty() {
+                msg.note(&format!("failed to create or modify \"{}\"", file));
+            }
+            Err(msg.emit())
+        }
+    }
+}
+
 fn main_args(at_args: &[String]) -> MainResult {
     let args = rustc_driver::args::arg_expand_all(at_args);
 
@@ -692,7 +718,7 @@ fn main_args(at_args: &[String]) -> MainResult {
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let options = match config::Options::from_matches(&matches, args) {
+    let (options, render_options) = match config::Options::from_matches(&matches, args) {
         Ok(opts) => opts,
         Err(code) => {
             return if code == 0 {
@@ -702,44 +728,7 @@ fn main_args(at_args: &[String]) -> MainResult {
             };
         }
     };
-    rustc_interface::util::run_in_thread_pool_with_globals(
-        options.edition,
-        1, // this runs single-threaded, even in a parallel compiler
-        move || main_options(options),
-    )
-}
 
-fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
-    match res {
-        Ok(()) => Ok(()),
-        Err(err) => {
-            let reported = diag.struct_err(&err).emit();
-            Err(reported)
-        }
-    }
-}
-
-fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
-    krate: clean::Crate,
-    renderopts: config::RenderOptions,
-    cache: formats::cache::Cache,
-    tcx: TyCtxt<'tcx>,
-) -> MainResult {
-    match formats::run_format::<T>(krate, renderopts, cache, tcx) {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            let mut msg =
-                tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
-            let file = e.file.display().to_string();
-            if !file.is_empty() {
-                msg.note(&format!("failed to create or modify \"{}\"", file));
-            }
-            Err(msg.emit())
-        }
-    }
-}
-
-fn main_options(options: config::Options) -> MainResult {
     let diag = core::new_handler(
         options.error_format,
         None,
@@ -751,9 +740,18 @@ fn main_options(options: config::Options) -> MainResult {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
         (true, false) => return doctest::run(options),
         (false, true) => {
+            let input = options.input.clone();
+            let edition = options.edition;
+            let config = core::create_config(options);
+
+            // `markdown::render` can invoke `doctest::make_test`, which
+            // requires session globals and a thread pool, so we use
+            // `run_compiler`.
             return wrap_return(
                 &diag,
-                markdown::render(&options.input, options.render_options, options.edition),
+                interface::run_compiler(config, |_compiler| {
+                    markdown::render(&input, render_options, edition)
+                }),
             );
         }
         (false, false) => {}
@@ -774,21 +772,17 @@ fn main_options(options: config::Options) -> MainResult {
     let crate_version = options.crate_version.clone();
 
     let output_format = options.output_format;
-    // FIXME: fix this clone (especially render_options)
     let externs = options.externs.clone();
-    let render_options = options.render_options.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
-    let document_private = options.render_options.document_private;
+    let bin_crate = options.bin_crate;
+
     let config = core::create_config(options);
 
-    interface::create_compiler_and_run(config, |compiler| {
+    interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
 
         if sess.opts.describe_lints {
-            let mut lint_store = rustc_lint::new_lint_store(
-                sess.opts.unstable_opts.no_interleave_lints,
-                sess.enable_internal_lints(),
-            );
+            let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
             let registered_lints = if let Some(register_lints) = compiler.register_lints() {
                 register_lints(sess, &mut lint_store);
                 true
@@ -806,14 +800,15 @@ fn main_options(options: config::Options) -> MainResult {
             // FIXME(#83761): Resolver cloning can lead to inconsistencies between data in the
             // two copies because one of the copies can be modified after `TyCtxt` construction.
             let (resolver, resolver_caches) = {
-                let (krate, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
+                let expansion = abort_on_err(queries.expansion(), sess);
+                let (krate, resolver, _) = &*expansion.borrow();
                 let resolver_caches = resolver.borrow_mut().access(|resolver| {
                     collect_intra_doc_links::early_resolve_intra_doc_links(
                         resolver,
                         sess,
                         krate,
                         externs,
-                        document_private,
+                        render_options.document_private,
                     )
                 });
                 (resolver.clone(), resolver_caches)
@@ -823,7 +818,7 @@ fn main_options(options: config::Options) -> MainResult {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).peek_mut();
+            let global_ctxt = abort_on_err(queries.global_ctxt(), sess);
 
             global_ctxt.enter(|tcx| {
                 let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
@@ -839,7 +834,14 @@ fn main_options(options: config::Options) -> MainResult {
                 info!("finished with rustc");
 
                 if let Some(options) = scrape_examples_options {
-                    return scrape_examples::run(krate, render_opts, cache, tcx, options);
+                    return scrape_examples::run(
+                        krate,
+                        render_opts,
+                        cache,
+                        tcx,
+                        options,
+                        bin_crate,
+                    );
                 }
 
                 cache.crate_version = crate_version;

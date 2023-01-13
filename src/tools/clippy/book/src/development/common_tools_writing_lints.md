@@ -123,7 +123,8 @@ There are three ways to do this, depending on if the target trait has a
 diagnostic item, lang item or neither.
 
 ```rust
-use clippy_utils::{implements_trait, is_trait_method, match_trait_method, paths};
+use clippy_utils::ty::implements_trait;
+use clippy_utils::is_trait_method;
 use rustc_span::symbol::sym;
 
 impl LateLintPass<'_> for MyStructLint {
@@ -143,13 +144,6 @@ impl LateLintPass<'_> for MyStructLint {
             .map_or(false, |id| implements_trait(cx, ty, id, &[])) {
                 // `expr` implements `Drop` trait
             }
-
-        // 3. Using the type path with the expression
-        // we use `match_trait_method` function from Clippy's utils
-        // (This method should be avoided if possible)
-        if match_trait_method(cx, expr, &paths::INTO) {
-            // `expr` implements `Into` trait
-        }
     }
 }
 ```
@@ -233,8 +227,9 @@ functions to deal with macros:
   crates
 
   ```rust
-  #[macro_use]
-  extern crate a_crate_with_macros;
+  use rustc_middle::lint::in_external_macro;
+
+  use a_crate_with_macros::foo;
 
   // `foo` is defined in `a_crate_with_macros`
   foo!("bar");

@@ -1,7 +1,7 @@
 //! A helper class for dealing with static archives
 
 use std::env;
-use std::ffi::{CStr, CString, OsString};
+use std::ffi::{c_char, c_void, CStr, CString, OsString};
 use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -9,15 +9,22 @@ use std::ptr;
 use std::str;
 
 use crate::common;
+use crate::errors::{
+    DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary, ErrorWritingDEFFile,
+};
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
-use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
+use rustc_codegen_ssa::back::archive::{
+    get_native_object_symbols, ArArchiveBuilder, ArchiveBuildFailure, ArchiveBuilder,
+    ArchiveBuilderBuilder, UnknownArchiveKind,
+};
+
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 
 /// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]
-pub struct LlvmArchiveBuilder<'a> {
+pub(crate) struct LlvmArchiveBuilder<'a> {
     sess: &'a Session,
     additions: Vec<Addition>,
 }
@@ -86,7 +93,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     fn build(mut self: Box<Self>, output: &Path) -> bool {
         match self.build_with_llvm(output) {
             Ok(any_members) => any_members,
-            Err(e) => self.sess.fatal(&format!("failed to build archive: {}", e)),
+            Err(e) => self.sess.emit_fatal(ArchiveBuildFailure { error: e }),
         }
     }
 }
@@ -95,7 +102,11 @@ pub struct LlvmArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
-        Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
+        if sess.target.arch == "wasm32" || sess.target.arch == "wasm64" {
+            Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
+        } else {
+            Box::new(ArArchiveBuilder::new(sess, get_llvm_object_symbols))
+        }
     }
 
     fn create_dll_import_lib(
@@ -104,10 +115,12 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         lib_name: &str,
         dll_imports: &[DllImport],
         tmpdir: &Path,
+        is_direct_dependency: bool,
     ) -> PathBuf {
+        let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
         let output_path = {
             let mut output_path: PathBuf = tmpdir.to_path_buf();
-            output_path.push(format!("{}_imports", lib_name));
+            output_path.push(format!("{}{}", lib_name, name_suffix));
             output_path.with_extension("lib")
         };
 
@@ -134,7 +147,8 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             // that loaded but crashed with an AV upon calling one of the imported
             // functions.  Therefore, use binutils to create the import library instead,
             // by writing a .DEF file to the temp dir and calling binutils's dlltool.
-            let def_file_path = tmpdir.join(format!("{}_imports", lib_name)).with_extension("def");
+            let def_file_path =
+                tmpdir.join(format!("{}{}", lib_name, name_suffix)).with_extension("def");
 
             let def_file_content = format!(
                 "EXPORTS\n{}",
@@ -153,7 +167,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             match std::fs::write(&def_file_path, def_file_content) {
                 Ok(_) => {}
                 Err(e) => {
-                    sess.fatal(&format!("Error writing .DEF file: {}", e));
+                    sess.emit_fatal(ErrorWritingDEFFile { error: e });
                 }
             };
 
@@ -175,13 +189,14 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
 
             match result {
                 Err(e) => {
-                    sess.fatal(&format!("Error calling dlltool: {}", e));
+                    sess.emit_fatal(ErrorCallingDllTool { error: e });
                 }
-                Ok(output) if !output.status.success() => sess.fatal(&format!(
-                    "Dlltool could not create import library: {}\n{}",
-                    String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr)
-                )),
+                Ok(output) if !output.status.success() => {
+                    sess.emit_fatal(DlltoolFailImportLibrary {
+                        stdout: String::from_utf8_lossy(&output.stdout),
+                        stderr: String::from_utf8_lossy(&output.stderr),
+                    })
+                }
                 _ => {}
             }
         } else {
@@ -229,11 +244,10 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             };
 
             if result == crate::llvm::LLVMRustResult::Failure {
-                sess.fatal(&format!(
-                    "Error creating import library for {}: {}",
+                sess.emit_fatal(ErrorCreatingImportLibrary {
                     lib_name,
-                    llvm::last_error().unwrap_or("unknown LLVM error".to_string())
-                ));
+                    error: llvm::last_error().unwrap_or("unknown LLVM error".to_string()),
+                });
             }
         };
 
@@ -241,12 +255,68 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
     }
 }
 
+// The object crate doesn't know how to get symbols for LLVM bitcode and COFF bigobj files.
+// As such we need to use LLVM for them.
+#[deny(unsafe_op_in_unsafe_fn)]
+fn get_llvm_object_symbols(
+    buf: &[u8],
+    f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
+) -> io::Result<bool> {
+    let is_bitcode = unsafe { llvm::LLVMRustIsBitcode(buf.as_ptr(), buf.len()) };
+
+    // COFF bigobj file, msvc LTO file or import library. See
+    // https://github.com/llvm/llvm-project/blob/453f27bc9/llvm/lib/BinaryFormat/Magic.cpp#L38-L51
+    let is_unsupported_windows_obj_file = buf.get(0..4) == Some(b"\0\0\xFF\xFF");
+
+    if is_bitcode || is_unsupported_windows_obj_file {
+        let mut state = Box::new(f);
+
+        let err = unsafe {
+            llvm::LLVMRustGetSymbols(
+                buf.as_ptr(),
+                buf.len(),
+                &mut *state as *mut &mut _ as *mut c_void,
+                callback,
+                error_callback,
+            )
+        };
+
+        if err.is_null() {
+            return Ok(true);
+        } else {
+            return Err(unsafe { *Box::from_raw(err as *mut io::Error) });
+        }
+
+        unsafe extern "C" fn callback(
+            state: *mut c_void,
+            symbol_name: *const c_char,
+        ) -> *mut c_void {
+            let f = unsafe { &mut *(state as *mut &mut dyn FnMut(&[u8]) -> io::Result<()>) };
+            match f(unsafe { CStr::from_ptr(symbol_name) }.to_bytes()) {
+                Ok(()) => std::ptr::null_mut(),
+                Err(err) => Box::into_raw(Box::new(err)) as *mut c_void,
+            }
+        }
+
+        unsafe extern "C" fn error_callback(error: *const c_char) -> *mut c_void {
+            let error = unsafe { CStr::from_ptr(error) };
+            Box::into_raw(Box::new(io::Error::new(
+                io::ErrorKind::Other,
+                format!("LLVM error: {}", error.to_string_lossy()),
+            ))) as *mut c_void
+        }
+    } else {
+        get_native_object_symbols(buf, f)
+    }
+}
+
 impl<'a> LlvmArchiveBuilder<'a> {
     fn build_with_llvm(&mut self, output: &Path) -> io::Result<bool> {
         let kind = &*self.sess.target.archive_format;
-        let kind = kind.parse::<ArchiveKind>().map_err(|_| kind).unwrap_or_else(|kind| {
-            self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
-        });
+        let kind = kind
+            .parse::<ArchiveKind>()
+            .map_err(|_| kind)
+            .unwrap_or_else(|kind| self.sess.emit_fatal(UnknownArchiveKind { kind }));
 
         let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();

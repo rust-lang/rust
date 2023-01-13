@@ -104,7 +104,7 @@ pub struct RawWakerVTable {
     /// pointer.
     wake_by_ref: unsafe fn(*const ()),
 
-    /// This function gets called when a [`RawWaker`] gets dropped.
+    /// This function gets called when a [`Waker`] gets dropped.
     ///
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
@@ -151,7 +151,7 @@ impl RawWakerVTable {
     ///
     /// # `drop`
     ///
-    /// This function gets called when a [`RawWaker`] gets dropped.
+    /// This function gets called when a [`Waker`] gets dropped.
     ///
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
@@ -181,22 +181,27 @@ pub struct Context<'a> {
     // are contravariant while return-position lifetimes are
     // covariant).
     _marker: PhantomData<fn(&'a ()) -> &'a ()>,
+    // Ensure `Context` is `!Send` and `!Sync` in order to allow
+    // for future `!Send` and / or `!Sync` fields.
+    _marker2: PhantomData<*mut ()>,
 }
 
 impl<'a> Context<'a> {
     /// Create a new `Context` from a [`&Waker`](Waker).
     #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     #[must_use]
     #[inline]
-    pub fn from_waker(waker: &'a Waker) -> Self {
-        Context { waker, _marker: PhantomData }
+    pub const fn from_waker(waker: &'a Waker) -> Self {
+        Context { waker, _marker: PhantomData, _marker2: PhantomData }
     }
 
     /// Returns a reference to the [`Waker`] for the current task.
     #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     #[must_use]
     #[inline]
-    pub fn waker(&self) -> &'a Waker {
+    pub const fn waker(&self) -> &'a Waker {
         &self.waker
     }
 }
@@ -311,7 +316,8 @@ impl Waker {
     #[inline]
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    pub unsafe fn from_raw(waker: RawWaker) -> Waker {
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    pub const unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker { waker }
     }
 

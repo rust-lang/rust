@@ -1,0 +1,25 @@
+error: cannot find attribute `derive_Clone` in this scope
+  --> $DIR/issue-32655.rs:3:11
+   |
+LL |         #[derive_Clone]
+   |           ^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `derive_const`
+...
+LL | foo!();
+   | ------ in this macro invocation
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+   |
+   = note: similarly named attribute macro `derive_const` defined here
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot find attribute `derive_Clone` in this scope
+  --> $DIR/issue-32655.rs:15:7
+   |
+LL |     #[derive_Clone]
+   |       ^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `derive_const`
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+   |
+   = note: similarly named attribute macro `derive_const` defined here
+
+error: aborting due to 2 previous errors
+

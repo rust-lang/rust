@@ -7,14 +7,17 @@ use std::{
 
 use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData, IntTy, Scalar};
 use hir_def::{
+    builtin_type::BuiltinInt,
     expr::{ArithOp, BinaryOp, Expr, ExprId, Literal, Pat, PatId},
     path::ModPath,
     resolver::{resolver_for_expr, ResolveValueResult, Resolver, ValueNs},
+    src::HasChildSource,
     type_ref::ConstScalar,
-    ConstId, DefWithBodyId,
+    ConstId, DefWithBodyId, EnumVariantId, Lookup,
 };
-use la_arena::{Arena, Idx};
+use la_arena::{Arena, Idx, RawIdx};
 use stdx::never;
+use syntax::ast::HasName;
 
 use crate::{
     db::HirDatabase, infer::InferenceContext, lower::ParamLoweringMode, to_placeholder_idx,
@@ -77,6 +80,7 @@ pub enum ConstEvalError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComputedExpr {
     Literal(Literal),
+    Enum(String, EnumVariantId, Literal),
     Tuple(Box<[ComputedExpr]>),
 }
 
@@ -86,14 +90,14 @@ impl Display for ComputedExpr {
             ComputedExpr::Literal(l) => match l {
                 Literal::Int(x, _) => {
                     if *x >= 10 {
-                        write!(f, "{} ({:#X})", x, x)
+                        write!(f, "{x} ({x:#X})")
                     } else {
                         x.fmt(f)
                     }
                 }
                 Literal::Uint(x, _) => {
                     if *x >= 10 {
-                        write!(f, "{} ({:#X})", x, x)
+                        write!(f, "{x} ({x:#X})")
                     } else {
                         x.fmt(f)
                     }
@@ -104,6 +108,7 @@ impl Display for ComputedExpr {
                 Literal::String(x) => std::fmt::Debug::fmt(x, f),
                 Literal::ByteString(x) => std::fmt::Debug::fmt(x, f),
             },
+            ComputedExpr::Enum(name, _, _) => name.fmt(f),
             ComputedExpr::Tuple(t) => {
                 f.write_char('(')?;
                 for x in &**t {
@@ -126,7 +131,7 @@ fn scalar_max(scalar: &Scalar) -> i128 {
             IntTy::I16 => i16::MAX as i128,
             IntTy::I32 => i32::MAX as i128,
             IntTy::I64 => i64::MAX as i128,
-            IntTy::I128 => i128::MAX as i128,
+            IntTy::I128 => i128::MAX,
         },
         Scalar::Uint(x) => match x {
             chalk_ir::UintTy::Usize => usize::MAX as i128,
@@ -134,7 +139,7 @@ fn scalar_max(scalar: &Scalar) -> i128 {
             chalk_ir::UintTy::U16 => u16::MAX as i128,
             chalk_ir::UintTy::U32 => u32::MAX as i128,
             chalk_ir::UintTy::U64 => u64::MAX as i128,
-            chalk_ir::UintTy::U128 => i128::MAX as i128, // ignore too big u128 for now
+            chalk_ir::UintTy::U128 => i128::MAX, // ignore too big u128 for now
         },
         Scalar::Float(_) => 0,
     }
@@ -148,13 +153,51 @@ fn is_valid(scalar: &Scalar, value: i128) -> bool {
     }
 }
 
+fn get_name(ctx: &mut ConstEvalCtx<'_>, variant: EnumVariantId) -> String {
+    let loc = variant.parent.lookup(ctx.db.upcast());
+    let children = variant.parent.child_source(ctx.db.upcast());
+    let item_tree = loc.id.item_tree(ctx.db.upcast());
+
+    let variant_name = children.value[variant.local_id].name();
+    let enum_name = item_tree[loc.id.value].name.to_string();
+    enum_name + "::" + &variant_name.unwrap().to_string()
+}
+
 pub fn eval_const(
     expr_id: ExprId,
     ctx: &mut ConstEvalCtx<'_>,
 ) -> Result<ComputedExpr, ConstEvalError> {
+    let u128_to_i128 = |it: u128| -> Result<i128, ConstEvalError> {
+        it.try_into().map_err(|_| ConstEvalError::NotSupported("u128 is too big"))
+    };
+
     let expr = &ctx.exprs[expr_id];
     match expr {
-        Expr::Missing => Err(ConstEvalError::IncompleteExpr),
+        Expr::Missing => match ctx.owner {
+            // evaluate the implicit variant index of an enum variant without expression
+            // FIXME: This should return the type of the enum representation
+            DefWithBodyId::VariantId(variant) => {
+                let prev_idx: u32 = variant.local_id.into_raw().into();
+                let prev_idx = prev_idx.checked_sub(1).map(RawIdx::from).map(Idx::from_raw);
+                let value = match prev_idx {
+                    Some(local_id) => {
+                        let prev_variant = EnumVariantId { local_id, parent: variant.parent };
+                        1 + match ctx.db.const_eval_variant(prev_variant)? {
+                            ComputedExpr::Literal(Literal::Int(v, _)) => v,
+                            ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
+                            _ => {
+                                return Err(ConstEvalError::NotSupported(
+                                    "Enum can't contain this kind of value",
+                                ))
+                            }
+                        }
+                    }
+                    _ => 0,
+                };
+                Ok(ComputedExpr::Literal(Literal::Int(value, Some(BuiltinInt::I128))))
+            }
+            _ => Err(ConstEvalError::IncompleteExpr),
+        },
         Expr::Literal(l) => Ok(ComputedExpr::Literal(l.clone())),
         &Expr::UnaryOp { expr, op } => {
             let ty = &ctx.expr_ty(expr);
@@ -167,9 +210,7 @@ pub fn eval_const(
                             return Ok(ComputedExpr::Literal(Literal::Bool(!b)))
                         }
                         ComputedExpr::Literal(Literal::Int(v, _)) => v,
-                        ComputedExpr::Literal(Literal::Uint(v, _)) => v
-                            .try_into()
-                            .map_err(|_| ConstEvalError::NotSupported("too big u128"))?,
+                        ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
                         _ => return Err(ConstEvalError::NotSupported("this kind of operator")),
                     };
                     let r = match ty.kind(Interner) {
@@ -198,9 +239,7 @@ pub fn eval_const(
                 hir_def::expr::UnaryOp::Neg => {
                     let v = match ev {
                         ComputedExpr::Literal(Literal::Int(v, _)) => v,
-                        ComputedExpr::Literal(Literal::Uint(v, _)) => v
-                            .try_into()
-                            .map_err(|_| ConstEvalError::NotSupported("too big u128"))?,
+                        ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
                         _ => return Err(ConstEvalError::NotSupported("this kind of operator")),
                     };
                     Ok(ComputedExpr::Literal(Literal::Int(
@@ -219,16 +258,12 @@ pub fn eval_const(
             let op = op.ok_or(ConstEvalError::IncompleteExpr)?;
             let v1 = match lhs {
                 ComputedExpr::Literal(Literal::Int(v, _)) => v,
-                ComputedExpr::Literal(Literal::Uint(v, _)) => {
-                    v.try_into().map_err(|_| ConstEvalError::NotSupported("too big u128"))?
-                }
+                ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
                 _ => return Err(ConstEvalError::NotSupported("this kind of operator")),
             };
             let v2 = match rhs {
                 ComputedExpr::Literal(Literal::Int(v, _)) => v,
-                ComputedExpr::Literal(Literal::Uint(v, _)) => {
-                    v.try_into().map_err(|_| ConstEvalError::NotSupported("too big u128"))?
-                }
+                ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
                 _ => return Err(ConstEvalError::NotSupported("this kind of operator")),
             };
             match op {
@@ -316,15 +351,17 @@ pub fn eval_const(
                         .infer
                         .assoc_resolutions_for_expr(expr_id)
                         .ok_or(ConstEvalError::SemanticError("unresolved assoc item"))?
+                        .0
                     {
                         hir_def::AssocItemId::FunctionId(_) => {
                             Err(ConstEvalError::NotSupported("assoc function"))
                         }
+                        // FIXME use actual impl for trait assoc const
                         hir_def::AssocItemId::ConstId(c) => ctx.db.const_eval(c),
                         hir_def::AssocItemId::TypeAliasId(_) => {
                             Err(ConstEvalError::NotSupported("assoc type alias"))
                         }
-                    }
+                    };
                 }
             };
             match pr {
@@ -339,9 +376,22 @@ pub fn eval_const(
                 ValueNs::GenericParam(_) => {
                     Err(ConstEvalError::NotSupported("const generic without substitution"))
                 }
+                ValueNs::EnumVariantId(id) => match ctx.db.const_eval_variant(id)? {
+                    ComputedExpr::Literal(lit) => {
+                        Ok(ComputedExpr::Enum(get_name(ctx, id), id, lit))
+                    }
+                    _ => Err(ConstEvalError::NotSupported(
+                        "Enums can't evalute to anything but numbers",
+                    )),
+                },
                 _ => Err(ConstEvalError::NotSupported("path that are not const or local")),
             }
         }
+        // FIXME: Handle the cast target
+        &Expr::Cast { expr, .. } => match eval_const(expr, ctx)? {
+            ComputedExpr::Enum(_, _, lit) => Ok(ComputedExpr::Literal(lit)),
+            _ => Err(ConstEvalError::NotSupported("Can't cast these types")),
+        },
         _ => Err(ConstEvalError::NotSupported("This kind of expression")),
     }
 }
@@ -354,7 +404,7 @@ pub(crate) fn path_to_const(
     args_lazy: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
 ) -> Option<Const> {
-    match resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
+    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
             let args = args_lazy();
@@ -412,7 +462,15 @@ pub(crate) fn const_eval_recover(
     Err(ConstEvalError::Loop)
 }
 
-pub(crate) fn const_eval_query(
+pub(crate) fn const_eval_variant_recover(
+    _: &dyn HirDatabase,
+    _: &[String],
+    _: &EnumVariantId,
+) -> Result<ComputedExpr, ConstEvalError> {
+    Err(ConstEvalError::Loop)
+}
+
+pub(crate) fn const_eval_variant_query(
     db: &dyn HirDatabase,
     const_id: ConstId,
 ) -> Result<ComputedExpr, ConstEvalError> {
@@ -433,10 +491,30 @@ pub(crate) fn const_eval_query(
     result
 }
 
-pub(crate) fn eval_to_const<'a>(
+pub(crate) fn const_eval_query_variant(
+    db: &dyn HirDatabase,
+    variant_id: EnumVariantId,
+) -> Result<ComputedExpr, ConstEvalError> {
+    let def = variant_id.into();
+    let body = db.body(def);
+    let infer = &db.infer(def);
+    eval_const(
+        body.body_expr,
+        &mut ConstEvalCtx {
+            db,
+            owner: def,
+            exprs: &body.exprs,
+            pats: &body.pats,
+            local_data: HashMap::default(),
+            infer,
+        },
+    )
+}
+
+pub(crate) fn eval_to_const(
     expr: Idx<Expr>,
     mode: ParamLoweringMode,
-    ctx: &mut InferenceContext<'a>,
+    ctx: &mut InferenceContext<'_>,
     args: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
 ) -> Const {

@@ -4,13 +4,13 @@ error: some fields in `NoGeneric` are not safe to be sent to another thread
 LL | unsafe impl Send for NoGeneric {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::non-send-fields-in-send-ty` implied by `-D warnings`
 note: it is not safe to send field `rc_is_not_send` to another thread
   --> $DIR/test.rs:8:5
    |
 LL |     rc_is_not_send: Rc<String>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
+   = note: `-D clippy::non-send-fields-in-send-ty` implied by `-D warnings`
 
 error: some fields in `MultiField<T>` are not safe to be sent to another thread
   --> $DIR/test.rs:19:1

@@ -7,7 +7,7 @@
     clippy::unit_arg,
     clippy::match_ref_pats,
     clippy::redundant_pattern_matching,
-    clippy::for_loops_over_fallibles,
+    for_loops_over_fallibles,
     dead_code
 )]
 

@@ -164,7 +164,6 @@ pub fn completions(
                 completions::vis::complete_vis_path(&mut completions, ctx, path_ctx, has_in_token);
             }
         }
-        // prevent `(` from triggering unwanted completion noise
         return Some(completions.into());
     }
 
@@ -183,6 +182,7 @@ pub fn completions(
             CompletionAnalysis::String { original, expanded: Some(expanded) } => {
                 completions::extern_abi::complete_extern_abi(acc, ctx, expanded);
                 completions::format_string::format_string(acc, ctx, original, expanded);
+                completions::env_vars::complete_cargo_env_vars(acc, ctx, expanded);
             }
             CompletionAnalysis::UnexpandedAttrTT {
                 colon_prefix,
@@ -234,7 +234,12 @@ pub fn resolve_completion_edits(
         );
         let import = items_with_name
             .filter_map(|candidate| {
-                current_module.find_use_path_prefixed(db, candidate, config.insert_use.prefix_kind)
+                current_module.find_use_path_prefixed(
+                    db,
+                    candidate,
+                    config.insert_use.prefix_kind,
+                    config.prefer_no_std,
+                )
             })
             .find(|mod_path| mod_path.to_string() == full_import_path);
         if let Some(import_path) = import {

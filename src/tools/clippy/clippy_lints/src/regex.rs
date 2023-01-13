@@ -172,7 +172,7 @@ fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
                     );
                 },
                 Err(e) => {
-                    span_lint(cx, INVALID_REGEX, expr.span, &format!("regex syntax error: {}", e));
+                    span_lint(cx, INVALID_REGEX, expr.span, &format!("regex syntax error: {e}"));
                 },
             }
         }
@@ -200,7 +200,7 @@ fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
                 );
             },
             Err(e) => {
-                span_lint(cx, INVALID_REGEX, expr.span, &format!("regex syntax error: {}", e));
+                span_lint(cx, INVALID_REGEX, expr.span, &format!("regex syntax error: {e}"));
             },
         }
     }

@@ -5,7 +5,7 @@ use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
 
 pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
-    /// Remember to add all intrinsics here, in `compiler/rustc_typeck/src/check/mod.rs`,
+    /// Remember to add all intrinsics here, in `compiler/rustc_hir_analysis/src/check/mod.rs`,
     /// and in `library/core/src/intrinsics.rs`; if you need access to any LLVM intrinsics,
     /// add them to `compiler/rustc_codegen_llvm/src/context.rs`.
     fn codegen_intrinsic_call(

@@ -4,8 +4,10 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use rustc_session::config::CrateType;
 use rustc_session::cstore::{DllCallingConvention, DllImport, NativeLib, PeImportNameType};
 use rustc_session::parse::feature_err;
+use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
@@ -16,12 +18,62 @@ use crate::errors::{
     FrameworkOnlyWindows, ImportNameTypeForm, ImportNameTypeRaw, ImportNameTypeX86,
     IncompatibleWasmLink, InvalidLinkModifier, LibFrameworkApple, LinkCfgForm,
     LinkCfgSinglePredicate, LinkFrameworkApple, LinkKindForm, LinkModifiersForm, LinkNameForm,
-    LinkOrdinalRawDylib, LinkRequiresName, MultipleCfgs, MultipleImportNameType,
-    MultipleKindsInLink, MultipleLinkModifiers, MultipleModifiers, MultipleNamesInLink,
-    MultipleRenamings, MultipleWasmImport, NoLinkModOverride, RawDylibNoNul, RenamingNoLink,
-    UnexpectedLinkArg, UnknownImportNameType, UnknownLinkKind, UnknownLinkModifier, UnsupportedAbi,
-    UnsupportedAbiI686, WasmImportForm, WholeArchiveNeedsStatic,
+    LinkOrdinalRawDylib, LinkRequiresName, MissingNativeLibrary, MultipleCfgs,
+    MultipleImportNameType, MultipleKindsInLink, MultipleLinkModifiers, MultipleModifiers,
+    MultipleNamesInLink, MultipleRenamings, MultipleWasmImport, NoLinkModOverride, RawDylibNoNul,
+    RenamingNoLink, UnexpectedLinkArg, UnknownImportNameType, UnknownLinkKind, UnknownLinkModifier,
+    UnsupportedAbi, UnsupportedAbiI686, WasmImportForm, WholeArchiveNeedsStatic,
 };
+
+use std::path::PathBuf;
+
+pub fn find_native_static_library(
+    name: &str,
+    verbatim: bool,
+    search_paths: &[PathBuf],
+    sess: &Session,
+) -> PathBuf {
+    let formats = if verbatim {
+        vec![("".into(), "".into())]
+    } else {
+        let os = (sess.target.staticlib_prefix.clone(), sess.target.staticlib_suffix.clone());
+        // On Windows, static libraries sometimes show up as libfoo.a and other
+        // times show up as foo.lib
+        let unix = ("lib".into(), ".a".into());
+        if os == unix { vec![os] } else { vec![os, unix] }
+    };
+
+    for path in search_paths {
+        for (prefix, suffix) in &formats {
+            let test = path.join(format!("{prefix}{name}{suffix}"));
+            if test.exists() {
+                return test;
+            }
+        }
+    }
+
+    sess.emit_fatal(MissingNativeLibrary::new(name, verbatim));
+}
+
+fn find_bundled_library(
+    name: Option<Symbol>,
+    verbatim: Option<bool>,
+    kind: NativeLibKind,
+    sess: &Session,
+) -> Option<Symbol> {
+    if sess.opts.unstable_opts.packed_bundled_libs &&
+            sess.crate_types().iter().any(|ct| ct == &CrateType::Rlib || ct == &CrateType::Staticlib) &&
+            let NativeLibKind::Static { bundle: Some(true) | None, .. } = kind {
+        find_native_static_library(
+            name.unwrap().as_str(),
+            verbatim.unwrap_or(false),
+            &sess.target_filesearch(PathKind::Native).search_path_dirs(),
+            sess,
+        ).file_name().and_then(|s| s.to_str()).map(Symbol::intern)
+    } else {
+        None
+    }
+}
 
 pub(crate) fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
     let mut collector = Collector { tcx, libs: Vec::new() };
@@ -46,7 +98,7 @@ struct Collector<'tcx> {
 
 impl<'tcx> Collector<'tcx> {
     fn process_item(&mut self, id: rustc_hir::ItemId) {
-        if !matches!(self.tcx.def_kind(id.def_id), DefKind::ForeignMod) {
+        if !matches!(self.tcx.def_kind(id.owner_id), DefKind::ForeignMod) {
             return;
         }
 
@@ -259,10 +311,7 @@ impl<'tcx> Collector<'tcx> {
                             sess.emit_err(BundleNeedsStatic { span });
                         }
 
-                        ("verbatim", _) => {
-                            report_unstable_modifier!(native_link_modifiers_verbatim);
-                            assign_modifier(&mut verbatim)
-                        }
+                        ("verbatim", _) => assign_modifier(&mut verbatim),
 
                         ("whole-archive", Some(NativeLibKind::Static { whole_archive, .. })) => {
                             assign_modifier(whole_archive)
@@ -320,17 +369,17 @@ impl<'tcx> Collector<'tcx> {
                 }
                 _ => {
                     for child_item in foreign_mod_items {
-                        if self.tcx.def_kind(child_item.id.def_id).has_codegen_attrs()
+                        if self.tcx.def_kind(child_item.id.owner_id).has_codegen_attrs()
                             && self
                                 .tcx
-                                .codegen_fn_attrs(child_item.id.def_id)
+                                .codegen_fn_attrs(child_item.id.owner_id)
                                 .link_ordinal
                                 .is_some()
                         {
                             let link_ordinal_attr = self
                                 .tcx
                                 .hir()
-                                .attrs(self.tcx.hir().local_def_id_to_hir_id(child_item.id.def_id))
+                                .attrs(child_item.id.owner_id.into())
                                 .iter()
                                 .find(|a| a.has_name(sym::link_ordinal))
                                 .unwrap();
@@ -341,11 +390,16 @@ impl<'tcx> Collector<'tcx> {
                     Vec::new()
                 }
             };
+
+            let name = name.map(|(name, _)| name);
+            let kind = kind.unwrap_or(NativeLibKind::Unspecified);
+            let filename = find_bundled_library(name, verbatim, kind, sess);
             self.libs.push(NativeLib {
-                name: name.map(|(name, _)| name),
-                kind: kind.unwrap_or(NativeLibKind::Unspecified),
+                name,
+                filename,
+                kind,
                 cfg,
-                foreign_module: Some(it.def_id.to_def_id()),
+                foreign_module: Some(it.owner_id.to_def_id()),
                 wasm_import_module: wasm_import_module.map(|(name, _)| name),
                 verbatim,
                 dll_imports,
@@ -423,8 +477,13 @@ impl<'tcx> Collector<'tcx> {
             if existing.is_empty() {
                 // Add if not found
                 let new_name: Option<&str> = passed_lib.new_name.as_deref();
+                let name = Some(Symbol::intern(new_name.unwrap_or(&passed_lib.name)));
+                let sess = self.tcx.sess;
+                let filename =
+                    find_bundled_library(name, passed_lib.verbatim, passed_lib.kind, sess);
                 self.libs.push(NativeLib {
-                    name: Some(Symbol::intern(new_name.unwrap_or(&passed_lib.name))),
+                    name,
+                    filename,
                     kind: passed_lib.kind,
                     cfg: None,
                     foreign_module: None,
@@ -443,7 +502,7 @@ impl<'tcx> Collector<'tcx> {
     fn i686_arg_list_size(&self, item: &hir::ForeignItemRef) -> usize {
         let argument_types: &List<Ty<'_>> = self.tcx.erase_late_bound_regions(
             self.tcx
-                .type_of(item.id.def_id)
+                .type_of(item.id.owner_id)
                 .fn_sig(self.tcx)
                 .inputs()
                 .map_bound(|slice| self.tcx.mk_type_list(slice.iter())),
@@ -495,18 +554,17 @@ impl<'tcx> Collector<'tcx> {
             }
         };
 
-        let import_name_type = self
-            .tcx
-            .codegen_fn_attrs(item.id.def_id)
+        let codegen_fn_attrs = self.tcx.codegen_fn_attrs(item.id.owner_id);
+        let import_name_type = codegen_fn_attrs
             .link_ordinal
             .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
 
         DllImport {
-            name: item.ident.name,
+            name: codegen_fn_attrs.link_name.unwrap_or(item.ident.name),
             import_name_type,
             calling_convention,
             span: item.span,
-            is_fn: self.tcx.def_kind(item.id.def_id).is_fn_like(),
+            is_fn: self.tcx.def_kind(item.id.owner_id).is_fn_like(),
         }
     }
 }

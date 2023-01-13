@@ -1,0 +1,20 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/missing-close-brace-in-struct.rs:13:65
+   |
+LL | pub(crate) struct Bar<T> {
+   |                          - unclosed delimiter
+...
+LL | fn main() {}
+   |                                                                 ^
+
+error: expected identifier, found keyword `trait`
+  --> $DIR/missing-close-brace-in-struct.rs:4:1
+   |
+LL | pub(crate) struct Bar<T> {
+   |                   --- while parsing this struct
+...
+LL | trait T {
+   | ^^^^^ expected identifier, found keyword
+
+error: aborting due to 2 previous errors
+

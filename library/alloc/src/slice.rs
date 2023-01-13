@@ -16,9 +16,7 @@ use core::borrow::{Borrow, BorrowMut};
 #[cfg(not(no_global_oom_handling))]
 use core::cmp::Ordering::{self, Less};
 #[cfg(not(no_global_oom_handling))]
-use core::mem;
-#[cfg(not(no_global_oom_handling))]
-use core::mem::size_of;
+use core::mem::{self, SizedTypeProperties};
 #[cfg(not(no_global_oom_handling))]
 use core::ptr;
 
@@ -29,6 +27,9 @@ use crate::alloc::Global;
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
+
+#[cfg(test)]
+mod tests;
 
 #[unstable(feature = "slice_range", issue = "76393")]
 pub use core::slice::range;
@@ -205,7 +206,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        merge_sort(self, |a, b| a.lt(b));
+        merge_sort(self, T::lt);
     }
 
     /// Sorts the slice with a comparator function.
@@ -460,7 +461,7 @@ impl<T> [T] {
         hack::into_vec(self)
     }
 
-    /// Creates a vector by repeating a slice `n` times.
+    /// Creates a vector by copying a slice `n` times.
     ///
     /// # Panics
     ///
@@ -655,7 +656,7 @@ impl [u8] {
 ///
 /// ```error
 /// error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predica
-///    --> src/liballoc/slice.rs:608:6
+///    --> library/alloc/src/slice.rs:608:6
 ///     |
 /// 608 | impl<T: Clone, V: Borrow<[T]>> Concat for [V] {
 ///     |      ^ unconstrained type parameter
@@ -1018,7 +1019,7 @@ where
     const MIN_RUN: usize = 10;
 
     // Sorting has no meaningful behavior on zero-sized types.
-    if size_of::<T>() == 0 {
+    if T::IS_ZST {
         return;
     }
 

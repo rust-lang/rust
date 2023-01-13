@@ -1,5 +1,11 @@
 #![stable(feature = "wake_trait", since = "1.51.0")]
+
 //! Types and Traits for working with asynchronous tasks.
+//!
+//! **Note**: This module is only available on platforms that support atomic
+//! loads and stores of pointers. This may be detected at compile time using
+//! `#[cfg(target_has_atomic = "ptr")]`.
+
 use core::mem::ManuallyDrop;
 use core::task::{RawWaker, RawWakerVTable, Waker};
 

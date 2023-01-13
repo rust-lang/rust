@@ -1,0 +1,60 @@
+// Check that scrape example code blocks have the expected colors.
+goto: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+show-text: true
+
+define-function: (
+    "check-colors",
+    (theme, highlight, highlight_focus, help_border, help_color, help_hover_border,
+     help_hover_color),
+    block {
+        local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false", }
+        reload:
+        wait-for: ".more-examples-toggle"
+        assert-css: (".scraped-example .example-wrap .rust span.highlight:not(.focus)", {
+            "background-color": |highlight|,
+        }, ALL)
+        assert-css: (".scraped-example .example-wrap .rust span.highlight.focus", {
+            "background-color": |highlight_focus|,
+        }, ALL)
+
+        assert-css: (".scraped-example-list .scrape-help", {
+            "border-color": |help_border|,
+            "color": |help_color|,
+        })
+        move-cursor-to: ".scraped-example-list .scrape-help"
+        assert-css: (".scraped-example-list .scrape-help:hover", {
+            "border-color": |help_hover_border|,
+            "color": |help_hover_color|,
+        })
+        // Moving the cursor to another item to not break next runs.
+        move-cursor-to: ".search-input"
+    }
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "highlight": "rgb(91, 59, 1)",
+    "highlight_focus": "rgb(124, 75, 15)",
+    "help_border": "rgb(170, 170, 170)",
+    "help_color": "rgb(238, 238, 238)",
+    "help_hover_border": "rgb(255, 255, 255)",
+    "help_hover_color": "rgb(255, 255, 255)",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "highlight": "rgb(91, 59, 1)",
+    "highlight_focus": "rgb(124, 75, 15)",
+    "help_border": "rgb(170, 170, 170)",
+    "help_color": "rgb(238, 238, 238)",
+    "help_hover_border": "rgb(255, 255, 255)",
+    "help_hover_color": "rgb(255, 255, 255)",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "highlight": "rgb(252, 255, 214)",
+    "highlight_focus": "rgb(246, 253, 176)",
+    "help_border": "rgb(85, 85, 85)",
+    "help_color": "rgb(51, 51, 51)",
+    "help_hover_border": "rgb(0, 0, 0)",
+    "help_hover_color": "rgb(0, 0, 0)",
+})

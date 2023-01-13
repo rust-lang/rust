@@ -441,6 +441,7 @@ class RustBuild(object):
 
             self.fix_bin_or_dylib("{}/bin/rustc".format(bin_root))
             self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
+            self.fix_bin_or_dylib("{}/libexec/rust-analyzer-proc-macro-srv".format(bin_root))
             lib_dir = "{}/lib".format(bin_root)
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
@@ -732,9 +733,19 @@ class RustBuild(object):
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
 
+        # Export Stage0 snapshot compiler related env variables
+        build_section = "target.{}".format(self.build)
+        host_triple_sanitized = self.build.replace("-", "_")
+        var_data = {
+            "CC": "cc", "CXX": "cxx", "LD": "linker", "AR": "ar", "RANLIB": "ranlib"
+        }
+        for var_name, toml_key in var_data.items():
+            toml_val = self.get_toml(toml_key, build_section)
+            if toml_val != None:
+                env["{}_{}".format(var_name, host_triple_sanitized)] = toml_val
+
         # preserve existing RUSTFLAGS
         env.setdefault("RUSTFLAGS", "")
-        build_section = "target.{}".format(self.build)
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
             target_features += ["+crt-static"]
@@ -771,7 +782,8 @@ class RustBuild(object):
         elif color == "never":
             args.append("--color=never")
 
-        run(args, env=env, verbose=self.verbose)
+        # Run this from the source directory so cargo finds .cargo/config
+        run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
 
     def build_triple(self):
         """Build triple as in LLVM

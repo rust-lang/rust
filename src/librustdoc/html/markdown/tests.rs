@@ -1,5 +1,5 @@
 use super::{find_testable_code, plain_text_summary, short_markdown_summary};
-use super::{ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
+use super::{ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, Markdown, MarkdownItemInfo};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 
 #[test]
@@ -279,14 +279,13 @@ fn test_plain_text_summary() {
 fn test_markdown_html_escape() {
     fn t(input: &str, expect: &str) {
         let mut idmap = IdMap::new();
-        let output =
-            MarkdownHtml(input, &mut idmap, ErrorCodes::Yes, DEFAULT_EDITION, &None).into_string();
+        let output = MarkdownItemInfo(input, &mut idmap).into_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 
-    t("`Struct<'a, T>`", "<p><code>Struct&lt;'a, T&gt;</code></p>\n");
-    t("Struct<'a, T>", "<p>Struct&lt;’a, T&gt;</p>\n");
-    t("Struct<br>", "<p>Struct&lt;br&gt;</p>\n");
+    t("`Struct<'a, T>`", "<code>Struct&lt;'a, T&gt;</code>");
+    t("Struct<'a, T>", "Struct&lt;’a, T&gt;");
+    t("Struct<br>", "Struct&lt;br&gt;");
 }
 
 #[test]
@@ -309,4 +308,49 @@ fn test_find_testable_code_line() {
     t("\n ```rust\n```", &[2]);
     t("```rust\n```\n```rust\n```", &[1, 3]);
     t("```rust\n```\n ```rust\n```", &[1, 3]);
+}
+
+#[test]
+fn test_ascii_with_prepending_hashtag() {
+    fn t(input: &str, expect: &str) {
+        let mut map = IdMap::new();
+        let output = Markdown {
+            content: input,
+            links: &[],
+            ids: &mut map,
+            error_codes: ErrorCodes::Yes,
+            edition: DEFAULT_EDITION,
+            playground: &None,
+            heading_offset: HeadingOffset::H2,
+        }
+        .into_string();
+        assert_eq!(output, expect, "original: {}", input);
+    }
+
+    t(
+        r#"```ascii
+#..#.####.#....#.....##..
+#..#.#....#....#....#..#.
+####.###..#....#....#..#.
+#..#.#....#....#....#..#.
+#..#.#....#....#....#..#.
+#..#.####.####.####..##..
+```"#,
+        "<div class=\"example-wrap\"><pre class=\"language-ascii\"><code>\
+#..#.####.#....#.....##..
+#..#.#....#....#....#..#.
+####.###..#....#....#..#.
+#..#.#....#....#....#..#.
+#..#.#....#....#....#..#.
+#..#.####.####.####..##..
+</code></pre></div>",
+    );
+    t(
+        r#"```markdown
+# hello
+```"#,
+        "<div class=\"example-wrap\"><pre class=\"language-markdown\"><code>\
+# hello
+</code></pre></div>",
+    );
 }

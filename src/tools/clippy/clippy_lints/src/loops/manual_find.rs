@@ -1,7 +1,7 @@
 use super::utils::make_iterator_snippet;
 use super::MANUAL_FIND;
 use clippy_utils::{
-    diagnostics::span_lint_and_then, higher, is_lang_ctor, path_res, peel_blocks_with_stmt,
+    diagnostics::span_lint_and_then, higher, is_res_lang_ctor, path_res, peel_blocks_with_stmt,
     source::snippet_with_applicability, ty::implements_trait,
 };
 use if_chain::if_chain;
@@ -30,8 +30,8 @@ pub(super) fn check<'tcx>(
         if let [stmt] = block.stmts;
         if let StmtKind::Semi(semi) = stmt.kind;
         if let ExprKind::Ret(Some(ret_value)) = semi.kind;
-        if let ExprKind::Call(Expr { kind: ExprKind::Path(ctor), .. }, [inner_ret]) = ret_value.kind;
-        if is_lang_ctor(cx, ctor, LangItem::OptionSome);
+        if let ExprKind::Call(ctor, [inner_ret]) = ret_value.kind;
+        if is_res_lang_ctor(cx, path_res(cx, ctor), LangItem::OptionSome);
         if path_res(cx, inner_ret) == Res::Local(binding_id);
         if let Some((last_stmt, last_ret)) = last_stmt_and_ret(cx, expr);
         then {
@@ -143,8 +143,7 @@ fn last_stmt_and_ret<'tcx>(
         if let Some((_, Node::Block(block))) = parent_iter.next();
         if let Some((last_stmt, last_ret)) = extract(block);
         if last_stmt.hir_id == node_hir;
-        if let ExprKind::Path(path) = &last_ret.kind;
-        if is_lang_ctor(cx, path, LangItem::OptionNone);
+        if is_res_lang_ctor(cx, path_res(cx, last_ret), LangItem::OptionNone);
         if let Some((_, Node::Expr(_block))) = parent_iter.next();
         // This includes the function header
         if let Some((_, func)) = parent_iter.next();

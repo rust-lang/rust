@@ -1,12 +1,13 @@
 use std::{
     env,
     fs::File,
-    io,
+    io::{self, BufWriter},
     path::{Path, PathBuf},
 };
 
 use flate2::{write::GzEncoder, Compression};
 use xshell::{cmd, Shell};
+use zip::{write::FileOptions, DateTime, ZipWriter};
 
 use crate::{date_iso, flags, project_root};
 
@@ -26,10 +27,10 @@ impl flags::Dist {
 
         if let Some(patch_version) = self.client_patch_version {
             let version = if stable {
-                format!("{}.{}", VERSION_STABLE, patch_version)
+                format!("{VERSION_STABLE}.{patch_version}")
             } else {
                 // A hack to make VS Code prefer nightly over stable.
-                format!("{}.{}", VERSION_NIGHTLY, patch_version)
+                format!("{VERSION_NIGHTLY}.{patch_version}")
             };
             dist_server(sh, &format!("{version}-standalone"), &target)?;
             let release_tag = if stable { date_iso(sh)? } else { "nightly".to_string() };
@@ -59,10 +60,10 @@ fn dist_client(
     let mut patch = Patch::new(sh, "./package.json")?;
     patch
         .replace(
-            &format!(r#""version": "{}.0-dev""#, VERSION_DEV),
-            &format!(r#""version": "{}""#, version),
+            &format!(r#""version": "{VERSION_DEV}.0-dev""#),
+            &format!(r#""version": "{version}""#),
         )
-        .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{}""#, release_tag))
+        .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{release_tag}""#))
         .replace(r#""$generated-start": {},"#, "")
         .replace(",\n                \"$generated-end\": {}", "")
         .replace(r#""enabledApiProposals": [],"#, r#""#);
@@ -89,6 +90,9 @@ fn dist_server(sh: &Shell, release: &str, target: &Target) -> anyhow::Result<()>
 
     let dst = Path::new("dist").join(&target.artifact_name);
     gzip(&target.server_path, &dst.with_extension("gz"))?;
+    if target_name.contains("-windows-") {
+        zip(&target.server_path, target.symbols_path.as_ref(), &dst.with_extension("zip"))?;
+    }
 
     Ok(())
 }
@@ -98,6 +102,38 @@ fn gzip(src_path: &Path, dest_path: &Path) -> anyhow::Result<()> {
     let mut input = io::BufReader::new(File::open(src_path)?);
     io::copy(&mut input, &mut encoder)?;
     encoder.finish()?;
+    Ok(())
+}
+
+fn zip(src_path: &Path, symbols_path: Option<&PathBuf>, dest_path: &Path) -> anyhow::Result<()> {
+    let file = File::create(dest_path)?;
+    let mut writer = ZipWriter::new(BufWriter::new(file));
+    writer.start_file(
+        src_path.file_name().unwrap().to_str().unwrap(),
+        FileOptions::default()
+            .last_modified_time(
+                DateTime::from_time(std::fs::metadata(src_path)?.modified()?.into()).unwrap(),
+            )
+            .unix_permissions(0o755)
+            .compression_method(zip::CompressionMethod::Deflated)
+            .compression_level(Some(9)),
+    )?;
+    let mut input = io::BufReader::new(File::open(src_path)?);
+    io::copy(&mut input, &mut writer)?;
+    if let Some(symbols_path) = symbols_path {
+        writer.start_file(
+            symbols_path.file_name().unwrap().to_str().unwrap(),
+            FileOptions::default()
+                .last_modified_time(
+                    DateTime::from_time(std::fs::metadata(src_path)?.modified()?.into()).unwrap(),
+                )
+                .compression_method(zip::CompressionMethod::Deflated)
+                .compression_level(Some(9)),
+        )?;
+        let mut input = io::BufReader::new(File::open(symbols_path)?);
+        io::copy(&mut input, &mut writer)?;
+    }
+    writer.finish()?;
     Ok(())
 }
 
@@ -130,8 +166,8 @@ impl Target {
         } else {
             (String::new(), None)
         };
-        let server_path = out_path.join(format!("rust-analyzer{}", exe_suffix));
-        let artifact_name = format!("rust-analyzer-{}{}", name, exe_suffix);
+        let server_path = out_path.join(format!("rust-analyzer{exe_suffix}"));
+        let artifact_name = format!("rust-analyzer-{name}{exe_suffix}");
         Self { name, server_path, symbols_path, artifact_name }
     }
 }

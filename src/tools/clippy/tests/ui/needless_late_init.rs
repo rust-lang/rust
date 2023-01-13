@@ -1,12 +1,13 @@
 // run-rustfix
 #![feature(let_chains)]
+#![allow(unused)]
 #![allow(
-    unused,
     clippy::assign_op_pattern,
     clippy::blocks_in_if_conditions,
     clippy::let_and_return,
     clippy::let_unit_value,
-    clippy::nonminimal_bool
+    clippy::nonminimal_bool,
+    clippy::uninlined_format_args
 )]
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};

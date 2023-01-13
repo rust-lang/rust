@@ -1,15 +1,16 @@
 use std::num::NonZeroU32;
 
 use crate::cgu_reuse_tracker::CguReuse;
-use crate::{self as rustc_session, SessionDiagnostic};
-use rustc_errors::{fluent, DiagnosticBuilder, Handler, MultiSpan};
-use rustc_macros::SessionDiagnostic;
+use crate::parse::ParseSess;
+use rustc_ast::token;
+use rustc_ast::util::literal::LitError;
+use rustc_errors::MultiSpan;
+use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
-#[derive(SessionDiagnostic)]
-#[diag(session::incorrect_cgu_reuse_type)]
+#[derive(Diagnostic)]
+#[diag(session_incorrect_cgu_reuse_type)]
 pub struct IncorrectCguReuseType<'a> {
     #[primary_span]
     pub span: Span,
@@ -19,154 +20,358 @@ pub struct IncorrectCguReuseType<'a> {
     pub at_least: u8,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(session::cgu_not_recorded)]
+#[derive(Diagnostic)]
+#[diag(session_cgu_not_recorded)]
 pub struct CguNotRecorded<'a> {
     pub cgu_user_name: &'a str,
     pub cgu_name: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(session::feature_gate_error, code = "E0658")]
+#[derive(Diagnostic)]
+#[diag(session_feature_gate_error, code = "E0658")]
 pub struct FeatureGateError<'a> {
     #[primary_span]
     pub span: MultiSpan,
     pub explain: &'a str,
 }
 
-#[derive(SessionSubdiagnostic)]
-#[note(session::feature_diagnostic_for_issue)]
+#[derive(Subdiagnostic)]
+#[note(session_feature_diagnostic_for_issue)]
 pub struct FeatureDiagnosticForIssue {
     pub n: NonZeroU32,
 }
 
-#[derive(SessionSubdiagnostic)]
-#[help(session::feature_diagnostic_help)]
+#[derive(Subdiagnostic)]
+#[help(session_feature_diagnostic_help)]
 pub struct FeatureDiagnosticHelp {
     pub feature: Symbol,
 }
 
-impl SessionDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
-    fn into_diagnostic(self, sess: &Handler) -> DiagnosticBuilder<'_, !> {
-        let mut diag;
-        match self {
-            TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                diag = sess.struct_fatal(fluent::session::target_invalid_address_space);
-                diag.set_arg("addr_space", addr_space);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
-            }
-            TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                diag = sess.struct_fatal(fluent::session::target_invalid_bits);
-                diag.set_arg("kind", kind);
-                diag.set_arg("bit", bit);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
-            }
-            TargetDataLayoutErrors::MissingAlignment { cause } => {
-                diag = sess.struct_fatal(fluent::session::target_missing_alignment);
-                diag.set_arg("cause", cause);
-                diag
-            }
-            TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                diag = sess.struct_fatal(fluent::session::target_invalid_alignment);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
-            }
-            TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                diag = sess.struct_fatal(fluent::session::target_inconsistent_architecture);
-                diag.set_arg("dl", dl);
-                diag.set_arg("target", target);
-                diag
-            }
-            TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                diag = sess.struct_fatal(fluent::session::target_inconsistent_pointer_width);
-                diag.set_arg("pointer_size", pointer_size);
-                diag.set_arg("target", target);
-                diag
-            }
-            TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                diag = sess.struct_fatal(fluent::session::target_invalid_bits_size);
-                diag.set_arg("err", err);
-                diag
-            }
-        }
-    }
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(session::not_circumvent_feature)]
+#[derive(Diagnostic)]
+#[diag(session_not_circumvent_feature)]
 pub struct NotCircumventFeature;
 
-#[derive(SessionDiagnostic)]
-#[diag(session::linker_plugin_lto_windows_not_supported)]
+#[derive(Diagnostic)]
+#[diag(session_linker_plugin_lto_windows_not_supported)]
 pub struct LinkerPluginToWindowsNotSupported;
 
-#[derive(SessionDiagnostic)]
-#[diag(session::profile_use_file_does_not_exist)]
+#[derive(Diagnostic)]
+#[diag(session_profile_use_file_does_not_exist)]
 pub struct ProfileUseFileDoesNotExist<'a> {
     pub path: &'a std::path::Path,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(session::profile_sample_use_file_does_not_exist)]
+#[derive(Diagnostic)]
+#[diag(session_profile_sample_use_file_does_not_exist)]
 pub struct ProfileSampleUseFileDoesNotExist<'a> {
     pub path: &'a std::path::Path,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(session::target_requires_unwind_tables)]
+#[derive(Diagnostic)]
+#[diag(session_target_requires_unwind_tables)]
 pub struct TargetRequiresUnwindTables;
 
-#[derive(SessionDiagnostic)]
-#[diag(session::sanitizer_not_supported)]
+#[derive(Diagnostic)]
+#[diag(session_sanitizer_not_supported)]
 pub struct SanitizerNotSupported {
     pub us: String,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(session::sanitizers_not_supported)]
+#[derive(Diagnostic)]
+#[diag(session_sanitizers_not_supported)]
 pub struct SanitizersNotSupported {
     pub us: String,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(session::cannot_mix_and_match_sanitizers)]
+#[derive(Diagnostic)]
+#[diag(session_cannot_mix_and_match_sanitizers)]
 pub struct CannotMixAndMatchSanitizers {
     pub first: String,
     pub second: String,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(session::cannot_enable_crt_static_linux)]
+#[derive(Diagnostic)]
+#[diag(session_cannot_enable_crt_static_linux)]
 pub struct CannotEnableCrtStaticLinux;
 
-#[derive(SessionDiagnostic)]
-#[diag(session::sanitizer_cfi_enabled)]
+#[derive(Diagnostic)]
+#[diag(session_sanitizer_cfi_enabled)]
 pub struct SanitizerCfiEnabled;
 
-#[derive(SessionDiagnostic)]
-#[diag(session::unstable_virtual_function_elimination)]
+#[derive(Diagnostic)]
+#[diag(session_unstable_virtual_function_elimination)]
 pub struct UnstableVirtualFunctionElimination;
 
-#[derive(SessionDiagnostic)]
-#[diag(session::unsupported_dwarf_version)]
+#[derive(Diagnostic)]
+#[diag(session_unsupported_dwarf_version)]
 pub struct UnsupportedDwarfVersion {
     pub dwarf_version: u32,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(session::target_stack_protector_not_supported)]
+#[derive(Diagnostic)]
+#[diag(session_target_stack_protector_not_supported)]
 pub struct StackProtectorNotSupportedForTarget<'a> {
     pub stack_protector: StackProtector,
     pub target_triple: &'a TargetTriple,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(session::split_debuginfo_unstable_platform)]
+#[derive(Diagnostic)]
+#[diag(session_branch_protection_requires_aarch64)]
+pub(crate) struct BranchProtectionRequiresAArch64;
+
+#[derive(Diagnostic)]
+#[diag(session_split_debuginfo_unstable_platform)]
 pub struct SplitDebugInfoUnstablePlatform {
     pub debuginfo: SplitDebuginfo,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_file_is_not_writeable)]
+pub struct FileIsNotWriteable<'a> {
+    pub file: &'a std::path::Path,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_crate_name_does_not_match)]
+pub struct CrateNameDoesNotMatch {
+    #[primary_span]
+    pub span: Span,
+    pub s: Symbol,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_crate_name_invalid)]
+pub struct CrateNameInvalid<'a> {
+    pub s: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_crate_name_empty)]
+pub struct CrateNameEmpty {
+    #[primary_span]
+    pub span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_character_in_create_name)]
+pub struct InvalidCharacterInCrateName {
+    #[primary_span]
+    pub span: Option<Span>,
+    pub character: char,
+    pub crate_name: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(session_expr_parentheses_needed, applicability = "machine-applicable")]
+pub struct ExprParenthesesNeeded {
+    #[suggestion_part(code = "(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+impl ExprParenthesesNeeded {
+    pub fn surrounding(s: Span) -> Self {
+        ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(session_skipping_const_checks)]
+pub struct SkippingConstChecks {
+    #[subdiagnostic]
+    pub unleashed_features: Vec<UnleashedFeatureHelp>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnleashedFeatureHelp {
+    #[help(session_unleashed_feature_help_named)]
+    Named {
+        #[primary_span]
+        span: Span,
+        gate: Symbol,
+    },
+    #[help(session_unleashed_feature_help_unnamed)]
+    Unnamed {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_literal_suffix)]
+pub(crate) struct InvalidLiteralSuffix<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    // FIXME(#100717)
+    pub kind: &'a str,
+    pub suffix: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_int_literal_width)]
+#[help]
+pub(crate) struct InvalidIntLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_num_literal_base_prefix)]
+#[note]
+pub(crate) struct InvalidNumLiteralBasePrefix {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "{fixed}")]
+    pub span: Span,
+    pub fixed: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_num_literal_suffix)]
+#[help]
+pub(crate) struct InvalidNumLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_float_literal_width)]
+#[help]
+pub(crate) struct InvalidFloatLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_float_literal_suffix)]
+#[help]
+pub(crate) struct InvalidFloatLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_int_literal_too_large)]
+#[note]
+pub(crate) struct IntLiteralTooLarge {
+    #[primary_span]
+    pub span: Span,
+    pub limit: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_hexadecimal_float_literal_not_supported)]
+pub(crate) struct HexadecimalFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(session_not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_octal_float_literal_not_supported)]
+pub(crate) struct OctalFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(session_not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_binary_float_literal_not_supported)]
+pub(crate) struct BinaryFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(session_not_supported)]
+    pub span: Span,
+}
+
+pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: Span) {
+    // Checks if `s` looks like i32 or u1234 etc.
+    fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
+        s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
+    }
+
+    // Try to lowercase the prefix if the prefix and suffix are valid.
+    fn fix_base_capitalisation(prefix: &str, suffix: &str) -> Option<String> {
+        let mut chars = suffix.chars();
+
+        let base_char = chars.next().unwrap();
+        let base = match base_char {
+            'B' => 2,
+            'O' => 8,
+            'X' => 16,
+            _ => return None,
+        };
+
+        // check that the suffix contains only base-appropriate characters
+        let valid = prefix == "0"
+            && chars
+                .filter(|c| *c != '_')
+                .take_while(|c| *c != 'i' && *c != 'u')
+                .all(|c| c.to_digit(base).is_some());
+
+        if valid {
+            Some(format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
+        } else {
+            None
+        }
+    }
+
+    let token::Lit { kind, symbol, suffix, .. } = lit;
+    match err {
+        // `LexerError` is an error, but it was already reported
+        // by lexer, so here we don't report it the second time.
+        LitError::LexerError => {}
+        LitError::InvalidSuffix => {
+            if let Some(suffix) = suffix {
+                sess.emit_err(InvalidLiteralSuffix { span, kind: kind.descr(), suffix });
+            }
+        }
+        LitError::InvalidIntSuffix => {
+            let suf = suffix.expect("suffix error with no suffix");
+            let suf = suf.as_str();
+            if looks_like_width_suffix(&['i', 'u'], suf) {
+                // If it looks like a width, try to be helpful.
+                sess.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() });
+            } else if let Some(fixed) = fix_base_capitalisation(symbol.as_str(), suf) {
+                sess.emit_err(InvalidNumLiteralBasePrefix { span, fixed });
+            } else {
+                sess.emit_err(InvalidNumLiteralSuffix { span, suffix: suf.to_string() });
+            }
+        }
+        LitError::InvalidFloatSuffix => {
+            let suf = suffix.expect("suffix error with no suffix");
+            let suf = suf.as_str();
+            if looks_like_width_suffix(&['f'], suf) {
+                // If it looks like a width, try to be helpful.
+                sess.emit_err(InvalidFloatLiteralWidth { span, width: suf[1..].to_string() });
+            } else {
+                sess.emit_err(InvalidFloatLiteralSuffix { span, suffix: suf.to_string() });
+            }
+        }
+        LitError::NonDecimalFloat(base) => {
+            match base {
+                16 => sess.emit_err(HexadecimalFloatLiteralNotSupported { span }),
+                8 => sess.emit_err(OctalFloatLiteralNotSupported { span }),
+                2 => sess.emit_err(BinaryFloatLiteralNotSupported { span }),
+                _ => unreachable!(),
+            };
+        }
+        LitError::IntTooLarge(base) => {
+            let max = u128::MAX;
+            let limit = match base {
+                2 => format!("{max:#b}"),
+                8 => format!("{max:#o}"),
+                16 => format!("{max:#x}"),
+                _ => format!("{max}"),
+            };
+            sess.emit_err(IntLiteralTooLarge { span, limit });
+        }
+    }
 }

@@ -1,15 +1,13 @@
 // run-rustfix
 // aux-build:non-exhaustive-enum.rs
-
 #![deny(clippy::wildcard_enum_match_arm)]
+#![allow(dead_code, unreachable_code, unused_variables)]
 #![allow(
-    unreachable_code,
-    unused_variables,
-    dead_code,
+    clippy::diverging_sub_expression,
     clippy::single_match,
-    clippy::wildcard_in_or_patterns,
+    clippy::uninlined_format_args,
     clippy::unnested_or_patterns,
-    clippy::diverging_sub_expression
+    clippy::wildcard_in_or_patterns
 )]
 
 extern crate non_exhaustive_enum;

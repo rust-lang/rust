@@ -5,7 +5,7 @@ use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::ops::{Deref, DerefMut};
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
-use crate::sys_common::mutex as sys;
+use crate::sys::locks as sys;
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -163,7 +163,7 @@ use crate::sys_common::mutex as sys;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Mutex")]
 pub struct Mutex<T: ?Sized> {
-    inner: sys::MovableMutex,
+    inner: sys::Mutex,
     poison: poison::Flag,
     data: UnsafeCell<T>,
 }
@@ -217,11 +217,7 @@ impl<T> Mutex<T> {
     #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     #[inline]
     pub const fn new(t: T) -> Mutex<T> {
-        Mutex {
-            inner: sys::MovableMutex::new(),
-            poison: poison::Flag::new(),
-            data: UnsafeCell::new(t),
-        }
+        Mutex { inner: sys::Mutex::new(), poison: poison::Flag::new(), data: UnsafeCell::new(t) }
     }
 }
 
@@ -264,7 +260,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<'_, T>> {
         unsafe {
-            self.inner.raw_lock();
+            self.inner.lock();
             MutexGuard::new(self)
         }
     }
@@ -526,7 +522,7 @@ impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     fn drop(&mut self) {
         unsafe {
             self.lock.poison.done(&self.poison);
-            self.lock.inner.raw_unlock();
+            self.lock.inner.unlock();
         }
     }
 }
@@ -545,7 +541,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     }
 }
 
-pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::MovableMutex {
+pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
     &guard.lock.inner
 }
 

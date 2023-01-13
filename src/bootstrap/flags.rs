@@ -78,6 +78,8 @@ pub struct Flags {
     //
     // llvm_out/build/profiles/ is the location this writes to.
     pub llvm_profile_generate: bool,
+    pub llvm_bolt_profile_generate: bool,
+    pub llvm_bolt_profile_use: Option<String>,
 }
 
 #[derive(Debug)]
@@ -107,6 +109,7 @@ pub enum Subcommand {
     Doc {
         paths: Vec<PathBuf>,
         open: bool,
+        json: bool,
     },
     Test {
         paths: Vec<PathBuf>,
@@ -127,6 +130,7 @@ pub enum Subcommand {
         test_args: Vec<String>,
     },
     Clean {
+        paths: Vec<PathBuf>,
         all: bool,
     },
     Dist {
@@ -137,9 +141,10 @@ pub enum Subcommand {
     },
     Run {
         paths: Vec<PathBuf>,
+        args: Vec<String>,
     },
     Setup {
-        profile: Profile,
+        profile: Option<PathBuf>,
     },
 }
 
@@ -254,6 +259,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optmulti("D", "", "deny certain clippy lints", "OPT");
         opts.optmulti("W", "", "warn about certain clippy lints", "OPT");
         opts.optmulti("F", "", "forbid certain clippy lints", "OPT");
+        opts.optflag("", "llvm-bolt-profile-generate", "generate BOLT profile for LLVM build");
+        opts.optopt("", "llvm-bolt-profile-use", "use BOLT profile for LLVM build", "PROFILE");
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
@@ -325,6 +332,11 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             }
             Kind::Doc => {
                 opts.optflag("", "open", "open the docs in a browser");
+                opts.optflag(
+                    "",
+                    "json",
+                    "render the documentation in JSON format in addition to the usual HTML format",
+                );
             }
             Kind::Clean => {
                 opts.optflag("", "all", "clean all build artifacts");
@@ -332,27 +344,40 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             Kind::Format => {
                 opts.optflag("", "check", "check formatting instead of applying.");
             }
+            Kind::Run => {
+                opts.optmulti("", "args", "arguments for the tool", "ARGS");
+            }
             _ => {}
         };
 
         // fn usage()
         let usage = |exit_code: i32, opts: &Options, verbose: bool, subcommand_help: &str| -> ! {
-            let config = Config::parse(&["build".to_string()]);
-            let build = Build::new(config);
-            let paths = Builder::get_help(&build, subcommand);
-
             println!("{}", opts.usage(subcommand_help));
-            if let Some(s) = paths {
-                if verbose {
+            if verbose {
+                // We have an unfortunate situation here: some Steps use `builder.in_tree_crates` to determine their paths.
+                // To determine those crates, we need to run `cargo metadata`, which means we need all submodules to be checked out.
+                // That takes a while to run, so only do it when paths were explicitly requested, not on all CLI errors.
+                // `Build::new` won't load submodules for the `setup` command.
+                let cmd = if verbose {
+                    println!("note: updating submodules before printing available paths");
+                    "build"
+                } else {
+                    "setup"
+                };
+                let config = Config::parse(&[cmd.to_string()]);
+                let build = Build::new(config);
+                let paths = Builder::get_help(&build, subcommand);
+
+                if let Some(s) = paths {
                     println!("{}", s);
                 } else {
-                    println!(
-                        "Run `./x.py {} -h -v` to see a list of available paths.",
-                        subcommand.as_str()
-                    );
+                    panic!("No paths available for subcommand `{}`", subcommand.as_str());
                 }
-            } else if verbose {
-                panic!("No paths available for subcommand `{}`", subcommand.as_str());
+            } else {
+                println!(
+                    "Run `./x.py {} -h -v` to see a list of available paths.",
+                    subcommand.as_str()
+                );
             }
             crate::detail_exit(exit_code);
         };
@@ -462,13 +487,13 @@ Arguments:
     This subcommand accepts a number of paths to test directories that
     should be compiled and run. For example:
 
-        ./x.py test src/test/ui
+        ./x.py test tests/ui
         ./x.py test library/std --test-args hash_map
         ./x.py test library/std --stage 0 --no-doc
-        ./x.py test src/test/ui --bless
-        ./x.py test src/test/ui --compare-mode chalk
+        ./x.py test tests/ui --bless
+        ./x.py test tests/ui --compare-mode chalk
 
-    Note that `test src/test/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
+    Note that `test tests/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
     just like `build library/std --stage N` it tests the compiler produced by the previous
     stage.
 
@@ -493,6 +518,7 @@ Arguments:
         ./x.py doc src/doc/book
         ./x.py doc src/doc/nomicon
         ./x.py doc src/doc/book library/std
+        ./x.py doc library/std --json
         ./x.py doc library/std --open
 
     If no arguments are passed then everything is documented:
@@ -581,15 +607,12 @@ Arguments:
                 },
             },
             Kind::Bench => Subcommand::Bench { paths, test_args: matches.opt_strs("test-args") },
-            Kind::Doc => Subcommand::Doc { paths, open: matches.opt_present("open") },
-            Kind::Clean => {
-                if !paths.is_empty() {
-                    println!("\nclean does not take a path argument\n");
-                    usage(1, &opts, verbose, &subcommand_help);
-                }
-
-                Subcommand::Clean { all: matches.opt_present("all") }
-            }
+            Kind::Doc => Subcommand::Doc {
+                paths,
+                open: matches.opt_present("open"),
+                json: matches.opt_present("json"),
+            },
+            Kind::Clean => Subcommand::Clean { all: matches.opt_present("all"), paths },
             Kind::Format => Subcommand::Format { check: matches.opt_present("check"), paths },
             Kind::Dist => Subcommand::Dist { paths },
             Kind::Install => Subcommand::Install { paths },
@@ -598,25 +621,26 @@ Arguments:
                     println!("\nrun requires at least a path!\n");
                     usage(1, &opts, verbose, &subcommand_help);
                 }
-                Subcommand::Run { paths }
+                Subcommand::Run { paths, args: matches.opt_strs("args") }
             }
             Kind::Setup => {
                 let profile = if paths.len() > 1 {
-                    println!("\nat most one profile can be passed to setup\n");
+                    eprintln!("\nerror: At most one profile can be passed to setup\n");
                     usage(1, &opts, verbose, &subcommand_help)
                 } else if let Some(path) = paths.pop() {
                     let profile_string = t!(path.into_os_string().into_string().map_err(
                         |path| format!("{} is not a valid UTF8 string", path.to_string_lossy())
                     ));
 
-                    profile_string.parse().unwrap_or_else(|err| {
+                    let profile = profile_string.parse().unwrap_or_else(|err| {
                         eprintln!("error: {}", err);
                         eprintln!("help: the available profiles are:");
                         eprint!("{}", Profile::all_for_help("- "));
                         crate::detail_exit(1);
-                    })
+                    });
+                    Some(profile)
                 } else {
-                    t!(crate::setup::interactive_path())
+                    None
                 };
                 Subcommand::Setup { profile }
             }
@@ -680,6 +704,8 @@ Arguments:
             rust_profile_generate: matches.opt_str("rust-profile-generate"),
             llvm_profile_use: matches.opt_str("llvm-profile-use"),
             llvm_profile_generate: matches.opt_present("llvm-profile-generate"),
+            llvm_bolt_profile_generate: matches.opt_present("llvm-bolt-profile-generate"),
+            llvm_bolt_profile_use: matches.opt_str("llvm-bolt-profile-use"),
         }
     }
 }
@@ -704,16 +730,12 @@ impl Subcommand {
     }
 
     pub fn test_args(&self) -> Vec<&str> {
-        let mut args = vec![];
-
         match *self {
             Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
-                args.extend(test_args.iter().flat_map(|s| s.split_whitespace()))
+                test_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
-            _ => (),
+            _ => vec![],
         }
-
-        args
     }
 
     pub fn rustc_args(&self) -> Vec<&str> {
@@ -721,7 +743,16 @@ impl Subcommand {
             Subcommand::Test { ref rustc_args, .. } => {
                 rustc_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
-            _ => Vec::new(),
+            _ => vec![],
+        }
+    }
+
+    pub fn args(&self) -> Vec<&str> {
+        match *self {
+            Subcommand::Run { ref args, .. } => {
+                args.iter().flat_map(|s| s.split_whitespace()).collect()
+            }
+            _ => vec![],
         }
     }
 
@@ -784,6 +815,13 @@ impl Subcommand {
     pub fn open(&self) -> bool {
         match *self {
             Subcommand::Doc { open, .. } => open,
+            _ => false,
+        }
+    }
+
+    pub fn json(&self) -> bool {
+        match *self {
+            Subcommand::Doc { json, .. } => json,
             _ => false,
         }
     }

@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::visit::TyContext;
 use rustc_middle::mir::visit::Visitor;
@@ -14,8 +16,8 @@ use crate::{
     places_conflict, region_infer::values::LivenessValues,
 };
 
-pub(super) fn generate_constraints<'cx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'tcx>,
+pub(super) fn generate_constraints<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
@@ -37,8 +39,8 @@ pub(super) fn generate_constraints<'cx, 'tcx>(
 }
 
 /// 'cg = the duration of the constraint generation process itself.
-struct ConstraintGeneration<'cg, 'cx, 'tcx> {
-    infcx: &'cg InferCtxt<'cx, 'tcx>,
+struct ConstraintGeneration<'cg, 'tcx> {
+    infcx: &'cg InferCtxt<'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,
     liveness_constraints: &'cg mut LivenessValues<RegionVid>,
@@ -46,7 +48,7 @@ struct ConstraintGeneration<'cg, 'cx, 'tcx> {
     body: &'cg Body<'tcx>,
 }
 
-impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
+impl<'cg, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, data: &BasicBlockData<'tcx>) {
         self.super_basic_block_data(bb, data);
     }
@@ -156,7 +158,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
+impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
     /// Some variable with type `live_ty` is "regular live" at
     /// `location` -- i.e., it may be used later. This means that all
     /// regions appearing in the type `live_ty` must be live at

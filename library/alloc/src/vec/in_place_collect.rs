@@ -55,6 +55,9 @@
 //! This is handled by the [`InPlaceDrop`] guard for sink items (`U`) and by
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`] for remaining source items (`T`).
 //!
+//! If dropping any remaining source item (`T`) panics then [`InPlaceDstBufDrop`] will handle dropping
+//! the already collected sink items (`U`) and freeing the allocation.
+//!
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`]: super::IntoIter::forget_allocation_drop_remaining()
 //!
 //! # O(1) collect
@@ -135,10 +138,10 @@
 //! vec.truncate(write_idx);
 //! ```
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self};
 
-use super::{InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
+use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
 /// source allocation, i.e. executing the pipeline in place.
@@ -154,7 +157,7 @@ where
     default fn from_iter(mut iterator: I) -> Self {
         // See "Layout constraints" section in the module documentation. We rely on const
         // optimization here since these conditions currently cannot be expressed as trait bounds
-        if mem::size_of::<T>() == 0
+        if T::IS_ZST
             || mem::size_of::<T>()
                 != mem::size_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>()
             || mem::align_of::<T>()
@@ -191,14 +194,17 @@ where
             );
         }
 
-        // Drop any remaining values at the tail of the source but prevent drop of the allocation
-        // itself once IntoIter goes out of scope.
-        // If the drop panics then we also leak any elements collected into dst_buf.
+        // The ownership of the allocation and the new `T` values is temporarily moved into `dst_guard`.
+        // This is safe because `forget_allocation_drop_remaining` immediately forgets the allocation
+        // before any panic can occur in order to avoid any double free, and then proceeds to drop
+        // any remaining values at the tail of the source.
         //
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
         // module documenttation why this is ok anyway.
+        let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap };
         src.forget_allocation_drop_remaining();
+        mem::forget(dst_guard);
 
         let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
 

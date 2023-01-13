@@ -1,10 +1,7 @@
-use std::convert::TryFrom;
-
 use rustc_ast::Mutability;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::subst::Subst;
 use rustc_span::{Span, Symbol};
 
 use crate::interpret::{
@@ -20,8 +17,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
 
             // Assert that the frame we look at is actually executing code currently
-            // (`loc` is `Err` when we are unwinding and the frame does not require cleanup).
-            let loc = frame.loc.unwrap();
+            // (`loc` is `Right` when we are unwinding and the frame does not require cleanup).
+            let loc = frame.loc.left().unwrap();
 
             // This could be a non-`Call` terminator (such as `Drop`), or not a terminator at all
             // (such as `box`). Use the normal span by default.

@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 USELESS_TRANSMUTE,
                 e.span,
-                &format!("transmute from a type (`{}`) to itself", from_ty),
+                &format!("transmute from a type (`{from_ty}`) to itself"),
             );
             true
         },
@@ -61,7 +61,7 @@ pub(super) fn check<'tcx>(
                 "transmute from an integer to a pointer",
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
-                        diag.span_suggestion(e.span, "try", arg.as_ty(&to_ty.to_string()), Applicability::Unspecified);
+                        diag.span_suggestion(e.span, "try", arg.as_ty(to_ty.to_string()), Applicability::Unspecified);
                     }
                 },
             );

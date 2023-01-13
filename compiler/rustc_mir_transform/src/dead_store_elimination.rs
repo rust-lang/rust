@@ -70,6 +70,8 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
     for Location { block, statement_index } in patch {
         bbs[block].statements[statement_index].make_nop();
     }
+
+    crate::simplify::simplify_locals(body, tcx)
 }
 
 pub struct DeadStoreElimination;

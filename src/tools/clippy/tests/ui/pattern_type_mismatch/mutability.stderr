@@ -4,8 +4,8 @@ error: type of pattern does not match the expression type
 LL |         Some(_) => (),
    |         ^^^^^^^
    |
-   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
 
 error: type of pattern does not match the expression type
   --> $DIR/mutability.rs:15:9

@@ -56,7 +56,7 @@ impl crate::doctest::Tester for Tests {
 }
 
 pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if !cx.cache.access_levels.is_public(item.item_id.expect_def_id())
+    if !cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
         || matches!(
             *item.kind,
             clean::StructFieldItem(_)
@@ -82,7 +82,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.item_id.expect_def_id().expect_local());
 
     // check if parent is trait impl
-    if let Some(parent_hir_id) = cx.tcx.hir().find_parent_node(hir_id) {
+    if let Some(parent_hir_id) = cx.tcx.hir().opt_parent_id(hir_id) {
         if let Some(parent_node) = cx.tcx.hir().find(parent_hir_id) {
             if matches!(
                 parent_node,
@@ -117,7 +117,7 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
 
     find_testable_code(dox, &mut tests, ErrorCodes::No, false, None);
 
-    if tests.found_tests == 0 && cx.tcx.sess.is_nightly_build() {
+    if tests.found_tests == 0 && cx.tcx.features().rustdoc_missing_doc_code_examples {
         if should_have_doc_example(cx, item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
             let sp = item.attr_span(cx.tcx);
@@ -125,21 +125,19 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
                 sp,
-                |lint| {
-                    lint.build("missing code example in this documentation").emit();
-                },
+                "missing code example in this documentation",
+                |lint| lint,
             );
         }
     } else if tests.found_tests > 0
-        && !cx.cache.access_levels.is_exported(item.item_id.expect_def_id())
+        && !cx.cache.effective_visibilities.is_exported(cx.tcx, item.item_id.expect_def_id())
     {
         cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
             item.attr_span(cx.tcx),
-            |lint| {
-                lint.build("documentation test in private item").emit();
-            },
+            "documentation test in private item",
+            |lint| lint,
         );
     }
 }

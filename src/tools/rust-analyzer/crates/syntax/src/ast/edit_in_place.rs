@@ -235,6 +235,24 @@ impl ast::GenericParamList {
             }
         }
     }
+
+    /// Constructs a matching [`ast::GenericArgList`]
+    pub fn to_generic_args(&self) -> ast::GenericArgList {
+        let args = self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::LifetimeParam(it) => {
+                Some(ast::GenericArg::LifetimeArg(make::lifetime_arg(it.lifetime()?)))
+            }
+            ast::GenericParam::TypeParam(it) => {
+                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
+            }
+            ast::GenericParam::ConstParam(it) => {
+                // Name-only const params get parsed as `TypeArg`s
+                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
+            }
+        });
+
+        make::generic_arg_list(args)
+    }
 }
 
 impl ast::WhereClause {
@@ -248,8 +266,48 @@ impl ast::WhereClause {
     }
 }
 
-impl ast::TypeBoundList {
-    pub fn remove(&self) {
+impl ast::TypeParam {
+    pub fn remove_default(&self) {
+        if let Some((eq, last)) = self
+            .syntax()
+            .children_with_tokens()
+            .find(|it| it.kind() == T![=])
+            .zip(self.syntax().last_child_or_token())
+        {
+            ted::remove_all(eq..=last);
+
+            // remove any trailing ws
+            if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
+                last.detach();
+            }
+        }
+    }
+}
+
+impl ast::ConstParam {
+    pub fn remove_default(&self) {
+        if let Some((eq, last)) = self
+            .syntax()
+            .children_with_tokens()
+            .find(|it| it.kind() == T![=])
+            .zip(self.syntax().last_child_or_token())
+        {
+            ted::remove_all(eq..=last);
+
+            // remove any trailing ws
+            if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
+                last.detach();
+            }
+        }
+    }
+}
+
+pub trait Removable: AstNode {
+    fn remove(&self);
+}
+
+impl Removable for ast::TypeBoundList {
+    fn remove(&self) {
         match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
             Some(colon) => ted::remove_all(colon..=self.syntax().clone().into()),
             None => ted::remove(self.syntax()),
@@ -260,15 +318,15 @@ impl ast::TypeBoundList {
 impl ast::PathSegment {
     pub fn get_or_create_generic_arg_list(&self) -> ast::GenericArgList {
         if self.generic_arg_list().is_none() {
-            let arg_list = make::generic_arg_list().clone_for_update();
+            let arg_list = make::generic_arg_list(empty()).clone_for_update();
             ted::append_child(self.syntax(), arg_list.syntax());
         }
         self.generic_arg_list().unwrap()
     }
 }
 
-impl ast::UseTree {
-    pub fn remove(&self) {
+impl Removable for ast::UseTree {
+    fn remove(&self) {
         for dir in [Direction::Next, Direction::Prev] {
             if let Some(next_use_tree) = neighbor(self, dir) {
                 let separators = self
@@ -282,7 +340,9 @@ impl ast::UseTree {
         }
         ted::remove(self.syntax());
     }
+}
 
+impl ast::UseTree {
     pub fn get_or_create_use_tree_list(&self) -> ast::UseTreeList {
         match self.use_tree_list() {
             Some(it) => it,
@@ -373,8 +433,8 @@ impl ast::UseTreeList {
     }
 }
 
-impl ast::Use {
-    pub fn remove(&self) {
+impl Removable for ast::Use {
+    fn remove(&self) {
         let next_ws = self
             .syntax()
             .next_sibling_or_token()
@@ -421,7 +481,7 @@ impl ast::AssocItemList {
             },
         };
         let elements: Vec<SyntaxElement<_>> = vec![
-            make::tokens::whitespace(&format!("{}{}", whitespace, indent)).into(),
+            make::tokens::whitespace(&format!("{whitespace}{indent}")).into(),
             item.syntax().clone().into(),
         ];
         ted::insert_all(position, elements);
@@ -444,8 +504,8 @@ impl ast::Fn {
     }
 }
 
-impl ast::MatchArm {
-    pub fn remove(&self) {
+impl Removable for ast::MatchArm {
+    fn remove(&self) {
         if let Some(sibling) = self.syntax().prev_sibling_or_token() {
             if sibling.kind() == SyntaxKind::WHITESPACE {
                 ted::remove(sibling);
@@ -477,7 +537,7 @@ impl ast::MatchArmList {
             },
         };
         let indent = IndentLevel::from_node(self.syntax()) + 1;
-        elements.push(make::tokens::whitespace(&format!("\n{}", indent)).into());
+        elements.push(make::tokens::whitespace(&format!("\n{indent}")).into());
         elements.push(arm.syntax().clone().into());
         if needs_comma(&arm) {
             ted::append_child(arm.syntax(), make::token(SyntaxKind::COMMA));
@@ -495,7 +555,7 @@ impl ast::RecordExprFieldList {
         let is_multiline = self.syntax().text().contains_char('\n');
         let whitespace = if is_multiline {
             let indent = IndentLevel::from_node(self.syntax()) + 1;
-            make::tokens::whitespace(&format!("\n{}", indent))
+            make::tokens::whitespace(&format!("\n{indent}"))
         } else {
             make::tokens::single_space()
         };
@@ -556,7 +616,7 @@ impl ast::RecordPatFieldList {
         let is_multiline = self.syntax().text().contains_char('\n');
         let whitespace = if is_multiline {
             let indent = IndentLevel::from_node(self.syntax()) + 1;
-            make::tokens::whitespace(&format!("\n{}", indent))
+            make::tokens::whitespace(&format!("\n{indent}"))
         } else {
             make::tokens::single_space()
         };
@@ -585,7 +645,7 @@ impl ast::RecordPatFieldList {
 }
 
 fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
-    let comma = match syntax
+    match syntax
         .siblings_with_tokens(Direction::Next)
         .filter_map(|it| it.into_token())
         .find(|it| it.kind() == T![,])
@@ -596,8 +656,7 @@ fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
             ted::insert(Position::after(syntax), &comma);
             comma
         }
-    };
-    comma
+    }
 }
 
 impl ast::StmtList {
@@ -622,7 +681,7 @@ impl ast::VariantList {
             },
         };
         let elements: Vec<SyntaxElement<_>> = vec![
-            make::tokens::whitespace(&format!("{}{}", "\n", indent)).into(),
+            make::tokens::whitespace(&format!("{}{indent}", "\n")).into(),
             variant.syntax().clone().into(),
             ast::make::token(T![,]).into(),
         ];
@@ -645,11 +704,11 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     match l.next_sibling_or_token() {
         Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
             if ws.next_sibling_or_token()?.into_token()? == r {
-                ted::replace(ws, make::tokens::whitespace(&format!("\n{}", indent)));
+                ted::replace(ws, make::tokens::whitespace(&format!("\n{indent}")));
             }
         }
         Some(ws) if ws.kind() == T!['}'] => {
-            ted::insert(Position::after(l), make::tokens::whitespace(&format!("\n{}", indent)));
+            ted::insert(Position::after(l), make::tokens::whitespace(&format!("\n{indent}")));
         }
         _ => (),
     }
@@ -829,6 +888,6 @@ enum Foo {
         let enum_ = ast_mut_from_text::<ast::Enum>(before);
         enum_.variant_list().map(|it| it.add_variant(variant));
         let after = enum_.to_string();
-        assert_eq_text!(&trim_indent(expected.trim()), &trim_indent(&after.trim()));
+        assert_eq_text!(&trim_indent(expected.trim()), &trim_indent(after.trim()));
     }
 }

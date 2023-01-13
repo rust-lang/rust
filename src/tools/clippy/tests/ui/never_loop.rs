@@ -203,6 +203,53 @@ pub fn test17() {
     };
 }
 
+// Issue #9356: `continue` in else branch of let..else
+pub fn test18() {
+    let x = Some(0);
+    let y = 0;
+    // might loop
+    let _ = loop {
+        let Some(x) = x else {
+            if y > 0 {
+                continue;
+            } else {
+                return;
+            }
+        };
+
+        break x;
+    };
+    // never loops
+    let _ = loop {
+        let Some(x) = x else {
+            return;
+        };
+
+        break x;
+    };
+}
+
+// Issue #9831: unconditional break to internal labeled block
+pub fn test19() {
+    fn thing(iter: impl Iterator) {
+        for _ in iter {
+            'b: {
+                break 'b;
+            }
+        }
+    }
+}
+
+pub fn test20() {
+    'a: loop {
+        'b: {
+            break 'b 'c: {
+                break 'a;
+            };
+        }
+    }
+}
+
 fn main() {
     test1();
     test2();

@@ -1122,7 +1122,6 @@ impl CStr {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl core::error::Error for NulError {
     #[allow(deprecated)]
@@ -1131,11 +1130,9 @@ impl core::error::Error for NulError {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 impl core::error::Error for FromVecWithNulError {}
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl core::error::Error for IntoStringError {
     #[allow(deprecated)]

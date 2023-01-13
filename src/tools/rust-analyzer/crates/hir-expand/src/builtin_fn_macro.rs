@@ -238,9 +238,9 @@ fn format_args_expand(
 ) -> ExpandResult<tt::Subtree> {
     // We expand `format_args!("", a1, a2)` to
     // ```
-    // std::fmt::Arguments::new_v1(&[], &[
-    //   std::fmt::ArgumentV1::new(&arg1,std::fmt::Display::fmt),
-    //   std::fmt::ArgumentV1::new(&arg2,std::fmt::Display::fmt),
+    // $crate::fmt::Arguments::new_v1(&[], &[
+    //   $crate::fmt::ArgumentV1::new(&arg1,$crate::fmt::Display::fmt),
+    //   $crate::fmt::ArgumentV1::new(&arg2,$crate::fmt::Display::fmt),
     // ])
     // ```,
     // which is still not really correct, but close enough for now
@@ -262,10 +262,10 @@ fn format_args_expand(
     }
     let _format_string = args.remove(0);
     let arg_tts = args.into_iter().flat_map(|arg| {
-        quote! { std::fmt::ArgumentV1::new(&(#arg), std::fmt::Display::fmt), }
+        quote! { #DOLLAR_CRATE::fmt::ArgumentV1::new(&(#arg), #DOLLAR_CRATE::fmt::Display::fmt), }
     }.token_trees);
     let expanded = quote! {
-        std::fmt::Arguments::new_v1(&[], &[##arg_tts])
+        #DOLLAR_CRATE::fmt::Arguments::new_v1(&[], &[##arg_tts])
     };
     ExpandResult::ok(expanded)
 }
@@ -379,15 +379,10 @@ fn compile_error_expand(
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
     let err = match &*tt.token_trees {
-        [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => {
-            let text = it.text.as_str();
-            if text.starts_with('"') && text.ends_with('"') {
-                // FIXME: does not handle raw strings
-                ExpandError::Other(text[1..text.len() - 1].into())
-            } else {
-                ExpandError::Other("`compile_error!` argument must be a string".into())
-            }
-        }
+        [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => match unquote_str(it) {
+            Some(unquoted) => ExpandError::Other(unquoted.into()),
+            None => ExpandError::Other("`compile_error!` argument must be a string".into()),
+        },
         _ => ExpandError::Other("`compile_error!` argument must be a string".into()),
     };
 
@@ -454,7 +449,7 @@ fn concat_bytes_expand(
                 match token.kind() {
                     syntax::SyntaxKind::BYTE => bytes.push(token.text().to_string()),
                     syntax::SyntaxKind::BYTE_STRING => {
-                        let components = unquote_byte_string(lit).unwrap_or_else(Vec::new);
+                        let components = unquote_byte_string(lit).unwrap_or_default();
                         components.into_iter().for_each(|x| bytes.push(x.to_string()));
                     }
                     _ => {
@@ -675,8 +670,8 @@ fn option_env_expand(
     };
 
     let expanded = match get_env_inner(db, arg_id, &key) {
-        None => quote! { std::option::Option::None::<&str> },
-        Some(s) => quote! { std::option::Some(#s) },
+        None => quote! { #DOLLAR_CRATE::option::Option::None::<&str> },
+        Some(s) => quote! { #DOLLAR_CRATE::option::Option::Some(#s) },
     };
 
     ExpandResult::ok(ExpandedEager::new(expanded))

@@ -31,8 +31,7 @@ impl<'a, 'tcx> VirtualIndex {
             let typeid =
                 bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), expect_dyn_trait_in_self(ty)));
             let vtable_byte_offset = self.0 * bx.data_layout().pointer_size.bytes();
-            let type_checked_load = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
-            let func = bx.extract_value(type_checked_load, 0);
+            let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             bx.pointercast(func, llty)
         } else {
             let ptr_align = bx.tcx().data_layout.pointer_align.abi;
@@ -66,10 +65,10 @@ impl<'a, 'tcx> VirtualIndex {
 
 /// This takes a valid `self` receiver type and extracts the principal trait
 /// ref of the type.
-fn expect_dyn_trait_in_self<'tcx>(ty: Ty<'tcx>) -> ty::PolyExistentialTraitRef<'tcx> {
+fn expect_dyn_trait_in_self(ty: Ty<'_>) -> ty::PolyExistentialTraitRef<'_> {
     for arg in ty.peel_refs().walk() {
         if let GenericArgKind::Type(ty) = arg.unpack() {
-            if let ty::Dynamic(data, _) = ty.kind() {
+            if let ty::Dynamic(data, _, _) = ty.kind() {
                 return data.principal().expect("expected principal trait object");
             }
         }
@@ -86,14 +85,13 @@ fn expect_dyn_trait_in_self<'tcx>(ty: Ty<'tcx>) -> ty::PolyExistentialTraitRef<'
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<dyn Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T: Trait`.
+#[instrument(level = "debug", skip(cx))]
 pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Cx::Value {
     let tcx = cx.tcx();
-
-    debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 
     // Check the cache.
     if let Some(&val) = cx.vtables().borrow().get(&(ty, trait_ref)) {

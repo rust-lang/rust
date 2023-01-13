@@ -405,7 +405,7 @@ impl<'a> Arguments<'a> {
     /// 1. The `pieces` slice must be at least as long as `fmt`.
     /// 2. Every [`rt::v1::Argument::position`] value within `fmt` must be a
     ///    valid index of `args`.
-    /// 3. Every [`Count::Param`] within `fmt` must contain a valid index of
+    /// 3. Every [`rt::v1::Count::Param`] within `fmt` must contain a valid index of
     ///    `args`.
     #[doc(hidden)]
     #[inline]
@@ -510,7 +510,7 @@ impl<'a> Arguments<'a> {
     /// assert_eq!(format_args!("{}", 1).as_str(), None);
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
-    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "none")]
+    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
     #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
@@ -558,7 +558,7 @@ impl Display for Arguments<'_> {
 ///
 /// Derived `Debug` formats are not stable, and so may change with future Rust
 /// versions. Additionally, `Debug` implementations of types provided by the
-/// standard library (`libstd`, `libcore`, `liballoc`, etc.) are not stable, and
+/// standard library (`std`, `core`, `alloc`, etc.) are not stable, and
 /// may also change with future Rust versions.
 ///
 /// # Examples
@@ -709,12 +709,19 @@ pub use macros::Debug;
 
 /// Format trait for an empty format, `{}`.
 ///
+/// Implementing this trait for a type will automatically implement the
+/// [`ToString`][tostring] trait for the type, allowing the usage
+/// of the [`.to_string()`][tostring_function] method. Prefer implementing
+/// the `Display` trait for a type, rather than [`ToString`][tostring].
+///
 /// `Display` is similar to [`Debug`], but `Display` is for user-facing
 /// output, and so cannot be derived.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
 /// [module]: ../../std/fmt/index.html
+/// [tostring]: ../../std/string/trait.ToString.html
+/// [tostring_function]: ../../std/string/trait.ToString.html#tymethod.to_string
 ///
 /// # Examples
 ///
@@ -1047,7 +1054,6 @@ pub trait UpperHex {
 pub trait Pointer {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "pointer_trait_fmt"]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
 
@@ -2465,8 +2471,8 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        // Cast is needed here because `.addr()` requires `T: Sized`.
-        pointer_fmt_inner((*self as *const ()).addr(), f)
+        // Cast is needed here because `.expose_addr()` requires `T: Sized`.
+        pointer_fmt_inner((*self as *const ()).expose_addr(), f)
     }
 }
 
@@ -2603,7 +2609,7 @@ impl Debug for () {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_struct("PhantomData").finish()
+        write!(f, "PhantomData<{}>", crate::any::type_name::<T>())
     }
 }
 

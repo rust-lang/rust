@@ -69,7 +69,9 @@ fn lit_search_pat(lit: &LitKind) -> (Pat, Pat) {
         LitKind::Str(_, StrStyle::Cooked) => (Pat::Str("\""), Pat::Str("\"")),
         LitKind::Str(_, StrStyle::Raw(0)) => (Pat::Str("r"), Pat::Str("\"")),
         LitKind::Str(_, StrStyle::Raw(_)) => (Pat::Str("r#"), Pat::Str("#")),
-        LitKind::ByteStr(_) => (Pat::Str("b\""), Pat::Str("\"")),
+        LitKind::ByteStr(_, StrStyle::Cooked) => (Pat::Str("b\""), Pat::Str("\"")),
+        LitKind::ByteStr(_, StrStyle::Raw(0)) => (Pat::Str("br\""), Pat::Str("\"")),
+        LitKind::ByteStr(_, StrStyle::Raw(_)) => (Pat::Str("br#\""), Pat::Str("#")),
         LitKind::Byte(_) => (Pat::Str("b'"), Pat::Str("'")),
         LitKind::Char(_) => (Pat::Str("'"), Pat::Str("'")),
         LitKind::Int(_, LitIntType::Signed(IntTy::Isize)) => (Pat::Num, Pat::Str("isize")),
@@ -220,7 +222,7 @@ fn trait_item_search_pat(item: &TraitItem<'_>) -> (Pat, Pat) {
 fn impl_item_search_pat(item: &ImplItem<'_>) -> (Pat, Pat) {
     let (start_pat, end_pat) = match &item.kind {
         ImplItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
-        ImplItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
+        ImplItemKind::Type(..) => (Pat::Str("type"), Pat::Str(";")),
         ImplItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
     };
     if item.vis_span.is_empty() {

@@ -457,7 +457,7 @@ impl DefMap {
             for (name, child) in
                 map.modules[module].children.iter().sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
             {
-                let path = format!("{}::{}", path, name);
+                let path = format!("{path}::{name}");
                 buf.push('\n');
                 go(buf, map, &path, *child);
             }

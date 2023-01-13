@@ -4,12 +4,12 @@ error: redundant clone
 LL |     let _s = ["lorem", "ipsum"].join(" ").to_string();
    |                                          ^^^^^^^^^^^^ help: remove this
    |
-   = note: `-D clippy::redundant-clone` implied by `-D warnings`
 note: this value is dropped without further use
   --> $DIR/redundant_clone.rs:10:14
    |
 LL |     let _s = ["lorem", "ipsum"].join(" ").to_string();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::redundant-clone` implied by `-D warnings`
 
 error: redundant clone
   --> $DIR/redundant_clone.rs:13:15

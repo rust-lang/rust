@@ -1,0 +1,17 @@
+error[E0080]: could not evaluate static initializer
+  --> $DIR/inline_asm.rs:10:14
+   |
+LL |     unsafe { asm!("nop"); }
+   |              ^^^^^^^^^^^ inline assembly is not supported
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/inline_asm.rs:10:14
+   |
+LL |     unsafe { asm!("nop"); }
+   |              ^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

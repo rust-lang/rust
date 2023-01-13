@@ -95,6 +95,7 @@ use crate::fmt;
 /// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
 /// [`JoinHandle::join`]: crate::thread::JoinHandle::join
 /// [`with`]: LocalKey::with
+#[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
     // This outer `LocalKey<T>` type is what's going to be stored in statics,
@@ -900,13 +901,12 @@ pub mod statik {
 }
 
 #[doc(hidden)]
-#[cfg(target_thread_local)]
+#[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics"))),))]
 pub mod fast {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
-    use crate::fmt;
-    use crate::mem;
     use crate::sys::thread_local_dtor::register_dtor;
+    use crate::{fmt, mem, panic};
 
     #[derive(Copy, Clone)]
     enum DtorState {
@@ -949,7 +949,7 @@ pub mod fast {
 
         // note that this is just a publicly-callable function only for the
         // const-initialized form of thread locals, basically a way to call the
-        // free `register_dtor` function defined elsewhere in libstd.
+        // free `register_dtor` function defined elsewhere in std.
         pub unsafe fn register_dtor(a: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
             unsafe {
                 register_dtor(a, dtor);
@@ -1027,23 +1027,29 @@ pub mod fast {
         // `Option<T>` to `None`, and `dtor_state` to `RunningOrHasRun`. This
         // causes future calls to `get` to run `try_initialize_drop` again,
         // which will now fail, and return `None`.
-        unsafe {
+        //
+        // Wrap the call in a catch to ensure unwinding is caught in the event
+        // a panic takes place in a destructor.
+        if let Err(_) = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
             let value = (*ptr).inner.take();
             (*ptr).dtor_state.set(DtorState::RunningOrHasRun);
             drop(value);
+        })) {
+            rtabort!("thread local panicked on drop");
         }
     }
 }
 
 #[doc(hidden)]
-#[cfg(not(target_thread_local))]
+#[cfg(all(
+    not(target_thread_local),
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 pub mod os {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
-    use crate::fmt;
-    use crate::marker;
-    use crate::ptr;
     use crate::sys_common::thread_local_key::StaticKey as OsStaticKey;
+    use crate::{fmt, marker, panic, ptr};
 
     /// Use a regular global static to store this key; the state provided will then be
     /// thread-local.
@@ -1133,12 +1139,17 @@ pub mod os {
         //
         // Note that to prevent an infinite loop we reset it back to null right
         // before we return from the destructor ourselves.
-        unsafe {
+        //
+        // Wrap the call in a catch to ensure unwinding is caught in the event
+        // a panic takes place in a destructor.
+        if let Err(_) = panic::catch_unwind(|| unsafe {
             let ptr = Box::from_raw(ptr as *mut Value<T>);
             let key = ptr.key;
             key.os.set(ptr::invalid_mut(1));
             drop(ptr);
             key.os.set(ptr::null_mut());
+        }) {
+            rtabort!("thread local panicked on drop");
         }
     }
 }

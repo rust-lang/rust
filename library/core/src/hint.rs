@@ -100,7 +100,10 @@ use crate::intrinsics;
 pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
-    unsafe { intrinsics::unreachable() }
+    unsafe {
+        intrinsics::assert_unsafe_precondition!("hint::unreachable_unchecked must never be reached", () => false);
+        intrinsics::unreachable()
+    }
 }
 
 /// Emits a machine instruction to signal the processor that it is running in
@@ -157,7 +160,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// ```
 ///
 /// [`thread::yield_now`]: ../../std/thread/fn.yield_now.html
-#[inline]
+#[inline(always)]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
     #[cfg(target_arch = "x86")]
@@ -217,7 +220,7 @@ pub fn spin_loop() {
 ///
 /// [`std::convert::identity`]: crate::convert::identity
 #[inline]
-#[unstable(feature = "bench_black_box", issue = "64102")]
+#[stable(feature = "bench_black_box", since = "1.66.0")]
 #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
@@ -342,6 +345,7 @@ pub const fn black_box<T>(dummy: T) -> T {
 #[unstable(feature = "hint_must_use", issue = "94745")]
 #[rustc_const_unstable(feature = "hint_must_use", issue = "94745")]
 #[must_use] // <-- :)
+#[inline(always)]
 pub const fn must_use<T>(value: T) -> T {
     value
 }

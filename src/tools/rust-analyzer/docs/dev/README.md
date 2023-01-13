@@ -98,7 +98,7 @@ After I am done with the fix, I use `cargo xtask install --client` to try the ne
 If I need to fix something in the `rust-analyzer` crate, I feel sad because it's on the boundary between the two processes, and working there is slow.
 I usually just `cargo xtask install --server` and poke changes from my live environment.
 Note that this uses `--release`, which is usually faster overall, because loading stdlib into debug version of rust-analyzer takes a lot of time.
-To speed things up, sometimes I open a temporary hello-world project which has `"rust-analyzer.cargo.noSysroot": true` in `.code/settings.json`.
+To speed things up, sometimes I open a temporary hello-world project which has `"rust-analyzer.cargo.sysroot": null` in `.code/settings.json`.
 This flag causes rust-analyzer to skip loading the sysroot, which greatly reduces the amount of things rust-analyzer needs to do, and makes printf's more useful.
 Note that you should only use the `eprint!` family of macros for debugging: stdout is used for LSP communication, and `print!` would break it.
 
@@ -200,7 +200,7 @@ Look for `fn benchmark_xxx` tests for a quick way to reproduce performance probl
 
 ## Release Process
 
-Release process is handled by `release`, `dist` and `promote` xtasks, `release` being the main one.
+Release process is handled by `release`, `dist`, `publish-release-notes` and `promote` xtasks, `release` being the main one.
 
 `release` assumes that you have checkouts of `rust-analyzer`, `rust-analyzer.github.io`, and `rust-lang/rust` in the same directory:
 
@@ -231,8 +231,9 @@ Release steps:
    * create a new changelog in `rust-analyzer.github.io`
 3. While the release is in progress, fill in the changelog
 4. Commit & push the changelog
-5. Tweet
-6. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's subtree.
+5. Run `cargo xtask publish-release-notes <CHANGELOG>` -- this will convert the changelog entry in AsciiDoc to Markdown and update the body of GitHub Releases entry.
+6. Tweet
+7. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's subtree.
    Self-approve the PR.
 
 If the GitHub Actions release fails because of a transient problem like a timeout, you can re-run the job from the Actions console.

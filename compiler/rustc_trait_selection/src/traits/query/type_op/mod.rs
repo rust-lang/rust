@@ -1,10 +1,10 @@
 use crate::infer::canonical::{
-    Canonicalized, CanonicalizedQueryResponse, OriginalQueryValues, QueryRegionConstraints,
+    Canonical, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
-use rustc_infer::infer::canonical::{Canonical, Certainty};
+use rustc_infer::infer::canonical::Certainty;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -26,13 +26,13 @@ pub use rustc_middle::traits::query::type_op::*;
 /// extract out the resulting region constraints (or an error if it
 /// cannot be completed).
 pub trait TypeOp<'tcx>: Sized + fmt::Debug {
-    type Output;
+    type Output: fmt::Debug;
     type ErrorInfo;
 
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
     /// (they will be given over to the NLL region solver).
-    fn fully_perform(self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>>;
+    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>>;
 }
 
 /// The output from performing a type op
@@ -73,12 +73,12 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<'tcx> + 'tcx {
     /// not captured in the return value.
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self::QueryResponse>>;
+        canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+    ) -> Fallible<CanonicalQueryResponse<'tcx, Self::QueryResponse>>;
 
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
     ) -> Fallible<(
         Self::QueryResponse,
@@ -120,7 +120,7 @@ where
     type Output = Q::QueryResponse;
     type ErrorInfo = Canonical<'tcx, ParamEnvAnd<'tcx, Q>>;
 
-    fn fully_perform(self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
+    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
         let mut region_constraints = QueryRegionConstraints::default();
         let (output, error_info, mut obligations, _) =
             Q::fully_perform_into(self, infcx, &mut region_constraints)?;

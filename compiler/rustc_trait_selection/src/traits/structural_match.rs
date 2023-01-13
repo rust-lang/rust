@@ -1,11 +1,5 @@
-use crate::infer::{InferCtxt, TyCtxtInferExt};
-use crate::traits::ObligationCause;
-use crate::traits::{TraitEngine, TraitEngineExt};
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::lang_items::LangItem;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
 use std::ops::ControlFlow;
@@ -60,53 +54,6 @@ pub fn search_for_adt_const_param_violation<'tcx>(
         .break_value()
 }
 
-/// This method returns true if and only if `adt_ty` itself has been marked as
-/// eligible for structural-match: namely, if it implements both
-/// `StructuralPartialEq` and `StructuralEq` (which are respectively injected by
-/// `#[derive(PartialEq)]` and `#[derive(Eq)]`).
-///
-/// Note that this does *not* recursively check if the substructure of `adt_ty`
-/// implements the traits.
-fn type_marked_structural<'tcx>(
-    infcx: &InferCtxt<'_, 'tcx>,
-    adt_ty: Ty<'tcx>,
-    cause: ObligationCause<'tcx>,
-) -> bool {
-    let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
-    // require `#[derive(PartialEq)]`
-    let structural_peq_def_id =
-        infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.span));
-    fulfillment_cx.register_bound(
-        infcx,
-        ty::ParamEnv::empty(),
-        adt_ty,
-        structural_peq_def_id,
-        cause.clone(),
-    );
-    // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
-    // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
-    let structural_teq_def_id =
-        infcx.tcx.require_lang_item(LangItem::StructuralTeq, Some(cause.span));
-    fulfillment_cx.register_bound(
-        infcx,
-        ty::ParamEnv::empty(),
-        adt_ty,
-        structural_teq_def_id,
-        cause,
-    );
-
-    // We deliberately skip *reporting* fulfillment errors (via
-    // `report_fulfillment_errors`), for two reasons:
-    //
-    // 1. The error messages would mention `std::marker::StructuralPartialEq`
-    //    (a trait which is solely meant as an implementation detail
-    //    for now), and
-    //
-    // 2. We are sometimes doing future-incompatibility lints for
-    //    now, so we do not want unconditional errors here.
-    fulfillment_cx.select_all_or_error(infcx).is_empty()
-}
-
 /// This implements the traversal over the structure of a given type to try to
 /// find instances of ADTs (specifically structs or enums) that do not implement
 /// the structural-match traits (`StructuralPartialEq` and `StructuralEq`).
@@ -148,10 +95,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
             ty::Foreign(_) => {
                 return ControlFlow::Break(ty);
             }
-            ty::Opaque(..) => {
-                return ControlFlow::Break(ty);
-            }
-            ty::Projection(..) => {
+            ty::Alias(..) => {
                 return ControlFlow::Break(ty);
             }
             ty::Closure(..) => {
@@ -261,13 +205,4 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
             ty.visit_with(self)
         })
     }
-}
-
-pub fn provide(providers: &mut Providers) {
-    providers.has_structural_eq_impls = |tcx, ty| {
-        tcx.infer_ctxt().enter(|infcx| {
-            let cause = ObligationCause::dummy();
-            type_marked_structural(&infcx, ty, cause)
-        })
-    };
 }

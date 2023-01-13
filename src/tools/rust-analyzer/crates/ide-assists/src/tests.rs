@@ -29,6 +29,8 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
         group: true,
         skip_glob_imports: true,
     },
+    prefer_no_std: false,
+    assist_emit_must_use: false,
 };
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
@@ -95,8 +97,10 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
         });
 
     let actual = {
-        let source_change =
-            assist.source_change.expect("Assist did not contain any source changes");
+        let source_change = assist
+            .source_change
+            .filter(|it| !it.source_file_edits.is_empty() || !it.file_system_edits.is_empty())
+            .expect("Assist did not contain any source changes");
         let mut actual = before;
         if let Some(source_file_edit) = source_change.get_source_edit(file_id) {
             source_file_edit.apply(&mut actual);
@@ -139,8 +143,10 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult<'_>, assist_la
 
     match (assist, expected) {
         (Some(assist), ExpectedResult::After(after)) => {
-            let source_change =
-                assist.source_change.expect("Assist did not contain any source changes");
+            let source_change = assist
+                .source_change
+                .filter(|it| !it.source_file_edits.is_empty() || !it.file_system_edits.is_empty())
+                .expect("Assist did not contain any source changes");
             let skip_header = source_change.source_file_edits.len() == 1
                 && source_change.file_system_edits.len() == 0;
 
@@ -165,7 +171,7 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult<'_>, assist_la
                     }
                     FileSystemEdit::MoveDir { src, src_id, dst } => {
                         // temporary placeholder for MoveDir since we are not using MoveDir in ide assists yet.
-                        (dst, format!("{:?}\n{:?}", src_id, src))
+                        (dst, format!("{src_id:?}\n{src:?}"))
                     }
                 };
                 let sr = db.file_source_root(dst.anchor);
@@ -227,6 +233,7 @@ fn assist_order_field_struct() {
     assert_eq!(assists.next().expect("expected assist").label, "Generate a getter method");
     assert_eq!(assists.next().expect("expected assist").label, "Generate a mut getter method");
     assert_eq!(assists.next().expect("expected assist").label, "Generate a setter method");
+    assert_eq!(assists.next().expect("expected assist").label, "Convert to tuple struct");
     assert_eq!(assists.next().expect("expected assist").label, "Add `#[derive]`");
 }
 

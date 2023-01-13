@@ -1,7 +1,7 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::def_id::LocalDefId;
-use hir::ConstContext;
+use hir::{ConstContext, LangItem};
 use rustc_errors::{
     error_code, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
 };
@@ -13,10 +13,9 @@ use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    suggest_constraining_type_param, Adt, Closure, DefIdTree, FnDef, FnPtr, Param, TraitPredicate,
-    Ty,
+    suggest_constraining_type_param, Adt, Closure, DefIdTree, FnDef, FnPtr, Param, Ty,
 };
-use rustc_middle::ty::{Binder, BoundConstness, ImplPolarity, TraitRef};
+use rustc_middle::ty::{Binder, TraitRef};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
@@ -112,6 +111,7 @@ pub struct FnCallNonConst<'tcx> {
     pub substs: SubstsRef<'tcx>,
     pub span: Span,
     pub from_hir_call: bool,
+    pub feature: Option<Symbol>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
@@ -120,7 +120,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         ccx: &ConstCx<'_, 'tcx>,
         _: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let FnCallNonConst { caller, callee, substs, span, from_hir_call } = *self;
+        let FnCallNonConst { caller, callee, substs, span, from_hir_call, feature } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
 
         let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
@@ -147,19 +147,15 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 }
                 Adt(..) => {
                     let obligation = Obligation::new(
+                        tcx,
                         ObligationCause::dummy(),
                         param_env,
-                        Binder::dummy(TraitPredicate {
-                            trait_ref,
-                            constness: BoundConstness::NotConst,
-                            polarity: ImplPolarity::Positive,
-                        }),
+                        Binder::dummy(trait_ref),
                     );
 
-                    let implsrc = tcx.infer_ctxt().enter(|infcx| {
-                        let mut selcx = SelectionContext::new(&infcx);
-                        selcx.select(&obligation)
-                    });
+                    let infcx = tcx.infer_ctxt().build();
+                    let mut selcx = SelectionContext::new(&infcx);
+                    let implsrc = selcx.select(&obligation);
 
                     if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
                         let span = tcx.def_span(data.impl_def_id);
@@ -304,7 +300,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     err.span_note(deref_target, "deref defined here");
                 }
 
-                diag_trait(&mut err, self_ty, tcx.lang_items().deref_trait().unwrap());
+                diag_trait(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, Some(span)));
                 err
             }
             _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentV1Methods) => {
@@ -322,6 +318,13 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
              tuple structs and tuple variants",
             ccx.const_kind(),
         ));
+
+        if let Some(feature) = feature && ccx.tcx.sess.is_nightly_build() {
+            err.help(&format!(
+                "add `#![feature({})]` to the crate attributes to enable",
+                feature,
+            ));
+        }
 
         if let ConstContext::Static(_) = ccx.const_kind() {
             err.note("consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell");
@@ -381,7 +384,7 @@ impl<'tcx> NonConstOp<'tcx> for Generator {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
+        let msg = format!("{}s are not allowed in {}s", self.0.descr(), ccx.const_kind());
         if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
             ccx.tcx.sess.create_feature_err(
                 UnallowedOpInConstContext { span, msg },
@@ -422,10 +425,11 @@ impl<'tcx> NonConstOp<'tcx> for InlineAsm {
 }
 
 #[derive(Debug)]
-pub struct LiveDrop {
+pub struct LiveDrop<'tcx> {
     pub dropped_at: Option<Span>,
+    pub dropped_ty: Ty<'tcx>,
 }
-impl<'tcx> NonConstOp<'tcx> for LiveDrop {
+impl<'tcx> NonConstOp<'tcx> for LiveDrop<'tcx> {
     fn build_error(
         &self,
         ccx: &ConstCx<'_, 'tcx>,
@@ -435,9 +439,13 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop {
             ccx.tcx.sess,
             span,
             E0493,
-            "destructors cannot be evaluated at compile-time"
+            "destructor of `{}` cannot be evaluated at compile-time",
+            self.dropped_ty,
         );
-        err.span_label(span, format!("{}s cannot evaluate destructors", ccx.const_kind()));
+        err.span_label(
+            span,
+            format!("the destructor for this type cannot be evaluated in {}s", ccx.const_kind()),
+        );
         if let Some(span) = self.dropped_at {
             err.span_label(span, "value is dropped here");
         }
@@ -686,7 +694,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
     }
 }
 
-// Types that cannot appear in the signature or locals of a `const fn`.
+/// Types that cannot appear in the signature or locals of a `const fn`.
 pub mod ty {
     use super::*;
 

@@ -50,7 +50,7 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
             _ => return None,
         };
 
-        mod_path_to_ast(&module.find_use_path(ctx.db(), src_type_def)?)
+        mod_path_to_ast(&module.find_use_path(ctx.db(), src_type_def, ctx.config.prefer_no_std)?)
     };
 
     let dest_type = match &ast_trait {
@@ -86,9 +86,9 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
         impl_.syntax().text_range(),
         |builder| {
             builder.replace(src_type.syntax().text_range(), dest_type.to_string());
-            builder.replace(ast_trait.syntax().text_range(), format!("From<{}>", src_type));
+            builder.replace(ast_trait.syntax().text_range(), format!("From<{src_type}>"));
             builder.replace(into_fn_return.syntax().text_range(), "-> Self");
-            builder.replace(into_fn_params.syntax().text_range(), format!("(val: {})", src_type));
+            builder.replace(into_fn_params.syntax().text_range(), format!("(val: {src_type})"));
             builder.replace(into_fn_name.syntax().text_range(), "from");
 
             for s in selfs {

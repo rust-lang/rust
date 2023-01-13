@@ -4,12 +4,12 @@ error: `x` is shadowed by itself in `x`
 LL |     let x = x;
    |         ^
    |
-   = note: `-D clippy::shadow-same` implied by `-D warnings`
 note: previous binding is here
   --> $DIR/shadow.rs:5:9
    |
 LL |     let x = 1;
    |         ^
+   = note: `-D clippy::shadow-same` implied by `-D warnings`
 
 error: `mut x` is shadowed by itself in `&x`
   --> $DIR/shadow.rs:7:13
@@ -53,12 +53,12 @@ error: `x` is shadowed
 LL |     let x = x.0;
    |         ^
    |
-   = note: `-D clippy::shadow-reuse` implied by `-D warnings`
 note: previous binding is here
   --> $DIR/shadow.rs:13:9
    |
 LL |     let x = ([[0]], ());
    |         ^
+   = note: `-D clippy::shadow-reuse` implied by `-D warnings`
 
 error: `x` is shadowed
   --> $DIR/shadow.rs:15:9
@@ -150,12 +150,12 @@ error: `x` shadows a previous, unrelated binding
 LL |     let x = 2;
    |         ^
    |
-   = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
 note: previous binding is here
   --> $DIR/shadow.rs:30:9
    |
 LL |     let x = 1;
    |         ^
+   = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
 
 error: `x` shadows a previous, unrelated binding
   --> $DIR/shadow.rs:36:13

@@ -91,7 +91,7 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
         .flat_map(|list| list.use_trees())
         // We use Option here to early return from this function(this is not the
         // same as a `filter` op).
-        .map(|tree| merge.is_tree_allowed(&tree).then(|| tree))
+        .map(|tree| merge.is_tree_allowed(&tree).then_some(tree))
         .collect::<Option<_>>()?;
     use_trees.sort_unstable_by(|a, b| path_cmp_for_sort(a.path(), b.path()));
     for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
@@ -225,7 +225,7 @@ fn path_cmp_short(a: &ast::Path, b: &ast::Path) -> Ordering {
 }
 
 /// Compares two paths, if one ends earlier than the other the has_tl parameters decide which is
-/// greater as a a path that has a tree list should be greater, while one that just ends without
+/// greater as a path that has a tree list should be greater, while one that just ends without
 /// a tree list should be considered less.
 pub(super) fn use_tree_path_cmp(
     a: &ast::Path,

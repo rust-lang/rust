@@ -140,3 +140,12 @@ macro_rules! manual_rem_euclid {
 macro_rules! equatable_if_let {
     ($a:ident) => {{ if let 2 = $a {} }};
 }
+
+#[macro_export]
+macro_rules! almost_complete_range {
+    () => {
+        let _ = 'a'..'z';
+        let _ = 'A'..'Z';
+        let _ = '0'..'9';
+    };
+}

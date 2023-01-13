@@ -13,8 +13,10 @@ use rustc_span::{sym, DebuggerVisualizerFile, DebuggerVisualizerType};
 
 use std::sync::Arc;
 
-fn check_for_debugger_visualizer<'tcx>(
-    tcx: TyCtxt<'tcx>,
+use crate::errors::DebugVisualizerUnreadable;
+
+fn check_for_debugger_visualizer(
+    tcx: TyCtxt<'_>,
     hir_id: HirId,
     debugger_visualizers: &mut FxHashSet<DebuggerVisualizerFile>,
 ) {
@@ -54,13 +56,12 @@ fn check_for_debugger_visualizer<'tcx>(
                     debugger_visualizers
                         .insert(DebuggerVisualizerFile::new(Arc::from(contents), visualizer_type));
                 }
-                Err(err) => {
-                    tcx.sess
-                        .struct_span_err(
-                            meta_item.span,
-                            &format!("couldn't read {}: {}", file.display(), err),
-                        )
-                        .emit();
+                Err(error) => {
+                    tcx.sess.emit_err(DebugVisualizerUnreadable {
+                        span: meta_item.span,
+                        file: &file,
+                        error,
+                    });
                 }
             }
         }
@@ -68,7 +69,7 @@ fn check_for_debugger_visualizer<'tcx>(
 }
 
 /// Traverses and collects the debugger visualizers for a specific crate.
-fn debugger_visualizers<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Vec<DebuggerVisualizerFile> {
+fn debugger_visualizers(tcx: TyCtxt<'_>, cnum: CrateNum) -> Vec<DebuggerVisualizerFile> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     // Initialize the collector.

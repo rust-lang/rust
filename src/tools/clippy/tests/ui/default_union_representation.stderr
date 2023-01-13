@@ -7,8 +7,8 @@ LL | |     b: u32,
 LL | | }
    | |_^
    |
-   = note: `-D clippy::default-union-representation` implied by `-D warnings`
    = help: consider annotating `NoAttribute` with `#[repr(C)]` to explicitly specify memory layout
+   = note: `-D clippy::default-union-representation` implied by `-D warnings`
 
 error: this union has the default representation
   --> $DIR/default_union_representation.rs:16:1

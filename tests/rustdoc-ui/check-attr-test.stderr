@@ -1,0 +1,151 @@
+error: unknown attribute `compile-fail`. Did you mean `compile_fail`?
+ --> $DIR/check-attr-test.rs:5:1
+  |
+5 | / /// foo
+6 | | ///
+7 | | /// ```compile-fail,compilefail,comPile_fail
+8 | | /// boo
+9 | | /// ```
+  | |_______^
+  |
+  = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
+note: the lint level is defined here
+ --> $DIR/check-attr-test.rs:3:9
+  |
+3 | #![deny(rustdoc::invalid_codeblock_attributes)]
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unknown attribute `compilefail`. Did you mean `compile_fail`?
+ --> $DIR/check-attr-test.rs:5:1
+  |
+5 | / /// foo
+6 | | ///
+7 | | /// ```compile-fail,compilefail,comPile_fail
+8 | | /// boo
+9 | | /// ```
+  | |_______^
+  |
+  = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
+
+error: unknown attribute `comPile_fail`. Did you mean `compile_fail`?
+ --> $DIR/check-attr-test.rs:5:1
+  |
+5 | / /// foo
+6 | | ///
+7 | | /// ```compile-fail,compilefail,comPile_fail
+8 | | /// boo
+9 | | /// ```
+  | |_______^
+  |
+  = help: the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
+
+error: unknown attribute `should-panic`. Did you mean `should_panic`?
+  --> $DIR/check-attr-test.rs:12:1
+   |
+12 | / /// bar
+13 | | ///
+14 | | /// ```should-panic,shouldpanic,shOuld_panic
+15 | | /// boo
+16 | | /// ```
+   | |_______^
+   |
+   = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+
+error: unknown attribute `shouldpanic`. Did you mean `should_panic`?
+  --> $DIR/check-attr-test.rs:12:1
+   |
+12 | / /// bar
+13 | | ///
+14 | | /// ```should-panic,shouldpanic,shOuld_panic
+15 | | /// boo
+16 | | /// ```
+   | |_______^
+   |
+   = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+
+error: unknown attribute `shOuld_panic`. Did you mean `should_panic`?
+  --> $DIR/check-attr-test.rs:12:1
+   |
+12 | / /// bar
+13 | | ///
+14 | | /// ```should-panic,shouldpanic,shOuld_panic
+15 | | /// boo
+16 | | /// ```
+   | |_______^
+   |
+   = help: the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+
+error: unknown attribute `no-run`. Did you mean `no_run`?
+  --> $DIR/check-attr-test.rs:19:1
+   |
+19 | / /// foobar
+20 | | ///
+21 | | /// ```no-run,norun,nO_run
+22 | | /// boo
+23 | | /// ```
+   | |_______^
+   |
+   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
+
+error: unknown attribute `norun`. Did you mean `no_run`?
+  --> $DIR/check-attr-test.rs:19:1
+   |
+19 | / /// foobar
+20 | | ///
+21 | | /// ```no-run,norun,nO_run
+22 | | /// boo
+23 | | /// ```
+   | |_______^
+   |
+   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
+
+error: unknown attribute `nO_run`. Did you mean `no_run`?
+  --> $DIR/check-attr-test.rs:19:1
+   |
+19 | / /// foobar
+20 | | ///
+21 | | /// ```no-run,norun,nO_run
+22 | | /// boo
+23 | | /// ```
+   | |_______^
+   |
+   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
+
+error: unknown attribute `test-harness`. Did you mean `test_harness`?
+  --> $DIR/check-attr-test.rs:26:1
+   |
+26 | / /// b
+27 | | ///
+28 | | /// ```test-harness,testharness,tesT_harness
+29 | | /// boo
+30 | | /// ```
+   | |_______^
+   |
+   = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+
+error: unknown attribute `testharness`. Did you mean `test_harness`?
+  --> $DIR/check-attr-test.rs:26:1
+   |
+26 | / /// b
+27 | | ///
+28 | | /// ```test-harness,testharness,tesT_harness
+29 | | /// boo
+30 | | /// ```
+   | |_______^
+   |
+   = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+
+error: unknown attribute `tesT_harness`. Did you mean `test_harness`?
+  --> $DIR/check-attr-test.rs:26:1
+   |
+26 | / /// b
+27 | | ///
+28 | | /// ```test-harness,testharness,tesT_harness
+29 | | /// boo
+30 | | /// ```
+   | |_______^
+   |
+   = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+
+error: aborting due to 12 previous errors
+

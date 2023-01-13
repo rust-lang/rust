@@ -27,6 +27,7 @@ debug = 0
 # chalk-solve = { path = "../chalk/chalk-solve" }
 # chalk-ir = { path = "../chalk/chalk-ir" }
 # chalk-recursive = { path = "../chalk/chalk-recursive" }
+# chalk-derive = { path = "../chalk/chalk-derive" }
 
 # ungrammar = { path = "../ungrammar" }
 

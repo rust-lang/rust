@@ -488,7 +488,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         // If this empty region is from a universe that can
                         // name the placeholder, then the placeholder is
                         // larger; otherwise, the only ancestor is `'static`.
-                        if a_ui.can_name(placeholder.universe) { true } else { false }
+                        return a_ui.can_name(placeholder.universe);
                     }
                 }
             }
@@ -702,26 +702,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // Obtain the spans for all the places that can
                     // influence the constraints on this value for
                     // richer diagnostics in `static_impl_trait`.
-                    let influences: Vec<Span> = self
-                        .data
-                        .constraints
-                        .iter()
-                        .filter_map(|(constraint, origin)| match (constraint, origin) {
-                            (
-                                Constraint::VarSubVar(_, sup),
-                                SubregionOrigin::DataBorrowed(_, sp),
-                            ) if sup == &node_vid => Some(*sp),
-                            _ => None,
-                        })
-                        .collect();
 
-                    self.collect_error_for_expanding_node(
-                        graph,
-                        &mut dup_vec,
-                        node_vid,
-                        errors,
-                        influences,
-                    );
+                    self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
                 }
             }
         }
@@ -775,7 +757,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         dup_vec: &mut IndexVec<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
-        influences: Vec<Span>,
     ) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -830,7 +811,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         lower_bound.region,
                         upper_bound.origin.clone(),
                         upper_bound.region,
-                        influences,
+                        vec![],
                     ));
                     return;
                 }
@@ -842,6 +823,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // are placeholders as upper bounds, but the universe of the
         // variable `'a`, or some variable that `'a` has to outlive, doesn't
         // permit those placeholders.
+        //
+        // We only iterate to find the min, which means it doesn't cause reproducibility issues
+        #[allow(rustc::potential_query_instability)]
         let min_universe = lower_vid_bounds
             .into_iter()
             .map(|vid| self.var_infos[vid].universe)

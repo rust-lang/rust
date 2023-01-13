@@ -298,7 +298,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<Ty
 }
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
-    for ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
+    for ty::List<ty::PolyExistentialPredicate<'tcx>>
 {
     fn decode(decoder: &mut D) -> &'tcx Self {
         let len = decoder.read_usize();
@@ -310,7 +310,8 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Const<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        decoder.interner().mk_const(Decodable::decode(decoder))
+        let consts: ty::ConstData<'tcx> = Decodable::decode(decoder);
+        decoder.interner().mk_const(consts.kind, consts.ty)
     }
 }
 
@@ -344,19 +345,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
-    for [ty::abstract_const::Node<'tcx>]
-{
-    fn decode(decoder: &mut D) -> &'tcx Self {
-        decoder.interner().arena.alloc_from_iter(
-            (0..decoder.read_usize()).map(|_| Decodable::decode(decoder)).collect::<Vec<_>>(),
-        )
-    }
-}
-
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
-    for [ty::abstract_const::NodeId]
-{
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for [(ty::Clause<'tcx>, Span)] {
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder.interner().arena.alloc_from_iter(
             (0..decoder.read_usize()).map(|_| Decodable::decode(decoder)).collect::<Vec<_>>(),
@@ -375,10 +364,19 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
     }
 }
 
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty::Const<'tcx>> {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder
+            .interner()
+            .mk_const_list((0..len).map::<ty::Const<'tcx>, _>(|_| Decodable::decode(decoder)))
+    }
+}
+
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
-    &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
@@ -455,6 +453,7 @@ impl_arena_copy_decoder! {<'tcx>
     rustc_span::def_id::DefId,
     rustc_span::def_id::LocalDefId,
     (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
+    ty::DeducedParamAttrs,
 }
 
 #[macro_export]

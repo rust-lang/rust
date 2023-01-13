@@ -12,11 +12,11 @@ use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::StableCrateId;
-use rustc_hir::definitions::Definitions;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -30,14 +30,13 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn};
+use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
 use rustc_trait_selection::traits;
-use rustc_typeck as typeck;
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -136,10 +135,7 @@ mod boxed_resolver {
             f((&mut *resolver).as_mut().unwrap())
         }
 
-        pub fn to_resolver_outputs(
-            resolver: Rc<RefCell<BoxedResolver>>,
-        ) -> (Definitions, Box<CrateStoreDyn>, ty::ResolverOutputs, ty::ResolverAstLowering)
-        {
+        pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ty::ResolverOutputs {
             match Rc::try_unwrap(resolver) {
                 Ok(resolver) => {
                     let mut resolver = resolver.into_inner();
@@ -162,7 +158,7 @@ pub fn create_resolver(
     sess: Lrc<Session>,
     metadata_loader: Box<MetadataLoaderDyn>,
     krate: &ast::Crate,
-    crate_name: &str,
+    crate_name: Symbol,
 ) -> BoxedResolver {
     trace!("create_resolver");
     BoxedResolver::new(sess, move |sess, resolver_arenas| {
@@ -175,7 +171,7 @@ pub fn register_plugins<'a>(
     metadata_loader: &'a dyn MetadataLoader,
     register_lints: impl Fn(&Session, &mut LintStore),
     mut krate: ast::Crate,
-    crate_name: &str,
+    crate_name: Symbol,
 ) -> Result<(ast::Crate, LintStore)> {
     krate = sess.time("attributes_injection", || {
         rustc_builtin_macros::cmdline_attrs::inject(
@@ -212,10 +208,7 @@ pub fn register_plugins<'a>(
         });
     }
 
-    let mut lint_store = rustc_lint::new_lint_store(
-        sess.opts.unstable_opts.no_interleave_lints,
-        sess.enable_internal_lints(),
-    );
+    let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
     register_lints(sess, &mut lint_store);
 
     let registrars =
@@ -235,19 +228,21 @@ fn pre_expansion_lint<'a>(
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
     check_node: impl EarlyCheckNode<'a>,
-    node_name: &str,
+    node_name: Symbol,
 ) {
-    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name).run(|| {
-        rustc_lint::check_ast_node(
-            sess,
-            true,
-            lint_store,
-            registered_tools,
-            None,
-            rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
-            check_node,
-        );
-    });
+    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name.as_str()).run(
+        || {
+            rustc_lint::check_ast_node(
+                sess,
+                true,
+                lint_store,
+                registered_tools,
+                None,
+                rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
+                check_node,
+            );
+        },
+    );
 }
 
 // Cannot implement directly for `LintStore` due to trait coherence.
@@ -261,7 +256,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         node_id: ast::NodeId,
         attrs: &[ast::Attribute],
         items: &[rustc_ast::ptr::P<ast::Item>],
-        name: &str,
+        name: Symbol,
     ) {
         pre_expansion_lint(sess, self.0, registered_tools, (node_id, attrs, items), name);
     }
@@ -275,7 +270,7 @@ pub fn configure_and_expand(
     sess: &Session,
     lint_store: &LintStore,
     mut krate: ast::Crate,
-    crate_name: &str,
+    crate_name: Symbol,
     resolver: &mut Resolver<'_>,
 ) -> Result<ast::Crate> {
     trace!("configure_and_expand");
@@ -469,7 +464,7 @@ fn generated_output_paths(
     sess: &Session,
     outputs: &OutputFilenames,
     exact_name: bool,
-    crate_name: &str,
+    crate_name: Symbol,
 ) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.keys() {
@@ -625,7 +620,7 @@ fn write_out_deps(
         // prevents `make` from spitting out an error if a file is later
         // deleted. For more info see #28735
         for path in files {
-            writeln!(file, "{}:", path)?;
+            writeln!(file, "{path}:")?;
         }
 
         // Emit special comments with information about accessed environment variables.
@@ -638,9 +633,9 @@ fn write_out_deps(
             envs.sort_unstable();
             writeln!(file)?;
             for (k, v) in envs {
-                write!(file, "# env-dep:{}", k)?;
+                write!(file, "# env-dep:{k}")?;
                 if let Some(v) = v {
-                    write!(file, "={}", v)?;
+                    write!(file, "={v}")?;
                 }
                 writeln!(file)?;
             }
@@ -668,7 +663,7 @@ pub fn prepare_outputs(
     compiler: &Compiler,
     krate: &ast::Crate,
     boxed_resolver: &RefCell<BoxedResolver>,
-    crate_name: &str,
+    crate_name: Symbol,
 ) -> Result<OutputFilenames> {
     let _timer = sess.timer("prepare_outputs");
 
@@ -736,11 +731,11 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
-    typeck::provide(providers);
+    rustc_hir_analysis::provide(providers);
+    rustc_hir_typeck::provide(providers);
     ty::provide(providers);
     traits::provide(providers);
     rustc_passes::provide(providers);
-    rustc_resolve::provide(providers);
     rustc_traits::provide(providers);
     rustc_ty_utils::provide(providers);
     rustc_metadata::provide(providers);
@@ -778,7 +773,7 @@ pub fn create_global_ctxt<'tcx>(
     dep_graph: DepGraph,
     resolver: Rc<RefCell<BoxedResolver>>,
     outputs: OutputFilenames,
-    crate_name: &str,
+    crate_name: Symbol,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
@@ -789,8 +784,7 @@ pub fn create_global_ctxt<'tcx>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let (definitions, cstore, resolver_outputs, resolver_for_lowering) =
-        BoxedResolver::to_resolver_outputs(resolver);
+    let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
 
     let sess = &compiler.session();
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
@@ -810,6 +804,12 @@ pub fn create_global_ctxt<'tcx>(
         TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
     });
 
+    let ty::ResolverOutputs {
+        global_ctxt: untracked_resolutions,
+        ast_lowering: untracked_resolver_for_lowering,
+        untracked,
+    } = resolver_outputs;
+
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(move || {
             TyCtxt::create_global_ctxt(
@@ -817,10 +817,8 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 arena,
                 hir_arena,
-                definitions,
-                cstore,
-                resolver_outputs,
-                resolver_for_lowering,
+                untracked_resolutions,
+                untracked,
                 krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
@@ -832,7 +830,12 @@ pub fn create_global_ctxt<'tcx>(
         })
     });
 
-    QueryContext { gcx }
+    let mut qcx = QueryContext { gcx };
+    qcx.enter(|tcx| {
+        tcx.feed_unit_query()
+            .resolver_for_lowering(tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)))
+    });
+    qcx
 }
 
 /// Runs the resolution, type-checking, region checking and other
@@ -880,7 +883,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     });
 
     // passes are timed inside typeck
-    typeck::check_crate(tcx)?;
+    rustc_hir_analysis::check_crate(tcx)?;
 
     sess.time("misc_checking_2", || {
         parallel!(
@@ -936,7 +939,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure().privacy_access_levels(());
+                tcx.ensure().effective_visibilities(());
 
                 parallel!(
                     {
@@ -977,12 +980,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-    outputs: &OutputFilenames,
 ) -> Box<dyn Any> {
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
-    let (metadata, need_metadata_module) =
-        rustc_metadata::fs::encode_and_write_metadata(tcx, outputs);
+    let (metadata, need_metadata_module) = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
     let codegen = tcx.sess.time("codegen_crate", move || {
         codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
@@ -998,7 +999,7 @@ pub fn start_codegen<'tcx>(
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-        if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx, outputs) {
+        if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
             tcx.sess.emit_err(CantEmitMIR { error });
             tcx.sess.abort_if_errors();
         }

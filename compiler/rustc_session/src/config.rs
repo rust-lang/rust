@@ -10,8 +10,8 @@ use crate::{lint, HashStableContext};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
-use rustc_data_structures::stable_hasher::ToStableHashKey;
-use rustc_target::abi::{Align, TargetDataLayout};
+use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
+use rustc_target::abi::Align;
 use rustc_target::spec::{PanicStrategy, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
@@ -32,9 +32,10 @@ use std::collections::btree_map::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::hash::Hash;
-use std::iter::{self, FromIterator};
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
+use std::sync::LazyLock;
 
 pub mod sigpipe;
 
@@ -288,6 +289,9 @@ pub enum OutputType {
     DepInfo,
 }
 
+// Safety: Trivial C-Style enums have a stable sort order across compilation sessions.
+unsafe impl StableOrd for OutputType {}
+
 impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
     type KeyType = Self;
 
@@ -537,6 +541,7 @@ pub enum PrintRequest {
     TargetLibdir,
     CrateName,
     Cfg,
+    CallingConventions,
     TargetList,
     TargetCPUs,
     TargetFeatures,
@@ -547,6 +552,17 @@ pub enum PrintRequest {
     NativeStaticLibs,
     StackProtectorStrategies,
     LinkArgs,
+    SplitDebuginfo,
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum TraitSolver {
+    /// Classic trait solver in `rustc_trait_selection::traits::select`
+    Classic,
+    /// Chalk trait solver
+    Chalk,
+    /// Experimental trait solver in `rustc_trait_selection::solve`
+    Next,
 }
 
 pub enum Input {
@@ -620,7 +636,7 @@ impl OutputFilenames {
     /// should be placed on disk.
     pub fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
-        self.with_directory_and_extension(&self.out_directory, &extension)
+        self.with_directory_and_extension(&self.out_directory, extension)
     }
 
     /// Gets the path where a compilation artifact of the given type for the
@@ -657,7 +673,7 @@ impl OutputFilenames {
 
         let temps_directory = self.temps_directory.as_ref().unwrap_or(&self.out_directory);
 
-        self.with_directory_and_extension(&temps_directory, &extension)
+        self.with_directory_and_extension(temps_directory, &extension)
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
@@ -737,7 +753,7 @@ impl Default for Options {
             actually_rustdoc: false,
             trimmed_def_paths: TrimmedDefPaths::default(),
             cli_forced_codegen_units: None,
-            cli_forced_thinlto_off: false,
+            cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             real_rust_source_base_dir: None,
             edition: DEFAULT_EDITION,
@@ -782,6 +798,12 @@ impl Options {
     pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
         self.cg.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
     }
+
+    #[allow(rustc::bad_opt_access)]
+    pub fn incremental_relative_spans(&self) -> bool {
+        self.unstable_opts.incremental_relative_spans
+            || (self.unstable_features.is_nightly_build() && self.incremental.is_some())
+    }
 }
 
 impl UnstableOptions {
@@ -793,6 +815,7 @@ impl UnstableOptions {
             report_delayed_bugs: self.report_delayed_bugs,
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
+            track_diagnostics: self.track_diagnostics,
         }
     }
 }
@@ -869,16 +892,10 @@ pub struct PacRet {
     pub key: PAuthKey,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Default)]
 pub struct BranchProtection {
     pub bti: bool,
     pub pac_ret: Option<PacRet>,
-}
-
-impl Default for BranchProtection {
-    fn default() -> Self {
-        BranchProtection { bti: false, pac_ret: None }
-    }
 }
 
 pub const fn default_lib_output() -> CrateType {
@@ -897,7 +914,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let min_atomic_width = sess.target.min_atomic_width();
     let max_atomic_width = sess.target.max_atomic_width();
     let atomic_cas = sess.target.atomic_cas;
-    let layout = TargetDataLayout::parse(&sess.target).unwrap_or_else(|err| {
+    let layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
         sess.emit_fatal(err);
     });
 
@@ -1156,7 +1173,7 @@ impl CrateCheckConfig {
                 values_target_family
                     .extend(target.options.families.iter().map(|family| Symbol::intern(family)));
                 values_target_arch.insert(Symbol::intern(&target.arch));
-                values_target_endian.insert(Symbol::intern(&target.options.endian.as_str()));
+                values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
                 values_target_env.insert(Symbol::intern(&target.options.env));
                 values_target_abi.insert(Symbol::intern(&target.options.abi));
                 values_target_vendor.insert(Symbol::intern(&target.options.vendor));
@@ -1306,7 +1323,12 @@ mod opt {
         unstable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
     }
 }
-
+static EDITION_STRING: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        "Specify which edition of the compiler to use when compiling code. \
+The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE_EDITION}."
+    )
+});
 /// Returns the "short" subset of the rustc command line options,
 /// including metadata for each option, such as whether the option is
 /// part of the stable long-term interface for rustc.
@@ -1339,7 +1361,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::opt_s(
             "",
             "edition",
-            "Specify which edition of the compiler to use when compiling code.",
+            &*EDITION_STRING,
             EDITION_NAME_LIST,
         ),
         opt::multi_s(
@@ -1353,8 +1375,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "",
             "print",
             "Compiler information to print on stdout",
-            "[crate-name|file-names|sysroot|target-libdir|cfg|target-list|\
-             target-cpus|target-features|relocation-models|code-models|\
+            "[crate-name|file-names|sysroot|target-libdir|cfg|calling-conventions|\
+             target-list|target-cpus|target-features|relocation-models|code-models|\
              tls-models|target-spec-json|native-static-libs|stack-protector-strategies|\
              link-args]",
         ),
@@ -1477,7 +1499,7 @@ pub fn get_cmd_lint_options(
 
 /// Parses the `--color` flag.
 pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
-    match matches.opt_str("color").as_ref().map(|s| &s[..]) {
+    match matches.opt_str("color").as_deref() {
         Some("auto") => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
         Some("never") => ColorConfig::Never,
@@ -1586,7 +1608,7 @@ pub fn parse_error_format(
     // is unstable, it will not be present. We have to use `opts_present` not
     // `opt_present` because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
-        match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
+        match matches.opt_str("error-format").as_deref() {
             None | Some("human") => {
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
             }
@@ -1719,7 +1741,7 @@ fn should_override_cgus_and_disable_thinlto(
     error_format: ErrorOutputType,
     mut codegen_units: Option<usize>,
 ) -> (bool, Option<usize>) {
-    let mut disable_thinlto = false;
+    let mut disable_local_thinlto = false;
     // Issue #30063: if user requests LLVM-related output to one
     // particular path, disable codegen-units.
     let incompatible: Vec<_> = output_types
@@ -1744,12 +1766,12 @@ fn should_override_cgus_and_disable_thinlto(
                     }
                     early_warn(error_format, "resetting to default -C codegen-units=1");
                     codegen_units = Some(1);
-                    disable_thinlto = true;
+                    disable_local_thinlto = true;
                 }
             }
             _ => {
                 codegen_units = Some(1);
-                disable_thinlto = true;
+                disable_local_thinlto = true;
             }
         }
     }
@@ -1758,7 +1780,7 @@ fn should_override_cgus_and_disable_thinlto(
         early_error(error_format, "value for codegen units must be a positive non-zero integer");
     }
 
-    (disable_thinlto, codegen_units)
+    (disable_local_thinlto, codegen_units)
 }
 
 fn check_thread_count(unstable_opts: &UnstableOptions, error_format: ErrorOutputType) {
@@ -1787,33 +1809,50 @@ fn collect_print_requests(
         cg.target_feature = String::new();
     }
 
-    prints.extend(matches.opt_strs("print").into_iter().map(|s| match &*s {
-        "crate-name" => PrintRequest::CrateName,
-        "file-names" => PrintRequest::FileNames,
-        "sysroot" => PrintRequest::Sysroot,
-        "target-libdir" => PrintRequest::TargetLibdir,
-        "cfg" => PrintRequest::Cfg,
-        "target-list" => PrintRequest::TargetList,
-        "target-cpus" => PrintRequest::TargetCPUs,
-        "target-features" => PrintRequest::TargetFeatures,
-        "relocation-models" => PrintRequest::RelocationModels,
-        "code-models" => PrintRequest::CodeModels,
-        "tls-models" => PrintRequest::TlsModels,
-        "native-static-libs" => PrintRequest::NativeStaticLibs,
-        "stack-protector-strategies" => PrintRequest::StackProtectorStrategies,
-        "target-spec-json" => {
-            if unstable_opts.unstable_options {
-                PrintRequest::TargetSpec
-            } else {
+    const PRINT_REQUESTS: &[(&str, PrintRequest)] = &[
+        ("crate-name", PrintRequest::CrateName),
+        ("file-names", PrintRequest::FileNames),
+        ("sysroot", PrintRequest::Sysroot),
+        ("target-libdir", PrintRequest::TargetLibdir),
+        ("cfg", PrintRequest::Cfg),
+        ("calling-conventions", PrintRequest::CallingConventions),
+        ("target-list", PrintRequest::TargetList),
+        ("target-cpus", PrintRequest::TargetCPUs),
+        ("target-features", PrintRequest::TargetFeatures),
+        ("relocation-models", PrintRequest::RelocationModels),
+        ("code-models", PrintRequest::CodeModels),
+        ("tls-models", PrintRequest::TlsModels),
+        ("native-static-libs", PrintRequest::NativeStaticLibs),
+        ("stack-protector-strategies", PrintRequest::StackProtectorStrategies),
+        ("target-spec-json", PrintRequest::TargetSpec),
+        ("link-args", PrintRequest::LinkArgs),
+        ("split-debuginfo", PrintRequest::SplitDebuginfo),
+    ];
+
+    prints.extend(matches.opt_strs("print").into_iter().map(|req| {
+        match PRINT_REQUESTS.iter().find(|&&(name, _)| name == req) {
+            Some((_, PrintRequest::TargetSpec)) => {
+                if unstable_opts.unstable_options {
+                    PrintRequest::TargetSpec
+                } else {
+                    early_error(
+                        error_format,
+                        "the `-Z unstable-options` flag must also be passed to \
+                     enable the target-spec-json print option",
+                    );
+                }
+            }
+            Some(&(_, print_request)) => print_request,
+            None => {
+                let prints =
+                    PRINT_REQUESTS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
+                let prints = prints.join(", ");
                 early_error(
                     error_format,
-                    "the `-Z unstable-options` flag must also be passed to \
-                     enable the target-spec-json print option",
+                    &format!("unknown print request `{req}`. Valid print requests are: {prints}"),
                 );
             }
         }
-        "link-args" => PrintRequest::LinkArgs,
-        req => early_error(error_format, &format!("unknown print request `{req}`")),
     }));
 
     prints
@@ -1826,7 +1865,7 @@ pub fn parse_target_triple(
     match matches.opt_str("target") {
         Some(target) if target.ends_with(".json") => {
             let path = Path::new(&target);
-            TargetTriple::from_path(&path).unwrap_or_else(|_| {
+            TargetTriple::from_path(path).unwrap_or_else(|_| {
                 early_error(error_format, &format!("target file {path:?} does not exist"))
             })
         }
@@ -1852,7 +1891,7 @@ fn parse_opt_level(
         .into_iter()
         .flat_map(|(i, s)| {
             // NB: This can match a string without `=`.
-            if let Some("opt-level") = s.splitn(2, '=').next() { Some(i) } else { None }
+            if let Some("opt-level") = s.split('=').next() { Some(i) } else { None }
         })
         .max();
     if max_o > max_c {
@@ -1889,7 +1928,7 @@ fn select_debuginfo(
         .into_iter()
         .flat_map(|(i, s)| {
             // NB: This can match a string without `=`.
-            if let Some("debuginfo") = s.splitn(2, '=').next() { Some(i) } else { None }
+            if let Some("debuginfo") = s.split('=').next() { Some(i) } else { None }
         })
         .max();
     if max_g > max_c {
@@ -1972,7 +2011,7 @@ fn parse_native_lib_modifiers(
 ) -> (NativeLibKind, Option<bool>) {
     let mut verbatim = None;
     for modifier in modifiers.split(',') {
-        let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
+        let (modifier, value) = match modifier.strip_prefix(['+', '-']) {
             Some(m) => (m, modifier.starts_with('+')),
             None => early_error(
                 error_format,
@@ -2009,10 +2048,7 @@ fn parse_native_lib_modifiers(
                 "linking modifier `bundle` is only compatible with `static` linking kind",
             ),
 
-            ("verbatim", _) => {
-                report_unstable_modifier();
-                assign_modifier(&mut verbatim)
-            }
+            ("verbatim", _) => assign_modifier(&mut verbatim),
 
             ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
                 assign_modifier(whole_archive)
@@ -2247,7 +2283,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let output_types = parse_output_types(&unstable_opts, matches, error_format);
 
     let mut cg = CodegenOptions::build(matches, error_format);
-    let (disable_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
+    let (disable_local_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
         &output_types,
         matches,
         error_format,
@@ -2404,7 +2440,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
-        search_paths.push(SearchPath::from_cli_opt(&s, error_format));
+        search_paths.push(SearchPath::from_cli_opt(s, error_format));
     }
 
     let libs = parse_libs(matches, error_format);
@@ -2429,7 +2465,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let sysroot = match &sysroot_opt {
         Some(s) => s,
         None => {
-            tmp_buf = crate::filesearch::get_or_default_sysroot();
+            tmp_buf = crate::filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
             &tmp_buf
         }
     };
@@ -2490,7 +2526,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         actually_rustdoc: false,
         trimmed_def_paths: TrimmedDefPaths::default(),
         cli_forced_codegen_units: codegen_units,
-        cli_forced_thinlto_off: disable_thinlto,
+        cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
         real_rust_source_base_dir,
         edition,
@@ -2741,7 +2777,7 @@ pub(crate) mod dep_tracking {
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
         InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel,
         OutputType, OutputTypes, Passes, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
+        SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2841,6 +2877,7 @@ pub(crate) mod dep_tracking {
         BranchProtection,
         OomStrategy,
         LanguageIdentifier,
+        TraitSolver,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -2960,4 +2997,22 @@ pub enum ProcMacroExecutionStrategy {
 
     /// Run the proc-macro code on a different thread.
     CrossThread,
+}
+
+/// Which format to use for `-Z dump-mono-stats`
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum DumpMonoStatsFormat {
+    /// Pretty-print a markdown table
+    Markdown,
+    /// Emit structured JSON
+    Json,
+}
+
+impl DumpMonoStatsFormat {
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Markdown => "md",
+            Self::Json => "json",
+        }
+    }
 }

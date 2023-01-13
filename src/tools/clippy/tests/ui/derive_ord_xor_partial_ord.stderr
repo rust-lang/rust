@@ -4,12 +4,12 @@ error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
 LL | #[derive(Ord, PartialEq, Eq)]
    |          ^^^
    |
-   = note: `-D clippy::derive-ord-xor-partial-ord` implied by `-D warnings`
 note: `PartialOrd` implemented here
   --> $DIR/derive_ord_xor_partial_ord.rs:24:1
    |
 LL | impl PartialOrd for DeriveOrd {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::derive-ord-xor-partial-ord` implied by `-D warnings`
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Ord` but have implemented `PartialOrd` explicitly

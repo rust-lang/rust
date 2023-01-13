@@ -30,10 +30,7 @@ pub(super) fn check<'tcx>(
             vec.span,
             "it looks like the same item is being pushed into this Vec",
             None,
-            &format!(
-                "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
-                item_str, vec_str, item_str
-            ),
+            &format!("try using vec![{item_str};SIZE] or {vec_str}.resize(NEW_SIZE, {item_str})"),
         );
     }
 
@@ -66,7 +63,7 @@ pub(super) fn check<'tcx>(
                                 if let Node::Pat(pat) = node;
                                 if let PatKind::Binding(bind_ann, ..) = pat.kind;
                                 if !matches!(bind_ann, BindingAnnotation(_, Mutability::Mut));
-                                let parent_node = cx.tcx.hir().get_parent_node(hir_id);
+                                let parent_node = cx.tcx.hir().parent_id(hir_id);
                                 if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
                                 if let Some(init) = parent_let_expr.init;
                                 then {

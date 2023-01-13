@@ -36,6 +36,13 @@ pub(crate) fn dummy_expr_id() -> ExprId {
 
 pub type PatId = Idx<Pat>;
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum ExprOrPatId {
+    ExprId(ExprId),
+    PatId(PatId),
+}
+stdx::impl_from!(ExprId, PatId for ExprOrPatId);
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Label {
     pub name: Name,
@@ -137,6 +144,9 @@ pub enum Expr {
     Yield {
         expr: Option<ExprId>,
     },
+    Yeet {
+        expr: Option<ExprId>,
+    },
     RecordLit {
         path: Option<Box<Path>>,
         fields: Box<[RecordLitField]>,
@@ -198,6 +208,7 @@ pub enum Expr {
         arg_types: Box<[Option<Interned<TypeRef>>]>,
         ret_type: Option<Interned<TypeRef>>,
         body: ExprId,
+        closure_kind: ClosureKind,
     },
     Tuple {
         exprs: Box<[ExprId]>,
@@ -209,6 +220,18 @@ pub enum Expr {
     Array(Array),
     Literal(Literal),
     Underscore,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClosureKind {
+    Closure,
+    Generator(Movability),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Movability {
+    Static,
+    Movable,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -300,7 +323,10 @@ impl Expr {
                 arms.iter().map(|arm| arm.expr).for_each(f);
             }
             Expr::Continue { .. } => {}
-            Expr::Break { expr, .. } | Expr::Return { expr } | Expr::Yield { expr } => {
+            Expr::Break { expr, .. }
+            | Expr::Return { expr }
+            | Expr::Yield { expr }
+            | Expr::Yeet { expr } => {
                 if let &Some(expr) = expr {
                     f(expr);
                 }

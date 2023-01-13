@@ -70,9 +70,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
 
                 // find the type that the Impl is for
                 // only lint on struct/enum/union for now
-                let defid = match path.res {
-                    Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, defid) => defid,
-                    _ => return,
+                let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, defid) = path.res else {
+                    return
                 };
 
                 // get the names of the generic parameters in the type
@@ -91,10 +90,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
                 let type_name = segment.ident;
                 for (i, (impl_param_name, impl_param_span)) in impl_params.iter().enumerate() {
                     if mismatch_param_name(i, impl_param_name, &type_param_names_hashmap) {
-                        let msg = format!("`{}` has a similarly named generic type parameter `{}` in its declaration, but in a different order",
-                                          type_name, impl_param_name);
-                        let help = format!("try `{}`, or a name that does not conflict with `{}`'s generic params",
-                                           type_param_names[i], type_name);
+                        let msg = format!("`{type_name}` has a similarly named generic type parameter `{impl_param_name}` in its declaration, but in a different order");
+                        let help = format!("try `{}`, or a name that does not conflict with `{type_name}`'s generic params",
+                                           type_param_names[i]);
                         span_lint_and_help(
                             cx,
                             MISMATCHING_TYPE_PARAM_ORDER,

@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     let span = stmt.span.to(if_.span);
 
                     let has_interior_mutability = !cx.typeck_results().node_type(canonical_id).is_freeze(
-                        cx.tcx.at(span),
+                        cx.tcx,
                         cx.param_env,
                     );
                     if has_interior_mutability { return; }
@@ -106,8 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     // use mutably after the `if`
 
                     let sug = format!(
-                        "let {mut}{name} = if {cond} {{{then} {value} }} else {{{else} {default} }};",
-                        mut=mutability,
+                        "let {mutability}{name} = if {cond} {{{then} {value} }} else {{{else} {default} }};",
                         name=ident.name,
                         cond=snippet(cx, cond.span, "_"),
                         then=if then.stmts.len() > 1 { " ..;" } else { "" },

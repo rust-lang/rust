@@ -5,9 +5,7 @@
 
 extern crate test;
 
-use crate::common::{
-    expected_output_path, output_base_dir, output_relative_path, PanicStrategy, UI_EXTENSIONS,
-};
+use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use getopts::Options;
@@ -64,12 +62,14 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "rust-demangler-path", "path to rust-demangler to use in tests", "PATH")
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
         .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
+        .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
         .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
         .reqopt("", "src-base", "directory to scan for test files", "PATH")
         .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
+        .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
         .reqopt(
             "",
@@ -104,7 +104,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
         .optflag("", "optimize-tests", "run tests with optimizations enabled")
-        .optopt("", "target-panic", "what panic strategy the target supports", "unwind | abort")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
             "",
@@ -202,7 +201,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
+        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version).or_else(
+            || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
+        );
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
@@ -226,6 +227,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
         python: matches.opt_str("python").unwrap(),
         jsondocck_path: matches.opt_str("jsondocck-path"),
+        jsondoclint_path: matches.opt_str("jsondoclint-path"),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
@@ -233,6 +235,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
         src_base,
         build_base: opt_path(matches, "build-base"),
+        sysroot_base: opt_path(matches, "sysroot-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode,
         suite: matches.opt_str("suite").unwrap(),
@@ -253,14 +256,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         }),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
-        host_rustcflags: Some(matches.opt_strs("host-rustcflags").join(" ")),
-        target_rustcflags: Some(matches.opt_strs("target-rustcflags").join(" ")),
+        host_rustcflags: matches.opt_strs("host-rustcflags"),
+        target_rustcflags: matches.opt_strs("target-rustcflags"),
         optimize_tests: matches.opt_present("optimize-tests"),
-        target_panic: match matches.opt_str("target-panic").as_deref() {
-            Some("unwind") | None => PanicStrategy::Unwind,
-            Some("abort") => PanicStrategy::Abort,
-            _ => panic!("unknown `--target-panic` option `{}` given", mode),
-        },
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
@@ -326,8 +324,8 @@ pub fn log_config(config: &Config) {
         format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),),
     );
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
-    logv(c, format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)));
-    logv(c, format!("target-rustcflags: {}", opt_str(&config.target_rustcflags)));
+    logv(c, format!("host-rustcflags: {:?}", config.host_rustcflags));
+    logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
     logv(c, format!("android-cross-path: {:?}", config.android_cross_path.display()));
@@ -400,6 +398,8 @@ pub fn run_tests(config: Config) {
     for c in &configs {
         make_tests(c, &mut tests);
     }
+
+    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
 
     let res = test::run_tests_console(&opts, tests);
     match res {
@@ -514,6 +514,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         options: test::Options::new(),
         time_options: None,
         force_run_in_process: false,
+        fail_fast: std::env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
     }
 }
 
@@ -773,7 +774,7 @@ fn make_test_name(
     revision: Option<&String>,
 ) -> test::TestName {
     // Print the name of the file, relative to the repository root.
-    // `src_base` looks like `/path/to/rust/src/test/ui`
+    // `src_base` looks like `/path/to/rust/tests/ui`
     let root_directory = config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
     let path = testpaths.file.strip_prefix(root_directory).unwrap();
     let debugger = match config.debugger {
@@ -803,7 +804,10 @@ fn make_test_closure(
     let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
-    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths, revision.as_deref())))
+    test::DynTestFn(Box::new(move || {
+        runtest::run(config, &testpaths, revision.as_deref());
+        Ok(())
+    }))
 }
 
 /// Returns `true` if the given target is an Android target for the

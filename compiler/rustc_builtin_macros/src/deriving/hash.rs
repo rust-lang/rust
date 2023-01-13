@@ -13,6 +13,7 @@ pub fn expand_deriving_hash(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let path = Path::new_(pathvec_std!(hash::Hash), vec![], PathKind::Std);
 
@@ -22,8 +23,8 @@ pub fn expand_deriving_hash(
     let hash_trait_def = TraitDef {
         span,
         path,
+        skip_path_as_bound: false,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::hash,
@@ -38,6 +39,7 @@ pub fn expand_deriving_hash(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     hash_trait_def.expand(cx, mitem, item, push);

@@ -1,11 +1,11 @@
 use crate::dep_graph;
 use crate::infer::canonical::{self, Canonical};
-use crate::lint::LintLevelMap;
+use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
-use crate::middle::privacy::AccessLevels;
+use crate::middle::privacy::EffectiveVisibilities;
 use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
@@ -15,6 +15,7 @@ use crate::mir::interpret::{
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
+use crate::query::Key;
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -27,12 +28,13 @@ use crate::traits::query::{
 };
 use crate::traits::specialization_graph;
 use crate::traits::{self, ImplSource};
+use crate::ty::context::TyCtxtFeed;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::TyAndLayout;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;
-use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, UnusedGenericParams};
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
@@ -40,17 +42,19 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
+use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
-use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
-use rustc_session::utils::NativeLibKind;
+use rustc_session::lint::LintExpectationId;
 use rustc_session::Limits;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -119,10 +123,10 @@ macro_rules! query_helper_param_ty {
 
 macro_rules! query_storage {
     ([][$K:ty, $V:ty]) => {
-        <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
+        <<$K as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache
     };
-    ([(storage $ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
-        <$ty as CacheSelector<$K, $V>>::Cache
+    ([(arena_cache) $($rest:tt)*][$K:ty, $V:ty]) => {
+        <<$K as Key>::CacheSelector as CacheSelector<'tcx, $V>>::ArenaCache
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         query_storage!([$($modifiers)*][$($args)*])
@@ -273,12 +277,16 @@ macro_rules! define_callbacks {
 
         impl Default for Providers {
             fn default() -> Self {
+                use crate::query::Key;
+
                 Providers {
                     $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` unsupported by its crate; \
-                         perhaps the `{}` query was never assigned a provider function",
+                        "`tcx.{}({:?})` is not supported for {} crate;\n
+                        hint: Queries can be either made to the local crate, or the external crate. This error means you tried to use it for one that's not supported.\n
+                        If that's not the case, {} was likely never assigned to a provider function.\n",
                         stringify!($name),
                         key,
+                        if key.query_crate_is_local() { "local" } else { "external" },
                         stringify!($name),
                     ),)*
                 }
@@ -320,6 +328,56 @@ macro_rules! define_callbacks {
     };
 }
 
+macro_rules! hash_result {
+    ([]) => {{
+        Some(dep_graph::hash_result)
+    }};
+    ([(no_hash) $($rest:tt)*]) => {{
+        None
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        hash_result!([$($modifiers)*])
+    };
+}
+
+macro_rules! define_feedable {
+    ($($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+        $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
+            $(#[$attr])*
+            #[inline(always)]
+            pub fn $name(self, value: $V) -> query_stored::$name<'tcx> {
+                let key = self.key().into_query_param();
+                opt_remap_env_constness!([$($modifiers)*][key]);
+
+                let tcx = self.tcx;
+                let cache = &tcx.query_caches.$name;
+
+                let cached = try_get_cached(tcx, cache, &key, copy);
+
+                match cached {
+                    Ok(old) => {
+                        bug!(
+                            "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                            stringify!($name),
+                        );
+                    }
+                    Err(()) => (),
+                }
+
+                let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
+                let dep_node_index = tcx.dep_graph.with_feed_task(
+                    dep_node,
+                    tcx,
+                    key,
+                    &value,
+                    hash_result!([$($modifiers)*]),
+                );
+                cache.complete(key, value, dep_node_index)
+            }
+        })*
+    }
+}
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -333,9 +391,10 @@ macro_rules! define_callbacks {
 // as they will raise an fatal error on query cycles instead.
 
 rustc_query_append! { define_callbacks! }
+rustc_feedable_queries! { define_feedable! }
 
 mod sealed {
-    use super::{DefId, LocalDefId};
+    use super::{DefId, LocalDefId, OwnerId};
 
     /// An analogue of the `Into` trait that's intended only for query parameters.
     ///
@@ -360,6 +419,13 @@ mod sealed {
     }
 
     impl IntoQueryParam<DefId> for LocalDefId {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<DefId> for OwnerId {
         #[inline(always)]
         fn into_query_param(self) -> DefId {
             self.to_def_id()

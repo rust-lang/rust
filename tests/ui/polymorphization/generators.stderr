@@ -1,0 +1,39 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/generators.rs:3:12
+   |
+LL | #![feature(generic_const_exprs, generators, generator_trait, rustc_attrs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: item has unused generic parameters
+  --> $DIR/generators.rs:35:5
+   |
+LL | pub fn unused_type<T>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
+   |                    - generic parameter `T` is unused
+LL |     || {
+   |     ^^
+
+note: the above error was encountered while instantiating `fn finish::<[generator@$DIR/generators.rs:35:5: 35:7], u32, u32>`
+  --> $DIR/generators.rs:86:5
+   |
+LL |     finish(unused_type::<u32>());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item has unused generic parameters
+  --> $DIR/generators.rs:60:5
+   |
+LL | pub fn unused_const<const T: u32>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
+   |                     ------------ generic parameter `T` is unused
+LL |     || {
+   |     ^^
+
+note: the above error was encountered while instantiating `fn finish::<[generator@$DIR/generators.rs:60:5: 60:7], u32, u32>`
+  --> $DIR/generators.rs:89:5
+   |
+LL |     finish(unused_const::<1u32>());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

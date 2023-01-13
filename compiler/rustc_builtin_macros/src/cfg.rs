@@ -8,7 +8,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_attr as attr;
 use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
 pub fn expand_cfg(
@@ -35,16 +35,16 @@ pub fn expand_cfg(
     }
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(builtin_macros::requires_cfg_pattern)]
+#[derive(Diagnostic)]
+#[diag(builtin_macros_requires_cfg_pattern)]
 struct RequiresCfgPattern {
     #[primary_span]
     #[label]
     span: Span,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(builtin_macros::expected_one_cfg_pattern)]
+#[derive(Diagnostic)]
+#[diag(builtin_macros_expected_one_cfg_pattern)]
 struct OneCfgPattern {
     #[primary_span]
     span: Span,

@@ -59,7 +59,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Replaces all bound variables (lifetimes, types, and constants) bound by
     /// `binder` with placeholder variables in a new universe. This means that the
     /// new placeholders can only be named by inference variables created after
@@ -81,26 +81,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let next_universe = self.create_next_universe();
 
         let delegate = FnMutDelegate {
-            regions: |br: ty::BoundRegion| {
+            regions: &mut |br: ty::BoundRegion| {
                 self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                     universe: next_universe,
                     name: br.kind,
                 }))
             },
-            types: |bound_ty: ty::BoundTy| {
+            types: &mut |bound_ty: ty::BoundTy| {
                 self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                     universe: next_universe,
                     name: bound_ty.var,
                 }))
             },
-            consts: |bound_var: ty::BoundVar, ty| {
-                self.tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
-                        universe: next_universe,
-                        name: bound_var,
-                    }),
-                    ty,
-                })
+            consts: &mut |bound_var: ty::BoundVar, ty| {
+                self.tcx
+                    .mk_const(ty::PlaceholderConst { universe: next_universe, name: bound_var }, ty)
             },
         };
 
@@ -114,7 +109,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn leak_check(
         &self,
         overly_polymorphic: bool,
-        snapshot: &CombinedSnapshot<'_, 'tcx>,
+        snapshot: &CombinedSnapshot<'tcx>,
     ) -> RelateResult<'tcx, ()> {
         // If the user gave `-Zno-leak-check`, or we have been
         // configured to skip the leak check, then skip the leak check

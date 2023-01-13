@@ -152,6 +152,8 @@ declare_features! (
     (active, anonymous_lifetime_in_impl_trait, "1.63.0", None, None),
     /// Allows identifying the `compiler_builtins` crate.
     (active, compiler_builtins, "1.13.0", None, None),
+    /// Allows writing custom MIR
+    (active, custom_mir, "1.65.0", None, None),
     /// Outputs useful `assert!` messages
     (active, generic_assert, "1.63.0", None, None),
     /// Allows using the `rust-intrinsic`'s "ABI".
@@ -221,6 +223,8 @@ declare_features! (
     (active, rustc_private, "1.0.0", Some(27812), None),
     /// Allows using internal rustdoc features like `doc(primitive)` or `doc(keyword)`.
     (active, rustdoc_internals, "1.58.0", Some(90418), None),
+    /// Allows using the `rustdoc::missing_doc_code_examples` lint
+    (active, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730), None),
     /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
     (active, start, "1.0.0", Some(29633), None),
     /// Allows using `#[structural_match]` which indicates that a type is structurally matchable.
@@ -250,7 +254,6 @@ declare_features! (
     (active, bpf_target_feature, "1.54.0", Some(44839), None),
     (active, cmpxchg16b_target_feature, "1.32.0", Some(44839), None),
     (active, ermsb_target_feature, "1.49.0", Some(44839), None),
-    (active, f16c_target_feature, "1.36.0", Some(44839), None),
     (active, hexagon_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
     (active, movbe_target_feature, "1.34.0", Some(44839), None),
@@ -278,8 +281,6 @@ declare_features! (
     (active, abi_avr_interrupt, "1.45.0", Some(69664), None),
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (active, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391), None),
-    /// Allows using the `efiapi` ABI.
-    (active, abi_efiapi, "1.40.0", Some(65815), None),
     /// Allows `extern "msp430-interrupt" fn()`.
     (active, abi_msp430_interrupt, "1.16.0", Some(38487), None),
     /// Allows `extern "ptx-*" fn()`.
@@ -290,16 +291,12 @@ declare_features! (
     (incomplete, adt_const_params, "1.56.0", Some(95174), None),
     /// Allows defining an `#[alloc_error_handler]`.
     (active, alloc_error_handler, "1.29.0", Some(51540), None),
-    /// Allows explicit discriminants on non-unit enum variants.
-    (active, arbitrary_enum_discriminant, "1.37.0", Some(60553), None),
     /// Allows trait methods with arbitrary self types.
     (active, arbitrary_self_types, "1.23.0", Some(44874), None),
     /// Allows using `const` operands in inline assembly.
     (active, asm_const, "1.58.0", Some(93332), None),
     /// Enables experimental inline assembly support for additional architectures.
     (active, asm_experimental_arch, "1.58.0", Some(93335), None),
-    /// Allows using `sym` operands in inline assembly.
-    (active, asm_sym, "1.58.0", Some(93333), None),
     /// Allows the `may_unwind` option in inline assembly.
     (active, asm_unwind, "1.58.0", Some(93334), None),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
@@ -310,6 +307,8 @@ declare_features! (
     (active, associated_type_defaults, "1.2.0", Some(29661), None),
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
+    /// Alows async functions to be declared, implemented, and used in traits.
+    (incomplete, async_fn_in_trait, "1.66.0", Some(91611), None),
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
     (active, c_unwind, "1.52.0", Some(74990), None),
     /// Allows using C-variadics.
@@ -336,9 +335,13 @@ declare_features! (
     (active, closure_track_caller, "1.57.0", Some(87417), None),
     /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
     (active, cmse_nonsecure_entry, "1.48.0", Some(75835), None),
+    /// Allows use of the `#[collapse_debuginfo]` attribute.
+    (active, collapse_debuginfo, "1.65.0", Some(100758), None),
     /// Allows `async {}` expressions in const contexts.
     (active, const_async_blocks, "1.53.0", Some(85368), None),
-    // Allows limiting the evaluation steps of const expressions
+    /// Allows `const || {}` closures in const contexts.
+    (incomplete, const_closures, "CURRENT_RUSTC_VERSION", Some(106003), None),
+    /// Allows limiting the evaluation steps of const expressions
     (active, const_eval_limit, "1.43.0", Some(67217), None),
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),
@@ -364,14 +367,14 @@ declare_features! (
     (active, debugger_visualizer, "1.62.0", Some(95939), None),
     /// Allows declarative macros 2.0 (`macro`).
     (active, decl_macro, "1.17.0", Some(39412), None),
-    /// Allows rustc to inject a default alloc_error_handler
-    (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
     /// Allows default type parameters to influence type inference.
     (active, default_type_parameter_fallback, "1.3.0", Some(27336), None),
     /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
     (active, deprecated_safe, "1.61.0", Some(94978), None),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
+    /// Controls errors in trait implementations.
+    (active, do_not_recommend, "1.67.0", Some(51992), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (active, doc_auto_cfg, "1.58.0", Some(43781), None),
     /// Allows `#[doc(cfg(...))]`.
@@ -380,10 +383,15 @@ declare_features! (
     (active, doc_cfg_hide, "1.57.0", Some(43781), None),
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
+    /// Allows `dyn* Trait` objects.
+    (incomplete, dyn_star, "1.65.0", Some(102425), None),
     /// Allows `X..Y` patterns.
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", Some(51085), None),
+    /// Allows using `efiapi`, `sysv64` and `win64` as calling convention
+    /// for functions with varargs.
+    (active, extended_varargs_abi_support, "1.65.0", Some(100189), None),
     /// Allows defining `extern type`s.
     (active, extern_types, "1.23.0", Some(43467), None),
     /// Allows the use of `#[ffi_const]` on foreign functions.
@@ -395,21 +403,23 @@ declare_features! (
     /// Allows using `#[repr(align(...))]` on function items
     (active, fn_align, "1.53.0", Some(82232), None),
     /// Allows generators to be cloned.
-    (active, generator_clone, "CURRENT_RUSTC_VERSION", Some(95360), None),
+    (active, generator_clone, "1.65.0", Some(95360), None),
     /// Allows defining generators.
     (active, generators, "1.21.0", Some(43122), None),
     /// Infer generic args for both consts and types.
     (active, generic_arg_infer, "1.55.0", Some(85077), None),
-    /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
-    (active, generic_associated_types, "1.23.0", Some(44265), None),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.
     (incomplete, generic_associated_types_extended, "1.61.0", Some(95451), None),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
-    /// Allows using `..X`, `..=X`, `...X`, and `X..` as a pattern.
-    (active, half_open_range_patterns, "1.41.0", Some(67264), None),
+    /// Allows using `..=X` as a patterns in slices.
+    (active, half_open_range_patterns_in_slices, "1.66.0", Some(67264), None),
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
+    /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
+    (active, impl_trait_in_fn_trait_return, "1.64.0", Some(99697), None),
+    /// Allows referencing `Self` and projections in impl-trait.
+    (active, impl_trait_projections, "1.67.0", Some(103532), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
     /// Allows associated types in inherent impls.
@@ -420,14 +430,10 @@ declare_features! (
     (incomplete, inline_const_pat, "1.58.0", Some(76001), None),
     /// Allows using `pointer` and `reference` in intra-doc links
     (active, intra_doc_pointers, "1.51.0", Some(80896), None),
-    /// Allows `#[instruction_set(_)]` attribute
-    (active, isa_attribute, "1.48.0", Some(74727), None),
     // Allows setting the threshold for the `large_assignments` lint.
     (active, large_assignments, "1.52.0", Some(83518), None),
     /// Allows `if/while p && let q = r && ...` chains.
     (active, let_chains, "1.37.0", Some(53667), None),
-    /// Allows `let...else` statements.
-    (active, let_else, "1.56.0", Some(87335), None),
     /// Allows `#[link(..., cfg(..))]`.
     (active, link_cfg, "1.14.0", Some(37406), None),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
@@ -448,8 +454,6 @@ declare_features! (
     (active, naked_functions, "1.9.0", Some(32408), None),
     /// Allows specifying the as-needed link modifier
     (active, native_link_modifiers_as_needed, "1.53.0", Some(81490), None),
-    /// Allows specifying the verbatim link modifier
-    (active, native_link_modifiers_verbatim, "1.53.0", Some(81490), None),
     /// Allow negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
     /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
@@ -480,7 +484,7 @@ declare_features! (
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
     /// Allows the use of raw-dylibs (RFC 2627).
-    (active, raw_dylib, "CURRENT_RUSTC_VERSION", Some(58713), None),
+    (active, raw_dylib, "1.65.0", Some(58713), None),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (active, raw_ref_op, "1.41.0", Some(64490), None),
     /// Allows using the `#[register_tool]` attribute.
@@ -490,7 +494,7 @@ declare_features! (
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (active, repr_simd, "1.4.0", Some(27731), None),
     /// Allows return-position `impl Trait` in traits.
-    (incomplete, return_position_impl_trait_in_trait, "CURRENT_RUSTC_VERSION", Some(91611), None),
+    (incomplete, return_position_impl_trait_in_trait, "1.65.0", Some(91611), None),
     /// Allows `extern "rust-cold"`.
     (active, rust_cold_cc, "1.63.0", Some(97544), None),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
@@ -501,15 +505,17 @@ declare_features! (
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
     /// Allows lints part of the strict provenance effort.
     (active, strict_provenance, "1.61.0", Some(95228), None),
+    /// Allows string patterns to dereference values to match them.
+    (active, string_deref_patterns, "1.67.0", Some(87121), None),
     /// Allows the use of `#[target_feature]` on safe functions.
     (active, target_feature_11, "1.45.0", Some(69098), None),
     /// Allows using `#[thread_local]` on `static` items.
     (active, thread_local, "1.0.0", Some(29594), None),
     /// Allows defining `trait X = A + B;` alias items.
     (active, trait_alias, "1.24.0", Some(41517), None),
-    /// Allows upcasting trait objects via supertraits.
-    /// Trait upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
-    (incomplete, trait_upcasting, "1.56.0", Some(65991), None),
+    /// Allows dyn upcasting trait objects via supertraits.
+    /// Dyn upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
+    (active, trait_upcasting, "1.56.0", Some(65991), None),
     /// Allows #[repr(transparent)] on unions (RFC 2645).
     (active, transparent_unions, "1.37.0", Some(60405), None),
     /// Allows inconsistent bounds in where clauses.
@@ -524,7 +530,7 @@ declare_features! (
     /// not changed from prior instances of the same struct (RFC #2528)
     (active, type_changing_struct_update, "1.58.0", Some(86555), None),
     /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
-    (active, unix_sigpipe, "CURRENT_RUSTC_VERSION", Some(97889), None),
+    (active, unix_sigpipe, "1.65.0", Some(97889), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.

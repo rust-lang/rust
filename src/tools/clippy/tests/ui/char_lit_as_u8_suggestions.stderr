@@ -4,8 +4,8 @@ error: casting a character literal to `u8` truncates
 LL |     let _ = 'a' as u8;
    |             ^^^^^^^^^ help: use a byte literal instead: `b'a'`
    |
-   = note: `-D clippy::char-lit-as-u8` implied by `-D warnings`
    = note: `char` is four bytes wide, but `u8` is a single byte
+   = note: `-D clippy::char-lit-as-u8` implied by `-D warnings`
 
 error: casting a character literal to `u8` truncates
   --> $DIR/char_lit_as_u8_suggestions.rs:7:13

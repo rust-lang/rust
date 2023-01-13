@@ -1,6 +1,7 @@
 // run-rustfix
-#![allow(unused_imports)]
 #![warn(clippy::explicit_write)]
+#![allow(unused_imports)]
+#![allow(clippy::uninlined_format_args)]
 
 fn stdout() -> String {
     String::new()
@@ -36,6 +37,8 @@ fn main() {
         writeln!(std::io::stderr(), "with {} {}", 2, value).unwrap();
         writeln!(std::io::stderr(), "with {value}").unwrap();
         writeln!(std::io::stderr(), "macro arg {}", one!()).unwrap();
+        let width = 2;
+        writeln!(std::io::stderr(), "{:w$}", value, w = width).unwrap();
     }
     // these should not warn, different destination
     {

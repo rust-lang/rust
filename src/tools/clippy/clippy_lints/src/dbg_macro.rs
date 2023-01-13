@@ -10,11 +10,11 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of dbg!() macro.
+    /// Checks for usage of the [`dbg!`](https://doc.rust-lang.org/std/macro.dbg.html) macro.
     ///
     /// ### Why is this bad?
-    /// `dbg!` macro is intended as a debugging tool. It
-    /// should not be in version control.
+    /// The `dbg!` macro is intended as a debugging tool. It should not be present in released
+    /// software or committed to a version control system.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -91,8 +91,8 @@ impl LateLintPass<'_> for DbgMacro {
                 cx,
                 DBG_MACRO,
                 macro_call.span,
-                "`dbg!` macro is intended as a debugging tool",
-                "ensure to avoid having uses of it in version control",
+                "the `dbg!` macro is intended as a debugging tool",
+                "remove the invocation before committing it to a version control system",
                 suggestion,
                 applicability,
             );

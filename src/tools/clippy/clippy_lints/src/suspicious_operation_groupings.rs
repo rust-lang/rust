@@ -326,8 +326,7 @@ fn replace_left_sugg(
     applicability: &mut Applicability,
 ) -> String {
     format!(
-        "{} {} {}",
-        left_suggestion,
+        "{left_suggestion} {} {}",
         binop.op.to_string(),
         snippet_with_applicability(cx, binop.right.span, "..", applicability),
     )
@@ -340,10 +339,9 @@ fn replace_right_sugg(
     applicability: &mut Applicability,
 ) -> String {
     format!(
-        "{} {} {}",
+        "{} {} {right_suggestion}",
         snippet_with_applicability(cx, binop.left.span, "..", applicability),
         binop.op.to_string(),
-        right_suggestion,
     )
 }
 
@@ -582,9 +580,9 @@ fn ident_difference_expr_with_base_location(
         | (Await(_), Await(_))
         | (Async(_, _, _), Async(_, _, _))
         | (Block(_, _), Block(_, _))
-        | (Closure(_, _, _, _, _, _, _), Closure(_, _, _, _, _, _, _))
+        | (Closure(_), Closure(_))
         | (Match(_, _), Match(_, _))
-        | (Loop(_, _), Loop(_, _))
+        | (Loop(_, _, _), Loop(_, _, _))
         | (ForLoop(_, _, _, _), ForLoop(_, _, _, _))
         | (While(_, _, _), While(_, _, _))
         | (If(_, _, _), If(_, _, _))
@@ -595,7 +593,7 @@ fn ident_difference_expr_with_base_location(
         | (Unary(_, _), Unary(_, _))
         | (Binary(_, _, _), Binary(_, _, _))
         | (Tup(_), Tup(_))
-        | (MethodCall(_, _, _, _), MethodCall(_, _, _, _))
+        | (MethodCall(_), MethodCall(_))
         | (Call(_, _), Call(_, _))
         | (ConstBlock(_), ConstBlock(_))
         | (Array(_), Array(_))
@@ -676,9 +674,8 @@ fn suggestion_with_swapped_ident(
         }
 
         Some(format!(
-            "{}{}{}",
+            "{}{new_ident}{}",
             snippet_with_applicability(cx, expr.span.with_hi(current_ident.span.lo()), "..", applicability),
-            new_ident,
             snippet_with_applicability(cx, expr.span.with_lo(current_ident.span.hi()), "..", applicability),
         ))
     })

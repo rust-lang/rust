@@ -4,8 +4,8 @@ error: initializing a reference-counted pointer in `vec![elem; len]`
 LL |     let v = vec![Rc::new("x".to_string()); 2];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::rc-clone-in-vec-init` implied by `-D warnings`
    = note: each element will point to the same `Rc` instance
+   = note: `-D clippy::rc-clone-in-vec-init` implied by `-D warnings`
 help: consider initializing each `Rc` element individually
    |
 LL ~     let v = {

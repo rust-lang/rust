@@ -4,8 +4,8 @@ error: by not having a space between `>` and `-` it looks like `>-` is a single 
 LL |     if a >- 30 {}
    |         ^^^^
    |
-   = note: `-D clippy::suspicious-unary-op-formatting` implied by `-D warnings`
    = help: put a space between `>` and `-` and remove the space after `-`
+   = note: `-D clippy::suspicious-unary-op-formatting` implied by `-D warnings`
 
 error: by not having a space between `>=` and `-` it looks like `>=-` is a single operator
   --> $DIR/suspicious_unary_op_formatting.rs:9:9

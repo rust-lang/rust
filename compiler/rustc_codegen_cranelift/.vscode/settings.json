@@ -4,16 +4,10 @@
     "rust-analyzer.imports.granularity.enforce": true,
     "rust-analyzer.imports.granularity.group": "module",
     "rust-analyzer.imports.prefix": "crate",
-    "rust-analyzer.cargo.features": ["unstable-features"],
+    "rust-analyzer.cargo.features": ["unstable-features", "__check_build_system_using_ra"],
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
-        //"./build_sysroot/sysroot_src/src/libstd/Cargo.toml",
         {
-            "roots": [
-                "./example/mini_core.rs",
-                "./example/mini_core_hello_world.rs",
-                "./example/mod_bench.rs"
-            ],
             "crates": [
                 {
                     "root_module": "./example/mini_core.rs",
@@ -36,34 +30,11 @@
             ]
         },
         {
-            "roots": ["./scripts/filter_profile.rs"],
+            "sysroot_src": "./build_sysroot/sysroot_src/library",
             "crates": [
                 {
-                    "root_module": "./scripts/filter_profile.rs",
-                    "edition": "2018",
-                    "deps": [{ "crate": 1, "name": "std" }],
-                    "cfg": [],
-                },
-                {
-                    "root_module": "./build_sysroot/sysroot_src/library/std/src/lib.rs",
-                    "edition": "2018",
-                    "deps": [],
-                    "cfg": [],
-                },
-            ]
-        },
-        {
-            "roots": ["./y.rs"],
-            "crates": [
-                {
-                    "root_module": "./y.rs",
-                    "edition": "2018",
-                    "deps": [{ "crate": 1, "name": "std" }],
-                    "cfg": [],
-                },
-                {
-                    "root_module": "./build_sysroot/sysroot_src/library/std/src/lib.rs",
-                    "edition": "2018",
+                    "root_module": "./example/std_example.rs",
+                    "edition": "2015",
                     "deps": [],
                     "cfg": [],
                 },

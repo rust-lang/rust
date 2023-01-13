@@ -1,0 +1,19 @@
+error: expected `,`, or `}`, found `ö`
+  --> $DIR/issue-68000-unicode-ident-after-missing-comma.rs:2:22
+   |
+LL |     pub bar: Vec<i32>ö
+   |                      ^ help: try adding a comma: `,`
+
+error: expected `:`, found `}`
+  --> $DIR/issue-68000-unicode-ident-after-missing-comma.rs:4:1
+   |
+LL | pub struct Foo {
+   |            --- while parsing this struct
+LL |     pub bar: Vec<i32>ö
+   |                       - expected `:`
+LL |
+LL | }
+   | ^ unexpected token
+
+error: aborting due to 2 previous errors
+

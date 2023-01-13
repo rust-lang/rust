@@ -24,9 +24,6 @@ borrowck_var_does_not_need_mut =
     variable does not need to be mutable
     .suggestion = remove this `mut`
 
-borrowck_const_not_used_in_type_alias =
-    const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-
 borrowck_var_cannot_escape_closure =
     captured variable cannot escape `FnMut` closure body
     .note = `FnMut` closures only have access to their captured variables while they are executing...
@@ -58,3 +55,68 @@ borrowck_returned_lifetime_short =
 
 borrowck_used_impl_require_static =
     the used `impl` has a `'static` requirement
+
+borrowck_capture_kind_label =
+    capture is {$kind_desc} because of use here
+
+borrowck_var_borrow_by_use_place_in_generator =
+    borrow occurs due to use of {$place} in closure in generator
+
+borrowck_var_borrow_by_use_place_in_closure =
+    borrow occurs due to use of {$place} in closure
+
+borrowck_var_borrow_by_use_place =
+    borrow occurs due to use of {$place}
+
+borrowck_borrow_due_to_use_generator =
+    borrow occurs due to use in generator
+
+borrowck_use_due_to_use_generator =
+    use occurs due to use in generator
+
+borrowck_assign_due_to_use_generator =
+    assign occurs due to use in generator
+
+borrowck_assign_part_due_to_use_generator =
+    assign to part occurs due to use in generator
+
+borrowck_borrow_due_to_use_closure =
+    borrow occurs due to use in closure
+
+borrowck_use_due_to_use_closure =
+    use occurs due to use in closure
+
+borrowck_assign_due_to_use_closure =
+    assign occurs due to use in closure
+
+borrowck_assign_part_due_to_use_closure =
+    assign to part occurs due to use in closure
+
+borrowck_capture_immute =
+    capture is immutable because of use here
+
+borrowck_capture_mut =
+    capture is mutable because of use here
+
+borrowck_capture_move =
+    capture is moved because of use here
+
+borrowck_var_move_by_use_place_in_generator =
+    move occurs due to use of {$place} in generator
+
+borrowck_var_move_by_use_place_in_closure =
+    move occurs due to use of {$place} in closure
+
+borrowck_cannot_move_when_borrowed =
+    cannot move out of {$place ->
+        [value] value
+        *[other] {$place}
+    } because it is borrowed
+    .label = borrow of {$borrow_place ->
+        [value] value
+        *[other] {$borrow_place}
+    } occurs here
+    .move_label = move out of {$value_place ->
+        [value] value
+        *[other] {$value_place}
+    } occurs here

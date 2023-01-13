@@ -2,9 +2,9 @@
 
 use crate::ty;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::ItemLocalId;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{ItemLocalId, OwnerId};
 use rustc_macros::HashStable;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
@@ -49,12 +49,7 @@ pub enum ObjectLifetimeDefault {
 pub struct ResolveLifetimes {
     /// Maps from every use of a named (not anonymous) lifetime to a
     /// `Region` describing how that region is bound
-    pub defs: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Region>>,
+    pub defs: FxHashMap<OwnerId, FxHashMap<ItemLocalId, Region>>,
 
-    /// Set of lifetime def ids that are late-bound; a region can
-    /// be late-bound if (a) it does NOT appear in a where-clause and
-    /// (b) it DOES appear in the arguments.
-    pub late_bound: FxHashMap<LocalDefId, FxHashSet<LocalDefId>>,
-
-    pub late_bound_vars: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
+    pub late_bound_vars: FxHashMap<OwnerId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }

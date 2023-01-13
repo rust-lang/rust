@@ -1,14 +1,14 @@
+use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
-use crate::llvm::{self, BasicBlock, False};
-use crate::llvm::{AtomicOrdering, AtomicRmwBinOp, SynchronizationScope};
+use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use cstr::cstr;
 use libc::{c_char, c_uint};
-use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, TypeKind};
+use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
@@ -20,6 +20,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
+use rustc_symbol_mangling::typeid::kcfi_typeid_for_fnabi;
 use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -215,6 +216,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn invoke(
         &mut self,
         llty: &'ll Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
         then: &'ll BasicBlock,
@@ -224,10 +226,26 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
         let args = self.check_call("invoke", llty, llfn, args);
-        let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.as_ref().map(|b| &*b.raw);
+        let funclet_bundle = funclet.map(|funclet| funclet.bundle());
+        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
+        let mut bundles = vec![funclet_bundle];
 
-        unsafe {
+        // Set KCFI operand bundle
+        let is_indirect_call = unsafe { llvm::LLVMIsAFunction(llfn).is_none() };
+        let kcfi_bundle =
+            if self.tcx.sess.is_sanitizer_kcfi_enabled() && let Some(fn_abi) = fn_abi && is_indirect_call {
+                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi);
+                Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+            } else {
+                None
+            };
+        if kcfi_bundle.is_some() {
+            let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
+            bundles.push(kcfi_bundle);
+        }
+
+        bundles.retain(|bundle| bundle.is_some());
+        let invoke = unsafe {
             llvm::LLVMRustBuildInvoke(
                 self.llbuilder,
                 llty,
@@ -236,10 +254,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.len() as c_uint,
                 then,
                 catch,
-                bundle,
+                bundles.as_ptr(),
+                bundles.len() as c_uint,
                 UNNAMED,
             )
+        };
+        if let Some(fn_abi) = fn_abi {
+            fn_abi.apply_attrs_callsite(self, invoke);
         }
+        invoke
     }
 
     fn unreachable(&mut self) {
@@ -360,11 +383,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 Int(I64) => "llvm.ssub.with.overflow.i64",
                 Int(I128) => "llvm.ssub.with.overflow.i128",
 
-                Uint(U8) => "llvm.usub.with.overflow.i8",
-                Uint(U16) => "llvm.usub.with.overflow.i16",
-                Uint(U32) => "llvm.usub.with.overflow.i32",
-                Uint(U64) => "llvm.usub.with.overflow.i64",
-                Uint(U128) => "llvm.usub.with.overflow.i128",
+                Uint(_) => {
+                    // Emit sub and icmp instead of llvm.usub.with.overflow. LLVM considers these
+                    // to be the canonical form. It will attempt to reform llvm.usub.with.overflow
+                    // in the backend if profitable.
+                    let sub = self.sub(lhs, rhs);
+                    let cmp = self.icmp(IntPredicate::IntULT, lhs, rhs);
+                    return (sub, cmp);
+                }
 
                 _ => unreachable!(),
             },
@@ -406,20 +432,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
-        bx.dynamic_alloca(ty, align)
-    }
-
-    fn dynamic_alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
         unsafe {
-            let alloca = llvm::LLVMBuildAlloca(self.llbuilder, ty, UNNAMED);
+            let alloca = llvm::LLVMBuildAlloca(bx.llbuilder, ty, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }
     }
 
-    fn array_alloca(&mut self, ty: &'ll Type, len: &'ll Value, align: Align) -> &'ll Value {
+    fn byte_array_alloca(&mut self, len: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
-            let alloca = llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len, UNNAMED);
+            let alloca =
+                llvm::LLVMBuildArrayAlloca(self.llbuilder, self.cx().type_i8(), len, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }
@@ -551,15 +574,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn write_operand_repeatedly(
-        mut self,
+        &mut self,
         cg_elem: OperandRef<'tcx, &'ll Value>,
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
-    ) -> Self {
+    ) {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(&mut self, zero).llval;
-        let end = dest.project_index(&mut self, count).llval;
+        let start = dest.project_index(self, zero).llval;
+        let end = dest.project_index(self, count).llval;
 
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
@@ -587,7 +610,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         body_bx.br(header_bb);
         header_bx.add_incoming_to_phi(current, next, body_bb);
 
-        Self::build(self.cx, next_bb)
+        *self = Self::build(self.cx, next_bb);
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
@@ -956,15 +979,20 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn cleanup_landing_pad(&mut self, ty: &'ll Type, pers_fn: &'ll Value) -> &'ll Value {
+    fn cleanup_landing_pad(&mut self, pers_fn: &'ll Value) -> (&'ll Value, &'ll Value) {
+        let ty = self.type_struct(&[self.type_i8p(), self.type_i32()], false);
         let landing_pad = self.landing_pad(ty, pers_fn, 1 /* FIXME should this be 0? */);
         unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::True);
         }
-        landing_pad
+        (self.extract_value(landing_pad, 0), self.extract_value(landing_pad, 1))
     }
 
-    fn resume(&mut self, exn: &'ll Value) {
+    fn resume(&mut self, exn0: &'ll Value, exn1: &'ll Value) {
+        let ty = self.type_struct(&[self.type_i8p(), self.type_i32()], false);
+        let mut exn = self.const_undef(ty);
+        exn = self.insert_value(exn, exn0, 0);
+        exn = self.insert_value(exn, exn1, 1);
         unsafe {
             llvm::LLVMBuildResume(self.llbuilder, exn);
         }
@@ -1042,15 +1070,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         let weak = if weak { llvm::True } else { llvm::False };
         unsafe {
-            llvm::LLVMRustBuildAtomicCmpXchg(
+            let value = llvm::LLVMBuildAtomicCmpXchg(
                 self.llbuilder,
                 dst,
                 cmp,
                 src,
                 AtomicOrdering::from_generic(order),
                 AtomicOrdering::from_generic(failure_order),
-                weak,
-            )
+                llvm::False, // SingleThreaded
+            );
+            llvm::LLVMSetWeak(value, weak);
+            value
         }
     }
     fn atomic_rmw(
@@ -1067,7 +1097,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 dst,
                 src,
                 AtomicOrdering::from_generic(order),
-                False,
+                llvm::False, // SingleThreaded
             )
         }
     }
@@ -1075,13 +1105,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn atomic_fence(
         &mut self,
         order: rustc_codegen_ssa::common::AtomicOrdering,
-        scope: rustc_codegen_ssa::common::SynchronizationScope,
+        scope: SynchronizationScope,
     ) {
+        let single_threaded = match scope {
+            SynchronizationScope::SingleThread => llvm::True,
+            SynchronizationScope::CrossThread => llvm::False,
+        };
         unsafe {
-            llvm::LLVMRustBuildAtomicFence(
+            llvm::LLVMBuildFence(
                 self.llbuilder,
                 AtomicOrdering::from_generic(order),
-                SynchronizationScope::from_generic(scope),
+                single_threaded,
+                UNNAMED,
             );
         }
     }
@@ -1131,7 +1166,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llfn,
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
-                None,
+                [].as_ptr(),
+                0 as c_uint,
             );
         }
     }
@@ -1139,6 +1175,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn call(
         &mut self,
         llty: &'ll Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
         funclet: Option<&Funclet<'ll>>,
@@ -1146,19 +1183,40 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug!("call {:?} with args ({:?})", llfn, args);
 
         let args = self.check_call("call", llty, llfn, args);
-        let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.as_ref().map(|b| &*b.raw);
+        let funclet_bundle = funclet.map(|funclet| funclet.bundle());
+        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
+        let mut bundles = vec![funclet_bundle];
 
-        unsafe {
+        // Set KCFI operand bundle
+        let is_indirect_call = unsafe { llvm::LLVMIsAFunction(llfn).is_none() };
+        let kcfi_bundle =
+            if self.tcx.sess.is_sanitizer_kcfi_enabled() && fn_abi.is_some() && is_indirect_call {
+                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi.unwrap());
+                Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+            } else {
+                None
+            };
+        if kcfi_bundle.is_some() {
+            let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
+            bundles.push(kcfi_bundle);
+        }
+
+        bundles.retain(|bundle| bundle.is_some());
+        let call = unsafe {
             llvm::LLVMRustBuildCall(
                 self.llbuilder,
                 llty,
                 llfn,
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
-                bundle,
+                bundles.as_ptr(),
+                bundles.len() as c_uint,
             )
+        };
+        if let Some(fn_abi) = fn_abi {
+            fn_abi.apply_attrs_callsite(self, call);
         }
+        call
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -1391,7 +1449,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     pub(crate) fn call_intrinsic(&mut self, intrinsic: &str, args: &[&'ll Value]) -> &'ll Value {
         let (ty, f) = self.cx.get_intrinsic(intrinsic);
-        self.call(ty, f, args, None)
+        self.call(ty, None, f, args, None)
     }
 
     fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
@@ -1453,7 +1511,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             format!("llvm.{}.sat.i{}.f{}", instr, int_width, float_width)
         };
         let f = self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
-        self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None)
+        self.call(self.type_func(&[src_ty], dest_ty), None, f, &[val], None)
     }
 
     pub(crate) fn landing_pad(

@@ -1,0 +1,4 @@
+thread 'main' panicked at 'explicit panic', $DIR/exported_symbol_good_unwind.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'main' panicked at 'explicit panic', $DIR/exported_symbol_good_unwind.rs:LL:CC
+thread 'main' panicked at 'explicit panic', $DIR/exported_symbol_good_unwind.rs:LL:CC

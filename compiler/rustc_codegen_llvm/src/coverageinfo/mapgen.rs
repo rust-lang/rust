@@ -1,5 +1,6 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
+use crate::errors::InstrumentCoverageRequiresLLVM12;
 use crate::llvm;
 
 use llvm::coverageinfo::CounterMappingRegion;
@@ -29,7 +30,7 @@ use std::ffi::CString;
 /// implementing this Rust version, and though the format documentation is very explicit and
 /// detailed, some undocumented details in Clang's implementation (that may or may not be important)
 /// were also replicated for Rust's Coverage Map.
-pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
+pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
     // Ensure the installed version of LLVM supports at least Coverage Map
@@ -37,7 +38,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // LLVM 12.
     let version = coverageinfo::mapping_version();
     if version < 4 {
-        tcx.sess.fatal("rustc option `-C instrument-coverage` requires LLVM 12 or higher.");
+        tcx.sess.emit_fatal(InstrumentCoverageRequiresLLVM12);
     }
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
@@ -129,7 +130,7 @@ impl CoverageMapGenerator {
             // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
             // requires setting the first filename to the compilation directory.
             // Since rustc generates coverage maps with relative paths, the
-            // compilation directory can be combined with the the relative paths
+            // compilation directory can be combined with the relative paths
             // to get absolute paths, if needed.
             let working_dir = tcx
                 .sess
@@ -173,7 +174,7 @@ impl CoverageMapGenerator {
         counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
         for (counter, region) in counter_regions {
             let CodeRegion { file_name, start_line, start_col, end_line, end_col } = *region;
-            let same_file = current_file_name.as_ref().map_or(false, |p| *p == file_name);
+            let same_file = current_file_name.map_or(false, |p| p == file_name);
             if !same_file {
                 if current_file_name.is_some() {
                     current_file_id += 1;
@@ -283,7 +284,7 @@ fn save_function_record(
 /// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
 /// code regions for the same function more than once which can lead to linker errors regarding
 /// duplicate symbols.
-fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
+fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
     let tcx = cx.tcx;

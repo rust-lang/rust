@@ -1,6 +1,6 @@
 // run-rustfix
-
 #![allow(dead_code, unused)]
+#![allow(clippy::uninlined_format_args)]
 
 use std::collections::*;
 

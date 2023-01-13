@@ -44,7 +44,7 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
     context.new_array_constructor(None, typ, &elements)
 }
 
-pub fn type_is_pointer<'gcc>(typ: Type<'gcc>) -> bool {
+pub fn type_is_pointer(typ: Type<'_>) -> bool {
     typ.get_pointee().is_some()
 }
 

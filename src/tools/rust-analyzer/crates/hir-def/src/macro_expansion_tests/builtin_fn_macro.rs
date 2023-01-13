@@ -93,12 +93,12 @@ macro_rules! option_env {() => {}}
 
 fn main() { option_env!("TEST_ENV_VAR"); }
 "#,
-        expect![[r##"
+        expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! option_env {() => {}}
 
-fn main() { std::option::Option::None:: < &str>; }
-"##]],
+fn main() { $crate::option::Option::None:: < &str>; }
+"#]],
     );
 }
 
@@ -163,7 +163,8 @@ macro_rules! compile_error {
 }
 
 // This expands to nothing (since it's in item position), but emits an error.
-compile_error!("error!");
+compile_error!("error, with an escaped quote: \"");
+compile_error!(r"this is a raw string");
 "#,
         expect![[r##"
 #[rustc_builtin_macro]
@@ -172,7 +173,8 @@ macro_rules! compile_error {
     ($msg:expr,) => ({ /* compiler built-in */ })
 }
 
-/* error: error! */
+/* error: error, with an escaped quote: " */
+/* error: this is a raw string */
 "##]],
     );
 }
@@ -191,7 +193,7 @@ fn main() {
     format_args!("{} {:?}", arg1(a, b, c), arg2);
 }
 "#,
-        expect![[r##"
+        expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
@@ -199,9 +201,9 @@ macro_rules! format_args {
 }
 
 fn main() {
-    std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(arg1(a, b, c)), std::fmt::Display::fmt), std::fmt::ArgumentV1::new(&(arg2), std::fmt::Display::fmt), ]);
+    $crate::fmt::Arguments::new_v1(&[], &[$crate::fmt::ArgumentV1::new(&(arg1(a, b, c)), $crate::fmt::Display::fmt), $crate::fmt::ArgumentV1::new(&(arg2), $crate::fmt::Display::fmt), ]);
 }
-"##]],
+"#]],
     );
 }
 
@@ -219,7 +221,7 @@ fn main() {
     format_args!("{} {:?}", a::<A,B>(), b);
 }
 "#,
-        expect![[r##"
+        expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
@@ -227,9 +229,9 @@ macro_rules! format_args {
 }
 
 fn main() {
-    std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a::<A, B>()), std::fmt::Display::fmt), std::fmt::ArgumentV1::new(&(b), std::fmt::Display::fmt), ]);
+    $crate::fmt::Arguments::new_v1(&[], &[$crate::fmt::ArgumentV1::new(&(a::<A, B>()), $crate::fmt::Display::fmt), $crate::fmt::ArgumentV1::new(&(b), $crate::fmt::Display::fmt), ]);
 }
-"##]],
+"#]],
     );
 }
 
@@ -248,7 +250,7 @@ fn main() {
         format_args!/*+errors*/("{} {:?}", a.);
 }
 "#,
-        expect![[r##"
+        expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! format_args {
     ($fmt:expr) => ({ /* compiler built-in */ });
@@ -258,9 +260,9 @@ macro_rules! format_args {
 fn main() {
     let _ =
         /* parse error: expected field name or number */
-std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a.), std::fmt::Display::fmt), ]);
+$crate::fmt::Arguments::new_v1(&[], &[$crate::fmt::ArgumentV1::new(&(a.), $crate::fmt::Display::fmt), ]);
 }
-"##]],
+"#]],
     );
 }
 

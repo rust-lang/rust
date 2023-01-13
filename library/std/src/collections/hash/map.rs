@@ -9,7 +9,6 @@ use crate::borrow::Borrow;
 use crate::cell::Cell;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
@@ -281,7 +280,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
+    #[rustc_const_unstable(feature = "const_collections_with_hasher", issue = "102575")]
+    pub const fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
         HashMap { base: base::HashMap::with_hasher(hash_builder) }
     }
 
@@ -759,7 +759,7 @@ where
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the `HashMap`. The collection may reserve more space to speculatively
-    /// avoid frequent reallocations. After calling `reserve`,
+    /// avoid frequent reallocations. After calling `try_reserve`,
     /// capacity will be greater than or equal to `self.len() + additional` if
     /// it returns `Ok(())`.
     /// Does nothing if capacity is already sufficient.
@@ -2160,7 +2160,6 @@ impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: fmt::Debug, V: fmt::Debug> Error for OccupiedError<'a, K, V> {
     #[allow(deprecated)]
@@ -3162,14 +3161,16 @@ impl DefaultHasher {
     #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
     #[inline]
     #[allow(deprecated)]
+    #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     #[must_use]
-    pub fn new() -> DefaultHasher {
+    pub const fn new() -> DefaultHasher {
         DefaultHasher(SipHasher13::new_with_keys(0, 0))
     }
 }
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
-impl Default for DefaultHasher {
+#[rustc_const_unstable(feature = "const_hash", issue = "104061")]
+impl const Default for DefaultHasher {
     /// Creates a new `DefaultHasher` using [`new`].
     /// See its documentation for more.
     ///
@@ -3181,7 +3182,8 @@ impl Default for DefaultHasher {
 }
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
-impl Hasher for DefaultHasher {
+#[rustc_const_unstable(feature = "const_hash", issue = "104061")]
+impl const Hasher for DefaultHasher {
     // The underlying `SipHasher13` doesn't override the other
     // `write_*` methods, so it's ok not to forward them here.
 

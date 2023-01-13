@@ -44,7 +44,7 @@ fn check_expr_asm_syntax(lint: &'static Lint, cx: &EarlyContext<'_>, expr: &Expr
                 cx,
                 lint,
                 expr.span,
-                &format!("{} x86 assembly syntax used", style),
+                &format!("{style} x86 assembly syntax used"),
                 None,
                 &format!("use {} x86 assembly syntax", !style),
             );
@@ -64,6 +64,7 @@ declare_clippy_lint! {
     ///
     /// ```rust,no_run
     /// # #![feature(asm)]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     /// # unsafe { let ptr = "".as_ptr();
     /// # use std::arch::asm;
     /// asm!("lea {}, [{}]", lateout(reg) _, in(reg) ptr);
@@ -72,6 +73,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```rust,no_run
     /// # #![feature(asm)]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     /// # unsafe { let ptr = "".as_ptr();
     /// # use std::arch::asm;
     /// asm!("lea ({}), {}", in(reg) ptr, lateout(reg) _, options(att_syntax));
@@ -103,6 +105,7 @@ declare_clippy_lint! {
     ///
     /// ```rust,no_run
     /// # #![feature(asm)]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     /// # unsafe { let ptr = "".as_ptr();
     /// # use std::arch::asm;
     /// asm!("lea ({}), {}", in(reg) ptr, lateout(reg) _, options(att_syntax));
@@ -111,6 +114,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```rust,no_run
     /// # #![feature(asm)]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     /// # unsafe { let ptr = "".as_ptr();
     /// # use std::arch::asm;
     /// asm!("lea {}, [{}]", lateout(reg) _, in(reg) ptr);

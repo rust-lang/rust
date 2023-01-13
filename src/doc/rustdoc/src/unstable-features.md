@@ -197,6 +197,35 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 mod empty_mod {}
 ```
 
+## Effects of other nightly features
+
+These nightly-only features are not primarily related to Rustdoc,
+but have convenient effects on the documentation produced.
+
+### `fundamental` types
+
+Annotating a type with `#[fundamental]` primarily influences coherence rules about generic types,
+i.e., they alter whether other crates can provide implementations for that type.
+The unstable book [links to further information][unstable-fundamental].
+
+[unstable-fundamental]: https://doc.rust-lang.org/unstable-book/language-features/fundamental.html
+
+For documentation, this has an additional side effect:
+If a method is implemented on `F<T>` (or `F<&T>`),
+where `F` is a fundamental type,
+then the method is not only documented at the page about `F`,
+but also on the page about `T`.
+In a sense, it makes the type transparent to Rustdoc.
+This is especially convenient for types that work as annotated pointers,
+such as `Pin<&mut T>`,
+as it ensures that methods only implemented through those annotated pointers
+can still be found with the type they act on.
+
+If the `fundamental` feature's effect on coherence is not intended,
+such a type can be marked as fundamental only for purposes of documentation
+by introducing a custom feature and
+limiting the use of `fundamental` to when documentation is built.
+
 ## Unstable command-line arguments
 
 These features are enabled by passing a command-line flag to Rustdoc, but the flags in question are
@@ -464,6 +493,16 @@ Note that the third item is the crate root, which in this case is undocumented.
 `--output-format json` emits documentation in the experimental
 [JSON format](https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc_json_types/). `--output-format html` has no effect,
 and is also accepted on stable toolchains.
+
+JSON Output for toolchain crates (`std`, `alloc`, `core`, `test`, and `proc_macro`)
+is available via the `rust-docs-json` rustup component.
+
+```shell
+rustup component add --toolchain nightly rust-docs-json
+```
+
+Then the json files will be present in the `share/doc/rust/json/` directory
+of the rustup toolchain directory.
 
 It can also be used with `--show-coverage`. Take a look at its
 [documentation](#--show-coverage-calculate-the-percentage-of-items-with-documentation) for more

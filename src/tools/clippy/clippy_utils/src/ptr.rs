@@ -1,7 +1,7 @@
 use crate::source::snippet;
-use crate::visitors::expr_visitor_no_bodies;
+use crate::visitors::{for_each_expr, Descend};
 use crate::{path_to_local_id, strip_pat_refs};
-use rustc_hir::intravisit::Visitor;
+use core::ops::ControlFlow;
 use rustc_hir::{Body, BodyId, ExprKind, HirId, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
@@ -30,28 +30,23 @@ fn extract_clone_suggestions<'tcx>(
     replace: &[(&'static str, &'static str)],
     body: &'tcx Body<'_>,
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
-    let mut abort = false;
     let mut spans = Vec::new();
-    expr_visitor_no_bodies(|expr| {
-        if abort {
-            return false;
-        }
-        if let ExprKind::MethodCall(seg, recv, [], _) = expr.kind {
-            if path_to_local_id(recv, id) {
-                if seg.ident.name.as_str() == "capacity" {
-                    abort = true;
-                    return false;
-                }
-                for &(fn_name, suffix) in replace {
-                    if seg.ident.name.as_str() == fn_name {
-                        spans.push((expr.span, snippet(cx, recv.span, "_") + suffix));
-                        return false;
-                    }
+    for_each_expr(body, |e| {
+        if let ExprKind::MethodCall(seg, recv, [], _) = e.kind
+            && path_to_local_id(recv, id)
+        {
+            if seg.ident.as_str() == "capacity" {
+                return ControlFlow::Break(());
+            }
+            for &(fn_name, suffix) in replace {
+                if seg.ident.as_str() == fn_name {
+                    spans.push((e.span, snippet(cx, recv.span, "_") + suffix));
+                    return ControlFlow::Continue(Descend::No);
                 }
             }
         }
-        !abort
+        ControlFlow::Continue(Descend::Yes)
     })
-    .visit_body(body);
-    if abort { None } else { Some(spans) }
+    .is_none()
+    .then_some(spans)
 }

@@ -1,0 +1,38 @@
+    1|       |#![feature(generators, generator_trait)]
+    2|       |#![allow(unused_assignments)]
+    3|       |
+    4|       |use std::ops::{Generator, GeneratorState};
+    5|       |use std::pin::Pin;
+    6|       |
+    7|      1|fn main() {
+    8|      1|    let mut generator = || {
+    9|      1|        yield 1;
+   10|      1|        return "foo"
+   11|      1|    };
+   12|       |
+   13|      1|    match Pin::new(&mut generator).resume(()) {
+   14|      1|        GeneratorState::Yielded(1) => {}
+   15|      0|        _ => panic!("unexpected value from resume"),
+   16|       |    }
+   17|      1|    match Pin::new(&mut generator).resume(()) {
+   18|      1|        GeneratorState::Complete("foo") => {}
+   19|      0|        _ => panic!("unexpected value from resume"),
+   20|       |    }
+   21|       |
+   22|      1|    let mut generator = || {
+   23|      1|        yield 1;
+   24|      1|        yield 2;
+   25|      0|        yield 3;
+   26|      0|        return "foo"
+   27|      0|    };
+   28|       |
+   29|      1|    match Pin::new(&mut generator).resume(()) {
+   30|      1|        GeneratorState::Yielded(1) => {}
+   31|      0|        _ => panic!("unexpected value from resume"),
+   32|       |    }
+   33|      1|    match Pin::new(&mut generator).resume(()) {
+   34|      1|        GeneratorState::Yielded(2) => {}
+   35|      0|        _ => panic!("unexpected value from resume"),
+   36|       |    }
+   37|      1|}
+

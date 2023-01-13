@@ -22,7 +22,19 @@ fn clif_sig_from_fn_abi<'tcx>(
     default_call_conv: CallConv,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> Signature {
-    let call_conv = match fn_abi.conv {
+    let call_conv = conv_to_call_conv(fn_abi.conv, default_call_conv);
+
+    let inputs = fn_abi.args.iter().map(|arg_abi| arg_abi.get_abi_param(tcx).into_iter()).flatten();
+
+    let (return_ptr, returns) = fn_abi.ret.get_abi_return(tcx);
+    // Sometimes the first param is an pointer to the place where the return value needs to be stored.
+    let params: Vec<_> = return_ptr.into_iter().chain(inputs).collect();
+
+    Signature { params, returns, call_conv }
+}
+
+pub(crate) fn conv_to_call_conv(c: Conv, default_call_conv: CallConv) -> CallConv {
+    match c {
         Conv::Rust | Conv::C => default_call_conv,
         Conv::RustCold => CallConv::Cold,
         Conv::X86_64SysV => CallConv::SystemV,
@@ -38,26 +50,19 @@ fn clif_sig_from_fn_abi<'tcx>(
         | Conv::X86VectorCall
         | Conv::AmdGpuKernel
         | Conv::AvrInterrupt
-        | Conv::AvrNonBlockingInterrupt => todo!("{:?}", fn_abi.conv),
-    };
-    let inputs = fn_abi.args.iter().map(|arg_abi| arg_abi.get_abi_param(tcx).into_iter()).flatten();
-
-    let (return_ptr, returns) = fn_abi.ret.get_abi_return(tcx);
-    // Sometimes the first param is an pointer to the place where the return value needs to be stored.
-    let params: Vec<_> = return_ptr.into_iter().chain(inputs).collect();
-
-    Signature { params, returns, call_conv }
+        | Conv::AvrNonBlockingInterrupt => todo!("{:?}", c),
+    }
 }
 
 pub(crate) fn get_function_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
-    triple: &target_lexicon::Triple,
+    default_call_conv: CallConv,
     inst: Instance<'tcx>,
 ) -> Signature {
     assert!(!inst.substs.needs_infer());
     clif_sig_from_fn_abi(
         tcx,
-        CallConv::triple_default(triple),
+        default_call_conv,
         &RevealAllLayoutCx(tcx).fn_abi_of_instance(inst, ty::List::empty()),
     )
 }
@@ -69,7 +74,7 @@ pub(crate) fn import_function<'tcx>(
     inst: Instance<'tcx>,
 ) -> FuncId {
     let name = tcx.symbol_name(inst).name;
-    let sig = get_function_sig(tcx, module.isa().triple(), inst);
+    let sig = get_function_sig(tcx, module.target_config().default_call_conv, inst);
     match module.declare_function(name, Linkage::Import, &sig) {
         Ok(func_id) => func_id,
         Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
@@ -336,18 +341,16 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     destination: Place<'tcx>,
     target: Option<BasicBlock>,
 ) {
-    let fn_ty = fx.monomorphize(func.ty(fx.mir, fx.tcx));
-    let fn_sig =
-        fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_ty.fn_sig(fx.tcx));
+    let func = codegen_operand(fx, func);
+    let fn_sig = func.layout().ty.fn_sig(fx.tcx);
 
     let ret_place = codegen_place(fx, destination);
 
     // Handle special calls like intrinsics and empty drop glue.
-    let instance = if let ty::FnDef(def_id, substs) = *fn_ty.kind() {
-        let instance = ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
-            .unwrap()
-            .unwrap()
-            .polymorphize(fx.tcx);
+    let instance = if let ty::FnDef(def_id, substs) = *func.layout().ty.kind() {
+        let instance =
+            ty::Instance::expect_resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
+                .polymorphize(fx.tcx);
 
         if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
@@ -386,17 +389,17 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         None
     };
 
-    let extra_args = &args[fn_sig.inputs().len()..];
+    let extra_args = &args[fn_sig.inputs().skip_binder().len()..];
     let extra_args = fx
         .tcx
         .mk_type_list(extra_args.iter().map(|op_arg| fx.monomorphize(op_arg.ty(fx.mir, fx.tcx))));
     let fn_abi = if let Some(instance) = instance {
         RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(instance, extra_args)
     } else {
-        RevealAllLayoutCx(fx.tcx).fn_abi_of_fn_ptr(fn_ty.fn_sig(fx.tcx), extra_args)
+        RevealAllLayoutCx(fx.tcx).fn_abi_of_fn_ptr(fn_sig, extra_args)
     };
 
-    let is_cold = if fn_sig.abi == Abi::RustCold {
+    let is_cold = if fn_sig.abi() == Abi::RustCold {
         true
     } else {
         instance
@@ -413,7 +416,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     }
 
     // Unpack arguments tuple for closures
-    let mut args = if fn_sig.abi == Abi::RustCall {
+    let mut args = if fn_sig.abi() == Abi::RustCall {
         assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
         let self_arg = codegen_call_argument_operand(fx, &args[0]);
         let pack_arg = codegen_call_argument_operand(fx, &args[1]);
@@ -465,7 +468,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
-            (CallTarget::Indirect(sig, method), Some(ptr))
+            (CallTarget::Indirect(sig, method), Some(ptr.get_addr(fx)))
         }
 
         // Normal call
@@ -481,7 +484,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 fx.add_comment(nop_inst, "indirect call");
             }
 
-            let func = codegen_operand(fx, func).load_scalar(fx);
+            let func = func.load_scalar(fx);
             let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
@@ -512,11 +515,11 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         };
 
         // FIXME find a cleaner way to support varargs
-        if fn_sig.c_variadic {
-            if !matches!(fn_sig.abi, Abi::C { .. }) {
+        if fn_sig.c_variadic() {
+            if !matches!(fn_sig.abi(), Abi::C { .. }) {
                 fx.tcx.sess.span_fatal(
                     source_info.span,
-                    &format!("Variadic call for non-C abi {:?}", fn_sig.abi),
+                    &format!("Variadic call for non-C abi {:?}", fn_sig.abi()),
                 );
             }
             let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
@@ -560,7 +563,19 @@ pub(crate) fn codegen_drop<'tcx>(
         // we don't actually need to drop anything
     } else {
         match ty.kind() {
-            ty::Dynamic(..) => {
+            ty::Dynamic(_, _, ty::Dyn) => {
+                // IN THIS ARM, WE HAVE:
+                // ty = *mut (dyn Trait)
+                // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
+                //                       args[0]    args[1]
+                //
+                // args = ( Data, Vtable )
+                //                  |
+                //                  v
+                //                /-------\
+                //                | ...   |
+                //                \-------/
+                //
                 let (ptr, vtable) = drop_place.to_ptr_maybe_unsized();
                 let ptr = ptr.get_addr(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
@@ -577,6 +592,43 @@ pub(crate) fn codegen_drop<'tcx>(
                 let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
+            }
+            ty::Dynamic(_, _, ty::DynStar) => {
+                // IN THIS ARM, WE HAVE:
+                // ty = *mut (dyn* Trait)
+                // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
+                //
+                // args = [ * ]
+                //          |
+                //          v
+                //      ( Data, Vtable )
+                //                |
+                //                v
+                //              /-------\
+                //              | ...   |
+                //              \-------/
+                //
+                //
+                // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
+                //
+                // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
+                // vtable = (*args[0]).1   // loads the vtable out
+                // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
+                //
+                // SO THEN WE CAN USE THE ABOVE CODE.
+                let (data, vtable) = drop_place.to_cvalue(fx).dyn_star_force_data_on_stack(fx);
+                let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
+
+                let virtual_drop = Instance {
+                    def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
+                    substs: drop_instance.substs,
+                };
+                let fn_abi =
+                    RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(virtual_drop, ty::List::empty());
+
+                let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
+                let sig = fx.bcx.import_signature(sig);
+                fx.bcx.ins().call_indirect(sig, drop_fn, &[data]);
             }
             _ => {
                 assert!(!matches!(drop_instance.def, InstanceDef::Virtual(_, _)));

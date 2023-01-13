@@ -10,6 +10,8 @@ use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, SearchScope},
 };
+use itertools::Itertools;
+use smallvec::SmallVec;
 use stdx::format_to;
 use syntax::{
     algo::find_node_at_range,
@@ -116,18 +118,18 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
             let mut body_items: Vec<String> = Vec::new();
             let mut items_to_be_processed: Vec<ast::Item> = module.body_items.clone();
-            let mut new_item_indent = old_item_indent + 1;
 
-            if impl_parent.is_some() {
-                new_item_indent = old_item_indent + 2;
+            let new_item_indent = if impl_parent.is_some() {
+                old_item_indent + 2
             } else {
                 items_to_be_processed = [module.use_items.clone(), items_to_be_processed].concat();
-            }
+                old_item_indent + 1
+            };
 
             for item in items_to_be_processed {
                 let item = item.indent(IndentLevel(1));
                 let mut indented_item = String::new();
-                format_to!(indented_item, "{}{}", new_item_indent, item.to_string());
+                format_to!(indented_item, "{new_item_indent}{item}");
                 body_items.push(indented_item);
             }
 
@@ -137,30 +139,28 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 let mut impl_body_def = String::new();
 
                 if let Some(self_ty) = impl_.self_ty() {
-                    format_to!(
-                        impl_body_def,
-                        "{}impl {} {{\n{}\n{}}}",
-                        old_item_indent + 1,
-                        self_ty.to_string(),
-                        body,
-                        old_item_indent + 1
-                    );
-
+                    {
+                        let impl_indent = old_item_indent + 1;
+                        format_to!(
+                            impl_body_def,
+                            "{impl_indent}impl {self_ty} {{\n{body}\n{impl_indent}}}",
+                        );
+                    }
                     body = impl_body_def;
 
                     // Add the import for enum/struct corresponding to given impl block
                     module.make_use_stmt_of_node_with_super(self_ty.syntax());
                     for item in module.use_items {
-                        let mut indented_item = String::new();
-                        format_to!(indented_item, "{}{}", old_item_indent + 1, item.to_string());
-                        body = format!("{}\n\n{}", indented_item, body);
+                        let item_indent = old_item_indent + 1;
+                        body = format!("{item_indent}{item}\n\n{body}");
                     }
                 }
             }
 
             let mut module_def = String::new();
 
-            format_to!(module_def, "mod {} {{\n{}\n{}}}", module.name, body, old_item_indent);
+            let module_name = module.name;
+            format_to!(module_def, "mod {module_name} {{\n{body}\n{old_item_indent}}}");
 
             let mut usages_to_be_updated_for_curr_file = vec![];
             for usages_to_be_updated_for_file in usages_to_be_processed {
@@ -199,7 +199,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                     builder.delete(range);
                 }
 
-                builder.insert(impl_.syntax().text_range().end(), format!("\n\n{}", module_def));
+                builder.insert(impl_.syntax().text_range().end(), format!("\n\n{module_def}"));
             } else {
                 builder.replace(module.text_range, module_def)
             }
@@ -343,9 +343,10 @@ impl Module {
                 && !self.text_range.contains_range(desc.text_range())
             {
                 if let Some(name_ref) = ast::NameRef::cast(desc) {
+                    let mod_name = self.name;
                     return Some((
                         name_ref.syntax().text_range(),
-                        format!("{}::{}", self.name, name_ref),
+                        format!("{mod_name}::{name_ref}"),
                     ));
                 }
             }
@@ -658,28 +659,23 @@ impl Module {
 
 fn check_intersection_and_push(
     import_paths_to_be_removed: &mut Vec<TextRange>,
-    import_path: TextRange,
+    mut import_path: TextRange,
 ) {
-    if import_paths_to_be_removed.len() > 0 {
-        // Text ranges received here for imports are extended to the
-        // next/previous comma which can cause intersections among them
-        // and later deletion of these can cause panics similar
-        // to reported in #11766. So to mitigate it, we
-        // check for intersection between all current members
-        // and if it exists we combine both text ranges into
-        // one
-        let r = import_paths_to_be_removed
-            .into_iter()
-            .position(|it| it.intersect(import_path).is_some());
-        match r {
-            Some(it) => {
-                import_paths_to_be_removed[it] = import_paths_to_be_removed[it].cover(import_path)
-            }
-            None => import_paths_to_be_removed.push(import_path),
-        }
-    } else {
-        import_paths_to_be_removed.push(import_path);
+    // Text ranges received here for imports are extended to the
+    // next/previous comma which can cause intersections among them
+    // and later deletion of these can cause panics similar
+    // to reported in #11766. So to mitigate it, we
+    // check for intersection between all current members
+    // and combine all such ranges into one.
+    let s: SmallVec<[_; 2]> = import_paths_to_be_removed
+        .into_iter()
+        .positions(|it| it.intersect(import_path).is_some())
+        .collect();
+    for pos in s.into_iter().rev() {
+        let intersecting_path = import_paths_to_be_removed.swap_remove(pos);
+        import_path = import_path.cover(intersecting_path);
     }
+    import_paths_to_be_removed.push(import_path);
 }
 
 fn does_source_exists_outside_sel_in_same_mod(
@@ -1766,5 +1762,50 @@ mod modname {
             }
         ",
         )
+    }
+
+    #[test]
+    fn test_merge_multiple_intersections() {
+        check_assist(
+            extract_module,
+            r#"
+mod dep {
+    pub struct A;
+    pub struct B;
+    pub struct C;
+}
+
+use dep::{A, B, C};
+
+$0struct S {
+    inner: A,
+    state: C,
+    condvar: B,
+}$0
+"#,
+            r#"
+mod dep {
+    pub struct A;
+    pub struct B;
+    pub struct C;
+}
+
+use dep::{};
+
+mod modname {
+    use super::dep::B;
+
+    use super::dep::C;
+
+    use super::dep::A;
+
+    pub(crate) struct S {
+        pub(crate) inner: A,
+        pub(crate) state: C,
+        pub(crate) condvar: B,
+    }
+}
+"#,
+        );
     }
 }

@@ -164,7 +164,7 @@ declare_features! (
     (removed, quote, "1.33.0", Some(29601), None, None),
     (removed, reflect, "1.0.0", Some(27749), None, None),
     /// Allows using the `#[register_attr]` attribute.
-    (removed, register_attr, "CURRENT_RUSTC_VERSION", Some(66080), None,
+    (removed, register_attr, "1.65.0", Some(66080), None,
      Some("removed in favor of `#![register_tool]`")),
     /// Allows using the macros:
     /// + `__diagnostic_used`

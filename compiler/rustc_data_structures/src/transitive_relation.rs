@@ -1,5 +1,5 @@
 use crate::frozen::Frozen;
-use crate::fx::FxIndexSet;
+use crate::fx::{FxHashSet, FxIndexSet};
 use rustc_index::bit_set::BitMatrix;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -16,7 +16,7 @@ pub struct TransitiveRelationBuilder<T> {
 
     // List of base edges in the graph. Require to compute transitive
     // closure.
-    edges: Vec<Edge>,
+    edges: FxHashSet<Edge>,
 }
 
 #[derive(Debug)]
@@ -52,10 +52,10 @@ impl<T: Eq + Hash> Default for TransitiveRelationBuilder<T> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 struct Index(usize);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 struct Edge {
     source: Index,
     target: Index,
@@ -99,9 +99,7 @@ impl<T: Eq + Hash + Copy> TransitiveRelationBuilder<T> {
         let a = self.add_index(a);
         let b = self.add_index(b);
         let edge = Edge { source: a, target: b };
-        if !self.edges.contains(&edge) {
-            self.edges.push(edge);
-        }
+        self.edges.insert(edge);
     }
 
     /// Compute the transitive closure derived from the edges, and converted to
@@ -201,7 +199,7 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
     /// Viewing the relation as a graph, computes the "mutual
     /// immediate postdominator" of a set of points (if one
     /// exists). See `postdom_upper_bound` for details.
-    pub fn mutual_immediate_postdominator<'a>(&'a self, mut mubs: Vec<T>) -> Option<T> {
+    pub fn mutual_immediate_postdominator(&self, mut mubs: Vec<T>) -> Option<T> {
         loop {
             match mubs.len() {
                 0 => return None,

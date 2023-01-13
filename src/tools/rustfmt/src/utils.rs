@@ -263,7 +263,7 @@ fn is_skip(meta_item: &MetaItem) -> bool {
 fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
     match meta_item {
         NestedMetaItem::MetaItem(ref mi) => is_skip(mi),
-        NestedMetaItem::Literal(_) => false,
+        NestedMetaItem::Lit(_) => false,
     }
 }
 
@@ -479,9 +479,9 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Binary(_, _, ref expr)
         | ast::ExprKind::Index(_, ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Closure(_, _, _, _, _, ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
+        ast::ExprKind::Closure(ref closure) => is_block_expr(context, &closure.body, repr),
         // This can only be a string lit
         ast::ExprKind::Lit(_) => {
             repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
@@ -496,6 +496,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Continue(..)
         | ast::ExprKind::Err
         | ast::ExprKind::Field(..)
+        | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::InlineAsm(..)
         | ast::ExprKind::Let(..)
         | ast::ExprKind::Path(..)

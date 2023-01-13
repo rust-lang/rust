@@ -262,9 +262,12 @@ use crate::sys_common::memchr;
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
+pub(crate) use self::stdio::attempt_print_to_stderr;
 #[unstable(feature = "internal_output_capture", issue = "none")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::set_output_capture;
+#[unstable(feature = "is_terminal", issue = "98070")]
+pub use self::stdio::IsTerminal;
 #[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -580,7 +583,7 @@ pub trait Read {
     /// `n > buf.len()`.
     ///
     /// No guarantees are provided about the contents of `buf` when this
-    /// function is called, implementations cannot rely on any property of the
+    /// function is called, so implementations cannot rely on any property of the
     /// contents of `buf` being true. It is recommended that *implementations*
     /// only write data to `buf` instead of reading its contents.
     ///
@@ -756,7 +759,7 @@ pub trait Read {
     /// specified buffer `buf`.
     ///
     /// No guarantees are provided about the contents of `buf` when this
-    /// function is called, implementations cannot rely on any property of the
+    /// function is called, so implementations cannot rely on any property of the
     /// contents of `buf` being true. It is recommended that implementations
     /// only write data to `buf` instead of reading its contents. The
     /// documentation on [`read`] has a more detailed explanation on this
@@ -1045,7 +1048,7 @@ pub trait Read {
 ///     Ok(())
 /// }
 /// ```
-#[stable(feature = "io_read_to_string", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "io_read_to_string", since = "1.65.0")]
 pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
     let mut buf = String::new();
     reader.read_to_string(&mut buf)?;
@@ -2134,8 +2137,10 @@ pub trait BufRead: Read {
     }
 
     /// Read all bytes until a newline (the `0xA` byte) is reached, and append
-    /// them to the provided buffer. You do not need to clear the buffer before
-    /// appending.
+    /// them to the provided `String` buffer.
+    ///
+    /// Previous content of the buffer will be preserved. To avoid appending to
+    /// the buffer, you need to [`clear`] it first.
     ///
     /// This function will read bytes from the underlying stream until the
     /// newline delimiter (the `0xA` byte) or EOF is found. Once found, all bytes
@@ -2148,9 +2153,11 @@ pub trait BufRead: Read {
     ///
     /// This function is blocking and should be used carefully: it is possible for
     /// an attacker to continuously send bytes without ever sending a newline
-    /// or EOF.
+    /// or EOF. You can use [`take`] to limit the maximum number of bytes read.
     ///
     /// [`Ok(0)`]: Ok
+    /// [`clear`]: String::clear
+    /// [`take`]: crate::io::Read::take
     ///
     /// # Errors
     ///

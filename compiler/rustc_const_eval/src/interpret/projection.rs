@@ -7,6 +7,8 @@
 //! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
 
+use either::{Left, Right};
+
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
@@ -84,13 +86,13 @@ where
         base: &OpTy<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let base = match base.try_as_mplace() {
-            Ok(ref mplace) => {
+        let base = match base.as_mplace_or_imm() {
+            Left(ref mplace) => {
                 // We can reuse the mplace field computation logic for indirect operands.
                 let field = self.mplace_field(mplace, field)?;
                 return Ok(field.into());
             }
-            Err(value) => value,
+            Right(value) => value,
         };
 
         let field_layout = base.layout.field(self, field);
@@ -204,8 +206,8 @@ where
         }
     }
 
-    // Iterates over all fields of an array. Much more efficient than doing the
-    // same by repeatedly calling `operand_index`.
+    /// Iterates over all fields of an array. Much more efficient than doing the
+    /// same by repeatedly calling `operand_index`.
     pub fn operand_array_fields<'a>(
         &self,
         base: &'a OpTy<'tcx, Prov>,
@@ -350,13 +352,18 @@ where
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
+            OpaqueCast(ty) => {
+                let mut place = base.clone();
+                place.layout = self.layout_of(ty)?;
+                place
+            }
             Field(field, _) => self.place_field(base, field.index())?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,
             Deref => self.deref_operand(&self.place_to_op(base)?)?.into(),
             Index(local) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.local_to_op(self.frame(), local, Some(layout))?;
-                let n = self.read_scalar(&n)?.to_machine_usize(self)?;
+                let n = self.read_machine_usize(&n)?;
                 self.place_index(base, n)?
             }
             ConstantIndex { offset, min_length, from_end } => {
@@ -374,13 +381,18 @@ where
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
+            OpaqueCast(ty) => {
+                let mut op = base.clone();
+                op.layout = self.layout_of(ty)?;
+                op
+            }
             Field(field, _) => self.operand_field(base, field.index())?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
             Index(local) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.local_to_op(self.frame(), local, Some(layout))?;
-                let n = self.read_scalar(&n)?.to_machine_usize(self)?;
+                let n = self.read_machine_usize(&n)?;
                 self.operand_index(base, n)?
             }
             ConstantIndex { offset, min_length, from_end } => {

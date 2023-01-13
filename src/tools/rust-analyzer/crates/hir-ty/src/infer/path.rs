@@ -7,12 +7,14 @@ use hir_def::{
     AdtId, AssocItemId, EnumVariantId, ItemContainerId, Lookup,
 };
 use hir_expand::name::Name;
+use stdx::never;
 
 use crate::{
     builder::ParamKind,
     consteval,
     method_resolution::{self, VisibleFromModule},
-    GenericArgData, Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
+    utils::generics,
+    InferenceDiagnostic, Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
     ValueTyDefId,
 };
 
@@ -96,17 +98,21 @@ impl<'a> InferenceContext<'a> {
             ValueNs::GenericParam(it) => return Some(self.db.const_param_ty(it)),
         };
 
-        let parent_substs = self_subst.unwrap_or_else(|| Substitution::empty(Interner));
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         let substs = ctx.substs_from_path(path, typable, true);
-        let mut it = substs.as_slice(Interner)[parent_substs.len(Interner)..].iter().cloned();
-        let ty = TyBuilder::value_ty(self.db, typable)
-            .use_parent_substs(&parent_substs)
+        let substs = substs.as_slice(Interner);
+        let parent_substs = self_subst.or_else(|| {
+            let generics = generics(self.db.upcast(), typable.to_generic_def_id()?);
+            let parent_params_len = generics.parent_generics()?.len();
+            let parent_args = &substs[substs.len() - parent_params_len..];
+            Some(Substitution::from_iter(Interner, parent_args))
+        });
+        let parent_substs_len = parent_substs.as_ref().map_or(0, |s| s.len(Interner));
+        let mut it = substs.iter().take(substs.len() - parent_substs_len).cloned();
+        let ty = TyBuilder::value_ty(self.db, typable, parent_substs)
             .fill(|x| {
                 it.next().unwrap_or_else(|| match x {
-                    ParamKind::Type => {
-                        GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
-                    }
+                    ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
                     ParamKind::Const(ty) => consteval::unknown_const_as_generic(ty.clone()),
                 })
             })
@@ -153,7 +159,7 @@ impl<'a> InferenceContext<'a> {
                     remaining_segments_for_ty,
                     true,
                 );
-                if let TyKind::Error = ty.kind(Interner) {
+                if ty.is_unknown() {
                     return None;
                 }
 
@@ -208,7 +214,7 @@ impl<'a> InferenceContext<'a> {
             AssocItemId::TypeAliasId(_) => unreachable!(),
         };
 
-        self.write_assoc_resolution(id, item);
+        self.write_assoc_resolution(id, item, trait_ref.substitution.clone());
         Some((def, Some(trait_ref.substitution)))
     }
 
@@ -229,7 +235,8 @@ impl<'a> InferenceContext<'a> {
         let canonical_ty = self.canonicalize(ty.clone());
         let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
-        method_resolution::iterate_method_candidates(
+        let mut not_visible = None;
+        let res = method_resolution::iterate_method_candidates(
             &canonical_ty.value,
             self.db,
             self.table.trait_env.clone(),
@@ -237,7 +244,7 @@ impl<'a> InferenceContext<'a> {
             VisibleFromModule::Filter(self.resolver.module()),
             Some(name),
             method_resolution::LookupMode::Path,
-            move |_ty, item| {
+            |_ty, item, visible| {
                 let (def, container) = match item {
                     AssocItemId::FunctionId(f) => {
                         (ValueNs::FunctionId(f), f.lookup(self.db.upcast()).container)
@@ -249,13 +256,13 @@ impl<'a> InferenceContext<'a> {
                 };
                 let substs = match container {
                     ItemContainerId::ImplId(impl_id) => {
-                        let impl_substs = TyBuilder::subst_for_def(self.db, impl_id)
+                        let impl_substs = TyBuilder::subst_for_def(self.db, impl_id, None)
                             .fill_with_inference_vars(&mut self.table)
                             .build();
                         let impl_self_ty =
                             self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
                         self.unify(&impl_self_ty, &ty);
-                        Some(impl_substs)
+                        impl_substs
                     }
                     ItemContainerId::TraitId(trait_) => {
                         // we're picking this method
@@ -264,15 +271,32 @@ impl<'a> InferenceContext<'a> {
                             .fill_with_inference_vars(&mut self.table)
                             .build();
                         self.push_obligation(trait_ref.clone().cast(Interner));
-                        Some(trait_ref.substitution)
+                        trait_ref.substitution
                     }
-                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
+                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
+                        never!("assoc item contained in module/extern block");
+                        return None;
+                    }
                 };
 
-                self.write_assoc_resolution(id, item);
-                Some((def, substs))
+                if visible {
+                    Some((def, item, Some(substs), true))
+                } else {
+                    if not_visible.is_none() {
+                        not_visible = Some((def, item, Some(substs), false));
+                    }
+                    None
+                }
             },
-        )
+        );
+        let res = res.or(not_visible);
+        if let Some((_, item, Some(ref substs), visible)) = res {
+            self.write_assoc_resolution(id, item, substs.clone());
+            if !visible {
+                self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem { id, item })
+            }
+        }
+        res.map(|(def, _, substs, _)| (def, substs))
     }
 
     fn resolve_enum_variant_on_ty(
