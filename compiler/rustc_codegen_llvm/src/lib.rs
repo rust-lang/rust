@@ -4,10 +4,6 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![allow(non_snake_case)]
-#![allow(non_camel_case_types)]
-#![allow(unused)]
-
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
@@ -390,6 +386,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 }
 
+// Important! Enzyme
 pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,

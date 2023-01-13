@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+//use crate::enzyme::LLVMValueRef;
+
 pub use self::AtomicRmwBinOp::*;
 pub use self::CallConv::*;
 pub use self::CodeGenOptSize::*;
@@ -31,6 +33,12 @@ impl LLVMRustResult {
     }
 }
 
+// pub fn GetNamedFunction<'ll>(name: &str) -> &'ll LLVMValueRef {
+//     unsafe {
+//         LLVMRustGetN
+//     }
+// }
+
 pub fn AddFunctionAttributes<'ll>(llfn: &'ll Value, idx: AttributePlace, attrs: &[&'ll Attribute]) {
     unsafe {
         LLVMRustAddFunctionAttributes(llfn, idx.as_uint(), attrs.as_ptr(), attrs.len());
@@ -41,7 +49,7 @@ pub fn AddCallSiteAttributes<'ll>(
     callsite: &'ll Value,
     idx: AttributePlace,
     attrs: &[&'ll Attribute],
-) {
+    ) {
     unsafe {
         LLVMRustAddCallSiteAttributes(callsite, idx.as_uint(), attrs.as_ptr(), attrs.len());
     }
@@ -55,7 +63,7 @@ pub fn CreateAttrStringValue<'ll>(llcx: &'ll Context, attr: &str, value: &str) -
             attr.len().try_into().unwrap(),
             value.as_ptr().cast(),
             value.len().try_into().unwrap(),
-        )
+            )
     }
 }
 
@@ -67,7 +75,7 @@ pub fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
             attr.len().try_into().unwrap(),
             std::ptr::null(),
             0,
-        )
+            )
     }
 }
 
@@ -239,7 +247,7 @@ pub fn get_param(llfn: &Value, index: c_uint) -> &Value {
             "out of bounds argument access: {} out of {} arguments",
             index,
             LLVMCountParams(llfn)
-        );
+            );
         LLVMGetParam(llfn, index)
     }
 }

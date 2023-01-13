@@ -87,6 +87,19 @@ extern "C" char *LLVMRustGetLastError(void) {
   return Ret;
 }
 
+// Enzyme
+// extern "C" bool LLVMRustIsNull(LLVMValueRef V) {
+//   Value *Val = unwrap(V);
+//   if (Constant *C = dyn_cast<Constant>(Val))
+//     return C->isNullValue();
+//   return false;
+// }
+// extern "C" LLVMValueRef LLVMRustGetNamedFunction(LLVMModuleRef M,
+//                                                  const char *Name) {
+//   Module *Mod = unwrap(M);
+//   return wrap(Mod->getFunction(Name));
+// }
+
 extern "C" unsigned int LLVMRustGetInstructionCount(LLVMModuleRef M) {
   return unwrap(M)->getInstructionCount();
 }

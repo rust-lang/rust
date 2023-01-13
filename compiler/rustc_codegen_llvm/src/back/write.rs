@@ -2,15 +2,16 @@ use crate::back::lto::ThinBuffer;
 use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
 };
+
 use crate::base;
 use crate::common;
 use crate::consts;
-use crate::enzyme::EnzymeNewTypeTree;
 use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
+//use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
@@ -32,7 +33,7 @@ use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 use tracing::debug;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
-use std::ffi::CString;
+use std::ffi::{CString};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -514,12 +515,35 @@ pub(crate) unsafe fn optimize(
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
     ) -> Result<(), FatalError> {
+
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
 
     let llmod = module.module_llvm.llmod();
     let llcx = &*module.module_llvm.llcx;
     let tm = &*module.module_llvm.tm;
     let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
+
+    // begin Enzyme
+    dbg!("Imagine Enzyme here");
+
+    let name = CString::new("foo").unwrap();
+    //let _fnc = llvm::LLVMRustGetNamedFunction(llmod, name.as_ptr(), name.len());
+    //let _fnc = llvm::LLVMRustGetNamedFunction(llmod, name.as_ptr(), name.len());
+    //let _asdf = llvm::GibtsNicht(llmod);
+    //dbg!(_asdf);
+    dbg!("HA");
+    let test_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
+    dbg!("HI");
+    dbg!(test_fnc.is_some());
+    dbg!("HO");
+    let mut n = 1;
+    let mut _fnc = llvm::LLVMGetFirstFunction(llmod);
+    while _fnc.is_some() {
+        n += 1;
+        _fnc = llvm::LLVMGetNextFunction(_fnc.unwrap());
+    }
+    dbg!(n);
+    // end
 
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);
@@ -687,6 +711,9 @@ pub(crate) unsafe fn optimize(
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
     }
+    //cgcx.backend.create_autodiff();
+    //use crate::enzyme::EnzymeNewTypeTree;
+
     Ok(())
 }
 
@@ -776,9 +803,6 @@ pub(crate) unsafe fn codegen(
                 llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
                 f(cpm)
             }
-
-        let tree = EnzymeNewTypeTree();
-        dbg!(tree);
 
         // Two things to note:
         // - If object files are just LLVM bitcode we write bitcode, copy it to
