@@ -1,7 +1,7 @@
 task:
   name: freebsd
   freebsd_instance:
-    image: freebsd-12-1-release-amd64
+    image: freebsd-13-1-release-amd64
   setup_rust_script:
     - pkg install -y curl git bash
     - curl https://sh.rustup.rs -sSf --output rustup.sh
