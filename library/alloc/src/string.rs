@@ -2128,7 +2128,7 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "herd_cows", since = "1.19.0")]
-impl<'a, const COOP_PREFERRED: bool> FromIterator<Cow<'a, str>> for String<COOP_PREFERRED>
+impl<'a, const COOP_PREFERRED: bool> FromIterator<Cow<'a, str, COOP_PREFERRED>> for String<COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
@@ -2238,16 +2238,16 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "herd_cows", since = "1.19.0")]
-impl<'a, const COOP_PREFERRED: bool> Extend<Cow<'a, str>> for String<COOP_PREFERRED>
+impl<'a, const COOP_PREFERRED: bool> Extend<Cow<'a, str, COOP_PREFERRED>> for String<COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
-    fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = Cow<'a, str, COOP_PREFERRED>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 
     #[inline]
-    fn extend_one(&mut self, s: Cow<'a, str>) {
+    fn extend_one(&mut self, s: Cow<'a, str, COOP_PREFERRED>) {
         self.push_str(&s);
     }
 }
@@ -2789,7 +2789,7 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
-impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for Cow<'_, str>
+impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for Cow<'_, str, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
@@ -2940,7 +2940,7 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_from_cow_str", since = "1.14.0")]
-impl<'a, const COOP_PREFERRED: bool> From<Cow<'a, str>> for String<COOP_PREFERRED>
+impl<'a, const COOP_PREFERRED: bool> From<Cow<'a, str, COOP_PREFERRED>> for String<COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
@@ -2967,7 +2967,10 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for Cow<'a, str> {
+impl<'a, const COOP_PREFERRED: bool> From<&'a str> for Cow<'a, str, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Converts a string slice into a [`Borrowed`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.
@@ -2981,14 +2984,14 @@ impl<'a> From<&'a str> for Cow<'a, str> {
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed "borrow::Cow::Borrowed"
     #[inline]
-    fn from(s: &'a str) -> Cow<'a, str> {
+    fn from(s: &'a str) -> Cow<'a, str, COOP_PREFERRED> {
         Cow::Borrowed(s)
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, const COOP_PREFERRED: bool> From<String<COOP_PREFERRED>> for Cow<'a, str>
+impl<'a, const COOP_PREFERRED: bool> From<String<COOP_PREFERRED>> for Cow<'a, str, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
@@ -3039,16 +3042,22 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
-impl<'a> FromIterator<char> for Cow<'a, str> {
-    fn from_iter<I: IntoIterator<Item = char>>(it: I) -> Cow<'a, str> {
+impl<'a, const COOP_PREFERRED: bool> FromIterator<char> for Cow<'a, str, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
+    fn from_iter<I: IntoIterator<Item = char>>(it: I) -> Cow<'a, str, COOP_PREFERRED> {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
-impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
-    fn from_iter<I: IntoIterator<Item = &'b str>>(it: I) -> Cow<'a, str> {
+impl<'a, 'b, const COOP_PREFERRED: bool> FromIterator<&'b str> for Cow<'a, str, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
+    fn from_iter<I: IntoIterator<Item = &'b str>>(it: I) -> Cow<'a, str, COOP_PREFERRED> {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }
