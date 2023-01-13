@@ -124,6 +124,7 @@ fn inline_literals(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
         let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i] else { continue };
         let Ok(arg_index) = placeholder.argument.index else { continue };
         if let FormatTrait::Display = placeholder.format_trait
+            && placeholder.format_options == Default::default()
             && let arg = fmt.arguments.all_args()[arg_index].expr.peel_parens_and_refs()
             && let ExprKind::Lit(lit) = arg.kind
             && let token::LitKind::Str | token::LitKind::StrRaw(_) = lit.kind
