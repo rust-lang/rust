@@ -442,25 +442,14 @@ fn expand_format_args<'hir>(
         let args_ident = Ident::new(sym::args, macsp);
         let (args_pat, args_hir_id) = ctx.pat_ident(macsp, args_ident);
         let args = ctx.arena.alloc_from_iter(argmap.iter().map(|&(arg_index, ty)| {
-            if let Some(arg) = arguments.get(arg_index) {
-                let sp = arg.expr.span.with_ctxt(macsp.ctxt());
-                let args_ident_expr = ctx.expr_ident(macsp, args_ident, args_hir_id);
-                let arg = ctx.arena.alloc(ctx.expr(
-                    sp,
-                    hir::ExprKind::Field(
-                        args_ident_expr,
-                        Ident::new(sym::integer(arg_index), macsp),
-                    ),
-                ));
-                make_argument(ctx, sp, arg, ty)
-            } else {
-                ctx.expr(
-                    macsp,
-                    hir::ExprKind::Err(
-                        ctx.tcx.sess.delay_span_bug(macsp, format!("no arg at {arg_index}")),
-                    ),
-                )
-            }
+            let arg = &arguments[arg_index];
+            let sp = arg.expr.span.with_ctxt(macsp.ctxt());
+            let args_ident_expr = ctx.expr_ident(macsp, args_ident, args_hir_id);
+            let arg = ctx.arena.alloc(ctx.expr(
+                sp,
+                hir::ExprKind::Field(args_ident_expr, Ident::new(sym::integer(arg_index), macsp)),
+            ));
+            make_argument(ctx, sp, arg, ty)
         }));
         let elements: Vec<_> = arguments
             .iter()
