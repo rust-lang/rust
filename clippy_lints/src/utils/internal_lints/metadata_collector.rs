@@ -14,6 +14,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
 use clippy_utils::{last_path_segment, match_def_path, match_function_call, match_path, paths};
 use if_chain::if_chain;
+use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
@@ -34,8 +35,10 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-/// This is the output file of the lint collector.
-const OUTPUT_FILE: &str = "../util/gh-pages/lints.json";
+/// This is the json output file of the lint collector.
+const JSON_OUTPUT_FILE: &str = "../util/gh-pages/lints.json";
+/// This is the markdown output file of the lint collector.
+const MARKDOWN_OUTPUT_FILE: &str = "../book/src/lint_configuration.md";
 /// These lints are excluded from the export.
 const BLACK_LISTED_LINTS: &[&str] = &["lint_author", "dump_hir", "internal_metadata_collector"];
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
@@ -176,6 +179,14 @@ This lint has the following configuration variables:
                 )
             })
     }
+
+    fn get_markdown_table(&self) -> String {
+        self.config
+            .iter()
+            .filter(|config| config.deprecation_reason.is_none())
+            .map(ClippyConfiguration::to_markdown_table_entry)
+            .join("\n")
+    }
 }
 
 impl Drop for MetadataCollector {
@@ -199,12 +210,32 @@ impl Drop for MetadataCollector {
 
         collect_renames(&mut lints);
 
-        // Outputting
-        if Path::new(OUTPUT_FILE).exists() {
-            fs::remove_file(OUTPUT_FILE).unwrap();
+        // Outputting json
+        if Path::new(JSON_OUTPUT_FILE).exists() {
+            fs::remove_file(JSON_OUTPUT_FILE).unwrap();
         }
-        let mut file = OpenOptions::new().write(true).create(true).open(OUTPUT_FILE).unwrap();
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(JSON_OUTPUT_FILE)
+            .unwrap();
         writeln!(file, "{}", serde_json::to_string_pretty(&lints).unwrap()).unwrap();
+
+        // Outputting markdown
+        if Path::new(MARKDOWN_OUTPUT_FILE).exists() {
+            fs::remove_file(MARKDOWN_OUTPUT_FILE).unwrap();
+        }
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(MARKDOWN_OUTPUT_FILE)
+            .unwrap();
+        writeln!(
+            file,
+            "## Lint Configuration\n\n| Option | Default | Description | Lints |\n|--|--|--|--|\n{}\n",
+            self.get_markdown_table()
+        )
+        .unwrap();
     }
 }
 
@@ -504,6 +535,25 @@ impl ClippyConfiguration {
             default,
             deprecation_reason,
         }
+    }
+
+    fn to_markdown_table_entry(&self) -> String {
+        format!(
+            "| {} | `{}` | {} | {} |",
+            self.name,
+            self.default,
+            self.doc
+                .split('.')
+                .next()
+                .unwrap_or("")
+                .replace('|', "\\|")
+                .replace("\n    ", " "),
+            self.lints
+                .iter()
+                .map(|name| name.to_string().split_whitespace().next().unwrap().to_string())
+                .map(|name| format!("[{name}](https://rust-lang.github.io/rust-clippy/master/index.html#{name})"))
+                .join(" ")
+        )
     }
 }
 

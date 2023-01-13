@@ -33,6 +33,9 @@ jobs:
         echo `pwd`/mdbook >> $GITHUB_PATH
 
     # Run
+    - name: cargo collect-metadata
+      run: cargo collect-metadata
+      
     - name: Check *.md files
       run: git ls-files -z '*.md' | xargs -0 -n 1 -I {} ./node_modules/.bin/remark {} -u lint -f > /dev/null
 

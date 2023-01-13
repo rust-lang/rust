@@ -13,6 +13,9 @@ disallowed-names = ["toto", "tata", "titi"]
 See the [list of configurable lints](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration),
 the lint descriptions contain the names and meanings of these configuration variables.
 
+See [table of lint configurations](./lint_configuration.md)
+to see what configuration options you can set and the lints they configure.
+
 For configurations that are a list type with default values such as
 [disallowed-names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names),
 you can use the unique value `".."` to extend the default values instead of replacing them.
