@@ -42,7 +42,7 @@ struct AutodiffContext<'tcx> {
 impl<'tcx> ItemLikeVisitor<'tcx> for AutodiffContext<'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         if let ItemKind::Fn(sig, _, _) = &item.kind {
-            if matches!(sig.header.abi, Abi::C { .. }) {
+            if !matches!(sig.header.abi, Abi::C { .. }) {
                 self.source_candidates.insert(
                     (item.ident, self.tcx.hir().get_parent_item(item.hir_id())),
                     item.hir_id(),
@@ -218,7 +218,7 @@ fn get_autodiff_functions(tcx: TyCtxt<'_>, (): ()) -> DiffItems {
 
         elms.push(DiffItem {
             source: def_id,
-            target: method.2.ident,
+            target: method.2.ident.to_string(),
             mode: method.1,
             respect_to: activity
         });

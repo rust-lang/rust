@@ -36,6 +36,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::metadata::DiffItem;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -387,10 +388,12 @@ impl CodegenBackend for LlvmCodegenBackend {
 }
 
 // Important! Enzyme
+#[allow(dead_code)]
 pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
     tm: &'static mut llvm::TargetMachine,
+    diff_fncs: Vec<(DiffItem, String)>,
 }
 
 unsafe impl Send for ModuleLlvm {}
@@ -401,7 +404,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name) }
+            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name), diff_fncs: Vec::new() }
         }
     }
 
@@ -409,7 +412,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess) }
+            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess), diff_fncs: Vec::new() }
         }
     }
 
@@ -431,7 +434,7 @@ impl ModuleLlvm {
                 }
             };
 
-            Ok(ModuleLlvm { llmod_raw, llcx, tm })
+            Ok(ModuleLlvm { llmod_raw, llcx, tm, diff_fncs: Vec::new() })
         }
     }
 

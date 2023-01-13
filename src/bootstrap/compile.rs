@@ -1138,12 +1138,6 @@ impl Step for Assemble {
             let target_libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
             let dst_lib = libdir.join("libLLVMEnzyme-14.so");
             let target_dst_lib = target_libdir.join("libLLVMEnzyme-14.so");
-            println!("CCCCCCCCCCCCCCCCCCCC\nCCCCCCCCCCCCC");
-            dbg!(&build_compiler.stage);
-            dbg!(&target_compiler.stage);
-            dbg!(&src_lib);
-            dbg!(&dst_lib);
-            assert!(dst_lib.parent().unwrap().is_dir());
             builder.copy(&src_lib, &dst_lib);
             builder.copy(&src_lib, &target_dst_lib);
         }

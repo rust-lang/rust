@@ -523,26 +523,32 @@ pub(crate) unsafe fn optimize(
     let tm = &*module.module_llvm.tm;
     let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
 
-    // begin Enzyme
-    dbg!("Imagine Enzyme here");
+    let fncs = &module.module_llvm.diff_fncs;
 
-    let name = CString::new("foo").unwrap();
-    //let _fnc = llvm::LLVMRustGetNamedFunction(llmod, name.as_ptr(), name.len());
-    //let _fnc = llvm::LLVMRustGetNamedFunction(llmod, name.as_ptr(), name.len());
-    //let _asdf = llvm::GibtsNicht(llmod);
-    //dbg!(_asdf);
-    dbg!("HA");
-    let test_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
-    dbg!("HI");
-    dbg!(test_fnc.is_some());
-    dbg!("HO");
-    let mut n = 1;
-    let mut _fnc = llvm::LLVMGetFirstFunction(llmod);
-    while _fnc.is_some() {
-        n += 1;
-        _fnc = llvm::LLVMGetNextFunction(_fnc.unwrap());
+    if !fncs.is_empty() {
+        dbg!(&fncs);
     }
-    dbg!(n);
+
+    // begin Enzyme
+    //dbg!("Imagine Enzyme here");
+
+    //let name = CString::new("foo").unwrap();
+    ////let _fnc = llvm::LLVMRustGetNamedFunction(llmod, name.as_ptr(), name.len());
+    ////let _fnc = llvm::LLVMRustGetNamedFunction(llmod, name.as_ptr(), name.len());
+    ////let _asdf = llvm::GibtsNicht(llmod);
+    ////dbg!(_asdf);
+    //dbg!("HA");
+    //let test_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
+    //dbg!("HI");
+    //dbg!(test_fnc.is_some());
+    //dbg!("HO");
+    //let mut n = 1;
+    //let mut _fnc = llvm::LLVMGetFirstFunction(llmod);
+    //while _fnc.is_some() {
+    //    n += 1;
+    //    _fnc = llvm::LLVMGetNextFunction(_fnc.unwrap());
+    //}
+    //dbg!(n);
     // end
 
     let module_name = module.name.clone();

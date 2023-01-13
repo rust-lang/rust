@@ -45,7 +45,7 @@ pub enum DiffActivity {
 #[derive(Clone, Debug, HashStable)]
 pub struct DiffItem {
     pub source: DefId,
-    pub target: Ident,
+    pub target: String,
     pub mode: DiffMode,
     pub respect_to: Vec<DiffActivity>,
 }

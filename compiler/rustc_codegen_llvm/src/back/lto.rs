@@ -742,7 +742,7 @@ pub unsafe fn optimize_thin_module(
     let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
     let llmod_raw = parse_module(llcx, module_name, thin_module.data(), &diag_handler)? as *const _;
     let module = ModuleCodegen {
-        module_llvm: ModuleLlvm { llmod_raw, llcx, tm },
+        module_llvm: ModuleLlvm { llmod_raw, llcx, tm, diff_fncs: Vec::new() },
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
     };

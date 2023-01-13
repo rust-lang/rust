@@ -27,7 +27,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, Instance};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;
@@ -79,9 +79,10 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             &[cgu_name.to_string(), cgu.size_estimate().to_string()],
         );
         // Instantiate monomorphizations without filling out definitions yet...
-        let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
-        {
+        let mut llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
+        let out = {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
+
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(&cx, linkage, visibility);
@@ -126,7 +127,23 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             if cx.sess().opts.debuginfo != DebugInfo::None {
                 cx.debuginfo_finalize();
             }
-        }
+
+            //dbg!(&cx.instances.borrow());
+            let out = tcx.autodiff_functions(()).into_iter()
+                .filter_map(|item| {
+                    let instance = Instance::mono(tcx, item.source);
+                    let fnc: &Value = cx.instances.borrow().get(&instance)?;
+                    let name = llvm::get_value_name(fnc);
+                    let name = String::from_utf8(name.to_vec()).ok()?;
+
+                    Some((item.clone(), name))
+                })
+                .collect::<Vec<_>>();
+
+            out
+        };
+
+        llvm_module.diff_fncs = out;
 
         ModuleCodegen {
             name: cgu_name.to_string(),
