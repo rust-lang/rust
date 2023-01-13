@@ -505,19 +505,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             _ => None,
                         };
-                        if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
-                            if let Some(g) = kind.generics() {
-                                let key = (
-                                    g.tail_span_for_predicate_suggestion(),
-                                    g.add_where_or_trailing_comma(),
-                                );
-                                type_params
-                                    .entry(key)
-                                    .or_insert_with(FxHashSet::default)
-                                    .insert(obligation.to_owned());
-                            }
+                        if let Some(hir::Node::Item(hir::Item { kind, .. })) = node
+                            && let Some(g) = kind.generics()
+                        {
+                            let key = (
+                                g.tail_span_for_predicate_suggestion(),
+                                g.add_where_or_trailing_comma(),
+                            );
+                            type_params
+                                .entry(key)
+                                .or_insert_with(FxHashSet::default)
+                                .insert(obligation.to_owned());
+                            return true;
                         }
                     }
+                    false
                 };
             let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
                 let msg = format!(
@@ -732,19 +734,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 unsatisfied_bounds = true;
             }
 
+            let mut suggested_bounds = FxHashSet::default();
             // The requirements that didn't have an `impl` span to show.
             let mut bound_list = unsatisfied_predicates
                 .iter()
                 .filter_map(|(pred, parent_pred, _cause)| {
+                    let mut suggested = false;
                     format_pred(*pred).map(|(p, self_ty)| {
-                        collect_type_param_suggestions(self_ty, *pred, &p);
+                        if let Some(parent) = parent_pred && suggested_bounds.contains(parent) {
+                            // We don't suggest `PartialEq` when we already suggest `Eq`.
+                        } else if !suggested_bounds.contains(pred) {
+                            if collect_type_param_suggestions(self_ty, *pred, &p) {
+                                suggested = true;
+                                suggested_bounds.insert(pred);
+                            }
+                        }
                         (
                             match parent_pred {
                                 None => format!("`{}`", &p),
                                 Some(parent_pred) => match format_pred(*parent_pred) {
                                     None => format!("`{}`", &p),
                                     Some((parent_p, _)) => {
-                                        collect_type_param_suggestions(self_ty, *parent_pred, &p);
+                                        if !suggested
+                                            && !suggested_bounds.contains(pred)
+                                            && !suggested_bounds.contains(parent_pred)
+                                        {
+                                            if collect_type_param_suggestions(
+                                                self_ty,
+                                                *parent_pred,
+                                                &p,
+                                            ) {
+                                                suggested_bounds.insert(pred);
+                                            }
+                                        }
                                         format!("`{}`\nwhich is required by `{}`", p, parent_p)
                                     }
                                 },

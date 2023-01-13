@@ -11,8 +11,8 @@ LL |     this.is_subset(other)
            `T: Hash`
 help: consider restricting the type parameters to satisfy the trait bounds
    |
-LL | fn is_subset<T>(this: &HashSet<T>, other: &HashSet<T>) -> bool where T: Eq, T: Hash, T: PartialEq {
-   |                                                                ++++++++++++++++++++++++++++++++++
+LL | fn is_subset<T>(this: &HashSet<T>, other: &HashSet<T>) -> bool where T: Eq, T: Hash {
+   |                                                                ++++++++++++++++++++
 
 error: aborting due to previous error
 
