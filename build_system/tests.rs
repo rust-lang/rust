@@ -448,50 +448,25 @@ impl TestRunner {
         let jit_supported =
             is_native && host_triple.contains("x86_64") && !host_triple.contains("windows");
 
-        let mut rustflags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());
-        let mut runner = vec![];
-
-        if !is_native {
-            match target_triple.as_str() {
-                "aarch64-unknown-linux-gnu" => {
-                    // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
-                    rustflags = format!("-Clinker=aarch64-linux-gnu-gcc{}", rustflags);
-                    runner = vec![
-                        "qemu-aarch64".to_owned(),
-                        "-L".to_owned(),
-                        "/usr/aarch64-linux-gnu".to_owned(),
-                    ];
-                }
-                "s390x-unknown-linux-gnu" => {
-                    // We are cross-compiling for s390x. Use the correct linker and run tests in qemu.
-                    rustflags = format!("-Clinker=s390x-linux-gnu-gcc{}", rustflags);
-                    runner = vec![
-                        "qemu-s390x".to_owned(),
-                        "-L".to_owned(),
-                        "/usr/s390x-linux-gnu".to_owned(),
-                    ];
-                }
-                "x86_64-pc-windows-gnu" => {
-                    // We are cross-compiling for Windows. Run tests in wine.
-                    runner = vec!["wine".to_owned()];
-                }
-                _ => {
-                    println!("Unknown non-native platform");
-                }
-            }
-        }
-
-        // FIXME fix `#[linkage = "extern_weak"]` without this
-        if target_triple.contains("darwin") {
-            rustflags = format!("{} -Clink-arg=-undefined -Clink-arg=dynamic_lookup", rustflags);
-        }
-
         let host_compiler = Compiler::clif_with_triple(&dirs, host_triple);
 
         let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
-        target_compiler.rustflags = rustflags.clone();
-        target_compiler.rustdocflags = rustflags;
-        target_compiler.runner = runner;
+        if !is_native {
+            target_compiler.set_cross_linker_and_runner();
+        }
+        if let Ok(rustflags) = env::var("RUSTFLAGS") {
+            target_compiler.rustflags.push(' ');
+            target_compiler.rustflags.push_str(&rustflags);
+        }
+        if let Ok(rustdocflags) = env::var("RUSTDOCFLAGS") {
+            target_compiler.rustdocflags.push(' ');
+            target_compiler.rustdocflags.push_str(&rustdocflags);
+        }
+
+        // FIXME fix `#[linkage = "extern_weak"]` without this
+        if target_compiler.triple.contains("darwin") {
+            target_compiler.rustflags.push_str(" -Clink-arg=-undefined -Clink-arg=dynamic_lookup");
+        }
 
         Self { is_native, jit_supported, dirs, host_compiler, target_compiler }
     }

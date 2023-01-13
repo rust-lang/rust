@@ -120,26 +120,19 @@ pub(crate) fn build_sysroot(
                 channel,
                 host_compiler.clone(),
                 &cg_clif_dylib_path,
-                None,
             );
 
             if host_compiler.triple != target_triple {
-                // When cross-compiling it is often necessary to manually pick the right linker
-                let linker = match target_triple {
-                    "aarch64-unknown-linux-gnu" => Some("aarch64-linux-gnu-gcc"),
-                    "s390x-unknown-linux-gnu" => Some("s390x-linux-gnu-gcc"),
-                    _ => None,
-                };
                 build_clif_sysroot_for_triple(
                     dirs,
                     channel,
                     {
                         let mut target_compiler = host_compiler.clone();
                         target_compiler.triple = target_triple.to_owned();
+                        target_compiler.set_cross_linker_and_runner();
                         target_compiler
                     },
                     &cg_clif_dylib_path,
-                    linker,
                 );
             }
 
@@ -167,7 +160,6 @@ fn build_clif_sysroot_for_triple(
     channel: &str,
     mut compiler: Compiler,
     cg_clif_dylib_path: &Path,
-    linker: Option<&str>,
 ) {
     match fs::read_to_string(SYSROOT_RUSTC_VERSION.to_path(dirs)) {
         Err(e) => {
@@ -203,10 +195,6 @@ fn build_clif_sysroot_for_triple(
     rustflags.push_str(&format!(" --sysroot={}", DIST_DIR.to_path(dirs).to_str().unwrap()));
     if channel == "release" {
         rustflags.push_str(" -Zmir-opt-level=3");
-    }
-    if let Some(linker) = linker {
-        use std::fmt::Write;
-        write!(rustflags, " -Clinker={}", linker).unwrap();
     }
     compiler.rustflags += &rustflags;
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);

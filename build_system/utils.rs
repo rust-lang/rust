@@ -47,6 +47,38 @@ impl Compiler {
             runner: vec![],
         }
     }
+
+    pub(crate) fn set_cross_linker_and_runner(&mut self) {
+        match self.triple.as_str() {
+            "aarch64-unknown-linux-gnu" => {
+                // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
+                self.rustflags += " -Clinker=aarch64-linux-gnu-gcc";
+                self.rustdocflags += " -Clinker=aarch64-linux-gnu-gcc";
+                self.runner = vec![
+                    "qemu-aarch64".to_owned(),
+                    "-L".to_owned(),
+                    "/usr/aarch64-linux-gnu".to_owned(),
+                ];
+            }
+            "s390x-unknown-linux-gnu" => {
+                // We are cross-compiling for s390x. Use the correct linker and run tests in qemu.
+                self.rustflags += " -Clinker=s390x-linux-gnu-gcc";
+                self.rustdocflags += " -Clinker=s390x-linux-gnu-gcc";
+                self.runner = vec![
+                    "qemu-s390x".to_owned(),
+                    "-L".to_owned(),
+                    "/usr/s390x-linux-gnu".to_owned(),
+                ];
+            }
+            "x86_64-pc-windows-gnu" => {
+                // We are cross-compiling for Windows. Run tests in wine.
+                self.runner = vec!["wine".to_owned()];
+            }
+            _ => {
+                println!("Unknown non-native platform");
+            }
+        }
+    }
 }
 
 pub(crate) struct CargoProject {
