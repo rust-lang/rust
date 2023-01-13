@@ -350,7 +350,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.68.0"]
     pub IMPL_TRAIT_IN_PARAMS,
-    style,
+    restriction,
     "`impl Trait` is used in the function's parameters"
 }
 
