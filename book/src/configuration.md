@@ -8,7 +8,6 @@ basic `variable = value` mapping eg.
 ```toml
 avoid-breaking-exported-api = false
 disallowed-names = ["toto", "tata", "titi"]
-cognitive-complexity-threshold = 30
 ```
 
 See the [list of configurable lints](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration),
