@@ -148,7 +148,14 @@ fn make_format_spec<'hir>(
             None => sym::Unknown,
         },
     );
-    let flags = ctx.expr_u32(sp, placeholder.format_options.flags);
+    // This needs to match `FlagV1` in library/core/src/fmt/mod.rs.
+    let flags: u32 = ((placeholder.format_options.sign == Some(FormatSign::Plus)) as u32)
+        | ((placeholder.format_options.sign == Some(FormatSign::Minus)) as u32) << 1
+        | (placeholder.format_options.alternate as u32) << 2
+        | (placeholder.format_options.zero_pad as u32) << 3
+        | ((placeholder.format_options.debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4
+        | ((placeholder.format_options.debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5;
+    let flags = ctx.expr_u32(sp, flags);
     let prec = make_count(ctx, sp, &placeholder.format_options.precision, argmap);
     let width = make_count(ctx, sp, &placeholder.format_options.width, argmap);
     let format_placeholder_new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(

@@ -6,7 +6,10 @@ use rustc_ast::token;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{self as ast, BlockCheckMode};
-use rustc_ast::{FormatAlignment, FormatArgPosition, FormatArgsPiece, FormatCount, FormatTrait};
+use rustc_ast::{
+    FormatAlignment, FormatArgPosition, FormatArgsPiece, FormatCount, FormatDebugHex, FormatSign,
+    FormatTrait,
+};
 use std::fmt::Write;
 
 impl<'a> State<'a> {
@@ -675,17 +678,15 @@ pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> St
                     Some(FormatAlignment::Center) => template.push_str("^"),
                     None => {}
                 }
-                let flags = p.format_options.flags;
-                if flags >> (rustc_parse_format::FlagSignPlus as usize) & 1 != 0 {
-                    template.push('+');
+                match p.format_options.sign {
+                    Some(FormatSign::Plus) => template.push('+'),
+                    Some(FormatSign::Minus) => template.push('-'),
+                    None => {}
                 }
-                if flags >> (rustc_parse_format::FlagSignMinus as usize) & 1 != 0 {
-                    template.push('-');
-                }
-                if flags >> (rustc_parse_format::FlagAlternate as usize) & 1 != 0 {
+                if p.format_options.alternate {
                     template.push('#');
                 }
-                if flags >> (rustc_parse_format::FlagSignAwareZeroPad as usize) & 1 != 0 {
+                if p.format_options.zero_pad {
                     template.push('0');
                 }
                 if let Some(width) = &p.format_options.width {
@@ -709,11 +710,10 @@ pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> St
                         }
                     }
                 }
-                if flags >> (rustc_parse_format::FlagDebugLowerHex as usize) & 1 != 0 {
-                    template.push('x');
-                }
-                if flags >> (rustc_parse_format::FlagDebugUpperHex as usize) & 1 != 0 {
-                    template.push('X');
+                match p.format_options.debug_hex {
+                    Some(FormatDebugHex::Lower) => template.push('x'),
+                    Some(FormatDebugHex::Upper) => template.push('X'),
+                    None => {}
                 }
                 template.push_str(match p.format_trait {
                     FormatTrait::Display => "",
