@@ -599,7 +599,8 @@ fn link_dwarf_object<'a>(
     cg_results: &CodegenResults,
     executable_out_filename: &Path,
 ) {
-    let dwp_out_filename = executable_out_filename.with_extension("dwp");
+    let mut dwp_out_filename = executable_out_filename.to_path_buf().into_os_string();
+    dwp_out_filename.push(".dwp");
     debug!(?dwp_out_filename, ?executable_out_filename);
 
     #[derive(Default)]
