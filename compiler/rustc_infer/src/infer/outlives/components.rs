@@ -3,9 +3,8 @@
 // RFC for reference.
 
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, SubstsRef, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug)]
@@ -23,7 +22,7 @@ pub enum Component<'tcx> {
     // is not in a position to judge which is the best technique, so
     // we just product the projection as a component and leave it to
     // the consumer to decide (but see `EscapingProjection` below).
-    Projection(ty::AliasTy<'tcx>),
+    Alias(ty::AliasKind, ty::AliasTy<'tcx>),
 
     // In the case where a projection has escaping regions -- meaning
     // regions bound within the type itself -- we always use
@@ -46,8 +45,6 @@ pub enum Component<'tcx> {
     // them. This gives us room to improve the regionck reasoning in
     // the future without breaking backwards compat.
     EscapingProjection(Vec<Component<'tcx>>),
-
-    Opaque(DefId, SubstsRef<'tcx>),
 }
 
 /// Push onto `out` all the things that must outlive `'a` for the condition
@@ -130,8 +127,8 @@ fn compute_components<'tcx>(
             // outlives any other lifetime, which is unsound.
             // See https://github.com/rust-lang/rust/issues/84305 for
             // more details.
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                out.push(Component::Opaque(def_id, substs));
+            ty::Alias(ty::Opaque, data) => {
+                out.push(Component::Alias(ty::Opaque, data));
             },
 
             // For projections, we prefer to generate an obligation like
@@ -142,7 +139,7 @@ fn compute_components<'tcx>(
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Alias(ty::Projection, ref data) => {
+            ty::Alias(ty::Projection, data) => {
                 if !data.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
@@ -150,7 +147,7 @@ fn compute_components<'tcx>(
                     // the rules OutlivesProjectionEnv,
                     // OutlivesProjectionTraitDef, and
                     // OutlivesProjectionComponents to regionck.
-                    out.push(Component::Projection(*data));
+                    out.push(Component::Alias(ty::Projection, data));
                 } else {
                     // fallback case: hard code
                     // OutlivesProjectionComponents.  Continue walking

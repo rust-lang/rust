@@ -359,14 +359,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                         .insert(ty::OutlivesPredicate(GenericKind::Param(param_b), r_a));
                 }
 
-                OutlivesBound::RegionSubProjection(r_a, projection_b) => {
+                OutlivesBound::RegionSubAlias(r_a, kind, alias_b) => {
                     self.region_bound_pairs
-                        .insert(ty::OutlivesPredicate(GenericKind::Projection(projection_b), r_a));
-                }
-
-                OutlivesBound::RegionSubOpaque(r_a, def_id, substs) => {
-                    self.region_bound_pairs
-                        .insert(ty::OutlivesPredicate(GenericKind::Opaque(def_id, substs), r_a));
+                        .insert(ty::OutlivesPredicate(GenericKind::Alias(kind, alias_b), r_a));
                 }
             }
         }

@@ -170,16 +170,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         match *component {
             Component::Region(lt) => VerifyBound::OutlivedBy(lt),
             Component::Param(param_ty) => self.param_bound(param_ty),
-            Component::Opaque(did, substs) => self.projection_opaque_bounds(
-                GenericKind::Opaque(did, substs),
-                did,
-                substs,
-                visited,
-            ),
-            Component::Projection(projection_ty) => self.projection_opaque_bounds(
-                GenericKind::Projection(projection_ty),
-                projection_ty.def_id,
-                projection_ty.substs,
+            Component::Alias(kind, data) => self.projection_opaque_bounds(
+                GenericKind::Alias(kind, data),
+                data.def_id,
+                data.substs,
                 visited,
             ),
             Component::EscapingProjection(ref components) => {
