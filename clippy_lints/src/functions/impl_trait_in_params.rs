@@ -4,7 +4,7 @@ use rustc_hir::{intravisit::FnKind, Body, Generics, HirId};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
-use super::IMPL_TRAIT_PARAM;
+use super::IMPL_TRAIT_IN_PARAMS;
 
 pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body: &'tcx Body<'_>, hir_id: HirId) {
     if cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public() && !is_in_test_function(cx.tcx, hir_id)
@@ -18,7 +18,7 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body:
                     // No generics with nested generics, and no generics like FnMut(x)
                     span_lint_and_then(
                         cx,
-                        IMPL_TRAIT_PARAM,
+                        IMPL_TRAIT_IN_PARAMS,
                         param.span,
                         &format!("'{}' in the function's parameters", param.name.ident().as_str()),
                         |diag| {

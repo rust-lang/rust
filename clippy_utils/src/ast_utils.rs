@@ -6,7 +6,7 @@
     clippy::similar_names,
     clippy::wildcard_imports,
     clippy::enum_glob_use,
-    clippy::impl_trait_param
+    clippy::impl_trait_in_params
 )]
 
 use crate::{both, over};

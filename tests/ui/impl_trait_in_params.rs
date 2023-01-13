@@ -1,5 +1,5 @@
 #![allow(unused)]
-#![warn(clippy::impl_trait_param)]
+#![warn(clippy::impl_trait_in_params)]
 
 pub trait Trait {}
 

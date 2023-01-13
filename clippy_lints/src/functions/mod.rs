@@ -1,4 +1,4 @@
-mod impl_trait_param;
+mod impl_trait_in_params;
 mod misnamed_getters;
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
@@ -349,7 +349,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.68.0"]
-    pub IMPL_TRAIT_PARAM,
+    pub IMPL_TRAIT_IN_PARAMS,
     style,
     "`impl Trait` is used in the function's parameters"
 }
@@ -381,7 +381,7 @@ impl_lint_pass!(Functions => [
     RESULT_UNIT_ERR,
     RESULT_LARGE_ERR,
     MISNAMED_GETTERS,
-    IMPL_TRAIT_PARAM,
+    IMPL_TRAIT_IN_PARAMS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -399,7 +399,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         too_many_lines::check_fn(cx, kind, span, body, self.too_many_lines_threshold);
         not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, def_id);
         misnamed_getters::check_fn(cx, kind, decl, body, span);
-        impl_trait_param::check_fn(cx, &kind, body, hir_id);
+        impl_trait_in_params::check_fn(cx, &kind, body, hir_id);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {

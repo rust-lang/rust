@@ -1,6 +1,6 @@
 //! Utils for extracting, inspecting or transforming source code
 
-#![allow(clippy::module_name_repetitions, clippy::impl_trait_param)]
+#![allow(clippy::module_name_repetitions, clippy::impl_trait_in_params)]
 
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
