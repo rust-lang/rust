@@ -18,10 +18,11 @@
 //! Normally, we get this "crate graph" by calling `cargo metadata
 //! --message-format=json` for each cargo workspace and merging results. This
 //! works for your typical cargo project, but breaks down for large folks who
-//! have a monorepo with an infitine amount of Rust which is build with bazel or
+//! have a monorepo with an infinite amount of Rust code which is built with bazel or
 //! some such.
 //!
-//! To support this use-case, we need to make _something_ configurable. To avoid
+//! To support this use case, we need to make _something_ configurable. To avoid
+//! a [midlayer mistake](https://lwn.net/Articles/336262/), we allow configuring
 //! [midlayer mistake](https://lwn.net/Articles/336262/), we allow configuring
 //! the lowest possible layer. `ProjectJson` is essentially a hook to just set
 //! that global singleton in-memory data structure. It is optimized for power,
