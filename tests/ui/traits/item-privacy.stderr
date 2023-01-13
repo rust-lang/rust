@@ -148,19 +148,24 @@ error[E0223]: ambiguous associated type
   --> $DIR/item-privacy.rs:115:12
    |
 LL |     let _: S::A;
-   |            ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
+   |            ^^^^
+   |
+help: if there were a trait named `Example` with associated type `A` implemented for `S`, you could use the fully-qualified path
+   |
+LL |     let _: <S as Example>::A;
+   |            ~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
   --> $DIR/item-privacy.rs:116:12
    |
 LL |     let _: S::B;
-   |            ^^^^ help: use fully-qualified syntax: `<S as Trait>::B`
+   |            ^^^^ help: use the fully-qualified path: `<S as assoc_ty::B>::B`
 
 error[E0223]: ambiguous associated type
   --> $DIR/item-privacy.rs:117:12
    |
 LL |     let _: S::C;
-   |            ^^^^ help: use fully-qualified syntax: `<S as Trait>::C`
+   |            ^^^^ help: use the fully-qualified path: `<S as assoc_ty::C>::C`
 
 error[E0624]: associated type `A` is private
   --> $DIR/item-privacy.rs:119:12
