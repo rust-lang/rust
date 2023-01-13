@@ -41,3 +41,6 @@ interface_rustc_error_unexpected_annotation =
 
 interface_failed_writing_file =
     failed to write file {$path}: {$error}"
+
+interface_proc_macro_crate_panic_abort =
+    building proc macro crate with `panic=abort` may crash the compiler should the proc-macro panic
