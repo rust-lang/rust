@@ -1,29 +1,47 @@
-error[E0277]: `[async fn body@$DIR/async.rs:14:29: 16:2]` is not a future
-LL |LL | |LL | | }
+error[E0277]: `[async fn body@$DIR/async.rs:23:29: 25:2]` is not a future
+  --> $DIR/async.rs:23:29
+   |
+LL |   async fn foo(x: u32) -> u32 {
+   |  _____________________________-
+LL | |     x
+LL | | }
+   | | ^
+   | | |
+   | |_`[async fn body@$DIR/async.rs:23:29: 25:2]` is not a future
+   |   required by a bound introduced by this call
+   |
+   = help: the trait `Future` is not implemented for `[async fn body@$DIR/async.rs:23:29: 25:2]`
+   = note: [async fn body@$DIR/async.rs:23:29: 25:2] must be a future or must implement `IntoFuture` to be awaited
+note: required by a bound in `identity_future`
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
 
+error[E0277]: the size for values of type `<[async fn body@$DIR/async.rs:23:29: 25:2] as Future>::Output` cannot be known at compilation time
+  --> $DIR/async.rs:23:29
+   |
+LL |   async fn foo(x: u32) -> u32 {
+   |  _____________________________^
+LL | |     x
+LL | | }
+   | |_^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `<[async fn body@$DIR/async.rs:23:29: 25:2] as Future>::Output`
+note: required by a bound in `identity_future`
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
 
-error[E0277]: the size for values of type `<[async fn body@$DIR/async.rs:14:29: 16:2] as Future>::Output` cannot be known at compilation time
-LL |LL | |LL | | }
-
-
-error[E0277]: `[async fn body@$DIR/async.rs:14:29: 16:2]` is not a future
+error[E0277]: `[async fn body@$DIR/async.rs:23:29: 25:2]` is not a future
+  --> $DIR/async.rs:23:25
+   |
 LL | async fn foo(x: u32) -> u32 {
+   |                         ^^^ `[async fn body@$DIR/async.rs:23:29: 25:2]` is not a future
+   |
+   = help: the trait `Future` is not implemented for `[async fn body@$DIR/async.rs:23:29: 25:2]`
+   = note: [async fn body@$DIR/async.rs:23:29: 25:2] must be a future or must implement `IntoFuture` to be awaited
 
-error: internal compiler error: compiler/rustc_trait_selection/src/traits/error_reporting/mod.rs:1114:25: projection clauses should be implied from elsewhere. obligation: `Obligation(predicate=Binder(ProjectionPredicate(AliasTy { substs: [[async fn body@$DIR/async.rs:14:29: 16:2]], def_id: ...), _use_mk_alias_ty_instead: () }, Term::Ty(u32)), []), depth=0)`
+error: internal compiler error: projection clauses should be implied from elsewhere. obligation: `Obligation(predicate=Binder(ProjectionPredicate(AliasTy { substs: [[async fn body@$DIR/async.rs:23:29: 25:2]], def_id: ...), _use_mk_alias_ty_instead: () }, Term::Ty(u32)), []), depth=0)`
+  --> $DIR/async.rs:23:25
+   |
 LL | async fn foo(x: u32) -> u32 {
-
-
-stack backtrace:
-
-
-
-
-
-
-
-
-
-query stack during panic:
+   |                         ^^^query stack during panic:
 #0 [typeck] type-checking `foo`
 #1 [thir_body] building THIR for `foo`
 #2 [mir_built] building MIR for `foo`
