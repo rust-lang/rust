@@ -22,6 +22,13 @@ Note that this documentation mostly covers user-facing information. See
 
 ## Stages of bootstrapping
 
+### Overview
+
+- Stage 0: the pre-compiled compiler
+- Stage 1: from current code, by an earlier compiler
+- Stage 2: the truly current compiler
+- Stage 3: the same-result test
+
 Compiling `rustc` is done in stages. Here's a diagram, adapted from Joshua Nelson's
 [talk on bootstrapping][rustconf22-talk] at RustConf 2022, with detailed explanations below.
 
@@ -51,7 +58,7 @@ graph TD
     classDef with-s1c fill: lightgreen;
 ```
 
-### Stage 0
+### Stage 0: the pre-compiled compiler
 
 The stage0 compiler is usually the current _beta_ `rustc` compiler
 and its associated dynamic libraries,
@@ -65,11 +72,11 @@ a compiler (with its set of dependencies)
 and its 'target' or 'object' libraries (`std` and `rustc`).
 Both are staged, but in a staggered manner.
 
-### Stage 1
+### Stage 1: from current code, by an earlier compiler
 
 The rustc source code is then compiled with the stage0 compiler to produce the stage1 compiler.
 
-### Stage 2
+### Stage 2: the truly current compiler
 
 We then rebuild our stage1 compiler with itself to produce the stage2 compiler.
 
@@ -92,7 +99,7 @@ For development, you usually only want the `stage1` compiler,
 which you can build with `./x.py build library`.
 See [Building the compiler](./how-to-build-and-run.html#building-the-compiler).
 
-### Stage 3
+### Stage 3: the same-result test
 
 Stage 3 is optional. To sanity check our new compiler, we
 can build the libraries with the stage2 compiler. The result ought
