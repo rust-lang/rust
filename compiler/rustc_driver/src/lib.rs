@@ -76,7 +76,7 @@ pub const EXIT_SUCCESS: i32 = 0;
 pub const EXIT_FAILURE: i32 = 1;
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
-    ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
+    ?labels=C-bug%2CI-ICE%2CT-compiler&template=ice.yaml";
 
 const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["-Z", "-C", "--crate-type"];
 
@@ -1199,11 +1199,12 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<(String, String), Ic
     let now = chrono::UTC::now();
     let file_now = now.format("%Y-%m-%d_%H:%M:%S");
     let now = now.format("%Y-%m-%d %H:%M:%S");
-    let path = format!("rustc-ice-context-{file_now}.txt");
+    let mut path = std::env::current_dir()?;
+    path.push(format!("rustc-ice-context-{file_now}.txt"));
     let mut file = std::fs::File::create(&path)?;
-    writeln!(
-        file,
-        "rustc {}{} running on {} at {now}",
+    let (llvm_major, llvm_minor, llvm_dot) = rustc_codegen_llvm::get_version();
+    let version = format!(
+        "rustc {}{} running on {} at {now} with LLVM {llvm_major}.{llvm_minor}.{llvm_dot}",
         util::version_str!().unwrap_or("unknown_version"),
         match (option_env!("CFG_VER_HASH"), option_env!("CFG_VER_DATE")) {
             (Some(hash), Some(date)) => format!(" ({hash} - {date})"),
@@ -1211,9 +1212,12 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<(String, String), Ic
             (None, None) => String::new(),
         },
         config::host_triple(),
-    )?;
-    args.push(("version", util::version_str!().unwrap_or("unknown_version")));
-    args.push(("platform", config::host_triple()));
+    );
+
+    writeln!(file, "{}", version)?;
+    args.push(("version", version.as_str()));
+    let backtrace_msg = format!("please include the contents of `{}` here", path.display());
+    args.push(("backtrace", &backtrace_msg));
 
     if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
         writeln!(file, "compiler flags:")?;
@@ -1243,15 +1247,7 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<(String, String), Ic
     }
 
     writeln!(file, "")?;
-    let capture = capture.frames().iter().map(|frame| {
-        format!("{:?}", frame)
-    }).collect::<String>();
     writeln!(file, "{capture}")?;
-    text.push_str(&format!("{capture}"));
-    args.push(("backtrace", &text));
-
-    println!("{}", text);
-    println!("{}", urlqstring::QueryParams::from(args).stringify());
 
     // Be careful relying on global state here: this code is called from
     // a panic hook, which means that the global `Handler` may be in a weird
@@ -1280,7 +1276,10 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<(String, String), Ic
         writeln!(file, "end of query stack")?;
         Ok(())
     })?;
-    Ok((path, String::new()))
+    Ok((
+        path.display().to_string(),
+        format!("{BUG_REPORT_URL}&{}", urlqstring::QueryParams::from(args).stringify()),
+    ))
 }
 
 static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
@@ -1327,7 +1326,11 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 ///
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
-pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, reported_ice: Option<(String, String)>) {
+pub fn report_ice(
+    info: &panic::PanicInfo<'_>,
+    bug_report_url: &str,
+    reported_ice: Option<(String, String)>,
+) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
@@ -1355,11 +1358,12 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, reported_ic
         handler.emit_diagnostic(&mut d);
     }
 
-    let xs: Vec<Cow<'static, str>> = if let Some((path, url)) = &reported_ice {
+    let xs: Vec<Cow<'static, str>> = if let Some((path, custom_url)) = &reported_ice {
+        let link = format!("\x1b]8;;{custom_url}\x1b\\{bug_report_url}\x1b]8;;\x1b\\");
+        let path = format!("\x1b]8;;file://{path}\x1b\\{path}\x1b]8;;\x1b\\");
         vec![
             format!("all necessary context about this bug was written to `{path}`").into(),
-            format!("we would appreciate a bug report with this context at <{url}>")
-                .into(),
+            format!("we would appreciate a bug report with this context at {link}").into(),
         ]
     } else {
         let mut xs = vec![

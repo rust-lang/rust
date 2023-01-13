@@ -23,7 +23,7 @@ extern crate tracing;
 use back::write::{create_informational_target_machine, create_target_machine};
 
 use errors::FailParsingTargetMachineConfigToTargetMachine;
-pub use llvm_util::target_features;
+pub use llvm_util::{get_version, target_features};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
