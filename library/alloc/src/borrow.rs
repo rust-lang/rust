@@ -17,9 +17,6 @@ use crate::string::String;
 
 use Cow::*;
 
-// @FIXME check if used & needed
-pub(crate) const BORROW_COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED!();
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, B: ?Sized, const COOP_PREFERRED: bool> Borrow<B> for Cow<'a, B, COOP_PREFERRED>
 where
