@@ -235,7 +235,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// # Parameters
     ///
     /// - `def_id`, the `impl Trait` type
-    /// - `substs`, the substs  used to instantiate this opaque type
+    /// - `substs`, the substs used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
     #[instrument(level = "debug", skip(self))]

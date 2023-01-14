@@ -193,7 +193,7 @@ pub struct TypeckResults<'tcx> {
     pub generator_interior_types: ty::Binder<'tcx, Vec<GeneratorInteriorTypeCause<'tcx>>>,
 
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
-    /// as `&[u8]`, depending on the pattern  in which they are used.
+    /// as `&[u8]`, depending on the pattern in which they are used.
     /// This hashset records all instances where we behave
     /// like this to allow `const_to_pat` to reliably handle this situation.
     pub treat_byte_string_as_slice: ItemLocalSet,
