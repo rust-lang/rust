@@ -7,7 +7,7 @@ mod inner {
     use core::ptr::NonNull;
 
     #[allow(clippy::map_err_ignore)]
-    pub fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
+    pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
         match alloc.allocate(layout) {
             Ok(ptr) => Ok(ptr.as_non_null_ptr()),
             Err(_) => Err(()),
@@ -58,7 +58,7 @@ mod inner {
         }
     }
 
-    pub fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
+    pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
         alloc.allocate(layout)
     }
 
