@@ -781,6 +781,22 @@ impl<T> [T] {
     /// let mut iter = slice.windows(4);
     /// assert!(iter.next().is_none());
     /// ```
+    ///
+    /// There's no `windows_mut`, as that existing would let safe code violate the
+    /// "only one `&mut` at a time to the same thing" rule.  However, you can sometimes
+    /// use [`Cell::as_slice_of_cells`](crate::cell::Cell::as_slice_of_cells) in
+    /// conjunction with `windows` to accomplish something similar:
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let mut array = ['R', 'u', 's', 't', ' ', '2', '0', '1', '5'];
+    /// let slice = &mut array[..];
+    /// let slice_of_cells: &[Cell<char>] = Cell::from_mut(slice).as_slice_of_cells();
+    /// for w in slice_of_cells.windows(3) {
+    ///     Cell::swap(&w[0], &w[2]);
+    /// }
+    /// assert_eq!(array, ['s', 't', ' ', '2', '0', '1', '5', 'u', 'R']);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
