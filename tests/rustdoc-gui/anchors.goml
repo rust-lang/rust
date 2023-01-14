@@ -2,7 +2,7 @@
 
 define-function: (
     "check-colors",
-    (theme, main_color, title_color, fqn_color, fqn_type_color, src_link_color, sidebar_link_color),
+    (theme, main_color, title_color, main_heading_color, main_heading_type_color, src_link_color, sidebar_link_color),
     block {
         goto: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
         // This is needed to ensure that the text color is computed.
@@ -14,8 +14,8 @@ define-function: (
         reload:
 
         assert-css: ("#toggle-all-docs", {"color": |main_color|})
-        assert-css: (".fqn a:nth-of-type(1)", {"color": |fqn_color|})
-        assert-css: (".fqn a:nth-of-type(2)", {"color": |fqn_type_color|})
+        assert-css: (".main-heading h1 a:nth-of-type(1)", {"color": |main_heading_color|})
+        assert-css: (".main-heading a:nth-of-type(2)", {"color": |main_heading_type_color|})
         assert-css: (
              ".rightside .srclink",
              {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
@@ -57,7 +57,7 @@ define-function: (
         assert-css: ("#top-doc-prose-title", {"color": |title_color|})
 
         assert-css: (".sidebar a", {"color": |sidebar_link_color|})
-        assert-css: ("h1.fqn a", {"color": |title_color|})
+        assert-css: (".main-heading h1 a", {"color": |title_color|})
 
         // We move the cursor over the "Implementations" title so the anchor is displayed.
         move-cursor-to: "h2#implementations"
@@ -77,8 +77,8 @@ call-function: (
         "theme": "ayu",
         "main_color": "rgb(197, 197, 197)",
         "title_color": "rgb(255, 255, 255)",
-        "fqn_color": "rgb(255, 255, 255)",
-        "fqn_type_color": "rgb(255, 160, 165)",
+        "main_heading_color": "rgb(255, 255, 255)",
+        "main_heading_type_color": "rgb(255, 160, 165)",
         "src_link_color": "rgb(57, 175, 215)",
         "sidebar_link_color": "rgb(83, 177, 219)",
     },
@@ -89,8 +89,8 @@ call-function: (
         "theme": "dark",
         "main_color": "rgb(221, 221, 221)",
         "title_color": "rgb(221, 221, 221)",
-        "fqn_color": "rgb(221, 221, 221)",
-        "fqn_type_color": "rgb(45, 191, 184)",
+        "main_heading_color": "rgb(221, 221, 221)",
+        "main_heading_type_color": "rgb(45, 191, 184)",
         "src_link_color": "rgb(210, 153, 29)",
         "sidebar_link_color": "rgb(253, 191, 53)",
     },
@@ -101,8 +101,8 @@ call-function: (
         "theme": "light",
         "main_color": "rgb(0, 0, 0)",
         "title_color": "rgb(0, 0, 0)",
-        "fqn_color": "rgb(0, 0, 0)",
-        "fqn_type_color": "rgb(173, 55, 138)",
+        "main_heading_color": "rgb(0, 0, 0)",
+        "main_heading_type_color": "rgb(173, 55, 138)",
         "src_link_color": "rgb(56, 115, 173)",
         "sidebar_link_color": "rgb(53, 109, 164)",
     },

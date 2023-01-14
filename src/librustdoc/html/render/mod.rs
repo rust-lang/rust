@@ -364,7 +364,7 @@ impl AllTypes {
             }
         }
 
-        f.write_str("<h1 class=\"fqn\">List of all items</h1>");
+        f.write_str("<h1>List of all items</h1>");
         // Note: print_entries does not escape the title, because we know the current set of titles
         // doesn't require escaping.
         print_entries(f, &self.structs, ItemSection::Structs);
@@ -394,7 +394,7 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     let mut ids = IdMap::default();
     format!(
         "<div class=\"main-heading\">\
-            <h1 class=\"fqn\">About scraped examples</h1>\
+            <h1>About scraped examples</h1>\
         </div>\
         <div>{}</div>",
         Markdown {
