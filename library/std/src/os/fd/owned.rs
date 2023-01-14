@@ -100,7 +100,7 @@ impl BorrowedFd<'_> {
 
         // For ESP-IDF, F_DUPFD is used instead, because the CLOEXEC semantics
         // will never be supported, as this is a bare metal framework with
-        // no capabilities for multi-process execution.  While F_DUPFD is also
+        // no capabilities for multi-process execution. While F_DUPFD is also
         // not supported yet, it might be (currently it returns ENOSYS).
         #[cfg(target_os = "espidf")]
         let cmd = libc::F_DUPFD;

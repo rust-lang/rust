@@ -65,7 +65,7 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Iter<'a, T: 'a> {
     ptr: NonNull<T>,
-    end: *const T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+    end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
     // ptr == end is a quick test for the Iterator being empty, that works
     // for both ZST and non-ZST.
     _marker: PhantomData<&'a T>,
@@ -186,7 +186,7 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct IterMut<'a, T: 'a> {
     ptr: NonNull<T>,
-    end: *mut T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+    end: *mut T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
     // ptr == end is a quick test for the Iterator being empty, that works
     // for both ZST and non-ZST.
     _marker: PhantomData<&'a mut T>,

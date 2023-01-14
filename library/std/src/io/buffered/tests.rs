@@ -288,8 +288,8 @@ fn test_buffered_reader_seek_underflow_discard_buffer_between_seeks() {
     let mut reader = BufReader::with_capacity(5, ErrAfterFirstSeekReader { first_seek: true });
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 0, 0, 0, 0][..]));
 
-    // The following seek will require two underlying seeks.  The first will
-    // succeed but the second will fail.  This should still invalidate the
+    // The following seek will require two underlying seeks. The first will
+    // succeed but the second will fail. This should still invalidate the
     // buffer.
     assert!(reader.seek(SeekFrom::Current(i64::MIN)).is_err());
     assert_eq!(reader.buffer().len(), 0);

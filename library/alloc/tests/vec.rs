@@ -1849,7 +1849,7 @@ fn test_stable_pointers() {
     }
 
     // Test that, if we reserved enough space, adding and removing elements does not
-    // invalidate references into the vector (such as `v0`).  This test also
+    // invalidate references into the vector (such as `v0`). This test also
     // runs in Miri, which would detect such problems.
     // Note that this test does *not* constitute a stable guarantee that all these functions do not
     // reallocate! Only what is explicitly documented at
