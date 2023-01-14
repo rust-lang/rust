@@ -31,11 +31,11 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, FileName, RealFileName, Span, DUMMY_SP};
+use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::iter;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 pub(crate) use rustc_span::hygiene::MacroKind;
@@ -1423,8 +1423,10 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
             if let [variant] = &*enum_def.variants {
                 if variant.ident.name == sym::Input {
                     let filename = sess.source_map().span_to_filename(item.ident.span);
-                    if let FileName::Real(RealFileName::LocalPath(path)) = filename {
-                        if let Some(c) = path
+                    if let FileName::Real(real) = filename {
+                        if let Some(c) = real
+                            .local_path()
+                            .unwrap_or(Path::new(""))
                             .components()
                             .flat_map(|c| c.as_os_str().to_str())
                             .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
