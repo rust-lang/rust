@@ -44,7 +44,6 @@ use rustc_span::symbol::Symbol;
 use std::any::Any;
 use std::ffi::CStr;
 
-mod enzyme;
 
 mod back {
     pub mod archive;

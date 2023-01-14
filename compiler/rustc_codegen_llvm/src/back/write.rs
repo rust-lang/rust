@@ -12,6 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
+use llvm::{TypeTree, IntList, CFnTypeInfo, EnzymeLogicRef, EnzymeTypeAnalysisRef, EnzymeCreatePrimalAndGradient, CreateTypeAnalysis, CreateEnzymeLogic, CDerivativeMode, CDIFFE_TYPE};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -515,66 +516,70 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
 pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
                                param_info: Vec<ParamInfos>
                               ) -> Result<(), FatalError> {
-    // dbg!("let there be Dragons (and Enzyme)");
-    // let llmod = module.module_llvm.llmod();
-    // assert!(param_info.len() == 1);
-    // let infos = param_info[0];
-    // let args_activity = infos.input_activity;
-    // let ret_activity = infos.ret_info;
+    dbg!("let there be Dragons (and Enzyme)");
+    let llmod = module.module_llvm.llmod();
+    assert!(param_info.len() == 1);
+    let infos = param_info[0].clone();
+    let mut args_activity = infos.input_activity;
+    let ret_activity = infos.ret_info;
 
 
-    // let name = CString::new("foo").unwrap();
-    // let test_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
-    // dbg!(test_fnc.is_some());
-    // if test_fnc.is_none() {
-    //     return Ok(()); // nothing to do
-    // }
-    // let fnc_todiff = test_fnc.unwrap();
-    // let tree_tmp =  TypeTree::new();
-    // let mut args_tree = vec![tree_tmp.inner; args_activity.len()];
-    // // We don't support volatile / extern / (global?) values.
-    // // Just because I didn't had time to test them, and it seems less urgent.
-    // let mut args_uncacheable = vec![0; args_activity.len()];
-    // let ret = TypeTree::new();
-    // let kv_tmp = IntList {
-    //     data: std::ptr::null_mut(),
-    //     size: 0,
-    // };
+    let name = CString::new("foo").unwrap();
+    let name2 = CString::new("bar").unwrap();
+    let test_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
+    dbg!(test_fnc.is_some());
+    if test_fnc.is_none() {
+        return Ok(()); // nothing to do
+    }
+    let test_target = llvm::LLVMGetNamedFunction(llmod, name2.as_c_str().as_ptr());
+    assert!(test_target.is_some());
+    let fnc_todiff = test_fnc.unwrap();
+    let tree_tmp =  TypeTree::new();
+    let mut args_tree = vec![tree_tmp.inner; args_activity.len()];
+    // We don't support volatile / extern / (global?) values.
+    // Just because I didn't had time to test them, and it seems less urgent.
+    let mut args_uncacheable = vec![0; args_activity.len()];
+    let ret = TypeTree::new();
+    let kv_tmp = IntList {
+        data: std::ptr::null_mut(),
+        size: 0,
+    };
 
-    // let mut known_values = vec![kv_tmp; args_activity.len()];
+    let mut known_values = vec![kv_tmp; args_activity.len()];
 
-    // let _dummy_type = CFnTypeInfo {
-    //     Arguments: args_tree.as_mut_ptr(),
-    //     Return: ret.inner,
-    //     KnownValues: known_values.as_mut_ptr(),
-    // };
+    let dummy_type = CFnTypeInfo {
+        Arguments: args_tree.as_mut_ptr(),
+        Return: ret.inner,
+        KnownValues: known_values.as_mut_ptr(),
+    };
 
-    // dbg!("before-ad");
-    // let _opt  = 1;
-    // let _ret_primary_ret = 0;
-    // let _logic_ref: EnzymeLogicRef = CreateEnzymeLogic(_opt as u8);
-    // let _type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(_logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
-    //let res = unsafe {
-    //    EnzymeCreatePrimalAndGradient(
-    //        logic_ref, // Logic
-    //        fnc_todiff,
-    //        ret_activity, // LLVM function, return type
-    //        args_activity.as_mut_ptr(),
-    //        args_activity.len() as u64, // constant arguments
-    //        type_analysis,         // type analysis struct
-    //        ret_primary_ret as u8,
-    //        0,                                        //0
-    //        CDerivativeMode::DEM_ReverseModeCombined, // return value, dret_used, top_level which was 1
-    //        1,                                        // vector mode width
-    //        1,                                        // free memory
-    //        std::ptr::null_mut(),
-    //        dummy_type, // additional_arg, type info (return + args)
-    //        args_uncacheable.as_mut_ptr(),
-    //        args_uncacheable.len() as u64, // uncacheable arguments
-    //        std::ptr::null_mut(),               // write augmented function to this
-    //        0,
-    //        )
-    //};
+    dbg!("before-ad");
+    let opt  = 1;
+    let ret_primary_ret = 0;
+    let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
+    let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
+    let res =
+        EnzymeCreatePrimalAndGradient(
+            logic_ref, // Logic
+            fnc_todiff,
+            ret_activity, // LLVM function, return type
+            args_activity.as_mut_ptr(),
+            args_activity.len(), // constant arguments
+            type_analysis,         // type analysis struct
+            ret_primary_ret as u8,
+            0,                                        //0
+            CDerivativeMode::DEM_ReverseModeCombined, // return value, dret_used, top_level which was 1
+            1,                                        // vector mode width
+            1,                                        // free memory
+            Option::None,
+            //std::ptr::null_mut(),
+            dummy_type, // additional_arg, type info (return + args)
+            args_uncacheable.as_mut_ptr(),
+            args_uncacheable.len(), // uncacheable arguments
+            std::ptr::null_mut(),               // write augmented function to this
+            0,
+            )
+        ;
     dbg!("after-ad");
 
 
@@ -600,6 +605,13 @@ pub(crate) unsafe fn optimize(
     if !fncs.is_empty() {
         dbg!(&fncs);
     }
+    let param = ParamInfos {
+        input_activity: vec![CDIFFE_TYPE::DFT_OUT_DIFF],
+        ret_info: CDIFFE_TYPE::DFT_CONSTANT
+    };
+    let param_info : Vec<ParamInfos> = vec![param];
+    let res = enzyme_ad(module, param_info);
+    assert!(res.is_ok());
 
 
     let module_name = module.name.clone();
