@@ -8,6 +8,7 @@
 #![feature(is_terminal)]
 #![feature(once_cell)]
 #![feature(decl_macro)]
+#![feature(panic_info_message)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -72,7 +73,7 @@ pub const EXIT_SUCCESS: i32 = 0;
 pub const EXIT_FAILURE: i32 = 1;
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
-    ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
+    ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.yaml";
 
 const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["-Z", "-C", "--crate-type"];
 
@@ -1242,13 +1243,56 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     if !info.payload().is::<rustc_errors::ExplicitBug>()
         && !info.payload().is::<rustc_errors::DelayedBugPanic>()
     {
-        let mut d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
+        let mut d = rustc_errors::Diagnostic::new(
+            rustc_errors::Level::Bug,
+            "the compiler unexpectedly panicked. this is a bug.",
+        );
         handler.emit_diagnostic(&mut d);
     }
 
+    // This *will* not work correctly for anything outside ASCII, but it is a quick approximation
+    // and we're in control of the strings passed in. https://en.wikipedia.org/wiki/Percent-encoding
+    fn urlencode(input: &str) -> String {
+        input
+            .chars()
+            .map(|c| {
+                if ('a'..'z').contains(&c)
+                    || ('A'..'Z').contains(&c)
+                    || ('0'..'9').contains(&c)
+                    || ['-', '_', '.', '~'].contains(&c)
+                {
+                    c.to_string()
+                } else {
+                    format!("%{:X}", c as u32)
+                }
+            })
+            .collect()
+    }
+
+    let (llvm_major, llvm_minor, llvm_dot) = rustc_codegen_llvm::get_version();
+    let version = format!(
+        "rustc {}{} running on {} with LLVM {llvm_major}.{llvm_minor}.{llvm_dot}",
+        util::version_str!().unwrap_or("unknown_version"),
+        match (option_env!("CFG_VER_HASH"), option_env!("CFG_VER_DATE")) {
+            (Some(hash), Some(date)) => format!(" ({hash} - {date})"),
+            (Some(val), None) | (None, Some(val)) => format!(" ({val})"),
+            (None, None) => String::new(),
+        },
+        config::host_triple(),
+    );
+    let version = urlencode(&version);
+    let title = match (info.message(), info.location()) {
+        (Some(message), Some(location)) => format!("{message}, {location}"),
+        (None, Some(location)) => format!("{location}"),
+        (Some(message), None) => format!("{message}"),
+        (None, None) => String::new(),
+    };
+    let title = urlencode(&format!("[ICE]: {}", title));
     let mut xs: Vec<Cow<'static, str>> = vec![
-        "the compiler unexpectedly panicked. this is a bug.".into(),
-        format!("we would appreciate a bug report: {bug_report_url}").into(),
+        format!(
+            "we would appreciate a bug report: {bug_report_url}&version={version}&title={title}"
+        )
+        .into(),
         format!(
             "rustc {} running on {}",
             util::version_str!().unwrap_or("unknown_version"),
