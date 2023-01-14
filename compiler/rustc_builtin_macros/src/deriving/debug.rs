@@ -31,7 +31,7 @@ pub fn expand_deriving_debug(
             nonself_args: vec![(fmtr, sym::f)],
             ret_ty: Path(path_std!(fmt::Result)),
             attributes: ast::AttrVec::new(),
-            unify_fieldless_variants: false,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 show_substructure(a, b, c)
             })),
@@ -43,16 +43,17 @@ pub fn expand_deriving_debug(
 }
 
 fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+    // We want to make sure we have the ctxt set so that we can use unstable methods
+    let span = cx.with_def_site_ctxt(span);
+
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
         EnumMatching(_, _, v, fields) => (v.ident, &v.data, fields),
-        EnumTag(..) | StaticStruct(..) | StaticEnum(..) => {
+        AllFieldlessEnum(..) | EnumTag(..) | StaticStruct(..) | StaticEnum(..) => {
             cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
         }
     };
 
-    // We want to make sure we have the ctxt set so that we can use unstable methods
-    let span = cx.with_def_site_ctxt(span);
     let name = cx.expr_str(span, ident.name);
     let fmt = substr.nonselflike_args[0].clone();
 
