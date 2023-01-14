@@ -374,6 +374,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         })
     }
 }
+
 impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn report_fulfillment_errors(
         &self,
@@ -852,6 +853,29 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let mut suggested =
                             self.suggest_dereferences(&obligation, &mut err, trait_predicate);
                         suggested |= self.suggest_fn_call(&obligation, &mut err, trait_predicate);
+                        let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
+                        suggested = if let &[cand] = &impl_candidates[..] {
+                            let cand = cand.trait_ref;
+                            if let (ty::FnPtr(_), ty::FnDef(..)) =
+                                (cand.self_ty().kind(), trait_ref.self_ty().skip_binder().kind())
+                            {
+                                err.span_suggestion(
+                                    span.shrink_to_hi(),
+                                    format!(
+                                        "the trait `{}` is implemented for fn pointer `{}`, try casting using `as`",
+                                        cand.print_only_trait_path(),
+                                        cand.self_ty(),
+                                    ),
+                                    format!(" as {}", cand.self_ty()),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        } || suggested;
                         suggested |=
                             self.suggest_remove_reference(&obligation, &mut err, trait_predicate);
                         suggested |= self.suggest_semicolon_removal(
@@ -1968,27 +1992,25 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             candidates.sort();
             candidates.dedup();
             let len = candidates.len();
-            if candidates.len() == 0 {
+            if candidates.is_empty() {
                 return false;
             }
-            if candidates.len() == 1 {
-                let ty_desc = match candidates[0].self_ty().kind() {
-                    ty::FnPtr(_) => Some("fn pointer"),
-                    _ => None,
-                };
-                let the_desc = match ty_desc {
-                    Some(desc) => format!(" implemented for {} `", desc),
-                    None => " implemented for `".to_string(),
-                };
+            if let &[cand] = &candidates[..] {
+                let (desc, mention_castable) =
+                    match (cand.self_ty().kind(), trait_ref.self_ty().skip_binder().kind()) {
+                        (ty::FnPtr(_), ty::FnDef(..)) => {
+                            (" implemented for fn pointer `", ", cast using `as`")
+                        }
+                        (ty::FnPtr(_), _) => (" implemented for fn pointer `", ""),
+                        _ => (" implemented for `", ""),
+                    };
                 err.highlighted_help(vec![
-                    (
-                        format!("the trait `{}` ", candidates[0].print_only_trait_path()),
-                        Style::NoStyle,
-                    ),
+                    (format!("the trait `{}` ", cand.print_only_trait_path()), Style::NoStyle),
                     ("is".to_string(), Style::Highlight),
-                    (the_desc, Style::NoStyle),
-                    (candidates[0].self_ty().to_string(), Style::Highlight),
+                    (desc.to_string(), Style::NoStyle),
+                    (cand.self_ty().to_string(), Style::Highlight),
                     ("`".to_string(), Style::NoStyle),
+                    (mention_castable.to_string(), Style::NoStyle),
                 ]);
                 return true;
             }
