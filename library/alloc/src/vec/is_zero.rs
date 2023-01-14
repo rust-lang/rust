@@ -57,7 +57,7 @@ unsafe impl<T: IsZero, const N: usize> IsZero for [T; N] {
     #[inline]
     fn is_zero(&self) -> bool {
         // Because this is generated as a runtime check, it's not obvious that
-        // it's worth doing if the array is really long.  The threshold here
+        // it's worth doing if the array is really long. The threshold here
         // is largely arbitrary, but was picked because as of 2022-07-01 LLVM
         // fails to const-fold the check in `vec![[1; 32]; n]`
         // See https://github.com/rust-lang/rust/pull/97581#issuecomment-1166628022

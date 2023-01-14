@@ -1475,9 +1475,8 @@ impl<'a> Parser<'a> {
             } else if self.eat(&token::Comma) {
                 // Vector with two or more elements.
                 let sep = SeqSep::trailing_allowed(token::Comma);
-                let (remaining_exprs, _) = self.parse_seq_to_end(close, sep, |p| p.parse_expr())?;
-                let mut exprs = vec![first_expr];
-                exprs.extend(remaining_exprs);
+                let (mut exprs, _) = self.parse_seq_to_end(close, sep, |p| p.parse_expr())?;
+                exprs.insert(0, first_expr);
                 ExprKind::Array(exprs)
             } else {
                 // Vector with one element

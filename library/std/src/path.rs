@@ -607,7 +607,7 @@ pub struct Components<'a> {
 
     // true if path *physically* has a root separator; for most Windows
     // prefixes, it may have a "logical" root separator for the purposes of
-    // normalization, e.g.,  \\server\share == \\server\share\.
+    // normalization, e.g., \\server\share == \\server\share\.
     has_physical_root: bool,
 
     // The iterator is double-ended, and these two states keep track of what has
