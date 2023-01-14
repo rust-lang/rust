@@ -392,19 +392,29 @@ impl Step for Rustc {
             t!(fs::create_dir_all(image.join("bin")));
             builder.cp_r(&src.join("bin"), &image.join("bin"));
 
-            builder.install(&builder.rustdoc(compiler), &image.join("bin"), 0o755);
+            if builder
+                .config
+                .tools
+                .as_ref()
+                .map_or(true, |tools| tools.iter().any(|tool| tool == "rustdoc"))
+            {
+                let rustdoc = builder.rustdoc(compiler);
+                builder.install(&rustdoc, &image.join("bin"), 0o755);
+            }
 
-            let ra_proc_macro_srv = builder
-                .ensure(tool::RustAnalyzerProcMacroSrv {
+            if let Some(ra_proc_macro_srv) = builder.ensure_if_default(
+                tool::RustAnalyzerProcMacroSrv {
                     compiler: builder.compiler_for(
                         compiler.stage,
                         builder.config.build,
                         compiler.host,
                     ),
                     target: compiler.host,
-                })
-                .expect("rust-analyzer-proc-macro-server always builds");
-            builder.install(&ra_proc_macro_srv, &image.join("libexec"), 0o755);
+                },
+                builder.kind,
+            ) {
+                builder.install(&ra_proc_macro_srv, &image.join("libexec"), 0o755);
+            }
 
             let libdir_relative = builder.libdir_relative(compiler);
 
