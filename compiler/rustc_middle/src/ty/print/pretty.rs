@@ -1295,10 +1295,10 @@ pub trait PrettyPrinter<'tcx>:
                             if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
                                 p!(write("{}", snip))
                             } else {
-                                print_underscore!()
+                                p!(print_value_path(def.did, substs))
                             }
                         } else {
-                            print_underscore!()
+                            p!(print_value_path(def.did, substs))
                         }
                     }
                     defkind => bug!("`{:?}` has unexpcted defkind {:?}", ct, defkind),
@@ -1323,7 +1323,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::ConstKind::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
             // FIXME(generic_const_exprs):
             // write out some legible representation of an abstract const?
-            ty::ConstKind::Expr(_) => p!("[Const Expr]"),
+            ty::ConstKind::Expr(_) => p!("[const expr]"),
             ty::ConstKind::Error(_) => p!("[const error]"),
         };
         Ok(self)
