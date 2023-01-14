@@ -165,11 +165,15 @@ fn calculate_debuginfo_offset<
             mir::ProjectionElem::Downcast(_, variant) => {
                 place = place.downcast(bx, variant);
             }
-            _ => span_bug!(
-                var.source_info.span,
-                "unsupported var debuginfo place `{:?}`",
-                mir::Place { local, projection: var.projection },
-            ),
+            _ => {
+                // Sanity check for `can_use_in_debuginfo`.
+                debug_assert!(!elem.can_use_in_debuginfo());
+                span_bug!(
+                    var.source_info.span,
+                    "unsupported var debuginfo place `{:?}`",
+                    mir::Place { local, projection: var.projection },
+                )
+            }
         }
     }
 
