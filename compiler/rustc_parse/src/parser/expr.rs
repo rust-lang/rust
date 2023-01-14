@@ -562,17 +562,23 @@ impl<'a> Parser<'a> {
 
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
         match this.token.uninterpolate().kind {
-            token::Not => make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Not)), // `!expr`
-            token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)), // `~expr`
+            // `!expr`
+            token::Not => make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Not)),
+            // `~expr`
+            token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)),
+            // `-expr`
             token::BinOp(token::Minus) => {
                 make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Neg))
-            } // `-expr`
+            }
+            // `*expr`
             token::BinOp(token::Star) => {
                 make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Deref))
-            } // `*expr`
+            }
+            // `&expr` and `&&expr`
             token::BinOp(token::And) | token::AndAnd => {
                 make_it!(this, attrs, |this, _| this.parse_borrow_expr(lo))
             }
+            // `+lit`
             token::BinOp(token::Plus) if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
                 let mut err =
                     LeadingPlusNotSupported { span: lo, remove_plus: None, add_parentheses: None };
@@ -587,7 +593,7 @@ impl<'a> Parser<'a> {
 
                 this.bump();
                 this.parse_prefix_expr(None)
-            } // `+expr`
+            }
             // Recover from `++x`:
             token::BinOp(token::Plus)
                 if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
@@ -624,7 +630,7 @@ impl<'a> Parser<'a> {
         Ok((span, self.mk_unary(op, expr)))
     }
 
-    // Recover on `!` suggesting for bitwise negation instead.
+    /// Recover on `~expr` in favor of `!expr`.
     fn recover_tilde_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         self.sess.emit_err(TildeAsUnaryOperator(lo));
 
@@ -651,7 +657,6 @@ impl<'a> Parser<'a> {
 
     /// Recover on `not expr` in favor of `!expr`.
     fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        // Emit the error...
         let negated_token = self.look_ahead(1, |t| t.clone());
 
         let sub_diag = if negated_token.is_numeric_lit() {
@@ -672,7 +677,6 @@ impl<'a> Parser<'a> {
             ),
         });
 
-        // ...and recover!
         self.parse_unary_expr(lo, UnOp::Not)
     }
 
@@ -1593,7 +1597,7 @@ impl<'a> Parser<'a> {
                     vis.0
                 };
 
-                // Suggestion involves adding a (as of time of writing this, unstable) labeled block.
+                // Suggestion involves adding a labeled block.
                 //
                 // If there are no breaks that may use this label, suggest removing the label and
                 // recover to the unmodified expression.
