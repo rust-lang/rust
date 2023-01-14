@@ -1269,7 +1269,7 @@ impl<'a> InferenceContext<'a> {
         // that are not closures, then we type-check the closures. This is so
         // that we have more information about the types of arguments when we
         // type-check the functions. This isn't really the right way to do this.
-        for &check_closures in &[false, true] {
+        for check_closures in [false, true] {
             let mut skip_indices = skip_indices.into_iter().copied().fuse().peekable();
             let param_iter = param_tys.iter().cloned().chain(repeat(self.err_ty()));
             let expected_iter = expected_inputs
