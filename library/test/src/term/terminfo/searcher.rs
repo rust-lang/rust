@@ -30,7 +30,7 @@ pub(crate) fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
         }
     } else {
         // Found nothing in TERMINFO_DIRS, use the default paths:
-        // According to  /etc/terminfo/README, after looking at
+        // According to /etc/terminfo/README, after looking at
         // ~/.terminfo, ncurses will search /etc/terminfo, then
         // /lib/terminfo, and eventually /usr/share/terminfo.
         // On Haiku the database can be found at /boot/system/data/terminfo

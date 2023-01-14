@@ -1488,7 +1488,7 @@ mod slice_index {
                 // optional:
                 //
                 // one or more similar inputs for which data[input] succeeds,
-                // and the corresponding output as an array.  This helps validate
+                // and the corresponding output as an array. This helps validate
                 // "critical points" where an input range straddles the boundary
                 // between valid and invalid.
                 // (such as the input `len..len`, which is just barely valid)

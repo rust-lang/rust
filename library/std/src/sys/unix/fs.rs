@@ -600,13 +600,13 @@ impl Iterator for ReadDir {
             loop {
                 // As of POSIX.1-2017, readdir() is not required to be thread safe; only
                 // readdir_r() is. However, readdir_r() cannot correctly handle platforms
-                // with unlimited or variable NAME_MAX.  Many modern platforms guarantee
+                // with unlimited or variable NAME_MAX. Many modern platforms guarantee
                 // thread safety for readdir() as long an individual DIR* is not accessed
                 // concurrently, which is sufficient for Rust.
                 super::os::set_errno(0);
                 let entry_ptr = readdir64(self.inner.dirp.0);
                 if entry_ptr.is_null() {
-                    // We either encountered an error, or reached the end.  Either way,
+                    // We either encountered an error, or reached the end. Either way,
                     // the next call to next() should return None.
                     self.end_of_stream = true;
 

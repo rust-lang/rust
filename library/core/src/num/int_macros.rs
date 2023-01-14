@@ -1538,7 +1538,7 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        /// // Only the  most significant word is signed.
+        /// // Only the most significant word is signed.
         /// //
         #[doc = concat!("//   10  MAX    (a = 10 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
         #[doc = concat!("// + -5    9    (b = -5 × 2^", stringify!($BITS), " + 9)")]
@@ -1646,7 +1646,7 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        /// // Only the  most significant word is signed.
+        /// // Only the most significant word is signed.
         /// //
         #[doc = concat!("//    6    8    (a = 6 × 2^", stringify!($BITS), " + 8)")]
         #[doc = concat!("// - -5    9    (b = -5 × 2^", stringify!($BITS), " + 9)")]

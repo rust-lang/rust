@@ -1701,7 +1701,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
         // offset is not a multiple of `stride`, the input pointer was misaligned and no pointer
         // offset will be able to produce a `p` aligned to the specified `a`.
         //
-        // The naive `-p (mod a)` equation  inhibits LLVM's ability to select instructions
+        // The naive `-p (mod a)` equation inhibits LLVM's ability to select instructions
         // like `lea`. We compute `(round_up_to_next_alignment(p, a) - p)` instead. This
         // redistributes operations around the load-bearing, but pessimizing `and` instruction
         // sufficiently for LLVM to be able to utilize the various optimizations it knows about.

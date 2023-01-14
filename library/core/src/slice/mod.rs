@@ -703,7 +703,7 @@ impl<T> [T] {
 
             // Because this function is first compiled in isolation,
             // this check tells LLVM that the indexing below is
-            // in-bounds.  Then after inlining -- once the actual
+            // in-bounds. Then after inlining -- once the actual
             // lengths of the slices are known -- it's removed.
             let (a, b) = (&mut a[..n], &mut b[..n]);
 
@@ -2476,7 +2476,7 @@ impl<T> [T] {
             let mid = left + size / 2;
 
             // SAFETY: the while condition means `size` is strictly positive, so
-            // `size/2 < size`.  Thus `left + size/2 < left + size`, which
+            // `size/2 < size`. Thus `left + size/2 < left + size`, which
             // coupled with the `left + size <= self.len()` invariant means
             // we have `left + size/2 < self.len()`, and this is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });

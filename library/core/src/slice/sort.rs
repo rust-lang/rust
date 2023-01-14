@@ -18,9 +18,9 @@ struct CopyOnDrop<T> {
 
 impl<T> Drop for CopyOnDrop<T> {
     fn drop(&mut self) {
-        // SAFETY:  This is a helper class.
-        //          Please refer to its usage for correctness.
-        //          Namely, one must be sure that `src` and `dst` does not overlap as required by `ptr::copy_nonoverlapping`.
+        // SAFETY: This is a helper class.
+        //         Please refer to its usage for correctness.
+        //         Namely, one must be sure that `src` and `dst` does not overlap as required by `ptr::copy_nonoverlapping`.
         unsafe {
             ptr::copy_nonoverlapping(self.src, self.dest, 1);
         }
