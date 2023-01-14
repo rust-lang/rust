@@ -1587,11 +1587,29 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         let o = self.resolve_vars_if_possible(o);
                         if !self.predicate_may_hold(&o) {
                             result = ProbeResult::NoMatch;
-                            possibly_unsatisfied_predicates.push((
-                                o.predicate,
-                                None,
-                                Some(o.cause),
-                            ));
+                            let parent_o = o.clone();
+                            let implied_obligations =
+                                traits::elaborate_obligations(self.tcx, vec![o]);
+                            for o in implied_obligations {
+                                let parent = if o == parent_o {
+                                    None
+                                } else {
+                                    if o.predicate.to_opt_poly_trait_pred().map(|p| p.def_id())
+                                        == self.tcx.lang_items().sized_trait()
+                                    {
+                                        // We don't care to talk about implicit `Sized` bounds.
+                                        continue;
+                                    }
+                                    Some(parent_o.predicate)
+                                };
+                                if !self.predicate_may_hold(&o) {
+                                    possibly_unsatisfied_predicates.push((
+                                        o.predicate,
+                                        parent,
+                                        Some(o.cause),
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
