@@ -18,13 +18,15 @@ pub(crate) fn build_sysroot(
     sysroot_kind: SysrootKind,
     cg_clif_dylib_src: &Path,
     bootstrap_host_compiler: &Compiler,
-    target_triple: &str,
-) {
+    target_triple: String,
+) -> Compiler {
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
 
     DIST_DIR.ensure_fresh(dirs);
     BIN_DIR.ensure_exists(dirs);
     LIB_DIR.ensure_exists(dirs);
+
+    let is_native = bootstrap_host_compiler.triple == target_triple;
 
     // Copy the backend
     let cg_clif_dylib_path = if cfg!(windows) {
@@ -55,12 +57,12 @@ pub(crate) fn build_sysroot(
 
     let host_rustlib_lib =
         RUSTLIB_DIR.to_path(dirs).join(&bootstrap_host_compiler.triple).join("lib");
-    let target_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(target_triple).join("lib");
+    let target_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(&target_triple).join("lib");
     fs::create_dir_all(&host_rustlib_lib).unwrap();
     fs::create_dir_all(&target_rustlib_lib).unwrap();
 
     if target_triple == "x86_64-pc-windows-gnu" {
-        if !default_sysroot.join("lib").join("rustlib").join(target_triple).join("lib").exists() {
+        if !default_sysroot.join("lib").join("rustlib").join(&target_triple).join("lib").exists() {
             eprintln!(
                 "The x86_64-pc-windows-gnu target needs to be installed first before it is possible \
                 to compile a sysroot for it.",
@@ -68,7 +70,7 @@ pub(crate) fn build_sysroot(
             process::exit(1);
         }
         for file in fs::read_dir(
-            default_sysroot.join("lib").join("rustlib").join(target_triple).join("lib"),
+            default_sysroot.join("lib").join("rustlib").join(&target_triple).join("lib"),
         )
         .unwrap()
         {
@@ -108,9 +110,9 @@ pub(crate) fn build_sysroot(
                 try_hard_link(&file, host_rustlib_lib.join(file.file_name().unwrap()));
             }
 
-            if target_triple != bootstrap_host_compiler.triple {
+            if !is_native {
                 for file in fs::read_dir(
-                    default_sysroot.join("lib").join("rustlib").join(target_triple).join("lib"),
+                    default_sysroot.join("lib").join("rustlib").join(&target_triple).join("lib"),
                 )
                 .unwrap()
                 {
@@ -127,13 +129,13 @@ pub(crate) fn build_sysroot(
                 &cg_clif_dylib_path,
             );
 
-            if bootstrap_host_compiler.triple != target_triple {
+            if !is_native {
                 build_clif_sysroot_for_triple(
                     dirs,
                     channel,
                     {
                         let mut bootstrap_target_compiler = bootstrap_host_compiler.clone();
-                        bootstrap_target_compiler.triple = target_triple.to_owned();
+                        bootstrap_target_compiler.triple = target_triple.clone();
                         bootstrap_target_compiler.set_cross_linker_and_runner();
                         bootstrap_target_compiler
                     },
@@ -152,6 +154,12 @@ pub(crate) fn build_sysroot(
             }
         }
     }
+
+    let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
+    if !is_native {
+        target_compiler.set_cross_linker_and_runner();
+    }
+    target_compiler
 }
 
 pub(crate) static ORIG_BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");

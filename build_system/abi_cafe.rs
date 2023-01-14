@@ -32,7 +32,7 @@ pub(crate) fn run(
         sysroot_kind,
         cg_clif_dylib,
         bootstrap_host_compiler,
-        &bootstrap_host_compiler.triple,
+        bootstrap_host_compiler.triple.clone(),
     );
 
     eprintln!("Running abi-cafe");

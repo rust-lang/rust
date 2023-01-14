@@ -154,7 +154,7 @@ pub fn main() {
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
-                &target_triple,
+                target_triple.clone(),
             );
 
             if bootstrap_host_compiler.triple == target_triple {
@@ -177,7 +177,7 @@ pub fn main() {
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
-                &target_triple,
+                target_triple,
             );
         }
         Command::Bench => {
@@ -187,7 +187,7 @@ pub fn main() {
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
-                &target_triple,
+                target_triple,
             );
             bench::benchmark(&dirs, &bootstrap_host_compiler);
         }

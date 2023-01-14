@@ -242,20 +242,20 @@ pub(crate) fn run_tests(
     sysroot_kind: SysrootKind,
     cg_clif_dylib: &Path,
     bootstrap_host_compiler: &Compiler,
-    target_triple: &str,
+    target_triple: String,
 ) {
-    let runner =
-        TestRunner::new(dirs.clone(), target_triple.to_owned(), get_host_triple() == target_triple);
-
     if config::get_bool("testsuite.no_sysroot") {
-        build_sysroot::build_sysroot(
+        let target_compiler = build_sysroot::build_sysroot(
             dirs,
             channel,
             SysrootKind::None,
             cg_clif_dylib,
             bootstrap_host_compiler,
-            &target_triple,
+            target_triple.clone(),
         );
+
+        let runner =
+            TestRunner::new(dirs.clone(), target_compiler, get_host_triple() == target_triple);
 
         BUILD_EXAMPLE_OUT_DIR.ensure_fresh(dirs);
         runner.run_testsuite(NO_SYSROOT_SUITE);
@@ -267,26 +267,29 @@ pub(crate) fn run_tests(
     let run_extended_sysroot = config::get_bool("testsuite.extended_sysroot");
 
     if run_base_sysroot || run_extended_sysroot {
-        build_sysroot::build_sysroot(
+        let target_compiler = build_sysroot::build_sysroot(
             dirs,
             channel,
             sysroot_kind,
             cg_clif_dylib,
             bootstrap_host_compiler,
-            &target_triple,
+            target_triple.clone(),
         );
-    }
 
-    if run_base_sysroot {
-        runner.run_testsuite(BASE_SYSROOT_SUITE);
-    } else {
-        eprintln!("[SKIP] base_sysroot tests");
-    }
+        let runner =
+            TestRunner::new(dirs.clone(), target_compiler, get_host_triple() == target_triple);
 
-    if run_extended_sysroot {
-        runner.run_testsuite(EXTENDED_SYSROOT_SUITE);
-    } else {
-        eprintln!("[SKIP] extended_sysroot tests");
+        if run_base_sysroot {
+            runner.run_testsuite(BASE_SYSROOT_SUITE);
+        } else {
+            eprintln!("[SKIP] base_sysroot tests");
+        }
+
+        if run_extended_sysroot {
+            runner.run_testsuite(EXTENDED_SYSROOT_SUITE);
+        } else {
+            eprintln!("[SKIP] extended_sysroot tests");
+        }
     }
 }
 
@@ -298,11 +301,7 @@ struct TestRunner {
 }
 
 impl TestRunner {
-    pub fn new(dirs: Dirs, target_triple: String, is_native: bool) -> Self {
-        let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
-        if !is_native {
-            target_compiler.set_cross_linker_and_runner();
-        }
+    pub fn new(dirs: Dirs, mut target_compiler: Compiler, is_native: bool) -> Self {
         if let Ok(rustflags) = env::var("RUSTFLAGS") {
             target_compiler.rustflags.push(' ');
             target_compiler.rustflags.push_str(&rustflags);
