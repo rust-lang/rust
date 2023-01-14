@@ -6,10 +6,4 @@ fn main() {
     //~^ ERROR unknown start of token: \u{a0}
     //~^^ NOTE character appears 3 more times
     //~^^^ HELP Unicode character ' ' (No-Break Space) looks like ' ' (Space), but it is not
-    //~^^^^ ERROR unknown start of token: \u{a0}
-    //~^^^^^ HELP Unicode character ' ' (No-Break Space) looks like ' ' (Space), but it is not
-    //~^^^^^^ ERROR unknown start of token: \u{a0}
-    //~^^^^^^^ HELP Unicode character ' ' (No-Break Space) looks like ' ' (Space), but it is not
-    //~^^^^^^^^ ERROR unknown start of token: \u{a0}
-    //~^^^^^^^^^ HELP Unicode character ' ' (No-Break Space) looks like ' ' (Space), but it is not
 }
