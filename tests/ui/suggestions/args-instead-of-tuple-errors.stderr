@@ -11,6 +11,13 @@ LL |     let _: Option<(i32, bool)> = Some(1, 2);
    |                                       ^
    = note: expected tuple `(i32, bool)`
                found type `{integer}`
+help: the type constructed contains `{integer}` due to the type of the argument passed
+  --> $DIR/args-instead-of-tuple-errors.rs:6:34
+   |
+LL |     let _: Option<(i32, bool)> = Some(1, 2);
+   |                                  ^^^^^-^^^^
+   |                                       |
+   |                                       this argument influences the type of `Some`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: remove the extra argument
@@ -64,6 +71,13 @@ LL |     let _: Option<(i32,)> = Some(5_usize);
    |
    = note: expected tuple `(i32,)`
                found type `usize`
+help: the type constructed contains `usize` due to the type of the argument passed
+  --> $DIR/args-instead-of-tuple-errors.rs:14:29
+   |
+LL |     let _: Option<(i32,)> = Some(5_usize);
+   |                             ^^^^^-------^
+   |                                  |
+   |                                  this argument influences the type of `Some`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
@@ -77,6 +91,13 @@ LL |     let _: Option<(i32,)> = Some((5_usize));
    |
    = note: expected tuple `(i32,)`
                found type `usize`
+help: the type constructed contains `usize` due to the type of the argument passed
+  --> $DIR/args-instead-of-tuple-errors.rs:17:29
+   |
+LL |     let _: Option<(i32,)> = Some((5_usize));
+   |                             ^^^^^---------^
+   |                                  |
+   |                                  this argument influences the type of `Some`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
