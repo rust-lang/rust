@@ -6,6 +6,7 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::consts;
+use crate::llvm::{ParamInfos};
 use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -33,7 +34,7 @@ use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 use tracing::debug;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
-use std::ffi::{CString};
+use std::ffi::CString;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -508,6 +509,78 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     result.into_result().map_err(|()| llvm_err(diag_handler, "failed to run LLVM passes"))
 }
 
+// As unsafe as it can be.
+#[allow(unused_variables)]
+#[allow(unused)]
+pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
+                               param_info: Vec<ParamInfos>
+                              ) -> Result<(), FatalError> {
+    // dbg!("let there be Dragons (and Enzyme)");
+    // let llmod = module.module_llvm.llmod();
+    // assert!(param_info.len() == 1);
+    // let infos = param_info[0];
+    // let args_activity = infos.input_activity;
+    // let ret_activity = infos.ret_info;
+
+
+    // let name = CString::new("foo").unwrap();
+    // let test_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
+    // dbg!(test_fnc.is_some());
+    // if test_fnc.is_none() {
+    //     return Ok(()); // nothing to do
+    // }
+    // let fnc_todiff = test_fnc.unwrap();
+    // let tree_tmp =  TypeTree::new();
+    // let mut args_tree = vec![tree_tmp.inner; args_activity.len()];
+    // // We don't support volatile / extern / (global?) values.
+    // // Just because I didn't had time to test them, and it seems less urgent.
+    // let mut args_uncacheable = vec![0; args_activity.len()];
+    // let ret = TypeTree::new();
+    // let kv_tmp = IntList {
+    //     data: std::ptr::null_mut(),
+    //     size: 0,
+    // };
+
+    // let mut known_values = vec![kv_tmp; args_activity.len()];
+
+    // let _dummy_type = CFnTypeInfo {
+    //     Arguments: args_tree.as_mut_ptr(),
+    //     Return: ret.inner,
+    //     KnownValues: known_values.as_mut_ptr(),
+    // };
+
+    // dbg!("before-ad");
+    // let _opt  = 1;
+    // let _ret_primary_ret = 0;
+    // let _logic_ref: EnzymeLogicRef = CreateEnzymeLogic(_opt as u8);
+    // let _type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(_logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
+    //let res = unsafe {
+    //    EnzymeCreatePrimalAndGradient(
+    //        logic_ref, // Logic
+    //        fnc_todiff,
+    //        ret_activity, // LLVM function, return type
+    //        args_activity.as_mut_ptr(),
+    //        args_activity.len() as u64, // constant arguments
+    //        type_analysis,         // type analysis struct
+    //        ret_primary_ret as u8,
+    //        0,                                        //0
+    //        CDerivativeMode::DEM_ReverseModeCombined, // return value, dret_used, top_level which was 1
+    //        1,                                        // vector mode width
+    //        1,                                        // free memory
+    //        std::ptr::null_mut(),
+    //        dummy_type, // additional_arg, type info (return + args)
+    //        args_uncacheable.as_mut_ptr(),
+    //        args_uncacheable.len() as u64, // uncacheable arguments
+    //        std::ptr::null_mut(),               // write augmented function to this
+    //        0,
+    //        )
+    //};
+    dbg!("after-ad");
+
+
+    Ok(())
+}
+
 // Unsafe due to LLVM calls.
 pub(crate) unsafe fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
@@ -524,32 +597,10 @@ pub(crate) unsafe fn optimize(
     let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
 
     let fncs = &module.module_llvm.diff_fncs;
-
     if !fncs.is_empty() {
         dbg!(&fncs);
     }
 
-    // begin Enzyme
-    //dbg!("Imagine Enzyme here");
-
-    //let name = CString::new("foo").unwrap();
-    ////let _fnc = llvm::LLVMRustGetNamedFunction(llmod, name.as_ptr(), name.len());
-    ////let _fnc = llvm::LLVMRustGetNamedFunction(llmod, name.as_ptr(), name.len());
-    ////let _asdf = llvm::GibtsNicht(llmod);
-    ////dbg!(_asdf);
-    //dbg!("HA");
-    //let test_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
-    //dbg!("HI");
-    //dbg!(test_fnc.is_some());
-    //dbg!("HO");
-    //let mut n = 1;
-    //let mut _fnc = llvm::LLVMGetFirstFunction(llmod);
-    //while _fnc.is_some() {
-    //    n += 1;
-    //    _fnc = llvm::LLVMGetNextFunction(_fnc.unwrap());
-    //}
-    //dbg!(n);
-    // end
 
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);

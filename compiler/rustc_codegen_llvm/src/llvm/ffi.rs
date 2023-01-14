@@ -1001,6 +1001,27 @@ extern "C" {
     pub fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> Option<&Value>;
     //pub fn LLVMRustGetNamedFunction(M: &Module, Name: *const c_char, len: size_t) -> &Value;
     //pub fn LLVMIsNull(Val: &Value) -> bool;
+    // pub fn EnzymeCreatePrimalAndGradient(
+    //     arg1: EnzymeLogicRef,
+    //     todiff: &Value,
+    //     //todiff: LLVMValueRef,
+    //     retType: CDIFFE_TYPE,
+    //     constant_args: *mut CDIFFE_TYPE,
+    //     constant_args_size: size_t,
+    //     TA: EnzymeTypeAnalysisRef,
+    //     returnValue: u8,
+    //     dretUsed: u8,
+    //     mode: CDerivativeMode,
+    //     width: ::std::os::raw::c_uint,
+    //     freeMemory: u8,
+    //     additionalArg: LLVMTypeRef,
+    //     typeInfo: CFnTypeInfo,
+    //     _uncacheable_args: *mut u8,
+    //     uncacheable_args_size: size_t,
+    //     augmented: EnzymeAugmentedReturnPtr,
+    //     AtomicAdd: u8,
+    //     ) -> &Value;
+    //) -> LLVMValueRef;
 
     pub fn LLVMRustInstallFatalErrorHandler();
     pub fn LLVMRustDisableSystemDialogsOnCrash();
@@ -2549,3 +2570,167 @@ extern "C" {
         );
 
 }
+// Manuel
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeOpaqueTypeAnalysis {
+    _unused: [u8; 0],
+}
+pub type EnzymeTypeAnalysisRef = *mut EnzymeOpaqueTypeAnalysis;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeOpaqueLogic {
+    _unused: [u8; 0],
+}
+pub type EnzymeLogicRef = *mut EnzymeOpaqueLogic;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeOpaqueAugmentedReturn {
+    _unused: [u8; 0],
+}
+pub type EnzymeAugmentedReturnPtr = *mut EnzymeOpaqueAugmentedReturn;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IntList {
+    pub data: *mut i64,
+    pub size: size_t,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum CConcreteType {
+    DT_Anything = 0,
+    DT_Integer = 1,
+    DT_Pointer = 2,
+    DT_Half = 3,
+    DT_Float = 4,
+    DT_Double = 5,
+    DT_Unknown = 6,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeTypeTree {
+    _unused: [u8; 0],
+}
+pub type CTypeTreeRef = *mut EnzymeTypeTree;
+extern "C" {
+    pub fn EnzymeNewTypeTree() -> CTypeTreeRef;
+}
+extern "C" {
+    pub fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
+}
+extern "C" {
+    pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
+}
+extern "C" {
+    pub fn EnzymeSetCLInteger(arg1: *mut ::std::os::raw::c_void, arg2: i64);
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CFnTypeInfo {
+    #[doc = " Types of arguments, assumed of size len(Arguments)"]
+    pub Arguments: *mut CTypeTreeRef,
+    #[doc = " Type of return"]
+    pub Return: CTypeTreeRef,
+    #[doc = " The specific constant(s) known to represented by an argument, if constant"]
+    pub KnownValues: *mut IntList,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum CDIFFE_TYPE {
+    DFT_OUT_DIFF = 0,
+    DFT_DUP_ARG = 1,
+    DFT_CONSTANT = 2,
+    DFT_DUP_NONEED = 3,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum CDerivativeMode {
+    DEM_ForwardMode = 0,
+    DEM_ReverseModePrimal = 1,
+    DEM_ReverseModeGradient = 2,
+    DEM_ReverseModeCombined = 3,
+    DEM_ForwardModeSplit = 4,
+}
+extern "C" {
+    pub fn EnzymeCreatePrimalAndGradient<'a>(
+        arg1: EnzymeLogicRef,
+        todiff: &'a Value,
+        //todiff: LLVMValueRef,
+        retType: CDIFFE_TYPE,
+        constant_args: *mut CDIFFE_TYPE,
+        constant_args_size: size_t,
+        TA: EnzymeTypeAnalysisRef,
+        returnValue: u8,
+        dretUsed: u8,
+        mode: CDerivativeMode,
+        width: ::std::os::raw::c_uint,
+        freeMemory: u8,
+        //additionalArg: LLVMTypeRef,
+        additionalArg: &Type,
+        typeInfo: CFnTypeInfo,
+        _uncacheable_args: *mut u8,
+        uncacheable_args_size: size_t,
+        augmented: EnzymeAugmentedReturnPtr,
+        AtomicAdd: u8,
+        ) -> &'a Value;
+    //) -> LLVMValueRef;
+}
+pub type CustomRuleType = ::std::option::Option<
+unsafe extern "C" fn(
+    arg1: ::std::os::raw::c_int,
+    arg2: CTypeTreeRef,
+    arg3: *mut CTypeTreeRef,
+    arg4: *mut IntList,
+    arg5: size_t,
+    arg6: &Value,
+    //arg6: LLVMValueRef,
+    ) -> u8,
+    >;
+extern "C" {
+    pub fn CreateTypeAnalysis(
+        Log: EnzymeLogicRef,
+        customRuleNames: *mut *mut ::std::os::raw::c_char,
+        customRules: *mut CustomRuleType,
+        numRules: size_t,
+        ) -> EnzymeTypeAnalysisRef;
+}
+extern "C" {
+    pub fn ClearTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
+}
+extern "C" {
+    pub fn FreeTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
+}
+extern "C" {
+    pub fn CreateEnzymeLogic(PostOpt: u8) -> EnzymeLogicRef;
+}
+extern "C" {
+    pub fn ClearEnzymeLogic(arg1: EnzymeLogicRef);
+}
+extern "C" {
+    pub fn FreeEnzymeLogic(arg1: EnzymeLogicRef);
+}
+
+pub struct TypeTree {
+    pub inner: CTypeTreeRef,
+}
+
+impl TypeTree {
+    pub fn new() -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTree() };
+
+        TypeTree { inner }
+    }
+}
+
+impl Drop for TypeTree {
+    fn drop(&mut self) {
+        unsafe { EnzymeFreeTypeTree(self.inner) }
+    }
+}
+
+#[derive(Clone)]
+pub struct ParamInfos {
+    pub input_activity: Vec<CDIFFE_TYPE>, // How should it's arguments be treated?
+    pub ret_info: CDIFFE_TYPE,
+}
+
