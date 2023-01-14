@@ -156,7 +156,7 @@ use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
-use core::iter::FromIterator;
+use core::iter::{FromIterator, TrustedLen};
 use core::iter::{FusedIterator, Iterator};
 use core::marker::Tuple;
 use core::marker::{Destruct, Unpin, Unsize};
@@ -2010,10 +2010,50 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> fo
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T, Global> {}
 
 #[cfg(not(no_global_oom_handling))]
+trait SpecFromIter<T, I> {
+    fn from_iter(iter: I) -> Self;
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, I> SpecFromIter<T, I> for Box<[T]>
+where
+    I: Iterator<Item = T>,
+{
+    default fn from_iter(iter: I) -> Self {
+        iter.collect::<Vec<_>>().into_boxed_slice()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, I> SpecFromIter<T, I> for Box<[T]>
+where
+    I: TrustedLen<Item = T>,
+{
+    fn from_iter(iter: I) -> Self {
+        match iter.size_hint() {
+            (low, Some(high)) if low == high => {
+                let mut result = Box::new_uninit_slice(high);
+                let ptr: *mut T = mem::MaybeUninit::slice_as_mut_ptr(&mut *result);
+                for (offset, elem) in iter.enumerate() {
+                    // Safety: TrustedLen guarantees that offset is in bounds
+                    unsafe { ptr.add(offset).write(elem) }
+                }
+                // Safety: TrustedLen guarantees that we initialized all the elements
+                unsafe { result.assume_init() }
+            }
+            _ => panic!(
+                ".size_hint() provided by TrustedLen iterator is not exact: {:?}",
+                iter.size_hint()
+            ),
+        }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_slice_from_iter", since = "1.32.0")]
-impl<I> FromIterator<I> for Box<[I]> {
-    fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
-        iter.into_iter().collect::<Vec<_>>().into_boxed_slice()
+impl<T> FromIterator<T> for Box<[T]> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        SpecFromIter::from_iter(iter.into_iter())
     }
 }
 
