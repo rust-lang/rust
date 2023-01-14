@@ -11,6 +11,13 @@ LL |         builder.push(output);
    |
    = note: expected type parameter `F`
                       found struct `Class<P>`
+help: the return type of this call is `Class<P>` due to the type of the argument passed
+  --> $DIR/issue-52893.rs:53:9
+   |
+LL |         builder.push(output);
+   |         ^^^^^^^^^^^^^------^
+   |                      |
+   |                      this argument influences the return type of `push`
 note: associated function defined here
   --> $DIR/issue-52893.rs:11:8
    |
