@@ -318,7 +318,33 @@ fn main(a: SliceIter<'_, Container>) {
                         range: 484..554,
                         kind: Chaining,
                         label: [
-                            "impl Iterator<Item = impl Iterator<Item = &&str>>",
+                            "impl ",
+                            InlayHintLabelPart {
+                                text: "Iterator",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2248..2256,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            "<Item = impl ",
+                            InlayHintLabelPart {
+                                text: "Iterator",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2248..2256,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            "<Item = &&str>>",
                         ],
                     },
                     InlayHint {

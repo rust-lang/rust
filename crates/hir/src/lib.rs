@@ -127,7 +127,7 @@ pub use {
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
     hir_ty::{
-        display::{HirDisplay, HirWrite},
+        display::{HirDisplay, HirDisplayError, HirWrite},
         PointerCast, Safety,
     },
 };

@@ -408,21 +408,60 @@ fn main() {
                         range: 174..241,
                         kind: Chaining,
                         label: [
-                            "impl Iterator<Item = ()>",
+                            "impl ",
+                            InlayHintLabelPart {
+                                text: "Iterator",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2248..2256,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            "<Item = ()>",
                         ],
                     },
                     InlayHint {
                         range: 174..224,
                         kind: Chaining,
                         label: [
-                            "impl Iterator<Item = ()>",
+                            "impl ",
+                            InlayHintLabelPart {
+                                text: "Iterator",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2248..2256,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            "<Item = ()>",
                         ],
                     },
                     InlayHint {
                         range: 174..206,
                         kind: Chaining,
                         label: [
-                            "impl Iterator<Item = ()>",
+                            "impl ",
+                            InlayHintLabelPart {
+                                text: "Iterator",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2248..2256,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            "<Item = ()>",
                         ],
                     },
                     InlayHint {
