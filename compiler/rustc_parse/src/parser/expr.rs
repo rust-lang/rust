@@ -83,7 +83,7 @@ macro_rules! maybe_whole_expr {
 pub(super) enum LhsExpr {
     NotYetParsed,
     AttributesParsed(AttrWrapper),
-    AlreadyParsed(P<Expr>, bool), // (expr, starts_statement)
+    AlreadyParsed { expr: P<Expr>, starts_statement: bool },
 }
 
 impl From<Option<AttrWrapper>> for LhsExpr {
@@ -97,11 +97,11 @@ impl From<Option<AttrWrapper>> for LhsExpr {
 }
 
 impl From<P<Expr>> for LhsExpr {
-    /// Converts the `expr: P<Expr>` into `LhsExpr::AlreadyParsed(expr)`.
+    /// Converts the `expr: P<Expr>` into `LhsExpr::AlreadyParsed { expr, starts_statement: false }`.
     ///
     /// This conversion does not allocate.
     fn from(expr: P<Expr>) -> Self {
-        LhsExpr::AlreadyParsed(expr, false)
+        LhsExpr::AlreadyParsed { expr, starts_statement: false }
     }
 }
 
@@ -174,7 +174,7 @@ impl<'a> Parser<'a> {
         lhs: LhsExpr,
     ) -> PResult<'a, P<Expr>> {
         let mut starts_stmt = false;
-        let mut lhs = if let LhsExpr::AlreadyParsed(expr, starts_statement) = lhs {
+        let mut lhs = if let LhsExpr::AlreadyParsed { expr, starts_statement } = lhs {
             starts_stmt = starts_statement;
             expr
         } else {
