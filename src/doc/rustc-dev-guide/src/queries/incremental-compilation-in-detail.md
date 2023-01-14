@@ -62,7 +62,8 @@ the result of `type_of(bar)` might yield a different result than what we
 have in the cache and, transitively, the result of `type_check_item(foo)`
 might have changed too. We thus re-run `type_check_item(foo)`, which in
 turn will re-run `type_of(bar)`, which will yield an up-to-date result
-because it reads the up-to-date version of `Hir(bar)`.
+because it reads the up-to-date version of `Hir(bar)`. Also, we re-run
+`type_check_item(bar)` because result of `type_of(bar)` might have changed.
 
 
 ## The Problem With The Basic Algorithm: False Positives
