@@ -363,11 +363,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         src: &OpTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Either<MPlaceTy<'tcx, M::Provenance>, ImmTy<'tcx, M::Provenance>>> {
         Ok(match src.as_mplace_or_imm() {
-            Left(mplace) => {
-                if let Some(val) = self.read_immediate_from_mplace_raw(&mplace)? {
+            Left(ref mplace) => {
+                if let Some(val) = self.read_immediate_from_mplace_raw(mplace)? {
                     Right(val)
                 } else {
-                    Left(mplace)
+                    Left(*mplace)
                 }
             }
             Right(val) => Right(val),

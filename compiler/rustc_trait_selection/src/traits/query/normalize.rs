@@ -230,7 +230,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         if concrete_ty == ty {
                             bug!(
                                 "infinite recursion generic_ty: {:#?}, substs: {:#?}, \
-                             concrete_ty: {:#?}, ty: {:#?}",
+                                 concrete_ty: {:#?}, ty: {:#?}",
                                 generic_ty,
                                 substs,
                                 concrete_ty,

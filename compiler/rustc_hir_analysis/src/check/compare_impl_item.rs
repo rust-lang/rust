@@ -1368,22 +1368,20 @@ fn compare_number_of_method_arguments<'tcx>(
             })
             .or(trait_item_span);
 
-        let impl_span = {
-            let ImplItemKind::Fn(impl_m_sig, _) = &tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind else { bug!("{:?} is not a method", impl_m) };
-            let pos = impl_number_args.saturating_sub(1);
-            impl_m_sig
-                .decl
-                .inputs
-                .get(pos)
-                .map(|arg| {
-                    if pos == 0 {
-                        arg.span
-                    } else {
-                        arg.span.with_lo(impl_m_sig.decl.inputs[0].span.lo())
-                    }
-                })
-                .unwrap_or(impl_m_span)
-        };
+        let ImplItemKind::Fn(impl_m_sig, _) = &tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind else { bug!("{:?} is not a method", impl_m) };
+        let pos = impl_number_args.saturating_sub(1);
+        let impl_span = impl_m_sig
+            .decl
+            .inputs
+            .get(pos)
+            .map(|arg| {
+                if pos == 0 {
+                    arg.span
+                } else {
+                    arg.span.with_lo(impl_m_sig.decl.inputs[0].span.lo())
+                }
+            })
+            .unwrap_or(impl_m_span);
 
         let mut err = struct_span_err!(
             tcx.sess,
