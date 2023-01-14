@@ -19,7 +19,7 @@ pub(crate) struct Compiler {
 }
 
 impl Compiler {
-    pub(crate) fn llvm_with_triple(triple: String) -> Compiler {
+    pub(crate) fn bootstrap_with_triple(triple: String) -> Compiler {
         Compiler {
             cargo: get_cargo_path(),
             rustc: get_rustc_path(),

@@ -3,6 +3,7 @@ use super::build_sysroot::{self, SYSROOT_SRC};
 use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
+use super::rustc_info::get_host_triple;
 use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler};
 use super::SysrootKind;
 use std::env;
@@ -240,14 +241,11 @@ pub(crate) fn run_tests(
     channel: &str,
     sysroot_kind: SysrootKind,
     cg_clif_dylib: &Path,
-    host_compiler: &Compiler,
+    bootstrap_host_compiler: &Compiler,
     target_triple: &str,
 ) {
-    let runner = TestRunner::new(
-        dirs.clone(),
-        target_triple.to_owned(),
-        host_compiler.triple == target_triple,
-    );
+    let runner =
+        TestRunner::new(dirs.clone(), target_triple.to_owned(), get_host_triple() == target_triple);
 
     if config::get_bool("testsuite.no_sysroot") {
         build_sysroot::build_sysroot(
@@ -255,7 +253,7 @@ pub(crate) fn run_tests(
             channel,
             SysrootKind::None,
             cg_clif_dylib,
-            host_compiler,
+            bootstrap_host_compiler,
             &target_triple,
         );
 
@@ -274,7 +272,7 @@ pub(crate) fn run_tests(
             channel,
             sysroot_kind,
             cg_clif_dylib,
-            host_compiler,
+            bootstrap_host_compiler,
             &target_triple,
         );
     }

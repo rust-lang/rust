@@ -18,7 +18,7 @@ pub(crate) fn run(
     sysroot_kind: SysrootKind,
     dirs: &Dirs,
     cg_clif_dylib: &Path,
-    host_compiler: &Compiler,
+    bootstrap_host_compiler: &Compiler,
 ) {
     if !config::get_bool("testsuite.abi-cafe") {
         eprintln!("[RUN] abi-cafe (skipped)");
@@ -31,15 +31,15 @@ pub(crate) fn run(
         channel,
         sysroot_kind,
         cg_clif_dylib,
-        host_compiler,
-        &host_compiler.triple,
+        bootstrap_host_compiler,
+        &bootstrap_host_compiler.triple,
     );
 
     eprintln!("Running abi-cafe");
 
     let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
 
-    let mut cmd = ABI_CAFE.run(host_compiler, dirs);
+    let mut cmd = ABI_CAFE.run(bootstrap_host_compiler, dirs);
     cmd.arg("--");
     cmd.arg("--pairs");
     cmd.args(pairs);

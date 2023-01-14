@@ -17,7 +17,7 @@ pub(crate) fn build_sysroot(
     channel: &str,
     sysroot_kind: SysrootKind,
     cg_clif_dylib_src: &Path,
-    host_compiler: &Compiler,
+    bootstrap_host_compiler: &Compiler,
     target_triple: &str,
 ) {
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
@@ -53,7 +53,8 @@ pub(crate) fn build_sysroot(
 
     let default_sysroot = super::rustc_info::get_default_sysroot();
 
-    let host_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(&host_compiler.triple).join("lib");
+    let host_rustlib_lib =
+        RUSTLIB_DIR.to_path(dirs).join(&bootstrap_host_compiler.triple).join("lib");
     let target_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(target_triple).join("lib");
     fs::create_dir_all(&host_rustlib_lib).unwrap();
     fs::create_dir_all(&target_rustlib_lib).unwrap();
@@ -83,7 +84,11 @@ pub(crate) fn build_sysroot(
         SysrootKind::None => {} // Nothing to do
         SysrootKind::Llvm => {
             for file in fs::read_dir(
-                default_sysroot.join("lib").join("rustlib").join(&host_compiler.triple).join("lib"),
+                default_sysroot
+                    .join("lib")
+                    .join("rustlib")
+                    .join(&bootstrap_host_compiler.triple)
+                    .join("lib"),
             )
             .unwrap()
             {
@@ -103,7 +108,7 @@ pub(crate) fn build_sysroot(
                 try_hard_link(&file, host_rustlib_lib.join(file.file_name().unwrap()));
             }
 
-            if target_triple != host_compiler.triple {
+            if target_triple != bootstrap_host_compiler.triple {
                 for file in fs::read_dir(
                     default_sysroot.join("lib").join("rustlib").join(target_triple).join("lib"),
                 )
@@ -118,19 +123,19 @@ pub(crate) fn build_sysroot(
             build_clif_sysroot_for_triple(
                 dirs,
                 channel,
-                host_compiler.clone(),
+                bootstrap_host_compiler.clone(),
                 &cg_clif_dylib_path,
             );
 
-            if host_compiler.triple != target_triple {
+            if bootstrap_host_compiler.triple != target_triple {
                 build_clif_sysroot_for_triple(
                     dirs,
                     channel,
                     {
-                        let mut target_compiler = host_compiler.clone();
-                        target_compiler.triple = target_triple.to_owned();
-                        target_compiler.set_cross_linker_and_runner();
-                        target_compiler
+                        let mut bootstrap_target_compiler = bootstrap_host_compiler.clone();
+                        bootstrap_target_compiler.triple = target_triple.to_owned();
+                        bootstrap_target_compiler.set_cross_linker_and_runner();
+                        bootstrap_target_compiler
                     },
                     &cg_clif_dylib_path,
                 );
