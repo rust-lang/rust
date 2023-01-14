@@ -824,7 +824,17 @@ declare_lint! {
     "`if`, `match`, `while` and `return` do not need parentheses"
 }
 
-declare_lint_pass!(UnusedParens => [UNUSED_PARENS]);
+pub struct UnusedParens {
+    with_self_ty_parens: bool,
+}
+
+impl UnusedParens {
+    pub fn new() -> Self {
+        Self { with_self_ty_parens: false }
+    }
+}
+
+impl_lint_pass!(UnusedParens => [UNUSED_PARENS]);
 
 impl UnusedDelimLint for UnusedParens {
     const DELIM_STR: &'static str = "parentheses";
@@ -999,20 +1009,22 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
+        if let ast::TyKind::Array(_, len) = &ty.kind {
+            self.check_unused_delims_expr(
+                cx,
+                &len.value,
+                UnusedDelimsCtx::ArrayLenExpr,
+                false,
+                None,
+                None,
+            );
+        }
         if let ast::TyKind::Paren(r) = &ty.kind {
             match &r.kind {
                 ast::TyKind::TraitObject(..) => {}
+                ast::TyKind::BareFn(b)
+                    if self.with_self_ty_parens && b.generic_params.len() > 0 => {}
                 ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
-                ast::TyKind::Array(_, len) => {
-                    self.check_unused_delims_expr(
-                        cx,
-                        &len.value,
-                        UnusedDelimsCtx::ArrayLenExpr,
-                        false,
-                        None,
-                        None,
-                    );
-                }
                 _ => {
                     let spans = if let Some(r) = r.span.find_ancestor_inside(ty.span) {
                         Some((ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())))
@@ -1027,6 +1039,23 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         <Self as UnusedDelimLint>::check_item(self, cx, item)
+    }
+
+    fn enter_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
+        use rustc_ast::{WhereBoundPredicate, WherePredicate};
+        if let WherePredicate::BoundPredicate(WhereBoundPredicate {
+                bounded_ty,
+                bound_generic_params,
+                ..
+            }) = pred &&
+            let ast::TyKind::Paren(_) = &bounded_ty.kind &&
+            bound_generic_params.is_empty() {
+                self.with_self_ty_parens = true;
+        }
+    }
+
+    fn exit_where_predicate(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
+        self.with_self_ty_parens = false;
     }
 }
 
