@@ -53,7 +53,7 @@ pub(crate) fn build_sysroot(
         spawn_and_wait(build_cargo_wrapper_cmd);
     }
 
-    let default_sysroot = super::rustc_info::get_default_sysroot();
+    let default_sysroot = super::rustc_info::get_default_sysroot(&bootstrap_host_compiler.rustc);
 
     let host_rustlib_lib =
         RUSTLIB_DIR.to_path(dirs).join(&bootstrap_host_compiler.triple).join("lib");
@@ -182,7 +182,7 @@ fn build_clif_sysroot_for_triple(
             process::exit(1);
         }
         Ok(source_version) => {
-            let rustc_version = get_rustc_version();
+            let rustc_version = get_rustc_version(&compiler.rustc);
             if source_version != rustc_version {
                 eprintln!("The patched sysroot source is outdated");
                 eprintln!("Source version: {}", source_version.trim());
