@@ -1472,14 +1472,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn is_inside_unsafe(&self, expr: &ast::Expr) -> bool {
-        let item_or_variant = |ancestor: SyntaxNode| {
-            if ast::Item::can_cast(ancestor.kind()) {
-                ast::Item::cast(ancestor).map(Either::Left)
-            } else {
-                ast::Variant::cast(ancestor).map(Either::Right)
-            }
-        };
-        let Some(enclosing_item) = expr.syntax().ancestors().find_map(item_or_variant) else { return false };
+        let Some(enclosing_item) = expr.syntax().ancestors().find_map(Either::<ast::Item, ast::Variant>::cast) else { return false };
 
         let def = match &enclosing_item {
             Either::Left(ast::Item::Fn(it)) if it.unsafe_token().is_some() => return true,

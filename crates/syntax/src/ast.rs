@@ -13,6 +13,8 @@ pub mod prec;
 
 use std::marker::PhantomData;
 
+use itertools::Either;
+
 use crate::{
     syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
     SyntaxKind,
@@ -95,6 +97,34 @@ impl<N: AstNode> Iterator for AstChildren<N> {
     type Item = N;
     fn next(&mut self) -> Option<N> {
         self.inner.find_map(N::cast)
+    }
+}
+
+impl<L, R> AstNode for Either<L, R>
+where
+    L: AstNode,
+    R: AstNode,
+{
+    fn can_cast(kind: SyntaxKind) -> bool
+    where
+        Self: Sized,
+    {
+        L::can_cast(kind) || R::can_cast(kind)
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        if L::can_cast(syntax.kind()) {
+            L::cast(syntax).map(Either::Left)
+        } else {
+            R::cast(syntax).map(Either::Right)
+        }
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        self.as_ref().either(L::syntax, R::syntax)
     }
 }
 
