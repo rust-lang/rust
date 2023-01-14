@@ -1078,12 +1078,6 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
         *span = span.fresh_expansion(self.expn_data);
     }
 
-    fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
-        // Handles integrating any locals that occur in the base
-        // or projections
-        self.super_place(place, context, location)
-    }
-
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
         self.in_cleanup_block = data.is_cleanup;
         self.super_basic_block_data(block, data);
