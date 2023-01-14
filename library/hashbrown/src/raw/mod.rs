@@ -937,8 +937,8 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Returns pointer to start of data table.
     #[inline]
     #[cfg(any(feature = "raw", feature = "nightly"))]
-    pub unsafe fn data_start(&self) -> *mut T {
-        self.data_end().as_ptr().wrapping_sub(self.buckets())
+    pub unsafe fn data_start(&self) -> NonNull<T> {
+        NonNull::new_unchecked(self.data_end().as_ptr().wrapping_sub(self.buckets()))
     }
 
     /// Return the information about memory allocated by the table.
@@ -2572,7 +2572,8 @@ impl<T: Copy, A: Allocator + Clone> RawTableClone for RawTable<T, A> {
             .copy_to_nonoverlapping(self.table.ctrl(0), self.table.num_ctrl_bytes());
         source
             .data_start()
-            .copy_to_nonoverlapping(self.data_start(), self.table.buckets());
+            .as_ptr()
+            .copy_to_nonoverlapping(self.data_start().as_ptr(), self.table.buckets());
 
         self.table.items = source.table.items;
         self.table.growth_left = source.table.growth_left;
