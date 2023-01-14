@@ -308,7 +308,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // the `TypeOutlives` predicates first inside the unnormalized parameter environment, and
     // then we normalize the `TypeOutlives` bounds inside the normalized parameter environment.
     //
-    // This works fairly well because trait matching  does not actually care about param-env
+    // This works fairly well because trait matching does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
         .drain_filter(|predicate| {
