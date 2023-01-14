@@ -35,7 +35,7 @@ pub(crate) fn prepare(dirs: &Dirs) {
 }
 
 fn prepare_sysroot(dirs: &Dirs) {
-    let sysroot_src_orig = get_default_sysroot().join("lib/rustlib/src/rust");
+    let sysroot_src_orig = get_default_sysroot(Path::new("rustc")).join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
     eprintln!("[COPY] sysroot src");
@@ -50,7 +50,7 @@ fn prepare_sysroot(dirs: &Dirs) {
         &SYSROOT_SRC.to_path(dirs).join("library"),
     );
 
-    let rustc_version = get_rustc_version();
+    let rustc_version = get_rustc_version(Path::new("rustc"));
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
 
     eprintln!("[GIT] init");

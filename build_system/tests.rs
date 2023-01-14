@@ -3,6 +3,7 @@ use super::build_sysroot::{self, SYSROOT_SRC};
 use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
+use super::rustc_info::get_host_triple;
 use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler};
 use super::SysrootKind;
 use std::env;
@@ -119,7 +120,7 @@ pub(crate) static LIBCORE_TESTS: CargoProject =
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.rust-random/rand", &|runner| {
-        spawn_and_wait(RAND.clean(&runner.target_compiler.cargo, &runner.dirs));
+        RAND.clean(&runner.dirs);
 
         if runner.is_native {
             eprintln!("[TEST] rust-random/rand");
@@ -134,11 +135,11 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.simple-raytracer", &|runner| {
-        spawn_and_wait(SIMPLE_RAYTRACER.clean(&runner.host_compiler.cargo, &runner.dirs));
+        SIMPLE_RAYTRACER.clean(&runner.dirs);
         spawn_and_wait(SIMPLE_RAYTRACER.build(&runner.target_compiler, &runner.dirs));
     }),
     TestCase::custom("test.libcore", &|runner| {
-        spawn_and_wait(LIBCORE_TESTS.clean(&runner.host_compiler.cargo, &runner.dirs));
+        LIBCORE_TESTS.clean(&runner.dirs);
 
         if runner.is_native {
             spawn_and_wait(LIBCORE_TESTS.test(&runner.target_compiler, &runner.dirs));
@@ -150,7 +151,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.regex-shootout-regex-dna", &|runner| {
-        spawn_and_wait(REGEX.clean(&runner.target_compiler.cargo, &runner.dirs));
+        REGEX.clean(&runner.dirs);
 
         // newer aho_corasick versions throw a deprecation warning
         let lint_rust_flags = format!("{} --cap-lints warn", runner.target_compiler.rustflags);
@@ -194,7 +195,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.regex", &|runner| {
-        spawn_and_wait(REGEX.clean(&runner.host_compiler.cargo, &runner.dirs));
+        REGEX.clean(&runner.dirs);
 
         // newer aho_corasick versions throw a deprecation warning
         let lint_rust_flags = format!("{} --cap-lints warn", runner.target_compiler.rustflags);
@@ -221,7 +222,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.portable-simd", &|runner| {
-        spawn_and_wait(PORTABLE_SIMD.clean(&runner.host_compiler.cargo, &runner.dirs));
+        PORTABLE_SIMD.clean(&runner.dirs);
 
         let mut build_cmd = PORTABLE_SIMD.build(&runner.target_compiler, &runner.dirs);
         build_cmd.arg("--all-targets");
@@ -240,21 +241,21 @@ pub(crate) fn run_tests(
     channel: &str,
     sysroot_kind: SysrootKind,
     cg_clif_dylib: &Path,
-    host_compiler: &Compiler,
-    target_triple: &str,
+    bootstrap_host_compiler: &Compiler,
+    target_triple: String,
 ) {
-    let runner =
-        TestRunner::new(dirs.clone(), host_compiler.triple.clone(), target_triple.to_string());
-
     if config::get_bool("testsuite.no_sysroot") {
-        build_sysroot::build_sysroot(
+        let target_compiler = build_sysroot::build_sysroot(
             dirs,
             channel,
             SysrootKind::None,
             cg_clif_dylib,
-            host_compiler,
-            &target_triple,
+            bootstrap_host_compiler,
+            target_triple.clone(),
         );
+
+        let runner =
+            TestRunner::new(dirs.clone(), target_compiler, get_host_triple() == target_triple);
 
         BUILD_EXAMPLE_OUT_DIR.ensure_fresh(dirs);
         runner.run_testsuite(NO_SYSROOT_SUITE);
@@ -266,26 +267,29 @@ pub(crate) fn run_tests(
     let run_extended_sysroot = config::get_bool("testsuite.extended_sysroot");
 
     if run_base_sysroot || run_extended_sysroot {
-        build_sysroot::build_sysroot(
+        let target_compiler = build_sysroot::build_sysroot(
             dirs,
             channel,
             sysroot_kind,
             cg_clif_dylib,
-            host_compiler,
-            &target_triple,
+            bootstrap_host_compiler,
+            target_triple.clone(),
         );
-    }
 
-    if run_base_sysroot {
-        runner.run_testsuite(BASE_SYSROOT_SUITE);
-    } else {
-        eprintln!("[SKIP] base_sysroot tests");
-    }
+        let runner =
+            TestRunner::new(dirs.clone(), target_compiler, get_host_triple() == target_triple);
 
-    if run_extended_sysroot {
-        runner.run_testsuite(EXTENDED_SYSROOT_SUITE);
-    } else {
-        eprintln!("[SKIP] extended_sysroot tests");
+        if run_base_sysroot {
+            runner.run_testsuite(BASE_SYSROOT_SUITE);
+        } else {
+            eprintln!("[SKIP] base_sysroot tests");
+        }
+
+        if run_extended_sysroot {
+            runner.run_testsuite(EXTENDED_SYSROOT_SUITE);
+        } else {
+            eprintln!("[SKIP] extended_sysroot tests");
+        }
     }
 }
 
@@ -293,22 +297,11 @@ struct TestRunner {
     is_native: bool,
     jit_supported: bool,
     dirs: Dirs,
-    host_compiler: Compiler,
     target_compiler: Compiler,
 }
 
 impl TestRunner {
-    pub fn new(dirs: Dirs, host_triple: String, target_triple: String) -> Self {
-        let is_native = host_triple == target_triple;
-        let jit_supported =
-            is_native && host_triple.contains("x86_64") && !host_triple.contains("windows");
-
-        let host_compiler = Compiler::clif_with_triple(&dirs, host_triple);
-
-        let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
-        if !is_native {
-            target_compiler.set_cross_linker_and_runner();
-        }
+    pub fn new(dirs: Dirs, mut target_compiler: Compiler, is_native: bool) -> Self {
         if let Ok(rustflags) = env::var("RUSTFLAGS") {
             target_compiler.rustflags.push(' ');
             target_compiler.rustflags.push_str(&rustflags);
@@ -323,7 +316,11 @@ impl TestRunner {
             target_compiler.rustflags.push_str(" -Clink-arg=-undefined -Clink-arg=dynamic_lookup");
         }
 
-        Self { is_native, jit_supported, dirs, host_compiler, target_compiler }
+        let jit_supported = is_native
+            && target_compiler.triple.contains("x86_64")
+            && !target_compiler.triple.contains("windows");
+
+        Self { is_native, jit_supported, dirs, target_compiler }
     }
 
     pub fn run_testsuite(&self, tests: &[TestCase]) {

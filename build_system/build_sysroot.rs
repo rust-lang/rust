@@ -3,7 +3,9 @@ use std::path::Path;
 use std::process::{self, Command};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_file_name, get_rustc_version, get_wrapper_file_name};
+use super::rustc_info::{
+    get_file_name, get_rustc_version, get_toolchain_name, get_wrapper_file_name,
+};
 use super::utils::{spawn_and_wait, try_hard_link, CargoProject, Compiler};
 use super::SysrootKind;
 
@@ -17,14 +19,16 @@ pub(crate) fn build_sysroot(
     channel: &str,
     sysroot_kind: SysrootKind,
     cg_clif_dylib_src: &Path,
-    host_compiler: &Compiler,
-    target_triple: &str,
-) {
+    bootstrap_host_compiler: &Compiler,
+    target_triple: String,
+) -> Compiler {
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
 
     DIST_DIR.ensure_fresh(dirs);
     BIN_DIR.ensure_exists(dirs);
     LIB_DIR.ensure_exists(dirs);
+
+    let is_native = bootstrap_host_compiler.triple == target_triple;
 
     // Copy the backend
     let cg_clif_dylib_path = if cfg!(windows) {
@@ -42,8 +46,9 @@ pub(crate) fn build_sysroot(
     for wrapper in ["rustc-clif", "rustdoc-clif", "cargo-clif"] {
         let wrapper_name = get_wrapper_file_name(wrapper, "bin");
 
-        let mut build_cargo_wrapper_cmd = Command::new("rustc");
+        let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
         build_cargo_wrapper_cmd
+            .env("TOOLCHAIN_NAME", get_toolchain_name())
             .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
             .arg("-o")
             .arg(DIST_DIR.to_path(dirs).join(wrapper_name))
@@ -51,15 +56,16 @@ pub(crate) fn build_sysroot(
         spawn_and_wait(build_cargo_wrapper_cmd);
     }
 
-    let default_sysroot = super::rustc_info::get_default_sysroot();
+    let default_sysroot = super::rustc_info::get_default_sysroot(&bootstrap_host_compiler.rustc);
 
-    let host_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(&host_compiler.triple).join("lib");
-    let target_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(target_triple).join("lib");
+    let host_rustlib_lib =
+        RUSTLIB_DIR.to_path(dirs).join(&bootstrap_host_compiler.triple).join("lib");
+    let target_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(&target_triple).join("lib");
     fs::create_dir_all(&host_rustlib_lib).unwrap();
     fs::create_dir_all(&target_rustlib_lib).unwrap();
 
     if target_triple == "x86_64-pc-windows-gnu" {
-        if !default_sysroot.join("lib").join("rustlib").join(target_triple).join("lib").exists() {
+        if !default_sysroot.join("lib").join("rustlib").join(&target_triple).join("lib").exists() {
             eprintln!(
                 "The x86_64-pc-windows-gnu target needs to be installed first before it is possible \
                 to compile a sysroot for it.",
@@ -67,7 +73,7 @@ pub(crate) fn build_sysroot(
             process::exit(1);
         }
         for file in fs::read_dir(
-            default_sysroot.join("lib").join("rustlib").join(target_triple).join("lib"),
+            default_sysroot.join("lib").join("rustlib").join(&target_triple).join("lib"),
         )
         .unwrap()
         {
@@ -83,7 +89,11 @@ pub(crate) fn build_sysroot(
         SysrootKind::None => {} // Nothing to do
         SysrootKind::Llvm => {
             for file in fs::read_dir(
-                default_sysroot.join("lib").join("rustlib").join(&host_compiler.triple).join("lib"),
+                default_sysroot
+                    .join("lib")
+                    .join("rustlib")
+                    .join(&bootstrap_host_compiler.triple)
+                    .join("lib"),
             )
             .unwrap()
             {
@@ -103,9 +113,9 @@ pub(crate) fn build_sysroot(
                 try_hard_link(&file, host_rustlib_lib.join(file.file_name().unwrap()));
             }
 
-            if target_triple != host_compiler.triple {
+            if !is_native {
                 for file in fs::read_dir(
-                    default_sysroot.join("lib").join("rustlib").join(target_triple).join("lib"),
+                    default_sysroot.join("lib").join("rustlib").join(&target_triple).join("lib"),
                 )
                 .unwrap()
                 {
@@ -118,19 +128,19 @@ pub(crate) fn build_sysroot(
             build_clif_sysroot_for_triple(
                 dirs,
                 channel,
-                host_compiler.clone(),
+                bootstrap_host_compiler.clone(),
                 &cg_clif_dylib_path,
             );
 
-            if host_compiler.triple != target_triple {
+            if !is_native {
                 build_clif_sysroot_for_triple(
                     dirs,
                     channel,
                     {
-                        let mut target_compiler = host_compiler.clone();
-                        target_compiler.triple = target_triple.to_owned();
-                        target_compiler.set_cross_linker_and_runner();
-                        target_compiler
+                        let mut bootstrap_target_compiler = bootstrap_host_compiler.clone();
+                        bootstrap_target_compiler.triple = target_triple.clone();
+                        bootstrap_target_compiler.set_cross_linker_and_runner();
+                        bootstrap_target_compiler
                     },
                     &cg_clif_dylib_path,
                 );
@@ -147,6 +157,12 @@ pub(crate) fn build_sysroot(
             }
         }
     }
+
+    let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
+    if !is_native {
+        target_compiler.set_cross_linker_and_runner();
+    }
+    target_compiler
 }
 
 pub(crate) static ORIG_BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");
@@ -169,7 +185,7 @@ fn build_clif_sysroot_for_triple(
             process::exit(1);
         }
         Ok(source_version) => {
-            let rustc_version = get_rustc_version();
+            let rustc_version = get_rustc_version(&compiler.rustc);
             if source_version != rustc_version {
                 eprintln!("The patched sysroot source is outdated");
                 eprintln!("Source version: {}", source_version.trim());

@@ -97,7 +97,7 @@ pub fn main() {
         }
     }
 
-    let host_compiler = Compiler::llvm_with_triple(
+    let bootstrap_host_compiler = Compiler::bootstrap_with_triple(
         std::env::var("HOST_TRIPLE")
             .ok()
             .or_else(|| config::get_value("host"))
@@ -106,7 +106,7 @@ pub fn main() {
     let target_triple = std::env::var("TARGET_TRIPLE")
         .ok()
         .or_else(|| config::get_value("target"))
-        .unwrap_or_else(|| host_compiler.triple.clone());
+        .unwrap_or_else(|| bootstrap_host_compiler.triple.clone());
 
     // FIXME allow changing the location of these dirs using cli arguments
     let current_dir = std::env::current_dir().unwrap();
@@ -134,8 +134,15 @@ pub fn main() {
         process::exit(0);
     }
 
-    let cg_clif_dylib =
-        build_backend::build_backend(&dirs, channel, &host_compiler, use_unstable_features);
+    env::set_var("RUSTC", "rustc_should_be_set_explicitly");
+    env::set_var("RUSTDOC", "rustdoc_should_be_set_explicitly");
+
+    let cg_clif_dylib = build_backend::build_backend(
+        &dirs,
+        channel,
+        &bootstrap_host_compiler,
+        use_unstable_features,
+    );
     match command {
         Command::Prepare => {
             // Handled above
@@ -146,14 +153,20 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &cg_clif_dylib,
-                &host_compiler,
-                &target_triple,
+                &bootstrap_host_compiler,
+                target_triple.clone(),
             );
 
-            if host_compiler.triple == target_triple {
-                abi_cafe::run(channel, sysroot_kind, &dirs, &cg_clif_dylib, &host_compiler);
+            if bootstrap_host_compiler.triple == target_triple {
+                abi_cafe::run(
+                    channel,
+                    sysroot_kind,
+                    &dirs,
+                    &cg_clif_dylib,
+                    &bootstrap_host_compiler,
+                );
             } else {
-                eprintln!("[SKIP] abi-cafe (cross-compilation not supported)");
+                eprintln!("[RUN] abi-cafe (skipped, cross-compilation not supported)");
                 return;
             }
         }
@@ -163,8 +176,8 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &cg_clif_dylib,
-                &host_compiler,
-                &target_triple,
+                &bootstrap_host_compiler,
+                target_triple,
             );
         }
         Command::Bench => {
@@ -173,10 +186,10 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &cg_clif_dylib,
-                &host_compiler,
-                &target_triple,
+                &bootstrap_host_compiler,
+                target_triple,
             );
-            bench::benchmark(&dirs, &host_compiler);
+            bench::benchmark(&dirs, &bootstrap_host_compiler);
         }
     }
 }

@@ -26,7 +26,7 @@ fn main() {
     env::set_var("RUSTDOCFLAGS", env::var("RUSTDOCFLAGS").unwrap_or(String::new()) + &rustflags);
 
     // Ensure that the right toolchain is used
-    env::set_var("RUSTUP_TOOLCHAIN", env!("RUSTUP_TOOLCHAIN"));
+    env::set_var("RUSTUP_TOOLCHAIN", env!("TOOLCHAIN_NAME"));
 
     let args: Vec<_> = match env::args().nth(1).as_deref() {
         Some("jit") => {
