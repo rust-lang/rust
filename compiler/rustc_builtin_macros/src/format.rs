@@ -1,3 +1,5 @@
+use parse::Piece::NextArgument;
+use parse::Position::ArgumentNamed;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
@@ -34,6 +36,14 @@ enum PositionUsedAs {
     Precision,
     Width,
 }
+
+#[derive(Clone, Copy, Debug)]
+struct RedundantArgDiagBuilder<'a> {
+    arg_span: Span,
+    fmt_span: InnerSpan,
+    fmt_str: &'a str,
+}
+
 use PositionUsedAs::*;
 
 struct MacroInput {
@@ -335,8 +345,8 @@ fn make_format_args(
     let mut unfinished_literal = String::new();
     let mut placeholder_index = 0;
 
-    for piece in pieces {
-        match piece {
+    for piece in &pieces {
+        match *piece {
             parse::Piece::String(s) => {
                 unfinished_literal.push_str(s);
             }
@@ -470,7 +480,7 @@ fn make_format_args(
         report_invalid_references(ecx, &invalid_refs, &template, fmt_span, &args, parser);
     }
 
-    let mut duplicate_explicit_arg = Vec::new();
+    let mut redundant_expl_args = Vec::new();
 
     let unused = used
         .iter()
@@ -482,10 +492,23 @@ fn make_format_args(
             } else {
                 if let Some(expr) = args.explicit_args()[i].expr.to_ty() {
                     if let Some(symbol) = expr.kind.is_simple_path() {
-                        let current_arg = symbol.as_str().to_owned();
-                        let current_arg_ph = format!("{{{current_arg}}}");
-                        if current_arg.len() > 0 && fmt_str.contains(current_arg_ph.as_str()) {
-                            duplicate_explicit_arg.push(args.explicit_args()[i].expr.span);
+                        for piece in &pieces {
+                            if let NextArgument(arg) = piece {
+                                if let ArgumentNamed(specifier) = arg.position {
+                                    if specifier == symbol.to_string() {
+                                        redundant_expl_args.push({
+                                            RedundantArgDiagBuilder {
+                                                arg_span: expr.span,
+                                                fmt_span: InnerSpan {
+                                                    start: arg.position_span.start,
+                                                    end: arg.position_span.end,
+                                                },
+                                                fmt_str: specifier,
+                                            }
+                                        });
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -502,7 +525,7 @@ fn make_format_args(
         report_missing_placeholders(
             ecx,
             unused,
-            duplicate_explicit_arg,
+            redundant_expl_args,
             detect_foreign_fmt,
             str_style,
             fmt_str,
@@ -590,21 +613,15 @@ fn invalid_placeholder_type_error(
 fn report_missing_placeholders(
     ecx: &mut ExtCtxt<'_>,
     unused: Vec<(Span, &str)>,
-    duplicate_explicit_arg: Vec<Span>,
+    redundant_expl_args: Vec<RedundantArgDiagBuilder<'_>>,
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
     fmt_span: Span,
 ) {
-    let mut dup_exist = false;
     let mut diag = if let &[(span, msg)] = &unused[..] {
         let mut diag = ecx.struct_span_err(span, msg);
         diag.span_label(span, msg);
-        for sp in &duplicate_explicit_arg {
-            if !dup_exist && span == *sp {
-                dup_exist = true;
-            }
-        }
         diag
     } else {
         let mut diag = ecx.struct_span_err(
@@ -614,11 +631,6 @@ fn report_missing_placeholders(
         diag.span_label(fmt_span, "multiple missing formatting specifiers");
         for &(span, msg) in &unused {
             diag.span_label(span, msg);
-            for sp in &duplicate_explicit_arg {
-                if !dup_exist && span == *sp {
-                    dup_exist = true;
-                }
-            }
         }
         diag
     };
@@ -706,11 +718,28 @@ fn report_missing_placeholders(
     if !found_foreign && unused.len() == 1 {
         diag.span_label(fmt_span, "formatting specifier missing");
     }
-    if dup_exist {
-        diag.note("the formatting string captures that binding directly, it doesn't need to be included in the argument list");
-        let this_these = if duplicate_explicit_arg.len() == 1 { "this" } else { "these" };
-        diag.span_help(duplicate_explicit_arg, format!("Consider removing {}", this_these));
+    if !redundant_expl_args.is_empty() {
+        let mut fmt_spans = Vec::new();
+        let mut arg_spans = Vec::new();
+        let mut arg = Vec::new();
+        for rd in &redundant_expl_args {
+            fmt_spans.push(Span::from_inner(fmt_span, rd.fmt_span));
+            arg_spans.push(rd.arg_span);
+            arg.push(rd.fmt_str);
+        }
+        let mut m_span: MultiSpan = fmt_spans.clone().into();
+        for i in 0..fmt_spans.len() {
+            m_span.push_span_label(
+                fmt_spans[i],
+                format!("this formatting argument captures `{}` directly", arg[i]),
+            );
+        }
+        for arg_span in arg_spans {
+            m_span.push_span_label(arg_span, "this can be removed".to_string());
+        }
+        diag.span_help(m_span, "the formatting string captures that binding directly, it doesn't need to be included in the argument list");
     }
+
     diag.emit();
 }
 

@@ -5,4 +5,10 @@ fn main() {
     let y = 20;
     println!("{x} {y}", x, y);
     //~^ ERROR multiple unused formatting arguments
+    println!("{x} {y}", y, x);
+    //~^ ERROR multiple unused formatting arguments
+    println!("{} {y}", x, y);
+    //~^ ERROR argument never used
+    println!("{} {} {y} {} {}", y, y, y, y, y);
+    //~^ ERROR argument never used
 }
