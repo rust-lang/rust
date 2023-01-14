@@ -4,7 +4,7 @@ error: expected a literal
 LL |     let _ = concat!(x, y, z, "bar");
    |                     ^  ^  ^
    |
-   = note: only literals (like `"foo"`, `42` and `3.14`) can be passed to `concat!()`
+   = note: only literals (like `"foo"`, `-42` and `3.14`) can be passed to `concat!()`
 
 error: aborting due to previous error
 

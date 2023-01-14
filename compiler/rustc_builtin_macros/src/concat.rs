@@ -42,6 +42,18 @@ pub fn expand_concat(
                     has_errors = true;
                 }
             },
+            // We also want to allow negative numeric literals.
+            ast::ExprKind::Unary(ast::UnOp::Neg, ref expr) if let ast::ExprKind::Lit(token_lit) = expr.kind => {
+                match ast::LitKind::from_token_lit(token_lit) {
+                    Ok(ast::LitKind::Int(i, _)) => accumulator.push_str(&format!("-{i}")),
+                    Ok(ast::LitKind::Float(f, _)) => accumulator.push_str(&format!("-{f}")),
+                    Err(err) => {
+                        report_lit_error(&cx.sess.parse_sess, err, token_lit, e.span);
+                        has_errors = true;
+                    }
+                    _ => missing_literal.push(e.span),
+                }
+            }
             ast::ExprKind::IncludedBytes(..) => {
                 cx.span_err(e.span, "cannot concatenate a byte string literal")
             }
@@ -53,9 +65,10 @@ pub fn expand_concat(
             }
         }
     }
+
     if !missing_literal.is_empty() {
         let mut err = cx.struct_span_err(missing_literal, "expected a literal");
-        err.note("only literals (like `\"foo\"`, `42` and `3.14`) can be passed to `concat!()`");
+        err.note("only literals (like `\"foo\"`, `-42` and `3.14`) can be passed to `concat!()`");
         err.emit();
         return DummyResult::any(sp);
     } else if has_errors {
