@@ -699,6 +699,10 @@ for some users. Adding a configuration is done in the following steps:
        `clippy.toml` file with the configuration value and a rust file that
        should be linted by Clippy. The test can otherwise be written as usual.
 
+5. Update [Lint Configuration](../lint_configuration.md)
+
+   Run `cargo collect-metadata` to generate documentation changes for the book.
+
 [`clippy_lints::utils::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/conf.rs
 [`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs
 [`tests/ui`]: https://github.com/rust-lang/rust-clippy/blob/master/tests/ui
