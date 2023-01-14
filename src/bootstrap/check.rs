@@ -346,9 +346,7 @@ impl Step for RustAnalyzer {
             &["rust-analyzer/in-rust-tree".to_owned()],
         );
 
-        cargo.rustflag(
-            "-Zallow-features=proc_macro_internals,proc_macro_diagnostic,proc_macro_span",
-        );
+        cargo.allow_features(crate::tool::RustAnalyzer::ALLOW_FEATURES);
 
         // For ./x.py clippy, don't check those targets because
         // linting tests and benchmarks can produce very noisy results
