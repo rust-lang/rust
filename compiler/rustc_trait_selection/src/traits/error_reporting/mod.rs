@@ -454,9 +454,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        for (error, suppressed) in iter::zip(errors, is_suppressed) {
-            if !suppressed {
-                self.report_fulfillment_error(error, body_id);
+        for from_expansion in [false, true] {
+            for (error, suppressed) in iter::zip(errors, &is_suppressed) {
+                if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
+                    self.report_fulfillment_error(error, body_id);
+                }
             }
         }
 
