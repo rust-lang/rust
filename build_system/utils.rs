@@ -146,9 +146,8 @@ impl CargoProject {
         cmd
     }
 
-    #[must_use]
-    pub(crate) fn clean(&self, cargo: &Path, dirs: &Dirs) -> Command {
-        self.base_cmd("clean", cargo, dirs)
+    pub(crate) fn clean(&self, dirs: &Dirs) {
+        let _ = fs::remove_dir_all(self.target_dir(dirs));
     }
 
     #[must_use]

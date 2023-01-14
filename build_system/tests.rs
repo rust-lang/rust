@@ -119,7 +119,7 @@ pub(crate) static LIBCORE_TESTS: CargoProject =
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.rust-random/rand", &|runner| {
-        spawn_and_wait(RAND.clean(&runner.target_compiler.cargo, &runner.dirs));
+        RAND.clean(&runner.dirs);
 
         if runner.is_native {
             eprintln!("[TEST] rust-random/rand");
@@ -134,11 +134,11 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.simple-raytracer", &|runner| {
-        spawn_and_wait(SIMPLE_RAYTRACER.clean(&runner.host_compiler.cargo, &runner.dirs));
+        SIMPLE_RAYTRACER.clean(&runner.dirs);
         spawn_and_wait(SIMPLE_RAYTRACER.build(&runner.target_compiler, &runner.dirs));
     }),
     TestCase::custom("test.libcore", &|runner| {
-        spawn_and_wait(LIBCORE_TESTS.clean(&runner.host_compiler.cargo, &runner.dirs));
+        LIBCORE_TESTS.clean(&runner.dirs);
 
         if runner.is_native {
             spawn_and_wait(LIBCORE_TESTS.test(&runner.target_compiler, &runner.dirs));
@@ -150,7 +150,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.regex-shootout-regex-dna", &|runner| {
-        spawn_and_wait(REGEX.clean(&runner.target_compiler.cargo, &runner.dirs));
+        REGEX.clean(&runner.dirs);
 
         // newer aho_corasick versions throw a deprecation warning
         let lint_rust_flags = format!("{} --cap-lints warn", runner.target_compiler.rustflags);
@@ -194,7 +194,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.regex", &|runner| {
-        spawn_and_wait(REGEX.clean(&runner.host_compiler.cargo, &runner.dirs));
+        REGEX.clean(&runner.dirs);
 
         // newer aho_corasick versions throw a deprecation warning
         let lint_rust_flags = format!("{} --cap-lints warn", runner.target_compiler.rustflags);
@@ -221,7 +221,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.portable-simd", &|runner| {
-        spawn_and_wait(PORTABLE_SIMD.clean(&runner.host_compiler.cargo, &runner.dirs));
+        PORTABLE_SIMD.clean(&runner.dirs);
 
         let mut build_cmd = PORTABLE_SIMD.build(&runner.target_compiler, &runner.dirs);
         build_cmd.arg("--all-targets");
@@ -293,7 +293,6 @@ struct TestRunner {
     is_native: bool,
     jit_supported: bool,
     dirs: Dirs,
-    host_compiler: Compiler,
     target_compiler: Compiler,
 }
 
@@ -302,8 +301,6 @@ impl TestRunner {
         let is_native = host_triple == target_triple;
         let jit_supported =
             is_native && host_triple.contains("x86_64") && !host_triple.contains("windows");
-
-        let host_compiler = Compiler::clif_with_triple(&dirs, host_triple);
 
         let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
         if !is_native {
@@ -323,7 +320,7 @@ impl TestRunner {
             target_compiler.rustflags.push_str(" -Clink-arg=-undefined -Clink-arg=dynamic_lookup");
         }
 
-        Self { is_native, jit_supported, dirs, host_compiler, target_compiler }
+        Self { is_native, jit_supported, dirs, target_compiler }
     }
 
     pub fn run_testsuite(&self, tests: &[TestCase]) {
