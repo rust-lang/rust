@@ -395,10 +395,6 @@ pub enum SubregionOrigin<'tcx> {
     /// Arose from a subtyping relation
     Subtype(Box<TypeTrace<'tcx>>),
 
-    /// When casting `&'a T` to an `&'b Trait` object,
-    /// relating `'a` to `'b`
-    RelateObjectBound(Span),
-
     /// Some type parameter was instantiated with the given type,
     /// and that type must outlive some region.
     RelateParamBound(Span, Ty<'tcx>, Option<Span>),
@@ -1971,7 +1967,6 @@ impl<'tcx> SubregionOrigin<'tcx> {
     pub fn span(&self) -> Span {
         match *self {
             Subtype(ref a) => a.span(),
-            RelateObjectBound(a) => a,
             RelateParamBound(a, ..) => a,
             RelateRegionParamBound(a) => a,
             Reborrow(a) => a,

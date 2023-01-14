@@ -607,7 +607,7 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0473, // dereference of reference outside its lifetime
 //  E0474, // captured variable `..` does not outlive the enclosing closure
 //  E0475, // index of slice outside its lifetime
-    E0476, // lifetime of the source pointer does not outlive lifetime bound...
+//  E0476, // removed: unreachable
 //  E0479, // the type `..` (provided as the value of a type parameter) is...
 //  E0480, // lifetime of method receiver does not outlive the method call
 //  E0481, // lifetime of function argument does not outlive the function call

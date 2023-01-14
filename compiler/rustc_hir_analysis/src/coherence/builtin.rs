@@ -7,7 +7,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
-use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
@@ -386,8 +385,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
         (mt_a.ty, mt_b.ty, unsize_trait, None)
     };
     let (source, target, trait_def_id, kind) = match (source.kind(), target.kind()) {
-        (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
-            infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
+        (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
             let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
             check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))

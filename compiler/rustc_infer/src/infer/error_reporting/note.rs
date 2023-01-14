@@ -25,10 +25,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::Reborrow(span) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_reborrow }.add_to_diagnostic(err)
             }
-            infer::RelateObjectBound(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::infer_relate_object_bound }
-                    .add_to_diagnostic(err);
-            }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 RegionOriginNote::WithName {
                     span,
@@ -137,32 +133,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     self.tcx,
                     &mut err,
                     "...but the borrowed content is only valid for ",
-                    sup,
-                    "",
-                    None,
-                );
-                err
-            }
-            infer::RelateObjectBound(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0476,
-                    "lifetime of the source pointer does not outlive lifetime bound of the \
-                     object type"
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "object type is valid for ",
-                    sub,
-                    "",
-                    None,
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "source pointer is only valid for ",
                     sup,
                     "",
                     None,
