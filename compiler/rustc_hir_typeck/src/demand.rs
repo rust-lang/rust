@@ -85,6 +85,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
         self.check_for_range_as_method_call(err, expr, expr_ty, expected);
         self.check_for_binding_assigned_block_without_tail_expression(err, expr, expr_ty, expected);
+        self.check_wrong_return_type_due_to_generic_arg(err, expr, expr_ty);
     }
 
     /// Requires that the two types unify, and prints an error message if
@@ -1939,6 +1940,79 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         } else {
             err.span_label(block.span, "this block is missing a tail expression");
+        }
+    }
+
+    fn check_wrong_return_type_due_to_generic_arg(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        checked_ty: Ty<'tcx>,
+    ) {
+        let Some(hir::Node::Expr(parent_expr)) = self.tcx.hir().find_parent(expr.hir_id) else { return; };
+        enum CallableKind {
+            Function,
+            Method,
+            Constructor,
+        }
+        let mut maybe_emit_help = |def_id: hir::def_id::DefId,
+                                   callable: rustc_span::symbol::Ident,
+                                   args: &[hir::Expr<'_>],
+                                   kind: CallableKind| {
+            let arg_idx = args.iter().position(|a| a.hir_id == expr.hir_id).unwrap();
+            let fn_ty = self.tcx.bound_type_of(def_id).0;
+            if !fn_ty.is_fn() {
+                return;
+            }
+            let fn_sig = fn_ty.fn_sig(self.tcx).skip_binder();
+            let Some(&arg) = fn_sig.inputs().get(arg_idx + if matches!(kind, CallableKind::Method) { 1 } else { 0 }) else { return; };
+            if matches!(arg.kind(), ty::Param(_))
+                && fn_sig.output().contains(arg)
+                && self.node_ty(args[arg_idx].hir_id) == checked_ty
+            {
+                let mut multi_span: MultiSpan = parent_expr.span.into();
+                multi_span.push_span_label(
+                    args[arg_idx].span,
+                    format!(
+                        "this argument influences the {} of `{}`",
+                        if matches!(kind, CallableKind::Constructor) {
+                            "type"
+                        } else {
+                            "return type"
+                        },
+                        callable
+                    ),
+                );
+                err.span_help(
+                    multi_span,
+                    format!(
+                        "the {} `{}` due to the type of the argument passed",
+                        match kind {
+                            CallableKind::Function => "return type of this call is",
+                            CallableKind::Method => "return type of this call is",
+                            CallableKind::Constructor => "type constructed contains",
+                        },
+                        checked_ty
+                    ),
+                );
+            }
+        };
+        match parent_expr.kind {
+            hir::ExprKind::Call(fun, args) => {
+                let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = fun.kind else { return; };
+                let hir::def::Res::Def(kind, def_id) = path.res else { return; };
+                let callable_kind = if matches!(kind, hir::def::DefKind::Ctor(_, _)) {
+                    CallableKind::Constructor
+                } else {
+                    CallableKind::Function
+                };
+                maybe_emit_help(def_id, path.segments[0].ident, args, callable_kind);
+            }
+            hir::ExprKind::MethodCall(method, _receiver, args, _span) => {
+                let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(parent_expr.hir_id) else { return; };
+                maybe_emit_help(def_id, method.ident, args, CallableKind::Method)
+            }
+            _ => return,
         }
     }
 }

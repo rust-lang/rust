@@ -8,6 +8,13 @@ LL | fn main() { test(Ok(())); }
    |
    = note:   expected enum `Option<()>`
            found unit type `()`
+help: the type constructed contains `()` due to the type of the argument passed
+  --> $DIR/issue-46112.rs:9:18
+   |
+LL | fn main() { test(Ok(())); }
+   |                  ^^^--^
+   |                     |
+   |                     this argument influences the type of `Ok`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
 help: try wrapping the expression in `Some`
