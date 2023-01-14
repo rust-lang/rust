@@ -483,8 +483,8 @@ macro_rules! make_value_visitor {
                 // Visit the fields of this value.
                 match &v.layout().fields {
                     FieldsShape::Primitive => {}
-                    FieldsShape::Union(fields) => {
-                        self.visit_union(v, *fields)?;
+                    &FieldsShape::Union(fields) => {
+                        self.visit_union(v, fields)?;
                     }
                     FieldsShape::Arbitrary { offsets, .. } => {
                         // FIXME: We collect in a vec because otherwise there are lifetime

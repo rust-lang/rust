@@ -35,6 +35,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets.otherwise();
+
                 for (const_int, target) in targets.iter() {
                     // Compare using MIR BinOp::Eq, to also support pointer values.
                     // (Avoiding `self.binary_op` as that does some redundant layout computation.)
@@ -50,6 +51,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         break;
                     }
                 }
+
                 self.go_to_block(target_block);
             }
 
@@ -66,11 +68,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
                 let args = self.eval_operands(args)?;
+
                 let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
                 let fn_sig =
                     self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
                 let extra_args = &args[fn_sig.inputs().len()..];
                 let extra_args = self.tcx.mk_type_list(extra_args.iter().map(|arg| arg.layout.ty));
+
                 let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
                     ty::FnPtr(_sig) => {
                         let fn_ptr = self.read_pointer(&func)?;
@@ -144,6 +148,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Abort => {
                 M::abort(self, "the program aborted execution".to_owned())?;
             }
+
             // When we encounter Resume, we've finished unwinding
             // cleanup for the current stack frame. We pop it in order
             // to continue unwinding the next frame
@@ -154,8 +159,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.pop_stack_frame(/* unwinding */ true)?;
                 return Ok(());
             }
+
             // It is UB to ever encounter this.
             Unreachable => throw_ub!(Unreachable),
+
             // These should never occur for MIR we actually run.
             DropAndReplace { .. }
             | FalseEdge { .. }

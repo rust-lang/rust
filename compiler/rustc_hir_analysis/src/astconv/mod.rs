@@ -2881,13 +2881,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
                 self.res_to_ty(opt_self_ty, path, false)
             }
-            hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
-                let opaque_ty = tcx.hir().item(*item_id);
+            &hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
+                let opaque_ty = tcx.hir().item(item_id);
                 let def_id = item_id.owner_id.to_def_id();
 
                 match opaque_ty.kind {
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
-                        self.impl_trait_ty_to_ty(def_id, lifetimes, origin, *in_trait)
+                        self.impl_trait_ty_to_ty(def_id, lifetimes, origin, in_trait)
                     }
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
