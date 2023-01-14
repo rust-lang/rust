@@ -4,7 +4,7 @@ use syntax::ast::{self, AstNode};
 
 use crate::{
     inlay_hints::closure_has_block_body, ClosureReturnTypeHints, InlayHint, InlayHintsConfig,
-    InlayKind, InlayTooltip,
+    InlayKind,
 };
 
 use super::label_of_ty;
@@ -13,7 +13,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: FileId,
+    _file_id: FileId,
     closure: ast::ClosureExpr,
 ) -> Option<()> {
     if config.closure_return_type_hints == ClosureReturnTypeHints::Never {
@@ -43,7 +43,6 @@ pub(super) fn hints(
         range: param_list.syntax().text_range(),
         kind: InlayKind::ClosureReturnTypeHint,
         label: label_of_ty(famous_defs, config, ty)?,
-        tooltip: Some(InlayTooltip::HoverRanged(file_id, param_list.syntax().text_range())),
     });
     Some(())
 }

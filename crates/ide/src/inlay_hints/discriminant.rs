@@ -7,7 +7,9 @@
 use ide_db::{base_db::FileId, famous_defs::FamousDefs};
 use syntax::ast::{self, AstNode, HasName};
 
-use crate::{DiscriminantHints, InlayHint, InlayHintsConfig, InlayKind, InlayTooltip};
+use crate::{
+    DiscriminantHints, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind, InlayTooltip,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -42,14 +44,17 @@ pub(super) fn hints(
             None => name.syntax().text_range(),
         },
         kind: InlayKind::DiscriminantHint,
-        label: match &d {
-            Ok(v) => format!("{}", v).into(),
-            Err(_) => "?".into(),
-        },
-        tooltip: Some(InlayTooltip::String(match &d {
-            Ok(_) => "enum variant discriminant".into(),
-            Err(e) => format!("{e:?}").into(),
-        })),
+        label: InlayHintLabel::simple(
+            match &d {
+                Ok(v) => format!("{}", v),
+                Err(_) => "?".into(),
+            },
+            Some(InlayTooltip::String(match &d {
+                Ok(_) => "enum variant discriminant".into(),
+                Err(e) => format!("{e:?}").into(),
+            })),
+            None,
+        ),
     });
 
     Some(())

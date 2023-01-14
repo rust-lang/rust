@@ -5,15 +5,12 @@
 //! ```
 use hir::{HirDisplay, Semantics};
 use ide_db::{base_db::FileRange, RootDatabase};
-use smallvec::smallvec;
 use syntax::{
     ast::{self, AstNode, HasName},
     match_ast, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{
-    inlay_hints::InlayHintLabelPart, FileId, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
-};
+use crate::{FileId, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -117,10 +114,7 @@ pub(super) fn hints(
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBraceHint,
-        label: InlayHintLabel {
-            parts: smallvec![InlayHintLabelPart { text: label, linked_location }],
-        },
-        tooltip: None, // provided by label part location
+        label: InlayHintLabel::simple(label, None, linked_location),
     });
 
     None

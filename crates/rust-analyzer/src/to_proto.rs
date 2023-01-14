@@ -9,9 +9,9 @@ use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionItem,
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
     Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
-    InlayHintLabel, InlayKind, Markup, NavigationTarget, ReferenceCategory, RenameError, Runnable,
-    Severity, SignatureHelp, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange,
-    TextSize,
+    InlayHintLabel, InlayHintLabelPart, InlayKind, Markup, NavigationTarget, ReferenceCategory,
+    RenameError, Runnable, Severity, SignatureHelp, SourceChange, StructureNodeKind, SymbolKind,
+    TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 use serde_json::to_value;
@@ -438,6 +438,8 @@ pub(crate) fn inlay_hint(
         _ => {}
     }
 
+    let (label, tooltip) = inlay_hint_label(snap, inlay_hint.label)?;
+
     Ok(lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // before annotated thing
@@ -481,7 +483,9 @@ pub(crate) fn inlay_hint(
             | InlayKind::TypeHint
             | InlayKind::DiscriminantHint
             | InlayKind::ClosingBraceHint => false,
-            InlayKind::BindingModeHint => inlay_hint.label.as_simple_str() != Some("&"),
+            InlayKind::BindingModeHint => {
+                matches!(&label, lsp_types::InlayHintLabel::String(s) if s != "&")
+            }
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
         }),
         kind: match inlay_hint.kind {
@@ -500,68 +504,67 @@ pub(crate) fn inlay_hint(
             | InlayKind::ClosingBraceHint => None,
         },
         text_edits: None,
-        data: (|| match inlay_hint.tooltip {
-            Some(ide::InlayTooltip::HoverOffset(file_id, offset)) => {
-                let uri = url(snap, file_id);
-                let line_index = snap.file_line_index(file_id).ok()?;
-
-                let text_document = lsp_types::VersionedTextDocumentIdentifier {
-                    version: snap.url_file_version(&uri)?,
-                    uri,
-                };
-                to_value(lsp_ext::InlayHintResolveData {
-                    text_document,
-                    position: lsp_ext::PositionOrRange::Position(position(&line_index, offset)),
-                })
-                .ok()
-            }
-            Some(ide::InlayTooltip::HoverRanged(file_id, text_range)) => {
-                let uri = url(snap, file_id);
-                let text_document = lsp_types::VersionedTextDocumentIdentifier {
-                    version: snap.url_file_version(&uri)?,
-                    uri,
-                };
-                let line_index = snap.file_line_index(file_id).ok()?;
-                to_value(lsp_ext::InlayHintResolveData {
-                    text_document,
-                    position: lsp_ext::PositionOrRange::Range(range(&line_index, text_range)),
-                })
-                .ok()
-            }
-            _ => None,
-        })(),
-        tooltip: Some(match inlay_hint.tooltip {
-            Some(ide::InlayTooltip::String(s)) => lsp_types::InlayHintTooltip::String(s),
-            _ => lsp_types::InlayHintTooltip::String(inlay_hint.label.to_string()),
-        }),
-        label: inlay_hint_label(snap, inlay_hint.label)?,
+        data: None,
+        tooltip,
+        label,
     })
 }
 
 fn inlay_hint_label(
     snap: &GlobalStateSnapshot,
-    label: InlayHintLabel,
-) -> Cancellable<lsp_types::InlayHintLabel> {
-    Ok(match label.as_simple_str() {
-        Some(s) => lsp_types::InlayHintLabel::String(s.into()),
-        None => lsp_types::InlayHintLabel::LabelParts(
-            label
+    mut label: InlayHintLabel,
+) -> Cancellable<(lsp_types::InlayHintLabel, Option<lsp_types::InlayHintTooltip>)> {
+    let res = match &*label.parts {
+        [InlayHintLabelPart { linked_location: None, .. }] => {
+            let InlayHintLabelPart { text, tooltip, .. } = label.parts.pop().unwrap();
+            (
+                lsp_types::InlayHintLabel::String(text),
+                match tooltip {
+                    Some(ide::InlayTooltip::String(s)) => {
+                        Some(lsp_types::InlayHintTooltip::String(s))
+                    }
+                    Some(ide::InlayTooltip::Markdown(s)) => {
+                        Some(lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
+                            kind: lsp_types::MarkupKind::Markdown,
+                            value: s,
+                        }))
+                    }
+                    None => None,
+                },
+            )
+        }
+        _ => {
+            let parts = label
                 .parts
                 .into_iter()
                 .map(|part| {
-                    Ok(lsp_types::InlayHintLabelPart {
-                        value: part.text,
-                        tooltip: None,
-                        location: part
-                            .linked_location
-                            .map(|range| location(snap, range))
-                            .transpose()?,
-                        command: None,
-                    })
+                    part.linked_location.map(|range| location(snap, range)).transpose().map(
+                        |location| lsp_types::InlayHintLabelPart {
+                            value: part.text,
+                            tooltip: match part.tooltip {
+                                Some(ide::InlayTooltip::String(s)) => {
+                                    Some(lsp_types::InlayHintLabelPartTooltip::String(s))
+                                }
+                                Some(ide::InlayTooltip::Markdown(s)) => {
+                                    Some(lsp_types::InlayHintLabelPartTooltip::MarkupContent(
+                                        lsp_types::MarkupContent {
+                                            kind: lsp_types::MarkupKind::Markdown,
+                                            value: s,
+                                        },
+                                    ))
+                                }
+                                None => None,
+                            },
+                            location,
+                            command: None,
+                        },
+                    )
                 })
-                .collect::<Cancellable<Vec<_>>>()?,
-        ),
-    })
+                .collect::<Cancellable<_>>()?;
+            (lsp_types::InlayHintLabel::LabelParts(parts), None)
+        }
+    };
+    Ok(res)
 }
 
 static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);

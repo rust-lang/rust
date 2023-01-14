@@ -44,27 +44,12 @@ pub(super) fn hints(
         mode_and_needs_parens_for_adjustment_hints(expr, config.adjustment_hints_mode);
 
     if needs_outer_parens {
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::OpeningParenthesis,
-            label: "(".into(),
-            tooltip: None,
-        });
+        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
     }
 
     if postfix && needs_inner_parens {
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::OpeningParenthesis,
-            label: "(".into(),
-            tooltip: None,
-        });
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::ClosingParenthesis,
-            label: ")".into(),
-            tooltip: None,
-        });
+        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
     }
 
     let (mut tmp0, mut tmp1);
@@ -118,30 +103,14 @@ pub(super) fn hints(
                 InlayKind::AdjustmentHint
             },
             label: if postfix { format!(".{}", text.trim_end()).into() } else { text.into() },
-            tooltip: None,
         });
     }
     if !postfix && needs_inner_parens {
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::OpeningParenthesis,
-            label: "(".into(),
-            tooltip: None,
-        });
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::ClosingParenthesis,
-            label: ")".into(),
-            tooltip: None,
-        });
+        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
     }
     if needs_outer_parens {
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::ClosingParenthesis,
-            label: ")".into(),
-            tooltip: None,
-        });
+        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
     }
     Some(())
 }

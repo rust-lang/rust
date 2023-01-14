@@ -29,7 +29,6 @@ use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
-use tracing::error;
 use vfs::AbsPathBuf;
 
 use crate::{
@@ -1360,55 +1359,10 @@ pub(crate) fn handle_inlay_hints(
 }
 
 pub(crate) fn handle_inlay_hints_resolve(
-    snap: GlobalStateSnapshot,
-    mut hint: InlayHint,
+    _snap: GlobalStateSnapshot,
+    hint: InlayHint,
 ) -> Result<InlayHint> {
     let _p = profile::span("handle_inlay_hints_resolve");
-    let data = match hint.data.take() {
-        Some(it) => it,
-        None => return Ok(hint),
-    };
-
-    let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
-
-    match snap.url_file_version(&resolve_data.text_document.uri) {
-        Some(version) if version == resolve_data.text_document.version => {}
-        Some(version) => {
-            error!(
-                "attempted inlayHints/resolve of '{}' at version {} while server version is {}",
-                resolve_data.text_document.uri, resolve_data.text_document.version, version,
-            );
-            return Ok(hint);
-        }
-        None => {
-            error!(
-                "attempted inlayHints/resolve of unknown file '{}' at version {}",
-                resolve_data.text_document.uri, resolve_data.text_document.version,
-            );
-            return Ok(hint);
-        }
-    }
-    let file_range = from_proto::file_range_uri(
-        &snap,
-        &resolve_data.text_document.uri,
-        match resolve_data.position {
-            PositionOrRange::Position(pos) => Range::new(pos, pos),
-            PositionOrRange::Range(range) => range,
-        },
-    )?;
-    let info = match snap.analysis.hover(&snap.config.hover(), file_range)? {
-        None => return Ok(hint),
-        Some(info) => info,
-    };
-
-    let markup_kind =
-        snap.config.hover().documentation.map_or(ide::HoverDocFormat::Markdown, |kind| kind);
-
-    // FIXME: hover actions?
-    hint.tooltip = Some(lsp_types::InlayHintTooltip::MarkupContent(to_proto::markup_content(
-        info.info.markup,
-        markup_kind,
-    )));
     Ok(hint)
 }
 

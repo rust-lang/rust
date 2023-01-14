@@ -8,7 +8,7 @@ use syntax::{
     SyntaxKind,
 };
 
-use crate::{InlayHint, InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints};
+use crate::{InlayHint, InlayHintsConfig, InlayKind, LifetimeElisionHints};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -34,7 +34,6 @@ pub(super) fn hints(
                 range: t.text_range(),
                 kind: InlayKind::LifetimeHint,
                 label: "'static".to_owned().into(),
-                tooltip: Some(InlayTooltip::String("Elided static lifetime".into())),
             });
         }
     }
