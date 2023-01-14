@@ -20,3 +20,5 @@ fn inner() -> usize {
 fn main() {
     outer();
 }
+
+// EMIT_MIR issue_106141.outer.Inline.diff
