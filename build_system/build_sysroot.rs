@@ -103,6 +103,10 @@ struct SysrootTarget {
 
 impl SysrootTarget {
     fn install_into_sysroot(&self, sysroot: &Path) {
+        if self.libs.is_empty() {
+            return;
+        }
+
         let target_rustlib_lib = sysroot.join("lib").join("rustlib").join(&self.triple).join("lib");
         fs::create_dir_all(&target_rustlib_lib).unwrap();
 
