@@ -1809,7 +1809,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// A list of all traits in a crate mapped to their impls in that crate.
+    /// A list of all traits in a crate mapped to their impls in that crate. Also includes None => inherent impls.
     query impls_in_crate(_: CrateNum) -> &'tcx FxIndexMap<DefId, Vec<(DefId, Option<rustc_middle::ty::fast_reject::SimplifiedType>)>> {
         eval_always
         desc { "fetching trait to impl map in a crate" }

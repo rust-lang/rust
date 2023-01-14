@@ -7,6 +7,8 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
+use hir::def_id::LOCAL_CRATE;
+use hir::{ItemId, OwnerId};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -28,7 +30,17 @@ pub fn crate_inherent_impls(tcx: TyCtxt<'_>, (): ()) -> CrateInherentImpls {
     //     }
     // }
 
+    debug!("recent...");
+    for (id, _) in tcx.impls_in_crate(LOCAL_CRATE).values().flatten() {
+        // collect.check_item(ItemId { owner_id: OwnerId { def_id: id.expect_local() } });
+        debug!(
+            "adjusted: would have checked {:?}",
+            ItemId { owner_id: OwnerId { def_id: id.expect_local() } }
+        )
+    }
+
     for id in tcx.hir().items() {
+        debug!("old code checking {:?}", id);
         collect.check_item(id);
     }
     collect.impls_map
@@ -189,6 +201,8 @@ impl<'tcx> InherentCollect<'tcx> {
         if !matches!(self.tcx.def_kind(id.owner_id), DefKind::Impl) {
             return;
         }
+
+        debug!("not rejected");
 
         let item = self.tcx.hir().item(id);
         let hir::ItemKind::Impl(hir::Impl { of_trait: None, self_ty: ty, ref items, .. }) = item.kind else {
