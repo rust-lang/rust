@@ -710,10 +710,10 @@ pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> St
                     }
                 }
                 if flags >> (rustc_parse_format::FlagDebugLowerHex as usize) & 1 != 0 {
-                    template.push('X');
+                    template.push('x');
                 }
                 if flags >> (rustc_parse_format::FlagDebugUpperHex as usize) & 1 != 0 {
-                    template.push('x');
+                    template.push('X');
                 }
                 template.push_str(match p.format_trait {
                     FormatTrait::Display => "",
