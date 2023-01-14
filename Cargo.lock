@@ -645,6 +645,7 @@ dependencies = [
  "profile",
  "pulldown-cmark",
  "pulldown-cmark-to-cmark",
+ "smallvec",
  "stdx",
  "syntax",
  "test-utils",

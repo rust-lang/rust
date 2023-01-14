@@ -7,10 +7,11 @@ use either::Either;
 use hir::{known, HasVisibility, HirDisplay, HirWrite, ModuleDef, ModuleDefId, Semantics};
 use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
 use itertools::Itertools;
+use smallvec::{smallvec, SmallVec};
 use stdx::never;
 use syntax::{
     ast::{self, AstNode},
-    match_ast, NodeOrToken, SyntaxNode, TextRange, TextSize,
+    match_ast, NodeOrToken, SyntaxNode, TextRange,
 };
 
 use crate::{navigation_target::TryToNav, FileId};
@@ -83,75 +84,108 @@ pub enum AdjustmentHintsMode {
     PreferPostfix,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
-    BindingModeHint,
-    ChainingHint,
-    ClosingBraceHint,
-    ClosureReturnTypeHint,
-    GenericParamListHint,
-    AdjustmentHint,
-    AdjustmentHintPostfix,
-    LifetimeHint,
-    ParameterHint,
-    TypeHint,
-    DiscriminantHint,
+    BindingMode,
+    Chaining,
+    ClosingBrace,
+    ClosureReturnType,
+    GenericParamList,
+    Adjustment,
+    AdjustmentPostfix,
+    Lifetime,
+    Parameter,
+    Type,
+    Discriminant,
     OpeningParenthesis,
     ClosingParenthesis,
 }
 
 #[derive(Debug)]
 pub struct InlayHint {
+    /// The text range this inlay hint applies to.
     pub range: TextRange,
+    /// The kind of this inlay hint. This is used to determine side and padding of the hint for
+    /// rendering purposes.
     pub kind: InlayKind,
+    /// The actual label to show in the inlay hint.
     pub label: InlayHintLabel,
-    pub tooltip: Option<InlayTooltip>,
+}
+
+impl InlayHint {
+    fn closing_paren(range: TextRange) -> InlayHint {
+        InlayHint { range, kind: InlayKind::ClosingParenthesis, label: InlayHintLabel::from(")") }
+    }
+    fn opening_paren(range: TextRange) -> InlayHint {
+        InlayHint { range, kind: InlayKind::OpeningParenthesis, label: InlayHintLabel::from("(") }
+    }
 }
 
 #[derive(Debug)]
 pub enum InlayTooltip {
     String(String),
-    HoverRanged(FileId, TextRange),
-    HoverOffset(FileId, TextSize),
+    Markdown(String),
 }
 
 #[derive(Default)]
 pub struct InlayHintLabel {
-    pub parts: Vec<InlayHintLabelPart>,
+    pub parts: SmallVec<[InlayHintLabelPart; 1]>,
 }
 
 impl InlayHintLabel {
-    pub fn as_simple_str(&self) -> Option<&str> {
-        match &*self.parts {
-            [part] => part.as_simple_str(),
-            _ => None,
+    pub fn simple(
+        s: impl Into<String>,
+        tooltip: Option<InlayTooltip>,
+        linked_location: Option<FileRange>,
+    ) -> InlayHintLabel {
+        InlayHintLabel {
+            parts: smallvec![InlayHintLabelPart { text: s.into(), linked_location, tooltip }],
         }
     }
 
     pub fn prepend_str(&mut self, s: &str) {
         match &mut *self.parts {
-            [part, ..] if part.as_simple_str().is_some() => part.text = format!("{s}{}", part.text),
-            _ => self.parts.insert(0, InlayHintLabelPart { text: s.into(), linked_location: None }),
+            [InlayHintLabelPart { text, linked_location: None, tooltip: None }, ..] => {
+                text.insert_str(0, s)
+            }
+            _ => self.parts.insert(
+                0,
+                InlayHintLabelPart { text: s.into(), linked_location: None, tooltip: None },
+            ),
         }
     }
 
     pub fn append_str(&mut self, s: &str) {
         match &mut *self.parts {
-            [.., part] if part.as_simple_str().is_some() => part.text.push_str(s),
-            _ => self.parts.push(InlayHintLabelPart { text: s.into(), linked_location: None }),
+            [.., InlayHintLabelPart { text, linked_location: None, tooltip: None }] => {
+                text.push_str(s)
+            }
+            _ => self.parts.push(InlayHintLabelPart {
+                text: s.into(),
+                linked_location: None,
+                tooltip: None,
+            }),
         }
     }
 }
 
 impl From<String> for InlayHintLabel {
     fn from(s: String) -> Self {
-        Self { parts: vec![InlayHintLabelPart { text: s, linked_location: None }] }
+        Self {
+            parts: smallvec![InlayHintLabelPart { text: s, linked_location: None, tooltip: None }],
+        }
     }
 }
 
 impl From<&str> for InlayHintLabel {
     fn from(s: &str) -> Self {
-        Self { parts: vec![InlayHintLabelPart { text: s.into(), linked_location: None }] }
+        Self {
+            parts: smallvec![InlayHintLabelPart {
+                text: s.into(),
+                linked_location: None,
+                tooltip: None
+            }],
+        }
     }
 }
 
@@ -175,25 +209,25 @@ pub struct InlayHintLabelPart {
     /// When setting this, no tooltip must be set on the containing hint, or VS Code will display
     /// them both.
     pub linked_location: Option<FileRange>,
-}
-
-impl InlayHintLabelPart {
-    pub fn as_simple_str(&self) -> Option<&str> {
-        match self {
-            Self { text, linked_location: None } => Some(text),
-            _ => None,
-        }
-    }
+    /// The tooltip to show when hovering over the inlay hint, this may invoke other actions like
+    /// hover requests to show.
+    pub tooltip: Option<InlayTooltip>,
 }
 
 impl fmt::Debug for InlayHintLabelPart {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.as_simple_str() {
-            Some(string) => string.fmt(f),
-            None => f
+        match self {
+            Self { text, linked_location: None, tooltip: None } => text.fmt(f),
+            Self { text, linked_location, tooltip } => f
                 .debug_struct("InlayHintLabelPart")
-                .field("text", &self.text)
-                .field("linked_location", &self.linked_location)
+                .field("text", text)
+                .field("linked_location", linked_location)
+                .field(
+                    "tooltip",
+                    &tooltip.as_ref().map_or("", |it| match it {
+                        InlayTooltip::String(it) | InlayTooltip::Markdown(it) => it,
+                    }),
+                )
                 .finish(),
         }
     }
@@ -242,6 +276,7 @@ impl InlayHintLabelBuilder<'_> {
         self.result.parts.push(InlayHintLabelPart {
             text: take(&mut self.last_part),
             linked_location: self.location.take(),
+            tooltip: None,
         });
     }
 

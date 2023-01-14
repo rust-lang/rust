@@ -10,7 +10,7 @@ use ide_db::{base_db::FileRange, RootDatabase};
 use stdx::to_lower_snake_case;
 use syntax::ast::{self, AstNode, HasArgList, HasName, UnaryOp};
 
-use crate::{InlayHint, InlayHintsConfig, InlayKind, InlayTooltip};
+use crate::{InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -43,21 +43,20 @@ pub(super) fn hints(
             !should_hide_param_name_hint(sema, &callable, param_name, arg)
         })
         .map(|(param, param_name, _, FileRange { range, .. })| {
-            let mut tooltip = None;
+            let mut linked_location = None;
             if let Some(name) = param {
                 if let hir::CallableKind::Function(f) = callable.kind() {
                     // assert the file is cached so we can map out of macros
                     if let Some(_) = sema.source(f) {
-                        tooltip = sema.original_range_opt(name.syntax());
+                        linked_location = sema.original_range_opt(name.syntax());
                     }
                 }
             }
 
             InlayHint {
                 range,
-                kind: InlayKind::ParameterHint,
-                label: param_name.into(),
-                tooltip: tooltip.map(|it| InlayTooltip::HoverOffset(it.file_id, it.range.start())),
+                kind: InlayKind::Parameter,
+                label: InlayHintLabel::simple(param_name, None, linked_location),
             }
         });
 
