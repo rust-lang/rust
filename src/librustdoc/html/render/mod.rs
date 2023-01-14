@@ -1343,7 +1343,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                     write!(
                         &mut out,
                         "<h3>Notable traits for <code>{}</code></h3>\
-                     <pre class=\"content\"><code>",
+                     <pre><code>",
                         impl_.for_.print(cx)
                     );
                 }
