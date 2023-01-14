@@ -3,7 +3,9 @@ use std::path::Path;
 use std::process::{self, Command};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_file_name, get_rustc_version, get_wrapper_file_name};
+use super::rustc_info::{
+    get_file_name, get_rustc_version, get_toolchain_name, get_wrapper_file_name,
+};
 use super::utils::{spawn_and_wait, try_hard_link, CargoProject, Compiler};
 use super::SysrootKind;
 
@@ -44,8 +46,9 @@ pub(crate) fn build_sysroot(
     for wrapper in ["rustc-clif", "rustdoc-clif", "cargo-clif"] {
         let wrapper_name = get_wrapper_file_name(wrapper, "bin");
 
-        let mut build_cargo_wrapper_cmd = Command::new("rustc");
+        let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
         build_cargo_wrapper_cmd
+            .env("TOOLCHAIN_NAME", get_toolchain_name())
             .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
             .arg("-o")
             .arg(DIST_DIR.to_path(dirs).join(wrapper_name))

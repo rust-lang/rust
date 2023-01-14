@@ -23,6 +23,16 @@ pub(crate) fn get_host_triple() -> String {
         .to_owned()
 }
 
+pub(crate) fn get_toolchain_name() -> String {
+    let active_toolchain = Command::new("rustup")
+        .stderr(Stdio::inherit())
+        .args(&["show", "active-toolchain"])
+        .output()
+        .unwrap()
+        .stdout;
+    String::from_utf8(active_toolchain).unwrap().trim().split_once(' ').unwrap().0.to_owned()
+}
+
 pub(crate) fn get_cargo_path() -> PathBuf {
     let cargo_path = Command::new("rustup")
         .stderr(Stdio::inherit())
