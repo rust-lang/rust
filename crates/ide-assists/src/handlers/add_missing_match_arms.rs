@@ -269,6 +269,7 @@ fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
         (Pat::TuplePat(tpat), Pat::TuplePat(tvar)) => {
             tpat.fields().zip(tvar.fields()).all(|(p, v)| does_pat_match_variant(&p, &v))
         }
+        (Pat::OrPat(opat), _) => opat.pats().any(|p| does_pat_match_variant(&p, var)),
         _ => utils::does_pat_match_variant(pat, var),
     }
 }
@@ -526,6 +527,19 @@ fn foo(a: bool) {
             r#"
 fn foo(a: bool) {
     match (a, a)$0 {
+        (true | false, true) => {}
+        (true, false) => {}
+        (false, false) => {}
+    }
+}
+"#,
+        );
+
+        check_assist_not_applicable(
+            add_missing_match_arms,
+            r#"
+fn foo(a: bool) {
+    match (a, a)$0 {
         (true, true) => {}
         (true, false) => {}
         (false, true) => {}
@@ -561,6 +575,26 @@ fn foo(a: bool) {
 
     #[test]
     fn partial_fill_boolean_tuple() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+fn foo(a: bool) {
+    match (a, a)$0 {
+        (true | false, true) => {}
+    }
+}
+"#,
+            r#"
+fn foo(a: bool) {
+    match (a, a) {
+        (true | false, true) => {}
+        $0(true, false) => todo!(),
+        (false, false) => todo!(),
+    }
+}
+"#,
+        );
+
         check_assist(
             add_missing_match_arms,
             r#"
@@ -882,6 +916,33 @@ fn main() {
 }
 "#,
         );
+
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum E { A, B, C }
+fn main() {
+    use E::*;
+    match (A, B, C)$0 {
+        (A | B , A, A | B | C) => (),
+        (A | B | C , B | C, A | B | C) => (),
+    }
+}
+"#,
+            r#"
+enum E { A, B, C }
+fn main() {
+    use E::*;
+    match (A, B, C) {
+        (A | B , A, A | B | C) => (),
+        (A | B | C , B | C, A | B | C) => (),
+        $0(C, A, A) => todo!(),
+        (C, A, B) => todo!(),
+        (C, A, C) => todo!(),
+    }
+}
+"#,
+        )
     }
 
     #[test]
