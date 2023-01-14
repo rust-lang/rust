@@ -23,7 +23,7 @@ pub(super) fn hints(
 
     let mk_lt_hint = |t: SyntaxToken, label: String| InlayHint {
         range: t.text_range(),
-        kind: InlayKind::LifetimeHint,
+        kind: InlayKind::Lifetime,
         label: label.into(),
     };
 
@@ -182,7 +182,7 @@ pub(super) fn hints(
             let is_empty = gpl.generic_params().next().is_none();
             acc.push(InlayHint {
                 range: angle_tok.text_range(),
-                kind: InlayKind::LifetimeHint,
+                kind: InlayKind::Lifetime,
                 label: format!(
                     "{}{}",
                     allocated_lifetimes.iter().format(", "),
@@ -193,7 +193,7 @@ pub(super) fn hints(
         }
         (None, allocated_lifetimes) => acc.push(InlayHint {
             range: func.name()?.syntax().text_range(),
-            kind: InlayKind::GenericParamListHint,
+            kind: InlayKind::GenericParamList,
             label: format!("<{}>", allocated_lifetimes.iter().format(", "),).into(),
         }),
     }

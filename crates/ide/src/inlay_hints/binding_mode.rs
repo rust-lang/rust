@@ -40,11 +40,7 @@ pub(super) fn hints(
             (true, false) => "&",
             _ => return,
         };
-        acc.push(InlayHint {
-            range,
-            kind: InlayKind::BindingModeHint,
-            label: r.to_string().into(),
-        });
+        acc.push(InlayHint { range, kind: InlayKind::BindingMode, label: r.to_string().into() });
     });
     match pat {
         ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
@@ -56,7 +52,7 @@ pub(super) fn hints(
             };
             acc.push(InlayHint {
                 range: pat.syntax().text_range(),
-                kind: InlayKind::BindingModeHint,
+                kind: InlayKind::BindingMode,
                 label: bm.to_string().into(),
             });
         }

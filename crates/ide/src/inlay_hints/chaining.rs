@@ -59,7 +59,7 @@ pub(super) fn hints(
             }
             acc.push(InlayHint {
                 range: expr.syntax().text_range(),
-                kind: InlayKind::ChainingHint,
+                kind: InlayKind::Chaining,
                 label: label_of_ty(famous_defs, config, ty)?,
             });
         }
@@ -110,7 +110,7 @@ fn main() {
                 [
                     InlayHint {
                         range: 147..172,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -130,7 +130,7 @@ fn main() {
                     },
                     InlayHint {
                         range: 147..154,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -195,14 +195,14 @@ fn main() {
                 [
                     InlayHint {
                         range: 143..190,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "C",
                         ],
                     },
                     InlayHint {
                         range: 143..179,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "B",
                         ],
@@ -238,7 +238,7 @@ fn main() {
                 [
                     InlayHint {
                         range: 143..190,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -258,7 +258,7 @@ fn main() {
                     },
                     InlayHint {
                         range: 143..179,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -308,7 +308,7 @@ fn main() {
                 [
                     InlayHint {
                         range: 246..283,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -341,7 +341,7 @@ fn main() {
                     },
                     InlayHint {
                         range: 246..265,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -406,28 +406,28 @@ fn main() {
                 [
                     InlayHint {
                         range: 174..241,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "impl Iterator<Item = ()>",
                         ],
                     },
                     InlayHint {
                         range: 174..224,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "impl Iterator<Item = ()>",
                         ],
                     },
                     InlayHint {
                         range: 174..206,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "impl Iterator<Item = ()>",
                         ],
                     },
                     InlayHint {
                         range: 174..189,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "&mut ",
                             InlayHintLabelPart {
@@ -476,7 +476,7 @@ fn main() {
                 [
                     InlayHint {
                         range: 124..130,
-                        kind: TypeHint,
+                        kind: Type,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -496,7 +496,7 @@ fn main() {
                     },
                     InlayHint {
                         range: 145..185,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -516,7 +516,7 @@ fn main() {
                     },
                     InlayHint {
                         range: 145..168,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -536,7 +536,7 @@ fn main() {
                     },
                     InlayHint {
                         range: 222..228,
-                        kind: ParameterHint,
+                        kind: Parameter,
                         label: [
                             InlayHintLabelPart {
                                 text: "self",

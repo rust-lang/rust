@@ -97,11 +97,7 @@ pub(super) fn hints(
         };
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
-            kind: if postfix {
-                InlayKind::AdjustmentHintPostfix
-            } else {
-                InlayKind::AdjustmentHint
-            },
+            kind: if postfix { InlayKind::AdjustmentPostfix } else { InlayKind::Adjustment },
             label: if postfix { format!(".{}", text.trim_end()).into() } else { text.into() },
         });
     }

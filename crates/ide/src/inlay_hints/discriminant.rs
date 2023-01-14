@@ -43,7 +43,7 @@ pub(super) fn hints(
             Some(field_list) => name.syntax().text_range().cover(field_list.syntax().text_range()),
             None => name.syntax().text_range(),
         },
-        kind: InlayKind::DiscriminantHint,
+        kind: InlayKind::Discriminant,
         label: InlayHintLabel::simple(
             match &d {
                 Ok(v) => format!("{}", v),

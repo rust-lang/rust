@@ -431,10 +431,10 @@ pub(crate) fn inlay_hint(
     mut inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
     match inlay_hint.kind {
-        InlayKind::ParameterHint if render_colons => inlay_hint.label.append_str(":"),
-        InlayKind::TypeHint if render_colons => inlay_hint.label.prepend_str(": "),
-        InlayKind::ClosureReturnTypeHint => inlay_hint.label.prepend_str(" -> "),
-        InlayKind::DiscriminantHint => inlay_hint.label.prepend_str(" = "),
+        InlayKind::Parameter if render_colons => inlay_hint.label.append_str(":"),
+        InlayKind::Type if render_colons => inlay_hint.label.prepend_str(": "),
+        InlayKind::ClosureReturnType => inlay_hint.label.prepend_str(" -> "),
+        InlayKind::Discriminant => inlay_hint.label.prepend_str(" = "),
         _ => {}
     }
 
@@ -444,64 +444,64 @@ pub(crate) fn inlay_hint(
         position: match inlay_hint.kind {
             // before annotated thing
             InlayKind::OpeningParenthesis
-            | InlayKind::ParameterHint
-            | InlayKind::AdjustmentHint
-            | InlayKind::BindingModeHint => position(line_index, inlay_hint.range.start()),
+            | InlayKind::Parameter
+            | InlayKind::Adjustment
+            | InlayKind::BindingMode => position(line_index, inlay_hint.range.start()),
             // after annotated thing
-            InlayKind::ClosureReturnTypeHint
-            | InlayKind::TypeHint
-            | InlayKind::DiscriminantHint
-            | InlayKind::ChainingHint
-            | InlayKind::GenericParamListHint
+            InlayKind::ClosureReturnType
+            | InlayKind::Type
+            | InlayKind::Discriminant
+            | InlayKind::Chaining
+            | InlayKind::GenericParamList
             | InlayKind::ClosingParenthesis
-            | InlayKind::AdjustmentHintPostfix
-            | InlayKind::LifetimeHint
-            | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
+            | InlayKind::AdjustmentPostfix
+            | InlayKind::Lifetime
+            | InlayKind::ClosingBrace => position(line_index, inlay_hint.range.end()),
         },
         padding_left: Some(match inlay_hint.kind {
-            InlayKind::TypeHint => !render_colons,
-            InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
+            InlayKind::Type => !render_colons,
+            InlayKind::Chaining | InlayKind::ClosingBrace => true,
             InlayKind::ClosingParenthesis
-            | InlayKind::DiscriminantHint
+            | InlayKind::Discriminant
             | InlayKind::OpeningParenthesis
-            | InlayKind::BindingModeHint
-            | InlayKind::ClosureReturnTypeHint
-            | InlayKind::GenericParamListHint
-            | InlayKind::AdjustmentHint
-            | InlayKind::AdjustmentHintPostfix
-            | InlayKind::LifetimeHint
-            | InlayKind::ParameterHint => false,
+            | InlayKind::BindingMode
+            | InlayKind::ClosureReturnType
+            | InlayKind::GenericParamList
+            | InlayKind::Adjustment
+            | InlayKind::AdjustmentPostfix
+            | InlayKind::Lifetime
+            | InlayKind::Parameter => false,
         }),
         padding_right: Some(match inlay_hint.kind {
             InlayKind::ClosingParenthesis
             | InlayKind::OpeningParenthesis
-            | InlayKind::ChainingHint
-            | InlayKind::ClosureReturnTypeHint
-            | InlayKind::GenericParamListHint
-            | InlayKind::AdjustmentHint
-            | InlayKind::AdjustmentHintPostfix
-            | InlayKind::TypeHint
-            | InlayKind::DiscriminantHint
-            | InlayKind::ClosingBraceHint => false,
-            InlayKind::BindingModeHint => {
+            | InlayKind::Chaining
+            | InlayKind::ClosureReturnType
+            | InlayKind::GenericParamList
+            | InlayKind::Adjustment
+            | InlayKind::AdjustmentPostfix
+            | InlayKind::Type
+            | InlayKind::Discriminant
+            | InlayKind::ClosingBrace => false,
+            InlayKind::BindingMode => {
                 matches!(&label, lsp_types::InlayHintLabel::String(s) if s != "&")
             }
-            InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
+            InlayKind::Parameter | InlayKind::Lifetime => true,
         }),
         kind: match inlay_hint.kind {
-            InlayKind::ParameterHint => Some(lsp_types::InlayHintKind::PARAMETER),
-            InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
+            InlayKind::Parameter => Some(lsp_types::InlayHintKind::PARAMETER),
+            InlayKind::ClosureReturnType | InlayKind::Type | InlayKind::Chaining => {
                 Some(lsp_types::InlayHintKind::TYPE)
             }
             InlayKind::ClosingParenthesis
-            | InlayKind::DiscriminantHint
+            | InlayKind::Discriminant
             | InlayKind::OpeningParenthesis
-            | InlayKind::BindingModeHint
-            | InlayKind::GenericParamListHint
-            | InlayKind::LifetimeHint
-            | InlayKind::AdjustmentHint
-            | InlayKind::AdjustmentHintPostfix
-            | InlayKind::ClosingBraceHint => None,
+            | InlayKind::BindingMode
+            | InlayKind::GenericParamList
+            | InlayKind::Lifetime
+            | InlayKind::Adjustment
+            | InlayKind::AdjustmentPostfix
+            | InlayKind::ClosingBrace => None,
         },
         text_edits: None,
         data: None,

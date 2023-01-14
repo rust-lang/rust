@@ -48,7 +48,7 @@ pub(super) fn hints(
             Some(name) => name.syntax().text_range(),
             None => pat.syntax().text_range(),
         },
-        kind: InlayKind::TypeHint,
+        kind: InlayKind::Type,
         label,
     });
 
@@ -316,14 +316,14 @@ fn main(a: SliceIter<'_, Container>) {
                 [
                     InlayHint {
                         range: 484..554,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "impl Iterator<Item = impl Iterator<Item = &&str>>",
                         ],
                     },
                     InlayHint {
                         range: 484..485,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {

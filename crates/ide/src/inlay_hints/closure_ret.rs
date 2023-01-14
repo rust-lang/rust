@@ -41,7 +41,7 @@ pub(super) fn hints(
     }
     acc.push(InlayHint {
         range: param_list.syntax().text_range(),
-        kind: InlayKind::ClosureReturnTypeHint,
+        kind: InlayKind::ClosureReturnType,
         label: label_of_ty(famous_defs, config, ty)?,
     });
     Some(())

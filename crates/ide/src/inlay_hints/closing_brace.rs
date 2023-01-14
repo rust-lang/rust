@@ -113,7 +113,7 @@ pub(super) fn hints(
         .flatten();
     acc.push(InlayHint {
         range: closing_token.text_range(),
-        kind: InlayKind::ClosingBraceHint,
+        kind: InlayKind::ClosingBrace,
         label: InlayHintLabel::simple(label, None, linked_location),
     });
 

@@ -86,17 +86,17 @@ pub enum AdjustmentHintsMode {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
-    BindingModeHint,
-    ChainingHint,
-    ClosingBraceHint,
-    ClosureReturnTypeHint,
-    GenericParamListHint,
-    AdjustmentHint,
-    AdjustmentHintPostfix,
-    LifetimeHint,
-    ParameterHint,
-    TypeHint,
-    DiscriminantHint,
+    BindingMode,
+    Chaining,
+    ClosingBrace,
+    ClosureReturnType,
+    GenericParamList,
+    Adjustment,
+    AdjustmentPostfix,
+    Lifetime,
+    Parameter,
+    Type,
+    Discriminant,
     OpeningParenthesis,
     ClosingParenthesis,
 }
