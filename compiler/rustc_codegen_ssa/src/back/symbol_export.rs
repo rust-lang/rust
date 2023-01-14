@@ -176,6 +176,13 @@ fn exported_symbols_provider_local<'tcx>(
         symbols.push((exported_symbol, SymbolExportLevel::C));
     }
 
+    // export functions which are used to synthesize AD functions to make sure they are
+    // not removed during optimization passes
+    symbols.extend(
+        tcx.autodiff_functions(()).into_iter()
+            .map(|x| (ExportedSymbol::NonGeneric(x.source), SymbolExportLevel::Rust))
+    );
+
     if tcx.allocator_kind(()).is_some() {
         for method in ALLOCATOR_METHODS {
             let symbol_name = format!("__rust_{}", method.name);
