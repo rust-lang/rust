@@ -10,6 +10,7 @@ crate-type = ["dylib"]
 backtrace = "0.3.66"
 serde_json = "1.0.59"
 chrono = "0.2"
+ci_info = "0.14.9"
 urlqstring = "*"
 tracing = { version = "0.1.35" }
 rustc_log = { path = "../rustc_log" }

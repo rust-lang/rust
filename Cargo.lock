@@ -636,6 +636,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ci_info"
+version = "0.14.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62a62f39080c8c83e899dff6abd46c4fac05c1cf8dafece96ad8238e79addbf8"
+dependencies = [
+ "envmnt",
+]
+
+[[package]]
 name = "clap"
 version = "3.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1425,6 +1434,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "envmnt"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d73999a2b8871e74c8b8bc23759ee9f3d85011b24fafc91a4b3b5c8cc8185501"
+dependencies = [
+ "fsio",
+ "indexmap",
+]
+
+[[package]]
 name = "errno"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1628,6 +1647,15 @@ name = "fs_extra"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
+
+[[package]]
+name = "fsio"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dad0ce30be0cc441b325c5d705c8b613a0ca0d92b6a8953d41bd236dc09a36d0"
+dependencies = [
+ "dunce",
+]
 
 [[package]]
 name = "futf"
@@ -3949,6 +3977,7 @@ version = "0.0.0"
 dependencies = [
  "backtrace",
  "chrono 0.2.25",
+ "ci_info",
  "libc",
  "rustc_ast",
  "rustc_ast_pretty",

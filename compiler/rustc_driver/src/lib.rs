@@ -1216,8 +1216,6 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<(String, String), Ic
 
     writeln!(file, "{}", version)?;
     args.push(("version", version.as_str()));
-    let backtrace_msg = format!("please include the contents of `{}` here", path.display());
-    args.push(("backtrace", &backtrace_msg));
 
     if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
         writeln!(file, "compiler flags:")?;
@@ -1229,8 +1227,6 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<(String, String), Ic
         }
     }
     writeln!(file, "")?;
-    let mut text = String::new();
-    text.push_str(&format!("{:?} {:?}", info.message(), info.location()));
     match (info.message(), info.location()) {
         (Some(message), Some(location)) => {
             writeln!(file, "panicked at {location}:\n{message}")?;
@@ -1247,6 +1243,7 @@ fn write_ice_to_disk(info: &panic::PanicInfo<'_>) -> Result<(String, String), Ic
     }
 
     writeln!(file, "")?;
+    let capture = format!("{capture}");
     writeln!(file, "{capture}")?;
 
     // Be careful relying on global state here: this code is called from
@@ -1304,7 +1301,8 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
                         && std::env::var("RUSTC_BACKTRACE_FORCE").as_deref() != Ok("0")
                 },
             );
-            let written_ice = if !is_dev { write_ice_to_disk(info) } else { Err(IceError) };
+            let written_ice =
+                if !is_dev && !ci_info::is_ci() { write_ice_to_disk(info) } else { Err(IceError) };
             // Invoke the default handler, which prints the actual panic message and optionally a backtrace
             // Don't do this for delayed bugs, which already emit their own more useful backtrace.
             if !info.payload().is::<rustc_errors::DelayedBugPanic>() && written_ice.is_err() {
@@ -1359,8 +1357,7 @@ pub fn report_ice(
     }
 
     let xs: Vec<Cow<'static, str>> = if let Some((path, custom_url)) = &reported_ice {
-        let link = format!("\x1b]8;;{custom_url}\x1b\\{bug_report_url}\x1b]8;;\x1b\\");
-        let path = format!("\x1b]8;;file://{path}\x1b\\{path}\x1b]8;;\x1b\\");
+        let link = format!("\x1b]8;;{custom_url}\x07{bug_report_url}\x1b]8;;\x07");
         vec![
             format!("all necessary context about this bug was written to `{path}`").into(),
             format!("we would appreciate a bug report with this context at {link}").into(),
