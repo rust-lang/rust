@@ -6,6 +6,13 @@ LL |         Foo(())
    |         |
    |         arguments to this struct are incorrect
    |
+help: the type constructed contains `()` due to the type of the argument passed
+  --> $DIR/issue-84128.rs:13:9
+   |
+LL |         Foo(())
+   |         ^^^^--^
+   |             |
+   |             this argument influences the type of `Foo`
 note: tuple struct defined here
   --> $DIR/issue-84128.rs:5:8
    |

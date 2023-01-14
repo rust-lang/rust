@@ -23,6 +23,13 @@ LL |         A(self.0 + rhs.0)
    |
    = note: expected type parameter `B`
              found associated type `<B as Add>::Output`
+help: the type constructed contains `<B as Add>::Output` due to the type of the argument passed
+  --> $DIR/missing-bounds.rs:11:9
+   |
+LL |         A(self.0 + rhs.0)
+   |         ^^--------------^
+   |           |
+   |           this argument influences the type of `A`
 note: tuple struct defined here
   --> $DIR/missing-bounds.rs:5:8
    |

@@ -6,6 +6,13 @@ LL |     Ok(())
    |     |
    |     arguments to this enum variant are incorrect
    |
+help: the type constructed contains `()` due to the type of the argument passed
+  --> $DIR/issue-87461.rs:10:5
+   |
+LL |     Ok(())
+   |     ^^^--^
+   |        |
+   |        this argument influences the type of `Ok`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
 
@@ -17,6 +24,13 @@ LL |     Ok(())
    |     |
    |     arguments to this enum variant are incorrect
    |
+help: the type constructed contains `()` due to the type of the argument passed
+  --> $DIR/issue-87461.rs:17:5
+   |
+LL |     Ok(())
+   |     ^^^--^
+   |        |
+   |        this argument influences the type of `Ok`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
 
@@ -28,6 +42,13 @@ LL |         Ok(())
    |         |
    |         arguments to this enum variant are incorrect
    |
+help: the type constructed contains `()` due to the type of the argument passed
+  --> $DIR/issue-87461.rs:26:9
+   |
+LL |         Ok(())
+   |         ^^^--^
+   |            |
+   |            this argument influences the type of `Ok`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
 
