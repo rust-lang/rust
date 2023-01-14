@@ -243,8 +243,11 @@ pub(crate) fn run_tests(
     host_compiler: &Compiler,
     target_triple: &str,
 ) {
-    let runner =
-        TestRunner::new(dirs.clone(), host_compiler.triple.clone(), target_triple.to_string());
+    let runner = TestRunner::new(
+        dirs.clone(),
+        target_triple.to_owned(),
+        host_compiler.triple == target_triple,
+    );
 
     if config::get_bool("testsuite.no_sysroot") {
         build_sysroot::build_sysroot(
@@ -297,11 +300,7 @@ struct TestRunner {
 }
 
 impl TestRunner {
-    pub fn new(dirs: Dirs, host_triple: String, target_triple: String) -> Self {
-        let is_native = host_triple == target_triple;
-        let jit_supported =
-            is_native && host_triple.contains("x86_64") && !host_triple.contains("windows");
-
+    pub fn new(dirs: Dirs, target_triple: String, is_native: bool) -> Self {
         let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
         if !is_native {
             target_compiler.set_cross_linker_and_runner();
@@ -319,6 +318,10 @@ impl TestRunner {
         if target_compiler.triple.contains("darwin") {
             target_compiler.rustflags.push_str(" -Clink-arg=-undefined -Clink-arg=dynamic_lookup");
         }
+
+        let jit_supported = is_native
+            && target_compiler.triple.contains("x86_64")
+            && !target_compiler.triple.contains("windows");
 
         Self { is_native, jit_supported, dirs, target_compiler }
     }
