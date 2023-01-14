@@ -516,7 +516,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
 
     /// Returns pointer to start of data table.
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "raw", feature = "nightly"))]
     pub unsafe fn data_start(&self) -> *mut T {
         self.data_end().as_ptr().wrapping_sub(self.buckets())
     }
