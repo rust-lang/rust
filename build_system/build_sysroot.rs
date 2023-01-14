@@ -64,24 +64,21 @@ pub(crate) fn build_sysroot(
     fs::create_dir_all(&host_rustlib_lib).unwrap();
     fs::create_dir_all(&target_rustlib_lib).unwrap();
 
-    if target_triple == "x86_64-pc-windows-gnu" {
-        if !default_sysroot.join("lib").join("rustlib").join(&target_triple).join("lib").exists() {
-            eprintln!(
-                "The x86_64-pc-windows-gnu target needs to be installed first before it is possible \
-                to compile a sysroot for it.",
-            );
-            process::exit(1);
-        }
-        for file in fs::read_dir(
-            default_sysroot.join("lib").join("rustlib").join(&target_triple).join("lib"),
-        )
-        .unwrap()
-        {
-            let file = file.unwrap().path();
-            if file.extension().map_or(true, |ext| ext.to_str().unwrap() != "o") {
-                continue; // only copy object files
-            }
-            try_hard_link(&file, target_rustlib_lib.join(file.file_name().unwrap()));
+    if target_triple.ends_with("windows-gnu") {
+        eprintln!("[BUILD] rtstartup for {target_triple}");
+
+        let rtstartup_src = SYSROOT_SRC.to_path(dirs).join("library").join("rtstartup");
+
+        for file in ["rsbegin", "rsend"] {
+            let mut build_rtstartup_cmd = Command::new(&bootstrap_host_compiler.rustc);
+            build_rtstartup_cmd
+                .arg("--target")
+                .arg(&target_triple)
+                .arg("--emit=obj")
+                .arg("-o")
+                .arg(target_rustlib_lib.join(format!("{file}.o")))
+                .arg(rtstartup_src.join(format!("{file}.rs")));
+            spawn_and_wait(build_rtstartup_cmd);
         }
     }
 
@@ -209,6 +206,7 @@ fn build_clif_sysroot_for_triple(
     // Build sysroot
     let mut rustflags = " -Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
     rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
+    // Necessary for MinGW to find rsbegin.o and rsend.o
     rustflags.push_str(&format!(" --sysroot={}", DIST_DIR.to_path(dirs).to_str().unwrap()));
     if channel == "release" {
         rustflags.push_str(" -Zmir-opt-level=3");
