@@ -230,15 +230,8 @@ fn hover_ranged(
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     // FIXME: make this work in attributes
-    let expr_or_pat = file.covering_element(range).ancestors().find_map(|it| {
-        match_ast! {
-            match it {
-                ast::Expr(expr) => Some(Either::Left(expr)),
-                ast::Pat(pat) => Some(Either::Right(pat)),
-                _ => None,
-            }
-        }
-    })?;
+    let expr_or_pat =
+        file.covering_element(range).ancestors().find_map(Either::<ast::Expr, ast::Pat>::cast)?;
     let res = match &expr_or_pat {
         Either::Left(ast::Expr::TryExpr(try_expr)) => render::try_expr(sema, config, try_expr),
         Either::Left(ast::Expr::PrefixExpr(prefix_expr))

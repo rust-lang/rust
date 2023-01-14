@@ -50,10 +50,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    let strukt = ctx
-        .find_node_at_offset::<ast::Struct>()
-        .map(Either::Left)
-        .or_else(|| ctx.find_node_at_offset::<ast::Variant>().map(Either::Right))?;
+    let strukt = ctx.find_node_at_offset::<Either<ast::Struct, ast::Variant>>()?;
     let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
     let tuple_fields = match field_list {
         ast::FieldList::TupleFieldList(it) => it,
