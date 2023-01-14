@@ -21,7 +21,7 @@ pub(crate) fn run(
     host_compiler: &Compiler,
 ) {
     if !config::get_bool("testsuite.abi-cafe") {
-        eprintln!("[SKIP] abi-cafe");
+        eprintln!("[RUN] abi-cafe (skipped)");
         return;
     }
 

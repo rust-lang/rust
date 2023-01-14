@@ -153,7 +153,7 @@ pub fn main() {
             if host_compiler.triple == target_triple {
                 abi_cafe::run(channel, sysroot_kind, &dirs, &cg_clif_dylib, &host_compiler);
             } else {
-                eprintln!("[SKIP] abi-cafe (cross-compilation not supported)");
+                eprintln!("[RUN] abi-cafe (skipped, cross-compilation not supported)");
                 return;
             }
         }
