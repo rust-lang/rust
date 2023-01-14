@@ -1105,6 +1105,7 @@ impl UnusedDelimLint for UnusedBraces {
                                 || matches!(expr.kind, ast::ExprKind::Lit(_)))
                             && !cx.sess().source_map().is_multiline(value.span)
                             && value.attrs.is_empty()
+                            && !expr.span.from_expansion()
                             && !value.span.from_expansion()
                             && !inner.span.from_expansion()
                         {
