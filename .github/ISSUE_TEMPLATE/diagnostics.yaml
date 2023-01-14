@@ -1,0 +1,65 @@
+name: Diagnostic issue
+description: Create a bug report or feature request for a change to `rustc`'s error output
+labels: ["A-diagnostics", "T-compiler"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for filing a diagnostics bug report! 🐛
+
+        Please provide a short summary of the bug, along with any information you feel relevant to replicating the bug.
+
+        If you cannot produce a minimal reproduction case (something that would work in isolation), please provide the steps or even link to a repository that causes the problematic output to occur.
+  - type: textarea
+    id: code
+    attributes:
+      label: Code
+      description: Please provide code that can reproduce the problem
+      placeholder: code
+      render: Rust
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Current output
+      description: Please provide the `rustc` output you see
+      placeholder: rustc output
+      render: Shell
+    validations:
+      required: true
+  - type: textarea
+    id: desired-output
+    attributes:
+      label: Desired output
+      description: Please provide what the output *should* be
+      placeholder: proposed output
+      render: Shell
+    validations:
+      required: false
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale and extra context
+      description: If the problem is not self-explanatory, please provide a rationale for the change.
+    validations:
+      required: false
+  - type: textarea
+    id: other-output
+    attributes:
+      label: Other cases
+      description: If dramatically different output is caused by small changes, consider also adding them here.
+      render: Rust
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        If you're using the stable version of the compiler, you should also check if the bug also exists in the beta or nightly versions. The output might also be different depending on the Edition.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: If you have more details you want to give us to reproduce this issue, please add it here
+    validations:
+      required: false
