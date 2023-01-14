@@ -1426,7 +1426,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ///
     /// we will create a TAIT definition in the HIR like
     ///
-    /// ```rust,no_run
+    /// ```ignore (cannot-test-this-because-type)
     /// type TestReturn<'a, T, 'x> = impl Debug + 'x
     /// ```
     /// and return a type like `TestReturn<'a, 'x, 'T>`, so that the function looks like:
