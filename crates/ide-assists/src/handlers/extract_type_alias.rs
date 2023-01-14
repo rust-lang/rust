@@ -1,9 +1,6 @@
 use either::Either;
 use ide_db::syntax_helpers::node_ext::walk_ty;
-use syntax::{
-    ast::{self, edit::IndentLevel, make, AstNode, HasGenericParams, HasName},
-    match_ast,
-};
+use syntax::ast::{self, edit::IndentLevel, make, AstNode, HasGenericParams, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -31,15 +28,8 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
     let ty = ctx.find_node_at_range::<ast::Type>()?;
     let item = ty.syntax().ancestors().find_map(ast::Item::cast)?;
-    let assoc_owner = item.syntax().ancestors().nth(2).and_then(|it| {
-        match_ast! {
-            match it {
-                ast::Trait(tr) => Some(Either::Left(tr)),
-                ast::Impl(impl_) => Some(Either::Right(impl_)),
-                _ => None,
-            }
-        }
-    });
+    let assoc_owner =
+        item.syntax().ancestors().nth(2).and_then(Either::<ast::Trait, ast::Impl>::cast);
     let node = assoc_owner.as_ref().map_or_else(
         || item.syntax(),
         |impl_| impl_.as_ref().either(AstNode::syntax, AstNode::syntax),
