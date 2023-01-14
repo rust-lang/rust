@@ -4,7 +4,9 @@ use std::{
 };
 
 use either::Either;
-use hir::{known, HasVisibility, HirDisplay, HirWrite, ModuleDef, ModuleDefId, Semantics};
+use hir::{
+    known, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef, ModuleDefId, Semantics,
+};
 use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
@@ -297,24 +299,35 @@ fn label_of_ty(
         mut max_length: Option<usize>,
         ty: hir::Type,
         label_builder: &mut InlayHintLabelBuilder<'_>,
-    ) {
+    ) -> Result<(), HirDisplayError> {
         let iter_item_type = hint_iterator(sema, famous_defs, &ty);
         match iter_item_type {
-            Some(ty) => {
-                const LABEL_START: &str = "impl Iterator<Item = ";
+            Some((iter_trait, ty)) => {
+                const LABEL_START: &str = "impl ";
+                const LABEL_ITERATOR: &str = "Iterator";
+                const LABEL_MIDDLE: &str = "<Item = ";
                 const LABEL_END: &str = ">";
 
-                max_length =
-                    max_length.map(|len| len.saturating_sub(LABEL_START.len() + LABEL_END.len()));
+                max_length = max_length.map(|len| {
+                    len.saturating_sub(
+                        LABEL_START.len()
+                            + LABEL_ITERATOR.len()
+                            + LABEL_MIDDLE.len()
+                            + LABEL_END.len(),
+                    )
+                });
 
-                label_builder.write_str(LABEL_START).unwrap();
-                rec(sema, famous_defs, max_length, ty, label_builder);
-                label_builder.write_str(LABEL_END).unwrap();
+                label_builder.write_str(LABEL_START)?;
+                label_builder.start_location_link(ModuleDef::from(iter_trait).into());
+                label_builder.write_str(LABEL_ITERATOR)?;
+                label_builder.end_location_link();
+                label_builder.write_str(LABEL_MIDDLE)?;
+                rec(sema, famous_defs, max_length, ty, label_builder)?;
+                label_builder.write_str(LABEL_END)?;
+                Ok(())
             }
-            None => {
-                let _ = ty.display_truncated(sema.db, max_length).write_to(label_builder);
-            }
-        };
+            None => ty.display_truncated(sema.db, max_length).write_to(label_builder),
+        }
     }
 
     let mut label_builder = InlayHintLabelBuilder {
@@ -324,7 +337,7 @@ fn label_of_ty(
         location_link_enabled: config.location_links,
         result: InlayHintLabel::default(),
     };
-    rec(sema, famous_defs, config.max_length, ty, &mut label_builder);
+    let _ = rec(sema, famous_defs, config.max_length, ty, &mut label_builder);
     let r = label_builder.finish();
     Some(r)
 }
@@ -430,12 +443,12 @@ fn hints(
     };
 }
 
-/// Checks if the type is an Iterator from std::iter and returns its item type.
+/// Checks if the type is an Iterator from std::iter and returns the iterator trait and the item type of the concrete iterator.
 fn hint_iterator(
     sema: &Semantics<'_, RootDatabase>,
     famous_defs: &FamousDefs<'_, '_>,
     ty: &hir::Type,
-) -> Option<hir::Type> {
+) -> Option<(hir::Trait, hir::Type)> {
     let db = sema.db;
     let strukt = ty.strip_references().as_adt()?;
     let krate = strukt.module(db).krate();
@@ -458,7 +471,7 @@ fn hint_iterator(
             _ => None,
         })?;
         if let Some(ty) = ty.normalize_trait_assoc_type(db, &[], assoc_type_item) {
-            return Some(ty);
+            return Some((iter_trait, ty));
         }
     }
 

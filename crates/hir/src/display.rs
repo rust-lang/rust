@@ -270,7 +270,7 @@ impl HirDisplay for TypeParam {
         let has_only_not_sized_bound = predicates.is_empty();
         if !has_only_sized_bound || has_only_not_sized_bound {
             let default_sized = SizedByDefault::Sized { anchor: krate };
-            write_bounds_like_dyn_trait_with_prefix(":", &predicates, default_sized, f)?;
+            write_bounds_like_dyn_trait_with_prefix(f, ":", &predicates, default_sized)?;
         }
         Ok(())
     }
