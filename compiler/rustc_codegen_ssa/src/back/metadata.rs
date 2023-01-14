@@ -100,7 +100,13 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     };
     let architecture = match &sess.target.arch[..] {
         "arm" => Architecture::Arm,
-        "aarch64" => Architecture::Aarch64,
+        "aarch64" => {
+            if sess.target.pointer_width == 32 {
+                Architecture::Aarch64_Ilp32
+            } else {
+                Architecture::Aarch64
+            }
+        }
         "x86" => Architecture::I386,
         "s390x" => Architecture::S390x,
         "mips" => Architecture::Mips,
