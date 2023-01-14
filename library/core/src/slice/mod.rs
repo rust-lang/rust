@@ -1248,7 +1248,7 @@ impl<T> [T] {
         ArrayChunksMut::new(self)
     }
 
-    /// Returns an iterator over overlapping windows of `N` elements of  a slice,
+    /// Returns an iterator over overlapping windows of `N` elements of a slice,
     /// starting at the beginning of the slice.
     ///
     /// This is the const generic equivalent of [`windows`].
