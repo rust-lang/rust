@@ -217,7 +217,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "serde",
     "serde_derive",
     "serde_json",
-    "sha-1",
+    "sha1",
     "sha2",
     "sharded-slab",
     "smallvec",

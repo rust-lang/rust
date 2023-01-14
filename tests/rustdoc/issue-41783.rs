@@ -5,7 +5,7 @@
 // @!hasraw - '<span class="attr">#[outer]</span>'
 // @hasraw - '#![inner]</span>'
 // @!hasraw - '<span class="attr">#![inner]</span>'
-// @snapshot 'codeblock' - '//*[@class="rustdoc-toggle top-doc"]/*[@class="docblock"]//pre/code'
+// @snapshot 'codeblock' - '//*[@class="toggle top-doc"]/*[@class="docblock"]//pre/code'
 
 /// ```no_run
 /// # # space
