@@ -3,7 +3,7 @@
 // NOTE: For the example to compile, you will need to first run the following:
 //   rustup component add rustc-dev llvm-tools-preview
 
-// version: 1.62.0-nightly (7c4b47696 2022-04-30)
+// version: rustc 1.68.0-nightly (935dc0721 2022-12-19)
 
 extern crate rustc_error_codes;
 extern crate rustc_errors;
@@ -50,7 +50,6 @@ fn main() {
         output_dir: None,  // Option<PathBuf>
         output_file: None, // Option<PathBuf>
         file_loader: None, // Option<Box<dyn FileLoader + Send + Sync>>
-        diagnostic_output: rustc_session::DiagnosticOutput::Default,
         lint_caps: FxHashMap::default(), // FxHashMap<lint::LintId, lint::Level>
         // This is a callback from the driver that is called when [`ParseSess`] is created.
         parse_sess_created: None, //Option<Box<dyn FnOnce(&mut ParseSess) + Send>>

@@ -3,7 +3,7 @@
 // NOTE: For the example to compile, you will need to first run the following:
 //   rustup component add rustc-dev llvm-tools-preview
 
-// version: 1.62.0-nightly (7c4b47696 2022-04-30)
+// version: rustc 1.68.0-nightly (935dc0721 2022-12-19)
 
 extern crate rustc_error_codes;
 extern crate rustc_errors;
@@ -65,10 +65,6 @@ fn main() {
 "
             .into(),
         },
-        // Redirect the diagnostic output of the compiler to a buffer.
-        diagnostic_output: rustc_session::DiagnosticOutput::Raw(Box::from(DiagnosticSink(
-            buffer.clone(),
-        ))),
         crate_cfg: rustc_hash::FxHashSet::default(),
         crate_check_cfg: CheckCfg::default(),
         input_path: None,

@@ -5,7 +5,7 @@
 ## Getting the type of an expression
 
 To get the type of an expression, use the `global_ctxt` to get a `TyCtxt`.
-The following was tested with <!-- date-check: June 2022 --> `nightly-2022-06-05`
+The following was tested with <!-- date-check: Jan 2023 --> `nightly-2022-12-19`
 (see [here][example] for the complete example):
 
 [example]: https://github.com/rust-lang/rustc-dev-guide/blob/master/examples/rustc-driver-interacting-with-the-ast.rs
