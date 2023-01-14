@@ -178,7 +178,7 @@ impl<'tcx> EvalCtxt<'tcx> {
         let canonical_goal = infcx.canonicalize_query(goal, &mut orig_values);
         let canonical_response = self.evaluate_canonical_goal(canonical_goal)?;
         Ok((
-            true, // FIXME: check whether `var_values` are an identity substitution.
+            !canonical_response.value.var_values.is_identity(),
             instantiate_canonical_query_response(infcx, &orig_values, canonical_response),
         ))
     }
