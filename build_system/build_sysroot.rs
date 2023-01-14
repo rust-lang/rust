@@ -56,28 +56,6 @@ pub(crate) fn build_sysroot(
         spawn_and_wait(build_cargo_wrapper_cmd);
     }
 
-    if target_triple.ends_with("windows-gnu") {
-        eprintln!("[BUILD] rtstartup for {target_triple}");
-
-        let rtstartup_src = SYSROOT_SRC.to_path(dirs).join("library").join("rtstartup");
-        let mut target_libs = SysrootTarget { triple: target_triple.clone(), libs: vec![] };
-
-        for file in ["rsbegin", "rsend"] {
-            let obj = RelPath::BUILD.to_path(dirs).join(format!("{file}.o"));
-            let mut build_rtstartup_cmd = Command::new(&bootstrap_host_compiler.rustc);
-            build_rtstartup_cmd
-                .arg("--target")
-                .arg(&target_triple)
-                .arg("--emit=obj")
-                .arg("-o")
-                .arg(&obj)
-                .arg(rtstartup_src.join(format!("{file}.rs")));
-            spawn_and_wait(build_rtstartup_cmd);
-            target_libs.libs.push(obj);
-        }
-
-        target_libs.install_into_sysroot(&DIST_DIR.to_path(dirs))
-    }
     match sysroot_kind {
         SysrootKind::None => {} // Nothing to do
         SysrootKind::Llvm => {
@@ -190,6 +168,7 @@ pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = BUILD_SYSROOT.join("rustc_ver
 pub(crate) static SYSROOT_SRC: RelPath = BUILD_SYSROOT.join("sysroot_src");
 pub(crate) static STANDARD_LIBRARY: CargoProject =
     CargoProject::new(&BUILD_SYSROOT, "build_sysroot");
+pub(crate) static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
 
 #[must_use]
 fn build_clif_sysroot_for_triple(
@@ -216,6 +195,35 @@ fn build_clif_sysroot_for_triple(
         }
     }
 
+    let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
+
+    if compiler.triple.ends_with("windows-gnu") {
+        eprintln!("[BUILD] rtstartup for {}", compiler.triple);
+
+        RTSTARTUP_SYSROOT.ensure_fresh(dirs);
+
+        let rtstartup_src = SYSROOT_SRC.to_path(dirs).join("library").join("rtstartup");
+        let mut rtstartup_target_libs =
+            SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
+
+        for file in ["rsbegin", "rsend"] {
+            let obj = RTSTARTUP_SYSROOT.to_path(dirs).join(format!("{file}.o"));
+            let mut build_rtstartup_cmd = Command::new(&compiler.rustc);
+            build_rtstartup_cmd
+                .arg("--target")
+                .arg(&compiler.triple)
+                .arg("--emit=obj")
+                .arg("-o")
+                .arg(&obj)
+                .arg(rtstartup_src.join(format!("{file}.rs")));
+            spawn_and_wait(build_rtstartup_cmd);
+            rtstartup_target_libs.libs.push(obj.clone());
+            target_libs.libs.push(obj);
+        }
+
+        rtstartup_target_libs.install_into_sysroot(&RTSTARTUP_SYSROOT.to_path(dirs));
+    }
+
     let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join(channel);
 
     if !super::config::get_bool("keep_sysroot") {
@@ -230,7 +238,8 @@ fn build_clif_sysroot_for_triple(
     let mut rustflags = " -Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
     rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
     // Necessary for MinGW to find rsbegin.o and rsend.o
-    rustflags.push_str(&format!(" --sysroot={}", DIST_DIR.to_path(dirs).to_str().unwrap()));
+    rustflags
+        .push_str(&format!(" --sysroot={}", RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap()));
     if channel == "release" {
         rustflags.push_str(" -Zmir-opt-level=3");
     }
@@ -241,8 +250,6 @@ fn build_clif_sysroot_for_triple(
     }
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     spawn_and_wait(build_cmd);
-
-    let mut target_libs = SysrootTarget { triple: compiler.triple, libs: vec![] };
 
     for entry in fs::read_dir(build_dir.join("deps")).unwrap() {
         let entry = entry.unwrap();
