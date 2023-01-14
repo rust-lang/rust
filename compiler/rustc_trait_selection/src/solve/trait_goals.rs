@@ -5,9 +5,10 @@ use std::iter;
 use crate::traits::TupleArgumentsFlag;
 
 use super::assembly::{self, AssemblyCtxt};
-use super::{CanonicalGoal, Certainty, EvalCtxt, Goal, QueryResult};
+use super::{CanonicalGoal, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+
 use rustc_hir::def_id::DefId;
-use rustc_hir::Unsafety;
+use rustc_hir::{Movability, Mutability, Unsafety};
 use rustc_infer::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
@@ -225,20 +226,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     ) {
         // FIXME: We need to give auto trait candidates less precedence than impl candidates?
         acx.infcx.probe(|_| {
-            let Ok(constituent_tys) =
-                instantiate_constituent_tys_for_auto_trait(acx.infcx, goal.predicate.self_ty()) else { return };
-            let nested_goals = constituent_tys
-                .into_iter()
-                .map(|ty| {
-                    Goal::new(
-                        acx.cx.tcx,
-                        goal.param_env,
-                        ty::Binder::dummy(goal.predicate.with_self_ty(acx.cx.tcx, ty)),
-                    )
-                })
-                .collect();
-            let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
-            acx.try_insert_candidate(CandidateSource::AutoImpl, certainty);
+            let components =
+                instantiate_constituent_tys_for_auto_trait(acx.infcx, goal.predicate.self_ty());
+            evaluate_goal_for_components(acx, goal, components, CandidateSource::AutoImpl);
         })
     }
 
@@ -284,13 +274,18 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         let self_ty = goal.predicate.self_ty();
 
         if Some(trait_def_id) == lang_items.sized_trait() {
-            if self_ty.is_trivially_sized(acx.cx.tcx) {
-                acx.try_insert_candidate(CandidateSource::Builtin, Certainty::Yes);
-            }
+            acx.infcx.probe(|_| {
+                let components = instantiate_constituent_tys_for_sized_trait(acx.infcx, self_ty);
+                evaluate_goal_for_components(acx, goal, components, CandidateSource::Builtin);
+            })
         } else if Some(trait_def_id) == lang_items.copy_trait()
             || Some(trait_def_id) == lang_items.clone_trait()
         {
-            // FIXME
+            acx.infcx.probe(|_| {
+                let components =
+                    instantiate_constituent_tys_for_copy_clone_trait(acx.infcx, self_ty);
+                evaluate_goal_for_components(acx, goal, components, CandidateSource::Builtin);
+            })
         } else if Some(trait_def_id) == lang_items.discriminant_kind_trait()
             || Some(trait_def_id) == lang_items.pointee_trait()
         {
@@ -298,22 +293,32 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             acx.try_insert_candidate(CandidateSource::Builtin, Certainty::Yes);
         } else if Some(trait_def_id) == lang_items.tuple_trait() {
             match *self_ty.kind() {
-                ty::Infer(ty::TyVar(_)) => todo!("ambiguous"),
+                ty::Infer(ty::TyVar(_)) => acx.try_insert_candidate(
+                    CandidateSource::Builtin,
+                    Certainty::Maybe(MaybeCause::Ambiguity),
+                ),
                 ty::Tuple(_) => acx.try_insert_candidate(CandidateSource::Builtin, Certainty::Yes),
                 _ => {}
             }
         } else if Some(trait_def_id) == lang_items.pointer_sized() {
             let erased_self_ty = acx.cx.tcx.erase_regions(self_ty);
             if erased_self_ty.has_non_region_infer() {
-                todo!("ambiguous")
-            }
-            let usize_layout =
-                acx.cx.tcx.layout_of(ty::ParamEnv::empty().and(acx.cx.tcx.types.usize)).unwrap();
-            if let Ok(layout) = acx.cx.tcx.layout_of(goal.param_env.and(self_ty))
-                && layout.layout.size() == usize_layout.layout.size()
-                && layout.layout.align().abi == usize_layout.layout.align().abi
-            {
-                acx.try_insert_candidate(CandidateSource::Builtin, Certainty::Yes);
+                acx.try_insert_candidate(
+                    CandidateSource::Builtin,
+                    Certainty::Maybe(MaybeCause::Ambiguity),
+                )
+            } else {
+                let usize_layout = acx
+                    .cx
+                    .tcx
+                    .layout_of(ty::ParamEnv::empty().and(acx.cx.tcx.types.usize))
+                    .unwrap();
+                if let Ok(layout) = acx.cx.tcx.layout_of(goal.param_env.and(self_ty))
+                    && layout.layout.size() == usize_layout.layout.size()
+                    && layout.layout.align().abi == usize_layout.layout.align().abi
+                {
+                    acx.try_insert_candidate(CandidateSource::Builtin, Certainty::Yes);
+                }
             }
         } else if Some(trait_def_id) == lang_items.coerce_unsized_trait()
             || Some(trait_def_id) == lang_items.unsize_trait()
@@ -327,7 +332,7 @@ fn match_poly_trait_ref_against_goal<'tcx>(
     acx: &mut AssemblyCtxt<'_, 'tcx, TraitPredicate<'tcx>>,
     goal: Goal<'tcx, TraitPredicate<'tcx>>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-    candidate: impl FnOnce() -> CandidateSource,
+    candidate: CandidateSource,
 ) {
     acx.infcx.probe(|_| {
         let trait_ref = acx.infcx.replace_bound_vars_with_fresh_vars(
@@ -349,8 +354,47 @@ fn match_poly_trait_ref_against_goal<'tcx>(
         let nested_goals = obligations.into_iter().map(|o| o.into()).collect();
 
         let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
-        acx.try_insert_candidate(candidate(), certainty);
+        acx.try_insert_candidate(candidate, certainty);
     })
+}
+
+// Evaluate the goal with a new set of self types, combined with a certainty.
+fn evaluate_goal_for_components<'tcx>(
+    acx: &mut AssemblyCtxt<'_, 'tcx, TraitPredicate<'tcx>>,
+    goal: Goal<'tcx, TraitPredicate<'tcx>>,
+    components: ComponentsAndCertainty<'tcx>,
+    candidate: CandidateSource,
+) {
+    let components = match components {
+        ComponentsAndCertainty::Yes(components) => components,
+        ComponentsAndCertainty::Maybe => {
+            acx.try_insert_candidate(candidate, Certainty::Maybe(MaybeCause::Ambiguity));
+            return;
+        }
+        ComponentsAndCertainty::No => {
+            return;
+        }
+    };
+
+    let nested_goals = components
+        .into_iter()
+        .map(|ty| {
+            Goal::new(
+                acx.cx.tcx,
+                goal.param_env,
+                ty::Binder::dummy(goal.predicate.with_self_ty(acx.cx.tcx, ty)),
+            )
+        })
+        .collect();
+
+    let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
+    acx.try_insert_candidate(candidate, certainty);
+}
+
+enum ComponentsAndCertainty<'tcx> {
+    Yes(Vec<Ty<'tcx>>),
+    Maybe,
+    No,
 }
 
 // Calculates the constituent types of a type for `auto trait` purposes.
@@ -360,7 +404,7 @@ fn match_poly_trait_ref_against_goal<'tcx>(
 fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     infcx: &InferCtxt<'tcx>,
     ty: Ty<'tcx>,
-) -> Result<Vec<Ty<'tcx>>, ()> {
+) -> ComponentsAndCertainty<'tcx> {
     let tcx = infcx.tcx;
     match *ty.kind() {
         ty::Uint(_)
@@ -373,53 +417,179 @@ fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Error(_)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Never
-        | ty::Char => Ok(vec![]),
+        | ty::Char => ComponentsAndCertainty::Yes(vec![]),
 
         ty::Placeholder(..)
         | ty::Dynamic(..)
         | ty::Param(..)
         | ty::Foreign(..)
         | ty::Alias(ty::Projection, ..)
-        | ty::Bound(..)
-        | ty::Infer(ty::TyVar(_)) => {
-            // FIXME: Do we need to mark anything as ambiguous here? Yeah?
-            Err(())
-        }
+        | ty::Bound(..) => ComponentsAndCertainty::No,
+
+        ty::Infer(ty::TyVar(_)) => ComponentsAndCertainty::Maybe,
 
         ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
 
         ty::RawPtr(ty::TypeAndMut { ty: element_ty, .. }) | ty::Ref(_, element_ty, _) => {
-            Ok(vec![element_ty])
+            ComponentsAndCertainty::Yes(vec![element_ty])
         }
 
-        ty::Array(element_ty, _) | ty::Slice(element_ty) => Ok(vec![element_ty]),
+        ty::Array(element_ty, _) | ty::Slice(element_ty) => {
+            ComponentsAndCertainty::Yes(vec![element_ty])
+        }
 
         ty::Tuple(ref tys) => {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-            Ok(tys.iter().collect())
+            ComponentsAndCertainty::Yes(tys.iter().collect())
         }
 
-        ty::Closure(_, ref substs) => Ok(vec![substs.as_closure().tupled_upvars_ty()]),
+        ty::Closure(_, ref substs) => {
+            ComponentsAndCertainty::Yes(vec![substs.as_closure().tupled_upvars_ty()])
+        }
 
         ty::Generator(_, ref substs, _) => {
             let generator_substs = substs.as_generator();
-            Ok(vec![generator_substs.tupled_upvars_ty(), generator_substs.witness()])
+            ComponentsAndCertainty::Yes(vec![
+                generator_substs.tupled_upvars_ty(),
+                generator_substs.witness(),
+            ])
         }
 
         ty::GeneratorWitness(types) => {
-            Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
+            ComponentsAndCertainty::Yes(infcx.replace_bound_vars_with_placeholders(types).to_vec())
         }
 
         // For `PhantomData<T>`, we pass `T`.
-        ty::Adt(def, substs) if def.is_phantom_data() => Ok(vec![substs.type_at(0)]),
+        ty::Adt(def, substs) if def.is_phantom_data() => {
+            ComponentsAndCertainty::Yes(vec![substs.type_at(0)])
+        }
 
-        ty::Adt(def, substs) => Ok(def.all_fields().map(|f| f.ty(tcx, substs)).collect()),
+        ty::Adt(def, substs) => {
+            ComponentsAndCertainty::Yes(def.all_fields().map(|f| f.ty(tcx, substs)).collect())
+        }
 
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(vec![tcx.bound_type_of(def_id).subst(tcx, substs)])
+            ComponentsAndCertainty::Yes(vec![tcx.bound_type_of(def_id).subst(tcx, substs)])
+        }
+    }
+}
+
+fn instantiate_constituent_tys_for_sized_trait<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> ComponentsAndCertainty<'tcx> {
+    match *ty.kind() {
+        ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::Uint(_)
+        | ty::Int(_)
+        | ty::Bool
+        | ty::Float(_)
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::RawPtr(..)
+        | ty::Char
+        | ty::Ref(..)
+        | ty::Generator(..)
+        | ty::GeneratorWitness(..)
+        | ty::Array(..)
+        | ty::Closure(..)
+        | ty::Never
+        | ty::Dynamic(_, _, ty::DynStar)
+        | ty::Error(_) => ComponentsAndCertainty::Yes(vec![]),
+
+        ty::Str
+        | ty::Slice(_)
+        | ty::Dynamic(..)
+        | ty::Foreign(..)
+        | ty::Alias(..)
+        | ty::Param(_) => ComponentsAndCertainty::No,
+
+        ty::Infer(ty::TyVar(_)) => ComponentsAndCertainty::Maybe,
+
+        ty::Placeholder(..)
+        | ty::Bound(..)
+        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+
+        ty::Tuple(tys) => ComponentsAndCertainty::Yes(tys.to_vec()),
+
+        ty::Adt(def, substs) => {
+            let sized_crit = def.sized_constraint(infcx.tcx);
+            ComponentsAndCertainty::Yes(
+                sized_crit
+                    .0
+                    .iter()
+                    .map(|ty| sized_crit.rebind(*ty).subst(infcx.tcx, substs))
+                    .collect(),
+            )
+        }
+    }
+}
+
+fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> ComponentsAndCertainty<'tcx> {
+    match *ty.kind() {
+        ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Error(_) => ComponentsAndCertainty::Yes(vec![]),
+
+        // Implementations are provided in core
+        ty::Uint(_)
+        | ty::Int(_)
+        | ty::Bool
+        | ty::Float(_)
+        | ty::Char
+        | ty::RawPtr(..)
+        | ty::Never
+        | ty::Ref(_, _, Mutability::Not)
+        | ty::Array(..) => ComponentsAndCertainty::No,
+
+        ty::Dynamic(..)
+        | ty::Str
+        | ty::Slice(_)
+        | ty::Generator(_, _, Movability::Static)
+        | ty::Foreign(..)
+        | ty::Ref(_, _, Mutability::Mut)
+        | ty::Adt(_, _)
+        | ty::Alias(_, _)
+        | ty::Param(_) => ComponentsAndCertainty::No,
+
+        ty::Infer(ty::TyVar(_)) => ComponentsAndCertainty::Maybe,
+
+        ty::Placeholder(..)
+        | ty::Bound(..)
+        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+
+        ty::Tuple(tys) => ComponentsAndCertainty::Yes(tys.to_vec()),
+
+        ty::Closure(_, substs) => match *substs.as_closure().tupled_upvars_ty().kind() {
+            ty::Tuple(tys) => ComponentsAndCertainty::Yes(tys.to_vec()),
+            ty::Infer(ty::TyVar(_)) => ComponentsAndCertainty::Maybe,
+            _ => bug!(),
+        },
+
+        ty::Generator(_, substs, Movability::Movable) => {
+            if infcx.tcx.features().generator_clone {
+                let generator = substs.as_generator();
+                match *generator.tupled_upvars_ty().kind() {
+                    ty::Tuple(tys) => ComponentsAndCertainty::Yes(
+                        tys.iter().chain([generator.witness()]).collect(),
+                    ),
+                    ty::Infer(ty::TyVar(_)) => ComponentsAndCertainty::Maybe,
+                    _ => bug!(),
+                }
+            } else {
+                ComponentsAndCertainty::No
+            }
+        }
+
+        ty::GeneratorWitness(types) => {
+            ComponentsAndCertainty::Yes(infcx.replace_bound_vars_with_placeholders(types).to_vec())
         }
     }
 }
