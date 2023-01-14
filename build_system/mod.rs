@@ -134,6 +134,9 @@ pub fn main() {
         process::exit(0);
     }
 
+    env::set_var("RUSTC", "rustc_should_be_set_explicitly");
+    env::set_var("RUSTDOC", "rustdoc_should_be_set_explicitly");
+
     let cg_clif_dylib =
         build_backend::build_backend(&dirs, channel, &host_compiler, use_unstable_features);
     match command {
