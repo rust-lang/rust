@@ -1,6 +1,5 @@
 #![unstable(issue = "none", feature = "windows_stdio")]
 
-use crate::char::decode_utf16;
 use crate::cmp;
 use crate::io;
 use crate::mem::MaybeUninit;
@@ -369,7 +368,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
 #[allow(unused)]
 fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
     let mut written = 0;
-    for chr in decode_utf16(utf16.iter().cloned()) {
+    for chr in char::decode_utf16(utf16.iter().cloned()) {
         match chr {
             Ok(chr) => {
                 chr.encode_utf8(&mut utf8[written..]);

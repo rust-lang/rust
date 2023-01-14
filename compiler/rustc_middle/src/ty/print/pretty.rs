@@ -22,7 +22,6 @@ use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 
 use std::cell::Cell;
-use std::char;
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::iter;
