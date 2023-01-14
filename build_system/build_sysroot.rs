@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use super::path::{Dirs, RelPath};
@@ -56,35 +56,40 @@ pub(crate) fn build_sysroot(
         spawn_and_wait(build_cargo_wrapper_cmd);
     }
 
-    let default_sysroot = super::rustc_info::get_default_sysroot(&bootstrap_host_compiler.rustc);
-
-    let host_rustlib_lib =
-        RUSTLIB_DIR.to_path(dirs).join(&bootstrap_host_compiler.triple).join("lib");
-    let target_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(&target_triple).join("lib");
-    fs::create_dir_all(&host_rustlib_lib).unwrap();
-    fs::create_dir_all(&target_rustlib_lib).unwrap();
-
     if target_triple.ends_with("windows-gnu") {
         eprintln!("[BUILD] rtstartup for {target_triple}");
 
         let rtstartup_src = SYSROOT_SRC.to_path(dirs).join("library").join("rtstartup");
+        let mut target_libs = SysrootTarget { triple: target_triple.clone(), libs: vec![] };
 
         for file in ["rsbegin", "rsend"] {
+            let obj = RelPath::BUILD.to_path(dirs).join(format!("{file}.o"));
             let mut build_rtstartup_cmd = Command::new(&bootstrap_host_compiler.rustc);
             build_rtstartup_cmd
                 .arg("--target")
                 .arg(&target_triple)
                 .arg("--emit=obj")
                 .arg("-o")
-                .arg(target_rustlib_lib.join(format!("{file}.o")))
+                .arg(&obj)
                 .arg(rtstartup_src.join(format!("{file}.rs")));
             spawn_and_wait(build_rtstartup_cmd);
+            target_libs.libs.push(obj);
         }
-    }
 
+        target_libs.install_into_sysroot(&DIST_DIR.to_path(dirs))
+    }
     match sysroot_kind {
         SysrootKind::None => {} // Nothing to do
         SysrootKind::Llvm => {
+            let default_sysroot =
+                super::rustc_info::get_default_sysroot(&bootstrap_host_compiler.rustc);
+
+            let host_rustlib_lib =
+                RUSTLIB_DIR.to_path(dirs).join(&bootstrap_host_compiler.triple).join("lib");
+            let target_rustlib_lib = RUSTLIB_DIR.to_path(dirs).join(&target_triple).join("lib");
+            fs::create_dir_all(&host_rustlib_lib).unwrap();
+            fs::create_dir_all(&target_rustlib_lib).unwrap();
+
             for file in fs::read_dir(
                 default_sysroot
                     .join("lib")
@@ -122,12 +127,13 @@ pub(crate) fn build_sysroot(
             }
         }
         SysrootKind::Clif => {
-            build_clif_sysroot_for_triple(
+            let host = build_clif_sysroot_for_triple(
                 dirs,
                 channel,
                 bootstrap_host_compiler.clone(),
                 &cg_clif_dylib_path,
             );
+            host.install_into_sysroot(&DIST_DIR.to_path(dirs));
 
             if !is_native {
                 build_clif_sysroot_for_triple(
@@ -140,16 +146,16 @@ pub(crate) fn build_sysroot(
                         bootstrap_target_compiler
                     },
                     &cg_clif_dylib_path,
-                );
+                )
+                .install_into_sysroot(&DIST_DIR.to_path(dirs));
             }
 
             // Copy std for the host to the lib dir. This is necessary for the jit mode to find
             // libstd.
-            for file in fs::read_dir(host_rustlib_lib).unwrap() {
-                let file = file.unwrap().path();
-                let filename = file.file_name().unwrap().to_str().unwrap();
+            for lib in host.libs {
+                let filename = lib.file_name().unwrap().to_str().unwrap();
                 if filename.contains("std-") && !filename.contains(".rlib") {
-                    try_hard_link(&file, LIB_DIR.to_path(dirs).join(file.file_name().unwrap()));
+                    try_hard_link(&lib, LIB_DIR.to_path(dirs).join(lib.file_name().unwrap()));
                 }
             }
         }
@@ -162,6 +168,22 @@ pub(crate) fn build_sysroot(
     target_compiler
 }
 
+struct SysrootTarget {
+    triple: String,
+    libs: Vec<PathBuf>,
+}
+
+impl SysrootTarget {
+    fn install_into_sysroot(&self, sysroot: &Path) {
+        let target_rustlib_lib = sysroot.join("lib").join("rustlib").join(&self.triple).join("lib");
+        fs::create_dir_all(&target_rustlib_lib).unwrap();
+
+        for lib in &self.libs {
+            try_hard_link(lib, target_rustlib_lib.join(lib.file_name().unwrap()));
+        }
+    }
+}
+
 pub(crate) static ORIG_BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");
 pub(crate) static BUILD_SYSROOT: RelPath = RelPath::DOWNLOAD.join("sysroot");
 pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = BUILD_SYSROOT.join("rustc_version");
@@ -169,12 +191,13 @@ pub(crate) static SYSROOT_SRC: RelPath = BUILD_SYSROOT.join("sysroot_src");
 pub(crate) static STANDARD_LIBRARY: CargoProject =
     CargoProject::new(&BUILD_SYSROOT, "build_sysroot");
 
+#[must_use]
 fn build_clif_sysroot_for_triple(
     dirs: &Dirs,
     channel: &str,
     mut compiler: Compiler,
     cg_clif_dylib_path: &Path,
-) {
+) -> SysrootTarget {
     match fs::read_to_string(SYSROOT_RUSTC_VERSION.to_path(dirs)) {
         Err(e) => {
             eprintln!("Failed to get rustc version for patched sysroot source: {}", e);
@@ -219,7 +242,8 @@ fn build_clif_sysroot_for_triple(
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     spawn_and_wait(build_cmd);
 
-    // Copy all relevant files to the sysroot
+    let mut target_libs = SysrootTarget { triple: compiler.triple, libs: vec![] };
+
     for entry in fs::read_dir(build_dir.join("deps")).unwrap() {
         let entry = entry.unwrap();
         if let Some(ext) = entry.path().extension() {
@@ -229,9 +253,8 @@ fn build_clif_sysroot_for_triple(
         } else {
             continue;
         };
-        try_hard_link(
-            entry.path(),
-            RUSTLIB_DIR.to_path(dirs).join(&compiler.triple).join("lib").join(entry.file_name()),
-        );
+        target_libs.libs.push(entry.path());
     }
+
+    target_libs
 }
