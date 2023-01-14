@@ -266,7 +266,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of)
                 && self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
             {
-                let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap();
+                let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().subst_identity();
                 if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
                     && let Some(adt_def_id) = adt_def.did().as_local()
                 {

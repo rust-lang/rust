@@ -652,13 +652,6 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::EarlyBinder(self.fn_sig(def_id))
     }
 
-    pub fn bound_impl_trait_ref(
-        self,
-        def_id: DefId,
-    ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
-        self.impl_trait_ref(def_id).map(|i| ty::EarlyBinder(i))
-    }
-
     pub fn bound_explicit_item_bounds(
         self,
         def_id: DefId,
@@ -671,10 +664,6 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<&'tcx ty::List<ty::Predicate<'tcx>>> {
         ty::EarlyBinder(self.item_bounds(def_id))
-    }
-
-    pub fn bound_const_param_default(self, def_id: DefId) -> ty::EarlyBinder<ty::Const<'tcx>> {
-        ty::EarlyBinder(self.const_param_default(def_id))
     }
 
     pub fn bound_predicates_of(

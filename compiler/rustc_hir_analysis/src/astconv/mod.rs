@@ -511,9 +511,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             return tcx.const_error(ty).into();
                         }
                         if !infer_args && has_default {
-                            tcx.bound_const_param_default(param.def_id)
-                                .subst(tcx, substs.unwrap())
-                                .into()
+                            tcx.const_param_default(param.def_id).subst(tcx, substs.unwrap()).into()
                         } else {
                             if infer_args {
                                 self.astconv.ct_infer(ty, Some(param), self.span).into()
@@ -2068,7 +2066,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
 
                 self.one_bound_for_assoc_type(
-                    || traits::supertraits(tcx, ty::Binder::dummy(trait_ref)),
+                    || traits::supertraits(tcx, ty::Binder::dummy(trait_ref.subst_identity())),
                     || "Self".to_string(),
                     assoc_ident,
                     span,
@@ -2157,7 +2155,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .is_accessible_from(self.item_def_id(), tcx)
                             && tcx.all_impls(*trait_def_id)
                                 .any(|impl_def_id| {
-                                    let trait_ref = tcx.bound_impl_trait_ref(impl_def_id);
+                                    let trait_ref = tcx.impl_trait_ref(impl_def_id);
                                     trait_ref.map_or(false, |trait_ref| {
                                         let impl_ = trait_ref.subst(
                                             tcx,
@@ -2310,7 +2308,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
                     })
                     .filter_map(|impl_def_id| tcx.impl_trait_ref(impl_def_id))
-                    .map(|impl_| impl_.self_ty())
+                    .map(|impl_| impl_.subst_identity().self_ty())
                     // We don't care about blanket impls.
                     .filter(|self_ty| !self_ty.has_non_region_param())
                     .map(|self_ty| tcx.erase_regions(self_ty).to_string())

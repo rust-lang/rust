@@ -616,7 +616,8 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 ) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
     let impl_m = tcx.opt_associated_item(def_id).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
-    let impl_trait_ref = tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap();
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().subst_identity();
     let param_env = tcx.param_env(def_id);
 
     // First, check a few of the same things as `compare_impl_method`,
@@ -1684,7 +1685,8 @@ pub(super) fn compare_impl_const_raw(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_const_item = tcx.associated_item(impl_const_item_def);
     let trait_const_item = tcx.associated_item(trait_const_item_def);
-    let impl_trait_ref = tcx.impl_trait_ref(impl_const_item.container_id(tcx)).unwrap();
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_const_item.container_id(tcx)).unwrap().subst_identity();
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     let impl_c_span = tcx.def_span(impl_const_item_def.to_def_id());

@@ -251,7 +251,7 @@ fn check_hash_peq<'tcx>(
 
                 // Only care about `impl PartialEq<Foo> for Foo`
                 // For `impl PartialEq<B> for A, input_types is [A, B]
-                if trait_ref.substs.type_at(1) == ty {
+                if trait_ref.subst_identity().substs.type_at(1) == ty {
                     span_lint_and_then(
                         cx,
                         DERIVED_HASH_WITH_MANUAL_EQ,
@@ -299,7 +299,7 @@ fn check_ord_partial_ord<'tcx>(
 
                 // Only care about `impl PartialOrd<Foo> for Foo`
                 // For `impl PartialOrd<B> for A, input_types is [A, B]
-                if trait_ref.substs.type_at(1) == ty {
+                if trait_ref.subst_identity().substs.type_at(1) == ty {
                     let mess = if partial_ord_is_automatically_derived {
                         "you are implementing `Ord` explicitly but have derived `PartialOrd`"
                     } else {

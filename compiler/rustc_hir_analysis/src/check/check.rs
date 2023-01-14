@@ -540,7 +540,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                     tcx,
                     it.span,
                     it.owner_id.def_id,
-                    impl_trait_ref,
+                    impl_trait_ref.subst_identity(),
                     &impl_.items,
                 );
                 check_on_unimplemented(tcx, it);
