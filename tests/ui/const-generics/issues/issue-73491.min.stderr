@@ -1,4 +1,4 @@
-error: `[u32; _]` is forbidden as the type of a const generic parameter
+error: `[u32; LEN]` is forbidden as the type of a const generic parameter
   --> $DIR/issue-73491.rs:8:19
    |
 LL | fn hoge<const IN: [u32; LEN]>() {}

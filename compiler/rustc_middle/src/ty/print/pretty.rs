@@ -854,24 +854,7 @@ pub trait PrettyPrinter<'tcx>:
                 }
                 p!("]");
             }
-            ty::Array(ty, sz) => {
-                p!("[", print(ty), "; ");
-                if self.should_print_verbose() {
-                    p!(write("{:?}", sz));
-                } else if let ty::ConstKind::Unevaluated(..) = sz.kind() {
-                    // Do not try to evaluate unevaluated constants. If we are const evaluating an
-                    // array length anon const, rustc will (with debug assertions) print the
-                    // constant's path. Which will end up here again.
-                    p!("_");
-                } else if let Some(n) = sz.kind().try_to_bits(self.tcx().data_layout.pointer_size) {
-                    p!(write("{}", n));
-                } else if let ty::ConstKind::Param(param) = sz.kind() {
-                    p!(print(param));
-                } else {
-                    p!("_");
-                }
-                p!("]")
-            }
+            ty::Array(ty, sz) => p!("[", print(ty), "; ", print(sz), "]"),
             ty::Slice(ty) => p!("[", print(ty), "]"),
         }
 
@@ -1303,10 +1286,10 @@ pub trait PrettyPrinter<'tcx>:
         match ct.kind() {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }) => {
                 match self.tcx().def_kind(def.did) {
-                    DefKind::Static(..) | DefKind::Const | DefKind::AssocConst => {
+                    DefKind::Const | DefKind::AssocConst => {
                         p!(print_value_path(def.did, substs))
                     }
-                    _ => {
+                    DefKind::AnonConst => {
                         if def.is_local() {
                             let span = self.tcx().def_span(def.did);
                             if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
@@ -1318,6 +1301,7 @@ pub trait PrettyPrinter<'tcx>:
                             print_underscore!()
                         }
                     }
+                    defkind => bug!("`{:?}` has unexpcted defkind {:?}", ct, defkind),
                 }
             }
             ty::ConstKind::Infer(infer_ct) => {

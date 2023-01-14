@@ -15,7 +15,7 @@ LL |         ArrayHolder([0; Self::SIZE])
    |         arguments to this struct are incorrect
    |
    = note: expected array `[u32; X]`
-              found array `[u32; _]`
+              found array `[u32; Self::SIZE]`
 note: tuple struct defined here
   --> $DIR/issue-62504.rs:14:8
    |
