@@ -2,9 +2,7 @@
 use gccjit::FnAttribute;
 use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
-use rustc_hir as hir;
-use rustc_hir::Node;
-use rustc_middle::{bug, span_bug};
+use rustc_middle::span_bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
@@ -217,84 +215,59 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
         let sym = self.tcx.symbol_name(instance).name;
 
-        let global =
-            if let Some(def_id) = def_id.as_local() {
-                let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                let llty = self.layout_of(ty).gcc_type(self);
-                // FIXME: refactor this to work without accessing the HIR
-                let global = match self.tcx.hir().get(id) {
-                    Node::Item(&hir::Item { span, kind: hir::ItemKind::Static(..), .. }) => {
-                        if let Some(global) = self.get_declared_value(&sym) {
-                            if self.val_ty(global) != self.type_ptr_to(llty) {
-                                span_bug!(span, "Conflicting types for static");
-                            }
-                        }
-
-                        let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-                        let global = self.declare_global(
-                            &sym,
-                            llty,
-                            GlobalKind::Exported,
-                            is_tls,
-                            fn_attrs.link_section,
-                        );
-
-                        if !self.tcx.is_reachable_non_generic(def_id) {
-                            // TODO(antoyo): set visibility.
-                        }
-
-                        global
-                    }
-
-                    Node::ForeignItem(&hir::ForeignItem {
-                        span,
-                        kind: hir::ForeignItemKind::Static(..),
-                        ..
-                    }) => {
-                        let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                        check_and_apply_linkage(&self, &fn_attrs, ty, sym, span)
-                    }
-
-                    item => bug!("get_static: expected static, found {:?}", item),
-                };
-
-                global
-            }
-            else {
-                // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
-                //debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
-
-                let attrs = self.tcx.codegen_fn_attrs(def_id);
-                let span = self.tcx.def_span(def_id);
-                let global = check_and_apply_linkage(&self, &attrs, ty, sym, span);
-
-                let needs_dll_storage_attr = false; // TODO(antoyo)
-
-                // If this assertion triggers, there's something wrong with commandline
-                // argument validation.
-                debug_assert!(
-                    !(self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
-                        && self.tcx.sess.target.options.is_like_msvc
-                        && self.tcx.sess.opts.cg.prefer_dynamic)
-                );
-
-                if needs_dll_storage_attr {
-                    // This item is external but not foreign, i.e., it originates from an external Rust
-                    // crate. Since we don't know whether this crate will be linked dynamically or
-                    // statically in the final application, we always mark such symbols as 'dllimport'.
-                    // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
-                    // to make things work.
-                    //
-                    // However, in some scenarios we defer emission of statics to downstream
-                    // crates, so there are cases where a static with an upstream DefId
-                    // is actually present in the current crate. We can find out via the
-                    // is_codegened_item query.
-                    if !self.tcx.is_codegened_item(def_id) {
-                        unimplemented!();
-                    }
+        let global = if def_id.is_local() && !self.tcx.is_foreign_item(def_id) {
+            let llty = self.layout_of(ty).gcc_type(self);
+            if let Some(global) = self.get_declared_value(sym) {
+                if self.val_ty(global) != self.type_ptr_to(llty) {
+                    span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
                 }
-                global
-            };
+            }
+
+            let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
+            let global = self.declare_global(
+                &sym,
+                llty,
+                GlobalKind::Exported,
+                is_tls,
+                fn_attrs.link_section,
+            );
+
+            if !self.tcx.is_reachable_non_generic(def_id) {
+                // TODO(antoyo): set visibility.
+            }
+
+            global
+        } else {
+            check_and_apply_linkage(&self, &fn_attrs, ty, sym, self.tcx.def_span(def_id))
+        };
+
+        if !def_id.is_local() {
+            let needs_dll_storage_attr = false; // TODO(antoyo)
+
+            // If this assertion triggers, there's something wrong with commandline
+            // argument validation.
+            debug_assert!(
+                !(self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
+                    && self.tcx.sess.target.options.is_like_msvc
+                    && self.tcx.sess.opts.cg.prefer_dynamic)
+            );
+
+            if needs_dll_storage_attr {
+                // This item is external but not foreign, i.e., it originates from an external Rust
+                // crate. Since we don't know whether this crate will be linked dynamically or
+                // statically in the final application, we always mark such symbols as 'dllimport'.
+                // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
+                // to make things work.
+                //
+                // However, in some scenarios we defer emission of statics to downstream
+                // crates, so there are cases where a static with an upstream DefId
+                // is actually present in the current crate. We can find out via the
+                // is_codegened_item query.
+                if !self.tcx.is_codegened_item(def_id) {
+                    unimplemented!();
+                }
+            }
+        }
 
         // TODO(antoyo): set dll storage class.
 
