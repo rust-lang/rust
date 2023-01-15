@@ -1041,6 +1041,9 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
+            ast::TyKind::AnonEnum(elts) => {
+                self.strsep("|", false, Inconsistent, elts, |s, ty| s.print_type(ty));
+            }
             ast::TyKind::Paren(typ) => {
                 self.popen();
                 self.print_type(typ);

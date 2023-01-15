@@ -1235,6 +1235,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let kind = match &t.kind {
             TyKind::Infer => hir::TyKind::Infer,
             TyKind::Err => hir::TyKind::Err,
+            TyKind::AnonEnum(_) => hir::TyKind::Err,
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
             TyKind::Ref(region, mt) => {
