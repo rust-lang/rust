@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_cargo_path, get_file_name, get_rustc_version, get_toolchain_name};
+use super::rustc_info::{get_file_name, get_rustc_version, get_toolchain_name};
 use super::utils::{spawn_and_wait, try_hard_link, CargoProject, Compiler};
 use super::SysrootKind;
 
@@ -36,17 +36,18 @@ pub(crate) fn build_sysroot(
         LIB_DIR
     }
     .to_path(dirs)
-    .join(get_file_name("rustc_codegen_cranelift", "dylib"));
+    .join(cg_clif_dylib_src.file_name().unwrap());
     try_hard_link(cg_clif_dylib_src, &cg_clif_dylib_path);
 
     // Build and copy rustc and cargo wrappers
     let wrapper_base_name = get_file_name("____", "bin");
+    let toolchain_name = get_toolchain_name();
     for wrapper in ["rustc-clif", "rustdoc-clif", "cargo-clif"] {
         let wrapper_name = wrapper_base_name.replace("____", wrapper);
 
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
         build_cargo_wrapper_cmd
-            .env("TOOLCHAIN_NAME", get_toolchain_name())
+            .env("TOOLCHAIN_NAME", toolchain_name.clone())
             .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
             .arg("-o")
             .arg(DIST_DIR.to_path(dirs).join(wrapper_name))
@@ -96,7 +97,7 @@ pub(crate) fn build_sysroot(
             RelPath::DIST.to_path(&dirs).join(wrapper_base_name.replace("____", "rustdoc-clif"));
 
         Compiler {
-            cargo: get_cargo_path(),
+            cargo: bootstrap_host_compiler.cargo.clone(),
             rustc: rustc_clif.clone(),
             rustdoc: rustdoc_clif.clone(),
             rustflags: String::new(),
