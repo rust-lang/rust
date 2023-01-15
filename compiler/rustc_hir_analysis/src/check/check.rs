@@ -412,7 +412,6 @@ fn check_opaque_meets_bounds<'tcx>(
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let defining_use_anchor = match *origin {
         hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
         hir::OpaqueTyOrigin::TyAlias => def_id,
@@ -438,7 +437,7 @@ fn check_opaque_meets_bounds<'tcx>(
         _ => re,
     });
 
-    let misc_cause = traits::ObligationCause::misc(span, hir_id);
+    let misc_cause = traits::ObligationCause::misc(span, def_id);
 
     match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
         Ok(()) => {}

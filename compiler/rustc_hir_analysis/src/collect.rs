@@ -1248,11 +1248,12 @@ fn infer_return_ty_for_fn_sig<'tcx>(
     }
 }
 
+// FIXME(vincenzopalazzo): remove the hir item when the refactoring is stable
 fn suggest_impl_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     ret_ty: Ty<'tcx>,
     span: Span,
-    hir_id: hir::HirId,
+    _hir_id: hir::HirId,
     def_id: LocalDefId,
 ) -> Option<String> {
     let format_as_assoc: fn(_, _, _, _, _) -> _ =
@@ -1324,7 +1325,7 @@ fn suggest_impl_trait<'tcx>(
         }
         let ocx = ObligationCtxt::new_in_snapshot(&infcx);
         let item_ty = ocx.normalize(
-            &ObligationCause::misc(span, hir_id),
+            &ObligationCause::misc(span, def_id),
             param_env,
             tcx.mk_projection(assoc_item_def_id, substs),
         );

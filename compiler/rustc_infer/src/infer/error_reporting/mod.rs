@@ -1844,16 +1844,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        // In some (most?) cases cause.body_id points to actual body, but in some cases
-        // it's an actual definition. According to the comments (e.g. in
-        // rustc_hir_analysis/check/compare_impl_item.rs:compare_predicate_entailment) the latter
-        // is relied upon by some other code. This might (or might not) need cleanup.
-        let body_owner_def_id =
-            self.tcx.hir().opt_local_def_id(cause.body_id).unwrap_or_else(|| {
-                self.tcx.hir().body_owner_def_id(hir::BodyId { hir_id: cause.body_id })
-            });
         self.check_and_note_conflicting_crates(diag, terr);
-        self.tcx.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id.to_def_id());
+        self.tcx.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
 
         if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values
             && let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind()

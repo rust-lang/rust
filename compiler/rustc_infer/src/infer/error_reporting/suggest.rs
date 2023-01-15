@@ -411,8 +411,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) {
         let hir = self.tcx.hir();
-        let fn_hir_id = hir.parent_id(cause.body_id);
-        if let Some(node) = self.tcx.hir().find(fn_hir_id) &&
+        if let Some(node) = self.tcx.hir().find_by_def_id(cause.body_id) &&
             let hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Fn(_sig, _, body_id), ..
                 }) = node {

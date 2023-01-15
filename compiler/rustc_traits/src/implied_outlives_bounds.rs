@@ -2,13 +2,13 @@
 //! Do not call this query directory. See
 //! [`rustc_trait_selection::traits::query::type_op::implied_outlives_bounds`].
 
-use rustc_hir as hir;
 use rustc_infer::infer::canonical::{self, Canonical};
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::query::OutlivesBound;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::{CanonicalTyGoal, Fallible, NoSolution};
@@ -67,9 +67,8 @@ fn compute_implied_outlives_bounds<'tcx>(
         // FIXME(@lcnr): It's not really "always fine", having fewer implied
         // bounds can be backward incompatible, e.g. #101951 was caused by
         // us not dealing with inference vars in `TypeOutlives` predicates.
-        let obligations =
-            wf::obligations(ocx.infcx, param_env, hir::CRATE_HIR_ID, 0, arg, DUMMY_SP)
-                .unwrap_or_default();
+        let obligations = wf::obligations(ocx.infcx, param_env, CRATE_DEF_ID, 0, arg, DUMMY_SP)
+            .unwrap_or_default();
 
         // While these predicates should all be implied by other parts of
         // the program, they are still relevant as they may constrain
