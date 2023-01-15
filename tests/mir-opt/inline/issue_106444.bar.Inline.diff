@@ -1,0 +1,32 @@
+- // MIR for `bar` before Inline
++ // MIR for `bar` after Inline
+  
+  fn bar(_1: *mut S<T>) -> () {
+      debug p => _1;                       // in scope 0 at $DIR/issue_106444.rs:+0:28: +0:29
+      let mut _0: ();                      // return place in scope 0 at $DIR/issue_106444.rs:+0:42: +0:42
+      let _2: ();                          // in scope 0 at $DIR/issue_106444.rs:+2:14: +2:41
+      let mut _3: *mut S<T>;               // in scope 0 at $DIR/issue_106444.rs:+2:39: +2:40
+      scope 1 {
++         scope 2 (inlined std::ptr::drop_in_place::<S<T>> - shim(Some(S<T>))) { // at $DIR/issue_106444.rs:16:14: 16:41
++         }
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/issue_106444.rs:+2:5: +2:43
+          StorageLive(_3);                 // scope 1 at $DIR/issue_106444.rs:+2:39: +2:40
+          _3 = _1;                         // scope 1 at $DIR/issue_106444.rs:+2:39: +2:40
+-         _2 = std::ptr::drop_in_place::<S<T>>(move _3) -> bb1; // scope 1 at $DIR/issue_106444.rs:+2:14: +2:41
+-                                          // mir::Constant
+-                                          // + span: $DIR/issue_106444.rs:16:14: 16:38
+-                                          // + literal: Const { ty: unsafe fn(*mut S<T>) {std::ptr::drop_in_place::<S<T>>}, val: Value(<ZST>) }
++         drop(((*_3).0: U)) -> bb1;       // scope 2 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // scope 1 at $DIR/issue_106444.rs:+2:40: +2:41
+          StorageDead(_2);                 // scope 0 at $DIR/issue_106444.rs:+2:43: +2:44
+          _0 = const ();                   // scope 0 at $DIR/issue_106444.rs:+0:42: +3:2
+          return;                          // scope 0 at $DIR/issue_106444.rs:+3:2: +3:2
+      }
+  }
+  
