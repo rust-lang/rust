@@ -9,30 +9,20 @@ macro_rules! is_empty {
     };
 }
 
-// To get rid of some bounds checks (see `position`), we compute the length in a somewhat
-// unexpected way. (Tested by `codegen/slice-position-bounds-check`.)
 macro_rules! len {
     ($self: ident) => {{
         #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
 
         let start = $self.ptr;
-        let size = size_from_ptr(start.as_ptr());
-        if size == 0 {
-            // This _cannot_ use `unchecked_sub` because we depend on wrapping
+        if T::IS_ZST {
+            // This _cannot_ use `ptr_sub` because we depend on wrapping
             // to represent the length of long ZST slice iterators.
             $self.end.addr().wrapping_sub(start.as_ptr().addr())
         } else {
-            // We know that `start <= end`, so can do better than `offset_from`,
-            // which needs to deal in signed. By setting appropriate flags here
-            // we can tell LLVM this, which helps it remove bounds checks.
-            // SAFETY: By the type invariant, `start <= end`
-            let diff = unsafe { unchecked_sub($self.end.addr(), start.as_ptr().addr()) };
-            // By also telling LLVM that the pointers are apart by an exact
-            // multiple of the type size, it can optimize `len() == 0` down to
-            // `start == end` instead of `(end - start) < size`.
-            // SAFETY: By the type invariant, the pointers are aligned so the
-            //         distance between them must be a multiple of pointee size
-            unsafe { exact_div(diff, size) }
+            // To get rid of some bounds checks (see `position`), we use ptr_sub instead of
+            // offset_from (Tested by `codegen/slice-position-bounds-check`.)
+            // SAFETY: by the type invariant pointers are aligned and `start <= end`
+            unsafe { $self.end.sub_ptr(start.as_ptr()) }
         }
     }};
 }

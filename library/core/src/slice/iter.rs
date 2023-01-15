@@ -6,7 +6,7 @@ mod macros;
 use crate::cmp;
 use crate::cmp::Ordering;
 use crate::fmt;
-use crate::intrinsics::{assume, exact_div, unchecked_sub};
+use crate::intrinsics::assume;
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem::{self, SizedTypeProperties};
@@ -33,12 +33,6 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     fn into_iter(self) -> IterMut<'a, T> {
         self.iter_mut()
     }
-}
-
-// Macro helper functions
-#[inline(always)]
-fn size_from_ptr<T>(_: *const T) -> usize {
-    mem::size_of::<T>()
 }
 
 /// Immutable slice iterator
