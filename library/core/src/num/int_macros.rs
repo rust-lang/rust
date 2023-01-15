@@ -1625,7 +1625,7 @@ macro_rules! int_impl {
         /// overflow.
         ///
         /// Performs "ternary subtraction" by subtracting both an integer
-        /// operandand a borrow-in bit from `self`, and returns a tuple of the
+        /// operand and a borrow-in bit from `self`, and returns a tuple of the
         /// difference along with a boolean indicating whether an arithmetic
         /// overflow would occur. On overflow, the wrapped value is returned.
         ///

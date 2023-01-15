@@ -3305,7 +3305,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let label = "add `dyn` keyword before this trait";
                 let mut diag =
                     rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg);
-                diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
+                if self_ty.span.can_be_used_for_suggestions() {
+                    diag.multipart_suggestion_verbose(
+                        label,
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                }
                 // check if the impl trait that we are considering is a impl of a local trait
                 self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
                 diag.emit();
