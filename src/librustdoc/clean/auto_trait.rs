@@ -402,15 +402,13 @@ where
                     bound_params: Vec::new(),
                 })
             })
-            .chain(
-                lifetime_to_bounds.into_iter().filter(|&(_, ref bounds)| !bounds.is_empty()).map(
-                    |(lifetime, bounds)| {
-                        let mut bounds_vec = bounds.into_iter().collect();
-                        self.sort_where_bounds(&mut bounds_vec);
-                        WherePredicate::RegionPredicate { lifetime, bounds: bounds_vec }
-                    },
-                ),
-            )
+            .chain(lifetime_to_bounds.into_iter().filter(|(_, bounds)| !bounds.is_empty()).map(
+                |(lifetime, bounds)| {
+                    let mut bounds_vec = bounds.into_iter().collect();
+                    self.sort_where_bounds(&mut bounds_vec);
+                    WherePredicate::RegionPredicate { lifetime, bounds: bounds_vec }
+                },
+            ))
             .collect()
     }
 
