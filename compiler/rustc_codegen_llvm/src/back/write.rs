@@ -641,7 +641,9 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
     assert!(param_info.len() == 1);
     let infos = param_info[0].clone();
     let mut args_activity = infos.input_activity;
-    let ret_activity = infos.ret_info;
+    let mut fwd_args_activity: Vec<CDIFFE_TYPE> = vec![CDIFFE_TYPE::DFT_DUP_ARG];
+    let ret_activity = CDIFFE_TYPE::DFT_OUT_DIFF;
+    //infos.ret_info;
 
 
     let rust_name = String::from("foo");
@@ -660,7 +662,9 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
     let target_fnc = target_fnc_tmp.unwrap();
 
     let tree_tmp =  TypeTree::new();
+    let fwd_tree_tmp =  TypeTree::new();
     let mut args_tree = vec![tree_tmp.inner; args_activity.len()];
+    let mut fwd_args_tree = vec![tree_tmp.inner; fwd_args_activity.len()];
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
     let mut args_uncacheable = vec![0; args_activity.len()];
@@ -680,11 +684,33 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
 
     dbg!("before-ad");
     dbg!(&fnc_todiff);
+    dbg!(target_fnc);
     dbg!(&args_activity);
-    let opt  = 0;
+    let opt  = 1;
     let ret_primary_ret = 0;
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
+    let res_fwd: &Value =
+        llvm::EnzymeCreateForwardDiff(
+            logic_ref, // Logic
+            fnc_todiff,
+            CDIFFE_TYPE::DFT_DUP_ARG, // LLVM function, return type
+            fwd_args_activity.as_mut_ptr(),
+            fwd_args_activity.len(), // constant arguments
+            type_analysis,         // type analysis struct
+            ret_primary_ret as u8,
+            CDerivativeMode::DEM_ForwardMode, // return value, dret_used, top_level which was 1
+            1,                                        // free memory
+            1,                                        // vector mode width
+            Option::None,
+            //std::ptr::null_mut(),
+            dummy_type, // additional_arg, type info (return + args)
+            args_uncacheable.as_mut_ptr(),
+            args_uncacheable.len(), // uncacheable arguments
+            std::ptr::null_mut(),               // write augmented function to this
+            )
+        ;
+    dbg!(res_fwd);
     let res: &Value =
         EnzymeCreatePrimalAndGradient(
             logic_ref, // Logic
@@ -707,7 +733,6 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
             0,
             )
         ;
-    dbg!(target_fnc);
     dbg!(res);
     let u_type = LLVMTypeOf(target_fnc);
     let res2 = extract_return_type(module, res, u_type, rust_name2.clone());// TODO: check if name or name2
@@ -748,7 +773,7 @@ pub(crate) unsafe fn optimize(
     }
     let param = ParamInfos {
         //input_activity: vec![CDIFFE_TYPE::DFT_OUT_DIFF],
-        input_activity: vec![CDIFFE_TYPE::DFT_DUP_ARG],
+        input_activity: vec![CDIFFE_TYPE::DFT_OUT_DIFF],
         ret_info: CDIFFE_TYPE::DFT_CONSTANT
     };
     let param_info : Vec<ParamInfos> = vec![param];

@@ -2665,6 +2665,25 @@ extern "C" {
         ) -> &'a Value;
     //) -> LLVMValueRef;
 }
+extern "C" {
+    pub fn EnzymeCreateForwardDiff<'a>(
+        arg1: EnzymeLogicRef,
+        todiff: &'a Value,
+        retType: CDIFFE_TYPE,
+        constant_args: *mut CDIFFE_TYPE,
+        constant_args_size: size_t,
+        TA: EnzymeTypeAnalysisRef,
+        returnValue: u8,
+        mode: CDerivativeMode,
+        freeMemory: u8,
+        width: ::std::os::raw::c_uint,
+        additionalArg: Option<&Type>,
+        typeInfo: CFnTypeInfo,
+        _uncacheable_args: *mut u8,
+        uncacheable_args_size: size_t,
+        augmented: EnzymeAugmentedReturnPtr,
+        ) -> &'a Value;
+}
 pub type CustomRuleType = ::std::option::Option<
 unsafe extern "C" fn(
     arg1: ::std::os::raw::c_int,

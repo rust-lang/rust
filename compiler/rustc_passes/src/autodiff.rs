@@ -46,7 +46,7 @@ impl<'tcx> ItemLikeVisitor<'tcx> for AutodiffContext<'tcx> {
                 self.source_candidates.insert(
                     (item.ident, self.tcx.hir().get_parent_item(item.hir_id())),
                     item.hir_id(),
-                );
+                    );
             }
 
             return;
@@ -98,7 +98,7 @@ impl<'tcx> ItemLikeVisitor<'tcx> for AutodiffContext<'tcx> {
                     .struct_span_err(
                         item.span,
                         "autodiff attribute must contain the source function",
-                    )
+                        )
                     .span_label(item.span, "empty argument list")
                     .emit();
 
@@ -125,13 +125,13 @@ impl<'tcx> ItemLikeVisitor<'tcx> for AutodiffContext<'tcx> {
         let parent_id = self.tcx.hir().get_parent_item(HirId::make_owner(item.def_id));
         self.methods.extend(
             items.into_iter()
-                .map(|x| self.tcx.hir().foreign_item(x.id))
-                .map(|x| ((path.clone(), parent_id), mode.clone(), x, item.span))
-        );
+            .map(|x| self.tcx.hir().foreign_item(x.id))
+            .map(|x| ((path.clone(), parent_id), mode.clone(), x, item.span))
+            );
 
         //dbg!(&parent_id);
         //self.tcx.hir().visit_item_likes_in_module(parent_id, self);
-        
+
         //visit_path(
 
         //visit_path
@@ -166,7 +166,7 @@ fn get_autodiff_functions(tcx: TyCtxt<'_>, (): ()) -> DiffItems {
                 .struct_span_err(
                     method.3,
                     "method not found for autodiff attribute",
-                )
+                    )
                 .span_label(method.0.0.span, "unknown method")
                 .emit();
 
@@ -190,7 +190,7 @@ fn get_autodiff_functions(tcx: TyCtxt<'_>, (): ()) -> DiffItems {
                 .struct_span_err(
                     method.0.0.span,
                     "method has to begin with same arguments",
-                )
+                    )
                 .span_label(method.0.0.span, "arguments differ")
                 .emit();
 
@@ -198,23 +198,24 @@ fn get_autodiff_functions(tcx: TyCtxt<'_>, (): ()) -> DiffItems {
         }
 
         // create activity from remaining parameters
-        let mut activity = vec![DiffActivity::Const; source_args.len()];
-        for a in &fn_args[source_args.len()..] {
-            let Some(pos) = source_args.iter().position(|x| a.as_str().ends_with(x.as_str())) else {
-                tcx
-                    .sess
-                    .struct_span_err(
-                        method.0.0.span,
-                        "argument not found",
-                    )
-                    .span_label(method.0.0.span, "argument not found")
-                    .emit();
+        let activity = vec![DiffActivity::Const; source_args.len()];
+        //let mut activity = vec![DiffActivity::Const; source_args.len()];
+        // for a in &fn_args[source_args.len()..] {
+        //     let Some(pos) = source_args.iter().position(|x| a.as_str().ends_with(x.as_str())) else {
+        //         tcx
+        //             .sess
+        //             .struct_span_err(
+        //                 method.0.0.span,
+        //                 "argument not found",
+        //             )
+        //             .span_label(method.0.0.span, "argument not found")
+        //             .emit();
 
-                return DiffItems::default();
-            };
+        //         return DiffItems::default();
+        //     };
 
-            activity[pos] = DiffActivity::Active;
-        }
+        //     activity[pos] = DiffActivity::Active;
+        // }
 
         elms.push(DiffItem {
             source: def_id,
