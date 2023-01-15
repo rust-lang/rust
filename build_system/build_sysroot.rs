@@ -3,9 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{
-    get_file_name, get_rustc_version, get_toolchain_name, get_wrapper_file_name,
-};
+use super::rustc_info::{get_cargo_path, get_file_name, get_rustc_version, get_toolchain_name};
 use super::utils::{spawn_and_wait, try_hard_link, CargoProject, Compiler};
 use super::SysrootKind;
 
@@ -42,8 +40,9 @@ pub(crate) fn build_sysroot(
     try_hard_link(cg_clif_dylib_src, &cg_clif_dylib_path);
 
     // Build and copy rustc and cargo wrappers
+    let wrapper_base_name = get_file_name("____", "bin");
     for wrapper in ["rustc-clif", "rustdoc-clif", "cargo-clif"] {
-        let wrapper_name = get_wrapper_file_name(wrapper, "bin");
+        let wrapper_name = wrapper_base_name.replace("____", wrapper);
 
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
         build_cargo_wrapper_cmd
@@ -51,7 +50,7 @@ pub(crate) fn build_sysroot(
             .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
             .arg("-o")
             .arg(DIST_DIR.to_path(dirs).join(wrapper_name))
-            .arg("-g");
+            .arg("-Cstrip=debuginfo");
         spawn_and_wait(build_cargo_wrapper_cmd);
     }
 
@@ -89,7 +88,23 @@ pub(crate) fn build_sysroot(
         }
     }
 
-    let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
+    let mut target_compiler = {
+        let dirs: &Dirs = &dirs;
+        let rustc_clif =
+            RelPath::DIST.to_path(&dirs).join(wrapper_base_name.replace("____", "rustc-clif"));
+        let rustdoc_clif =
+            RelPath::DIST.to_path(&dirs).join(wrapper_base_name.replace("____", "rustdoc-clif"));
+
+        Compiler {
+            cargo: get_cargo_path(),
+            rustc: rustc_clif.clone(),
+            rustdoc: rustdoc_clif.clone(),
+            rustflags: String::new(),
+            rustdocflags: String::new(),
+            triple: target_triple,
+            runner: vec![],
+        }
+    };
     if !is_native {
         target_compiler.set_cross_linker_and_runner();
     }

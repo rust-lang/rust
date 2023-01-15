@@ -4,7 +4,7 @@ use std::path::Path;
 
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
-use super::rustc_info::{get_file_name, get_wrapper_file_name};
+use super::rustc_info::get_file_name;
 use super::utils::{hyperfine_command, is_ci, spawn_and_wait, CargoProject, Compiler};
 
 pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
@@ -51,7 +51,8 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         .unwrap();
 
     eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-    let cargo_clif = RelPath::DIST.to_path(dirs).join(get_wrapper_file_name("cargo-clif", "bin"));
+    let cargo_clif =
+        RelPath::DIST.to_path(dirs).join(get_file_name("cargo_clif", "bin").replace('_', "-"));
     let manifest_path = SIMPLE_RAYTRACER.manifest_path(dirs);
     let target_dir = SIMPLE_RAYTRACER.target_dir(dirs);
 
