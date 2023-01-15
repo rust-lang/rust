@@ -12,7 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{TypeTree, IntList, CFnTypeInfo, EnzymeLogicRef, EnzymeTypeAnalysisRef, EnzymeCreatePrimalAndGradient, CreateTypeAnalysis, CreateEnzymeLogic, CDerivativeMode, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction};
+use llvm::{TypeTree, IntList, CFnTypeInfo, EnzymeLogicRef, EnzymeTypeAnalysisRef, EnzymeCreatePrimalAndGradient, CreateTypeAnalysis, CreateEnzymeLogic, CDerivativeMode, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -638,6 +638,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
 pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffItem, src_name: &String
                               ) -> Result<(), FatalError> {
     let llmod = module.module_llvm.llmod();
+    //dbg!(llmod);
 
     let rust_name = src_name;
     let rust_name2 = &tasks.target;
@@ -655,19 +656,14 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
     let ret_activity = CDIFFE_TYPE::DFT_OUT_DIFF;
 
 
-    // let rust_name = String::from("foo");
-    // let rust_name2 = String::from("bar");
     let name = CString::new(rust_name.to_owned()).unwrap();
     let name2 = CString::new(rust_name2.clone()).unwrap();
-    let mut src_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
-    if src_fnc.is_none() {
-        return Ok(()); // nothing to do
-    }
-    dbg!(src_fnc.is_some());
-    dbg!("let there be Dragons (and Enzyme)");
-    let fnc_todiff = src_fnc.unwrap();
+    let src_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
     let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_c_str().as_ptr());
+    assert!(src_fnc_tmp.is_some());
     assert!(target_fnc_tmp.is_some());
+    dbg!("let there be Dragons (and Enzyme)");
+    let fnc_todiff = src_fnc_tmp.unwrap();
     let target_fnc = target_fnc_tmp.unwrap();
 
     let tree_tmp =  TypeTree::new();
@@ -699,28 +695,28 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
     let ret_primary_ret = 0;
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
-    let res_fwd: &Value =
-        llvm::EnzymeCreateForwardDiff(
-            logic_ref, // Logic
-            fnc_todiff,
-            CDIFFE_TYPE::DFT_DUP_ARG, // LLVM function, return type
-            fwd_args_activity.as_mut_ptr(),
-            fwd_args_activity.len(), // constant arguments
-            type_analysis,         // type analysis struct
-            ret_primary_ret as u8,
-            CDerivativeMode::DEM_ForwardMode, // return value, dret_used, top_level which was 1
-            1,                                        // free memory
-            1,                                        // vector mode width
-            Option::None,
-            //std::ptr::null_mut(),
-            dummy_type, // additional_arg, type info (return + args)
-            args_uncacheable.as_mut_ptr(),
-            args_uncacheable.len(), // uncacheable arguments
-            std::ptr::null_mut(),               // write augmented function to this
-            )
-        ;
-    dbg!(res_fwd);
-    let res: &Value =
+    // let res_fwd: &Value =
+    //     llvm::EnzymeCreateForwardDiff(
+    //         logic_ref, // Logic
+    //         fnc_todiff,
+    //         CDIFFE_TYPE::DFT_DUP_ARG, // LLVM function, return type
+    //         fwd_args_activity.as_mut_ptr(),
+    //         fwd_args_activity.len(), // constant arguments
+    //         type_analysis,         // type analysis struct
+    //         ret_primary_ret as u8,
+    //         CDerivativeMode::DEM_ForwardMode, // return value, dret_used, top_level which was 1
+    //         1,                                        // free memory
+    //         1,                                        // vector mode width
+    //         Option::None,
+    //         //std::ptr::null_mut(),
+    //         dummy_type, // additional_arg, type info (return + args)
+    //         args_uncacheable.as_mut_ptr(),
+    //         args_uncacheable.len(), // uncacheable arguments
+    //         std::ptr::null_mut(),               // write augmented function to this
+    //         )
+    //     ;
+    // dbg!(res_fwd);
+    let mut res: &Value =
         EnzymeCreatePrimalAndGradient(
             logic_ref, // Logic
             fnc_todiff,
@@ -743,14 +739,20 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
             )
         ;
     dbg!(res);
-    let u_type = LLVMTypeOf(target_fnc);
-    let res2 = extract_return_type(module, res, u_type, rust_name2.clone());// TODO: check if name or name2
+    let f_type = LLVMTypeOf(res);
+    let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
+    let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
+
+    if num_elem_in_ret_struct == 1 {
+        let u_type = LLVMTypeOf(target_fnc);
+        res = extract_return_type(module, res, u_type, rust_name2.clone());// TODO: check if name or name2
+    }
     dbg!(target_fnc);
-    dbg!(res2);
-    LLVMReplaceAllUsesWith(target_fnc, res2);
+    dbg!(res);
+    LLVMReplaceAllUsesWith(target_fnc, res);
     LLVMDeleteFunction(target_fnc);
     LLVMSetValueName2(
-        res2,
+        res,
         name2.as_ptr(),
         rust_name2.len(),
         );
@@ -779,10 +781,10 @@ pub(crate) unsafe fn optimize(
     let fncs = &module.module_llvm.diff_fncs;
     if !fncs.is_empty() {
         dbg!(&fncs);
-    }
-    for (task, name) in fncs {
-        let res = enzyme_ad(module, task, name);
-        assert!(res.is_ok());
+        for (task, name) in fncs {
+            let res = enzyme_ad(module, task, name);
+            assert!(res.is_ok());
+        }
     }
 
 
