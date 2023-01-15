@@ -864,18 +864,6 @@ pub enum CrateType {
     ProcMacro,
 }
 
-impl CrateType {
-    /// When generated, is this crate type an archive?
-    pub fn is_archive(&self) -> bool {
-        match *self {
-            CrateType::Rlib | CrateType::Staticlib => true,
-            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
-                false
-            }
-        }
-    }
-}
-
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum Passes {
     Some(Vec<String>),
