@@ -774,6 +774,57 @@ impl<T, const N: usize> [T; N] {
     }
 }
 
+/// Unsafely converts a slice of `N` elements to an array reference of `N` elements.
+///
+/// # Safety
+///
+/// The caller must ensure that the slice has at least `N` elements. Violating this constraint
+/// causes Undefined Behaviour.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(array_from_slice)]
+///
+/// let v = [1, 0, 3, 0, 5, 6];
+/// // SAFETY: `&v[2..5]` is a slice of 3 elements.
+/// let r = unsafe { <&[i32; 3]>::from_slice_unchecked(&v[2..5]) };
+/// assert_eq!(r, &[3, 0, 5]);
+/// ```
+#[inline]
+#[must_use]
+const unsafe fn from_slice_unchecked<T, const N: usize>(s: &[T]) -> &[T; N] {
+    // SAFETY: caller guarantees that `s` is a slice of at least `N` elements.
+    unsafe { &*(s.as_ptr() as *const [T; N]) }
+}
+
+/// Unsafely converts a mutable slice of `N` elements to a mutable array reference of `N` elements.
+///
+/// # Safety
+///
+/// The caller must ensure that the slice has at least `N` elements. Violating this constraint
+/// causes Undefined Behaviour.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(array_from_slice)]
+///
+/// let mut v = [1, 0, 3, 0, 5, 6];
+/// // SAFETY: `&mut v[2..5]` is a slice of 3 elements.
+/// let r = unsafe { <&mut [i32; 3]>::from_mut_slice_unchecked(&mut v[2..5]) };
+/// assert_eq!(r, &[3, 0, 5]);
+/// r[1] = 9;
+/// assert_eq!(r, &[3, 9, 5]);
+/// assert_eq!(v, [1, 0, 3, 9, 5, 6]);
+/// ```
+#[inline]
+#[must_use]
+const unsafe fn from_mut_slice_unchecked<T, const N: usize>(s: &mut [T]) -> &mut [T; N] {
+    // SAFETY: caller guarantees that `s` is a slice of at least `N` elements.
+    unsafe { &mut *(s.as_ptr() as *mut [T; N]) }
+}
+
 /// Populate an array from the first `N` elements of `iter`
 ///
 /// # Panics
