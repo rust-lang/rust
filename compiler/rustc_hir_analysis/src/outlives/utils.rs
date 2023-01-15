@@ -80,7 +80,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                             .or_insert(span);
                     }
 
-                    Component::Alias(kind, alias) => {
+                    Component::Alias(alias_ty) => {
                         // This would either arise from something like:
                         //
                         // ```
@@ -99,13 +99,13 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         //
                         // Here we want to add an explicit `where <T as Iterator>::Item: 'a`
                         // or `Opaque<T>: 'a` depending on the alias kind.
-                        let ty: Ty<'tcx> = tcx.mk_ty(ty::Alias(kind, alias));
+                        let ty = alias_ty.to_ty(tcx);
                         required_predicates
                             .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
                             .or_insert(span);
                     }
 
-                    Component::EscapingProjection(_) => {
+                    Component::EscapingAlias(_) => {
                         // As above, but the projection involves
                         // late-bound regions. Therefore, the WF
                         // requirement is not checked in type definition
