@@ -1,0 +1,65 @@
+- // MIR for `foo` before CopyProp
++ // MIR for `foo` after CopyProp
+  
+  fn foo() -> i32 {
+      let mut _0: i32;                     // return place in scope 0 at $DIR/branch.rs:+0:13: +0:16
+      let _1: i32;                         // in scope 0 at $DIR/branch.rs:+1:9: +1:10
+      let mut _3: bool;                    // in scope 0 at $DIR/branch.rs:+3:16: +3:22
+      let _4: i32;                         // in scope 0 at $DIR/branch.rs:+6:9: +6:14
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/branch.rs:+1:9: +1:10
+          let _2: i32;                     // in scope 1 at $DIR/branch.rs:+3:9: +3:10
+          scope 2 {
+              debug y => _2;               // in scope 2 at $DIR/branch.rs:+3:9: +3:10
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/branch.rs:+1:9: +1:10
+          _1 = val() -> bb1;               // scope 0 at $DIR/branch.rs:+1:13: +1:18
+                                           // mir::Constant
+                                           // + span: $DIR/branch.rs:13:13: 13:16
+                                           // + literal: Const { ty: fn() -> i32 {val}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
+          StorageLive(_2);                 // scope 1 at $DIR/branch.rs:+3:9: +3:10
+          StorageLive(_3);                 // scope 1 at $DIR/branch.rs:+3:16: +3:22
+          _3 = cond() -> bb2;              // scope 1 at $DIR/branch.rs:+3:16: +3:22
+                                           // mir::Constant
+                                           // + span: $DIR/branch.rs:15:16: 15:20
+                                           // + literal: Const { ty: fn() -> bool {cond}, val: Value(<ZST>) }
+      }
+  
+      bb2: {
+          switchInt(move _3) -> [0: bb4, otherwise: bb3]; // scope 1 at $DIR/branch.rs:+3:16: +3:22
+      }
+  
+      bb3: {
+          _2 = _1;                         // scope 1 at $DIR/branch.rs:+4:9: +4:10
+          goto -> bb6;                     // scope 1 at $DIR/branch.rs:+3:13: +8:6
+      }
+  
+      bb4: {
+          StorageLive(_4);                 // scope 1 at $DIR/branch.rs:+6:9: +6:14
+          _4 = val() -> bb5;               // scope 1 at $DIR/branch.rs:+6:9: +6:14
+                                           // mir::Constant
+                                           // + span: $DIR/branch.rs:18:9: 18:12
+                                           // + literal: Const { ty: fn() -> i32 {val}, val: Value(<ZST>) }
+      }
+  
+      bb5: {
+          StorageDead(_4);                 // scope 1 at $DIR/branch.rs:+6:14: +6:15
+          _2 = _1;                         // scope 1 at $DIR/branch.rs:+7:9: +7:10
+          goto -> bb6;                     // scope 1 at $DIR/branch.rs:+3:13: +8:6
+      }
+  
+      bb6: {
+          StorageDead(_3);                 // scope 1 at $DIR/branch.rs:+8:5: +8:6
+          _0 = _2;                         // scope 2 at $DIR/branch.rs:+10:5: +10:6
+          StorageDead(_2);                 // scope 1 at $DIR/branch.rs:+11:1: +11:2
+          StorageDead(_1);                 // scope 0 at $DIR/branch.rs:+11:1: +11:2
+          return;                          // scope 0 at $DIR/branch.rs:+11:2: +11:2
+      }
+  }
+  
