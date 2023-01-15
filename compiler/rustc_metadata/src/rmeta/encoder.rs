@@ -1926,6 +1926,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let all_impls: Vec<_> = all_impls
             .into_iter()
+            .filter(|(trait_def_id, impls)| trait_def_id.is_some())
             .map(|(trait_def_id, impls)| {
                 // Bring everything into deterministic order for hashing
                 // SORT-TEST
@@ -1941,7 +1942,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .collect();
 
                 TraitImpls {
-                    trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
+                    trait_id: (trait_def_id.unwrap().krate.as_u32(), trait_def_id.unwrap().index), // todo robert, kind of ugly but works
                     impls: self.lazy_array(&impls),
                 }
             })
@@ -2294,7 +2295,7 @@ pub fn provide(providers: &mut Providers) {
                 })
                 .collect();
 
-            tcx.arena.alloc(o)
+            tcx.arena.alloc(o) // deal with this problem by removing all_local_trait_impls.
         },
         traits_in_crate: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
@@ -2313,7 +2314,7 @@ pub fn provide(providers: &mut Providers) {
         },
         impls_in_crate: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            let mut fx_hash_map: FxIndexMap<DefId, Vec<(DefId, Option<SimplifiedType>)>> =
+            let mut fx_hash_map: FxIndexMap<Option<DefId>, Vec<(DefId, Option<SimplifiedType>)>> =
                 FxIndexMap::default();
 
             for id in tcx.hir().items() {
@@ -2326,9 +2327,11 @@ pub fn provide(providers: &mut Providers) {
                         );
 
                         fx_hash_map
-                            .entry(trait_ref.def_id)
+                            .entry(Some(trait_ref.def_id))
                             .or_default()
                             .push((id.owner_id.to_def_id(), simplified_self_ty));
+                    } else {
+                        fx_hash_map.entry(None).or_default().push((id.owner_id.to_def_id(), None))
                     }
                 }
             }
