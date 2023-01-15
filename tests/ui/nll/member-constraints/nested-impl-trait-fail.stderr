@@ -1,0 +1,75 @@
+error[E0700]: hidden type for `impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>` captures lifetime that does not appear in bounds
+  --> $DIR/nested-impl-trait-fail.rs:17:5
+   |
+LL | fn fail_early_bound<'s, 'a, 'b>(a: &'s u8) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>
+   |                     -- hidden type `[&'s u8; 1]` captures the lifetime `'s` as defined here
+...
+LL |     [a]
+   |     ^^^
+   |
+help: to declare that `impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>` captures `'s`, you can add an explicit `'s` lifetime bound
+   |
+LL | fn fail_early_bound<'s, 'a, 'b>(a: &'s u8) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>> + 's
+   |                                                                                                ++++
+help: to declare that `impl Cap<'a> + Cap<'b>` captures `'s`, you can add an explicit `'s` lifetime bound
+   |
+LL | fn fail_early_bound<'s, 'a, 'b>(a: &'s u8) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b> + 's>
+   |                                                                                               ++++
+
+error[E0700]: hidden type for `impl Cap<'a> + Cap<'b>` captures lifetime that does not appear in bounds
+  --> $DIR/nested-impl-trait-fail.rs:17:5
+   |
+LL | fn fail_early_bound<'s, 'a, 'b>(a: &'s u8) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>
+   |                     -- hidden type `&'s u8` captures the lifetime `'s` as defined here
+...
+LL |     [a]
+   |     ^^^
+   |
+help: to declare that `impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>` captures `'s`, you can add an explicit `'s` lifetime bound
+   |
+LL | fn fail_early_bound<'s, 'a, 'b>(a: &'s u8) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>> + 's
+   |                                                                                                ++++
+help: to declare that `impl Cap<'a> + Cap<'b>` captures `'s`, you can add an explicit `'s` lifetime bound
+   |
+LL | fn fail_early_bound<'s, 'a, 'b>(a: &'s u8) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b> + 's>
+   |                                                                                               ++++
+
+error[E0700]: hidden type for `impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>` captures lifetime that does not appear in bounds
+  --> $DIR/nested-impl-trait-fail.rs:28:5
+   |
+LL | fn fail_late_bound<'s, 'a, 'b>(
+   |                    -- hidden type `[&'s u8; 1]` captures the lifetime `'s` as defined here
+...
+LL |     [a]
+   |     ^^^
+   |
+help: to declare that `impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>` captures `'s`, you can add an explicit `'s` lifetime bound
+   |
+LL | ) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>> + 's {
+   |                                                       ++++
+help: to declare that `impl Cap<'a> + Cap<'b>` captures `'s`, you can add an explicit `'s` lifetime bound
+   |
+LL | ) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b> + 's> {
+   |                                                      ++++
+
+error[E0700]: hidden type for `impl Cap<'a> + Cap<'b>` captures lifetime that does not appear in bounds
+  --> $DIR/nested-impl-trait-fail.rs:28:5
+   |
+LL | fn fail_late_bound<'s, 'a, 'b>(
+   |                    -- hidden type `&'s u8` captures the lifetime `'s` as defined here
+...
+LL |     [a]
+   |     ^^^
+   |
+help: to declare that `impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>` captures `'s`, you can add an explicit `'s` lifetime bound
+   |
+LL | ) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>> + 's {
+   |                                                       ++++
+help: to declare that `impl Cap<'a> + Cap<'b>` captures `'s`, you can add an explicit `'s` lifetime bound
+   |
+LL | ) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b> + 's> {
+   |                                                      ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0700`.
