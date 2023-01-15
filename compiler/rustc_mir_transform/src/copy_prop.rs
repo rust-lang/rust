@@ -1,4 +1,5 @@
 use either::Either;
+use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::resolve_lifetime::Set1;
@@ -65,6 +66,7 @@ enum LocationExtended {
 
 #[derive(Debug)]
 struct SsaLocals {
+    dominators: Dominators<BasicBlock>,
     /// Assignments to each local.  This defines whether the local is SSA.
     assignments: IndexVec<Local, Set1<LocationExtended>>,
     /// We visit the body in reverse postorder, to ensure each local is assigned before it is used.
@@ -78,7 +80,8 @@ impl SsaLocals {
         let assignment_order = Vec::new();
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
-        let mut this = SsaLocals { assignments, assignment_order };
+        let dominators = body.basic_blocks.dominators();
+        let mut this = SsaLocals { assignments, assignment_order, dominators };
 
         let borrowed = borrowed_locals(body);
         for (local, decl) in body.local_decls.iter_enumerated() {
@@ -117,7 +120,23 @@ impl<'tcx> Visitor<'tcx> for SsaLocals {
             PlaceContext::MutatingUse(_) => self.assignments[local] = Set1::Many,
             // Immutable borrows and AddressOf are taken into account in `SsaLocals::new` by
             // removing non-freeze locals.
-            PlaceContext::NonMutatingUse(_) | PlaceContext::NonUse(_) => {}
+            PlaceContext::NonMutatingUse(_) => {
+                let set = &mut self.assignments[local];
+                let assign_dominates = match *set {
+                    Set1::Empty | Set1::Many => false,
+                    Set1::One(LocationExtended::Arg) => true,
+                    Set1::One(LocationExtended::Plain(assign)) => {
+                        assign.dominates(loc, &self.dominators)
+                    }
+                };
+                // We are visiting a use that is not dominated by an assignment.
+                // Either there is a cycle involved, or we are reading for uninitialized local.
+                // Bail out.
+                if !assign_dominates {
+                    *set = Set1::Many;
+                }
+            }
+            PlaceContext::NonUse(_) => {}
         }
     }
 }
