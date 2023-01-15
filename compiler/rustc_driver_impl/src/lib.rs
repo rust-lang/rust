@@ -1246,11 +1246,9 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     interface::try_print_query_stack(&handler, num_frames);
 
     #[cfg(windows)]
-    unsafe {
-        if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
-            // Trigger a debugger if we crashed during bootstrap
-            winapi::um::debugapi::DebugBreak();
-        }
+    if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
+        // Trigger a debugger if we crashed during bootstrap
+        unsafe { windows::Win32::System::Diagnostics::Debug::DebugBreak() };
     }
 }
 

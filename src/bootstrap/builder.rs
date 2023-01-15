@@ -1303,6 +1303,14 @@ impl<'a> Builder<'a> {
             }
         };
 
+        // By default, windows-rs depends on a native library that doesn't get copied into the
+        // sysroot. Passing this cfg enables raw-dylib support instead, which makes the native
+        // library unnecessary. This can be removed when windows-rs enables raw-dylib
+        // unconditionally.
+        if let Mode::Rustc | Mode::ToolRustc = mode {
+            rustflags.arg("--cfg=windows_raw_dylib");
+        }
+
         if use_new_symbol_mangling {
             rustflags.arg("-Csymbol-mangling-version=v0");
         } else {

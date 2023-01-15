@@ -59,18 +59,20 @@ sysinfo = { version = "0.26.0", optional = true }
 [target.'cfg(not(target_os = "solaris"))'.dependencies]
 fd-lock = "3.0.8"
 
-[target.'cfg(windows)'.dependencies.winapi]
-version = "0.3"
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.46.0"
 features = [
-    "fileapi",
-    "ioapiset",
-    "jobapi2",
-    "handleapi",
-    "winioctl",
-    "psapi",
-    "impl-default",
-    "timezoneapi",
-    "winbase",
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_IO",
+    "Win32_System_Ioctl",
+    "Win32_System_JobObjects",
+    "Win32_System_ProcessStatus",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_System_Time",
 ]
 
 [dev-dependencies]

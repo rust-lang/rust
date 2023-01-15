@@ -155,29 +155,30 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
         use std::ffi::OsStr;
         use std::os::windows::ffi::OsStrExt;
-        use std::ptr;
 
-        use winapi::shared::minwindef::{DWORD, WORD};
-        use winapi::um::fileapi::{CreateFileW, OPEN_EXISTING};
-        use winapi::um::handleapi::CloseHandle;
-        use winapi::um::ioapiset::DeviceIoControl;
-        use winapi::um::winbase::{FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT};
-        use winapi::um::winioctl::FSCTL_SET_REPARSE_POINT;
-        use winapi::um::winnt::{
-            FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, GENERIC_WRITE,
-            IO_REPARSE_TAG_MOUNT_POINT, MAXIMUM_REPARSE_DATA_BUFFER_SIZE, WCHAR,
+        use windows::{
+            core::PCWSTR,
+            Win32::Foundation::{CloseHandle, HANDLE},
+            Win32::Storage::FileSystem::{
+                CreateFileW, FILE_ACCESS_FLAGS, FILE_FLAG_BACKUP_SEMANTICS,
+                FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+                MAXIMUM_REPARSE_DATA_BUFFER_SIZE, OPEN_EXISTING,
+            },
+            Win32::System::Ioctl::FSCTL_SET_REPARSE_POINT,
+            Win32::System::SystemServices::{GENERIC_WRITE, IO_REPARSE_TAG_MOUNT_POINT},
+            Win32::System::IO::DeviceIoControl,
         };
 
         #[allow(non_snake_case)]
         #[repr(C)]
         struct REPARSE_MOUNTPOINT_DATA_BUFFER {
-            ReparseTag: DWORD,
-            ReparseDataLength: DWORD,
-            Reserved: WORD,
-            ReparseTargetLength: WORD,
-            ReparseTargetMaximumLength: WORD,
-            Reserved1: WORD,
-            ReparseTarget: WCHAR,
+            ReparseTag: u32,
+            ReparseDataLength: u32,
+            Reserved: u16,
+            ReparseTargetLength: u16,
+            ReparseTargetMaximumLength: u16,
+            Reserved1: u16,
+            ReparseTarget: u16,
         }
 
         fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
@@ -193,17 +194,20 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
 
         let path = to_u16s(junction)?;
 
-        unsafe {
-            let h = CreateFileW(
-                path.as_ptr(),
-                GENERIC_WRITE,
+        let h = unsafe {
+            CreateFileW(
+                PCWSTR(path.as_ptr()),
+                FILE_ACCESS_FLAGS(GENERIC_WRITE),
                 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                ptr::null_mut(),
+                None,
                 OPEN_EXISTING,
                 FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
-                ptr::null_mut(),
-            );
+                HANDLE::default(),
+            )
+        }
+        .map_err(|_| io::Error::last_os_error())?;
 
+        unsafe {
             #[repr(C, align(8))]
             struct Align8<T>(T);
             let mut data = Align8([0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
@@ -219,27 +223,29 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             }
             *buf.offset(i) = 0;
             i += 1;
+
             (*db).ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
-            (*db).ReparseTargetMaximumLength = (i * 2) as WORD;
-            (*db).ReparseTargetLength = ((i - 1) * 2) as WORD;
-            (*db).ReparseDataLength = (*db).ReparseTargetLength as DWORD + 12;
+            (*db).ReparseTargetMaximumLength = (i * 2) as u16;
+            (*db).ReparseTargetLength = ((i - 1) * 2) as u16;
+            (*db).ReparseDataLength = ((*db).ReparseTargetLength + 12) as u32;
 
-            let mut ret = 0;
-            let res = DeviceIoControl(
-                h as *mut _,
+            let mut ret = 0u32;
+            DeviceIoControl(
+                h,
                 FSCTL_SET_REPARSE_POINT,
-                db.cast(),
+                Some(db.cast()),
                 (*db).ReparseDataLength + 8,
-                ptr::null_mut(),
+                None,
                 0,
-                &mut ret,
-                ptr::null_mut(),
-            );
-
-            let out = if res == 0 { Err(io::Error::last_os_error()) } else { Ok(()) };
-            CloseHandle(h);
-            out
+                Some(&mut ret),
+                None,
+            )
+            .ok()
+            .map_err(|_| io::Error::last_os_error())?;
         }
+
+        unsafe { CloseHandle(h) };
+        Ok(())
     }
 }
 
