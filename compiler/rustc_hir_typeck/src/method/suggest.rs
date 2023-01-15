@@ -2700,8 +2700,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         expected: Ty<'tcx>,
     ) -> bool {
-        let Some((_def_id_or_name, output, _inputs)) = self.extract_callable_info(expr, found)
-        else { return false; };
+        let Some((_def_id_or_name, output, _inputs)) =
+            self.extract_callable_info(found) else {
+                return false;
+        };
 
         if !self.can_coerce(output, expected) {
             return false;
