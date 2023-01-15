@@ -50,4 +50,8 @@ fn main() {
     if { return } {
 
     }
+
+    // regression test for https://github.com/rust-lang/rust/issues/106899
+    return println!("!");
+    //~^ WARN unnecessary braces
 }

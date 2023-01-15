@@ -1095,17 +1095,21 @@ impl UnusedDelimLint for UnusedBraces {
                 //      ```
                 // - the block has no attribute and was not created inside a macro
                 // - if the block is an `anon_const`, the inner expr must be a literal
-                //      (do not lint `struct A<const N: usize>; let _: A<{ 2 + 3 }>;`)
-                //
+                //   not created by a macro, i.e. do not lint on:
+                //      ```
+                //      struct A<const N: usize>;
+                //      let _: A<{ 2 + 3 }>;
+                //      let _: A<{produces_literal!()}>;
+                //      ```
                 // FIXME(const_generics): handle paths when #67075 is fixed.
                 if let [stmt] = inner.stmts.as_slice() {
                     if let ast::StmtKind::Expr(ref expr) = stmt.kind {
                         if !Self::is_expr_delims_necessary(expr, followed_by_block, false)
                             && (ctx != UnusedDelimsCtx::AnonConst
-                                || matches!(expr.kind, ast::ExprKind::Lit(_)))
+                                || (matches!(expr.kind, ast::ExprKind::Lit(_))
+                                    && !expr.span.from_expansion()))
                             && !cx.sess().source_map().is_multiline(value.span)
                             && value.attrs.is_empty()
-                            && !expr.span.from_expansion()
                             && !value.span.from_expansion()
                             && !inner.span.from_expansion()
                         {
