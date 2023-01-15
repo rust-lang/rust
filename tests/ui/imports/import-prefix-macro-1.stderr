@@ -2,7 +2,7 @@ error: expected one of `::`, `;`, or `as`, found `{`
   --> $DIR/import-prefix-macro-1.rs:11:27
    |
 LL |     ($p: path) => (use $p {S, Z});
-   |                           ^^^^^^ expected one of `::`, `;`, or `as`
+   |                           ^ expected one of `::`, `;`, or `as`
 ...
 LL | import! { a::b::c }
    | ------------------- in this macro invocation
