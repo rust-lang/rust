@@ -53,6 +53,8 @@ LL | fn case2() {
 error[E0597]: `a` does not live long enough
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:30:26
    |
+LL |       let a = 0;
+   |           - binding `a` declared here
 LL |       let cell = Cell::new(&a);
    |                            ^^ borrowed value does not live long enough
 ...

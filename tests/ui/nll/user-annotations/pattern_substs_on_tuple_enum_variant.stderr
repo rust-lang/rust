@@ -1,6 +1,8 @@
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_tuple_enum_variant.rs:7:24
    |
+LL |     let y = 22;
+   |         - binding `y` declared here
 LL |     let foo = Foo::Bar(&y);
    |                        ^^ borrowed value does not live long enough
 LL |
@@ -12,6 +14,8 @@ LL | }
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_tuple_enum_variant.rs:14:24
    |
+LL |     let y = 22;
+   |         - binding `y` declared here
 LL |     let foo = Foo::Bar(&y);
    |                        ^^ borrowed value does not live long enough
 ...

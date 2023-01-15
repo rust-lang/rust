@@ -42,9 +42,9 @@ error[E0506]: cannot assign to `f.foo` because it is borrowed
   --> $DIR/borrowck-overloaded-index-autoderef.rs:71:5
    |
 LL |     let p = &f.foo[&s];
-   |              ----- borrow of `f.foo` occurs here
+   |              ----- `f.foo` is borrowed here
 LL |     f.foo = g;
-   |     ^^^^^^^^^ assignment to borrowed `f.foo` occurs here
+   |     ^^^^^^^^^ `f.foo` is assigned to here but it was already borrowed
 LL |     p.use_ref();
    |     ----------- borrow later used here
 
@@ -52,9 +52,9 @@ error[E0506]: cannot assign to `*f` because it is borrowed
   --> $DIR/borrowck-overloaded-index-autoderef.rs:77:5
    |
 LL |     let p = &f.foo[&s];
-   |              ----- borrow of `*f` occurs here
+   |              ----- `*f` is borrowed here
 LL |     *f = g;
-   |     ^^^^^^ assignment to borrowed `*f` occurs here
+   |     ^^^^^^ `*f` is assigned to here but it was already borrowed
 LL |     p.use_ref();
    |     ----------- borrow later used here
 
@@ -62,9 +62,9 @@ error[E0506]: cannot assign to `f.foo` because it is borrowed
   --> $DIR/borrowck-overloaded-index-autoderef.rs:83:5
    |
 LL |     let p = &mut f.foo[&s];
-   |                  ----- borrow of `f.foo` occurs here
+   |                  ----- `f.foo` is borrowed here
 LL |     f.foo = g;
-   |     ^^^^^^^^^ assignment to borrowed `f.foo` occurs here
+   |     ^^^^^^^^^ `f.foo` is assigned to here but it was already borrowed
 LL |     p.use_mut();
    |     ----------- borrow later used here
 
@@ -72,9 +72,9 @@ error[E0506]: cannot assign to `*f` because it is borrowed
   --> $DIR/borrowck-overloaded-index-autoderef.rs:89:5
    |
 LL |     let p = &mut f.foo[&s];
-   |                  ----- borrow of `*f` occurs here
+   |                  ----- `*f` is borrowed here
 LL |     *f = g;
-   |     ^^^^^^ assignment to borrowed `*f` occurs here
+   |     ^^^^^^ `*f` is assigned to here but it was already borrowed
 LL |     p.use_mut();
    |     ----------- borrow later used here
 

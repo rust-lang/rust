@@ -1,6 +1,9 @@
 error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-trait-has-items.rs:37:26
    |
+LL |     let (_d, d1);
+   |              -- binding `d1` declared here
+LL |     d1 = D_HasSelfMethod(1);
 LL |     _d = D_HasSelfMethod(&d1);
    |                          ^^^ borrowed value does not live long enough
 LL | }
@@ -14,6 +17,9 @@ LL | }
 error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-trait-has-items.rs:43:33
    |
+LL |     let (_d, d1);
+   |              -- binding `d1` declared here
+LL |     d1 = D_HasMethodWithSelfArg(1);
 LL |     _d = D_HasMethodWithSelfArg(&d1);
    |                                 ^^^ borrowed value does not live long enough
 LL | }
@@ -27,6 +33,9 @@ LL | }
 error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-trait-has-items.rs:49:20
    |
+LL |     let (_d, d1);
+   |              -- binding `d1` declared here
+LL |     d1 = D_HasType(1);
 LL |     _d = D_HasType(&d1);
    |                    ^^^ borrowed value does not live long enough
 LL | }

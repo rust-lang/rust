@@ -1,6 +1,8 @@
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_brace_struct.rs:5:28
    |
+LL |     let y = 22;
+   |         - binding `y` declared here
 LL |     let foo = Foo { field: &y };
    |                            ^^ borrowed value does not live long enough
 LL |
@@ -12,6 +14,8 @@ LL | }
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_brace_struct.rs:12:28
    |
+LL |     let y = 22;
+   |         - binding `y` declared here
 LL |     let foo = Foo { field: &y };
    |                            ^^ borrowed value does not live long enough
 ...

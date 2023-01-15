@@ -1,6 +1,9 @@
 error[E0597]: `c_shortest` does not live long enough
   --> $DIR/dropck-eyepatch.rs:88:23
    |
+LL |         let (mut dt, mut dr, c_shortest): (Dt<_>, Dr<_>, Cell<_>);
+   |                              ---------- binding `c_shortest` declared here
+...
 LL |         dt = Dt("dt", &c_shortest);
    |                       ^^^^^^^^^^^ borrowed value does not live long enough
 ...
@@ -15,6 +18,9 @@ LL |     }
 error[E0597]: `c_shortest` does not live long enough
   --> $DIR/dropck-eyepatch.rs:110:32
    |
+LL |         let (mut pt, mut pr, c_shortest): (Pt<_, _>, Pr<_>, Cell<_>);
+   |                              ---------- binding `c_shortest` declared here
+...
 LL |         pt = Pt("pt", &c_long, &c_shortest);
    |                                ^^^^^^^^^^^ borrowed value does not live long enough
 ...

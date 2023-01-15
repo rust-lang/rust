@@ -12,6 +12,8 @@ LL |         *lock.lock().unwrap() = &z;
 error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:16:33
    |
+LL |         let z = 2;
+   |             - binding `z` declared here
 LL |         *lock.lock().unwrap() = &z;
    |                                 ^^ borrowed value does not live long enough
 LL |     }
@@ -34,6 +36,8 @@ LL |         *lock.write().unwrap() = &z;
 error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:30:34
    |
+LL |         let z = 2;
+   |             - binding `z` declared here
 LL |         *lock.write().unwrap() = &z;
    |                                  ^^ borrowed value does not live long enough
 LL |     }
@@ -56,6 +60,8 @@ LL |         tx.send(&z).unwrap();
 error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:46:17
    |
+LL |         let z = 2;
+   |             - binding `z` declared here
 LL |         tx.send(&z).unwrap();
    |                 ^^ borrowed value does not live long enough
 LL |     }

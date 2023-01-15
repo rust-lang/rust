@@ -1,6 +1,8 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/issue-55511.rs:13:28
    |
+LL |     let a = 22;
+   |         - binding `a` declared here
 LL |     let b = Some(Cell::new(&a));
    |                            ^^ borrowed value does not live long enough
 ...
