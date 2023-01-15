@@ -732,7 +732,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             cx.tcx,
             param_env,
             ty,
-            traits::ObligationCause::misc(item.span, item.hir_id()),
+            traits::ObligationCause::misc(item.span, item.owner_id.def_id),
         )
         .is_ok()
         {

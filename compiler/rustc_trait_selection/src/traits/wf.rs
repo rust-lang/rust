@@ -1,10 +1,10 @@
 use crate::infer::InferCtxt;
 use crate::traits;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 use std::iter;
@@ -17,7 +17,7 @@ use std::iter;
 pub fn obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     recursion_depth: usize,
     arg: GenericArg<'tcx>,
     span: Span,
@@ -82,7 +82,7 @@ pub fn obligations<'tcx>(
 pub fn trait_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     trait_pred: &ty::TraitPredicate<'tcx>,
     span: Span,
     item: &'tcx hir::Item<'tcx>,
@@ -105,7 +105,7 @@ pub fn trait_obligations<'tcx>(
 pub fn predicate_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     predicate: ty::Predicate<'tcx>,
     span: Span,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
@@ -167,7 +167,7 @@ pub fn predicate_obligations<'tcx>(
 struct WfPredicates<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
     recursion_depth: usize,

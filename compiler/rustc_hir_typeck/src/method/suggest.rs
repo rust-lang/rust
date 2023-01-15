@@ -352,7 +352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty_span = match rcvr_ty.kind() {
             ty::Param(param_type) => {
-                Some(param_type.span_from_generics(self.tcx, self.body_id.owner.to_def_id()))
+                Some(param_type.span_from_generics(self.tcx, self.body_id.to_def_id()))
             }
             ty::Adt(def, _) if def.did().is_local() => Some(tcx.def_span(def.did())),
             _ => None,
@@ -403,7 +403,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args,
                 sugg_span,
             );
-
             self.note_candidates_on_method_error(
                 rcvr_ty,
                 item_name,
@@ -496,9 +495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::Param(_) => {
                                 // Account for `fn` items like in `issue-35677.rs` to
                                 // suggest restricting its type params.
-                                let parent_body =
-                                    hir.body_owner(hir::BodyId { hir_id: self.body_id });
-                                Some(hir.get(parent_body))
+                                Some(hir.get_by_def_id(self.body_id))
                             }
                             ty::Adt(def, _) => {
                                 def.did().as_local().map(|def_id| hir.get_by_def_id(def_id))
@@ -1343,7 +1340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         });
         if let Some((field, field_ty)) = field_receiver {
-            let scope = tcx.parent_module(self.body_id);
+            let scope = tcx.parent_module_from_def_id(self.body_id);
             let is_accessible = field.vis.is_accessible_from(scope, tcx);
 
             if is_accessible {
@@ -1593,7 +1590,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 else { return };
 
         let map = self.infcx.tcx.hir();
-        let body = map.body(rustc_hir::BodyId { hir_id: self.body_id });
+        let body_id = self.tcx.hir().body_owned_by(self.body_id);
+        let body = map.body(body_id);
         struct LetVisitor<'a> {
             result: Option<&'a hir::Expr<'a>>,
             ident_name: Symbol,
@@ -2195,7 +2193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             true
         });
 
-        let module_did = self.tcx.parent_module(self.body_id);
+        let module_did = self.tcx.parent_module_from_def_id(self.body_id);
         let (module, _, _) = self.tcx.hir().get_module(module_did);
         let span = module.spans.inject_use_span;
 
@@ -2517,7 +2515,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             // Obtain the span for `param` and use it for a structured suggestion.
             if let Some(param) = param_type {
-                let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
+                let generics = self.tcx.generics_of(self.body_id.to_def_id());
                 let type_param = generics.type_param(param, self.tcx);
                 let hir = self.tcx.hir();
                 if let Some(def_id) = type_param.def_id.as_local() {

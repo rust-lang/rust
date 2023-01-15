@@ -78,7 +78,8 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                 let send_trait = cx.tcx.get_diagnostic_item(sym::Send).unwrap();
                 let span = decl.output.span();
                 let infcx = cx.tcx.infer_ctxt().build();
-                let cause = traits::ObligationCause::misc(span, hir_id);
+                let def_id = cx.tcx.hir().local_def_id(hir_id);
+                let cause = traits::ObligationCause::misc(span, def_id);
                 let send_errors = traits::fully_solve_bound(&infcx, cause, cx.param_env, ret_ty, send_trait);
                 if !send_errors.is_empty() {
                     span_lint_and_then(

@@ -100,14 +100,14 @@ mod variance;
 
 use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{Node, CRATE_HIR_ID};
+use rustc_hir::Node;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
 use rustc_session::{config::EntryFnType, parse::feature_err};
+use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -185,16 +185,15 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     let main_fnsig = tcx.fn_sig(main_def_id);
     let main_span = tcx.def_span(main_def_id);
 
-    fn main_fn_diagnostics_hir_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> hir::HirId {
+    fn main_fn_diagnostics_def_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> LocalDefId {
         if let Some(local_def_id) = def_id.as_local() {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
             let hir_type = tcx.type_of(local_def_id);
             if !matches!(hir_type.kind(), ty::FnDef(..)) {
                 span_bug!(sp, "main has a non-function type: found `{}`", hir_type);
             }
-            hir_id
+            local_def_id
         } else {
-            CRATE_HIR_ID
+            CRATE_DEF_ID
         }
     }
 
@@ -251,7 +250,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     let mut error = false;
-    let main_diagnostics_hir_id = main_fn_diagnostics_hir_id(tcx, main_def_id, main_span);
+    let main_diagnostics_def_id = main_fn_diagnostics_def_id(tcx, main_def_id, main_span);
     let main_fn_generics = tcx.generics_of(main_def_id);
     let main_fn_predicates = tcx.predicates_of(main_def_id);
     if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
@@ -326,7 +325,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let param_env = ty::ParamEnv::empty();
         let cause = traits::ObligationCause::new(
             return_ty_span,
-            main_diagnostics_hir_id,
+            main_diagnostics_def_id,
             ObligationCauseCode::MainFunctionType,
         );
         let ocx = traits::ObligationCtxt::new(&infcx);
@@ -356,7 +355,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         tcx,
         &ObligationCause::new(
             main_span,
-            main_diagnostics_hir_id,
+            main_diagnostics_def_id,
             ObligationCauseCode::MainFunctionType,
         ),
         se_ty,
@@ -444,7 +443,11 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
 
             require_same_types(
                 tcx,
-                &ObligationCause::new(start_span, start_id, ObligationCauseCode::StartFunctionType),
+                &ObligationCause::new(
+                    start_span,
+                    start_def_id,
+                    ObligationCauseCode::StartFunctionType,
+                ),
                 se_ty,
                 tcx.mk_fn_ptr(tcx.fn_sig(start_def_id)),
             );

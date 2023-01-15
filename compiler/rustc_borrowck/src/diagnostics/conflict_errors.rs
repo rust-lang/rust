@@ -766,7 +766,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let copy_did = infcx.tcx.require_lang_item(LangItem::Copy, Some(span));
         let cause = ObligationCause::new(
             span,
-            self.mir_hir_id(),
+            self.mir_def_id(),
             rustc_infer::traits::ObligationCauseCode::MiscObligation,
         );
         let errors = rustc_trait_selection::traits::fully_solve_bound(

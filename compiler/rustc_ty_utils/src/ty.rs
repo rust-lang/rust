@@ -1,8 +1,8 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
 use rustc_session::config::TraitSolver;
+use rustc_span::def_id::{DefId, CRATE_DEF_ID};
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -208,14 +208,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         constness,
     );
 
-    let body_id =
-        local_did.and_then(|id| tcx.hir().maybe_body_owned_by(id).map(|body| body.hir_id));
-    let body_id = match body_id {
-        Some(id) => id,
-        None if hir_id.is_some() => hir_id.unwrap(),
-        _ => hir::CRATE_HIR_ID,
-    };
-
+    let body_id = local_did.unwrap_or(CRATE_DEF_ID);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
 }

@@ -2437,6 +2437,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ident
     }
 
+    // FIXME(vincenzoapalzzo): move the HirId to a LocalDefId
     pub fn adjust_ident_and_get_scope(
         self,
         mut ident: Ident,

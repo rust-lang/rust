@@ -2,11 +2,11 @@ use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::NormalizeExt;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
-use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::Limit;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Span;
 
@@ -28,7 +28,7 @@ pub struct Autoderef<'a, 'tcx> {
     // Meta infos:
     infcx: &'a InferCtxt<'tcx>,
     span: Span,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 
     // Current state:
@@ -96,14 +96,14 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     pub fn new(
         infcx: &'a InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: hir::HirId,
+        body_def_id: LocalDefId,
         span: Span,
         base_ty: Ty<'tcx>,
     ) -> Autoderef<'a, 'tcx> {
         Autoderef {
             infcx,
             span,
-            body_id,
+            body_id: body_def_id,
             param_env,
             state: AutoderefSnapshot {
                 steps: vec![],
