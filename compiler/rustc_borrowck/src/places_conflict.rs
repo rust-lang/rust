@@ -209,7 +209,7 @@ fn place_components_conflict<'tcx>(
             match (elem, &base_ty.kind(), access) {
                 (_, _, Shallow(Some(ArtificialField::ArrayLength)))
                 | (_, _, Shallow(Some(ArtificialField::ShallowBorrow))) => {
-                    // The array length is like  additional fields on the
+                    // The array length is like additional fields on the
                     // type; it does not overlap any existing data there.
                     // Furthermore, if cannot actually be a prefix of any
                     // borrowed place (at least in MIR as it is currently.)
