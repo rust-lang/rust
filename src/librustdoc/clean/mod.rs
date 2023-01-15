@@ -2441,7 +2441,8 @@ fn clean_use_statement_inner<'tcx>(
     let inner = if kind == hir::UseKind::Glob {
         if !denied {
             let mut visited = FxHashSet::default();
-            if let Some(items) = inline::try_inline_glob(cx, path.res, &mut visited, inlined_names)
+            if let Some(items) =
+                inline::try_inline_glob(cx, path.res, current_mod, &mut visited, inlined_names)
             {
                 return items;
             }
