@@ -1,4 +1,4 @@
-use crate::error::TranslateError;
+use crate::error::{TranslateError, TranslateErrorKind};
 use crate::snippet::Style;
 use crate::{DiagnosticArg, DiagnosticMessage, FluentBundle};
 use rustc_data_structures::sync::Lrc;
@@ -95,6 +95,16 @@ pub trait Translate {
                 // The primary bundle was present and translation succeeded
                 Some(Ok(t)) => t,
 
+                // If `translate_with_bundle` returns `Err` with the primary bundle, this is likely
+                // just that the primary bundle doesn't contain the message being translated, so
+                // proceed to the fallback bundle.
+                Some(Err(
+                    primary @ TranslateError::One {
+                        kind: TranslateErrorKind::MessageMissing, ..
+                    },
+                )) => translate_with_bundle(self.fallback_fluent_bundle())
+                    .map_err(|fallback| primary.and(fallback))?,
+
                 // Always yeet out for errors on debug (unless
                 // `RUSTC_TRANSLATION_NO_DEBUG_ASSERT` is set in the environment - this allows
                 // local runs of the test suites, of builds with debug assertions, to test the
@@ -106,9 +116,8 @@ pub trait Translate {
                     do yeet primary
                 }
 
-                // If `translate_with_bundle` returns `Err` with the primary bundle, this is likely
-                // just that the primary bundle doesn't contain the message being translated or
-                // something else went wrong) so proceed to the fallback bundle.
+                // ..otherwise, for end users, an error about this wouldn't be useful or actionable, so
+                // just hide it and try with the fallback bundle.
                 Some(Err(primary)) => translate_with_bundle(self.fallback_fluent_bundle())
                     .map_err(|fallback| primary.and(fallback))?,
 
