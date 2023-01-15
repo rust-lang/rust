@@ -102,6 +102,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn impl_subject(self, def_id: DefId) -> ImplSubject<'tcx> {
         self.impl_trait_ref(def_id)
+            .map(|t| t.subst_identity())
             .map(ImplSubject::Trait)
             .unwrap_or_else(|| ImplSubject::Inherent(self.type_of(def_id)))
     }

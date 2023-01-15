@@ -202,7 +202,7 @@ impl<'tcx> GenericArg<'tcx> {
     pub fn is_non_region_infer(self) -> bool {
         match self.unpack() {
             GenericArgKind::Lifetime(_) => false,
-            GenericArgKind::Type(ty) => ty.is_ty_infer(),
+            GenericArgKind::Type(ty) => ty.is_ty_or_numeric_infer(),
             GenericArgKind::Const(ct) => ct.is_ct_infer(),
         }
     }
@@ -712,6 +712,10 @@ impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
     pub fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
         self.0.fold_with(&mut folder)
+    }
+
+    pub fn subst_identity(self) -> T {
+        self.0
     }
 }
 

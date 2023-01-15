@@ -462,7 +462,7 @@ impl InlineAsmRegClass {
     }
 
     /// Returns a suggested template modifier to use for this type and an
-    /// example of a  register named formatted with it.
+    /// example of a register named formatted with it.
     ///
     /// Such suggestions are useful if a type smaller than the full register
     /// size is used and a modifier can be used to point to the subregister of

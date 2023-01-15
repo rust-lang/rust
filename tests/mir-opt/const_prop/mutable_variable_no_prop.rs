@@ -1,7 +1,7 @@
 // unit-test
 // compile-flags: -O
 
-static mut STATIC: u32 = 42;
+static mut STATIC: u32 = 0x42424242;
 
 // EMIT_MIR mutable_variable_no_prop.main.ConstProp.diff
 fn main() {

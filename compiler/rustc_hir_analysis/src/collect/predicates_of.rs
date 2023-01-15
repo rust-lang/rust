@@ -87,7 +87,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         Node::Item(item) => match item.kind {
             ItemKind::Impl(ref impl_) => {
                 if impl_.defaultness.is_default() {
-                    is_default_impl_trait = tcx.impl_trait_ref(def_id).map(ty::Binder::dummy);
+                    is_default_impl_trait =
+                        tcx.impl_trait_ref(def_id).map(|t| ty::Binder::dummy(t.subst_identity()));
                 }
                 &impl_.generics
             }
@@ -251,7 +252,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // for details.
     if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {
         let self_ty = tcx.type_of(def_id);
-        let trait_ref = tcx.impl_trait_ref(def_id);
+        let trait_ref = tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::subst_identity);
         cgp::setup_constraining_predicates(
             tcx,
             &mut predicates,

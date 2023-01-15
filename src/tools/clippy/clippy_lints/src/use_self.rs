@@ -137,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             then {
                 // `self_ty` is the semantic self type of `impl <trait> for <type>`. This cannot be
                 // `Self`.
-                let self_ty = impl_trait_ref.self_ty();
+                let self_ty = impl_trait_ref.subst_identity().self_ty();
 
                 // `trait_method_sig` is the signature of the function, how it is declared in the
                 // trait, not in the impl of the trait.

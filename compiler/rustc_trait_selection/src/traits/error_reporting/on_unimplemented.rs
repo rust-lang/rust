@@ -68,7 +68,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
             let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
-            let impl_trait_ref = tcx.bound_impl_trait_ref(def_id).unwrap().subst(tcx, impl_substs);
+            let impl_trait_ref = tcx.impl_trait_ref(def_id).unwrap().subst(tcx, impl_substs);
 
             let impl_self_ty = impl_trait_ref.self_ty();
 

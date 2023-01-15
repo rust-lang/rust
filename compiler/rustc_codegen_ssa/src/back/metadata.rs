@@ -100,7 +100,13 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     };
     let architecture = match &sess.target.arch[..] {
         "arm" => Architecture::Arm,
-        "aarch64" => Architecture::Aarch64,
+        "aarch64" => {
+            if sess.target.pointer_width == 32 {
+                Architecture::Aarch64_Ilp32
+            } else {
+                Architecture::Aarch64
+            }
+        }
         "x86" => Architecture::I386,
         "s390x" => Architecture::S390x,
         "mips" => Architecture::Mips,
@@ -165,11 +171,23 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
                 };
             e_flags
         }
-        Architecture::Riscv64 if sess.target.options.features.contains("+d") => {
-            // copied from `riscv64-linux-gnu-gcc foo.c -c`, note though
-            // that the `+d` target feature represents whether the double
-            // float abi is enabled.
-            let e_flags = elf::EF_RISCV_RVC | elf::EF_RISCV_FLOAT_ABI_DOUBLE;
+        Architecture::Riscv32 | Architecture::Riscv64 => {
+            // Source: https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/079772828bd10933d34121117a222b4cc0ee2200/riscv-elf.adoc
+            let mut e_flags: u32 = 0x0;
+            let features = &sess.target.options.features;
+            // Check if compressed is enabled
+            if features.contains("+c") {
+                e_flags |= elf::EF_RISCV_RVC;
+            }
+
+            // Select the appropriate floating-point ABI
+            if features.contains("+d") {
+                e_flags |= elf::EF_RISCV_FLOAT_ABI_DOUBLE;
+            } else if features.contains("+f") {
+                e_flags |= elf::EF_RISCV_FLOAT_ABI_SINGLE;
+            } else {
+                e_flags |= elf::EF_RISCV_FLOAT_ABI_SOFT;
+            }
             e_flags
         }
         _ => 0,

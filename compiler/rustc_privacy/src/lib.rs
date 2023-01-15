@@ -338,7 +338,7 @@ trait VisibilityLike: Sized {
         let mut find = FindMin { tcx, effective_visibilities, min: Self::MAX };
         find.visit(tcx.type_of(def_id));
         if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
-            find.visit_trait(trait_ref);
+            find.visit_trait(trait_ref.subst_identity());
         }
         find.min
     }
@@ -838,7 +838,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                 GenericParamDefKind::Const { has_default } => {
                     self.visit(self.ev.tcx.type_of(param.def_id));
                     if has_default {
-                        self.visit(self.ev.tcx.const_param_default(param.def_id));
+                        self.visit(self.ev.tcx.const_param_default(param.def_id).subst_identity());
                     }
                 }
             }
@@ -858,7 +858,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
 
     fn trait_ref(&mut self) -> &mut Self {
         if let Some(trait_ref) = self.ev.tcx.impl_trait_ref(self.item_def_id) {
-            self.visit_trait(trait_ref);
+            self.visit_trait(trait_ref.subst_identity());
         }
         self
     }

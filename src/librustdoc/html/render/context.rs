@@ -464,8 +464,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // If user passed in `--playground-url` arg, we fill in crate name here
         let mut playground = None;
         if let Some(url) = playground_url {
-            playground =
-                Some(markdown::Playground { crate_name: Some(krate.name(tcx).to_string()), url });
+            playground = Some(markdown::Playground { crate_name: Some(krate.name(tcx)), url });
         }
         let mut layout = layout::Layout {
             logo: String::new(),
@@ -491,7 +490,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 }
                 (sym::html_playground_url, Some(s)) => {
                     playground = Some(markdown::Playground {
-                        crate_name: Some(krate.name(tcx).to_string()),
+                        crate_name: Some(krate.name(tcx)),
                         url: s.to_string(),
                     });
                 }
@@ -639,7 +638,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 write!(
                     buf,
                     "<div class=\"main-heading\">\
-                     <h1 class=\"fqn\">Rustdoc settings</h1>\
+                     <h1>Rustdoc settings</h1>\
                      <span class=\"out-of-band\">\
                          <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
                             Back\
@@ -677,7 +676,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 write!(
                     buf,
                     "<div class=\"main-heading\">\
-                     <h1 class=\"fqn\">Rustdoc help</h1>\
+                     <h1>Rustdoc help</h1>\
                      <span class=\"out-of-band\">\
                          <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
                             Back\

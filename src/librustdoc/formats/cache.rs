@@ -242,7 +242,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         }
 
         // Index this method for searching later on.
-        if let Some(ref s) = item.name.or_else(|| {
+        if let Some(s) = item.name.or_else(|| {
             if item.is_stripped() {
                 None
             } else if let clean::ImportItem(ref i) = *item.kind &&
@@ -317,14 +317,15 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             short_markdown_summary(x.as_str(), &item.link_names(self.cache))
                         });
                         let ty = item.type_();
-                        let name = s.to_string();
-                        if ty != ItemType::StructField || u16::from_str_radix(&name, 10).is_err() {
+                        if ty != ItemType::StructField
+                            || u16::from_str_radix(s.as_str(), 10).is_err()
+                        {
                             // In case this is a field from a tuple struct, we don't add it into
                             // the search index because its name is something like "0", which is
                             // not useful for rustdoc search.
                             self.cache.search_index.push(IndexItem {
                                 ty,
-                                name,
+                                name: s,
                                 path: join_with_double_colon(path),
                                 desc,
                                 parent,

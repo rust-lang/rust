@@ -35,7 +35,7 @@ pub(crate) fn build_index<'tcx>(
                 .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
-                name: item.name.unwrap().to_string(),
+                name: item.name.unwrap(),
                 path: join_with_double_colon(&fqp[..fqp.len() - 1]),
                 desc,
                 parent: Some(parent),
@@ -58,8 +58,8 @@ pub(crate) fn build_index<'tcx>(
     // Sort search index items. This improves the compressibility of the search index.
     cache.search_index.sort_unstable_by(|k1, k2| {
         // `sort_unstable_by_key` produces lifetime errors
-        let k1 = (&k1.path, &k1.name, &k1.ty, &k1.parent);
-        let k2 = (&k2.path, &k2.name, &k2.ty, &k2.parent);
+        let k1 = (&k1.path, k1.name.as_str(), &k1.ty, &k1.parent);
+        let k2 = (&k2.path, k2.name.as_str(), &k2.ty, &k2.parent);
         std::cmp::Ord::cmp(&k1, &k2)
     });
 
@@ -240,7 +240,7 @@ pub(crate) fn build_index<'tcx>(
             )?;
             crate_data.serialize_field(
                 "n",
-                &self.items.iter().map(|item| &item.name).collect::<Vec<_>>(),
+                &self.items.iter().map(|item| item.name.as_str()).collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(
                 "q",
@@ -299,7 +299,7 @@ pub(crate) fn build_index<'tcx>(
             )?;
             crate_data.serialize_field(
                 "p",
-                &self.paths.iter().map(|(it, s)| (it, s.to_string())).collect::<Vec<_>>(),
+                &self.paths.iter().map(|(it, s)| (it, s.as_str())).collect::<Vec<_>>(),
             )?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;

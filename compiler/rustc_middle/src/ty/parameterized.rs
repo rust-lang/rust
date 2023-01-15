@@ -32,6 +32,10 @@ impl<T: ParameterizedOverTcx> ParameterizedOverTcx for ty::Binder<'static, T> {
     type Value<'tcx> = ty::Binder<'tcx, T::Value<'tcx>>;
 }
 
+impl<T: ParameterizedOverTcx> ParameterizedOverTcx for ty::EarlyBinder<T> {
+    type Value<'tcx> = ty::EarlyBinder<T::Value<'tcx>>;
+}
+
 #[macro_export]
 macro_rules! trivially_parameterized_over_tcx {
     ($($ty:ty),+ $(,)?) => {

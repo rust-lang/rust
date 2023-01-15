@@ -251,7 +251,7 @@ new_pr = true
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
-    "compiler/rustc_trait_selection/solve"
+    "compiler/rustc_trait_selection/src/solve"
 ]
 
 [notify-zulip."I-prioritize"]

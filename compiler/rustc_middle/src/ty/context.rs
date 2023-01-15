@@ -51,7 +51,7 @@ use rustc_macros::HashStable;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-use rustc_session::config::{CrateType, OutputFilenames};
+use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::Limit;
@@ -74,7 +74,6 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
-use std::sync::Arc;
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
@@ -363,6 +362,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
         TyCtxtFeed { tcx: self, key: () }
     }
+    pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
+        TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
@@ -428,11 +430,6 @@ pub struct GlobalCtxt<'tcx> {
     pub consts: CommonConsts<'tcx>,
 
     untracked: Untracked,
-    /// Output of the resolver.
-    pub(crate) untracked_resolutions: ty::ResolverGlobalCtxt,
-    /// The entire crate as AST. This field serves as the input for the hir_crate query,
-    /// which lowers it from AST to HIR. It must not be read or used by anything else.
-    pub untracked_crate: Steal<Lrc<ast::Crate>>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -457,17 +454,11 @@ pub struct GlobalCtxt<'tcx> {
     /// Merge this with `selection_cache`?
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
 
-    /// The definite name of the current crate after taking into account
-    /// attributes, commandline parameters, etc.
-    crate_name: Symbol,
-
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
-
-    output_filenames: Arc<OutputFilenames>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -592,15 +583,11 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        untracked_resolutions: ty::ResolverGlobalCtxt,
         untracked: Untracked,
-        krate: Lrc<ast::Crate>,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
-        crate_name: Symbol,
-        output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
@@ -622,8 +609,6 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked,
-            untracked_resolutions,
-            untracked_crate: Steal::new(krate),
             on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),
@@ -632,10 +617,8 @@ impl<'tcx> TyCtxt<'tcx> {
             pred_rcache: Default::default(),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
-            crate_name,
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
-            output_filenames: Arc::new(output_filenames),
         }
     }
 
@@ -810,7 +793,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // statements within the query system and we'd run into endless
         // recursion otherwise.
         let (crate_name, stable_crate_id) = if def_id.is_local() {
-            (self.crate_name, self.sess.local_stable_crate_id())
+            (self.crate_name(LOCAL_CRATE), self.sess.local_stable_crate_id())
         } else {
             let cstore = &*self.untracked.cstore;
             (cstore.crate_name(def_id.krate), cstore.stable_crate_id(def_id.krate))
@@ -2407,13 +2390,8 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
     providers.module_reexports =
         |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
-    providers.crate_name = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        tcx.crate_name
-    };
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.maybe_unused_extern_crates =
@@ -2424,8 +2402,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
-    providers.output_filenames = |tcx, ()| &tcx.output_filenames;
-    providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.sess.contains_name(tcx.hir().krate_attrs(), sym::panic_runtime)

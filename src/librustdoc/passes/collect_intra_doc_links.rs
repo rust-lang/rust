@@ -786,7 +786,7 @@ fn trait_impls_for<'a>(
         tcx.find_map_relevant_impl(trait_, ty, |impl_| {
             let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
             // Check if these are the same type.
-            let impl_type = trait_ref.self_ty();
+            let impl_type = trait_ref.skip_binder().self_ty();
             trace!(
                 "comparing type {} with kind {:?} against type {:?}",
                 impl_type,

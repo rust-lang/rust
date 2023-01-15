@@ -77,8 +77,6 @@ LL | ///     ```
    |         ^^^
    |
    = note: error from rustc: unknown start of token: `
-   = note: error from rustc: unknown start of token: `
-   = note: error from rustc: unknown start of token: `
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:64:5

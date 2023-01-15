@@ -1538,7 +1538,7 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        /// // Only the  most significant word is signed.
+        /// // Only the most significant word is signed.
         /// //
         #[doc = concat!("//   10  MAX    (a = 10 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
         #[doc = concat!("// + -5    9    (b = -5 × 2^", stringify!($BITS), " + 9)")]
@@ -1625,7 +1625,7 @@ macro_rules! int_impl {
         /// overflow.
         ///
         /// Performs "ternary subtraction" by subtracting both an integer
-        /// operandand a borrow-in bit from `self`, and returns a tuple of the
+        /// operand and a borrow-in bit from `self`, and returns a tuple of the
         /// difference along with a boolean indicating whether an arithmetic
         /// overflow would occur. On overflow, the wrapped value is returned.
         ///
@@ -1646,7 +1646,7 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        /// // Only the  most significant word is signed.
+        /// // Only the most significant word is signed.
         /// //
         #[doc = concat!("//    6    8    (a = 6 × 2^", stringify!($BITS), " + 8)")]
         #[doc = concat!("// - -5    9    (b = -5 × 2^", stringify!($BITS), " + 9)")]

@@ -1782,9 +1782,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             // like when you have two references but one is `usize` and the other
                             // is `f32`. In those cases we still want to show the `note`. If the
                             // value from `ef` is `Infer(_)`, then we ignore it.
-                            if !ef.expected.is_ty_infer() {
+                            if !ef.expected.is_ty_or_numeric_infer() {
                                 ef.expected != values.expected
-                            } else if !ef.found.is_ty_infer() {
+                            } else if !ef.found.is_ty_or_numeric_infer() {
                                 ef.found != values.found
                             } else {
                                 false
@@ -1922,6 +1922,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // build a tuple (issue #86100)
                         (ty::Tuple(fields), _) => {
                             self.emit_tuple_wrap_err(&mut err, span, found, fields)
+                        }
+                        // If a byte was expected and the found expression is a char literal
+                        // containing a single ASCII character, perhaps the user meant to write `b'c'` to
+                        // specify a byte literal
+                        (ty::Uint(ty::UintTy::U8), ty::Char) => {
+                            if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                                && let Some(code) = code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
+                                && code.chars().next().map_or(false, |c| c.is_ascii())
+                            {
+                                err.span_suggestion(
+                                    span,
+                                    "if you meant to write a byte literal, prefix with `b`",
+                                    format!("b'{}'", escape_literal(code)),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
                         }
                         // If a character was expected and the found expression is a string literal
                         // containing a single character, perhaps the user meant to write `'c'` to

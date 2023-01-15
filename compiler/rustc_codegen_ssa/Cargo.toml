@@ -15,7 +15,7 @@ tracing = "0.1"
 libc = "0.2.50"
 jobserver = "0.1.22"
 tempfile = "3.2"
-thorin-dwp = "0.3"
+thorin-dwp = "0.4"
 pathdiff = "0.2.0"
 serde_json = "1.0.59"
 snap = "1"
@@ -44,6 +44,6 @@ rustc_session = { path = "../rustc_session" }
 rustc_const_eval = { path = "../rustc_const_eval" }
 
 [dependencies.object]
-version = "0.29.0"
+version = "0.30.1"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "unaligned", "archive", "write"]

@@ -1,7 +1,8 @@
 use crate::errors::{
     CantEmitMIR, EmojiIdentifier, ErrorWritingDependencies, FerrisIdentifier,
     GeneratedFileConflictsWithDirectory, InputFileWouldBeOverWritten, MixedBinCrate,
-    MixedProcMacroCrate, OutDirError, ProcMacroDocWithoutArg, TempsDirError,
+    MixedProcMacroCrate, OutDirError, ProcMacroCratePanicAbort, ProcMacroDocWithoutArg,
+    TempsDirError,
 };
 use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
@@ -36,6 +37,7 @@ use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
+use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 
 use std::any::Any;
@@ -378,6 +380,10 @@ pub fn configure_and_expand(
         if is_proc_macro_crate {
             sess.emit_err(MixedProcMacroCrate);
         }
+    }
+
+    if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
+        sess.emit_warning(ProcMacroCratePanicAbort);
     }
 
     // For backwards compatibility, we don't try to run proc macro injection
@@ -817,23 +823,26 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 arena,
                 hir_arena,
-                untracked_resolutions,
                 untracked,
-                krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
                 queries.as_dyn(),
                 rustc_query_impl::query_callbacks(arena),
-                crate_name,
-                outputs,
             )
         })
     });
 
     let mut qcx = QueryContext { gcx };
     qcx.enter(|tcx| {
-        tcx.feed_unit_query()
-            .resolver_for_lowering(tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)))
+        let feed = tcx.feed_unit_query();
+        feed.resolver_for_lowering(
+            tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
+        );
+        feed.resolutions(tcx.arena.alloc(untracked_resolutions));
+        feed.output_filenames(tcx.arena.alloc(std::sync::Arc::new(outputs)));
+        feed.features_query(sess.features_untracked());
+        let feed = tcx.feed_local_crate();
+        feed.crate_name(crate_name);
     });
     qcx
 }

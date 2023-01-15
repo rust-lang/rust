@@ -756,7 +756,7 @@ impl<A: Step> Iterator for ops::Range<A> {
     where
         Self: TrustedRandomAccessNoCoerce,
     {
-        // SAFETY: The TrustedRandomAccess contract requires that callers only  pass an index
+        // SAFETY: The TrustedRandomAccess contract requires that callers only pass an index
         // that is in bounds.
         // Additionally Self: TrustedRandomAccess is only implemented for Copy types
         // which means even repeated reads of the same index would be safe.

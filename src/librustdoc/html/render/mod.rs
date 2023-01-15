@@ -100,7 +100,7 @@ pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 #[derive(Debug)]
 pub(crate) struct IndexItem {
     pub(crate) ty: ItemType,
-    pub(crate) name: String,
+    pub(crate) name: Symbol,
     pub(crate) path: String,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
@@ -364,7 +364,7 @@ impl AllTypes {
             }
         }
 
-        f.write_str("<h1 class=\"fqn\">List of all items</h1>");
+        f.write_str("<h1>List of all items</h1>");
         // Note: print_entries does not escape the title, because we know the current set of titles
         // doesn't require escaping.
         print_entries(f, &self.structs, ItemSection::Structs);
@@ -394,7 +394,7 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     let mut ids = IdMap::default();
     format!(
         "<div class=\"main-heading\">\
-            <h1 class=\"fqn\">About scraped examples</h1>\
+            <h1>About scraped examples</h1>\
         </div>\
         <div>{}</div>",
         Markdown {
@@ -513,7 +513,7 @@ fn document_full_inner(
         debug!("Doc block: =====\n{}\n=====", s);
         if is_collapsible {
             w.write_str(
-                "<details class=\"rustdoc-toggle top-doc\" open>\
+                "<details class=\"toggle top-doc\" open>\
                 <summary class=\"hideme\">\
                      <span>Expand description</span>\
                 </summary>",
@@ -1343,7 +1343,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                     write!(
                         &mut out,
                         "<h3>Notable traits for <code>{}</code></h3>\
-                     <pre class=\"content\"><code>",
+                     <pre><code>",
                         impl_.for_.print(cx)
                     );
                 }
@@ -1514,7 +1514,7 @@ fn render_impl(
         let toggled = !doc_buffer.is_empty();
         if toggled {
             let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
-            write!(w, "<details class=\"rustdoc-toggle{}\" open><summary>", method_toggle_class);
+            write!(w, "<details class=\"toggle{}\" open><summary>", method_toggle_class);
         }
         match &*item.kind {
             clean::MethodItem(..) | clean::TyMethodItem(_) => {
@@ -1730,7 +1730,7 @@ fn render_impl(
             close_tags.insert_str(0, "</details>");
             write!(
                 w,
-                "<details class=\"rustdoc-toggle implementors-toggle\"{}>",
+                "<details class=\"toggle implementors-toggle\"{}>",
                 if rendering_params.toggle_open_by_default { " open" } else { "" }
             );
             write!(w, "<summary>")
@@ -2769,8 +2769,8 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
     let mut work = VecDeque::new();
 
     let mut process_path = |did: DefId| {
-        let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
-        let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
+        let get_extern = || cache.external_paths.get(&did).map(|s| &s.0);
+        let fqp = cache.exact_paths.get(&did).or_else(get_extern);
 
         if let Some(path) = fqp {
             out.push(join_with_double_colon(&path));
@@ -2999,7 +2999,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
     if it.peek().is_some() {
         write!(
             w,
-            "<details class=\"rustdoc-toggle more-examples-toggle\">\
+            "<details class=\"toggle more-examples-toggle\">\
                   <summary class=\"hideme\">\
                      <span>More examples</span>\
                   </summary>\

@@ -337,10 +337,11 @@ pub(super) fn check_for_substitution<'a>(
     pos: BytePos,
     ch: char,
     err: &mut Diagnostic,
+    count: usize,
 ) -> Option<token::TokenKind> {
     let &(_u_char, u_name, ascii_char) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch)?;
 
-    let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8()));
+    let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8() * count));
 
     let Some((_ascii_char, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(c, _, _)| c == ascii_char) else {
         let msg = format!("substitution character not found for '{}'", ch);
@@ -369,7 +370,12 @@ pub(super) fn check_for_substitution<'a>(
             "Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
             ch, u_name, ascii_char, ascii_name
         );
-        err.span_suggestion(span, &msg, ascii_char, Applicability::MaybeIncorrect);
+        err.span_suggestion(
+            span,
+            &msg,
+            ascii_char.to_string().repeat(count),
+            Applicability::MaybeIncorrect,
+        );
     }
     token.clone()
 }

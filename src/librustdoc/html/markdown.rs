@@ -30,7 +30,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
@@ -198,7 +198,7 @@ fn slugify(c: char) -> Option<char> {
 
 #[derive(Clone, Debug)]
 pub struct Playground {
-    pub crate_name: Option<String>,
+    pub crate_name: Option<Symbol>,
     pub url: String,
 }
 
@@ -290,7 +290,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 .map(|l| map_line(l).for_code())
                 .intersperse("\n".into())
                 .collect::<String>();
-            let krate = krate.as_ref().map(|s| &**s);
+            let krate = krate.as_ref().map(|s| s.as_str());
             let (test, _, _) =
                 doctest::make_test(&test, krate, false, &Default::default(), edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };

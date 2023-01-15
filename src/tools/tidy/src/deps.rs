@@ -1,7 +1,7 @@
 //! Checks the licenses of third-party dependencies.
 
-use cargo_metadata::{Metadata, Package, PackageId, Resolve};
-use std::collections::{BTreeSet, HashSet};
+use cargo_metadata::{DepKindInfo, Metadata, Package, PackageId};
+use std::collections::HashSet;
 use std::path::Path;
 
 /// These are licenses that are allowed for all crates, including the runtime,
@@ -98,14 +98,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "autocfg",
     "bitflags",
     "block-buffer",
-    "bumpalo", // Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "cc",
     "cfg-if",
     "chalk-derive",
     "chalk-engine",
     "chalk-ir",
     "chalk-solve",
-    "chrono",
     "convert_case", // dependency of derive_more
     "compiler_builtins",
     "cpufeatures",
@@ -124,11 +122,9 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "dlmalloc",
     "either",
     "ena",
-    "env_logger",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
-    "filetime",
     "fixedbitset",
     "flate2",
     "fluent-bundle",
@@ -142,13 +138,11 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "gsgdt",
     "hashbrown",
     "hermit-abi",
-    "humantime",
     "icu_list",
     "icu_locid",
     "icu_provider",
     "icu_provider_adapters",
     "icu_provider_macros",
-    "if_chain",
     "indexmap",
     "instant",
     "intl-memoizer",
@@ -156,7 +150,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "itertools",
     "itoa",
     "jobserver",
-    "js-sys", // Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "lazy_static",
     "libc",
     "libloading",
@@ -171,8 +164,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "memmap2",
     "memoffset",
     "miniz_oxide",
-    "num-integer",
-    "num-traits",
     "num_cpus",
     "object",
     "odht",
@@ -190,7 +181,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "proc-macro2",
     "psm",
     "punycode",
-    "quick-error",
     "quote",
     "rand",
     "rand_chacha",
@@ -217,7 +207,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "serde",
     "serde_derive",
     "serde_json",
-    "sha-1",
+    "sha1",
     "sha2",
     "sharded-slab",
     "smallvec",
@@ -235,7 +225,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "thiserror-impl",
     "thorin-dwp",
     "thread_local",
-    "time",
     "tinystr",
     "tinyvec",
     "tinyvec_macros",
@@ -268,13 +257,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "valuable",
     "version_check",
     "wasi",
-    // vvv Included in Cargo's dep graph but only activated on wasm32-*-unknown.
-    "wasm-bindgen",
-    "wasm-bindgen-backend",
-    "wasm-bindgen-macro",
-    "wasm-bindgen-macro-support",
-    "wasm-bindgen-shared",
-    // ^^^ Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
@@ -485,73 +467,55 @@ fn check_permitted_dependencies(
     restricted_dependency_crates: &[&'static str],
     bad: &mut bool,
 ) {
+    let mut deps = HashSet::new();
+    for to_check in restricted_dependency_crates {
+        let to_check = pkg_from_name(metadata, to_check);
+        use cargo_platform::Cfg;
+        use std::str::FromStr;
+        // We don't expect the compiler to ever run on wasm32, so strip
+        // out those dependencies to avoid polluting the permitted list.
+        deps_of_filtered(metadata, &to_check.id, &mut deps, &|dep_kinds| {
+            dep_kinds.iter().any(|dep_kind| {
+                dep_kind
+                    .target
+                    .as_ref()
+                    .map(|target| {
+                        !target.matches(
+                            "wasm32-unknown-unknown",
+                            &[
+                                Cfg::from_str("target_arch=\"wasm32\"").unwrap(),
+                                Cfg::from_str("target_os=\"unknown\"").unwrap(),
+                            ],
+                        )
+                    })
+                    .unwrap_or(true)
+            })
+        });
+    }
+
     // Check that the PERMITTED_DEPENDENCIES does not have unused entries.
-    for name in permitted_dependencies {
-        if !metadata.packages.iter().any(|p| p.name == *name) {
+    for permitted in permitted_dependencies {
+        if !deps.iter().any(|dep_id| &pkg_from_id(metadata, dep_id).name == permitted) {
             tidy_error!(
                 bad,
-                "could not find allowed package `{}`\n\
+                "could not find allowed package `{permitted}`\n\
                 Remove from PERMITTED_DEPENDENCIES list if it is no longer used.",
-                name
             );
         }
     }
-    // Get the list in a convenient form.
+
+    // Get in a convenient form.
     let permitted_dependencies: HashSet<_> = permitted_dependencies.iter().cloned().collect();
 
-    // Check dependencies.
-    let mut visited = BTreeSet::new();
-    let mut unapproved = BTreeSet::new();
-    for &krate in restricted_dependency_crates.iter() {
-        let pkg = pkg_from_name(metadata, krate);
-        let mut bad =
-            check_crate_dependencies(&permitted_dependencies, metadata, &mut visited, pkg);
-        unapproved.append(&mut bad);
-    }
-
-    if !unapproved.is_empty() {
-        tidy_error!(bad, "Dependencies for {} not explicitly permitted:", descr);
-        for dep in unapproved {
-            println!("* {dep}");
+    for dep in deps {
+        let dep = pkg_from_id(metadata, dep);
+        // If this path is in-tree, we don't require it to be explicitly permitted.
+        if dep.source.is_some() {
+            if !permitted_dependencies.contains(dep.name.as_str()) {
+                tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
+            }
         }
     }
-}
-
-/// Checks the dependencies of the given crate from the given cargo metadata to see if they are on
-/// the list of permitted dependencies. Returns a list of disallowed dependencies.
-fn check_crate_dependencies<'a>(
-    permitted_dependencies: &'a HashSet<&'static str>,
-    metadata: &'a Metadata,
-    visited: &mut BTreeSet<&'a PackageId>,
-    krate: &'a Package,
-) -> BTreeSet<&'a PackageId> {
-    // This will contain bad deps.
-    let mut unapproved = BTreeSet::new();
-
-    // Check if we have already visited this crate.
-    if visited.contains(&krate.id) {
-        return unapproved;
-    }
-
-    visited.insert(&krate.id);
-
-    // If this path is in-tree, we don't require it to be explicitly permitted.
-    if krate.source.is_some() {
-        // If this dependency is not on `PERMITTED_DEPENDENCIES`, add to bad set.
-        if !permitted_dependencies.contains(krate.name.as_str()) {
-            unapproved.insert(&krate.id);
-        }
-    }
-
-    // Do a DFS in the crate graph.
-    let to_check = deps_of(metadata, &krate.id);
-
-    for dep in to_check {
-        let mut bad = check_crate_dependencies(permitted_dependencies, metadata, visited, dep);
-        unapproved.append(&mut bad);
-    }
-
-    unapproved
 }
 
 /// Prevents multiple versions of some expensive crates.
@@ -588,24 +552,6 @@ fn check_crate_duplicate(
     }
 }
 
-/// Returns a list of dependencies for the given package.
-fn deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package> {
-    let resolve = metadata.resolve.as_ref().unwrap();
-    let node = resolve
-        .nodes
-        .iter()
-        .find(|n| &n.id == pkg_id)
-        .unwrap_or_else(|| panic!("could not find `{pkg_id}` in resolve"));
-    node.deps
-        .iter()
-        .map(|dep| {
-            metadata.packages.iter().find(|pkg| pkg.id == dep.pkg).unwrap_or_else(|| {
-                panic!("could not find dep `{}` for pkg `{}` in resolve", dep.pkg, pkg_id)
-            })
-        })
-        .collect()
-}
-
 /// Finds a package with the given name.
 fn pkg_from_name<'a>(metadata: &'a Metadata, name: &'static str) -> &'a Package {
     let mut i = metadata.packages.iter().filter(|p| p.name == name);
@@ -615,41 +561,57 @@ fn pkg_from_name<'a>(metadata: &'a Metadata, name: &'static str) -> &'a Package 
     result
 }
 
+fn pkg_from_id<'a>(metadata: &'a Metadata, id: &PackageId) -> &'a Package {
+    metadata.packages.iter().find(|p| &p.id == id).unwrap()
+}
+
 /// Finds all the packages that are in the rust runtime.
 fn compute_runtime_crates<'a>(metadata: &'a Metadata) -> HashSet<&'a PackageId> {
-    let resolve = metadata.resolve.as_ref().unwrap();
     let mut result = HashSet::new();
     for name in RUNTIME_CRATES {
         let id = &pkg_from_name(metadata, name).id;
-        normal_deps_of_r(resolve, id, &mut result);
+        deps_of_filtered(metadata, id, &mut result, &|_| true);
     }
     result
 }
 
-/// Recursively find all normal dependencies.
-fn normal_deps_of_r<'a>(
-    resolve: &'a Resolve,
+/// Recursively find all dependencies.
+fn deps_of_filtered<'a>(
+    metadata: &'a Metadata,
     pkg_id: &'a PackageId,
     result: &mut HashSet<&'a PackageId>,
+    filter: &dyn Fn(&[DepKindInfo]) -> bool,
 ) {
     if !result.insert(pkg_id) {
         return;
     }
-    let node = resolve
+    let node = metadata
+        .resolve
+        .as_ref()
+        .unwrap()
         .nodes
         .iter()
         .find(|n| &n.id == pkg_id)
         .unwrap_or_else(|| panic!("could not find `{pkg_id}` in resolve"));
     for dep in &node.deps {
-        normal_deps_of_r(resolve, &dep.pkg, result);
+        if !filter(&dep.dep_kinds) {
+            continue;
+        }
+        deps_of_filtered(metadata, &dep.pkg, result, filter);
     }
+}
+
+fn direct_deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package> {
+    let resolve = metadata.resolve.as_ref().unwrap();
+    let node = resolve.nodes.iter().find(|n| &n.id == pkg_id).unwrap();
+    node.deps.iter().map(|dep| pkg_from_id(metadata, &dep.pkg)).collect()
 }
 
 fn check_rustfix(metadata: &Metadata, bad: &mut bool) {
     let cargo = pkg_from_name(metadata, "cargo");
     let compiletest = pkg_from_name(metadata, "compiletest");
-    let cargo_deps = deps_of(metadata, &cargo.id);
-    let compiletest_deps = deps_of(metadata, &compiletest.id);
+    let cargo_deps = direct_deps_of(metadata, &cargo.id);
+    let compiletest_deps = direct_deps_of(metadata, &compiletest.id);
     let cargo_rustfix = cargo_deps.iter().find(|p| p.name == "rustfix").unwrap();
     let compiletest_rustfix = compiletest_deps.iter().find(|p| p.name == "rustfix").unwrap();
     if cargo_rustfix.version != compiletest_rustfix.version {

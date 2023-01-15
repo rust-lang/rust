@@ -309,7 +309,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(self.interner, bound_vars);
 
-        let trait_ref = self.interner.tcx.bound_impl_trait_ref(def_id).expect("not an impl");
+        let trait_ref = self.interner.tcx.impl_trait_ref(def_id).expect("not an impl");
         let trait_ref = trait_ref.subst(self.interner.tcx, bound_vars);
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
@@ -351,7 +351,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let all_impls = self.interner.tcx.all_impls(def_id);
         let matched_impls = all_impls.filter(|impl_def_id| {
             use chalk_ir::could_match::CouldMatch;
-            let trait_ref = self.interner.tcx.bound_impl_trait_ref(*impl_def_id).unwrap();
+            let trait_ref = self.interner.tcx.impl_trait_ref(*impl_def_id).unwrap();
             let bound_vars = bound_vars_for_item(self.interner.tcx, *impl_def_id);
 
             let self_ty = trait_ref.map_bound(|t| t.self_ty());
@@ -380,7 +380,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let trait_def_id = auto_trait_id.0;
         let all_impls = self.interner.tcx.all_impls(trait_def_id);
         for impl_def_id in all_impls {
-            let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap();
+            let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
             let self_ty = trait_ref.self_ty();
             let provides = match (self_ty.kind(), chalk_ty) {
                 (&ty::Adt(impl_adt_def, ..), Adt(id, ..)) => impl_adt_def.did() == id.0.did(),

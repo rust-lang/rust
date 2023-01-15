@@ -378,6 +378,7 @@ impl Step for RustAnalyzer {
             SourceType::InTree,
             &["sysroot-abi".to_owned()],
         );
+        cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
 
         let dir = builder.src.join(workspace_path);
         // needed by rust-analyzer to find its own text fixtures, cf.
@@ -690,7 +691,7 @@ impl Step for CompiletestTest {
         // We need `ToolStd` for the locally-built sysroot because
         // compiletest uses unstable features of the `test` crate.
         builder.ensure(compile::Std::new(compiler, host));
-        let cargo = tool::prepare_tool_cargo(
+        let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
             Mode::ToolStd,
@@ -700,6 +701,7 @@ impl Step for CompiletestTest {
             SourceType::InTree,
             &[],
         );
+        cargo.allow_features("test");
 
         try_run(builder, &mut cargo.into());
     }

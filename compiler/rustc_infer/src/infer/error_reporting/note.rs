@@ -320,6 +320,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .impl_trait_ref(impl_def_id)
             else { return; };
         let trait_substs = trait_ref
+            .subst_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering
             .with_self_ty(self.tcx, self.tcx.mk_ty_param(0, kw::SelfUpper))
             .substs;

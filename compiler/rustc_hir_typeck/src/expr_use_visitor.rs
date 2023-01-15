@@ -417,7 +417,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                 // Named constants have to be equated with the value
                                 // being matched, so that's a read of the value being matched.
                                 //
-                                // FIXME: We don't actually  reads for ZSTs.
+                                // FIXME: We don't actually reads for ZSTs.
                                 needs_to_be_read = true;
                             }
                             _ => {

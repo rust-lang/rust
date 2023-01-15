@@ -8,6 +8,13 @@ LL |     let _s = y.unwrap_or(|| x.split('.').nth(1).unwrap());
    |
    = note: expected reference `&str`
                 found closure `[closure@$DIR/sugg-else-for-closure.rs:6:26: 6:28]`
+help: the return type of this call is `[closure@$DIR/sugg-else-for-closure.rs:6:26: 6:28]` due to the type of the argument passed
+  --> $DIR/sugg-else-for-closure.rs:6:14
+   |
+LL |     let _s = y.unwrap_or(|| x.split('.').nth(1).unwrap());
+   |              ^^^^^^^^^^^^-------------------------------^
+   |                          |
+   |                          this argument influences the return type of `unwrap_or`
 note: associated function defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: try calling `unwrap_or_else` instead

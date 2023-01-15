@@ -1,7 +1,9 @@
+use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
 
+use super::cache::response_no_constraints;
 use super::{Certainty, EvalCtxt, MaybeCause, QueryResult};
 
 /// When detecting a solver overflow, we return ambiguity. Overflow can be
@@ -49,9 +51,12 @@ impl OverflowData {
 }
 
 impl<'tcx> EvalCtxt<'tcx> {
-    pub(super) fn deal_with_overflow(&mut self) -> QueryResult<'tcx> {
+    pub(super) fn deal_with_overflow(
+        &mut self,
+        goal: Canonical<'tcx, impl Sized>,
+    ) -> QueryResult<'tcx> {
         self.overflow_data.deal_with_overflow();
-        fixme_response_overflow_no_constraints()
+        response_no_constraints(self.tcx, goal, Certainty::Maybe(MaybeCause::Overflow))
     }
 
     /// A `while`-loop which tracks overflow.
@@ -73,8 +78,4 @@ impl<'tcx> EvalCtxt<'tcx> {
         self.overflow_data.deal_with_overflow();
         Ok(Certainty::Maybe(MaybeCause::Overflow))
     }
-}
-
-fn fixme_response_overflow_no_constraints<'tcx>() -> QueryResult<'tcx> {
-    unimplemented!()
 }
