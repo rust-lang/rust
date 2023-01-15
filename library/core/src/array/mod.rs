@@ -8,7 +8,6 @@ use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
 use crate::error::Error;
-use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::iter::UncheckedIterator;
 use crate::mem::{self, MaybeUninit};
@@ -16,6 +15,7 @@ use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
 use crate::slice::{Iter, IterMut};
+use crate::{fmt, ptr};
 
 mod ascii;
 mod drain;
@@ -623,6 +623,60 @@ impl<T, const N: usize> [T; N] {
     #[unstable(feature = "array_methods", issue = "76118")]
     pub fn each_mut(&mut self) -> [&mut T; N] {
         from_trusted_iterator(self.iter_mut())
+    }
+
+    /// Divides one array into two at an index.
+    ///
+    /// The first will contain all indices from `[0, M)` (excluding
+    /// the index `M` itself) and the second will contain all
+    /// indices from `[M, N)` (excluding the index `N` itself).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_array)]
+    ///
+    /// let v = [1, 2, 3, 4, 5, 6];
+    ///
+    /// {
+    ///     let (left, right) = v.split_array::<0>();
+    ///     assert_eq!(left, []);
+    ///     assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_array::<2>();
+    ///     assert_eq!(left, [1, 2]);
+    ///     assert_eq!(right, [3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_array::<6>();
+    ///     assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, []);
+    /// }
+    /// ```
+    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
+    #[inline]
+    pub const fn split_array<const M: usize>(self) -> ([T; M], [T; N - M]) {
+        // SAFETY: 0 <= M <= len (N)
+        let (left, right) = unsafe { self.split_at_unchecked(M) };
+
+        let left = left.as_ptr() as *const [T; M];
+        let right = right.as_ptr() as *const [T; N - M];
+
+        // SAFETY: `left` is a valid and aligned pointer to the first `M` elements of `self`
+        // (guaranteed by `split_at_unchecked()`).
+        // `self` will be forgotten immediately after (ptr::read() cannot unwind).
+        let left = unsafe { ptr::read(left) };
+        // SAFETY: `right` is a valid and aligned pointer to the last `N-M` elements of `self`
+        // (guaranteed by `split_at_unchecked()`).
+        // `self` will be forgotten immediately after (ptr::read() cannot unwind).
+        let right = unsafe { ptr::read(right) };
+
+        mem::forget(self);
+
+        (left, right)
     }
 
     /// Divides one array reference into two at an index.
