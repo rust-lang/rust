@@ -26,6 +26,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::bug;
+use rustc_middle::metadata::DiffItem;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
 use rustc_session::Session;
@@ -634,21 +635,29 @@ pub(crate) unsafe fn extract_return_type<'a>(
 // As unsafe as it can be.
 #[allow(unused_variables)]
 #[allow(unused)]
-pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
-                               param_info: Vec<ParamInfos>
+pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffItem, src_name: &String
                               ) -> Result<(), FatalError> {
     let llmod = module.module_llvm.llmod();
+
+    let rust_name = src_name;
+    let rust_name2 = &tasks.target;
+
+    let param = ParamInfos {
+        input_activity: vec![CDIFFE_TYPE::DFT_OUT_DIFF],
+        ret_info: CDIFFE_TYPE::DFT_CONSTANT
+    };
+    let param_info : Vec<ParamInfos> = vec![param];
+
     assert!(param_info.len() == 1);
     let infos = param_info[0].clone();
     let mut args_activity = infos.input_activity;
     let mut fwd_args_activity: Vec<CDIFFE_TYPE> = vec![CDIFFE_TYPE::DFT_DUP_ARG];
     let ret_activity = CDIFFE_TYPE::DFT_OUT_DIFF;
-    //infos.ret_info;
 
 
-    let rust_name = String::from("foo");
-    let rust_name2 = String::from("bar");
-    let name = CString::new(rust_name).unwrap();
+    // let rust_name = String::from("foo");
+    // let rust_name2 = String::from("bar");
+    let name = CString::new(rust_name.to_owned()).unwrap();
     let name2 = CString::new(rust_name2.clone()).unwrap();
     let mut src_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
     if src_fnc.is_none() {
@@ -771,14 +780,10 @@ pub(crate) unsafe fn optimize(
     if !fncs.is_empty() {
         dbg!(&fncs);
     }
-    let param = ParamInfos {
-        //input_activity: vec![CDIFFE_TYPE::DFT_OUT_DIFF],
-        input_activity: vec![CDIFFE_TYPE::DFT_OUT_DIFF],
-        ret_info: CDIFFE_TYPE::DFT_CONSTANT
-    };
-    let param_info : Vec<ParamInfos> = vec![param];
-    let res = enzyme_ad(module, param_info);
-    assert!(res.is_ok());
+    for (task, name) in fncs {
+        let res = enzyme_ad(module, task, name);
+        assert!(res.is_ok());
+    }
 
 
     let module_name = module.name.clone();
