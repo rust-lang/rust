@@ -62,7 +62,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         let mut errors = Vec::new();
         for i in 0.. {
             if !infcx.tcx.recursion_limit().value_within_limit(i) {
-                unimplemented!("overflow")
+                unimplemented!("overflowed on pending obligations: {:?}", self.obligations);
             }
 
             let mut has_changed = false;
