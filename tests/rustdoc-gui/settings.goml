@@ -159,7 +159,7 @@ assert-text: ("#preferred-light-theme .setting-name", "Preferred light theme")
 // We now check that clicking on the toggles' text is like clicking on the checkbox.
 // To test it, we use the "Disable keyboard shortcuts".
 local-storage: {"rustdoc-disable-shortcuts": "false"}
-click: ".setting-line:last-child .toggle .label"
+click: ".setting-line:last-child .settings-toggle .label"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 
 // Make sure that "Disable keyboard shortcuts" actually took effect.
@@ -169,7 +169,7 @@ assert-false: "#help-button .popover"
 wait-for-css: ("#settings-menu .popover", {"display": "block"})
 
 // Now turn keyboard shortcuts back on, and see if they work.
-click: ".setting-line:last-child .toggle .label"
+click: ".setting-line:last-child .settings-toggle .label"
 assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
 press-key: "Escape"
 press-key: "?"

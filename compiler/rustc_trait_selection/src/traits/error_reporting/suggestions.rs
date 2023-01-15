@@ -212,6 +212,13 @@ pub trait TypeErrCtxtExt<'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool;
 
+    fn extract_callable_info(
+        &self,
+        hir_id: HirId,
+        param_env: ty::ParamEnv<'tcx>,
+        found: Ty<'tcx>,
+    ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)>;
+
     fn suggest_add_reference_to_arg(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -878,6 +885,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
+        // It doesn't make sense to make this suggestion outside of typeck...
+        // (also autoderef will ICE...)
+        if self.typeck_results.is_none() {
+            return false;
+        }
+
         if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = obligation.predicate.kind().skip_binder()
             && Some(trait_pred.def_id()) == self.tcx.lang_items().sized_trait()
         {
@@ -885,92 +898,17 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return false;
         }
 
-        // This is duplicated from `extract_callable_info` in typeck, which
-        // relies on autoderef, so we can't use it here.
-        let found = trait_pred.self_ty().skip_binder().peel_refs();
-        let Some((def_id_or_name, output, inputs)) = (match *found.kind()
-        {
-            ty::FnPtr(fn_sig) => {
-                Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs()))
-            }
-            ty::FnDef(def_id, _) => {
-                let fn_sig = found.fn_sig(self.tcx);
-                Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs()))
-            }
-            ty::Closure(def_id, substs) => {
-                let fn_sig = substs.as_closure().sig();
-                Some((
-                    DefIdOrName::DefId(def_id),
-                    fn_sig.output(),
-                    fn_sig.inputs().map_bound(|inputs| &inputs[1..]),
-                ))
-            }
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
-                    if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                    && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
-                    // args tuple will always be substs[1]
-                    && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
-                    {
-                        Some((
-                            DefIdOrName::DefId(def_id),
-                            pred.kind().rebind(proj.term.ty().unwrap()),
-                            pred.kind().rebind(args.as_slice()),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            }
-            ty::Dynamic(data, _, ty::Dyn) => {
-                data.iter().find_map(|pred| {
-                    if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
-                    && Some(proj.def_id) == self.tcx.lang_items().fn_once_output()
-                    // for existential projection, substs are shifted over by 1
-                    && let ty::Tuple(args) = proj.substs.type_at(0).kind()
-                    {
-                        Some((
-                            DefIdOrName::Name("trait object"),
-                            pred.rebind(proj.term.ty().unwrap()),
-                            pred.rebind(args.as_slice()),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            }
-            ty::Param(_) => {
-                obligation.param_env.caller_bounds().iter().find_map(|pred| {
-                    if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                    && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
-                    && proj.projection_ty.self_ty() == found
-                    // args tuple will always be substs[1]
-                    && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
-                    {
-                        Some((
-                            DefIdOrName::Name("type parameter"),
-                            pred.kind().rebind(proj.term.ty().unwrap()),
-                            pred.kind().rebind(args.as_slice()),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            }
-            _ => None,
-        }) else { return false; };
-        let output = self.replace_bound_vars_with_fresh_vars(
-            obligation.cause.span,
+        let self_ty = self.replace_bound_vars_with_fresh_vars(
+            DUMMY_SP,
             LateBoundRegionConversionTime::FnCall,
-            output,
+            trait_pred.self_ty(),
         );
-        let inputs = inputs.skip_binder().iter().map(|ty| {
-            self.replace_bound_vars_with_fresh_vars(
-                obligation.cause.span,
-                LateBoundRegionConversionTime::FnCall,
-                inputs.rebind(*ty),
-            )
-        });
+
+        let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(
+            obligation.cause.body_id,
+            obligation.param_env,
+            self_ty,
+        ) else { return false; };
 
         // Remapping bound vars here
         let trait_pred_and_self = trait_pred.map_bound(|trait_pred| (trait_pred, output));
@@ -998,6 +936,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         let args = inputs
+            .into_iter()
             .map(|ty| {
                 if ty.is_suggestable(self.tcx, false) {
                     format!("/* {ty} */")
@@ -1159,6 +1098,120 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return true;
         }
         false
+    }
+
+    /// Extracts information about a callable type for diagnostics. This is a
+    /// heuristic -- it doesn't necessarily mean that a type is always callable,
+    /// because the callable type must also be well-formed to be called.
+    fn extract_callable_info(
+        &self,
+        hir_id: HirId,
+        param_env: ty::ParamEnv<'tcx>,
+        found: Ty<'tcx>,
+    ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
+        // Autoderef is useful here because sometimes we box callables, etc.
+        let Some((def_id_or_name, output, inputs)) = (self.autoderef_steps)(found).into_iter().find_map(|(found, _)| {
+            match *found.kind() {
+                ty::FnPtr(fn_sig) =>
+                    Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs())),
+                ty::FnDef(def_id, _) => {
+                    let fn_sig = found.fn_sig(self.tcx);
+                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs()))
+                }
+                ty::Closure(def_id, substs) => {
+                    let fn_sig = substs.as_closure().sig();
+                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
+                }
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
+                    self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
+                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
+                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
+                        // args tuple will always be substs[1]
+                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
+                        {
+                            Some((
+                                DefIdOrName::DefId(def_id),
+                                pred.kind().rebind(proj.term.ty().unwrap()),
+                                pred.kind().rebind(args.as_slice()),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                }
+                ty::Dynamic(data, _, ty::Dyn) => {
+                    data.iter().find_map(|pred| {
+                        if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
+                        && Some(proj.def_id) == self.tcx.lang_items().fn_once_output()
+                        // for existential projection, substs are shifted over by 1
+                        && let ty::Tuple(args) = proj.substs.type_at(0).kind()
+                        {
+                            Some((
+                                DefIdOrName::Name("trait object"),
+                                pred.rebind(proj.term.ty().unwrap()),
+                                pred.rebind(args.as_slice()),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                }
+                ty::Param(param) => {
+                    let generics = self.tcx.generics_of(hir_id.owner.to_def_id());
+                    let name = if generics.count() > param.index as usize
+                        && let def = generics.param_at(param.index as usize, self.tcx)
+                        && matches!(def.kind, ty::GenericParamDefKind::Type { .. })
+                        && def.name == param.name
+                    {
+                        DefIdOrName::DefId(def.def_id)
+                    } else {
+                        DefIdOrName::Name("type parameter")
+                    };
+                    param_env.caller_bounds().iter().find_map(|pred| {
+                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
+                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
+                        && proj.projection_ty.self_ty() == found
+                        // args tuple will always be substs[1]
+                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
+                        {
+                            Some((
+                                name,
+                                pred.kind().rebind(proj.term.ty().unwrap()),
+                                pred.kind().rebind(args.as_slice()),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                }
+                _ => None,
+            }
+        }) else { return None; };
+
+        let output = self.replace_bound_vars_with_fresh_vars(
+            DUMMY_SP,
+            LateBoundRegionConversionTime::FnCall,
+            output,
+        );
+        let inputs = inputs
+            .skip_binder()
+            .iter()
+            .map(|ty| {
+                self.replace_bound_vars_with_fresh_vars(
+                    DUMMY_SP,
+                    LateBoundRegionConversionTime::FnCall,
+                    inputs.rebind(*ty),
+                )
+            })
+            .collect();
+
+        // We don't want to register any extra obligations, which should be
+        // implied by wf, but also because that would possibly result in
+        // erroneous errors later on.
+        let InferOk { value: output, obligations: _ } =
+            self.at(&ObligationCause::dummy(), param_env).normalize(output);
+
+        if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
     }
 
     fn suggest_add_reference_to_arg(

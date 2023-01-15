@@ -14,6 +14,13 @@ LL |     <F as FnOnce(&mut u8)>::call_once(f, 1)
    |
    = note: expected tuple `(&mut u8,)`
                found type `{integer}`
+help: the return type of this call is `{integer}` due to the type of the argument passed
+  --> $DIR/issue-84768.rs:7:5
+   |
+LL |     <F as FnOnce(&mut u8)>::call_once(f, 1)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                          |
+   |                                          this argument influences the return type of `FnOnce`
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 

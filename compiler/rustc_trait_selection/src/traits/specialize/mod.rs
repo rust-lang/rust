@@ -87,7 +87,7 @@ pub fn translate_substs<'tcx>(
         param_env, source_impl, source_substs, target_node
     );
     let source_trait_ref =
-        infcx.tcx.bound_impl_trait_ref(source_impl).unwrap().subst(infcx.tcx, &source_substs);
+        infcx.tcx.impl_trait_ref(source_impl).unwrap().subst(infcx.tcx, &source_substs);
 
     // translate the Self and Param parts of the substitution, since those
     // vary across impls
@@ -148,7 +148,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 
     // create a parameter environment corresponding to a (placeholder) instantiation of impl1
     let penv = tcx.param_env(impl1_def_id);
-    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
+    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap().subst_identity();
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
     let infcx = tcx.infer_ctxt().build();
@@ -431,7 +431,7 @@ fn report_conflicting_impls<'tcx>(
 pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
-    let trait_ref = tcx.impl_trait_ref(impl_def_id)?;
+    let trait_ref = tcx.impl_trait_ref(impl_def_id)?.subst_identity();
     let mut w = "impl".to_owned();
 
     let substs = InternalSubsts::identity_for_item(tcx, impl_def_id);

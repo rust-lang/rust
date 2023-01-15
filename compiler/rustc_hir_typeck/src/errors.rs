@@ -172,3 +172,36 @@ impl AddToDiagnostic for TypeMismatchFruTypo {
         );
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_lang_start_incorrect_number_params)]
+#[note(hir_typeck_lang_start_incorrect_number_params_note_expected_count)]
+#[note(hir_typeck_lang_start_expected_sig_note)]
+pub struct LangStartIncorrectNumberArgs {
+    #[primary_span]
+    pub params_span: Span,
+    pub found_param_count: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_lang_start_incorrect_param)]
+pub struct LangStartIncorrectParam<'tcx> {
+    #[primary_span]
+    #[suggestion(style = "short", code = "{expected_ty}", applicability = "machine-applicable")]
+    pub param_span: Span,
+
+    pub param_num: usize,
+    pub expected_ty: Ty<'tcx>,
+    pub found_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_lang_start_incorrect_ret_ty)]
+pub struct LangStartIncorrectRetTy<'tcx> {
+    #[primary_span]
+    #[suggestion(style = "short", code = "{expected_ty}", applicability = "machine-applicable")]
+    pub ret_span: Span,
+
+    pub expected_ty: Ty<'tcx>,
+    pub found_ty: Ty<'tcx>,
+}

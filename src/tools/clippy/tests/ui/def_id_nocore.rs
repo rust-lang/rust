@@ -15,7 +15,7 @@ pub trait Copy {}
 pub unsafe trait Freeze {}
 
 #[lang = "start"]
-fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8) -> isize {
+fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
     0
 }
 

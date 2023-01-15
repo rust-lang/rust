@@ -294,7 +294,7 @@ impl Drop for Thread {
                 // Terminate and delete the task
                 // Safety: `self.task` still represents a task we own (because
                 //         this method or `join_inner` is called only once for
-                //         each `Thread`). The task  indicated that it's safe to
+                //         each `Thread`). The task indicated that it's safe to
                 //         delete by entering the `FINISHED` state.
                 unsafe { terminate_and_delete_task(self.task) };
 

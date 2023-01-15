@@ -1786,6 +1786,42 @@ impl<T> AtomicPtr<T> {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe { atomic_xor(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
     }
+
+    /// Returns a mutable pointer to the underlying pointer.
+    ///
+    /// Doing non-atomic reads and writes on the resulting integer can be a data race.
+    /// This method is mostly useful for FFI, where the function signature may use
+    /// `*mut *mut T` instead of `&AtomicPtr<T>`.
+    ///
+    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
+    /// atomic types work with interior mutability. All modifications of an atomic change the value
+    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
+    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
+    /// restriction: operations on it must be atomic.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore (extern-declaration)
+    /// #![feature(atomic_mut_ptr)]
+    //// use std::sync::atomic::AtomicPtr;
+    ///
+    /// extern "C" {
+    ///     fn my_atomic_op(arg: *mut *mut u32);
+    /// }
+    ///
+    /// let mut value = 17;
+    /// let atomic = AtomicPtr::new(&mut value);
+    ///
+    /// // SAFETY: Safe as long as `my_atomic_op` is atomic.
+    /// unsafe {
+    ///     my_atomic_op(atomic.as_mut_ptr());
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_mut_ptr", reason = "recently added", issue = "66893")]
+    pub fn as_mut_ptr(&self) -> *mut *mut T {
+        self.p.get()
+    }
 }
 
 #[cfg(target_has_atomic_load_store = "8")]
@@ -2678,9 +2714,9 @@ macro_rules! atomic_int {
             #[doc = concat!("    fn my_atomic_op(arg: *mut ", stringify!($int_type), ");")]
             /// }
             ///
-            #[doc = concat!("let mut atomic = ", stringify!($atomic_type), "::new(1);")]
+            #[doc = concat!("let atomic = ", stringify!($atomic_type), "::new(1);")]
             ///
-            // SAFETY: Safe as long as `my_atomic_op` is atomic.
+            /// // SAFETY: Safe as long as `my_atomic_op` is atomic.
             /// unsafe {
             ///     my_atomic_op(atomic.as_mut_ptr());
             /// }

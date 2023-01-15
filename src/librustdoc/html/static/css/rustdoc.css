@@ -139,7 +139,7 @@ h1, h2, h3, h4 {
 .docblock > h6:first-child {
 	margin-top: 0;
 }
-h1.fqn {
+.main-heading h1 {
 	margin: 0;
 	padding: 0;
 	flex-grow: 1;
@@ -317,7 +317,7 @@ main {
 	margin-right: auto;
 }
 
-details:not(.rustdoc-toggle) summary {
+details:not(.toggle) summary {
 	margin-bottom: .6em;
 }
 
@@ -1214,16 +1214,20 @@ a.test-arrow:hover {
 	content: "\00a0";
 }
 
-.notable .docblock {
+.notable .content {
 	margin: 0.25em 0.5em;
 }
 
-.notable .docblock pre, .notable .docblock code {
+.notable .content pre, .notable .content code {
 	background: transparent;
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
 	white-space: pre-wrap;
+}
+
+.notable .content > h3:first-child {
+	margin: 0 0 5px 0;
 }
 
 .search-failed {
@@ -1401,7 +1405,7 @@ details.dir-entry a {
 	Unfortunately we can't yet specify contain: content or contain: strict
 	because the [-]/[+] toggles extend past the boundaries of the <details>
 	https://developer.mozilla.org/en-US/docs/Web/CSS/contain */
-details.rustdoc-toggle {
+details.toggle {
 	contain: layout;
 	position: relative;
 }
@@ -1409,26 +1413,26 @@ details.rustdoc-toggle {
 /* The hideme class is used on summary tags that contain a span with
 	placeholder text shown only when the toggle is closed. For instance,
 	"Expand description" or "Show methods". */
-details.rustdoc-toggle > summary.hideme {
+details.toggle > summary.hideme {
 	cursor: pointer;
 	font-size: 1rem;
 }
 
-details.rustdoc-toggle > summary {
+details.toggle > summary {
 	list-style: none;
 	/* focus outline is shown on `::before` instead of this */
 	outline: none;
 }
-details.rustdoc-toggle > summary::-webkit-details-marker,
-details.rustdoc-toggle > summary::marker {
+details.toggle > summary::-webkit-details-marker,
+details.toggle > summary::marker {
 	display: none;
 }
 
-details.rustdoc-toggle > summary.hideme > span {
+details.toggle > summary.hideme > span {
 	margin-left: 9px;
 }
 
-details.rustdoc-toggle > summary::before {
+details.toggle > summary::before {
 	background: url("toggle-plus-1092eb4930d581b0.svg") no-repeat top left;
 	content: "";
 	cursor: pointer;
@@ -1440,14 +1444,14 @@ details.rustdoc-toggle > summary::before {
 	filter: var(--toggle-filter);
 }
 
-details.rustdoc-toggle > summary.hideme > span,
+details.toggle > summary.hideme > span,
 .more-examples-toggle summary, .more-examples-toggle .hide-more {
 	color: var(--toggles-color);
 }
 
 /* Screen readers see the text version at the end the line.
 	Visual readers see the icon at the start of the line, but small and transparent. */
-details.rustdoc-toggle > summary::after {
+details.toggle > summary::after {
 	content: "Expand";
 	overflow: hidden;
 	width: 0;
@@ -1455,17 +1459,17 @@ details.rustdoc-toggle > summary::after {
 	position: absolute;
 }
 
-details.rustdoc-toggle > summary.hideme::after {
+details.toggle > summary.hideme::after {
 	/* "hideme" toggles already have a description when they're contracted */
 	content: "";
 }
 
-details.rustdoc-toggle > summary:focus::before,
-details.rustdoc-toggle > summary:hover::before {
+details.toggle > summary:focus::before,
+details.toggle > summary:hover::before {
 	opacity: 1;
 }
 
-details.rustdoc-toggle > summary:focus-visible::before {
+details.toggle > summary:focus-visible::before {
 	/* The SVG is black, and gets turned white using a filter in the dark themes.
 	   Do the same with the outline.
 	   The dotted 1px style is copied from Firefox's focus ring style.
@@ -1478,17 +1482,17 @@ details.non-exhaustive {
 	margin-bottom: 8px;
 }
 
-details.rustdoc-toggle > summary.hideme::before {
+details.toggle > summary.hideme::before {
 	position: relative;
 }
 
-details.rustdoc-toggle > summary:not(.hideme)::before {
+details.toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -24px;
 	top: 4px;
 }
 
-.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before {
+.impl-items > details.toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -24px;
 }
@@ -1498,19 +1502,19 @@ details.rustdoc-toggle > summary:not(.hideme)::before {
 	affect the layout of the items to its right. To do that, we use
 	absolute positioning. Note that we also set position: relative
 	on the parent <details> to make this work properly. */
-details.rustdoc-toggle[open] > summary.hideme {
+details.toggle[open] > summary.hideme {
 	position: absolute;
 }
 
-details.rustdoc-toggle[open] > summary.hideme > span {
+details.toggle[open] > summary.hideme > span {
 	display: none;
 }
 
-details.rustdoc-toggle[open] > summary::before {
+details.toggle[open] > summary::before {
 	background: url("toggle-minus-31bbd6e4c77f5c96.svg") no-repeat top left;
 }
 
-details.rustdoc-toggle[open] > summary::after {
+details.toggle[open] > summary::after {
 	content: "Collapse";
 }
 
@@ -1660,8 +1664,8 @@ in storage.js
 		display: block;
 	}
 
-	#main-content > details.rustdoc-toggle > summary::before,
-	#main-content > div > details.rustdoc-toggle > summary::before {
+	#main-content > details.toggle > summary::before,
+	#main-content > div > details.toggle > summary::before {
 		left: -11px;
 	}
 
@@ -1715,12 +1719,12 @@ in storage.js
 	}
 
 	/* Position of the "[-]" element. */
-	details.rustdoc-toggle:not(.top-doc) > summary {
+	details.toggle:not(.top-doc) > summary {
 		margin-left: 10px;
 	}
-	.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
-	#main-content > details.rustdoc-toggle:not(.top-doc) > summary::before,
-	#main-content > div > details.rustdoc-toggle > summary::before {
+	.impl-items > details.toggle > summary:not(.hideme)::before,
+	#main-content > details.toggle:not(.top-doc) > summary::before,
+	#main-content > div > details.toggle > summary::before {
 		left: -11px;
 	}
 
@@ -1753,8 +1757,8 @@ in storage.js
 
 @media print {
 	nav.sidebar, nav.sub, .out-of-band, a.srclink, #copy-path,
-	details.rustdoc-toggle[open] > summary::before, details.rustdoc-toggle > summary::before,
-	details.rustdoc-toggle.top-doc > summary {
+	details.toggle[open] > summary::before, details.toggle > summary::before,
+	details.toggle.top-doc > summary {
 		display: none;
 	}
 
@@ -1796,24 +1800,24 @@ in storage.js
 .impl,
 #implementors-list > .docblock,
 .impl-items > section,
-.impl-items > .rustdoc-toggle > summary,
+.impl-items > .toggle > summary,
 .methods > section,
-.methods > .rustdoc-toggle > summary
+.methods > .toggle > summary
 {
 	margin-bottom: 0.75em;
 }
 
 .variants > .docblock,
 .implementors-toggle > .docblock,
-.impl-items > .rustdoc-toggle[open]:not(:last-child),
-.methods > .rustdoc-toggle[open]:not(:last-child),
+.impl-items > .toggle[open]:not(:last-child),
+.methods > .toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
 	margin-bottom: 2em;
 }
 
-#trait-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
-#synthetic-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
-#blanket-implementations-list .impl-items > .rustdoc-toggle:not(:last-child) {
+#trait-implementations-list .impl-items > .toggle:not(:last-child),
+#synthetic-implementations-list .impl-items > .toggle:not(:last-child),
+#blanket-implementations-list .impl-items > .toggle:not(:last-child) {
 	margin-bottom: 1em;
 }
 

@@ -1,6 +1,7 @@
 use super::*;
 use crate::boxed::Box;
 use crate::testing::crash_test::{CrashTestDummy, Panic};
+use core::mem;
 use std::iter::TrustedLen;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
@@ -144,6 +145,24 @@ fn test_peek_mut() {
         *top -= 2;
     }
     assert_eq!(heap.peek(), Some(&9));
+}
+
+#[test]
+fn test_peek_mut_leek() {
+    let data = vec![4, 2, 7];
+    let mut heap = BinaryHeap::from(data);
+    let mut max = heap.peek_mut().unwrap();
+    *max = -1;
+
+    // The PeekMut object's Drop impl would have been responsible for moving the
+    // -1 out of the max position of the BinaryHeap, but we don't run it.
+    mem::forget(max);
+
+    // Absent some mitigation like leak amplification, the -1 would incorrectly
+    // end up in the last position of the returned Vec, with the rest of the
+    // heap's original contents in front of it in sorted order.
+    let sorted_vec = heap.into_sorted_vec();
+    assert!(sorted_vec.is_sorted(), "{:?}", sorted_vec);
 }
 
 #[test]
@@ -453,6 +472,25 @@ fn test_retain() {
     a.retain(|_| false);
 
     assert!(a.is_empty());
+}
+
+#[test]
+fn test_retain_catch_unwind() {
+    let mut heap = BinaryHeap::from(vec![3, 1, 2]);
+
+    // Removes the 3, then unwinds out of retain.
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        heap.retain(|e| {
+            if *e == 1 {
+                panic!();
+            }
+            false
+        });
+    }));
+
+    // Naively this would be [1, 2] (an invalid heap) if BinaryHeap delegates to
+    // Vec's retain impl and then does not rebuild the heap after that unwinds.
+    assert_eq!(heap.into_vec(), [2, 1]);
 }
 
 // old binaryheap failed this test

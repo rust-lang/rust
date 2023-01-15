@@ -1100,7 +1100,7 @@ pub enum FieldsShape {
         /// named `inverse_memory_index`.
         ///
         // FIXME(eddyb) build a better abstraction for permutations, if possible.
-        // FIXME(camlorn) also consider small vector  optimization here.
+        // FIXME(camlorn) also consider small vector optimization here.
         memory_index: Vec<u32>,
     },
 }

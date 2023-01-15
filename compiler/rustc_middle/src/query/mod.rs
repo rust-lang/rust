@@ -27,12 +27,12 @@ rustc_queries! {
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
-        eval_always
+        feedable
         no_hash
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering(_: ()) -> &'tcx Steal<ty::ResolverAstLowering> {
+    query resolver_for_lowering(_: ()) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
         feedable
         no_hash
         desc { "getting the resolver for lowering" }
@@ -142,7 +142,7 @@ rustc_queries! {
 
     /// Given the def_id of a const-generic parameter, computes the associated default const
     /// parameter. e.g. `fn example<const N: usize=3>` called on `N` would return `3`.
-    query const_param_default(param: DefId) -> ty::Const<'tcx> {
+    query const_param_default(param: DefId) -> ty::EarlyBinder<ty::Const<'tcx>> {
         desc { |tcx| "computing const default for a given parameter `{}`", tcx.def_path_str(param)  }
         cache_on_disk_if { param.is_local() }
         separate_provide_extern
@@ -737,7 +737,7 @@ rustc_queries! {
 
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
-    query impl_trait_ref(impl_id: DefId) -> Option<ty::TraitRef<'tcx>> {
+    query impl_trait_ref(impl_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern
@@ -1673,7 +1673,7 @@ rustc_queries! {
 
     /// Gets the name of the crate.
     query crate_name(_: CrateNum) -> Symbol {
-        eval_always
+        feedable
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
@@ -1857,7 +1857,7 @@ rustc_queries! {
     /// This query returns an `&Arc` because codegen backends need the value even after the `TyCtxt`
     /// has been destroyed.
     query output_filenames(_: ()) -> &'tcx Arc<OutputFilenames> {
-        eval_always
+        feedable
         desc { "getting output filenames" }
     }
 
@@ -2041,7 +2041,7 @@ rustc_queries! {
     }
 
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
-        eval_always
+        feedable
         desc { "looking up enabled feature gates" }
     }
 

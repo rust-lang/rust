@@ -1231,12 +1231,21 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     sess.emit_fatal(errors::LinkerFileStem);
                 });
 
+                // Remove any version postfix.
+                let stem = stem
+                    .rsplit_once('-')
+                    .and_then(|(lhs, rhs)| rhs.chars().all(char::is_numeric).then_some(lhs))
+                    .unwrap_or(stem);
+
+                // GCC can have an optional target prefix.
                 let flavor = if stem == "emcc" {
                     LinkerFlavor::EmCc
                 } else if stem == "gcc"
                     || stem.ends_with("-gcc")
+                    || stem == "g++"
+                    || stem.ends_with("-g++")
                     || stem == "clang"
-                    || stem.ends_with("-clang")
+                    || stem == "clang++"
                 {
                     LinkerFlavor::from_cli(LinkerFlavorCli::Gcc, &sess.target)
                 } else if stem == "wasm-ld" || stem.ends_with("-wasm-ld") {

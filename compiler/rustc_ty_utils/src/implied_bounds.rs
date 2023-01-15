@@ -21,14 +21,16 @@ fn assumed_wf_types(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Ty<'_>> {
             assumed_wf_types.extend(liberated_sig.inputs_and_output);
             tcx.intern_type_list(&assumed_wf_types)
         }
-        DefKind::Impl => match tcx.impl_trait_ref(def_id) {
-            Some(trait_ref) => {
-                let types: Vec<_> = trait_ref.substs.types().collect();
-                tcx.intern_type_list(&types)
+        DefKind::Impl => {
+            match tcx.impl_trait_ref(def_id) {
+                Some(trait_ref) => {
+                    let types: Vec<_> = trait_ref.skip_binder().substs.types().collect();
+                    tcx.intern_type_list(&types)
+                }
+                // Only the impl self type
+                None => tcx.intern_type_list(&[tcx.type_of(def_id)]),
             }
-            // Only the impl self type
-            None => tcx.intern_type_list(&[tcx.type_of(def_id)]),
-        },
+        }
         DefKind::AssocConst | DefKind::AssocTy => tcx.assumed_wf_types(tcx.parent(def_id)),
         DefKind::Mod
         | DefKind::Struct

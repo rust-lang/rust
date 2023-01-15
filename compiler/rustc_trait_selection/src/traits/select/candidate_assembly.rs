@@ -357,7 +357,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Before we create the substitutions and everything, first
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
-                let impl_trait_ref = self.tcx().bound_impl_trait_ref(impl_def_id).unwrap();
+                let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
                 if self.fast_reject_trait_refs(obligation, &impl_trait_ref.0) {
                     return;
                 }

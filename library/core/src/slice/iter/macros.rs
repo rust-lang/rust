@@ -23,7 +23,7 @@ macro_rules! len {
             $self.end.addr().wrapping_sub(start.as_ptr().addr())
         } else {
             // We know that `start <= end`, so can do better than `offset_from`,
-            // which needs to deal in signed.  By setting appropriate flags here
+            // which needs to deal in signed. By setting appropriate flags here
             // we can tell LLVM this, which helps it remove bounds checks.
             // SAFETY: By the type invariant, `start <= end`
             let diff = unsafe { unchecked_sub($self.end.addr(), start.as_ptr().addr()) };

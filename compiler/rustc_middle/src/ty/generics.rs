@@ -88,7 +88,7 @@ impl GenericParamDef {
                 Some(tcx.bound_type_of(self.def_id).map_bound(|t| t.into()))
             }
             GenericParamDefKind::Const { has_default } if has_default => {
-                Some(tcx.bound_const_param_default(self.def_id).map_bound(|c| c.into()))
+                Some(tcx.const_param_default(self.def_id).map_bound(|c| c.into()))
             }
             _ => None,
         }

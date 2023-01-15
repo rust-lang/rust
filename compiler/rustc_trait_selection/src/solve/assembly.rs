@@ -2,8 +2,8 @@
 
 use super::infcx_ext::InferCtxtExt;
 use super::{
-    fixme_instantiate_canonical_query_response, CanonicalGoal, CanonicalResponse, Certainty,
-    EvalCtxt, Goal,
+    instantiate_canonical_query_response, CanonicalGoal, CanonicalResponse, Certainty, EvalCtxt,
+    Goal,
 };
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -121,11 +121,8 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
             // canonical wrt the caller.
             for Candidate { source, result } in normalized_candidates {
                 self.infcx.probe(|_| {
-                    let candidate_certainty = fixme_instantiate_canonical_query_response(
-                        &self.infcx,
-                        &orig_values,
-                        result,
-                    );
+                    let candidate_certainty =
+                        instantiate_canonical_query_response(&self.infcx, &orig_values, result);
 
                     // FIXME: This is a bit scary if the `normalizes_to_goal` overflows.
                     //

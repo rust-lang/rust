@@ -40,7 +40,7 @@ pub struct IntoIter<
     // to avoid dropping the allocator twice we need to wrap it into ManuallyDrop
     pub(super) alloc: ManuallyDrop<A>,
     pub(super) ptr: *const T,
-    pub(super) end: *const T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+    pub(super) end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
                               // ptr == end is a quick test for the Iterator being empty, that works
                               // for both ZST and non-ZST.
 }
@@ -146,9 +146,9 @@ impl<T, A: Allocator> IntoIter<T, A> {
         let mut this = ManuallyDrop::new(self);
 
         // SAFETY: This allocation originally came from a `Vec`, so it passes
-        // all those checks.  We have `this.buf` ≤ `this.ptr` ≤ `this.end`,
+        // all those checks. We have `this.buf` ≤ `this.ptr` ≤ `this.end`,
         // so the `sub_ptr`s below cannot wrap, and will produce a well-formed
-        // range.  `end` ≤ `buf + cap`, so the range will be in-bounds.
+        // range. `end` ≤ `buf + cap`, so the range will be in-bounds.
         // Taking `alloc` is ok because nothing else is going to look at it,
         // since our `Drop` impl isn't going to run so there's no more code.
         unsafe {

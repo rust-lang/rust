@@ -18,8 +18,8 @@ fn consts<const C: u32>() {
     })
 }
 
-static S: i32 = 5;
-static mut T: i32 = 10;
+static S: i32 = 0x05050505;
+static mut T: i32 = 0x0a0a0a0a;
 // EMIT_MIR consts.statics.built.after.mir
 #[custom_mir(dialect = "built")]
 fn statics() {
