@@ -992,36 +992,27 @@ pub type SelfProfileBeforePassCallback =
 unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
 pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 
+#[repr(C)]
+pub enum LLVMVerifierFailureAction {
+    LLVMAbortProcessAction,
+    LLVMPrintMessageAction,
+    LLVMReturnStatusAction,
+}
+
 extern "C" {
 
     // Enzyme
+    //pub fn LLVMReplaceAllUsesWith(old: &Value, new: &Value);
     pub fn GibtsNicht(M: &Module) -> bool;
+    pub fn LLVMDeleteFunction(V: &Value);
+    pub fn LLVMVerifyFunction(V: &Value, action: LLVMVerifierFailureAction) -> bool;
+    pub fn LLVMGetParams(Fnc: &Value, parms: *mut &Value);
+    pub fn LLVMBuildCall<'a>(arg1: &Builder<'a>, func: &Value, args: *mut &Value, num_args: size_t, name: *const c_char) -> &'a Value;
+    pub fn LLVMGetBasicBlockTerminator(B: &BasicBlock) -> &Value;
+    pub fn LLVMAddFunction<'a>(M: &Module, Name: *const c_char, Ty: &Type) -> &'a Value;
     pub fn LLVMGetFirstFunction(M: &Module) -> Option<&Value>;
     pub fn LLVMGetNextFunction(V: &Value) -> Option<&Value>;
     pub fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> Option<&Value>;
-    //pub fn LLVMRustGetNamedFunction(M: &Module, Name: *const c_char, len: size_t) -> &Value;
-    //pub fn LLVMIsNull(Val: &Value) -> bool;
-    // pub fn EnzymeCreatePrimalAndGradient(
-    //     arg1: EnzymeLogicRef,
-    //     todiff: &Value,
-    //     //todiff: LLVMValueRef,
-    //     retType: CDIFFE_TYPE,
-    //     constant_args: *mut CDIFFE_TYPE,
-    //     constant_args_size: size_t,
-    //     TA: EnzymeTypeAnalysisRef,
-    //     returnValue: u8,
-    //     dretUsed: u8,
-    //     mode: CDerivativeMode,
-    //     width: ::std::os::raw::c_uint,
-    //     freeMemory: u8,
-    //     additionalArg: LLVMTypeRef,
-    //     typeInfo: CFnTypeInfo,
-    //     _uncacheable_args: *mut u8,
-    //     uncacheable_args_size: size_t,
-    //     augmented: EnzymeAugmentedReturnPtr,
-    //     AtomicAdd: u8,
-    //     ) -> &Value;
-    //) -> LLVMValueRef;
 
     pub fn LLVMRustInstallFatalErrorHandler();
     pub fn LLVMRustDisableSystemDialogsOnCrash();

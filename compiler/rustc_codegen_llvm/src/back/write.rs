@@ -3,16 +3,16 @@ use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
 };
 
-use crate::base;
+use crate::{base};
 use crate::common;
 use crate::consts;
-use crate::llvm::{ParamInfos};
+use crate::llvm::{ParamInfos, Value, LLVMVerifyFunction, LLVMReplaceAllUsesWith};
 use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{TypeTree, IntList, CFnTypeInfo, EnzymeLogicRef, EnzymeTypeAnalysisRef, EnzymeCreatePrimalAndGradient, CreateTypeAnalysis, CreateEnzymeLogic, CDerivativeMode, CDIFFE_TYPE};
+use llvm::{TypeTree, IntList, CFnTypeInfo, EnzymeLogicRef, EnzymeTypeAnalysisRef, EnzymeCreatePrimalAndGradient, CreateTypeAnalysis, CreateEnzymeLogic, CDerivativeMode, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -510,13 +510,133 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     result.into_result().map_err(|()| llvm_err(diag_handler, "failed to run LLVM passes"))
 }
 
+
+fn get_params(fnc: &Value) -> Vec<&Value> {
+    unsafe {
+        let param_num = LLVMCountParams(fnc) as usize;
+        let mut fnc_args: Vec<&Value> = vec![];
+        fnc_args.reserve(param_num);
+        LLVMGetParams(fnc, fnc_args.as_mut_ptr());
+        fnc_args.set_len(param_num);
+        fnc_args
+    }
+}
+
+// TODO: cleanup
+unsafe fn create_wrapper<'a>(
+    module: &'a ModuleCodegen<ModuleLlvm>,
+    fnc: &'a Value,
+    u_type: &Type,
+    fnc_name: String,
+    ) -> (
+        &'a Value,
+        &'a BasicBlock,
+        Vec<&'a Value>,
+        Vec<&'a Value>,
+        CString,
+        ) {
+        let llmod = module.module_llvm.llmod();
+        let context = LLVMGetModuleContext(llmod);
+        let inner_fnc_name = "inner_".to_string() + &fnc_name;
+        let c_inner_fnc_name = CString::new(inner_fnc_name.clone()).unwrap();
+        LLVMSetValueName2(
+            fnc,
+            c_inner_fnc_name.as_ptr(),
+            inner_fnc_name.len() as usize,
+            );
+
+        let c_outer_fnc_name = CString::new(fnc_name).unwrap();
+        let outer_fnc: &Value = LLVMAddFunction(
+            llmod,
+            c_outer_fnc_name.as_ptr(),
+            LLVMGetElementType(u_type) as &Type,
+            );
+
+        let entry = "fnc_entry".to_string();
+        let c_entry = CString::new(entry).unwrap();
+        let basic_block = LLVMAppendBasicBlockInContext(context, outer_fnc, c_entry.as_ptr());
+
+        let outer_params: Vec<&Value> = get_params(outer_fnc);
+        let inner_params: Vec<&Value> = get_params(fnc);
+
+        (
+            outer_fnc,
+            basic_block,
+            outer_params,
+            inner_params,
+            c_inner_fnc_name,
+            )
+    }
+
+
+//pub(crate) fn get_type(t: LLVMTypeRef) -> CString {
+//    unsafe { CString::from_raw(LLVMPrintTypeToString(t)) }
+//}
+
+
+// TODO: Don't write a wrapper function, just unwrap the struct inside of the same fnc.
+// Might help during debugging, if you have one function less to jump trough
+pub(crate) unsafe fn extract_return_type<'a>(
+    module: &'a ModuleCodegen<ModuleLlvm>,
+    fnc: &'a Value,
+    u_type: &Type,
+    fnc_name: String,
+    ) -> &'a Value {
+    let llmod = module.module_llvm.llmod();
+    let context = llvm::LLVMGetModuleContext(llmod);
+    let f_type = LLVMTypeOf(fnc);
+    dbg!("Unpacking", fnc_name.clone());
+    dbg!("From: ", f_type, " into ", u_type);
+
+    let inner_param_num = LLVMCountParams(fnc);
+    let (outer_fnc, outer_bb, mut outer_args, _inner_args, c_inner_fnc_name) =
+        create_wrapper(module, fnc, u_type, fnc_name);
+
+    if inner_param_num as usize != outer_args.len() {
+        panic!("Args len shouldn't differ. Please report this.");
+    }
+
+    // if let Err(e) = compare_param_types(outer_args.clone(), inner_args) {
+    //     panic!(
+    //         "Argument types differ between wrapper and wrapped function! {}",
+    //         e
+    //         );
+    // }
+
+    let builder = LLVMCreateBuilderInContext(context);
+    LLVMPositionBuilderAtEnd(builder, outer_bb);
+    let struct_ret = LLVMBuildCall(
+        builder,
+        fnc,
+        outer_args.as_mut_ptr(),
+        outer_args.len(),
+        c_inner_fnc_name.as_ptr(),
+        );
+    // We can use an arbitrary name here, since it will be used to store a tmp value.
+    let inner_grad_name = "foo".to_string();
+    let c_inner_grad_name = CString::new(inner_grad_name).unwrap();
+    let struct_ret = LLVMBuildExtractValue(builder, struct_ret, 0, c_inner_grad_name.as_ptr());
+    let _ret = LLVMBuildRet(builder, struct_ret);
+    let _terminator = LLVMGetBasicBlockTerminator(outer_bb);
+    //assert!(LLVMIsNull(terminator)!=0, "no terminator");
+    LLVMDisposeBuilder(builder);
+
+    let _fnc_ok = LLVMVerifyFunction(outer_fnc, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
+    dbg!(outer_fnc);
+    //assert!(fnc_ok);
+    //if let Err(e) = verify_function(outer_fnc) {
+    //    panic!("Creating a wrapper function failed! {}", e);
+    //}
+
+    outer_fnc
+}
+
 // As unsafe as it can be.
 #[allow(unused_variables)]
 #[allow(unused)]
 pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
                                param_info: Vec<ParamInfos>
                               ) -> Result<(), FatalError> {
-    dbg!("let there be Dragons (and Enzyme)");
     let llmod = module.module_llvm.llmod();
     assert!(param_info.len() == 1);
     let infos = param_info[0].clone();
@@ -524,16 +644,21 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
     let ret_activity = infos.ret_info;
 
 
-    let name = CString::new("foo").unwrap();
-    let name2 = CString::new("bar").unwrap();
-    let test_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
-    dbg!(test_fnc.is_some());
-    if test_fnc.is_none() {
+    let rust_name = String::from("foo");
+    let rust_name2 = String::from("bar");
+    let name = CString::new(rust_name).unwrap();
+    let name2 = CString::new(rust_name2.clone()).unwrap();
+    let mut src_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
+    if src_fnc.is_none() {
         return Ok(()); // nothing to do
     }
-    let test_target = llvm::LLVMGetNamedFunction(llmod, name2.as_c_str().as_ptr());
-    assert!(test_target.is_some());
-    let fnc_todiff = test_fnc.unwrap();
+    dbg!(src_fnc.is_some());
+    dbg!("let there be Dragons (and Enzyme)");
+    let fnc_todiff = src_fnc.unwrap();
+    let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_c_str().as_ptr());
+    assert!(target_fnc_tmp.is_some());
+    let target_fnc = target_fnc_tmp.unwrap();
+
     let tree_tmp =  TypeTree::new();
     let mut args_tree = vec![tree_tmp.inner; args_activity.len()];
     // We don't support volatile / extern / (global?) values.
@@ -554,11 +679,13 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
     };
 
     dbg!("before-ad");
-    let opt  = 1;
+    dbg!(&fnc_todiff);
+    dbg!(&args_activity);
+    let opt  = 0;
     let ret_primary_ret = 0;
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
-    let res =
+    let res: &Value =
         EnzymeCreatePrimalAndGradient(
             logic_ref, // Logic
             fnc_todiff,
@@ -580,6 +707,20 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>,
             0,
             )
         ;
+    dbg!(target_fnc);
+    dbg!(res);
+    let u_type = LLVMTypeOf(target_fnc);
+    let res2 = extract_return_type(module, res, u_type, rust_name2.clone());// TODO: check if name or name2
+    dbg!(target_fnc);
+    dbg!(res2);
+    LLVMReplaceAllUsesWith(target_fnc, res2);
+    LLVMDeleteFunction(target_fnc);
+    LLVMSetValueName2(
+        res2,
+        name2.as_ptr(),
+        rust_name2.len(),
+        );
+
     dbg!("after-ad");
 
 
@@ -606,7 +747,8 @@ pub(crate) unsafe fn optimize(
         dbg!(&fncs);
     }
     let param = ParamInfos {
-        input_activity: vec![CDIFFE_TYPE::DFT_OUT_DIFF],
+        //input_activity: vec![CDIFFE_TYPE::DFT_OUT_DIFF],
+        input_activity: vec![CDIFFE_TYPE::DFT_DUP_ARG],
         ret_info: CDIFFE_TYPE::DFT_CONSTANT
     };
     let param_info : Vec<ParamInfos> = vec![param];
@@ -780,8 +922,6 @@ pub(crate) unsafe fn optimize(
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
     }
-    //cgcx.backend.create_autodiff();
-    //use crate::enzyme::EnzymeNewTypeTree;
 
     Ok(())
 }
