@@ -46,7 +46,7 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
     let local_def_id = hir_id.owner.def_id;
 
     Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
-        let fn_ctxt = FnCtxt::new(inherited, cx.param_env, hir_id);
+        let fn_ctxt = FnCtxt::new(inherited, cx.param_env, local_def_id);
 
         // If we already have errors, we can't be sure we can pointer cast.
         assert!(
