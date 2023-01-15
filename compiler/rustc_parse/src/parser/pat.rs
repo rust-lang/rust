@@ -1013,12 +1013,15 @@ impl<'a> Parser<'a> {
             }
             ate_comma = false;
 
-            if self.check(&token::DotDot) || self.token == token::DotDotDot {
+            if self.check(&token::DotDot)
+                || self.check_noexpect(&token::DotDotDot)
+                || self.check_keyword(kw::Underscore)
+            {
                 etc = true;
                 let mut etc_sp = self.token.span;
 
-                self.recover_one_fewer_dotdot();
-                self.bump(); // `..` || `...`
+                self.recover_bad_dot_dot();
+                self.bump(); // `..` || `...` || `_`
 
                 if self.token == token::CloseDelim(Delimiter::Brace) {
                     etc_span = Some(etc_sp);
@@ -1111,21 +1114,25 @@ impl<'a> Parser<'a> {
         Ok((fields, etc))
     }
 
-    /// Recover on `...` as if it were `..` to avoid further errors.
+    /// Recover on `...` or `_` as if it were `..` to avoid further errors.
     /// See issue #46718.
-    fn recover_one_fewer_dotdot(&self) {
-        if self.token != token::DotDotDot {
+    fn recover_bad_dot_dot(&self) {
+        if self.token == token::DotDot {
             return;
         }
 
-        self.struct_span_err(self.token.span, "expected field pattern, found `...`")
-            .span_suggestion(
-                self.token.span,
-                "to omit remaining fields, use one fewer `.`",
-                "..",
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        let token_str = pprust::token_to_string(&self.token);
+        self.struct_span_err(
+            self.token.span,
+            format!("expected field pattern, found `{token_str}`"),
+        )
+        .span_suggestion_verbose(
+            self.token.span,
+            "to omit remaining fields, use `..`",
+            "..",
+            Applicability::MachineApplicable,
+        )
+        .emit();
     }
 
     fn parse_pat_field(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, PatField> {
