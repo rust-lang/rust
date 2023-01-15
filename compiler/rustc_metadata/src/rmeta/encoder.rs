@@ -1926,7 +1926,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let all_impls: Vec<_> = all_impls
             .into_iter()
-            .filter(|(trait_def_id, impls)| trait_def_id.is_some())
+            .filter(|(trait_def_id, _)| trait_def_id.is_some())
             .map(|(trait_def_id, impls)| {
                 // Bring everything into deterministic order for hashing
                 // SORT-TEST
@@ -2283,6 +2283,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
+        /*
         all_local_trait_impls: |tcx, _| {
             let o: FxIndexMap<_, _> = tcx
                 .impls_in_crate(LOCAL_CRATE)
@@ -2297,6 +2298,7 @@ pub fn provide(providers: &mut Providers) {
 
             tcx.arena.alloc(o) // deal with this problem by removing all_local_trait_impls.
         },
+        */
         traits_in_crate: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
 

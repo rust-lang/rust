@@ -534,8 +534,11 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn trait_impls(self, trait_did: DefId) -> &'hir [LocalDefId] {
-        self.tcx.all_local_trait_impls(()).get(&trait_did).map_or(&[], |xs| &xs[..])
+    pub fn trait_impls(self, trait_did: DefId) -> Vec<LocalDefId> {
+        // changed from &'hir [LocalDefId]
+        self.tcx.impls_in_crate(LOCAL_CRATE).get(&Some(trait_did)).map_or(Vec::new(), |xs| {
+            xs.into_iter().map(|(id, _)| id.expect_local()).collect::<Vec<LocalDefId>>()
+        })
     }
 
     /// Gets the attributes on the crate. This is preferable to

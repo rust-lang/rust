@@ -1237,11 +1237,6 @@ rustc_queries! {
         desc { |tcx| "computing candidate for `{}`", key.1 }
     }
 
-    /// Return all `impl` blocks in the current crate.
-    query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexMap<DefId, Vec<LocalDefId>> {
-        desc { "finding local trait impls" }
-    }
-
     /// Given a trait `trait_id`, return all known `impl` blocks.
     query trait_impls_of(trait_id: DefId) -> ty::trait_def::TraitImpls {
         arena_cache

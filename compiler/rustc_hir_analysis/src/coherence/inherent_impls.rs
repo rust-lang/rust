@@ -32,17 +32,17 @@ pub fn crate_inherent_impls(tcx: TyCtxt<'_>, (): ()) -> CrateInherentImpls {
 
     debug!("recent...");
     for (id, _) in tcx.impls_in_crate(LOCAL_CRATE).values().flatten() {
-        // collect.check_item(ItemId { owner_id: OwnerId { def_id: id.expect_local() } });
+        collect.check_item(ItemId { owner_id: OwnerId { def_id: id.expect_local() } });
         debug!(
             "adjusted: would have checked {:?}",
             ItemId { owner_id: OwnerId { def_id: id.expect_local() } }
         )
     }
 
-    for id in tcx.hir().items() {
-        debug!("old code checking {:?}", id);
-        collect.check_item(id);
-    }
+    // for id in tcx.hir().items() {
+    //     debug!("old code checking {:?}", id);
+    //     collect.check_item(id);
+    // }
     collect.impls_map
 }
 

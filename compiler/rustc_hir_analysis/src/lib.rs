@@ -98,6 +98,7 @@ mod outlives;
 pub mod structured_errors;
 mod variance;
 
+use hir::def_id::LOCAL_CRATE;
 use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -502,7 +503,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     tcx.sess.track_errors(|| {
         tcx.sess.time("coherence_checking", || {
-            for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
+            for trait_def_id in tcx.impls_in_crate(LOCAL_CRATE).keys().filter_map(|x| *x) {
                 tcx.ensure().coherent_trait(trait_def_id);
             }
 
