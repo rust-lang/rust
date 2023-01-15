@@ -2109,8 +2109,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             let ty_generics = cx.tcx.generics_of(def_id);
 
             let mut bound_count = 0;
-            let mut lint_spans = Vec::new();
-            let mut where_lint_spans = Vec::new();
+            let mut lint_spans = FxHashSet::default();
+            let mut where_lint_spans = FxHashSet::default();
             let mut dropped_predicate_count = 0;
             let num_predicates = hir_generics.predicates.len();
             for (i, where_predicate) in hir_generics.predicates.iter().enumerate() {
@@ -2173,13 +2173,31 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     dropped_predicate_count += 1;
                 }
 
-                if drop_predicate && !in_where_clause {
-                    lint_spans.push(predicate_span);
-                } else if drop_predicate && i + 1 < num_predicates {
-                    // If all the bounds on a predicate were inferable and there are
-                    // further predicates, we want to eat the trailing comma.
-                    let next_predicate_span = hir_generics.predicates[i + 1].span();
-                    where_lint_spans.push(predicate_span.to(next_predicate_span.shrink_to_lo()));
+                if drop_predicate {
+                    if !in_where_clause {
+                        lint_spans.insert(predicate_span);
+                    } else if predicate_span.from_expansion() {
+                        // Don't try to extend the span if it comes from a macro expansion.
+                        where_lint_spans.insert(predicate_span);
+                    } else if i + 1 < num_predicates {
+                        // If all the bounds on a predicate were inferable and there are
+                        // further predicates, we want to eat the trailing comma.
+                        let next_predicate_span = hir_generics.predicates[i + 1].span();
+                        if next_predicate_span.from_expansion() {
+                            where_lint_spans.insert(predicate_span);
+                        } else {
+                            where_lint_spans
+                                .insert(predicate_span.to(next_predicate_span.shrink_to_lo()));
+                        }
+                    } else {
+                        // Eat the optional trailing comma after the last predicate.
+                        let where_span = hir_generics.where_clause_span;
+                        if where_span.from_expansion() {
+                            where_lint_spans.insert(predicate_span);
+                        } else {
+                            where_lint_spans.insert(predicate_span.to(where_span.shrink_to_hi()));
+                        }
+                    }
                 } else {
                     where_lint_spans.extend(self.consolidate_outlives_bound_spans(
                         predicate_span.shrink_to_lo(),
@@ -2206,7 +2224,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
                 // Due to macro expansions, the `full_where_span` might not actually contain all predicates.
                 if where_lint_spans.iter().all(|&sp| full_where_span.contains(sp)) {
-                    lint_spans.push(full_where_span);
+                    lint_spans.insert(full_where_span);
                 } else {
                     lint_spans.extend(where_lint_spans);
                 }
@@ -2222,6 +2240,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 } else {
                     Applicability::MaybeIncorrect
                 };
+
+                let lint_spans = lint_spans.into_iter().collect::<Vec<_>>();
 
                 cx.emit_spanned_lint(
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
