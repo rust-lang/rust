@@ -488,7 +488,9 @@ fn test_retain_catch_unwind() {
         });
     }));
 
-    assert_eq!(heap.into_vec(), [1, 2]); // BAD!!
+    // Naively this would be [1, 2] (an invalid heap) if BinaryHeap delegates to
+    // Vec's retain impl and then does not rebuild the heap after that unwinds.
+    assert_eq!(heap.into_vec(), [2, 1]);
 }
 
 // old binaryheap failed this test
