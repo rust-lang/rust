@@ -504,6 +504,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     tcx.sess.track_errors(|| {
         tcx.sess.time("coherence_checking", || {
             for trait_def_id in tcx.impls_in_crate(LOCAL_CRATE).keys().filter_map(|x| *x) {
+                // todo, why doesn't this work with traits_in_crate?
                 tcx.ensure().coherent_trait(trait_def_id);
             }
 

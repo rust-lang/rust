@@ -2314,6 +2314,20 @@ pub fn provide(providers: &mut Providers) {
 
             tcx.arena.alloc_slice(&traits)
         },
+        /*
+        impls_in_crate_list: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+
+            let mut impls = Vec::new();
+            for id in tcx.hir().items() {
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
+                    impls.push(id.owner_id.to_def_id())
+                }
+            }
+
+            tcx.arena.alloc_slice(&impls)
+        },
+        */
         impls_in_crate: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             let mut fx_hash_map: FxIndexMap<Option<DefId>, Vec<(DefId, Option<SimplifiedType>)>> =
