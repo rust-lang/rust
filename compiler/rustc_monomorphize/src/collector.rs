@@ -327,7 +327,12 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
-        let mut visitor = RootCollector { tcx, mode, entry_fn, output: &mut roots };
+        let autodiff_fncs = tcx.autodiff_functions(())
+                .into_iter()
+                .map(|x| x.source.as_local().unwrap())
+                .collect();
+
+        let mut visitor = RootCollector { tcx, mode, entry_fn, output: &mut roots, autodiff_fncs };
 
         tcx.hir().visit_all_item_likes(&mut visitor);
 
@@ -1136,6 +1141,7 @@ struct RootCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mode: MonoItemCollectionMode,
     output: &'a mut Vec<Spanned<MonoItem<'tcx>>>,
+    autodiff_fncs: FxHashSet<LocalDefId>,
     entry_fn: Option<(DefId, EntryFnType)>,
 }
 
@@ -1226,6 +1232,7 @@ impl<'v> RootCollector<'_, 'v> {
                 MonoItemCollectionMode::Eager => true,
                 MonoItemCollectionMode::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
+                        || self.autodiff_fncs.contains(&def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
                         || self
                             .tcx
@@ -1252,7 +1259,9 @@ impl<'v> RootCollector<'_, 'v> {
     /// monomorphized copy of the start lang item based on
     /// the return type of `main`. This is not needed when
     /// the user writes their own `start` manually.
+    /// TODO: remove annotations after automatic differentation pass
     fn push_extra_entry_roots(&mut self) {
+
         let Some((main_def_id, EntryFnType::Main)) = self.entry_fn else {
             return;
         };

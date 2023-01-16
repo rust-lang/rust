@@ -178,10 +178,16 @@ fn exported_symbols_provider_local<'tcx>(
 
     // export functions which are used to synthesize AD functions to make sure they are
     // not removed during optimization passes
-    symbols.extend(
-        tcx.autodiff_functions(()).into_iter()
-            .map(|x| (ExportedSymbol::NonGeneric(x.source), SymbolExportLevel::Rust))
-    );
+    //symbols.extend(
+    //    tcx.autodiff_functions(()).into_iter()
+    //        .map(|x| vec![
+    //            (ExportedSymbol::NonGeneric(x.source), SymbolExportLevel::C),
+    //            (ExportedSymbol::NoDefId(SymbolName::new(tcx, &x.target)), SymbolExportLevel::C),
+    //        ])
+    //        .flatten()
+    //);
+    //
+    //dbg!(&symbols);
 
     if tcx.allocator_kind(()).is_some() {
         for method in ALLOCATOR_METHODS {

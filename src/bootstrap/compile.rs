@@ -561,31 +561,6 @@ impl Step for Rustc {
             return;
         }
 
-        //
-        //let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
-
-        //         let enzyme_install = if builder.config.llvm_enzyme {
-        //             Some(builder.ensure(native::Enzyme { target: compiler.host }))
-        //         } else {
-        //             None
-        //         };
-        //
-        //         if let Some(enzyme_install) = enzyme_install {
-        //             let src_lib = enzyme_install.join("build/Enzyme/LLVMEnzyme-14.so");
-        //
-        //             //builder.initial_libdir
-        //             let libdir = builder.sysroot_libdir(compiler, compiler.host);
-        //             let dst_lib = libdir.join("libLLVMEnzyme-14.so");
-        //             println!("CCCCCCCCCCCCCCCCCCCC\nCCCCCCCCCCCCC");
-        //             dbg!(&compiler.stage);
-        //             dbg!(&self.compiler.stage);
-        //             dbg!(&src_lib);
-        //             dbg!(&dst_lib);
-        //             assert!(dst_lib.parent().unwrap().is_dir());
-        //             builder.copy(&src_lib, &dst_lib);
-        //         }
-
-
         builder.ensure(Std { compiler, target });
 
         if builder.config.keep_stage.contains(&compiler.stage) {
@@ -1124,6 +1099,7 @@ impl Step for Assemble {
             return target_compiler;
         }
 
+        // Build enzyme
         let enzyme_install = if builder.config.llvm_enzyme {
             Some(builder.ensure(native::Enzyme { target: build_compiler.host }))
         } else {
@@ -1133,7 +1109,6 @@ impl Step for Assemble {
         if let Some(enzyme_install) = enzyme_install {
             let src_lib = enzyme_install.join("build/Enzyme/LLVMEnzyme-14.so");
 
-            //builder.initial_libdir
             let libdir = builder.sysroot_libdir(build_compiler, build_compiler.host);
             let target_libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
             let dst_lib = libdir.join("libLLVMEnzyme-14.so");

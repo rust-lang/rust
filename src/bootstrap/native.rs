@@ -620,7 +620,6 @@ impl Step for Enzyme {
         if builder.config.dry_run {
             let out_dir = builder.enzyme_out(self.target);
             return out_dir;
-            //return PathBuf::from("enzyme-out-dir-test-gen");
         }
         let target = self.target;
 

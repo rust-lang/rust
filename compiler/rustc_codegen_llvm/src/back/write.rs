@@ -780,8 +780,8 @@ pub(crate) unsafe fn optimize(
     let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
 
     let fncs = &module.module_llvm.diff_fncs;
+    dbg!(&fncs);
     if !fncs.is_empty() {
-        dbg!(&fncs);
         for (task, name) in fncs {
             let res = enzyme_ad(module, task, name);
             assert!(res.is_ok());
