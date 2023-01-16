@@ -962,7 +962,7 @@ fn fmt_type<'cx>(
         clean::Tuple(ref typs) => {
             match &typs[..] {
                 &[] => primitive_link(f, PrimitiveType::Unit, "()", cx),
-                &[ref one] => {
+                [one] => {
                     if let clean::Generic(name) = one {
                         primitive_link(f, PrimitiveType::Tuple, &format!("({name},)"), cx)
                     } else {

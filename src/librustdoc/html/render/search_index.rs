@@ -29,7 +29,7 @@ pub(crate) fn build_index<'tcx>(
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
     for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
-        if let Some(&(ref fqp, _)) = cache.paths.get(&parent) {
+        if let Some((fqp, _)) = cache.paths.get(&parent) {
             let desc = item
                 .doc_value()
                 .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
@@ -573,7 +573,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
     let decl = &func.decl;
 
     let combined_generics;
-    let (self_, generics) = if let Some(&(ref impl_self, ref impl_generics)) = impl_generics {
+    let (self_, generics) = if let Some((impl_self, impl_generics)) = impl_generics {
         match (impl_generics.is_empty(), func.generics.is_empty()) {
             (true, _) => (Some(impl_self), &func.generics),
             (_, true) => (Some(impl_self), impl_generics),
