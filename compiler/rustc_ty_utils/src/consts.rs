@@ -302,13 +302,53 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
         }
 
         match expr.kind {
-            thir::ExprKind::NamedConst { substs, .. } => substs.has_non_region_param(),
+            thir::ExprKind::NamedConst { substs, .. }
+            | thir::ExprKind::ConstBlock { substs, .. } => substs.has_non_region_param(),
             thir::ExprKind::ConstParam { .. } => true,
             thir::ExprKind::Repeat { value, count } => {
                 self.visit_expr(&self.thir()[value]);
                 count.has_non_region_param()
             }
-            _ => false,
+            thir::ExprKind::Scope { .. }
+            | thir::ExprKind::Box { .. }
+            | thir::ExprKind::If { .. }
+            | thir::ExprKind::Call { .. }
+            | thir::ExprKind::Deref { .. }
+            | thir::ExprKind::Binary { .. }
+            | thir::ExprKind::LogicalOp { .. }
+            | thir::ExprKind::Unary { .. }
+            | thir::ExprKind::Cast { .. }
+            | thir::ExprKind::Use { .. }
+            | thir::ExprKind::NeverToAny { .. }
+            | thir::ExprKind::Pointer { .. }
+            | thir::ExprKind::Loop { .. }
+            | thir::ExprKind::Let { .. }
+            | thir::ExprKind::Match { .. }
+            | thir::ExprKind::Block { .. }
+            | thir::ExprKind::Assign { .. }
+            | thir::ExprKind::AssignOp { .. }
+            | thir::ExprKind::Field { .. }
+            | thir::ExprKind::Index { .. }
+            | thir::ExprKind::VarRef { .. }
+            | thir::ExprKind::UpvarRef { .. }
+            | thir::ExprKind::Borrow { .. }
+            | thir::ExprKind::AddressOf { .. }
+            | thir::ExprKind::Break { .. }
+            | thir::ExprKind::Continue { .. }
+            | thir::ExprKind::Return { .. }
+            | thir::ExprKind::Array { .. }
+            | thir::ExprKind::Tuple { .. }
+            | thir::ExprKind::Adt(_)
+            | thir::ExprKind::PlaceTypeAscription { .. }
+            | thir::ExprKind::ValueTypeAscription { .. }
+            | thir::ExprKind::Closure(_)
+            | thir::ExprKind::Literal { .. }
+            | thir::ExprKind::NonHirLiteral { .. }
+            | thir::ExprKind::ZstLiteral { .. }
+            | thir::ExprKind::StaticRef { .. }
+            | thir::ExprKind::InlineAsm(_)
+            | thir::ExprKind::ThreadLocalRef(_)
+            | thir::ExprKind::Yield { .. } => false,
         }
     }
     fn pat_is_poly(&mut self, pat: &thir::Pat<'tcx>) -> bool {
