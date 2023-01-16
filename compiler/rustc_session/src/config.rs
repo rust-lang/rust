@@ -592,11 +592,11 @@ impl Input {
         }
     }
 
-    pub fn opt_path(&self) -> Option<PathBuf> {
+    pub fn opt_path(&self) -> Option<&Path> {
         match self {
-            Input::File(file) => Some(file.clone()),
+            Input::File(file) => Some(file),
             Input::Str { name, .. } => match name {
-                FileName::Real(real) => real.local_path().map(|p| p.to_owned()),
+                FileName::Real(real) => real.local_path(),
                 FileName::QuoteExpansion(_) => None,
                 FileName::Anon(_) => None,
                 FileName::MacroExpansion(_) => None,
@@ -604,7 +604,7 @@ impl Input {
                 FileName::CfgSpec(_) => None,
                 FileName::CliCrateAttr(_) => None,
                 FileName::Custom(_) => None,
-                FileName::DocTest(path, _) => Some(path.to_owned()),
+                FileName::DocTest(path, _) => Some(path),
                 FileName::InlineAsm(_) => None,
             },
         }
@@ -2509,12 +2509,12 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         early_error(error_format, &format!("Current directory is invalid: {e}"));
     });
 
-    let (path, remapped) =
-        FilePathMapping::new(remap_path_prefix.clone()).map_prefix(working_dir.clone());
+    let remap = FilePathMapping::new(remap_path_prefix.clone());
+    let (path, remapped) = remap.map_prefix(&working_dir);
     let working_dir = if remapped {
-        RealFileName::Remapped { local_path: Some(working_dir), virtual_name: path }
+        RealFileName::Remapped { virtual_name: path.into_owned(), local_path: Some(working_dir) }
     } else {
-        RealFileName::LocalPath(path)
+        RealFileName::LocalPath(path.into_owned())
     };
 
     Options {

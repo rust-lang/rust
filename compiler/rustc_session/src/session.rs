@@ -237,7 +237,7 @@ impl Session {
 
     pub fn local_crate_source_file(&self) -> Option<PathBuf> {
         let path = self.io.input.opt_path()?;
-        Some(self.opts.file_path_mapping().map_prefix(path).0)
+        Some(self.opts.file_path_mapping().map_prefix(path).0.into_owned())
     }
 
     fn check_miri_unleashed_features(&self) {

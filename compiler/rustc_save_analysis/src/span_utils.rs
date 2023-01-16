@@ -18,13 +18,7 @@ impl<'a> SpanUtils<'a> {
         match &file.name {
             FileName::Real(RealFileName::LocalPath(path)) => {
                 if path.is_absolute() {
-                    self.sess
-                        .source_map()
-                        .path_mapping()
-                        .map_prefix(path.into())
-                        .0
-                        .display()
-                        .to_string()
+                    self.sess.source_map().path_mapping().map_prefix(path).0.display().to_string()
                 } else {
                     self.sess
                         .opts
