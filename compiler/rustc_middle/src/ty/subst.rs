@@ -7,6 +7,7 @@ use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::Interned;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
@@ -34,6 +35,12 @@ use std::slice;
 pub struct GenericArg<'tcx> {
     ptr: NonZeroUsize,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
+}
+
+impl<'tcx> IntoDiagnosticArg for GenericArg<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
 }
 
 const TAG_MASK: usize = 0b11;
