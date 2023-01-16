@@ -16,12 +16,6 @@ error: unused imports: `None`, `Some`
 LL | use std::option::Option::{Some, None};
    |                           ^^^^  ^^^^
 
-error: unused import: `test::A`
-  --> $DIR/lint-unused-imports.rs:15:5
-   |
-LL | use test::A;
-   |     ^^^^^^^
-
 error: unused import: `bar`
   --> $DIR/lint-unused-imports.rs:24:18
    |
@@ -67,6 +61,12 @@ error: unused import: `test2::foo`
    |
 LL |     use test2::foo;
    |         ^^^^^^^^^^
+
+error: unused import: `test::A`
+  --> $DIR/lint-unused-imports.rs:15:5
+   |
+LL | use test::A;
+   |     ^^^^^^^
 
 error: unused import: `test::B2`
   --> $DIR/lint-unused-imports.rs:20:5

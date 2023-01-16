@@ -50,6 +50,7 @@ use rustc_session::cstore::{CrateStore, MetadataLoaderDyn, Untracked};
 use rustc_session::lint::LintBuffer;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
+use rustc_span::lev_distance::lev_distance_with_substrings;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -1637,9 +1638,10 @@ impl<'a> Resolver<'a> {
     ) -> bool {
         match (trait_module, assoc_item) {
             (Some(trait_module), Some((name, ns))) => {
+                let max_dist = std::cmp::max(name.as_str().len(), 3) / 3;
                 self.resolutions(trait_module).borrow().iter().any(|resolution| {
                     let (&BindingKey { ident: assoc_ident, ns: assoc_ns, .. }, _) = resolution;
-                    assoc_ns == ns && assoc_ident.name == name
+                    assoc_ns == ns && (assoc_ident.name == name || matches!(lev_distance_with_substrings(name.as_str(), assoc_ident.name.as_str(), max_dist), Some(d) if d > 0))
                 })
             }
             _ => true,

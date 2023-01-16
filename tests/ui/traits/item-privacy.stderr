@@ -5,7 +5,7 @@ LL | struct S;
    | -------- method `a` not found for this struct
 ...
 LL |     S.a();
-   |       ^ method not found in `S`
+   |       ^ help: there is a method with a similar name: `c`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `method::A` defines an item `a`, perhaps you need to implement it
@@ -24,13 +24,17 @@ LL |         fn b(&self) { }
    |            - the method is available for `S` here
 ...
 LL |     S.b();
-   |       ^ method not found in `S`
+   |       ^
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL | use method::B;
    |
+help: there is a method with a similar name
+   |
+LL |     S.c();
+   |       ~
 
 error[E0624]: associated function `a` is private
   --> $DIR/item-privacy.rs:72:7
@@ -48,7 +52,10 @@ LL | struct S;
    | -------- function or associated item `a` not found for this struct
 ...
 LL |     S::a(&S);
-   |        ^ function or associated item not found in `S`
+   |        ^
+   |        |
+   |        function or associated item not found in `S`
+   |        help: there is a method with a similar name: `c`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `method::A` defines an item `a`, perhaps you need to implement it
@@ -71,6 +78,10 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
    |
 LL | use method::B;
    |
+help: there is a method with a similar name
+   |
+LL |     S::c(&S);
+   |        ~
 
 error[E0624]: associated function `a` is private
   --> $DIR/item-privacy.rs:84:14
@@ -88,7 +99,10 @@ LL | struct S;
    | -------- associated item `A` not found for this struct
 ...
 LL |     S::A;
-   |        ^ associated item not found in `S`
+   |        ^
+   |        |
+   |        associated item not found in `S`
+   |        help: there is an associated constant with a similar name: `C`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `assoc_const::A` defines an item `A`, perhaps you need to implement it
@@ -111,6 +125,10 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
    |
 LL | use assoc_const::B;
    |
+help: there is an associated constant with a similar name
+   |
+LL |     S::C;
+   |        ~
 
 error[E0624]: associated constant `A` is private
   --> $DIR/item-privacy.rs:101:14

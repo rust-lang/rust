@@ -51,7 +51,7 @@ error[E0599]: no method named `try_into` found for type `i32` in the current sco
   --> $DIR/suggest-tryinto-edition-change.rs:6:25
    |
 LL |     let _i: i16 = 0_i32.try_into().unwrap();
-   |                         ^^^^^^^^ method not found in `i32`
+   |                         ^^^^^^^^
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    |
    = note: the method is available for `i32` here
@@ -62,6 +62,10 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
    |
 LL | use std::convert::TryInto;
    |
+help: there is a method with a similar name
+   |
+LL |     let _i: i16 = 0_i32.into().unwrap();
+   |                         ~~~~
 
 error: aborting due to 4 previous errors
 

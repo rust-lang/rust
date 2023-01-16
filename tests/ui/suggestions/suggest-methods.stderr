@@ -5,7 +5,7 @@ LL | struct Foo;
    | ---------- method `bat` not found for this struct
 ...
 LL |     f.bat(1.0);
-   |       ^^^ help: there is a method with a similar name: `bar`
+   |       ^^^ help: there is a method with a similar name: `bag`
 
 error[E0599]: no method named `is_emtpy` found for struct `String` in the current scope
   --> $DIR/suggest-methods.rs:21:15
