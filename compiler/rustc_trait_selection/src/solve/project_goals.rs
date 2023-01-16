@@ -171,7 +171,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             let impl_substs_with_gat = goal.predicate.projection_ty.substs.rebase_onto(
                 tcx,
                 goal_trait_ref.def_id,
-                impl_trait_ref.substs,
+                impl_substs,
             );
             let substs = translate_substs(
                 acx.infcx,
