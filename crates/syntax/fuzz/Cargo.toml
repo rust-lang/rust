@@ -3,7 +3,10 @@
 name = "syntax-fuzz"
 version = "0.0.1"
 publish = false
-edition = "2021"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 
 [package.metadata]

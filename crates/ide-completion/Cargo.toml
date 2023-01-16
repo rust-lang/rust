@@ -2,8 +2,10 @@
 name = "ide-completion"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 
 [lib]

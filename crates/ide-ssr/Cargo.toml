@@ -2,9 +2,11 @@
 name = "ide-ssr"
 version = "0.0.0"
 description = "Structural search and replace of Rust code"
-license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-edition = "2021"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 
 [lib]

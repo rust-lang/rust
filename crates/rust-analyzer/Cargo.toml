@@ -1,13 +1,14 @@
 [package]
 name = "rust-analyzer"
 version = "0.0.0"
-authors = ["rust-analyzer Team"]
 homepage = "https://github.com/rust-analyzer/rust-analyzer"
 description = "A language server for the Rust programming language"
 documentation = "https://rust-analyzer.github.io/manual.html"
-license = "MIT OR Apache-2.0"
 autobins = false
-edition = "2021"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 
 [lib]
