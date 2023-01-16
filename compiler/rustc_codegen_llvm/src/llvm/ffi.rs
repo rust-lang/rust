@@ -1005,6 +1005,7 @@ extern "C" {
     //pub fn LLVMReplaceAllUsesWith(old: &Value, new: &Value);
     pub fn GibtsNicht(M: &Module) -> bool;
     pub fn LLVMGetReturnType(T: &Type) -> &Type;
+    pub fn LLVMDumpModule(M: &Module);
     pub fn LLVMCountStructElementTypes(T: &Type) -> c_uint;
     pub fn LLVMDeleteFunction(V: &Value);
     pub fn LLVMVerifyFunction(V: &Value, action: LLVMVerifierFailureAction) -> bool;

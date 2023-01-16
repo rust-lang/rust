@@ -12,7 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{TypeTree, IntList, CFnTypeInfo, EnzymeLogicRef, EnzymeTypeAnalysisRef, EnzymeCreatePrimalAndGradient, CreateTypeAnalysis, CreateEnzymeLogic, CDerivativeMode, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType};
+use llvm::{TypeTree, IntList, CFnTypeInfo, EnzymeLogicRef, EnzymeTypeAnalysisRef, EnzymeCreatePrimalAndGradient, CreateTypeAnalysis, CreateEnzymeLogic, CDerivativeMode, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, LLVMDumpModule};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -639,6 +639,7 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
                               ) -> Result<(), FatalError> {
     let llmod = module.module_llvm.llmod();
     //dbg!(llmod);
+    LLVMDumpModule(llmod);
 
     let rust_name = src_name;
     let rust_name2 = &tasks.target;
@@ -954,6 +955,15 @@ pub(crate) unsafe fn optimize(
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
     }
+    // let fncs = &module.module_llvm.diff_fncs;
+    // if !fncs.is_empty() {
+    //     dbg!(&fncs);
+    //     for (task, name) in fncs {
+    //         let res = enzyme_ad(module, task, name);
+    //         assert!(res.is_ok());
+    //     }
+    // }
+
 
     Ok(())
 }
