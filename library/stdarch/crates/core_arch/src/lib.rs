@@ -28,7 +28,6 @@
     wasm_target_feature,
     abi_unadjusted,
     rtm_target_feature,
-    f16c_target_feature,
     allow_internal_unstable,
     decl_macro,
     asm_const,
