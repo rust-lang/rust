@@ -1116,15 +1116,6 @@ impl UnusedDelimLint for UnusedBraces {
                 // - the block is not `unsafe`
                 // - the block contains exactly one expression (do not lint `{ expr; }`)
                 // - `followed_by_block` is true and the internal expr may contain a `{`
-                // - the block is not multiline (do not lint multiline match arms)
-                //      ```
-                //      match expr {
-                //          Pattern => {
-                //              somewhat_long_expression
-                //          }
-                //          // ...
-                //      }
-                //      ```
                 // - the block has no attribute and was not created inside a macro
                 // - if the block is an `anon_const`, the inner expr must be a literal
                 //   not created by a macro, i.e. do not lint on:
@@ -1133,6 +1124,24 @@ impl UnusedDelimLint for UnusedBraces {
                 //      let _: A<{ 2 + 3 }>;
                 //      let _: A<{produces_literal!()}>;
                 //      ```
+                //
+                // We do not check expression in `Arm` bodies:
+                // - if not using commas to separate arms, removing the block would result in a compilation error
+                // ```
+                // match expr {
+                //     pat => {()}
+                //     _ => println!("foo")
+                // }
+                // ```
+                // - multiline blocks can used for formatting
+                // ```
+                // match expr {
+                //    pat => {
+                //        somewhat_long_expression
+                //    }
+                //  // ...
+                // }
+                // ```
                 // FIXME(const_generics): handle paths when #67075 is fixed.
                 if let [stmt] = inner.stmts.as_slice() {
                     if let ast::StmtKind::Expr(ref expr) = stmt.kind {
@@ -1140,7 +1149,6 @@ impl UnusedDelimLint for UnusedBraces {
                             && (ctx != UnusedDelimsCtx::AnonConst
                                 || (matches!(expr.kind, ast::ExprKind::Lit(_))
                                     && !expr.span.from_expansion()))
-                            && !cx.sess().source_map().is_multiline(value.span)
                             && value.attrs.is_empty()
                             && !value.span.from_expansion()
                             && !inner.span.from_expansion()

@@ -88,10 +88,8 @@ where
         // overflow handling
         loop {
             let mul = n.checked_mul(step);
-            {
-                if intrinsics::likely(mul.is_some()) {
-                    return self.iter.nth(mul.unwrap() - 1);
-                }
+            if intrinsics::likely(mul.is_some()) {
+                return self.iter.nth(mul.unwrap() - 1);
             }
             let div_n = usize::MAX / n;
             let div_step = usize::MAX / step;

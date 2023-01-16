@@ -596,10 +596,9 @@ fn generator_saved_local_eligibility(
     }
 
     // Write down the order of our locals that will be promoted to the prefix.
-    {
-        for (idx, local) in ineligible_locals.iter().enumerate() {
-            assignments[local] = Ineligible(Some(idx as u32));
-        }
+
+    for (idx, local) in ineligible_locals.iter().enumerate() {
+        assignments[local] = Ineligible(Some(idx as u32));
     }
     debug!("generator saved local assignments: {:?}", assignments);
 

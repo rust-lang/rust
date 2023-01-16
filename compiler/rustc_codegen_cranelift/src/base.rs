@@ -50,10 +50,10 @@ pub(crate) fn codegen_fn<'tcx>(
     let mir = tcx.instance_mir(instance.def);
     let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
-        with_no_trimmed_paths!({
+        with_no_trimmed_paths!(
             rustc_middle::mir::pretty::write_mir_fn(tcx, mir, &mut |_, _| Ok(()), &mut buf)
-                .unwrap();
-        });
+                .unwrap()
+        );
         String::from_utf8_lossy(&buf).into_owned()
     });
 
@@ -295,9 +295,9 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
         if fx.clif_comments.enabled() {
             let mut terminator_head = "\n".to_string();
-            with_no_trimmed_paths!({
-                bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
-            });
+            with_no_trimmed_paths!(
+                bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap()
+            );
             let inst = fx.bcx.func.layout.last_inst(block).unwrap();
             fx.add_comment(inst, terminator_head);
         }

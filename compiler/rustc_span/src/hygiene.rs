@@ -1332,11 +1332,9 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
 
     let outer_ctxts = &context.remapped_ctxts;
 
-    // Ensure that the lock() temporary is dropped early
-    {
-        if let Some(ctxt) = outer_ctxts.lock().get(raw_id as usize).copied().flatten() {
-            return ctxt;
-        }
+    // the lock() temporary is dropped early
+    if let Some(ctxt) = outer_ctxts.lock().get(raw_id as usize).copied().flatten() {
+        return ctxt;
     }
 
     // Allocate and store SyntaxContext id *before* calling the decoder function,

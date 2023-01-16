@@ -8,6 +8,8 @@
 // Literal values were previously promoted into local static values when
 // other global static variables are used.
 
+#![allow(unused_braces)]
+
 struct A<T: 'static>(&'static T);
 struct B<T: 'static + ?Sized> {
     x: &'static T,

@@ -649,45 +649,36 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = fx.layout_of(substs.type_at(0));
             if layout.abi.is_uninhabited() {
-                with_no_trimmed_paths!({
-                    crate::base::codegen_panic_nounwind(
-                        fx,
-                        &format!("attempted to instantiate uninhabited type `{}`", layout.ty),
-                        source_info,
-                    )
-                });
+                with_no_trimmed_paths!(crate::base::codegen_panic_nounwind(
+                    fx,
+                    &format!("attempted to instantiate uninhabited type `{}`", layout.ty),
+                    source_info,
+                ));
                 return;
             }
 
             if intrinsic == sym::assert_zero_valid
                 && !fx.tcx.permits_zero_init(fx.param_env().and(layout))
             {
-                with_no_trimmed_paths!({
-                    crate::base::codegen_panic_nounwind(
-                        fx,
-                        &format!(
-                            "attempted to zero-initialize type `{}`, which is invalid",
-                            layout.ty
-                        ),
-                        source_info,
-                    );
-                });
+                with_no_trimmed_paths!(crate::base::codegen_panic_nounwind(
+                    fx,
+                    &format!("attempted to zero-initialize type `{}`, which is invalid", layout.ty),
+                    source_info,
+                ));
                 return;
             }
 
             if intrinsic == sym::assert_mem_uninitialized_valid
                 && !fx.tcx.permits_uninit_init(fx.param_env().and(layout))
             {
-                with_no_trimmed_paths!({
-                    crate::base::codegen_panic_nounwind(
-                        fx,
-                        &format!(
-                            "attempted to leave type `{}` uninitialized, which is invalid",
-                            layout.ty
-                        ),
-                        source_info,
-                    )
-                });
+                with_no_trimmed_paths!(crate::base::codegen_panic_nounwind(
+                    fx,
+                    &format!(
+                        "attempted to leave type `{}` uninitialized, which is invalid",
+                        layout.ty
+                    ),
+                    source_info,
+                ));
                 return;
             }
         }

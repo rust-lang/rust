@@ -964,35 +964,33 @@ pub fn process_crate<H: SaveHandler>(
     config: Option<Config>,
     mut handler: H,
 ) {
-    with_no_trimmed_paths!({
-        tcx.dep_graph.with_ignore(|| {
-            info!("Dumping crate {}", cratename);
+    with_no_trimmed_paths!(tcx.dep_graph.with_ignore(|| {
+        info!("Dumping crate {}", cratename);
 
-            // Privacy checking must be done outside of type inference; use a
-            // fallback in case effective visibilities couldn't have been correctly computed.
-            let effective_visibilities = match tcx.sess.compile_status() {
-                Ok(..) => tcx.effective_visibilities(()),
-                Err(..) => tcx.arena.alloc(EffectiveVisibilities::default()),
-            };
+        // Privacy checking must be done outside of type inference; use a
+        // fallback in case effective visibilities couldn't have been correctly computed.
+        let effective_visibilities = match tcx.sess.compile_status() {
+            Ok(..) => tcx.effective_visibilities(()),
+            Err(..) => tcx.arena.alloc(EffectiveVisibilities::default()),
+        };
 
-            let save_ctxt = SaveContext {
-                tcx,
-                maybe_typeck_results: None,
-                effective_visibilities: &effective_visibilities,
-                span_utils: SpanUtils::new(&tcx.sess),
-                config: find_config(config),
-                impl_counter: Cell::new(0),
-            };
+        let save_ctxt = SaveContext {
+            tcx,
+            maybe_typeck_results: None,
+            effective_visibilities: &effective_visibilities,
+            span_utils: SpanUtils::new(&tcx.sess),
+            config: find_config(config),
+            impl_counter: Cell::new(0),
+        };
 
-            let mut visitor = DumpVisitor::new(save_ctxt);
+        let mut visitor = DumpVisitor::new(save_ctxt);
 
-            visitor.dump_crate_info(cratename);
-            visitor.dump_compilation_options(input, cratename);
-            visitor.process_crate();
+        visitor.dump_crate_info(cratename);
+        visitor.dump_compilation_options(input, cratename);
+        visitor.process_crate();
 
-            handler.save(&visitor.save_ctxt, &visitor.analysis())
-        })
-    })
+        handler.save(&visitor.save_ctxt, &visitor.analysis())
+    }))
 }
 
 fn find_config(supplied: Option<Config>) -> Config {

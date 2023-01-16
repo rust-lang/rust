@@ -750,20 +750,13 @@ fn separate_supertrait_bounds(
 }
 
 pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
-    if did.is_local() {
+    if did.is_local()
+        || cx.external_traits.borrow().contains_key(&did)
+        || cx.active_extern_traits.contains(&did)
+    {
         return;
     }
-
-    {
-        if cx.external_traits.borrow().contains_key(&did) || cx.active_extern_traits.contains(&did)
-        {
-            return;
-        }
-    }
-
-    {
-        cx.active_extern_traits.insert(did);
-    }
+    cx.active_extern_traits.insert(did);
 
     debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);

@@ -465,27 +465,25 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
     };
 
-    {
-        if already_stored_in_typemap {
-            // Make sure that we really do have a `TypeMap` entry for the unique type ID.
-            let di_node_for_uid =
-                match debug_context(cx).type_map.di_node_for_unique_id(unique_type_id) {
-                    Some(di_node) => di_node,
-                    None => {
-                        bug!(
-                            "expected type debuginfo node for unique \
+    if already_stored_in_typemap {
+        // Make sure that we really do have a `TypeMap` entry for the unique type ID.
+        let di_node_for_uid = match debug_context(cx).type_map.di_node_for_unique_id(unique_type_id)
+        {
+            Some(di_node) => di_node,
+            None => {
+                bug!(
+                    "expected type debuginfo node for unique \
                                type ID '{:?}' to already be in \
                                the `debuginfo::TypeMap` but it \
                                was not.",
-                            unique_type_id,
-                        );
-                    }
-                };
+                    unique_type_id,
+                );
+            }
+        };
 
-            debug_assert_eq!(di_node_for_uid as *const _, di_node as *const _);
-        } else {
-            debug_context(cx).type_map.insert(unique_type_id, di_node);
-        }
+        debug_assert_eq!(di_node_for_uid as *const _, di_node as *const _);
+    } else {
+        debug_context(cx).type_map.insert(unique_type_id, di_node);
     }
 
     di_node

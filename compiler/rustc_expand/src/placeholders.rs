@@ -144,8 +144,8 @@ pub fn placeholder(
             span,
             is_placeholder: true,
         }]),
-        AstFragmentKind::GenericParams => AstFragment::GenericParams(smallvec![{
-            ast::GenericParam {
+        AstFragmentKind::GenericParams => {
+            AstFragment::GenericParams(smallvec![ast::GenericParam {
                 attrs: Default::default(),
                 bounds: Default::default(),
                 id,
@@ -153,8 +153,8 @@ pub fn placeholder(
                 is_placeholder: true,
                 kind: ast::GenericParamKind::Lifetime,
                 colon_span: None,
-            }
-        }]),
+            }])
+        }
         AstFragmentKind::Params => AstFragment::Params(smallvec![ast::Param {
             attrs: Default::default(),
             id,

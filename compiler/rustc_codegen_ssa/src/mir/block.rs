@@ -678,21 +678,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MemUninitializedValid => !bx.tcx().permits_uninit_init(bx.param_env().and(layout)),
             };
             Some(if do_panic {
-                let msg_str = with_no_visible_paths!({
-                    with_no_trimmed_paths!({
-                        if layout.abi.is_uninhabited() {
-                            // Use this error even for the other intrinsics as it is more precise.
-                            format!("attempted to instantiate uninhabited type `{}`", ty)
-                        } else if intrinsic == ZeroValid {
-                            format!("attempted to zero-initialize type `{}`, which is invalid", ty)
-                        } else {
-                            format!(
-                                "attempted to leave type `{}` uninitialized, which is invalid",
-                                ty
-                            )
-                        }
-                    })
-                });
+                let msg_str = with_no_visible_paths!(with_no_trimmed_paths!(if layout
+                    .abi
+                    .is_uninhabited()
+                {
+                    // Use this error even for the other intrinsics as it is more precise.
+                    format!("attempted to instantiate uninhabited type `{}`", ty)
+                } else if intrinsic == ZeroValid {
+                    format!("attempted to zero-initialize type `{}`, which is invalid", ty)
+                } else {
+                    format!("attempted to leave type `{}` uninitialized, which is invalid", ty)
+                }));
                 let msg = bx.const_str(&msg_str);
 
                 // Obtain the panic entry point.

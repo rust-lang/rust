@@ -192,7 +192,10 @@ macro_rules! match_ast {
         $( $( $path:ident )::+ ($it:pat) => $res:expr, )*
         _ => $catch_all:expr $(,)?
     }) => {{
-        $( if let Some($it) = $($path::)+cast($node.clone()) { $res } else )*
+        $( if let Some($it) = $($path::)+cast($node.clone()) { 
+            #[allow(unused_braces)] // FIXME: remove and fix occurences on RA's repo with `cargo fix`
+            $res 
+        } else )*
         { $catch_all }
     }};
 }

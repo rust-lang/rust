@@ -120,20 +120,18 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
             // We also acquire the locks for both output streams to prevent output from other threads
             // from interleaving with the panic message or appearing after it.
             let builtin_panic_hook = panic::take_hook();
-            let hook = Box::new({
-                move |info: &'_ PanicInfo<'_>| {
-                    if !info.can_unwind() {
-                        std::mem::forget(std::io::stderr().lock());
-                        let mut stdout = ManuallyDrop::new(std::io::stdout().lock());
-                        if let Some(captured) = io::set_output_capture(None) {
-                            if let Ok(data) = captured.lock() {
-                                let _ = stdout.write_all(&data);
-                                let _ = stdout.flush();
-                            }
+            let hook = Box::new(move |info: &'_ PanicInfo<'_>| {
+                if !info.can_unwind() {
+                    std::mem::forget(std::io::stderr().lock());
+                    let mut stdout = ManuallyDrop::new(std::io::stdout().lock());
+                    if let Some(captured) = io::set_output_capture(None) {
+                        if let Ok(data) = captured.lock() {
+                            let _ = stdout.write_all(&data);
+                            let _ = stdout.flush();
                         }
                     }
-                    builtin_panic_hook(info);
                 }
+                builtin_panic_hook(info);
             });
             panic::set_hook(hook);
         }

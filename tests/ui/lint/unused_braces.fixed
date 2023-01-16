@@ -37,7 +37,7 @@ fn main() {
     consume(7);
     //~^ WARN unnecessary braces
 
-    // Do not emit lint for multiline blocks.
+    // Do not emit lint for semicolon blocks.
     let _ = {
         7
     };
@@ -54,4 +54,20 @@ fn main() {
     // regression test for https://github.com/rust-lang/rust/issues/106899
     return println!("!");
     //~^ WARN unnecessary braces
+
+    match Some(1) {
+        // Do not lint, removing the block without inserting a comma would be a compilation error
+        Some(_) => {()}
+        None => {
+            println!("Very very long expression that should not be linted for style");
+        }
+    }
+
+    match Some(2) {
+        Some(_) => 1,
+        None => {
+            // Do not lint, as defining what is a "long" line is a user preference
+            2
+        }
+    };
 }

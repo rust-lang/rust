@@ -488,9 +488,9 @@ fn check_for_bindings_named_same_as_variants(
             })
         {
             let variant_count = edef.variants().len();
-            let ty_path = with_no_trimmed_paths!({
+            let ty_path = with_no_trimmed_paths!(
                 cx.tcx.def_path_str(edef.did())
-            });
+            );
             cx.tcx.emit_spanned_lint(
                 BINDINGS_WITH_VARIANT_NAME,
                 p.hir_id,

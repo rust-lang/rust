@@ -2,6 +2,8 @@
 // compile-flags: -Z validate-mir
 #![feature(let_chains)]
 
+#![allow(unused_braces)]
+
 use std::cell::RefCell;
 use std::convert::TryInto;
 

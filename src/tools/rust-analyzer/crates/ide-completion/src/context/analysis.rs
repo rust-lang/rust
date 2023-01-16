@@ -471,15 +471,13 @@ fn expected_type_and_name(
                 ast::ParamList(_) => (None, None),
                 ast::Stmt(_) => (None, None),
                 ast::Item(_) => (None, None),
-                _ => {
-                    match node.parent() {
+                _ => match node.parent() {
                         Some(n) => {
                             node = n;
                             continue;
                         },
                         None => (None, None),
-                    }
-                },
+                    },
             }
         };
     }
