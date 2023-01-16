@@ -941,7 +941,8 @@ impl<'a> Parser<'a> {
             && let Some(path) = self.recover_path_from_fn()
         {
             path
-        } else if !self.token.is_path_start() && self.token.can_begin_type() && let Ok(ty) = self.parse_ty_no_plus() {
+        } else if !self.token.is_path_start() && self.token.can_begin_type() {
+            let ty = self.parse_ty_no_plus()?;
             // Instead of finding a path (a trait), we found a type.
             let mut err = self.struct_span_err(ty.span, "expected a trait, found type");
 
