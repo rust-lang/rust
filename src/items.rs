@@ -18,7 +18,7 @@ use crate::config::lists::*;
 use crate::config::{BraceStyle, Config, IndentStyle, Version};
 use crate::expr::{
     is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
-    rewrite_assign_rhs_with_comments, RhsAssignKind, RhsTactics,
+    rewrite_assign_rhs_with_comments, rewrite_else_kw_with_comments, RhsAssignKind, RhsTactics,
 };
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use crate::macros::{rewrite_macro, MacroPosition};
@@ -44,7 +44,7 @@ fn type_annotation_separator(config: &Config) -> &str {
 }
 
 // Statements of the form
-// let pat: ty = init;
+// let pat: ty = init; or let pat: ty = init else { .. };
 impl Rewrite for ast::Local {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         debug!(
@@ -54,7 +54,7 @@ impl Rewrite for ast::Local {
 
         skip_out_of_file_lines_range!(context, self.span);
 
-        if contains_skip(&self.attrs) || matches!(self.kind, ast::LocalKind::InitElse(..)) {
+        if contains_skip(&self.attrs) {
             return None;
         }
 
@@ -112,7 +112,7 @@ impl Rewrite for ast::Local {
 
         result.push_str(&infix);
 
-        if let Some((init, _els)) = self.kind.init_else_opt() {
+        if let Some((init, else_block)) = self.kind.init_else_opt() {
             // 1 = trailing semicolon;
             let nested_shape = shape.sub_width(1)?;
 
@@ -123,7 +123,17 @@ impl Rewrite for ast::Local {
                 &RhsAssignKind::Expr(&init.kind, init.span),
                 nested_shape,
             )?;
-            // todo else
+
+            if let Some(block) = else_block {
+                let else_kw = rewrite_else_kw_with_comments(
+                    true,
+                    context,
+                    init.span.between(block.span),
+                    shape,
+                );
+                result.push_str(&else_kw);
+                result.push_str(&block.rewrite(context, shape)?);
+            };
         }
 
         result.push(';');
