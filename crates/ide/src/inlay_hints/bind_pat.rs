@@ -188,8 +188,7 @@ mod tests {
     use crate::{fixture, inlay_hints::InlayHintsConfig};
 
     use crate::inlay_hints::tests::{
-        check, check_expect, check_with_config, DISABLED_CONFIG, DISABLED_CONFIG_WITH_LINKS,
-        TEST_CONFIG,
+        check, check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG,
     };
     use crate::ClosureReturnTypeHints;
 
@@ -285,7 +284,7 @@ fn main() {
     fn iterator_hint_regression_issue_12674() {
         // Ensure we don't crash while solving the projection type of iterators.
         check_expect(
-            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG_WITH_LINKS },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 //- minicore: iterators
 struct S<T>(T);
