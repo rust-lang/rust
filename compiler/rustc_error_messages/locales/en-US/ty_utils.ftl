@@ -10,17 +10,17 @@ ty_utils_address_and_deref_not_supported = dereferencing or taking the address i
 
 ty_utils_array_not_supported = array construction is not supported in generic constants
 
-ty_utils_block_not_supported = blocks are not supported in generic constant
+ty_utils_block_not_supported = blocks are not supported in generic constants
 
-ty_utils_never_to_any_not_supported = converting nevers to any is not supported in generic constant
+ty_utils_never_to_any_not_supported = converting nevers to any is not supported in generic constants
 
 ty_utils_tuple_not_supported = tuple construction is not supported in generic constants
 
-ty_utils_index_not_supported = indexing is not supported in generic constant
+ty_utils_index_not_supported = indexing is not supported in generic constants
 
-ty_utils_field_not_supported = field access is not supported in generic constant
+ty_utils_field_not_supported = field access is not supported in generic constants
 
-ty_utils_const_block_not_supported = const blocks are not supported in generic constant
+ty_utils_const_block_not_supported = const blocks are not supported in generic constants
 
 ty_utils_adt_not_supported = struct/enum construction is not supported in generic constants
 
@@ -44,4 +44,4 @@ ty_utils_control_flow_not_supported = control flow is not supported in generic c
 
 ty_utils_inline_asm_not_supported = assembly is not supported in generic constants
 
-ty_utils_operation_not_supported = unsupported operation in generic constant
+ty_utils_operation_not_supported = unsupported operation in generic constants
