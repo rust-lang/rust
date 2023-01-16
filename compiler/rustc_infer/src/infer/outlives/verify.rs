@@ -298,7 +298,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
-        let bounds = tcx.bound_item_bounds(def_id);
+        let bounds = tcx.item_bounds(def_id);
         trace!("{:#?}", bounds.0);
         bounds
             .subst_iter(tcx, substs)

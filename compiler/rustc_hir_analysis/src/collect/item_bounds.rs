@@ -99,12 +99,16 @@ pub(super) fn explicit_item_bounds(
     }
 }
 
-pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> &'_ ty::List<ty::Predicate<'_>> {
-    tcx.mk_predicates(
+pub(super) fn item_bounds(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> ty::EarlyBinder<&'_ ty::List<ty::Predicate<'_>>> {
+    let bounds = tcx.mk_predicates(
         util::elaborate_predicates(
             tcx,
             tcx.explicit_item_bounds(def_id).iter().map(|&(bound, _span)| bound),
         )
         .map(|obligation| obligation.predicate),
-    )
+    );
+    ty::EarlyBinder(bounds)
 }
