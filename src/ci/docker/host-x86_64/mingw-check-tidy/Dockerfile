@@ -1,8 +1,6 @@
-FROM ubuntu:18.04
-# FIXME: when bumping the version, remove the Python 3.6-specific changes in
-# the reuse-requirements.in file, regenerate reuse-requirements.txt and remove
-# this comment.
+FROM ubuntu:22.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
