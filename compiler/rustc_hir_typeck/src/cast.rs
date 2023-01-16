@@ -151,7 +151,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 #[derive(Copy, Clone)]
 pub enum CastError {
-    ErrorGuaranteed,
+    ErrorGuaranteed(ErrorGuaranteed),
 
     CastToBool,
     CastToChar,
@@ -176,8 +176,8 @@ pub enum CastError {
 }
 
 impl From<ErrorGuaranteed> for CastError {
-    fn from(_: ErrorGuaranteed) -> Self {
-        CastError::ErrorGuaranteed
+    fn from(err: ErrorGuaranteed) -> Self {
+        CastError::ErrorGuaranteed(err)
     }
 }
 
@@ -225,11 +225,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
     fn report_cast_error(&self, fcx: &FnCtxt<'a, 'tcx>, e: CastError) {
         match e {
-            CastError::ErrorGuaranteed => {
+            CastError::ErrorGuaranteed(_) => {
                 // an error has already been reported
             }
             CastError::NeedDeref => {
-                let error_span = self.span;
                 let mut err = make_invalid_casting_error(
                     fcx.tcx.sess,
                     self.span,
@@ -237,21 +236,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.cast_ty,
                     fcx,
                 );
-                let cast_ty = fcx.ty_to_string(self.cast_ty);
-                err.span_label(
-                    error_span,
-                    format!("cannot cast `{}` as `{}`", fcx.ty_to_string(self.expr_ty), cast_ty),
+
+                err.span_suggestion_verbose(
+                    self.expr_span.shrink_to_lo(),
+                    "dereference the expression",
+                    "*",
+                    Applicability::MachineApplicable,
                 );
-                if let Ok(snippet) = fcx.sess().source_map().span_to_snippet(self.expr_span) {
-                    err.span_suggestion(
-                        self.expr_span,
-                        "dereference the expression",
-                        format!("*{}", snippet),
-                        Applicability::MaybeIncorrect,
-                    );
-                } else {
-                    err.span_help(self.expr_span, "dereference the expression with `*`");
-                }
+
                 err.emit();
             }
             CastError::NeedViaThinPtr | CastError::NeedViaPtr => {
