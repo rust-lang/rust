@@ -1009,31 +1009,35 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
-        if let ast::TyKind::Array(_, len) = &ty.kind {
-            self.check_unused_delims_expr(
-                cx,
-                &len.value,
-                UnusedDelimsCtx::ArrayLenExpr,
-                false,
-                None,
-                None,
-            );
-        }
-        if let ast::TyKind::Paren(r) = &ty.kind {
-            match &r.kind {
-                ast::TyKind::TraitObject(..) => {}
-                ast::TyKind::BareFn(b)
-                    if self.with_self_ty_parens && b.generic_params.len() > 0 => {}
-                ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
-                _ => {
-                    let spans = if let Some(r) = r.span.find_ancestor_inside(ty.span) {
-                        Some((ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())))
-                    } else {
-                        None
-                    };
-                    self.emit_unused_delims(cx, ty.span, spans, "type", (false, false));
-                }
+        match &ty.kind {
+            ast::TyKind::Array(_, len) => {
+                self.check_unused_delims_expr(
+                    cx,
+                    &len.value,
+                    UnusedDelimsCtx::ArrayLenExpr,
+                    false,
+                    None,
+                    None,
+                );
             }
+            ast::TyKind::Paren(r) => {
+                match &r.kind {
+                    ast::TyKind::TraitObject(..) => {}
+                    ast::TyKind::BareFn(b)
+                        if self.with_self_ty_parens && b.generic_params.len() > 0 => {}
+                    ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
+                    _ => {
+                        let spans = if let Some(r) = r.span.find_ancestor_inside(ty.span) {
+                            Some((ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())))
+                        } else {
+                            None
+                        };
+                        self.emit_unused_delims(cx, ty.span, spans, "type", (false, false));
+                    }
+                }
+                self.with_self_ty_parens = false;
+            }
+            _ => {}
         }
     }
 
@@ -1055,7 +1059,7 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn exit_where_predicate(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
-        self.with_self_ty_parens = false;
+        assert!(!self.with_self_ty_parens);
     }
 }
 

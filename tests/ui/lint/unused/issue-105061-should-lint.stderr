@@ -1,5 +1,5 @@
 error: unnecessary parentheses around type
-  --> $DIR/issue-105061-should-lint.rs:12:13
+  --> $DIR/issue-105061-should-lint.rs:11:13
    |
 LL |     for<'b> (for<'a> fn(Inv<'a>)): Trait<'b>,
    |             ^                   ^
@@ -16,5 +16,17 @@ LL -     for<'b> (for<'a> fn(Inv<'a>)): Trait<'b>,
 LL +     for<'b> for<'a> fn(Inv<'a>): Trait<'b>,
    |
 
-error: aborting due to previous error
+error: unnecessary parentheses around type
+  --> $DIR/issue-105061-should-lint.rs:17:16
+   |
+LL |     (dyn Hello<(for<'b> fn(&'b ()))>): Hello<T>
+   |                ^                  ^
+   |
+help: remove these parentheses
+   |
+LL -     (dyn Hello<(for<'b> fn(&'b ()))>): Hello<T>
+LL +     (dyn Hello<for<'b> fn(&'b ())>): Hello<T>
+   |
+
+error: aborting due to 2 previous errors
 
