@@ -3,7 +3,7 @@ name = "proc-macro-test"
 version = "0.0.0"
 license = "MIT OR Apache-2.0"
 edition = "2021"
-rust-version = "1.65"
+rust-version.workspace = true
 publish = false
 
 [lib]
