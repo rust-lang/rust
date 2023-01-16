@@ -1,24 +1,21 @@
-use clippy_utils::diagnostics::{
-    span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
-};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::paths;
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{is_lint_allowed, match_def_path};
-use hir::def_id::LOCAL_CRATE;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Constness, Expr, ExprKind, FnDecl, HirId, Impl, Item,
-    ItemKind, UnsafeSource, Unsafety,
+    self as hir, BlockCheckMode, BodyId, Constness, Expr, ExprKind, FnDecl, HirId, Impl, Item, ItemKind, UnsafeSource,
+    Unsafety,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, Binder, BoundConstness, Clause, GenericArgKind, GenericParamDefKind, ImplPolarity,
-    ParamEnv, PredicateKind, TraitPredicate, Ty, TyCtxt,
+    self, Binder, BoundConstness, Clause, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind,
+    TraitPredicate, Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -208,10 +205,13 @@ declare_lint_pass!(Derive => [
 
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl(Impl { of_trait: Some(ref trait_ref), .. }) = item.kind {
+        if let ItemKind::Impl(Impl {
+            of_trait: Some(ref trait_ref),
+            ..
+        }) = item.kind
+        {
             let ty = cx.tcx.type_of(item.owner_id);
-            let is_automatically_derived =
-                cx.tcx.has_attr(item.owner_id.to_def_id(), sym::automatically_derived);
+            let is_automatically_derived = cx.tcx.has_attr(item.owner_id.to_def_id(), sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -328,12 +328,7 @@ fn check_ord_partial_ord<'tcx>(
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-fn check_copy_clone<'tcx>(
-    cx: &LateContext<'tcx>,
-    item: &Item<'_>,
-    trait_ref: &hir::TraitRef<'_>,
-    ty: Ty<'tcx>,
-) {
+fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
     let clone_id = match cx.tcx.lang_items().clone_trait() {
         Some(id) if trait_ref.trait_def_id() == Some(id) => id,
         _ => return,
@@ -348,10 +343,10 @@ fn check_copy_clone<'tcx>(
     // there's a Copy impl for any instance of the adt.
     if !is_copy(cx, ty) {
         if ty_subs.non_erasable_generics().next().is_some() {
-            let has_copy_impl = cx.tcx.impls_in_crate(LOCAL_CRATE).get(&Some(copy_id)).map_or(false, |impls| {
+            let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).map_or(false, |impls| {
                 impls
                     .iter()
-                    .any(|(id, _)| matches!(cx.tcx.type_of(id).kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did()))
+                    .any(|&id| matches!(cx.tcx.type_of(id).kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did()))
             });
             if !has_copy_impl {
                 return;
@@ -430,14 +425,7 @@ struct UnsafeVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn visit_fn(
-        &mut self,
-        kind: FnKind<'tcx>,
-        decl: &'tcx FnDecl<'_>,
-        body_id: BodyId,
-        _: Span,
-        id: HirId,
-    ) {
+    fn visit_fn(&mut self, kind: FnKind<'tcx>, decl: &'tcx FnDecl<'_>, body_id: BodyId, _: Span, id: HirId) {
         if self.has_unsafe {
             return;
         }
@@ -473,12 +461,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
 }
 
 /// Implementation of the `DERIVE_PARTIAL_EQ_WITHOUT_EQ` lint.
-fn check_partial_eq_without_eq<'tcx>(
-    cx: &LateContext<'tcx>,
-    span: Span,
-    trait_ref: &hir::TraitRef<'_>,
-    ty: Ty<'tcx>,
-) {
+fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
     if_chain! {
         if let ty::Adt(adt, substs) = ty.kind();
         if cx.tcx.visibility(adt.did()).is_public();
@@ -532,13 +515,11 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
     ParamEnv::new(
         tcx.mk_predicates(ty_predicates.iter().map(|&(p, _)| p).chain(
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
-                tcx.mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Trait(
-                    TraitPredicate {
-                        trait_ref: tcx.mk_trait_ref(eq_trait_id, [tcx.mk_param_from_def(param)]),
-                        constness: BoundConstness::NotConst,
-                        polarity: ImplPolarity::Positive,
-                    },
-                ))))
+                tcx.mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Trait(TraitPredicate {
+                    trait_ref: tcx.mk_trait_ref(eq_trait_id, [tcx.mk_param_from_def(param)]),
+                    constness: BoundConstness::NotConst,
+                    polarity: ImplPolarity::Positive,
+                }))))
             }),
         )),
         Reveal::UserFacing,

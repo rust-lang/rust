@@ -5,7 +5,7 @@ use crate::rmeta::*;
 
 use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
@@ -1196,26 +1196,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 (trait_def_id, self.local_def_id(impl_index), simplified_self_ty)
             })
         })
-    }
-
-    /// Decodes a map from trait to impls.
-    fn get_trait_impl_map(self) -> FxIndexMap<DefId, Vec<(DefId, Option<SimplifiedType>)>> {
-        self.cdata
-            .trait_impls
-            .iter()
-            .map(|(&(trait_cnum_raw, trait_index), impls)| {
-                let krate = self.cnum_map[CrateNum::from_u32(trait_cnum_raw)];
-                let trait_def_id = DefId { krate, index: trait_index };
-
-                return (
-                    trait_def_id,
-                    impls
-                        .decode(self)
-                        .map(|(impl_index, ty)| (DefId { krate, index: impl_index }, ty))
-                        .collect(),
-                );
-            })
-            .collect()
     }
 
     fn get_all_incoherent_impls(self) -> impl Iterator<Item = DefId> + 'a {

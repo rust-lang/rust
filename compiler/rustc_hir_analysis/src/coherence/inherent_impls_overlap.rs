@@ -1,5 +1,3 @@
-use hir::def_id::LOCAL_CRATE;
-// use hir::{ItemId, OwnerId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -15,26 +13,7 @@ use std::collections::hash_map::Entry;
 
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) {
     let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
-
-    // for cnum in tcx.crates(()) {
-    //     for (id, _) in tcx.impls_in_crate(*cnum).values().flatten() {
-    //         debug!("new loop {:?}; local: {:?}", id, id.is_local());
-    //         if id.is_local() {
-    //             // DefId -> hir::ItemId
-    //             //inherent_overlap_checker
-    //             //    .check_item(ItemId { owner_id: OwnerId { def_id: id.expect_local() } });
-    //         }
-    //     }
-    // }
-
-    for (id, _) in tcx.impls_in_crate(LOCAL_CRATE).values().flatten() {
-        debug!("adjusted: would have checked {:?}", id);
-        // inherent_overlap_checker
-        //     .check_item(ItemId { owner_id: OwnerId { def_id: id.expect_local() } });
-    }
-
     for id in tcx.hir().items() {
-        debug!("old code actually checking: {:?}", id);
         inherent_overlap_checker.check_item(id);
     }
 }
@@ -181,7 +160,6 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         if !matches!(def_kind, DefKind::Enum | DefKind::Struct | DefKind::Trait | DefKind::Union) {
             return;
         }
-        debug!("not rejected");
 
         let impls = self.tcx.inherent_impls(id.owner_id);
 

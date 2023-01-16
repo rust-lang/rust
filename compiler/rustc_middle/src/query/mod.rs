@@ -1237,6 +1237,11 @@ rustc_queries! {
         desc { |tcx| "computing candidate for `{}`", key.1 }
     }
 
+    /// Return all `impl` blocks in the current crate.
+    query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexMap<DefId, Vec<LocalDefId>> {
+        desc { "finding local trait impls" }
+    }
+
     /// Given a trait `trait_id`, return all known `impl` blocks.
     query trait_impls_of(trait_id: DefId) -> ty::trait_def::TraitImpls {
         arena_cache
@@ -1801,13 +1806,6 @@ rustc_queries! {
     /// NOTE: Not named just `traits` due to a naming conflict.
     query traits_in_crate(_: CrateNum) -> &'tcx [DefId] {
         desc { "fetching all traits in a crate" }
-        separate_provide_extern
-    }
-
-    /// A list of all traits in a crate mapped to their impls in that crate. Also includes None => inherent impls.
-    query impls_in_crate(_: CrateNum) -> &'tcx FxIndexMap<Option<DefId>, Vec<(DefId, Option<rustc_middle::ty::fast_reject::SimplifiedType>)>> {
-        eval_always
-        desc { "fetching trait to impl map in a crate" }
         separate_provide_extern
     }
 

@@ -289,7 +289,6 @@ provide! { tcx, def_id, other, cdata,
     extra_filename => { cdata.root.extra_filename.clone() }
 
     traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
-    impls_in_crate => { tcx.arena.alloc(cdata.get_trait_impl_map().into_iter().map(|(key, value)| {(Some(key), value)}).collect()) }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
     crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 

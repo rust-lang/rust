@@ -2661,13 +2661,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 opt_trait_reference.as_ref(),
                                 self_type,
                                 |this, trait_id| {
-                                    let item_def_id = this.r.local_def_id(item_id).to_def_id();
-                                    let res = Res::SelfTyAlias {
-                                        alias_to: item_def_id,
-                                        forbid_generic: false,
-                                        is_trait_impl: trait_id.is_some()
-                                    };
-                                    /*
                                     let item_def_id = this.r.local_def_id(item_id);
 
                                     // Register the trait definitions from here.
@@ -2685,7 +2678,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         forbid_generic: false,
                                         is_trait_impl: trait_id.is_some()
                                     };
-                                    */
                                     this.with_self_rib(res, |this| {
                                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
                                             // Resolve type arguments in the trait path.
