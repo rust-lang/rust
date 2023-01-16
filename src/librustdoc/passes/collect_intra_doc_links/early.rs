@@ -2,6 +2,7 @@ use crate::clean::Attributes;
 use crate::core::ResolverCaches;
 use crate::passes::collect_intra_doc_links::preprocessed_markdown_links;
 use crate::passes::collect_intra_doc_links::{Disambiguator, PreprocessedMarkdownLink};
+use crate::visit_lib::early_lib_embargo_visit_item;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, ItemKind};
@@ -34,6 +35,8 @@ pub(crate) fn early_resolve_intra_doc_links(
         traits_in_scope: Default::default(),
         all_trait_impls: Default::default(),
         all_macro_rules: Default::default(),
+        extern_doc_reachable: Default::default(),
+        local_doc_reachable: Default::default(),
         document_private_items,
     };
 
@@ -61,6 +64,7 @@ pub(crate) fn early_resolve_intra_doc_links(
         traits_in_scope: link_resolver.traits_in_scope,
         all_trait_impls: Some(link_resolver.all_trait_impls),
         all_macro_rules: link_resolver.all_macro_rules,
+        extern_doc_reachable: link_resolver.extern_doc_reachable,
     }
 }
 
@@ -77,6 +81,15 @@ struct EarlyDocLinkResolver<'r, 'ra> {
     traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
     all_trait_impls: Vec<DefId>,
     all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
+    /// This set is used as a seed for `effective_visibilities`, which are then extended by some
+    /// more items using `lib_embargo_visit_item` during doc inlining.
+    extern_doc_reachable: DefIdSet,
+    /// This is an easily identifiable superset of items added to `effective_visibilities`
+    /// using `lib_embargo_visit_item` during doc inlining.
+    /// The union of `(extern,local)_doc_reachable` is therefore a superset of
+    /// `effective_visibilities` and can be used for pruning extern impls here
+    /// in early doc link resolution.
+    local_doc_reachable: DefIdSet,
     document_private_items: bool,
 }
 
@@ -114,6 +127,14 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
         let mut start_cnum = 0;
         loop {
             let crates = Vec::from_iter(self.resolver.cstore().crates_untracked());
+            for cnum in &crates[start_cnum..] {
+                early_lib_embargo_visit_item(
+                    self.resolver,
+                    &mut self.extern_doc_reachable,
+                    cnum.as_def_id(),
+                    true,
+                );
+            }
             for &cnum in &crates[start_cnum..] {
                 let all_trait_impls =
                     Vec::from_iter(self.resolver.cstore().trait_impls_in_crate_untracked(cnum));
@@ -298,6 +319,7 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                     && module_id.is_local()
             {
                 if let Some(def_id) = child.res.opt_def_id() && !def_id.is_local() {
+                    self.local_doc_reachable.insert(def_id);
                     let scope_id = match child.res {
                         Res::Def(
                             DefKind::Variant

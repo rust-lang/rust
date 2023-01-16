@@ -632,6 +632,12 @@ impl CStore {
             .get_attr_flags(def_id.index)
             .contains(AttrFlags::MAY_HAVE_DOC_LINKS)
     }
+
+    pub fn is_doc_hidden_untracked(&self, def_id: DefId) -> bool {
+        self.get_crate_data(def_id.krate)
+            .get_attr_flags(def_id.index)
+            .contains(AttrFlags::IS_DOC_HIDDEN)
+    }
 }
 
 impl CrateStore for CStore {
