@@ -5,11 +5,10 @@ use syntax::{
     AstToken, TextRange,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
-
-use super::{
-    convert_comment_block::{line_comment_text, relevant_line_comments},
-    raw_string::required_hashes,
+use crate::{
+    handlers::convert_comment_block::{line_comment_text, relevant_line_comments},
+    utils::required_hashes,
+    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: desugar_doc_comment
