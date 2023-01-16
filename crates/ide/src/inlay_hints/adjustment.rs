@@ -3,7 +3,7 @@
 //! let _: u32  = /* <never-to-any> */ loop {};
 //! let _: &u32 = /* &* */ &mut 0;
 //! ```
-use hir::{Adjust, AutoBorrow, Mutability, OverloadedDeref, PointerCast, Safety, Semantics};
+use hir::{Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, PointerCast, Safety, Semantics};
 use ide_db::RootDatabase;
 
 use syntax::{
@@ -11,7 +11,10 @@ use syntax::{
     ted,
 };
 
-use crate::{AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintsConfig, InlayKind};
+use crate::{
+    AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
+    InlayTooltip,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -61,36 +64,47 @@ pub(super) fn hints(
         &mut tmp1
     };
 
-    for adjustment in iter {
-        if adjustment.source == adjustment.target {
+    for Adjustment { source, target, kind } in iter {
+        if source == target {
             continue;
         }
 
         // FIXME: Add some nicer tooltips to each of these
-        let text = match adjustment.kind {
+        let (text, coercion) = match kind {
             Adjust::NeverToAny if config.adjustment_hints == AdjustmentHints::Always => {
-                "<never-to-any>"
+                ("<never-to-any>", "never to any")
             }
-            Adjust::Deref(None) => "*",
-            Adjust::Deref(Some(OverloadedDeref(Mutability::Mut))) => "*",
-            Adjust::Deref(Some(OverloadedDeref(Mutability::Shared))) => "*",
-            Adjust::Borrow(AutoBorrow::Ref(Mutability::Shared)) => "&",
-            Adjust::Borrow(AutoBorrow::Ref(Mutability::Mut)) => "&mut ",
-            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Shared)) => "&raw const ",
-            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Mut)) => "&raw mut ",
+            Adjust::Deref(_) => ("*", "dereference"),
+            Adjust::Borrow(AutoBorrow::Ref(Mutability::Shared)) => ("&", "borrow"),
+            Adjust::Borrow(AutoBorrow::Ref(Mutability::Mut)) => ("&mut ", "unique borrow"),
+            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Shared)) => {
+                ("&raw const ", "const pointer borrow")
+            }
+            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Mut)) => {
+                ("&raw mut ", "mut pointer borrow")
+            }
             // some of these could be represented via `as` casts, but that's not too nice and
             // handling everything as a prefix expr makes the `(` and `)` insertion easier
             Adjust::Pointer(cast) if config.adjustment_hints == AdjustmentHints::Always => {
                 match cast {
-                    PointerCast::ReifyFnPointer => "<fn-item-to-fn-pointer>",
-                    PointerCast::UnsafeFnPointer => "<safe-fn-pointer-to-unsafe-fn-pointer>",
-                    PointerCast::ClosureFnPointer(Safety::Unsafe) => {
-                        "<closure-to-unsafe-fn-pointer>"
+                    PointerCast::ReifyFnPointer => {
+                        ("<fn-item-to-fn-pointer>", "fn item to fn pointer")
                     }
-                    PointerCast::ClosureFnPointer(Safety::Safe) => "<closure-to-fn-pointer>",
-                    PointerCast::MutToConstPointer => "<mut-ptr-to-const-ptr>",
-                    PointerCast::ArrayToPointer => "<array-ptr-to-element-ptr>",
-                    PointerCast::Unsize => "<unsize>",
+                    PointerCast::UnsafeFnPointer => (
+                        "<safe-fn-pointer-to-unsafe-fn-pointer>",
+                        "safe fn pointer to unsafe fn pointer",
+                    ),
+                    PointerCast::ClosureFnPointer(Safety::Unsafe) => {
+                        ("<closure-to-unsafe-fn-pointer>", "closure to unsafe fn pointer")
+                    }
+                    PointerCast::ClosureFnPointer(Safety::Safe) => {
+                        ("<closure-to-fn-pointer>", "closure to fn pointer")
+                    }
+                    PointerCast::MutToConstPointer => {
+                        ("<mut-ptr-to-const-ptr>", "mut ptr to const ptr")
+                    }
+                    PointerCast::ArrayToPointer => ("<array-ptr-to-element-ptr>", ""),
+                    PointerCast::Unsize => ("<unsize>", "unsize"),
                 }
             }
             _ => continue,
@@ -98,7 +112,15 @@ pub(super) fn hints(
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
             kind: if postfix { InlayKind::AdjustmentPostfix } else { InlayKind::Adjustment },
-            label: if postfix { format!(".{}", text.trim_end()).into() } else { text.into() },
+            label: InlayHintLabel::simple(
+                if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
+                Some(InlayTooltip::Markdown(format!(
+                    "`{}` → `{}` ({coercion} coercion)",
+                    source.display(sema.db),
+                    target.display(sema.db),
+                ))),
+                None,
+            ),
         });
     }
     if !postfix && needs_inner_parens {
