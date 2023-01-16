@@ -542,6 +542,21 @@ impl<'tcx> Inliner<'tcx> {
                     destination
                 };
 
+                // Always create a local to hold the destination, as `RETURN_PLACE` may appear
+                // where a full `Place` is not allowed.
+                let (remap_destination, destination_local) = if let Some(d) = dest.as_local() {
+                    (false, d)
+                } else {
+                    (
+                        true,
+                        self.new_call_temp(
+                            caller_body,
+                            &callsite,
+                            destination.ty(caller_body, self.tcx).ty,
+                        ),
+                    )
+                };
+
                 // Copy the arguments if needed.
                 let args: Vec<_> = self.make_call_args(args, &callsite, caller_body, &callee_body);
 
@@ -560,7 +575,7 @@ impl<'tcx> Inliner<'tcx> {
                     new_locals: Local::new(caller_body.local_decls.len())..,
                     new_scopes: SourceScope::new(caller_body.source_scopes.len())..,
                     new_blocks: BasicBlock::new(caller_body.basic_blocks.len())..,
-                    destination: dest,
+                    destination: destination_local,
                     callsite_scope: caller_body.source_scopes[callsite.source_info.scope].clone(),
                     callsite,
                     cleanup_block: cleanup,
@@ -591,6 +606,16 @@ impl<'tcx> Inliner<'tcx> {
                     // To avoid repeated O(n) insert, push any new statements to the end and rotate
                     // the slice once.
                     let mut n = 0;
+                    if remap_destination {
+                        caller_body[block].statements.push(Statement {
+                            source_info: callsite.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                dest,
+                                Rvalue::Use(Operand::Move(destination_local.into())),
+                            ))),
+                        });
+                        n += 1;
+                    }
                     for local in callee_body.vars_and_temps_iter().rev() {
                         if !callee_body.local_decls[local].internal
                             && integrator.always_live_locals.contains(local)
@@ -959,7 +984,7 @@ struct Integrator<'a, 'tcx> {
     new_locals: RangeFrom<Local>,
     new_scopes: RangeFrom<SourceScope>,
     new_blocks: RangeFrom<BasicBlock>,
-    destination: Place<'tcx>,
+    destination: Local,
     callsite_scope: SourceScopeData<'tcx>,
     callsite: &'a CallSite<'tcx>,
     cleanup_block: Option<BasicBlock>,
@@ -972,7 +997,7 @@ struct Integrator<'a, 'tcx> {
 impl Integrator<'_, '_> {
     fn map_local(&self, local: Local) -> Local {
         let new = if local == RETURN_PLACE {
-            self.destination.local
+            self.destination
         } else {
             let idx = local.index() - 1;
             if idx < self.args.len() {
@@ -1051,27 +1076,6 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
     fn visit_span(&mut self, span: &mut Span) {
         // Make sure that all spans track the fact that they were inlined.
         *span = span.fresh_expansion(self.expn_data);
-    }
-
-    fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
-        for elem in place.projection {
-            // FIXME: Make sure that return place is not used in an indexing projection, since it
-            // won't be rebased as it is supposed to be.
-            assert_ne!(ProjectionElem::Index(RETURN_PLACE), elem);
-        }
-
-        // If this is the `RETURN_PLACE`, we need to rebase any projections onto it.
-        let dest_proj_len = self.destination.projection.len();
-        if place.local == RETURN_PLACE && dest_proj_len > 0 {
-            let mut projs = Vec::with_capacity(dest_proj_len + place.projection.len());
-            projs.extend(self.destination.projection);
-            projs.extend(place.projection);
-
-            place.projection = self.tcx.intern_place_elems(&*projs);
-        }
-        // Handles integrating any locals that occur in the base
-        // or projections
-        self.super_place(place, context, location)
     }
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
