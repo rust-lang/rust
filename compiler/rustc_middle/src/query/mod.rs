@@ -1809,6 +1809,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// A list of all impls in a crate.
+    query impls_in_crate(_: CrateNum) -> &'tcx [DefId] {
+        eval_always
+        desc { "fetching trait to impl map in a crate" }
+        separate_provide_extern
+    }
+
     /// The list of symbols exported from the given crate.
     ///
     /// - All names contained in `exported_symbols(cnum)` are guaranteed to

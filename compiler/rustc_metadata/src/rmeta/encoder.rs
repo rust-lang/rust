@@ -4,10 +4,9 @@ use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
 use rustc_ast::Attribute;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
@@ -1896,40 +1895,25 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut fx_hash_map: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
             FxHashMap::default();
 
-        for id in tcx.hir().items() {
-            if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
-                if let Some(trait_ref) = tcx.impl_trait_ref(id.owner_id) {
-                    let simplified_self_ty = fast_reject::simplify_type(
-                        self.tcx,
-                        trait_ref.self_ty(),
-                        TreatParams::AsInfer,
-                    );
+        for id in tcx.impls_in_crate(LOCAL_CRATE) {
+            if let Some(trait_ref) = tcx.impl_trait_ref(id) {
+                let simplified_self_ty =
+                    fast_reject::simplify_type(self.tcx, trait_ref.self_ty(), TreatParams::AsInfer);
 
-                    fx_hash_map
-                        .entry(trait_ref.def_id)
-                        .or_default()
-                        .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
-                }
+                fx_hash_map
+                    .entry(trait_ref.def_id)
+                    .or_default()
+                    .push((id.expect_local().local_def_index, simplified_self_ty));
             }
         }
 
-        let mut all_impls: Vec<_> = fx_hash_map.into_iter().collect();
-
-        // Bring everything into deterministic order for hashing
-        all_impls.sort_by_cached_key(|&(trait_def_id, _)| tcx.def_path_hash(trait_def_id));
+        let all_impls: Vec<_> = fx_hash_map.into_iter().collect();
 
         let all_impls: Vec<_> = all_impls
             .into_iter()
-            .map(|(trait_def_id, mut impls)| {
-                // Bring everything into deterministic order for hashing
-                impls.sort_by_cached_key(|&(index, _)| {
-                    tcx.hir().def_path_hash(LocalDefId { local_def_index: index })
-                });
-
-                TraitImpls {
-                    trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                    impls: self.lazy_array(&impls),
-                }
+            .map(|(trait_def_id, impls)| TraitImpls {
+                trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
+                impls: self.lazy_array(&impls),
             })
             .collect();
 
@@ -1940,22 +1924,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let mut all_impls: Vec<_> = tcx.crate_inherent_impls(()).incoherent_impls.iter().collect();
-        tcx.with_stable_hashing_context(|mut ctx| {
-            all_impls.sort_by_cached_key(|&(&simp, _)| {
-                let mut hasher = StableHasher::new();
-                simp.hash_stable(&mut ctx, &mut hasher);
-                hasher.finish::<Fingerprint>()
-            })
-        });
+        let all_impls: Vec<_> = tcx.crate_inherent_impls(()).incoherent_impls.iter().collect();
         let all_impls: Vec<_> = all_impls
             .into_iter()
             .map(|(&simp, impls)| {
-                let mut impls: Vec<_> =
+                let impls: Vec<_> =
                     impls.into_iter().map(|def_id| def_id.local_def_index).collect();
-                impls.sort_by_cached_key(|&local_def_index| {
-                    tcx.hir().def_path_hash(LocalDefId { local_def_index })
-                });
 
                 IncoherentImpls { self_ty: simp, impls: self.lazy_array(impls) }
             })
@@ -2277,9 +2251,21 @@ pub fn provide(providers: &mut Providers) {
                 }
             }
 
-            // Bring everything into deterministic order.
-            traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
+            // We don't need to sort, since the default order is source-code order.
             tcx.arena.alloc_slice(&traits)
+        },
+        impls_in_crate: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+
+            let mut impls = Vec::new();
+            for id in tcx.hir().items() {
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
+                    impls.push(id.owner_id.to_def_id())
+                }
+            }
+
+            // We don't need to sort, since the default order is source-code order.
+            tcx.arena.alloc_slice(&impls)
         },
 
         ..*providers
