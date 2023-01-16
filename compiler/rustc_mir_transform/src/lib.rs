@@ -82,6 +82,7 @@ mod function_item_references;
 mod gvn;
 pub mod inline;
 mod instsimplify;
+mod jump_threading;
 mod large_enums;
 mod lower_intrinsics;
 mod lower_slice_len;
@@ -572,6 +573,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &dataflow_const_prop::DataflowConstProp,
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
+            &jump_threading::JumpThreading,
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &dead_store_elimination::DeadStoreElimination,
