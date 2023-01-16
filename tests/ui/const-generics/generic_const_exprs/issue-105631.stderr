@@ -1,0 +1,43 @@
+error: generic parameters with a default must be trailing
+  --> $DIR/issue-105631.rs:4:16
+   |
+LL | struct A<const B: str = 1, C>;
+   |                ^
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/issue-105631.rs:4:25
+   |
+LL | struct A<const B: str = 1, C>;
+   |                         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: constant expressions must have a statically known size
+
+error[E0308]: mismatched types
+  --> $DIR/issue-105631.rs:4:25
+   |
+LL | struct A<const B: str = 1, C>;
+   |                         ^ expected `str`, found integer
+
+error[E0392]: parameter `C` is never used
+  --> $DIR/issue-105631.rs:4:28
+   |
+LL | struct A<const B: str = 1, C>;
+   |                            ^ unused parameter
+   |
+   = help: consider removing `C`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `C` to be a const parameter, use `const C: usize` instead
+
+error: `str` is forbidden as the type of a const generic parameter
+  --> $DIR/issue-105631.rs:4:19
+   |
+LL | struct A<const B: str = 1, C>;
+   |                   ^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = help: more complex types are supported with `#![feature(adt_const_params)]`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0392.
+For more information about an error, try `rustc --explain E0277`.

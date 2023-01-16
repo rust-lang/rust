@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-106473.rs:6:27
+   |
+LL | struct V<const U: usize = DEFAULT>
+   |                           ^^^^^^^ expected `usize`, found `u32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

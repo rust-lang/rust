@@ -1,0 +1,10 @@
+error: unconstrained generic constant
+  --> $DIR/issue-101036.rs:13:9
+   |
+LL |     A = t::<N>() as u8, B
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); t::<N>() as u8]:`
+
+error: aborting due to previous error
+

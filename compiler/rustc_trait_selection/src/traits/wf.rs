@@ -3,8 +3,8 @@ use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 
 use std::iter;
@@ -452,7 +452,24 @@ impl<'tcx> WfPredicates<'tcx> {
                     match ct.kind() {
                         ty::ConstKind::Unevaluated(uv) => {
                             if !ct.has_escaping_bound_vars() {
-                                let obligations = self.nominal_obligations(uv.def.did, uv.substs);
+                                let substs = if let Some(did) = uv.def.did.as_local()
+                                    && self
+                                        .tcx
+                                        .hir()
+                                        .opt_const_param_default_param_def_id(
+                                            self.tcx.hir().local_def_id_to_hir_id(did),
+                                        )
+                                        .is_some()
+                                    && let Some(did) = self.tcx.opt_parent(uv.def.did)
+                                {
+                                    // HACK(TaKO8Ki) `WfPredicates::nominal_obligations` calls `SubstsFolder::fold_const` in it.
+                                    // If `uv.substs` is used, it will cause an ICE because `uv.substs` does not include the const.
+                                    // `substs` argument `WfPredicates::nominal_obligations` should be parent substs here.
+                                    InternalSubsts::identity_for_item(self.tcx, did)
+                                } else {
+                                    uv.substs
+                                };
+                                let obligations = self.nominal_obligations(uv.def.did, substs);
                                 self.out.extend(obligations);
 
                                 let predicate =
