@@ -598,6 +598,21 @@ fn main() {
 }
 
 #[test]
+fn doctest_desugar_doc_comment() {
+    check_doc_test(
+        "desugar_doc_comment",
+        r#####"
+/// Multi-line$0
+/// comment
+"#####,
+        r#####"
+#[doc = r"Multi-line
+comment"]
+"#####,
+    )
+}
+
+#[test]
 fn doctest_expand_glob_import() {
     check_doc_test(
         "expand_glob_import",

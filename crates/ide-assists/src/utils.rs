@@ -758,3 +758,24 @@ pub(crate) fn convert_param_list_to_arg_list(list: ast::ParamList) -> ast::ArgLi
     }
     make::arg_list(args)
 }
+
+/// Calculate the number of hashes required for a raw string containing `s`
+pub(crate) fn required_hashes(s: &str) -> usize {
+    let mut res = 0usize;
+    for idx in s.match_indices('"').map(|(i, _)| i) {
+        let (_, sub) = s.split_at(idx + 1);
+        let n_hashes = sub.chars().take_while(|c| *c == '#').count();
+        res = res.max(n_hashes + 1)
+    }
+    res
+}
+#[test]
+fn test_required_hashes() {
+    assert_eq!(0, required_hashes("abc"));
+    assert_eq!(0, required_hashes("###"));
+    assert_eq!(1, required_hashes("\""));
+    assert_eq!(2, required_hashes("\"#abc"));
+    assert_eq!(0, required_hashes("#abc"));
+    assert_eq!(3, required_hashes("#ab\"##c"));
+    assert_eq!(5, required_hashes("#ab\"##\"####c"));
+}
