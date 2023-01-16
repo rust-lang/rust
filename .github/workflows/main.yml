@@ -114,6 +114,14 @@ jobs:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
       run: ./y.rs test
 
+    - name: Test abi-cafe
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+      run: |
+        if [[ "$(rustc -vV | grep host | cut -d' ' -f2)" == "$TARGET_TRIPLE" ]]; then
+          ./y.rs abi-cafe
+        fi
+
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz dist
 

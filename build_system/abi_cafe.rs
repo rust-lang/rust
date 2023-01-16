@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use super::build_sysroot;
-use super::config;
 use super::path::Dirs;
 use super::prepare::GitRepo;
 use super::utils::{spawn_and_wait, CargoProject, Compiler};
@@ -20,11 +19,6 @@ pub(crate) fn run(
     cg_clif_dylib: &Path,
     bootstrap_host_compiler: &Compiler,
 ) {
-    if !config::get_bool("testsuite.abi-cafe") {
-        eprintln!("[RUN] abi-cafe (skipped)");
-        return;
-    }
-
     eprintln!("Building sysroot for abi-cafe");
     build_sysroot::build_sysroot(
         dirs,

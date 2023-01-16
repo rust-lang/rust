@@ -32,6 +32,7 @@ enum Command {
     Prepare,
     Build,
     Test,
+    AbiCafe,
     Bench,
 }
 
@@ -61,6 +62,7 @@ pub fn main() {
         Some("prepare") => Command::Prepare,
         Some("build") => Command::Build,
         Some("test") => Command::Test,
+        Some("abi-cafe") => Command::AbiCafe,
         Some("bench") => Command::Bench,
         Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
         Some(command) => arg_error!("Unknown command {}", command),
@@ -156,19 +158,13 @@ pub fn main() {
                 &bootstrap_host_compiler,
                 target_triple.clone(),
             );
-
-            if bootstrap_host_compiler.triple == target_triple {
-                abi_cafe::run(
-                    channel,
-                    sysroot_kind,
-                    &dirs,
-                    &cg_clif_dylib,
-                    &bootstrap_host_compiler,
-                );
-            } else {
-                eprintln!("[RUN] abi-cafe (skipped, cross-compilation not supported)");
-                return;
+        }
+        Command::AbiCafe => {
+            if bootstrap_host_compiler.triple != target_triple {
+                eprintln!("Abi-cafe doesn't support cross-compilation");
+                process::exit(1);
             }
+            abi_cafe::run(channel, sysroot_kind, &dirs, &cg_clif_dylib, &bootstrap_host_compiler);
         }
         Command::Build => {
             build_sysroot::build_sysroot(

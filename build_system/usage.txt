@@ -4,6 +4,7 @@ USAGE:
     ./y.rs prepare [--out-dir DIR]
     ./y.rs build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
     ./y.rs test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
+    ./y.rs abi-cafe [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
     ./y.rs bench [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
 
 OPTIONS:

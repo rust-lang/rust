@@ -49,5 +49,3 @@ test.libcore
 test.regex-shootout-regex-dna
 test.regex
 test.portable-simd
-
-testsuite.abi-cafe
