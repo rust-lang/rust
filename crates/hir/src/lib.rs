@@ -2791,12 +2791,17 @@ impl Impl {
         all
     }
 
-    // FIXME: the return type is wrong. This should be a hir version of
-    // `TraitRef` (to account for parameters and qualifiers)
     pub fn trait_(self, db: &dyn HirDatabase) -> Option<Trait> {
-        let trait_ref = db.impl_trait(self.id)?.skip_binders().clone();
-        let id = hir_ty::from_chalk_trait_id(trait_ref.trait_id);
+        let trait_ref = db.impl_trait(self.id)?;
+        let id = trait_ref.skip_binders().hir_trait_id();
         Some(Trait { id })
+    }
+
+    pub fn trait_ref(self, db: &dyn HirDatabase) -> Option<TraitRef> {
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let trait_ref = db.impl_trait(self.id)?.substitute(Interner, &substs);
+        let resolver = self.id.resolver(db.upcast());
+        Some(TraitRef::new_with_resolver(db, &resolver, trait_ref))
     }
 
     pub fn self_ty(self, db: &dyn HirDatabase) -> Type {
@@ -2821,6 +2826,48 @@ impl Impl {
     pub fn is_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
         let src = self.source(db)?;
         src.file_id.is_builtin_derive(db.upcast())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct TraitRef {
+    env: Arc<TraitEnvironment>,
+    trait_ref: hir_ty::TraitRef,
+}
+
+impl TraitRef {
+    pub(crate) fn new_with_resolver(
+        db: &dyn HirDatabase,
+        resolver: &Resolver,
+        trait_ref: hir_ty::TraitRef,
+    ) -> TraitRef {
+        let env = resolver.generic_def().map_or_else(
+            || Arc::new(TraitEnvironment::empty(resolver.krate())),
+            |d| db.trait_environment(d),
+        );
+        TraitRef { env, trait_ref }
+    }
+
+    pub fn trait_(&self) -> Trait {
+        let id = self.trait_ref.hir_trait_id();
+        Trait { id }
+    }
+
+    pub fn self_ty(&self) -> Type {
+        let ty = self.trait_ref.self_type_parameter(Interner);
+        Type { env: self.env.clone(), ty }
+    }
+
+    /// Returns `idx`-th argument of this trait reference if it is a type argument. Note that the
+    /// first argument is the `Self` type.
+    pub fn get_type_argument(&self, idx: usize) -> Option<Type> {
+        self.trait_ref
+            .substitution
+            .as_slice(Interner)
+            .get(idx)
+            .and_then(|arg| arg.ty(Interner))
+            .cloned()
+            .map(|ty| Type { env: self.env.clone(), ty })
     }
 }
 
