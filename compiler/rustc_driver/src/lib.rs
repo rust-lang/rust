@@ -333,8 +333,6 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.global_ctxt()?;
-
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {
