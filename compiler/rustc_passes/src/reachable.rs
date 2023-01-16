@@ -5,6 +5,8 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
+// use hir::def_id::LOCAL_CRATE;
+// use hir::{ItemId, OwnerId};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -325,6 +327,7 @@ fn check_item<'tcx>(
     }
 
     // We need only trait impls here, not inherent impls, and only non-exported ones
+    // todo can this be made more efficient
     let item = tcx.hir().item(id);
     if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
         item.kind
@@ -406,9 +409,22 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
         // trait items are used from inlinable code through method call syntax or UFCS, or their
         // trait is a lang item.
         let crate_items = tcx.hir_crate_items(());
+        // let impl_items = crate_items.impl_items();
+        // let my_impl_items = tcx.impls_in_crate(LOCAL_CRATE);
+
+        // if impl_items.collect::<Vec<_>>().len() != my_impl_items.len() {
+        //     // todo remove
+        //     panic!("Different length :'(");
+        // }
 
         for id in crate_items.items() {
-            check_item(tcx, id, &mut reachable_context.worklist, effective_visibilities);
+            check_item(
+                tcx,
+                // ItemId { owner_id: OwnerId { def_id: id.expect_local() } },
+                id,
+                &mut reachable_context.worklist,
+                effective_visibilities,
+            );
         }
 
         for id in crate_items.impl_items() {
@@ -416,6 +432,14 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
                 reachable_context.worklist.push(id.owner_id.def_id);
             }
         }
+
+        /*
+        for def_id in tcx.impls_in_crate(LOCAL_CRATE) {
+            if has_custom_linkage(tcx, def_id.expect_local()) {
+                reachable_context.worklist.push(def_id.expect_local());
+            }
+        }
+        */
     }
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.

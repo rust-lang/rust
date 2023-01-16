@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::{HirId, Impl, ItemId, ItemKind, Node, OwnerId, Path, QPath, TraitRef, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::AssocKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -51,10 +52,12 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
-        for id in cx.tcx.hir().items() {
-            if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl)
-                && let item = cx.tcx.hir().item(id)
-                && let ItemKind::Impl(Impl {
+        for id in cx.tcx.impls_in_crate(LOCAL_CRATE) {
+            let id = ItemId { owner_id: OwnerId { def_id: id.expect_local() } };
+            // todo can I make this impls_in_crate?
+            debug_assert!(matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl));
+            let item = cx.tcx.hir().item(id);
+            if let ItemKind::Impl(Impl {
                   items,
                   of_trait,
                   self_ty,

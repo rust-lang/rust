@@ -179,9 +179,7 @@ impl<'tcx> InherentCollect<'tcx> {
     }
 
     fn check_item(&mut self, id: hir::ItemId) {
-        if !matches!(self.tcx.def_kind(id.owner_id), DefKind::Impl) {
-            return;
-        }
+        debug_assert!(matches!(self.tcx.def_kind(id.owner_id), DefKind::Impl));
 
         let item = self.tcx.hir().item(id);
         let hir::ItemKind::Impl(hir::Impl { of_trait: None, self_ty: ty, ref items, .. }) = item.kind else {
