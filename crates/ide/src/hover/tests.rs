@@ -527,6 +527,7 @@ fn hover_field_offset() {
     // Hovering over the field when instantiating
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
 "#,
         expect![[r#"
@@ -548,6 +549,7 @@ fn hover_shows_struct_field_info() {
     // Hovering over the field when instantiating
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 struct Foo { field_a: u32 }
 
 fn main() {
@@ -570,6 +572,7 @@ fn main() {
     // Hovering over the field in the definition
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 struct Foo { field_a$0: u32 }
 
 fn main() {
@@ -1515,6 +1518,8 @@ fn my() {}
 fn test_hover_struct_doc_comment() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
+
 /// This is an example
 /// multiline doc
 ///
@@ -1573,7 +1578,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0, align = 1
+            struct Bar
             ```
 
             ---
@@ -1602,7 +1607,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0, align = 1
+            struct Bar
             ```
 
             ---
@@ -1630,7 +1635,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar // size = 0, align = 1
+            pub struct Bar
             ```
 
             ---
@@ -1657,7 +1662,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar // size = 0, align = 1
+            pub struct Bar
             ```
 
             ---
@@ -2959,6 +2964,8 @@ fn main() { let foo_test = name_with_dashes::wrapper::Thing::new$0(); }
 fn hover_field_pat_shorthand_ref_match_ergonomics() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
+
 struct S {
     f: i32,
 }
@@ -4398,6 +4405,7 @@ fn main() {
 fn hover_intra_doc_links() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 
 pub mod theitem {
     /// This is the item. Cool!
@@ -4539,7 +4547,7 @@ trait A where
 fn string_shadowed_with_inner_items() {
     check(
         r#"
-//- /main.rs crate:main deps:alloc
+//- /main.rs crate:main deps:alloc target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 
 /// Custom `String` type.
 struct String;
@@ -5234,7 +5242,7 @@ foo_macro!(
             ```
 
             ```rust
-            pub struct Foo // size = 0, align = 1
+            pub struct Foo
             ```
 
             ---
@@ -5248,6 +5256,8 @@ foo_macro!(
 fn hover_intra_in_attr() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
+
 #[doc = "Doc comment for [`Foo$0`]"]
 pub struct Foo(i32);
 "#,
@@ -5368,6 +5378,8 @@ enum Enum {
 fn hover_record_variant_field() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
+
 enum Enum {
     RecordV { field$0: u32 }
 }
