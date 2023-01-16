@@ -1252,6 +1252,35 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     pub fn is_empty(&self) -> bool {
         self.predicates.is_empty()
     }
+
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        (&self).into_iter()
+    }
+}
+
+impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
+    type Item = (Predicate<'tcx>, Span);
+
+    type IntoIter = std::iter::Zip<std::vec::IntoIter<Predicate<'tcx>>, std::vec::IntoIter<Span>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        debug_assert_eq!(self.predicates.len(), self.spans.len());
+        std::iter::zip(self.predicates, self.spans)
+    }
+}
+
+impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
+    type Item = (Predicate<'tcx>, Span);
+
+    type IntoIter = std::iter::Zip<
+        std::iter::Copied<std::slice::Iter<'a, Predicate<'tcx>>>,
+        std::iter::Copied<std::slice::Iter<'a, Span>>,
+    >;
+
+    fn into_iter(self) -> Self::IntoIter {
+        debug_assert_eq!(self.predicates.len(), self.spans.len());
+        std::iter::zip(self.predicates.iter().copied(), self.spans.iter().copied())
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable, Lift)]

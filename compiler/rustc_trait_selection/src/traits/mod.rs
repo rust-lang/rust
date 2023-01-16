@@ -115,14 +115,12 @@ pub fn predicates_for_generics<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    std::iter::zip(generic_bounds.predicates, generic_bounds.spans).enumerate().map(
-        move |(idx, (predicate, span))| Obligation {
-            cause: cause(idx, span),
-            recursion_depth: 0,
-            param_env,
-            predicate,
-        },
-    )
+    generic_bounds.into_iter().enumerate().map(move |(idx, (predicate, span))| Obligation {
+        cause: cause(idx, span),
+        recursion_depth: 0,
+        param_env,
+        predicate,
+    })
 }
 
 /// Determines whether the type `ty` is known to meet `bound` and

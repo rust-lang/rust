@@ -666,20 +666,6 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::EarlyBinder(self.item_bounds(def_id))
     }
 
-    pub fn bound_predicates_of(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<ty::generics::GenericPredicates<'tcx>> {
-        ty::EarlyBinder(self.predicates_of(def_id))
-    }
-
-    pub fn bound_explicit_predicates_of(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<ty::generics::GenericPredicates<'tcx>> {
-        ty::EarlyBinder(self.explicit_predicates_of(def_id))
-    }
-
     pub fn bound_impl_subject(self, def_id: DefId) -> ty::EarlyBinder<ty::ImplSubject<'tcx>> {
         ty::EarlyBinder(self.impl_subject(def_id))
     }

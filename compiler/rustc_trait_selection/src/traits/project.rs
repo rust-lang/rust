@@ -2259,25 +2259,23 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         tcx.predicates_of(impl_fn_def_id).instantiate(tcx, impl_fn_substs),
         &mut obligations,
     );
-    obligations.extend(std::iter::zip(predicates.predicates, predicates.spans).map(
-        |(pred, span)| {
-            Obligation::with_depth(
-                tcx,
-                ObligationCause::new(
-                    obligation.cause.span,
-                    obligation.cause.body_id,
-                    if span.is_dummy() {
-                        super::ItemObligation(impl_fn_def_id)
-                    } else {
-                        super::BindingObligation(impl_fn_def_id, span)
-                    },
-                ),
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                pred,
-            )
-        },
-    ));
+    obligations.extend(predicates.into_iter().map(|(pred, span)| {
+        Obligation::with_depth(
+            tcx,
+            ObligationCause::new(
+                obligation.cause.span,
+                obligation.cause.body_id,
+                if span.is_dummy() {
+                    super::ItemObligation(impl_fn_def_id)
+                } else {
+                    super::BindingObligation(impl_fn_def_id, span)
+                },
+            ),
+            obligation.recursion_depth + 1,
+            obligation.param_env,
+            pred,
+        )
+    }));
 
     let ty = normalize_with_depth_to(
         selcx,
@@ -2303,10 +2301,10 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
     nested: &mut Vec<PredicateObligation<'tcx>>,
 ) {
     let tcx = selcx.tcx();
-    let own = tcx
+    let predicates = tcx
         .predicates_of(obligation.predicate.def_id)
         .instantiate_own(tcx, obligation.predicate.substs);
-    for (predicate, span) in std::iter::zip(own.predicates, own.spans) {
+    for (predicate, span) in predicates {
         let normalized = normalize_with_depth_to(
             selcx,
             obligation.param_env,

@@ -639,6 +639,13 @@ where
     }
 }
 
+impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIter<'_, 'tcx, I>
+where
+    I::IntoIter: ExactSizeIterator,
+    I::Item: TypeFoldable<'tcx>,
+{
+}
+
 impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
 where
     I::Item: Deref,
@@ -684,6 +691,14 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         Some(EarlyBinder(*self.it.next_back()?).subst(self.tcx, self.substs))
     }
+}
+
+impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIterCopied<'_, 'tcx, I>
+where
+    I::IntoIter: ExactSizeIterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
 }
 
 pub struct EarlyBinderIter<T> {

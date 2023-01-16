@@ -19,7 +19,6 @@ use rustc_middle::ty::{InternalSubsts, UserSubsts, UserType};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
 
-use std::iter;
 use std::ops::Deref;
 
 struct ConfirmContext<'a, 'tcx> {
@@ -101,7 +100,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let filler_substs = rcvr_substs
             .extend_to(self.tcx, pick.item.def_id, |def, _| self.tcx.mk_param_from_def(def));
         let illegal_sized_bound = self.predicates_require_illegal_sized_bound(
-            &self.tcx.predicates_of(pick.item.def_id).instantiate(self.tcx, filler_substs),
+            self.tcx.predicates_of(pick.item.def_id).instantiate(self.tcx, filler_substs),
         );
 
         // Unify the (adjusted) self type with what the method expects.
@@ -565,7 +564,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
     fn predicates_require_illegal_sized_bound(
         &self,
-        predicates: &ty::InstantiatedPredicates<'tcx>,
+        predicates: ty::InstantiatedPredicates<'tcx>,
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
@@ -575,10 +574,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
                     if trait_pred.def_id() == sized_def_id =>
                 {
-                    let span = iter::zip(&predicates.predicates, &predicates.spans)
+                    let span = predicates
+                        .iter()
                         .find_map(
                             |(p, span)| {
-                                if *p == obligation.predicate { Some(*span) } else { None }
+                                if p == obligation.predicate { Some(span) } else { None }
                             },
                         )
                         .unwrap_or(rustc_span::DUMMY_SP);
