@@ -2459,6 +2459,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let pretty = parse_pretty(&unstable_opts, error_format);
 
+    // query-dep-graph is required if dump-dep-graph is given #106736
+    if unstable_opts.dump_dep_graph && !unstable_opts.query_dep_graph {
+        early_error(error_format, "can't dump dependency graph without `-Z query-dep-graph`");
+    }
+
     // Try to find a directory containing the Rust `src`, for more details see
     // the doc comment on the `real_rust_source_base_dir` field.
     let tmp_buf;
