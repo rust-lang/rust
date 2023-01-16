@@ -64,6 +64,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             tcx,
             param_env,
             mir_phase,
+            unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
             storage_liveness,
             place_cache: Vec::new(),
@@ -80,6 +81,7 @@ struct TypeChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
+    unwind_edge_count: usize,
     reachable_blocks: BitSet<BasicBlock>,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive<'static>>,
     place_cache: Vec<PlaceRef<'tcx>>,
@@ -104,7 +106,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
-    fn check_edge(&self, location: Location, bb: BasicBlock, edge_kind: EdgeKind) {
+    fn check_edge(&mut self, location: Location, bb: BasicBlock, edge_kind: EdgeKind) {
         if bb == START_BLOCK {
             self.fail(location, "start block must not have predecessors")
         }
@@ -113,10 +115,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             match (src.is_cleanup, bb.is_cleanup, edge_kind) {
                 // Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
                 (false, false, EdgeKind::Normal)
-                // Non-cleanup blocks can jump to cleanup blocks along unwind edges
-                | (false, true, EdgeKind::Unwind)
                 // Cleanup blocks can jump to cleanup blocks along non-unwind edges
                 | (true, true, EdgeKind::Normal) => {}
+                // Non-cleanup blocks can jump to cleanup blocks along unwind edges
+                (false, true, EdgeKind::Unwind) => {
+                    self.unwind_edge_count += 1;
+                }
                 // All other jumps are invalid
                 _ => {
                     self.fail(
@@ -137,6 +141,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     fn check_cleanup_control_flow(&self) {
+        if self.unwind_edge_count <= 1 {
+            return;
+        }
         let doms = self.body.basic_blocks.dominators();
         let mut post_contract_node = FxHashMap::default();
         // Reusing the allocation across invocations of the closure
@@ -196,7 +203,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             stack.clear();
             stack.insert(bb);
             loop {
-                let Some(parent )= parent[bb].take() else {
+                let Some(parent)= parent[bb].take() else {
                     break
                 };
                 let no_cycle = stack.insert(parent);
