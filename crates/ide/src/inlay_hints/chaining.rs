@@ -72,10 +72,7 @@ mod tests {
     use expect_test::expect;
 
     use crate::{
-        inlay_hints::tests::{
-            check_expect, check_with_config, DISABLED_CONFIG, DISABLED_CONFIG_WITH_LINKS,
-            TEST_CONFIG,
-        },
+        inlay_hints::tests::{check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG},
         InlayHintsConfig,
     };
 
@@ -87,11 +84,7 @@ mod tests {
     #[test]
     fn chaining_hints_ignore_comments() {
         check_expect(
-            InlayHintsConfig {
-                type_hints: false,
-                chaining_hints: true,
-                ..DISABLED_CONFIG_WITH_LINKS
-            },
+            InlayHintsConfig { type_hints: false, chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 struct A(B);
 impl A { fn into_b(self) -> B { self.0 } }
@@ -197,14 +190,40 @@ fn main() {
                         range: 143..190,
                         kind: Chaining,
                         label: [
-                            "C",
+                            "",
+                            InlayHintLabelPart {
+                                text: "C",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 51..52,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            "",
                         ],
                     },
                     InlayHint {
                         range: 143..179,
                         kind: Chaining,
                         label: [
-                            "B",
+                            "",
+                            InlayHintLabelPart {
+                                text: "B",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 29..30,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            "",
                         ],
                     },
                 ]
@@ -215,7 +234,7 @@ fn main() {
     #[test]
     fn struct_access_chaining_hints() {
         check_expect(
-            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG_WITH_LINKS },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 struct A { pub b: B }
 struct B { pub c: C }
@@ -284,7 +303,7 @@ fn main() {
     #[test]
     fn generic_chaining_hints() {
         check_expect(
-            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG_WITH_LINKS },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 struct A<T>(T);
 struct B<T>(T);
@@ -380,7 +399,7 @@ fn main() {
     #[test]
     fn shorten_iterator_chaining_hints() {
         check_expect(
-            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG_WITH_LINKS },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 //- minicore: iterators
 use core::iter;

@@ -183,8 +183,6 @@ fn run_server() -> Result<()> {
         }
     }
 
-    config.client_specific_adjustments(&initialize_params.client_info);
-
     let server_capabilities = rust_analyzer::server_capabilities(&config);
 
     let initialize_result = lsp_types::InitializeResult {
