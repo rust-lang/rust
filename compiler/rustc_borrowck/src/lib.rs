@@ -5,7 +5,6 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
@@ -18,7 +17,6 @@ extern crate rustc_middle;
 extern crate tracing;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -30,7 +28,7 @@ use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, NonDivergingIntrinsic, Operand,
     Place, PlaceElem, PlaceRef, VarDebugInfoContents,
 };
-use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
+use rustc_middle::mir::{AggregateKind, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
@@ -40,7 +38,6 @@ use rustc_span::{Span, Symbol};
 
 use either::Either;
 use smallvec::SmallVec;
-use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -335,7 +332,6 @@ fn do_mir_borrowck<'tcx>(
                 used_mut: Default::default(),
                 used_mut_upvars: SmallVec::new(),
                 borrow_set: Rc::clone(&borrow_set),
-                dominators: Default::default(),
                 upvars: Vec::new(),
                 local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
                 region_names: RefCell::default(),
@@ -364,7 +360,6 @@ fn do_mir_borrowck<'tcx>(
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set: Rc::clone(&borrow_set),
-        dominators: Default::default(),
         upvars,
         local_names,
         region_names: RefCell::default(),
@@ -532,9 +527,6 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
 
     /// The set of borrows extracted from the MIR
     borrow_set: Rc<BorrowSet<'tcx>>,
-
-    /// Dominators for MIR
-    dominators: OnceCell<Dominators<BasicBlock>>,
 
     /// Information about upvars not necessarily preserved in types or MIR
     upvars: Vec<Upvar<'tcx>>,
@@ -1051,7 +1043,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 (Read(kind), BorrowKind::Unique | BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
-                    if !is_active(this.dominators(), borrow, location) {
+                    if !is_active(this.body.basic_blocks.dominators(), borrow, location) {
                         assert!(allow_two_phase_borrow(borrow.kind));
                         return Control::Continue;
                     }
@@ -2218,10 +2210,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// of a closure type.
     fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<Field> {
         path_utils::is_upvar_field_projection(self.infcx.tcx, &self.upvars, place_ref, self.body())
-    }
-
-    fn dominators(&self) -> &Dominators<BasicBlock> {
-        self.dominators.get_or_init(|| self.body.basic_blocks.dominators())
     }
 }
 

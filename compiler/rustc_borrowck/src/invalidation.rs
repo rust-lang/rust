@@ -1,8 +1,7 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{self, BasicBlock, Body, Location, NonDivergingIntrinsic, Place, Rvalue};
+use rustc_middle::mir::{self, Body, Location, NonDivergingIntrinsic, Place, Rvalue};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{Statement, StatementKind};
@@ -28,15 +27,8 @@ pub(super) fn generate_invalidates<'tcx>(
 
     if let Some(all_facts) = all_facts {
         let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
-        let dominators = body.basic_blocks.dominators();
-        let mut ig = InvalidationGenerator {
-            all_facts,
-            borrow_set,
-            tcx,
-            location_table,
-            body: &body,
-            dominators,
-        };
+        let mut ig =
+            InvalidationGenerator { all_facts, borrow_set, tcx, location_table, body: &body };
         ig.visit_body(body);
     }
 }
@@ -46,7 +38,6 @@ struct InvalidationGenerator<'cx, 'tcx> {
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
     body: &'cx Body<'tcx>,
-    dominators: Dominators<BasicBlock>,
     borrow_set: &'cx BorrowSet<'tcx>,
 }
 
@@ -389,7 +380,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
                     (Read(_), BorrowKind::Unique | BorrowKind::Mut { .. }) => {
                         // Reading from mere reservations of mutable-borrows is OK.
-                        if !is_active(&this.dominators, borrow, location) {
+                        if !is_active(this.body.basic_blocks.dominators(), borrow, location) {
                             // If the borrow isn't active yet, reads don't invalidate it
                             assert!(allow_two_phase_borrow(borrow.kind));
                             return Control::Continue;

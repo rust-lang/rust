@@ -23,6 +23,7 @@ pub type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u1
 
 #[derive(Clone, Default, Debug)]
 struct Cache {
+    dominators: OnceCell<Dominators<BasicBlock>>,
     predecessors: OnceCell<Predecessors>,
     switch_sources: OnceCell<SwitchSources>,
     is_cyclic: OnceCell<bool>,
@@ -42,8 +43,8 @@ impl<'tcx> BasicBlocks<'tcx> {
     }
 
     #[inline]
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
-        dominators(&self)
+    pub fn dominators(&self) -> &Dominators<BasicBlock> {
+        self.cache.dominators.get_or_init(|| dominators(self))
     }
 
     /// Returns predecessors for each basic block.
