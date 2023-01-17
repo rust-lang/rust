@@ -11,6 +11,10 @@ help: you might want to use `if let` to ignore the variants that aren't matched
    |
 LL |     let x: [i32; { if let 0 = 0 { todo!() } 0 }] = [];
    |                    ++           ~~~~~~~~~~~
+help: alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
+   |
+LL |     let x: [i32; { let _0 = 0; 0 }] = [];
+   |                        +
 
 error: aborting due to previous error
 

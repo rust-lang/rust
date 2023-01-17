@@ -185,7 +185,6 @@ trigger_files = [
     "src/tools/x",
     "configure",
     "Cargo.toml",
-    "Cargo.lock",
     "config.toml.example",
     "src/stage0.json"
 ]

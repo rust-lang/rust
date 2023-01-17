@@ -770,6 +770,8 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[subdiagnostic]
     pub let_suggestion: Option<SuggestLet>,
     #[subdiagnostic]
+    pub misc_suggestion: Option<MiscPatternSuggestion>,
+    #[subdiagnostic]
     pub res_defined_here: Option<ResDefinedHere>,
 }
 
@@ -846,5 +848,18 @@ pub enum SuggestLet {
         #[primary_span]
         end_span: Span,
         count: usize,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum MiscPatternSuggestion {
+    #[suggestion(
+        mir_build_suggest_attempted_int_lit,
+        code = "_",
+        applicability = "maybe-incorrect"
+    )]
+    AttemptedIntegerLiteral {
+        #[primary_span]
+        start_span: Span,
     },
 }

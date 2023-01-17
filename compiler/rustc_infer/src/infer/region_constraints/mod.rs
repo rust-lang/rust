@@ -12,10 +12,8 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
-use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
-use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReLateBound, ReVar};
@@ -169,8 +167,7 @@ pub struct Verify<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
-    Projection(ty::AliasTy<'tcx>),
-    Opaque(DefId, SubstsRef<'tcx>),
+    Alias(ty::AliasKind, ty::AliasTy<'tcx>),
 }
 
 /// Describes the things that some `GenericKind` value `G` is known to
@@ -749,9 +746,9 @@ impl<'tcx> fmt::Debug for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{:?}", p),
-            GenericKind::Projection(ref p) => write!(f, "{:?}", p),
-            GenericKind::Opaque(def_id, substs) => ty::tls::with(|tcx| {
-                write!(f, "{}", tcx.def_path_str_with_substs(def_id, tcx.lift(substs).unwrap()))
+            GenericKind::Alias(ty::Projection, ref p) => write!(f, "{:?}", p),
+            GenericKind::Alias(ty::Opaque, ref p) => ty::tls::with(|tcx| {
+                write!(f, "{}", tcx.def_path_str_with_substs(p.def_id, tcx.lift(p.substs).unwrap()))
             }),
         }
     }
@@ -761,9 +758,9 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{}", p),
-            GenericKind::Projection(ref p) => write!(f, "{}", p),
-            GenericKind::Opaque(def_id, substs) => ty::tls::with(|tcx| {
-                write!(f, "{}", tcx.def_path_str_with_substs(def_id, tcx.lift(substs).unwrap()))
+            GenericKind::Alias(ty::Projection, ref p) => write!(f, "{}", p),
+            GenericKind::Alias(ty::Opaque, ref p) => ty::tls::with(|tcx| {
+                write!(f, "{}", tcx.def_path_str_with_substs(p.def_id, tcx.lift(p.substs).unwrap()))
             }),
         }
     }
@@ -773,8 +770,7 @@ impl<'tcx> GenericKind<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
-            GenericKind::Projection(ref p) => tcx.mk_projection(p.def_id, p.substs),
-            GenericKind::Opaque(def_id, substs) => tcx.mk_opaque(def_id, substs),
+            GenericKind::Alias(kind, data) => tcx.mk_ty(ty::Alias(kind, data)),
         }
     }
 }
