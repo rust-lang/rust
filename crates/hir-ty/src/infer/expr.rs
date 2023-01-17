@@ -10,8 +10,7 @@ use chalk_ir::{
 };
 use hir_def::{
     expr::{
-        ArithOp, Array, BinaryOp, ClosureKind, CmpOp, Expr, ExprId, LabelId, Literal, Statement,
-        UnaryOp,
+        ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     generics::TypeOrConstParamData,
     path::{GenericArg, GenericArgs},
@@ -1017,11 +1016,21 @@ impl<'a> InferenceContext<'a> {
         let (trait_, func) = match trait_func {
             Some(it) => it,
             None => {
-                let rhs_ty = self.builtin_binary_op_rhs_expectation(op, lhs_ty.clone());
-                let rhs_ty = self.infer_expr_coerce(rhs, &Expectation::from_option(rhs_ty));
-                return self
-                    .builtin_binary_op_return_ty(op, lhs_ty, rhs_ty)
-                    .unwrap_or_else(|| self.err_ty());
+                // HACK: `rhs_ty` is a general inference variable with no clue at all at this
+                // point. Passing `lhs_ty` as both operands just to check if `lhs_ty` is a builtin
+                // type applicable to `op`.
+                let ret_ty = if self.is_builtin_binop(&lhs_ty, &lhs_ty, op) {
+                    // Assume both operands are builtin so we can continue inference. No guarantee
+                    // on the correctness, rustc would complain as necessary lang items don't seem
+                    // to exist anyway.
+                    self.enforce_builtin_binop_types(&lhs_ty, &rhs_ty, op)
+                } else {
+                    self.err_ty()
+                };
+
+                self.infer_expr_coerce(rhs, &Expectation::has_type(rhs_ty));
+
+                return ret_ty;
             }
         };
 
@@ -1473,97 +1482,6 @@ impl<'a> InferenceContext<'a> {
         let mut indices = data.legacy_const_generics_indices.clone();
         indices.sort();
         indices
-    }
-
-    fn builtin_binary_op_return_ty(&mut self, op: BinaryOp, lhs_ty: Ty, rhs_ty: Ty) -> Option<Ty> {
-        let lhs_ty = self.resolve_ty_shallow(&lhs_ty);
-        let rhs_ty = self.resolve_ty_shallow(&rhs_ty);
-        match op {
-            BinaryOp::LogicOp(_) | BinaryOp::CmpOp(_) => {
-                Some(TyKind::Scalar(Scalar::Bool).intern(Interner))
-            }
-            BinaryOp::Assignment { .. } => Some(TyBuilder::unit()),
-            BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => {
-                // all integer combinations are valid here
-                if matches!(
-                    lhs_ty.kind(Interner),
-                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
-                        | TyKind::InferenceVar(_, TyVariableKind::Integer)
-                ) && matches!(
-                    rhs_ty.kind(Interner),
-                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
-                        | TyKind::InferenceVar(_, TyVariableKind::Integer)
-                ) {
-                    Some(lhs_ty)
-                } else {
-                    None
-                }
-            }
-            BinaryOp::ArithOp(_) => match (lhs_ty.kind(Interner), rhs_ty.kind(Interner)) {
-                // (int, int) | (uint, uint) | (float, float)
-                (TyKind::Scalar(Scalar::Int(_)), TyKind::Scalar(Scalar::Int(_)))
-                | (TyKind::Scalar(Scalar::Uint(_)), TyKind::Scalar(Scalar::Uint(_)))
-                | (TyKind::Scalar(Scalar::Float(_)), TyKind::Scalar(Scalar::Float(_))) => {
-                    Some(rhs_ty)
-                }
-                // ({int}, int) | ({int}, uint)
-                (
-                    TyKind::InferenceVar(_, TyVariableKind::Integer),
-                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)),
-                ) => Some(rhs_ty),
-                // (int, {int}) | (uint, {int})
-                (
-                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)),
-                    TyKind::InferenceVar(_, TyVariableKind::Integer),
-                ) => Some(lhs_ty),
-                // ({float} | float)
-                (
-                    TyKind::InferenceVar(_, TyVariableKind::Float),
-                    TyKind::Scalar(Scalar::Float(_)),
-                ) => Some(rhs_ty),
-                // (float, {float})
-                (
-                    TyKind::Scalar(Scalar::Float(_)),
-                    TyKind::InferenceVar(_, TyVariableKind::Float),
-                ) => Some(lhs_ty),
-                // ({int}, {int}) | ({float}, {float})
-                (
-                    TyKind::InferenceVar(_, TyVariableKind::Integer),
-                    TyKind::InferenceVar(_, TyVariableKind::Integer),
-                )
-                | (
-                    TyKind::InferenceVar(_, TyVariableKind::Float),
-                    TyKind::InferenceVar(_, TyVariableKind::Float),
-                ) => Some(rhs_ty),
-                _ => None,
-            },
-        }
-    }
-
-    fn builtin_binary_op_rhs_expectation(&mut self, op: BinaryOp, lhs_ty: Ty) -> Option<Ty> {
-        Some(match op {
-            BinaryOp::LogicOp(..) => TyKind::Scalar(Scalar::Bool).intern(Interner),
-            BinaryOp::Assignment { op: None } => {
-                stdx::never!("Simple assignment operator is not binary op.");
-                return None;
-            }
-            BinaryOp::CmpOp(CmpOp::Eq { .. }) => match self
-                .resolve_ty_shallow(&lhs_ty)
-                .kind(Interner)
-            {
-                TyKind::Scalar(_) | TyKind::Str => lhs_ty,
-                TyKind::InferenceVar(_, TyVariableKind::Integer | TyVariableKind::Float) => lhs_ty,
-                _ => return None,
-            },
-            BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => return None,
-            BinaryOp::CmpOp(CmpOp::Ord { .. })
-            | BinaryOp::Assignment { op: Some(_) }
-            | BinaryOp::ArithOp(_) => match self.resolve_ty_shallow(&lhs_ty).kind(Interner) {
-                TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_)) => lhs_ty,
-                TyKind::InferenceVar(_, TyVariableKind::Integer | TyVariableKind::Float) => lhs_ty,
-                _ => return None,
-            },
-        })
     }
 
     /// Dereferences a single level of immutable referencing.
