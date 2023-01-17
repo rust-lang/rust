@@ -36,6 +36,12 @@ impl<'tcx> SearchGraph<'tcx> {
         }
     }
 
+    pub(super) fn is_empty(&self) -> bool {
+        self.stack.is_empty()
+            && self.provisional_cache.is_empty()
+            && !self.overflow_data.did_overflow()
+    }
+
     /// Tries putting the new goal on the stack, returning an error if it is already cached.
     ///
     /// This correctly updates the provisional cache if there is a cycle.

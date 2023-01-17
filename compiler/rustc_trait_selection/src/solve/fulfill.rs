@@ -2,7 +2,7 @@ use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_infer::{
-    infer::{canonical::OriginalQueryValues, InferCtxt},
+    infer::InferCtxt,
     traits::{
         query::NoSolution, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
         SelectionError, TraitEngine,
@@ -10,7 +10,7 @@ use rustc_infer::{
 };
 use rustc_middle::ty;
 
-use super::{Certainty, EvalCtxt};
+use super::{search_graph, Certainty, EvalCtxt};
 
 /// A trait engine using the new trait solver.
 ///
@@ -68,25 +68,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             let mut has_changed = false;
             for obligation in mem::take(&mut self.obligations) {
                 let goal = obligation.clone().into();
-
-                // FIXME: Add a better API for that '^^
-                let mut orig_values = OriginalQueryValues::default();
-                let canonical_goal = infcx.canonicalize_query(goal, &mut orig_values);
-                let (changed, certainty) = match EvalCtxt::evaluate_canonical_goal(
-                    infcx.tcx,
-                    &mut super::search_graph::SearchGraph::new(infcx.tcx),
-                    canonical_goal,
-                ) {
-                    Ok(canonical_response) => {
-                        (
-                            true, // FIXME: check whether `var_values` are an identity substitution.
-                            super::instantiate_canonical_query_response(
-                                infcx,
-                                &orig_values,
-                                canonical_response,
-                            ),
-                        )
-                    }
+                let search_graph = &mut search_graph::SearchGraph::new(infcx.tcx);
+                let mut ecx = EvalCtxt::new_outside_solver(infcx, search_graph);
+                let (changed, certainty) = match ecx.evaluate_goal(goal) {
+                    Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(FulfillmentError {
                             obligation: obligation.clone(),

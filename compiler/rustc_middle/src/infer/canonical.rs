@@ -339,6 +339,12 @@ TrivialTypeTraversalAndLiftImpls! {
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {
+    /// Creates dummy var values which should not be used in a
+    /// canonical response.
+    pub fn dummy() -> CanonicalVarValues<'tcx> {
+        CanonicalVarValues { var_values: Default::default() }
+    }
+
     #[inline]
     pub fn len(&self) -> usize {
         self.var_values.len()

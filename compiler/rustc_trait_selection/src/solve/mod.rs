@@ -155,6 +155,23 @@ struct EvalCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    /// Creates a new evaluation context outside of the trait solver.
+    ///
+    /// With this solver making a canonical response doesn't make much sense.
+    /// The `search_graph` for this solver has to be completely empty.
+    fn new_outside_solver(
+        infcx: &'a InferCtxt<'tcx>,
+        search_graph: &'a mut search_graph::SearchGraph<'tcx>,
+    ) -> EvalCtxt<'a, 'tcx> {
+        assert!(search_graph.is_empty());
+        EvalCtxt { infcx, var_values: CanonicalVarValues::dummy(), search_graph }
+    }
+
+    #[instrument(level = "debug", skip(tcx, search_graph), ret)]
     fn evaluate_canonical_goal(
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
@@ -181,10 +198,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 return result;
             }
         }
-    }
-
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
     }
 
     fn make_canonical_response(&self, certainty: Certainty) -> QueryResult<'tcx> {

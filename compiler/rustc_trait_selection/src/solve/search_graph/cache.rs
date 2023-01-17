@@ -52,6 +52,10 @@ impl<'tcx> ProvisionalCache<'tcx> {
         ProvisionalCache { entries: Default::default(), lookup_table: Default::default() }
     }
 
+    pub(super) fn is_empty(&self) -> bool {
+        self.entries.is_empty() && self.lookup_table.is_empty()
+    }
+
     /// Adds a dependency from the current leaf to `target` in the cache
     /// to prevent us from moving any goals which depend on the current leaf
     /// to the global cache while we're still computing `target`.

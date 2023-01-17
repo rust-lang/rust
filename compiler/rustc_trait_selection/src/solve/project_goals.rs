@@ -1,7 +1,7 @@
 use crate::traits::{specialization_graph, translate_substs};
 
-use super::assembly::{self, AssemblyCtxt};
-use super::{EvalCtxt, Goal, QueryResult};
+use super::assembly::{self, Candidate, CandidateSource};
+use super::{Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -16,22 +16,12 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use std::iter;
 
-#[allow(dead_code)] // FIXME: implement and use all variants.
-#[derive(Debug, Clone, Copy)]
-pub(super) enum CandidateSource {
-    Impl(DefId),
-    ParamEnv(usize),
-    Builtin,
-}
-
-type Candidate<'tcx> = assembly::Candidate<'tcx, ProjectionPredicate<'tcx>>;
-
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn compute_projection_goal(
         &mut self,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let candidates = AssemblyCtxt::assemble_and_evaluate_candidates(self, goal);
+        let candidates = self.assemble_and_evaluate_candidates(goal);
         self.merge_project_candidates(candidates)
     }
 
@@ -83,14 +73,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         match (candidate.source, other.source) {
             (CandidateSource::Impl(_), _)
             | (CandidateSource::ParamEnv(_), _)
-            | (CandidateSource::Builtin, _) => unimplemented!(),
+            | (CandidateSource::BuiltinImpl, _)
+            | (CandidateSource::AliasBound(_), _) => unimplemented!(),
         }
     }
 }
 
 impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
-    type CandidateSource = CandidateSource;
-
     fn self_ty(self) -> Ty<'tcx> {
         self.self_ty()
     }
@@ -104,12 +93,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     }
 
     fn consider_impl_candidate(
-        acx: &mut AssemblyCtxt<'_, '_, 'tcx, ProjectionPredicate<'tcx>>,
+        ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) {
-        let tcx = acx.cx.tcx();
-        let infcx = acx.cx.infcx;
+    ) -> Result<Certainty, NoSolution> {
+        let tcx = ecx.tcx();
 
         let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -117,20 +105,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         if iter::zip(goal_trait_ref.substs, impl_trait_ref.skip_binder().substs)
             .any(|(goal, imp)| !drcx.generic_args_may_unify(goal, imp))
         {
-            return;
+            return Err(NoSolution);
         }
 
-        infcx.probe(|_| {
-            let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
+        ecx.infcx.probe(|_| {
+            let impl_substs = ecx.infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
             let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
-            let Ok(InferOk { obligations, .. }) = infcx
+            let Ok(InferOk { obligations, .. }) = ecx.infcx
                 .at(&ObligationCause::dummy(), goal.param_env)
                 .define_opaque_types(false)
                 .eq(goal_trait_ref, impl_trait_ref)
                 .map_err(|e| debug!("failed to equate trait refs: {e:?}"))
             else {
-                return
+                return Err(NoSolution)
             };
             let where_clause_bounds = tcx
                 .predicates_of(impl_def_id)
@@ -141,16 +129,16 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
             let nested_goals =
                 obligations.into_iter().map(|o| o.into()).chain(where_clause_bounds).collect();
-            let Ok(trait_ref_certainty) = acx.cx.evaluate_all(nested_goals) else { return };
+            let trait_ref_certainty = ecx.evaluate_all(nested_goals)?;
 
             let Some(assoc_def) = fetch_eligible_assoc_item_def(
-                infcx,
+                ecx.infcx,
                 goal.param_env,
                 goal_trait_ref,
                 goal.predicate.def_id(),
                 impl_def_id
             ) else {
-                return
+                return Err(NoSolution);
             };
 
             if !assoc_def.item.defaultness(tcx).has_value() {
@@ -176,7 +164,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 impl_substs,
             );
             let substs = translate_substs(
-                infcx,
+                ecx.infcx,
                 goal.param_env,
                 impl_def_id,
                 impl_substs_with_gat,
@@ -197,21 +185,39 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 ty.map_bound(|ty| ty.into())
             };
 
-            let Ok(InferOk { obligations, .. }) = infcx
+            let Ok(InferOk { obligations, .. }) = ecx.infcx
                 .at(&ObligationCause::dummy(), goal.param_env)
                 .define_opaque_types(false)
                 .eq(goal.predicate.term,  term.subst(tcx, substs))
                 .map_err(|e| debug!("failed to equate trait refs: {e:?}"))
             else {
-                return
+                return Err(NoSolution);
             };
 
             let nested_goals = obligations.into_iter().map(|o| o.into()).collect();
-            let Ok(rhs_certainty) = acx.cx.evaluate_all(nested_goals) else { return };
+            let rhs_certainty = ecx.evaluate_all(nested_goals)?;
 
-            let certainty = trait_ref_certainty.unify_and(rhs_certainty);
-            acx.try_insert_candidate(CandidateSource::Impl(impl_def_id), certainty);
+            Ok(trait_ref_certainty.unify_and(rhs_certainty))
         })
+    }
+
+    fn consider_builtin_sized_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> Result<Certainty, NoSolution> {
+        bug!("`Sized` does not have an associated type: {:?}", goal);
+    }
+
+    fn consider_assumption(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+    ) -> Result<Certainty, NoSolution> {
+        if let Some(_poly_projection_pred) = assumption.to_opt_poly_projection_pred() {
+            unimplemented!()
+        } else {
+            Err(NoSolution)
+        }
     }
 }
 
