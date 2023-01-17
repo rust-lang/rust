@@ -3,7 +3,7 @@
 use std::iter;
 
 use super::assembly::{self, AssemblyCtxt};
-use super::{CanonicalGoal, EvalCtxt, Goal, QueryResult};
+use super::{EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::query::NoSolution;
@@ -67,11 +67,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     }
 
     fn consider_impl_candidate(
-        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        acx: &mut AssemblyCtxt<'_, '_, 'tcx, Self>,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         impl_def_id: DefId,
     ) {
-        let tcx = acx.cx.tcx;
+        let tcx = acx.cx.tcx();
+        let infcx = acx.cx.infcx;
 
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsPlaceholder };
@@ -81,12 +82,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return;
         }
 
-        acx.infcx.probe(|_| {
-            let impl_substs = acx.infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
+        infcx.probe(|_| {
+            let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
             let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
-            let Ok(InferOk { obligations, .. }) = acx
-                .infcx
+            let Ok(InferOk { obligations, .. }) = infcx
                 .at(&ObligationCause::dummy(), goal.param_env)
                 .define_opaque_types(false)
                 .eq(goal.predicate.trait_ref, impl_trait_ref)
@@ -104,16 +104,16 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let nested_goals =
                 obligations.into_iter().map(|o| o.into()).chain(where_clause_bounds).collect();
 
-            let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
+            let Ok(certainty) = acx.cx.evaluate_all(nested_goals) else { return };
             acx.try_insert_candidate(CandidateSource::Impl(impl_def_id), certainty);
         })
     }
 }
 
-impl<'tcx> EvalCtxt<'tcx> {
+impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn compute_trait_goal(
         &mut self,
-        goal: CanonicalGoal<'tcx, TraitPredicate<'tcx>>,
+        goal: Goal<'tcx, TraitPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         let candidates = AssemblyCtxt::assemble_and_evaluate_candidates(self, goal);
         self.merge_trait_candidates_discard_reservation_impls(candidates)
@@ -176,7 +176,7 @@ impl<'tcx> EvalCtxt<'tcx> {
 
     fn discard_reservation_impl(&self, candidate: Candidate<'tcx>) -> Candidate<'tcx> {
         if let CandidateSource::Impl(def_id) = candidate.source {
-            if let ty::ImplPolarity::Reservation = self.tcx.impl_polarity(def_id) {
+            if let ty::ImplPolarity::Reservation = self.tcx().impl_polarity(def_id) {
                 debug!("Selected reservation impl");
                 // FIXME: reduce candidate to ambiguous
                 // FIXME: replace `var_values` with identity, yeet external constraints.

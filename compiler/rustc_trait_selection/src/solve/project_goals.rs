@@ -1,7 +1,7 @@
 use crate::traits::{specialization_graph, translate_substs};
 
 use super::assembly::{self, AssemblyCtxt};
-use super::{CanonicalGoal, EvalCtxt, Goal, QueryResult};
+use super::{EvalCtxt, Goal, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -26,10 +26,10 @@ pub(super) enum CandidateSource {
 
 type Candidate<'tcx> = assembly::Candidate<'tcx, ProjectionPredicate<'tcx>>;
 
-impl<'tcx> EvalCtxt<'tcx> {
+impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn compute_projection_goal(
         &mut self,
-        goal: CanonicalGoal<'tcx, ProjectionPredicate<'tcx>>,
+        goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         let candidates = AssemblyCtxt::assemble_and_evaluate_candidates(self, goal);
         self.merge_project_candidates(candidates)
@@ -104,11 +104,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     }
 
     fn consider_impl_candidate(
-        acx: &mut AssemblyCtxt<'_, 'tcx, ProjectionPredicate<'tcx>>,
+        acx: &mut AssemblyCtxt<'_, '_, 'tcx, ProjectionPredicate<'tcx>>,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
         impl_def_id: DefId,
     ) {
-        let tcx = acx.cx.tcx;
+        let tcx = acx.cx.tcx();
+        let infcx = acx.cx.infcx;
+
         let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsPlaceholder };
@@ -118,12 +120,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             return;
         }
 
-        acx.infcx.probe(|_| {
-            let impl_substs = acx.infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
+        infcx.probe(|_| {
+            let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
             let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
-            let Ok(InferOk { obligations, .. }) = acx
-                .infcx
+            let Ok(InferOk { obligations, .. }) = infcx
                 .at(&ObligationCause::dummy(), goal.param_env)
                 .define_opaque_types(false)
                 .eq(goal_trait_ref, impl_trait_ref)
@@ -138,11 +139,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
 
-            let nested_goals = obligations.into_iter().map(|o| o.into()).chain(where_clause_bounds).collect();
-            let Ok(trait_ref_certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
+            let nested_goals =
+                obligations.into_iter().map(|o| o.into()).chain(where_clause_bounds).collect();
+            let Ok(trait_ref_certainty) = acx.cx.evaluate_all(nested_goals) else { return };
 
             let Some(assoc_def) = fetch_eligible_assoc_item_def(
-                acx.infcx,
+                infcx,
                 goal.param_env,
                 goal_trait_ref,
                 goal.predicate.def_id(),
@@ -174,7 +176,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 impl_substs,
             );
             let substs = translate_substs(
-                acx.infcx,
+                infcx,
                 goal.param_env,
                 impl_def_id,
                 impl_substs_with_gat,
@@ -185,7 +187,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             let is_const = matches!(tcx.def_kind(assoc_def.item.def_id), DefKind::AssocConst);
             let ty = tcx.bound_type_of(assoc_def.item.def_id);
             let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
-                let identity_substs = ty::InternalSubsts::identity_for_item(tcx, assoc_def.item.def_id);
+                let identity_substs =
+                    ty::InternalSubsts::identity_for_item(tcx, assoc_def.item.def_id);
                 let did = ty::WithOptConstParam::unknown(assoc_def.item.def_id);
                 let kind =
                     ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
@@ -194,8 +197,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 ty.map_bound(|ty| ty.into())
             };
 
-            let Ok(InferOk { obligations, .. }) = acx
-                .infcx
+            let Ok(InferOk { obligations, .. }) = infcx
                 .at(&ObligationCause::dummy(), goal.param_env)
                 .define_opaque_types(false)
                 .eq(goal.predicate.term,  term.subst(tcx, substs))
@@ -205,7 +207,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             };
 
             let nested_goals = obligations.into_iter().map(|o| o.into()).collect();
-            let Ok(rhs_certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
+            let Ok(rhs_certainty) = acx.cx.evaluate_all(nested_goals) else { return };
 
             let certainty = trait_ref_certainty.unify_and(rhs_certainty);
             acx.try_insert_candidate(CandidateSource::Impl(impl_def_id), certainty);

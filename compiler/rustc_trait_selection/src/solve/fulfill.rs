@@ -2,7 +2,7 @@ use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_infer::{
-    infer::InferCtxt,
+    infer::{canonical::OriginalQueryValues, InferCtxt},
     traits::{
         query::NoSolution, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
         SelectionError, TraitEngine,
@@ -67,10 +67,26 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
 
             let mut has_changed = false;
             for obligation in mem::take(&mut self.obligations) {
-                let mut cx = EvalCtxt::new(infcx.tcx);
-                let (changed, certainty) = match cx.evaluate_goal(infcx, obligation.clone().into())
-                {
-                    Ok(result) => result,
+                let goal = obligation.clone().into();
+
+                // FIXME: Add a better API for that '^^
+                let mut orig_values = OriginalQueryValues::default();
+                let canonical_goal = infcx.canonicalize_query(goal, &mut orig_values);
+                let (changed, certainty) = match EvalCtxt::evaluate_canonical_goal(
+                    infcx.tcx,
+                    &mut super::search_graph::SearchGraph::new(infcx.tcx),
+                    canonical_goal,
+                ) {
+                    Ok(canonical_response) => {
+                        (
+                            true, // FIXME: check whether `var_values` are an identity substitution.
+                            super::instantiate_canonical_query_response(
+                                infcx,
+                                &orig_values,
+                                canonical_response,
+                            ),
+                        )
+                    }
                     Err(NoSolution) => {
                         errors.push(FulfillmentError {
                             obligation: obligation.clone(),
