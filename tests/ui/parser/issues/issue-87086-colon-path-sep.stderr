@@ -103,7 +103,7 @@ LL |         Foo::Bar::Baz => {}
    |            ~~
 
 error: expected one of `@` or `|`, found `:`
-  --> $DIR/issue-87086-colon-path-sep.rs:75:12
+  --> $DIR/issue-87086-colon-path-sep.rs:74:12
    |
 LL |         Foo:Bar => {}
    |            ^--- specifying the type of a pattern isn't supported
@@ -115,12 +115,5 @@ help: maybe write a path separator here
 LL |         Foo::Bar => {}
    |            ~~
 
-error[E0433]: failed to resolve: `Bar` is a variant, not a module
-  --> $DIR/issue-87086-colon-path-sep.rs:68:13
-   |
-LL |         Foo:Bar::Baz => {}
-   |             ^^^ `Bar` is a variant, not a module
+error: aborting due to 9 previous errors
 
-error: aborting due to 10 previous errors
-
-For more information about this error, try `rustc --explain E0433`.

@@ -2500,6 +2500,8 @@ impl<'a> Parser<'a> {
                     Ok(ty) => {
                         err.span_label(ty.span, "specifying the type of a pattern isn't supported");
                         self.restore_snapshot(snapshot_type);
+                        let new_span = first_pat.span.to(ty.span);
+                        first_pat = self.mk_pat(new_span, PatKind::Wild);
                     }
                 }
                 err.emit();
