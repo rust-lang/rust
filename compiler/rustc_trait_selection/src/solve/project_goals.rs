@@ -6,7 +6,7 @@ use super::{Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::{InferCtxt, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
@@ -298,12 +298,37 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     }
 
     fn consider_assumption(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx> {
-        if let Some(_poly_projection_pred) = assumption.to_opt_poly_projection_pred() {
-            unimplemented!()
+        if let Some(poly_projection_pred) = assumption.to_opt_poly_projection_pred() {
+            ecx.infcx.probe(|_| {
+                let assumption_projection_pred = ecx.infcx.replace_bound_vars_with_fresh_vars(
+                    DUMMY_SP,
+                    LateBoundRegionConversionTime::HigherRankedType,
+                    poly_projection_pred,
+                );
+                let nested_goals = ecx.infcx.sup(
+                    goal.param_env,
+                    goal.predicate.projection_ty,
+                    assumption_projection_pred.projection_ty,
+                )?;
+                let subst_certainty = ecx.evaluate_all(nested_goals)?;
+
+                // The term of our goal should be fully unconstrained, so this should never fail.
+                //
+                // It can however be ambiguous when the resolved type is a projection.
+                let nested_goals = ecx
+                    .infcx
+                    .eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)
+                    .expect("failed to unify with unconstrained term");
+                let rhs_certainty = ecx
+                    .evaluate_all(nested_goals)
+                    .expect("failed to unify with unconstrained term");
+
+                ecx.make_canonical_response(subst_certainty.unify_and(rhs_certainty))
+            })
         } else {
             Err(NoSolution)
         }

@@ -6,10 +6,11 @@ use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
 use super::{EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::TraitPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{ToPolyTraitRef, TraitPredicate};
 use rustc_span::DUMMY_SP;
 
 impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
@@ -65,12 +66,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     }
 
     fn consider_assumption(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx> {
-        if let Some(_poly_trait_pred) = assumption.to_opt_poly_trait_pred() {
-            unimplemented!()
+        if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred() {
+            // FIXME: Constness and polarity
+            ecx.infcx.probe(|_| {
+                let nested_goals = ecx.infcx.sup(
+                    goal.param_env,
+                    ty::Binder::dummy(goal.predicate.trait_ref),
+                    poly_trait_pred.to_poly_trait_ref(),
+                )?;
+                ecx.evaluate_all_and_make_canonical_response(nested_goals)
+            })
         } else {
             Err(NoSolution)
         }

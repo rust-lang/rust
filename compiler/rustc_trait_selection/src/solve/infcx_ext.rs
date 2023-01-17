@@ -25,6 +25,13 @@ pub(super) trait InferCtxtExt<'tcx> {
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>;
+
+    fn sup<T: ToTrace<'tcx>>(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        rhs: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>;
 }
 
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
@@ -56,6 +63,25 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             })
             .map_err(|e| {
                 debug!(?e, "failed to equate");
+                NoSolution
+            })
+    }
+
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    fn sup<T: ToTrace<'tcx>>(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        rhs: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
+        self.at(&ObligationCause::dummy(), param_env)
+            .define_opaque_types(false)
+            .sup(lhs, rhs)
+            .map(|InferOk { value: (), obligations }| {
+                obligations.into_iter().map(|o| o.into()).collect()
+            })
+            .map_err(|e| {
+                debug!(?e, "failed to sup");
                 NoSolution
             })
     }
