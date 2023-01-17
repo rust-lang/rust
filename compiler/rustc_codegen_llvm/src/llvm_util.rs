@@ -163,8 +163,10 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]
         ("aarch64", "pmuv3") => smallvec!["perfmon"],
         ("aarch64", "paca") => smallvec!["pauth"],
         ("aarch64", "pacg") => smallvec!["pauth"],
-        // Rust ties fp and neon together. In LLVM neon implicitly enables fp,
-        // but we manually enable neon when a feature only implicitly enables fp
+        // Rust ties fp and neon together.
+        ("aarch64", "neon") => smallvec!["neon", "fp-armv8"],
+        // In LLVM neon implicitly enables fp, but we manually enable
+        // neon when a feature only implicitly enables fp
         ("aarch64", "f32mm") => smallvec!["f32mm", "neon"],
         ("aarch64", "f64mm") => smallvec!["f64mm", "neon"],
         ("aarch64", "fhm") => smallvec!["fp16fml", "neon"],
