@@ -2193,7 +2193,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut back_edge_stack = Vec::new();
 
         predecessor_locations(self.body, location).for_each(|predecessor| {
-            if location.dominates(predecessor, &self.dominators) {
+            if location.dominates(predecessor, self.dominators()) {
                 back_edge_stack.push(predecessor)
             } else {
                 stack.push(predecessor);
@@ -2305,7 +2305,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             let mut has_predecessor = false;
             predecessor_locations(self.body, location).for_each(|predecessor| {
-                if location.dominates(predecessor, &self.dominators) {
+                if location.dominates(predecessor, self.dominators()) {
                     back_edge_stack.push(predecessor)
                 } else {
                     stack.push(predecessor);
