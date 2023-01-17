@@ -12,11 +12,13 @@
 #![allow(clippy::eq_op)]
 #![allow(clippy::assign_op_pattern)]
 
+mod libm_helper;
 mod math;
 
 use core::{f32, f64};
 
 pub use self::math::*;
+pub use libm_helper::*;
 
 /// Approximate equality with 1 ULP of tolerance
 #[doc(hidden)]
