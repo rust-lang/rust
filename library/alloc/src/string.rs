@@ -468,7 +468,7 @@ where
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> String<COOP_PREFERRED> {
-        String { vec: Vec::new() }
+        String { vec: Vec::new_co() }
     }
 
     /// Creates a new empty `String` with at least the specified capacity.
@@ -595,8 +595,8 @@ where
     }
 
     /// Like `from_utf8_lossy`, but this honors COOP_PREFERRED.
-    #[unstable(feature = "compile_check_struct_with_const_generic_added_associated_function", reason = "confirm_or_fix_the_function_name", issue = "none")]
-    pub fn from_utf8_lossy_coop_or_not(v: &[u8]) -> Cow<'_, str, COOP_PREFERRED> {
+    #[unstable(feature = "string_from_utf8_lossy_co", reason = "confirm_or_fix_the_function_name", issue = "none")]
+    pub fn from_utf8_lossy_co(v: &[u8]) -> Cow<'_, str, COOP_PREFERRED> {
         let mut iter = Utf8Chunks::new(v);
 
         let first_valid = if let Some(chunk) = iter.next() {
@@ -686,7 +686,7 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(unused_braces)]
     pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str, {DEFAULT_COOP_PREFERRED!()}> {
-        String::<{DEFAULT_COOP_PREFERRED!()}>::from_utf8_lossy_coop_or_not(v)
+        String::<{DEFAULT_COOP_PREFERRED!()}>::from_utf8_lossy_co(v)
     }
 }
 
