@@ -256,3 +256,40 @@ impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
         }
     }
 }
+
+/// Formats a Vec of DiagnosticArgValue
+///
+/// ""
+/// "a"
+/// "a and b"
+/// "a, b and c"
+/// "a, b, c and d"
+/// "a, b, c and 2 more"
+impl<T: IntoDiagnosticArg> IntoDiagnosticArg for Vec<T> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        let mut args: Vec<Cow<'static, str>> = Vec::new();
+
+        for arg in self {
+            match arg.into_diagnostic_arg() {
+                DiagnosticArgValue::Str(s) => args.push(format!("`{s}`").into()),
+                DiagnosticArgValue::Number(i) => args.push(format!("`{i}`").into()),
+                DiagnosticArgValue::StrListSepByAnd(list) => {
+                    for item in list {
+                        args.push(format!("`{item}`").into());
+                    }
+                }
+            }
+        }
+
+        // Avoid saying "and 1 more"
+        if args.len() > 4 {
+            args.truncate(3);
+
+            // FIXME(mejrs) This needs some form of translation
+            let more = format!("{} more", args.len() - 3).into();
+            args.push(more);
+        }
+
+        DiagnosticArgValue::StrListSepByAnd(args)
+    }
+}

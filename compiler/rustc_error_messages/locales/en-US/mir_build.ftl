@@ -332,11 +332,9 @@ mir_build_non_exhaustive_omitted_pattern = some variants are not matched explici
     .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found
 
 mir_build_uncovered = {$count ->
-        [1] pattern `{$witness_1}`
-        [2] patterns `{$witness_1}` and `{$witness_2}`
-        [3] patterns `{$witness_1}`, `{$witness_2}` and `{$witness_3}`
-        *[other] patterns `{$witness_1}`, `{$witness_2}`, `{$witness_3}` and {$remainder} more
-    } not covered
+        [1] pattern
+        *[other] patterns
+    } {$witnesses} not covered
 
 mir_build_pattern_not_covered = refutable pattern in {$origin}
     .pattern_ty = the matched value is of type `{$pattern_ty}`

@@ -897,7 +897,11 @@ fn is_useful<'p, 'tcx>(
                     pcx.span,
                     NonExhaustiveOmittedPattern {
                         scrut_ty: pcx.ty,
-                        uncovered: Uncovered::new(pcx.span, pcx.cx, patterns),
+                        uncovered: {
+                            let witnesses: Vec<_> =
+                                patterns.into_iter().map(|w| w.to_pat(&pcx.cx)).collect();
+                            Uncovered { span: pcx.span, count: witnesses.len(), witnesses }
+                        },
                     },
                 );
             }

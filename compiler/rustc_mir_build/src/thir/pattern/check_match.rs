@@ -455,10 +455,13 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             AdtDefinedHere { adt_def_span, ty, variants }
         };
 
+        let witnesses: Vec<_> = witnesses.into_iter().map(|w| w.to_pat(&cx)).collect();
+        let uncovered = Uncovered { span: pat.span, count: witnesses.len(), witnesses };
+
         self.tcx.sess.emit_err(PatternNotCovered {
             span: pat.span,
             origin,
-            uncovered: Uncovered::new(pat.span, &cx, witnesses),
+            uncovered,
             inform,
             interpreted_as_const,
             _p: (),

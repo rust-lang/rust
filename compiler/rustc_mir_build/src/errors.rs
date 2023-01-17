@@ -1,4 +1,3 @@
-use crate::thir::pattern::deconstruct_pat::DeconstructedPat;
 use crate::thir::pattern::MatchCheckCtxt;
 use rustc_errors::Handler;
 use rustc_errors::{
@@ -723,31 +722,9 @@ pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
 #[label(mir_build_uncovered)]
 pub(crate) struct Uncovered<'tcx> {
     #[primary_span]
-    span: Span,
-    count: usize,
-    witness_1: Pat<'tcx>,
-    witness_2: Pat<'tcx>,
-    witness_3: Pat<'tcx>,
-    remainder: usize,
-}
-
-impl<'tcx> Uncovered<'tcx> {
-    pub fn new<'p>(
-        span: Span,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
-    ) -> Self {
-        let witness_1 = witnesses.get(0).unwrap().to_pat(cx);
-        Self {
-            span,
-            count: witnesses.len(),
-            // Substitute dummy values if witnesses is smaller than 3. These will never be read.
-            witness_2: witnesses.get(1).map(|w| w.to_pat(cx)).unwrap_or_else(|| witness_1.clone()),
-            witness_3: witnesses.get(2).map(|w| w.to_pat(cx)).unwrap_or_else(|| witness_1.clone()),
-            witness_1,
-            remainder: witnesses.len().saturating_sub(3),
-        }
-    }
+    pub span: Span,
+    pub count: usize,
+    pub witnesses: Vec<Pat<'tcx>>,
 }
 
 #[derive(Diagnostic)]

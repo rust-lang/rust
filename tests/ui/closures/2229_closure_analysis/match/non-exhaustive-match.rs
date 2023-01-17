@@ -52,3 +52,19 @@ fn main() {
     let mut mut_e4 = e4;
     _h();
 }
+
+pub enum X {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+}
+
+pub fn many(x: X) {
+    match x {}
+    //~^ ERROR non-exhaustive patterns: `X::A`, `X::B`, `X::C` and 5 more not covered [E0004]
+}
