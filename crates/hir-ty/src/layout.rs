@@ -1,7 +1,5 @@
 //! Compute the binary representation of a type
 
-use std::sync::Arc;
-
 use base_db::CrateId;
 use chalk_ir::{AdtId, TyKind};
 use hir_def::{
@@ -31,19 +29,19 @@ mod adt;
 mod target;
 
 struct LayoutCx<'a> {
-    db: &'a dyn HirDatabase,
     krate: CrateId,
+    target: &'a TargetDataLayout,
 }
 
-impl LayoutCalculator for LayoutCx<'_> {
-    type TargetDataLayoutRef = Arc<TargetDataLayout>;
+impl<'a> LayoutCalculator for LayoutCx<'a> {
+    type TargetDataLayoutRef = &'a TargetDataLayout;
 
     fn delay_bug(&self, txt: &str) {
         never!("{}", txt);
     }
 
-    fn current_data_layout(&self) -> Arc<TargetDataLayout> {
-        self.db.target_data_layout(self.krate)
+    fn current_data_layout(&self) -> &'a TargetDataLayout {
+        self.target
     }
 }
 
@@ -56,7 +54,8 @@ fn scalar(dl: &TargetDataLayout, value: Primitive) -> Layout {
 }
 
 pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Layout, LayoutError> {
-    let cx = LayoutCx { db, krate };
+    let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
+    let cx = LayoutCx { krate, target: &target };
     let dl = &*cx.current_data_layout();
     Ok(match ty.kind(Interner) {
         TyKind::Adt(AdtId(def), subst) => db.layout_of_adt(*def, subst.clone())?,

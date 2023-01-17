@@ -90,6 +90,7 @@ impl IntegerExt for Integer {
 pub enum LayoutError {
     UserError(String),
     SizeOverflow,
+    TargetLayoutNotAvailable,
     HasPlaceholder,
     NotImplemented,
     Unknown,

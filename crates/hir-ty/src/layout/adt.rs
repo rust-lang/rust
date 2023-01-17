@@ -23,7 +23,9 @@ pub fn layout_of_adt_query(
     def: AdtId,
     subst: Substitution,
 ) -> Result<Layout, LayoutError> {
-    let cx = LayoutCx { db, krate: def.module(db.upcast()).krate() };
+    let krate = def.module(db.upcast()).krate();
+    let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
+    let cx = LayoutCx { krate, target: &target };
     let dl = cx.current_data_layout();
     let handle_variant = |def: VariantId, var: &VariantData| {
         var.fields()

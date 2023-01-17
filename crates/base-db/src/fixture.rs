@@ -110,6 +110,7 @@ impl ChangeFixture {
         let mut crates = FxHashMap::default();
         let mut crate_deps = Vec::new();
         let mut default_crate_root: Option<FileId> = None;
+        let mut default_target_data_layout: Option<String> = None;
         let mut default_cfg = CfgOptions::default();
 
         let mut file_set = FileSet::default();
@@ -175,6 +176,7 @@ impl ChangeFixture {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
                 default_cfg = meta.cfg;
+                default_target_data_layout = meta.target_data_layout;
             }
 
             change.change_file(file_id, Some(Arc::new(text)));
@@ -198,7 +200,7 @@ impl ChangeFixture {
                 Ok(Vec::new()),
                 false,
                 CrateOrigin::CratesIo { repo: None, name: None },
-                None,
+                default_target_data_layout.map(|x| x.into()),
             );
         } else {
             for (from, to, prelude) in crate_deps {
