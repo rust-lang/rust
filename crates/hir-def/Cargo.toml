@@ -28,19 +28,23 @@ rustc-hash = "1.1.0"
 smallvec = "1.10.0"
 tracing = "0.1.35"
 
-stdx = { path = "../stdx", version = "0.0.0" }
-intern = { path = "../intern", version = "0.0.0" }
-base-db = { path = "../base-db", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
-hir-expand = { path = "../hir-expand", version = "0.0.0" }
 rustc_abi = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_abi", default-features = false }
 rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
-mbe = { path = "../mbe", version = "0.0.0" }
-cfg = { path = "../cfg", version = "0.0.0" }
-tt = { path = "../tt", version = "0.0.0" }
-limit = { path = "../limit", version = "0.0.0" }
+
+# local deps
+stdx.workspace = true
+intern.workspace = true
+base-db.workspace = true
+syntax.workspace = true
+profile.workspace = true
+hir-expand.workspace = true
+mbe.workspace = true
+cfg.workspace = true
+tt.workspace = true
+limit.workspace = true
 
 [dev-dependencies]
-test-utils = { path = "../test-utils" }
 expect-test = "1.4.0"
+
+# local deps
+test-utils.workspace = true
