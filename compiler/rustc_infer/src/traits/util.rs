@@ -261,17 +261,8 @@ impl<'tcx> Elaborator<'tcx> {
 
                             Component::UnresolvedInferenceVariable(_) => None,
 
-                            Component::Opaque(def_id, substs) => {
-                                let ty = tcx.mk_opaque(def_id, substs);
-                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
-                                    ty::OutlivesPredicate(ty, r_min),
-                                )))
-                            }
-
-                            Component::Projection(projection) => {
-                                // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
-                                // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
-                                let ty = tcx.mk_projection(projection.def_id, projection.substs);
+                            Component::Alias(kind, data) => {
+                                let ty = tcx.mk_ty(ty::Alias(kind, data));
                                 Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
                                     ty::OutlivesPredicate(ty, r_min),
                                 )))

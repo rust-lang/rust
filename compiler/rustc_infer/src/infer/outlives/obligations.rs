@@ -266,11 +266,8 @@ where
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);
                 }
-                Component::Opaque(def_id, substs) => {
-                    self.opaque_must_outlive(*def_id, substs, origin, region)
-                }
-                Component::Projection(projection_ty) => {
-                    self.projection_must_outlive(origin, region, *projection_ty);
+                Component::Alias(kind, data) => {
+                    self.alias_must_outlive(*kind, *data, origin, region)
                 }
                 Component::EscapingProjection(subcomponents) => {
                     self.components_must_outlive(origin, &subcomponents, region, category);
@@ -305,44 +302,25 @@ where
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn opaque_must_outlive(
+    fn alias_must_outlive(
         &mut self,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        kind: ty::AliasKind,
+        data: ty::AliasTy<'tcx>,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
     ) {
         self.generic_must_outlive(
             origin,
             region,
-            GenericKind::Opaque(def_id, substs),
-            def_id,
-            substs,
-            true,
+            GenericKind::Alias(kind, data),
+            data.def_id,
+            data.substs,
+            kind == ty::Opaque,
             |ty| match *ty.kind() {
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => (def_id, substs),
-                _ => bug!("expected only projection types from env, not {:?}", ty),
-            },
-        );
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn projection_must_outlive(
-        &mut self,
-        origin: infer::SubregionOrigin<'tcx>,
-        region: ty::Region<'tcx>,
-        projection_ty: ty::AliasTy<'tcx>,
-    ) {
-        self.generic_must_outlive(
-            origin,
-            region,
-            GenericKind::Projection(projection_ty),
-            projection_ty.def_id,
-            projection_ty.substs,
-            false,
-            |ty| match ty.kind() {
-                ty::Alias(ty::Projection, projection_ty) => {
-                    (projection_ty.def_id, projection_ty.substs)
+                ty::Alias(filter_kind, ty::AliasTy { def_id, substs, .. })
+                    if kind == filter_kind =>
+                {
+                    (def_id, substs)
                 }
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
