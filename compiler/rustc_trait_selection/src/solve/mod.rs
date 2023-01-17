@@ -313,6 +313,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         })
     }
+
+    fn evaluate_all_and_make_canonical_response(
+        &mut self,
+        goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) -> QueryResult<'tcx> {
+        self.evaluate_all(goals).and_then(|certainty| self.make_canonical_response(certainty))
+    }
 }
 
 #[instrument(level = "debug", skip(infcx), ret)]

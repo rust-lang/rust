@@ -4,7 +4,7 @@ use std::iter;
 
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
-use super::{Certainty, EvalCtxt, Goal, QueryResult};
+use super::{EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
@@ -29,7 +29,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) -> Result<Certainty, NoSolution> {
+    ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
 
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -53,14 +53,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
             nested_goals.extend(where_clause_bounds);
-            ecx.evaluate_all(nested_goals)
+            ecx.evaluate_all_and_make_canonical_response(nested_goals)
         })
     }
 
     fn consider_builtin_sized_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         _goal: Goal<'tcx, Self>,
-    ) -> Result<Certainty, NoSolution> {
+    ) -> QueryResult<'tcx> {
         unimplemented!();
     }
 
@@ -68,7 +68,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         _goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
-    ) -> Result<Certainty, NoSolution> {
+    ) -> QueryResult<'tcx> {
         if let Some(_poly_trait_pred) = assumption.to_opt_poly_trait_pred() {
             unimplemented!()
         } else {

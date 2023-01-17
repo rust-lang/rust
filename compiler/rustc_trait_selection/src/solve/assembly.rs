@@ -1,7 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::infcx_ext::InferCtxtExt;
-use super::{CanonicalResponse, Certainty, EvalCtxt, Goal};
+use super::{CanonicalResponse, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::TypeFoldable;
@@ -89,18 +89,18 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         impl_def_id: DefId,
-    ) -> Result<Certainty, NoSolution>;
+    ) -> QueryResult<'tcx>;
 
     fn consider_builtin_sized_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> Result<Certainty, NoSolution>;
+    ) -> QueryResult<'tcx>;
 
     fn consider_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
-    ) -> Result<Certainty, NoSolution>;
+    ) -> QueryResult<'tcx>;
 }
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn assemble_and_evaluate_candidates<G: GoalKind<'tcx>>(
@@ -180,9 +180,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         tcx.for_each_relevant_impl(
             goal.predicate.trait_def_id(tcx),
             goal.predicate.self_ty(),
-            |impl_def_id| match G::consider_impl_candidate(self, goal, impl_def_id)
-                .and_then(|certainty| self.make_canonical_response(certainty))
-            {
+            |impl_def_id| match G::consider_impl_candidate(self, goal, impl_def_id) {
                 Ok(result) => candidates
                     .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),
                 Err(NoSolution) => (),
@@ -203,7 +201,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             Err(NoSolution)
         };
 
-        match result.and_then(|certainty| self.make_canonical_response(certainty)) {
+        match result {
             Ok(result) => {
                 candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
             }
@@ -217,9 +215,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
-            match G::consider_assumption(self, goal, assumption)
-                .and_then(|certainty| self.make_canonical_response(certainty))
-            {
+            match G::consider_assumption(self, goal, assumption) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::ParamEnv(i), result })
                 }
@@ -268,9 +264,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             .subst_iter_copied(self.tcx(), alias_ty.substs)
             .enumerate()
         {
-            match G::consider_assumption(self, goal, assumption)
-                .and_then(|certainty| self.make_canonical_response(certainty))
-            {
+            match G::consider_assumption(self, goal, assumption) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::AliasBound(i), result })
                 }
