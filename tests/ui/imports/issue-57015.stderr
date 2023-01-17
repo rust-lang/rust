@@ -7,7 +7,7 @@ LL | use single_err::something;
 help: consider importing this module instead
    |
 LL | use glob_ok::something;
-   |     ~~~~~~~~~~~~~~~~~~~
+   |     ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

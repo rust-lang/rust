@@ -4,7 +4,7 @@ error[E0412]: cannot find type `FromOutside` in this scope
 LL | generate_mod::check!();
    | ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            FromOutside
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -14,7 +14,7 @@ error[E0412]: cannot find type `Outer` in this scope
 LL | generate_mod::check!();
    | ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            Outer
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -24,7 +24,7 @@ error[E0412]: cannot find type `FromOutside` in this scope
 LL | #[generate_mod::check_attr]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            FromOutside
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -34,7 +34,7 @@ error[E0412]: cannot find type `OuterAttr` in this scope
 LL | #[generate_mod::check_attr]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            OuterAttr
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -44,7 +44,7 @@ error[E0412]: cannot find type `FromOutside` in this scope
 LL | #[derive(generate_mod::CheckDerive)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            FromOutside
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -54,7 +54,7 @@ error[E0412]: cannot find type `OuterDerive` in this scope
 LL | #[derive(generate_mod::CheckDerive)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            OuterDerive
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -64,7 +64,7 @@ error[E0412]: cannot find type `FromOutside` in this scope
 LL |     #[derive(generate_mod::CheckDerive)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            FromOutside
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -74,7 +74,7 @@ error[E0412]: cannot find type `OuterDerive` in this scope
 LL |     #[derive(generate_mod::CheckDerive)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            OuterDerive
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -84,7 +84,7 @@ error[E0412]: cannot find type `FromOutside` in this scope
 LL | #[derive(generate_mod::CheckDeriveLint)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            FromOutside
    = note: this error originates in the derive macro `generate_mod::CheckDeriveLint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -94,7 +94,7 @@ error[E0412]: cannot find type `OuterDeriveLint` in this scope
 LL | #[derive(generate_mod::CheckDeriveLint)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: consider importing this struct:
+   = help: consider importing this struct:
            OuterDeriveLint
    = note: this error originates in the derive macro `generate_mod::CheckDeriveLint` (in Nightly builds, run with -Z macro-backtrace for more info)
 

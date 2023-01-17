@@ -7,9 +7,9 @@ LL | use alloc;
 help: consider importing one of these items instead
    |
 LL | use core::alloc;
-   |     ~~~~~~~~~~~~
-LL | use std::alloc;
    |     ~~~~~~~~~~~
+LL | use std::alloc;
+   |     ~~~~~~~~~~
 
 error: aborting due to previous error
 

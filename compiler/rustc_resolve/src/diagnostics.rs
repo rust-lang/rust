@@ -5,10 +5,10 @@ use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
 use rustc_errors::{
     pluralize, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
+use rustc_errors::{struct_span_err, SuggestionStyle};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
@@ -2418,7 +2418,7 @@ fn show_candidates(
         }
 
         if let Some(span) = use_placement_span {
-            let add_use = match mode {
+            let (add_use, trailing) = match mode {
                 DiagnosticMode::Pattern => {
                     err.span_suggestions(
                         span,
@@ -2428,21 +2428,23 @@ fn show_candidates(
                     );
                     return;
                 }
-                DiagnosticMode::Import => "",
-                DiagnosticMode::Normal => "use ",
+                DiagnosticMode::Import => ("", ""),
+                DiagnosticMode::Normal => ("use ", ";\n"),
             };
             for candidate in &mut accessible_path_strings {
                 // produce an additional newline to separate the new use statement
                 // from the directly following item.
-                let additional_newline = if let FoundUse::Yes = found_use { "" } else { "\n" };
-                candidate.0 = format!("{add_use}{}{append};\n{additional_newline}", &candidate.0);
+                let additional_newline = if let FoundUse::No = found_use && let DiagnosticMode::Normal = mode { "\n" } else { "" };
+                candidate.0 =
+                    format!("{add_use}{}{append}{trailing}{additional_newline}", &candidate.0);
             }
 
-            err.span_suggestions(
+            err.span_suggestions_with_style(
                 span,
                 &msg,
                 accessible_path_strings.into_iter().map(|a| a.0),
                 Applicability::MaybeIncorrect,
+                SuggestionStyle::ShowAlways,
             );
             if let [first, .., last] = &path[..] {
                 let sp = first.ident.span.until(last.ident.span);
@@ -2463,7 +2465,7 @@ fn show_candidates(
                 msg.push_str(&candidate.0);
             }
 
-            err.note(&msg);
+            err.help(&msg);
         }
     } else if !matches!(mode, DiagnosticMode::Import) {
         assert!(!inaccessible_path_strings.is_empty());

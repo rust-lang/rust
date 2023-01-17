@@ -51,7 +51,7 @@ LL | n!(f);
 LL |         n!(f);
    |            ^ not found in this scope
    |
-   = note: consider importing this function:
+   = help: consider importing this function:
            foo::f
    = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -64,7 +64,7 @@ LL | n!(f);
 LL |                 f
    |                 ^ not found in this scope
    |
-   = note: consider importing this function:
+   = help: consider importing this function:
            foo::f
    = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 

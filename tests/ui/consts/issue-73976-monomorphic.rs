@@ -7,6 +7,7 @@
 
 #![feature(const_type_id)]
 #![feature(const_type_name)]
+#![feature(const_trait_impl)]
 
 use std::any::{self, TypeId};
 
@@ -17,7 +18,7 @@ impl<T: 'static> GetTypeId<T> {
 }
 
 const fn check_type_id<T: 'static>() -> bool {
-    matches!(GetTypeId::<T>::VALUE, GetTypeId::<usize>::VALUE)
+    GetTypeId::<T>::VALUE == GetTypeId::<usize>::VALUE
 }
 
 pub struct GetTypeNameLen<T>(T);
