@@ -205,7 +205,7 @@ static_assert_size!(TyKind<'_>, 32);
 ///
 /// ## Generators
 ///
-/// Generators are handled similarly in `GeneratorSubsts`.  The set of
+/// Generators are handled similarly in `GeneratorSubsts`. The set of
 /// type parameters is similar, but `CK` and `CS` are replaced by the
 /// following type parameters:
 ///

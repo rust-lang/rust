@@ -139,7 +139,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&def.did()) {
                     for (unsubstituted_predicate, &span) in &unsubstituted_predicates.0 {
                         // `unsubstituted_predicate` is `U: 'b` in the
-                        // example above.  So apply the substitution to
+                        // example above. So apply the substitution to
                         // get `T: 'a` (or `predicate`):
                         let predicate = unsubstituted_predicates
                             .rebind(*unsubstituted_predicate)

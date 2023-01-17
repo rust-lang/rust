@@ -171,7 +171,7 @@ fn parse_tree(
                     } else {
                         match delim {
                             Delimiter::Brace => {
-                                // The delimiter is `{`.  This indicates the beginning
+                                // The delimiter is `{`. This indicates the beginning
                                 // of a meta-variable expression (e.g. `${count(ident)}`).
                                 // Try to parse the meta-variable expression.
                                 match MetaVarExpr::parse(&tts, delim_span.entire(), sess) {
@@ -200,7 +200,7 @@ fn parse_tree(
                         }
                     }
                     // If we didn't find a metavar expression above, then we must have a
-                    // repetition sequence in the macro (e.g. `$(pat)*`).  Parse the
+                    // repetition sequence in the macro (e.g. `$(pat)*`). Parse the
                     // contents of the sequence itself
                     let sequence = parse(tts, parsing_patterns, sess, node_id, features, edition);
                     // Get the Kleene operator and optional separator

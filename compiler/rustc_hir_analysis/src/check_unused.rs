@@ -50,7 +50,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 fn unused_crates_lint(tcx: TyCtxt<'_>) {
     let lint = lint::builtin::UNUSED_EXTERN_CRATES;
 
-    // Collect first the crates that are completely unused.  These we
+    // Collect first the crates that are completely unused. These we
     // can always suggest removing (no matter which edition we are
     // in).
     let unused_extern_crates: FxHashMap<LocalDefId, Span> = tcx

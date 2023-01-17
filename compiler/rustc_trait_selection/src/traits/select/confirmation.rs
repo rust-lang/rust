@@ -2,7 +2,7 @@
 //!
 //! Confirmation unifies the output type parameters of the trait
 //! with the values found in the obligation, possibly yielding a
-//! type error.  See the [rustc dev guide] for more details.
+//! type error. See the [rustc dev guide] for more details.
 //!
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
@@ -356,8 +356,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested,
             );
 
-            // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
-            // predicate as usual.  It won't have any effect since auto traits are coinductive.
+            // Adds the predicates from the trait. Note that this contains a `Self: Trait`
+            // predicate as usual. It won't have any effect since auto traits are coinductive.
             obligations.extend(trait_obligations);
 
             debug!(?obligations, "vtable_auto_impl");

@@ -2622,7 +2622,7 @@ impl Target {
     /// Search for a JSON file specifying the given target triple.
     ///
     /// If none is found in `$RUST_TARGET_PATH`, look for a file called `target.json` inside the
-    /// sysroot under the target-triple's `rustlib` directory.  Note that it could also just be a
+    /// sysroot under the target-triple's `rustlib` directory. Note that it could also just be a
     /// bare filename already, so also check for that. If one of the hardcoded targets we know
     /// about, just return it directly.
     ///

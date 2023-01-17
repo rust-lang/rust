@@ -338,7 +338,7 @@ pub struct HygieneData {
     /// first and then resolved later), so we use an `Option` here.
     local_expn_data: IndexVec<LocalExpnId, Option<ExpnData>>,
     local_expn_hashes: IndexVec<LocalExpnId, ExpnHash>,
-    /// Data and hash information from external crates.  We may eventually want to remove these
+    /// Data and hash information from external crates. We may eventually want to remove these
     /// maps, and fetch the information directly from the other crate's metadata like DefIds do.
     foreign_expn_data: FxHashMap<ExpnId, ExpnData>,
     foreign_expn_hashes: FxHashMap<ExpnId, ExpnHash>,

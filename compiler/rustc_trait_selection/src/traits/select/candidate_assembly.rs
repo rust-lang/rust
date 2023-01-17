@@ -398,7 +398,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::Param(..) | ty::Alias(ty::Projection, ..) => {
                     // In these cases, we don't know what the actual
-                    // type is.  Therefore, we cannot break it down
+                    // type is. Therefore, we cannot break it down
                     // into its constituent types. So we don't
                     // consider the `..` impl but instead just add no
                     // candidates: this means that typeck will only

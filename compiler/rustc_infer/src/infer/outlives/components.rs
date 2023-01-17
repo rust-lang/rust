@@ -150,7 +150,7 @@ fn compute_components<'tcx>(
                     out.push(Component::Alias(ty::Projection, data));
                 } else {
                     // fallback case: hard code
-                    // OutlivesProjectionComponents.  Continue walking
+                    // OutlivesProjectionComponents. Continue walking
                     // through and constrain Pi.
                     let mut subcomponents = smallvec![];
                     let mut subvisited = SsoHashSet::new();
@@ -192,7 +192,7 @@ fn compute_components<'tcx>(
             ty::Error(_) => {
                 // (*) Function pointers and trait objects are both binders.
                 // In the RFC, this means we would add the bound regions to
-                // the "bound regions list".  In our representation, no such
+                // the "bound regions list". In our representation, no such
                 // list is maintained explicitly, because bound regions
                 // themselves can be readily identified.
                 compute_components_recursive(tcx, ty.into(), out, visited);

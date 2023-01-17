@@ -105,7 +105,7 @@ pub struct ModuleConfig {
     pub emit_thin_lto: bool,
     pub bc_cmdline: String,
 
-    // Miscellaneous flags.  These are mostly copied from command-line
+    // Miscellaneous flags. These are mostly copied from command-line
     // options.
     pub verify_llvm_ir: bool,
     pub no_prepopulate_passes: bool,
@@ -538,7 +538,7 @@ fn produce_final_output_artifacts(
 
     let copy_if_one_unit = |output_type: OutputType, keep_numbered: bool| {
         if compiled_modules.modules.len() == 1 {
-            // 1) Only one codegen unit.  In this case it's no difficulty
+            // 1) Only one codegen unit. In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
             let module_name = Some(&compiled_modules.modules[0].name[..]);
             let path = crate_output.temp_path(output_type, module_name);
@@ -557,15 +557,15 @@ fn produce_final_output_artifacts(
                 .to_owned();
 
             if crate_output.outputs.contains_key(&output_type) {
-                // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
+                // 2) Multiple codegen units, with `--emit foo=some_name`. We have
                 //    no good solution for this case, so warn the user.
                 sess.emit_warning(errors::IgnoringEmitPath { extension });
             } else if crate_output.single_output_file.is_some() {
-                // 3) Multiple codegen units, with `-o some_name`.  We have
+                // 3) Multiple codegen units, with `-o some_name`. We have
                 //    no good solution for this case, so warn the user.
                 sess.emit_warning(errors::IgnoringOutput { extension });
             } else {
-                // 4) Multiple codegen units, but no explicit name.  We
+                // 4) Multiple codegen units, but no explicit name. We
                 //    just leave the `foo.0.x` files in place.
                 // (We don't have to do any work in this case.)
             }
@@ -579,7 +579,7 @@ fn produce_final_output_artifacts(
         match *output_type {
             OutputType::Bitcode => {
                 user_wants_bitcode = true;
-                // Copy to .bc, but always keep the .0.bc.  There is a later
+                // Copy to .bc, but always keep the .0.bc. There is a later
                 // check to figure out if we should delete .0.bc files, or keep
                 // them for making an rlib.
                 copy_if_one_unit(OutputType::Bitcode, true);
@@ -611,7 +611,7 @@ fn produce_final_output_artifacts(
     // `-C save-temps` or `--emit=` flags).
 
     if !sess.opts.cg.save_temps {
-        // Remove the temporary .#module-name#.o objects.  If the user didn't
+        // Remove the temporary .#module-name#.o objects. If the user didn't
         // explicitly request bitcode (with --emit=bc), and the bitcode is not
         // needed for building an rlib, then we must remove .#module-name#.bc as
         // well.

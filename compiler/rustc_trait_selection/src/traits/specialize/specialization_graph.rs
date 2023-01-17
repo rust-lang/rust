@@ -418,7 +418,7 @@ pub(crate) fn assoc_def(
     } else {
         // This is saying that neither the trait nor
         // the impl contain a definition for this
-        // associated type.  Normally this situation
+        // associated type. Normally this situation
         // could only arise through a compiler bug --
         // if the user wrote a bad item name, it
         // should have failed in astconv.

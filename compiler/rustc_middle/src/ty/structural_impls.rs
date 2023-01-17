@@ -456,7 +456,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Rc<T> {
             let slot = Rc::get_mut_unchecked(&mut unique);
 
             // Semantically move the contained type out from `unique`, fold
-            // it, then move the folded value back into `unique`.  Should
+            // it, then move the folded value back into `unique`. Should
             // folding fail, `ManuallyDrop` ensures that the "moved-out"
             // value is not re-dropped.
             let owned = ManuallyDrop::take(slot);
@@ -502,7 +502,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Arc<T> {
             let slot = Arc::get_mut_unchecked(&mut unique);
 
             // Semantically move the contained type out from `unique`, fold
-            // it, then move the folded value back into `unique`.  Should
+            // it, then move the folded value back into `unique`. Should
             // folding fail, `ManuallyDrop` ensures that the "moved-out"
             // value is not re-dropped.
             let owned = ManuallyDrop::take(slot);

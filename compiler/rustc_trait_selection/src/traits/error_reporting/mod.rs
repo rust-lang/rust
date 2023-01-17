@@ -2218,7 +2218,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // This is kind of a hack: it frequently happens that some earlier
                 // error prevents types from being fully inferred, and then we get
                 // a bunch of uninteresting errors saying something like "<generic
-                // #0> doesn't implement Sized".  It may even be true that we
+                // #0> doesn't implement Sized". It may even be true that we
                 // could just skip over all checks where the self-ty is an
                 // inference variable, but I was afraid that there might be an
                 // inference variable created, registered as an obligation, and

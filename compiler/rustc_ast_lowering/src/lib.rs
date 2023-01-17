@@ -662,7 +662,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
     }
 
-    /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate
+    /// Hash the HIR node twice, one deep and one shallow hash. This allows to differentiate
     /// queries which depend on the full HIR tree and those which only depend on the item signature.
     fn hash_owner(
         &mut self,
@@ -1193,7 +1193,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: &ImplTraitContext,
     ) -> hir::Ty<'hir> {
         // Check whether we should interpret this as a bare trait object.
-        // This check mirrors the one in late resolution.  We only introduce this special case in
+        // This check mirrors the one in late resolution. We only introduce this special case in
         // the rare occurrence we need to lower `Fresh` anonymous lifetimes.
         // The other cases when a qpath should be opportunistically made a trait object are handled
         // by `ty_path`.
@@ -1918,7 +1918,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             this.with_remapping(new_remapping, |this| {
                 // We have to be careful to get elision right here. The
                 // idea is that we create a lifetime parameter for each
-                // lifetime in the return type.  So, given a return type
+                // lifetime in the return type. So, given a return type
                 // like `async fn foo(..) -> &[&u32]`, we lower to `impl
                 // Future<Output = &'1 [ &'2 u32 ]>`.
                 //
@@ -2012,7 +2012,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Create the `Foo<...>` reference itself. Note that the `type
         // Foo = impl Trait` is, internally, created as a child of the
-        // async fn, so the *type parameters* are inherited.  It's
+        // async fn, so the *type parameters* are inherited. It's
         // only the lifetime parameters that we must supply.
         let opaque_ty_ref = hir::TyKind::OpaqueDef(
             hir::ItemId { owner_id: hir::OwnerId { def_id: opaque_ty_def_id } },

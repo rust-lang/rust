@@ -1665,7 +1665,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn ensure_place_sized(&mut self, ty: Ty<'tcx>, span: Span) {
         let tcx = self.tcx();
 
-        // Erase the regions from `ty` to get a global type.  The
+        // Erase the regions from `ty` to get a global type. The
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
         let erased_ty = tcx.erase_regions(ty);

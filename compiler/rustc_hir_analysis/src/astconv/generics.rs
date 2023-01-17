@@ -337,13 +337,13 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                     // We should never be able to reach this point with well-formed input.
                     // There are three situations in which we can encounter this issue.
                     //
-                    //  1.  The number of arguments is incorrect. In this case, an error
-                    //      will already have been emitted, and we can ignore it.
-                    //  2.  There are late-bound lifetime parameters present, yet the
-                    //      lifetime arguments have also been explicitly specified by the
-                    //      user.
-                    //  3.  We've inferred some lifetimes, which have been provided later (i.e.
-                    //      after a type or const). We want to throw an error in this case.
+                    //  1. The number of arguments is incorrect. In this case, an error
+                    //     will already have been emitted, and we can ignore it.
+                    //  2. There are late-bound lifetime parameters present, yet the
+                    //     lifetime arguments have also been explicitly specified by the
+                    //     user.
+                    //  3. We've inferred some lifetimes, which have been provided later (i.e.
+                    //     after a type or const). We want to throw an error in this case.
 
                     if arg_count.correct.is_ok()
                         && arg_count.explicit_late_bound == ExplicitLateBound::No

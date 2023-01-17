@@ -120,7 +120,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         // PART 3
         // Add retag after assignments where data "enters" this function: the RHS is behind a deref and the LHS is not.
         for block_data in basic_blocks {
-            // We want to insert statements as we iterate.  To this end, we
+            // We want to insert statements as we iterate. To this end, we
             // iterate backwards using indices.
             for i in (0..block_data.statements.len()).rev() {
                 let (retag_kind, place) = match block_data.statements[i].kind {

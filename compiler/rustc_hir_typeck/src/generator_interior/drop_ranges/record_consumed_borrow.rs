@@ -116,7 +116,7 @@ impl<'tcx> ExprUseDelegate<'tcx> {
         // where the `identity(...)` (the rvalue) produces a return type
         // of `&'rv mut A`, where `'a: 'rv`. We then assign this result to
         // `'y`, resulting in (transitively) `'a: 'y` (i.e., while `y` is in use,
-        // `a` will be considered borrowed).  Other parts of the code will ensure
+        // `a` will be considered borrowed). Other parts of the code will ensure
         // that if `y` is live over a yield, `&'y mut A` appears in the generator
         // state. If `'y` is live, then any sound region analysis must conclude
         // that `'a` is also live. So if this causes a bug, blame some other

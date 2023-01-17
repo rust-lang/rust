@@ -247,7 +247,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
     // Subtle: before we store the predicates into the tcx, we
     // sort them so that predicates like `T: Foo<Item=U>` come
-    // before uses of `U`.  This avoids false ambiguity errors
+    // before uses of `U`. This avoids false ambiguity errors
     // in trait checking. See `setup_constraining_predicates`
     // for details.
     if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {

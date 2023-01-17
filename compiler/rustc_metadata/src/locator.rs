@@ -591,7 +591,7 @@ impl<'a> CrateLocator<'a> {
                     Err(MetadataError::LoadFailure(err)) => {
                         info!("no metadata found: {}", err);
                         // The file was present and created by the same compiler version, but we
-                        // couldn't load it for some reason.  Give a hard error instead of silently
+                        // couldn't load it for some reason. Give a hard error instead of silently
                         // ignoring it, but only if we would have given an error anyway.
                         self.crate_rejections
                             .via_invalid

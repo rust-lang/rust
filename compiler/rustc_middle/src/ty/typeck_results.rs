@@ -397,10 +397,10 @@ impl<'tcx> TypeckResults<'tcx> {
 
     /// Returns the type of an expression as a monotype.
     ///
-    /// NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
+    /// NB (1): This is the PRE-ADJUSTMENT TYPE for the expression. That is, in
     /// some cases, we insert `Adjustment` annotations such as auto-deref or
-    /// auto-ref.  The type returned by this function does not consider such
-    /// adjustments.  See `expr_ty_adjusted()` instead.
+    /// auto-ref. The type returned by this function does not consider such
+    /// adjustments. See `expr_ty_adjusted()` instead.
     ///
     /// NB (2): This type doesn't provide type parameter substitutions; e.g., if you
     /// ask for the type of `id` in `id(3)`, it will return `fn(&isize) -> isize`

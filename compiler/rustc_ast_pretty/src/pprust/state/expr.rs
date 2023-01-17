@@ -473,10 +473,10 @@ impl<'a> State<'a> {
                 self.word("]");
             }
             ast::ExprKind::Range(start, end, limits) => {
-                // Special case for `Range`.  `AssocOp` claims that `Range` has higher precedence
+                // Special case for `Range`. `AssocOp` claims that `Range` has higher precedence
                 // than `Assign`, but `x .. x = x` gives a parse error instead of `x .. (x = x)`.
                 // Here we use a fake precedence value so that any child with lower precedence than
-                // a "normal" binop gets parenthesized.  (`LOr` is the lowest-precedence binop.)
+                // a "normal" binop gets parenthesized. (`LOr` is the lowest-precedence binop.)
                 let fake_prec = AssocOp::LOr.precedence() as i8;
                 if let Some(e) = start {
                     self.print_expr_maybe_paren(e, fake_prec);

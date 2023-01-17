@@ -290,7 +290,7 @@ pub struct RegionFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
 
     /// Stores the index of a binder *just outside* the stuff we have
-    /// visited.  So this begins as INNERMOST; when we pass through a
+    /// visited. So this begins as INNERMOST; when we pass through a
     /// binder, it is incremented (via `shift_in`).
     current_index: ty::DebruijnIndex,
 

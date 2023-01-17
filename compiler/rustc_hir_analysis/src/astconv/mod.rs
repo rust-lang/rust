@@ -992,7 +992,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// ```
     ///
     /// The `sized_by_default` parameter indicates if, in this context, the `param_ty` should be
-    /// considered `Sized` unless there is an explicit `?Sized` bound.  This would be true in the
+    /// considered `Sized` unless there is an explicit `?Sized` bound. This would be true in the
     /// example above, but is not true in supertrait listings like `trait Foo: Bar + Baz`.
     ///
     /// `span` should be the declaration size of the parameter.
@@ -1497,7 +1497,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             i.trait_ref().map_bound(|trait_ref: ty::TraitRef<'tcx>| {
                 assert_eq!(trait_ref.self_ty(), dummy_self);
 
-                // Verify that `dummy_self` did not leak inside default type parameters.  This
+                // Verify that `dummy_self` did not leak inside default type parameters. This
                 // could not be done at path creation, since we need to see through trait aliases.
                 let mut missing_type_params = vec![];
                 let mut references_self = false;
@@ -2832,7 +2832,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     /// Parses the programmer's textual representation of a type into our
-    /// internal notion of a type.  This is meant to be used within a path.
+    /// internal notion of a type. This is meant to be used within a path.
     pub fn ast_ty_to_ty_in_path(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
         self.ast_ty_to_ty_inner(ast_ty, false, true)
     }

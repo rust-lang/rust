@@ -50,7 +50,7 @@ rustc_index::newtype_index! {
     }
 }
 
-/// Specifications found at this position in the stack.  This map only represents the lints
+/// Specifications found at this position in the stack. This map only represents the lints
 /// found for one set of attributes (like `shallow_lint_levels_on` does).
 ///
 /// We store the level specifications as a linked list.
@@ -163,7 +163,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
     match attrs.map.range(..) {
         // There is only something to do if there are attributes at all.
         [] => {}
-        // Most of the time, there is only one attribute.  Avoid fetching HIR in that case.
+        // Most of the time, there is only one attribute. Avoid fetching HIR in that case.
         [(local_id, _)] => levels.add_id(HirId { owner, local_id: *local_id }),
         // Otherwise, we need to visit the attributes in source code order, so we fetch HIR and do
         // a standard visit.

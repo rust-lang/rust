@@ -230,7 +230,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     let stream = TokenStream::from_nonterminal_ast(&nt);
                     // A hack used to pass AST fragments to attribute and derive
                     // macros as a single nonterminal token instead of a token
-                    // stream.  Such token needs to be "unwrapped" and not
+                    // stream. Such token needs to be "unwrapped" and not
                     // represented as a delimited group.
                     // FIXME: It needs to be removed, but there are some
                     // compatibility issues (see #73345).

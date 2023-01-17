@@ -197,7 +197,7 @@ pub struct Session {
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
 
     /// This tracks where `-Zunleash-the-miri-inside-of-you` was used to get around a
-    /// const check, optionally with the relevant feature gate.  We use this to
+    /// const check, optionally with the relevant feature gate. We use this to
     /// warn about unleashing, but with a single diagnostic instead of dozens that
     /// drown everything else in noise.
     miri_unleashed_features: Lock<Vec<(Span, Option<Symbol>)>>,

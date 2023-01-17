@@ -750,7 +750,7 @@ where
 
 /// Calls `f` for each mutable borrow or raw reference in the program.
 ///
-/// This DOES NOT call `f` for a shared borrow of a type with interior mutability.  That's okay for
+/// This DOES NOT call `f` for a shared borrow of a type with interior mutability. That's okay for
 /// initializedness, because we cannot move from an `UnsafeCell` (outside of `core::cell`), but
 /// other analyses will likely need to check for `!Freeze`.
 fn for_each_mut_borrow<'tcx>(

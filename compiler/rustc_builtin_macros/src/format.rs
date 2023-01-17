@@ -583,7 +583,7 @@ fn report_missing_placeholders(
     if detect_foreign_fmt {
         use super::format_foreign as foreign;
 
-        // The set of foreign substitutions we've explained.  This prevents spamming the user
+        // The set of foreign substitutions we've explained. This prevents spamming the user
         // with `%d should be written as {}` over and over again.
         let mut explained = FxHashSet::default();
 
