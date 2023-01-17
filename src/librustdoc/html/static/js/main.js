@@ -1149,7 +1149,9 @@ function loadCss(cssUrl) {
 
         onEach(parent.childNodes, child => {
             if (child.tagName === "A") {
-                path.push(child.textContent);
+                const crate_name = child.textContent;
+                const crate_version = getVar("current-crate-version");
+                path.push(`${crate_name} = "${crate_version}"`);
             }
         });
 
