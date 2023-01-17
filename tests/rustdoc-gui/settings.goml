@@ -105,6 +105,33 @@ assert-css: (
         "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
     },
 )
+// Now we check the setting-name for radio buttons is on a different line than the label.
+compare-elements-position-near: (
+    "#theme .setting-name",
+    "#theme .choices",
+    {"x": 1}
+)
+compare-elements-position-near-false: (
+    "#theme .setting-name",
+    "#theme .choices",
+    {"y": 1}
+)
+// Now we check that the label positions are all on the same line.
+compare-elements-position-near: (
+    "#theme .choices #theme-light",
+    "#theme .choices #theme-dark",
+    {"y": 1}
+)
+compare-elements-position-near: (
+    "#theme .choices #theme-dark",
+    "#theme .choices #theme-ayu",
+    {"y": 1}
+)
+compare-elements-position-near: (
+    "#theme .choices #theme-ayu",
+    "#theme .choices #theme-system-preference",
+    {"y": 1}
+)
 
 // First we check the "default" display for toggles.
 assert-css: (
