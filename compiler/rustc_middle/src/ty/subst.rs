@@ -545,6 +545,9 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &'tcx ty::List<T> {
 /// Similar to [`super::Binder`] except that it tracks early bound generics, i.e. `struct Foo<T>(T)`
 /// needs `T` substituted immediately. This type primarily exists to avoid forgetting to call
 /// `subst`.
+///
+/// If you don't have anything to `subst`, you may be looking for
+/// [`subst_identity`](EarlyBinder::subst_identity) or [`skip_binder`](EarlyBinder::skip_binder).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable)]
 pub struct EarlyBinder<T>(pub T);
@@ -585,6 +588,14 @@ impl<T> EarlyBinder<T> {
         EarlyBinder(value)
     }
 
+    /// Skips the binder and returns the "bound" value.
+    /// This can be used to extract data that does not depend on generic parameters
+    /// (e.g., getting the `DefId` of the inner value or getting the number of
+    /// arguments of an `FnSig`). Otherwise, consider using
+    /// [`subst_identity`](EarlyBinder::subst_identity).
+    ///
+    /// See also [`Binder::skip_binder`](super::Binder::skip_binder), which is
+    /// the analogous operation on [`super::Binder`].
     pub fn skip_binder(self) -> T {
         self.0
     }
@@ -736,6 +747,14 @@ impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
         self.0.fold_with(&mut folder)
     }
 
+    /// Makes the identity substitution `T0 => T0, ..., TN => TN`.
+    /// Conceptually, this converts universally bound variables into placeholders
+    /// when inside of a given item.
+    ///
+    /// For example, consider `for<T> fn foo<T>(){ .. }`:
+    /// - Outside of `foo`, `T` is bound (represented by the presence of `EarlyBinder`).
+    /// - Inside of the body of `foo`, we treat `T` as a placeholder by calling
+    /// `subst_identity` to discharge the `EarlyBinder`.
     pub fn subst_identity(self) -> T {
         self.0
     }
