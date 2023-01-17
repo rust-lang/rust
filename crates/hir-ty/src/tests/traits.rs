@@ -3507,14 +3507,9 @@ trait Request {
 fn bin_op_adt_with_rhs_primitive() {
     check_infer_with_mismatches(
         r#"
-#[lang = "add"]
-pub trait Add<Rhs = Self> {
-    type Output;
-    fn add(self, rhs: Rhs) -> Self::Output;
-}
-
+//- minicore: add
 struct Wrapper(u32);
-impl Add<u32> for Wrapper {
+impl core::ops::Add<u32> for Wrapper {
     type Output = Self;
     fn add(self, rhs: u32) -> Wrapper {
         Wrapper(rhs)
@@ -3527,26 +3522,103 @@ fn main(){
 
 }"#,
         expect![[r#"
-            72..76 'self': Self
-            78..81 'rhs': Rhs
-            192..196 'self': Wrapper
-            198..201 'rhs': u32
-            219..247 '{     ...     }': Wrapper
-            229..236 'Wrapper': Wrapper(u32) -> Wrapper
-            229..241 'Wrapper(rhs)': Wrapper
-            237..240 'rhs': u32
-            259..345 '{     ...um;  }': ()
-            269..276 'wrapped': Wrapper
-            279..286 'Wrapper': Wrapper(u32) -> Wrapper
-            279..290 'Wrapper(10)': Wrapper
-            287..289 '10': u32
-            300..303 'num': u32
-            311..312 '2': u32
-            322..325 'res': Wrapper
-            328..335 'wrapped': Wrapper
-            328..341 'wrapped + num': Wrapper
-            338..341 'num': u32
+            95..99 'self': Wrapper
+            101..104 'rhs': u32
+            122..150 '{     ...     }': Wrapper
+            132..139 'Wrapper': Wrapper(u32) -> Wrapper
+            132..144 'Wrapper(rhs)': Wrapper
+            140..143 'rhs': u32
+            162..248 '{     ...um;  }': ()
+            172..179 'wrapped': Wrapper
+            182..189 'Wrapper': Wrapper(u32) -> Wrapper
+            182..193 'Wrapper(10)': Wrapper
+            190..192 '10': u32
+            203..206 'num': u32
+            214..215 '2': u32
+            225..228 'res': Wrapper
+            231..238 'wrapped': Wrapper
+            231..244 'wrapped + num': Wrapper
+            241..244 'num': u32
         "#]],
+    )
+}
+
+#[test]
+fn builtin_binop_expectation_works_on_single_reference() {
+    check_types(
+        r#"
+//- minicore: add
+use core::ops::Add;
+impl Add<i32> for i32 { type Output = i32 }
+impl Add<&i32> for i32 { type Output = i32 }
+impl Add<u32> for u32 { type Output = u32 }
+impl Add<&u32> for u32 { type Output = u32 }
+
+struct V<T>;
+impl<T> V<T> {
+    fn default() -> Self { loop {} }
+    fn get(&self, _: &T) -> &T { loop {} }
+}
+
+fn take_u32(_: u32) {}
+fn minimized() {
+    let v = V::default();
+    let p = v.get(&0);
+      //^ &u32
+    take_u32(42 + p);
+}
+"#,
+    );
+}
+
+#[test]
+fn no_builtin_binop_expectation_for_general_ty_var() {
+    // FIXME: Ideally type mismatch should be reported on `take_u32(42 - p)`.
+    check_types(
+        r#"
+//- minicore: add
+use core::ops::Add;
+impl Add<i32> for i32 { type Output = i32; }
+impl Add<&i32> for i32 { type Output = i32; }
+// This is needed to prevent chalk from giving unique solution to `i32: Add<&?0>` after applying
+// fallback to integer type variable for `42`.
+impl Add<&()> for i32 { type Output = (); }
+
+struct V<T>;
+impl<T> V<T> {
+    fn default() -> Self { loop {} }
+    fn get(&self) -> &T { loop {} }
+}
+
+fn take_u32(_: u32) {}
+fn minimized() {
+    let v = V::default();
+    let p = v.get();
+      //^ &{unknown}
+    take_u32(42 + p);
+}
+"#,
+    );
+}
+
+#[test]
+fn no_builtin_binop_expectation_for_non_builtin_types() {
+    check_no_mismatches(
+        r#"
+//- minicore: default, eq
+struct S;
+impl Default for S { fn default() -> Self { S } }
+impl Default for i32 { fn default() -> Self { 0 } }
+impl PartialEq<S> for i32 { fn eq(&self, _: &S) -> bool { true } }
+impl PartialEq<i32> for i32 { fn eq(&self, _: &S) -> bool { true } }
+
+fn take_s(_: S) {}
+fn test() {
+    let s = Default::default();
+    let _eq = 0 == s;
+    take_s(s);
+}
+"#,
     )
 }
 
