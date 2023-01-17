@@ -359,7 +359,7 @@ pub enum ErrorKind {
 
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
-    // `Other` and `Uncategorised` should remain at the end:
+    // `Other` and `Uncategorized` should remain at the end:
     //
     /// A custom error that does not fall under any other I/O error kind.
     ///
@@ -564,6 +564,12 @@ impl Error {
     /// otherwise the state of the error value is indeterminate. In particular,
     /// other standard library functions may call platform functions that may
     /// (or may not) reset the error value even if they succeed.
+    ///
+    /// If this is used in a case where no error has yet occurred in a program,
+    /// e.g. right after the beginning of `fn main`,
+    /// then in principle any possible Error may be returned.
+    /// The error code may have been set by a previous program (e.g. `execve`)
+    /// or the OS may have initialized it to an arbitrary, even random, value.
     ///
     /// # Examples
     ///
@@ -871,6 +877,13 @@ impl Error {
 
     /// Returns the corresponding [`ErrorKind`] for this error.
     ///
+    /// In some cases, the ErrorKind variant may not make much sense,
+    /// either because the situation does not actually involve an error, or
+    /// because of a new error code the standard library has not been taught.
+    /// See [`last_os_error`] for more details.
+    ///
+    /// [`last_os_error`]: Error::last_os_error
+    ///
     /// # Examples
     ///
     /// ```
@@ -881,7 +894,8 @@ impl Error {
     /// }
     ///
     /// fn main() {
-    ///     // Will print "Uncategorized".
+    ///     // As no error has occurred, this may print anything!
+    ///     // It likely prints a placeholder for unidentified (non-)errors.
     ///     print_error(Error::last_os_error());
     ///     // Will print "AddrInUse".
     ///     print_error(Error::new(ErrorKind::AddrInUse, "oh no!"));
