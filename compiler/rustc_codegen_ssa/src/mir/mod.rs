@@ -1,3 +1,4 @@
+use crate::base;
 use crate::traits::*;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -58,7 +59,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>>,
 
     /// The funclet status of each basic block
-    cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
+    cleanup_kinds: Option<IndexVec<mir::BasicBlock, analyze::CleanupKind>>,
 
     /// When targeting MSVC, this stores the cleanup info for each funclet BB.
     /// This is initialized at the same time as the `landing_pads` entry for the
@@ -166,7 +167,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         start_bx.set_personality_fn(cx.eh_personality());
     }
 
-    let cleanup_kinds = analyze::cleanup_kinds(&mir);
+    let cleanup_kinds =
+        if base::wants_msvc_seh(cx.tcx().sess) { Some(analyze::cleanup_kinds(&mir)) } else { None };
+
     let cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>> =
         mir.basic_blocks
             .indices()

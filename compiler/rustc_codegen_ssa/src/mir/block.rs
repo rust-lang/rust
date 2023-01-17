@@ -39,7 +39,6 @@ enum MergingSucc {
 struct TerminatorCodegenHelper<'tcx> {
     bb: mir::BasicBlock,
     terminator: &'tcx mir::Terminator<'tcx>,
-    funclet_bb: Option<mir::BasicBlock>,
 }
 
 impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
@@ -49,28 +48,24 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         &self,
         fx: &'b mut FunctionCx<'a, 'tcx, Bx>,
     ) -> Option<&'b Bx::Funclet> {
-        let funclet_bb = self.funclet_bb?;
-        if base::wants_msvc_seh(fx.cx.tcx().sess) {
-            // If `landing_pad_for` hasn't been called yet to create the `Funclet`,
-            // it has to be now. This may not seem necessary, as RPO should lead
-            // to all the unwind edges being visited (and so to `landing_pad_for`
-            // getting called for them), before building any of the blocks inside
-            // the funclet itself - however, if MIR contains edges that end up not
-            // being needed in the LLVM IR after monomorphization, the funclet may
-            // be unreachable, and we don't have yet a way to skip building it in
-            // such an eventuality (which may be a better solution than this).
-            if fx.funclets[funclet_bb].is_none() {
-                fx.landing_pad_for(funclet_bb);
-            }
-
-            Some(
-                fx.funclets[funclet_bb]
-                    .as_ref()
-                    .expect("landing_pad_for didn't also create funclets entry"),
-            )
-        } else {
-            None
+        let cleanup_kinds = (&fx.cleanup_kinds).as_ref()?;
+        let funclet_bb = cleanup_kinds[self.bb].funclet_bb(self.bb)?;
+        // If `landing_pad_for` hasn't been called yet to create the `Funclet`,
+        // it has to be now. This may not seem necessary, as RPO should lead
+        // to all the unwind edges being visited (and so to `landing_pad_for`
+        // getting called for them), before building any of the blocks inside
+        // the funclet itself - however, if MIR contains edges that end up not
+        // being needed in the LLVM IR after monomorphization, the funclet may
+        // be unreachable, and we don't have yet a way to skip building it in
+        // such an eventuality (which may be a better solution than this).
+        if fx.funclets[funclet_bb].is_none() {
+            fx.landing_pad_for(funclet_bb);
         }
+        Some(
+            fx.funclets[funclet_bb]
+                .as_ref()
+                .expect("landing_pad_for didn't also create funclets entry"),
+        )
     }
 
     /// Get a basic block (creating it if necessary), possibly with cleanup
@@ -104,23 +99,24 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> (bool, bool) {
-        let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
-        let (needs_landing_pad, is_cleanupret) = match (self.funclet_bb, target_funclet) {
-            (None, None) => (false, false),
-            (None, Some(_)) => (true, false),
-            (Some(_), None) => {
-                let span = self.terminator.source_info.span;
-                span_bug!(span, "{:?} - jump out of cleanup?", self.terminator);
-            }
-            (Some(f), Some(t_f)) => {
-                if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) {
-                    (false, false)
-                } else {
-                    (true, true)
+        if let Some(ref cleanup_kinds) = fx.cleanup_kinds {
+            let funclet_bb = cleanup_kinds[self.bb].funclet_bb(self.bb);
+            let target_funclet = cleanup_kinds[target].funclet_bb(target);
+            let (needs_landing_pad, is_cleanupret) = match (funclet_bb, target_funclet) {
+                (None, None) => (false, false),
+                (None, Some(_)) => (true, false),
+                (Some(f), Some(t_f)) => (f != t_f, f != t_f),
+                (Some(_), None) => {
+                    let span = self.terminator.source_info.span;
+                    span_bug!(span, "{:?} - jump out of cleanup?", self.terminator);
                 }
-            }
-        };
-        (needs_landing_pad, is_cleanupret)
+            };
+            (needs_landing_pad, is_cleanupret)
+        } else {
+            let needs_landing_pad = !fx.mir[self.bb].is_cleanup && fx.mir[target].is_cleanup;
+            let is_cleanupret = false;
+            (needs_landing_pad, is_cleanupret)
+        }
     }
 
     fn funclet_br<Bx: BuilderMethods<'a, 'tcx>>(
@@ -1253,9 +1249,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> MergingSucc {
         debug!("codegen_terminator: {:?}", terminator);
 
-        // Create the cleanup bundle, if needed.
-        let funclet_bb = self.cleanup_kinds[bb].funclet_bb(bb);
-        let helper = TerminatorCodegenHelper { bb, terminator, funclet_bb };
+        let helper = TerminatorCodegenHelper { bb, terminator };
 
         let mergeable_succ = || {
             // Note: any call to `switch_to_block` will invalidate a `true` value
