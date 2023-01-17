@@ -12,7 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, LLVMDumpModule, enzyme_rust_forward_diff, enzyme_rust_reverse_diff};
+use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -640,7 +640,7 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
     let llmod = module.module_llvm.llmod();
     let autodiff_mode = tasks.mode;
     //dbg!(llmod);
-    LLVMDumpModule(llmod);
+    //LLVMDumpModule(llmod);
 
     let rust_name = src_name;
     let rust_name2 = &tasks.target;
@@ -707,6 +707,24 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
     Ok(())
 }
 
+pub(crate) unsafe fn differentiate(
+    module: &ModuleCodegen<ModuleLlvm>,
+    _cgcx: &CodegenContext<LlvmCodegenBackend>,
+    diff_fncs: Vec<(DiffItem, String)>,
+    ) -> Result<(), FatalError> {
+
+    dbg!(&diff_fncs);
+
+    if !diff_fncs.is_empty() {
+        for (task, name) in diff_fncs {
+            let res = enzyme_ad(module, &task, &name);
+            assert!(res.is_ok());
+        }
+    }
+
+    Ok(())
+}
+
 // Unsafe due to LLVM calls.
 pub(crate) unsafe fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
@@ -721,16 +739,6 @@ pub(crate) unsafe fn optimize(
     let llcx = &*module.module_llvm.llcx;
     let tm = &*module.module_llvm.tm;
     let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
-
-    let fncs = &module.module_llvm.diff_fncs;
-    dbg!(&fncs);
-    if !fncs.is_empty() {
-        for (task, name) in fncs {
-            let res = enzyme_ad(module, task, name);
-            assert!(res.is_ok());
-        }
-    }
-
 
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);

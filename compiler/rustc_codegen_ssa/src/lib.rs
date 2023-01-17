@@ -35,6 +35,7 @@ use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
 use std::path::{Path, PathBuf};
+use rustc_middle::metadata::DiffItem;
 
 pub mod back;
 pub mod base;
@@ -58,6 +59,7 @@ pub struct ModuleCodegen<M> {
     pub name: String,
     pub module_llvm: M,
     pub kind: ModuleKind,
+    pub diff_fncs: Vec<(DiffItem, String)>,
 }
 
 // FIXME(eddyb) maybe include the crate name in this?

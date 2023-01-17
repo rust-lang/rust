@@ -4,6 +4,7 @@ use crate::{CompiledModule, ModuleCodegen};
 
 use rustc_errors::{FatalError, Handler};
 use rustc_middle::dep_graph::WorkProduct;
+use rustc_middle::metadata::DiffItem;
 
 pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Module: Send + Sync;
@@ -58,6 +59,12 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         llmod: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
         thin: bool,
+    ) -> Result<(), FatalError>;
+    /// Generate autodiff rules
+    fn autodiff(
+        cgcx: &CodegenContext<Self>,
+        module: &ModuleCodegen<Self::Module>,
+        diff_fncs: Vec<(DiffItem, String)>,
     ) -> Result<(), FatalError>;
 }
 

@@ -4,6 +4,7 @@ use crate::ModuleCodegen;
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::FatalError;
+use rustc_middle::metadata::DiffItem;
 
 use std::ffi::CString;
 use std::sync::Arc;
@@ -77,6 +78,24 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
                 Ok(module)
             }
             LtoModuleCodegen::Thin(ref mut thin) => B::optimize_thin(cgcx, thin),
+        }
+    }
+
+    /// Run autodiff on Fat LTO module
+    pub unsafe fn autodiff(
+        &mut self,
+        cgcx: &CodegenContext<B>,
+        diff_fncs: Vec<(DiffItem, String)>,
+    ) -> Result<LtoModuleCodegen<B>, FatalError> {
+        match *self {
+            LtoModuleCodegen::Fat { ref mut module, .. } => {
+                let module = module.take().unwrap();
+                {
+                    B::autodiff(cgcx, &module, diff_fncs)?;
+                }
+                Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: Vec::new() })
+            }
+            LtoModuleCodegen::Thin(_) => panic!("Please run in Fat LTO mode for autodiff!"),
         }
     }
 

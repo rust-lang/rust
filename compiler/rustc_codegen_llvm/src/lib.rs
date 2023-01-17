@@ -241,6 +241,16 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let diag_handler = cgcx.create_diag_handler();
         back::lto::run_pass_manager(cgcx, &diag_handler, module, config, thin)
     }
+    /// Generate autodiff rules
+    fn autodiff(
+        cgcx: &CodegenContext<Self>,
+        module: &ModuleCodegen<Self::Module>,
+        diff_fncs: Vec<(DiffItem, String)>,
+    ) -> Result<(), FatalError> {
+        unsafe {
+            back::write::differentiate(module, cgcx, diff_fncs)
+        }
+    }
 }
 
 unsafe impl Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
@@ -392,7 +402,6 @@ pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
     tm: &'static mut llvm::TargetMachine,
-    diff_fncs: Vec<(DiffItem, String)>,
 }
 
 unsafe impl Send for ModuleLlvm {}
@@ -403,7 +412,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name), diff_fncs: Vec::new() }
+            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name) }
         }
     }
 
@@ -411,7 +420,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess), diff_fncs: Vec::new() }
+            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess) }
         }
     }
 
@@ -433,7 +442,7 @@ impl ModuleLlvm {
                 }
             };
 
-            Ok(ModuleLlvm { llmod_raw, llcx, tm, diff_fncs: Vec::new() })
+            Ok(ModuleLlvm { llmod_raw, llcx, tm })
         }
     }
 

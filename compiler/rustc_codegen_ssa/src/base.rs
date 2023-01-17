@@ -586,7 +586,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             )
         });
 
-        Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator })
+        Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator, diff_fncs: Vec::new() })
     } else {
         None
     };

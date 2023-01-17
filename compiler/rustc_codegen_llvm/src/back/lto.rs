@@ -157,6 +157,7 @@ pub(crate) fn run_fat(
     modules: Vec<FatLTOInput<LlvmCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError> {
+
     let diag_handler = cgcx.create_diag_handler();
     let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &diag_handler)?;
     let symbols_below_threshold =
@@ -231,6 +232,7 @@ fn fat_lto(
         info!("pushing cached module {:?}", wp.cgu_name);
         (buffer, CString::new(wp.cgu_name).unwrap())
     }));
+
     for module in modules {
         match module {
             FatLTOInput::InMemory(m) => in_memory.push(m),
@@ -241,7 +243,7 @@ fn fat_lto(
             }
         }
     }
-
+    dbg!(&in_memory.len(), &serialized_modules.len());
     // Find the "costliest" module and merge everything into that codegen unit.
     // All the other modules will be serialized and reparsed into the new
     // context, so this hopefully avoids serializing and parsing the largest
@@ -276,6 +278,7 @@ fn fat_lto(
                 module_llvm: ModuleLlvm::parse(cgcx, &name, buffer.data(), diag_handler)?,
                 name: name.into_string().unwrap(),
                 kind: ModuleKind::Regular,
+                diff_fncs: Vec::new(),
             }
         }
     };
@@ -742,9 +745,10 @@ pub unsafe fn optimize_thin_module(
     let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
     let llmod_raw = parse_module(llcx, module_name, thin_module.data(), &diag_handler)? as *const _;
     let module = ModuleCodegen {
-        module_llvm: ModuleLlvm { llmod_raw, llcx, tm, diff_fncs: Vec::new() },
+        module_llvm: ModuleLlvm { llmod_raw, llcx, tm },
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
+        diff_fncs: Vec::new(),
     };
     {
         let target = &*module.module_llvm.tm;

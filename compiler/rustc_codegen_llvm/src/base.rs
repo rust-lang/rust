@@ -79,7 +79,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             &[cgu_name.to_string(), cgu.size_estimate().to_string()],
         );
         // Instantiate monomorphizations without filling out definitions yet...
-        let mut llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
+        let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         let out = {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
 
@@ -143,12 +143,11 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             out
         };
 
-        llvm_module.diff_fncs = out;
-
         ModuleCodegen {
             name: cgu_name.to_string(),
             module_llvm: llvm_module,
             kind: ModuleKind::Regular,
+            diff_fncs: out,
         }
     }
 
