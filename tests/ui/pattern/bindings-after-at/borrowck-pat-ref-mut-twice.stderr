@@ -4,8 +4,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |     let ref mut a @ ref mut b = U;
    |         ---------^^^---------
    |         |           |
-   |         |           another mutable borrow, by `b`, occurs here
-   |         first mutable borrow, by `a`, occurs here
+   |         |           value is mutably borrowed by `b` here
+   |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:29:9
@@ -13,8 +13,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |     let ref mut a @ ref mut b = U;
    |         ---------^^^---------
    |         |           |
-   |         |           another mutable borrow, by `b`, occurs here
-   |         first mutable borrow, by `a`, occurs here
+   |         |           value is mutably borrowed by `b` here
+   |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:33:9
@@ -22,8 +22,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |     let ref mut a @ ref mut b = U;
    |         ---------^^^---------
    |         |           |
-   |         |           another mutable borrow, by `b`, occurs here
-   |         first mutable borrow, by `a`, occurs here
+   |         |           value is mutably borrowed by `b` here
+   |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:36:9
@@ -31,8 +31,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |     let ref mut a @ ref mut b = U;
    |         ---------^^^---------
    |         |           |
-   |         |           another mutable borrow, by `b`, occurs here
-   |         first mutable borrow, by `a`, occurs here
+   |         |           value is mutably borrowed by `b` here
+   |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:39:9
@@ -40,8 +40,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |     let ref mut a @ ref mut b = U;
    |         ---------^^^---------
    |         |           |
-   |         |           another mutable borrow, by `b`, occurs here
-   |         first mutable borrow, by `a`, occurs here
+   |         |           value is mutably borrowed by `b` here
+   |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:44:9
@@ -49,18 +49,18 @@ error: cannot borrow value as mutable more than once at a time
 LL |       let ref mut a @ (
    |           ^--------
    |           |
-   |  _________first mutable borrow, by `a`, occurs here
+   |  _________value is mutably borrowed by `a` here
    | |
 LL | |
 LL | |         ref mut b,
-   | |         --------- another mutable borrow, by `b`, occurs here
+   | |         --------- value is mutably borrowed by `b` here
 LL | |         [
 LL | |             ref mut c,
-   | |             --------- another mutable borrow, by `c`, occurs here
+   | |             --------- value is mutably borrowed by `c` here
 LL | |             ref mut d,
-   | |             --------- another mutable borrow, by `d`, occurs here
+   | |             --------- value is mutably borrowed by `d` here
 LL | |             ref e,
-   | |             ----- also borrowed as immutable, by `e`, here
+   | |             ----- value is borrowed by `e` here
 LL | |         ]
 LL | |     ) = (U, [U, U, U]);
    | |_____^
@@ -71,18 +71,18 @@ error: cannot borrow value as mutable more than once at a time
 LL |       let ref mut a @ (
    |           ^--------
    |           |
-   |  _________first mutable borrow, by `a`, occurs here
+   |  _________value is mutably borrowed by `a` here
    | |
 LL | |
 LL | |             ref mut b,
-   | |             --------- another mutable borrow, by `b`, occurs here
+   | |             --------- value is mutably borrowed by `b` here
 LL | |             [
 LL | |                 ref mut c,
-   | |                 --------- another mutable borrow, by `c`, occurs here
+   | |                 --------- value is mutably borrowed by `c` here
 LL | |                 ref mut d,
-   | |                 --------- another mutable borrow, by `d`, occurs here
+   | |                 --------- value is mutably borrowed by `d` here
 LL | |                 ref e,
-   | |                 ----- also borrowed as immutable, by `e`, here
+   | |                 ----- value is borrowed by `e` here
 LL | |             ]
 LL | |         ) = (u(), [u(), u(), u()]);
    | |_________^
@@ -157,8 +157,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |         ---------^^^^^^---------^
    |         |              |
-   |         |              another mutable borrow, by `b`, occurs here
-   |         first mutable borrow, by `a`, occurs here
+   |         |              value is mutably borrowed by `b` here
+   |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:76:37
@@ -166,8 +166,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |                                     ---------^^^^^^^---------^
    |                                     |               |
-   |                                     |               another mutable borrow, by `b`, occurs here
-   |                                     first mutable borrow, by `a`, occurs here
+   |                                     |               value is mutably borrowed by `b` here
+   |                                     value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:82:9
@@ -175,8 +175,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |         ---------^^^^^^---------^
    |         |              |
-   |         |              another mutable borrow, by `b`, occurs here
-   |         first mutable borrow, by `a`, occurs here
+   |         |              value is mutably borrowed by `b` here
+   |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:82:37
@@ -184,8 +184,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |                                     ---------^^^^^^^---------^
    |                                     |               |
-   |                                     |               another mutable borrow, by `b`, occurs here
-   |                                     first mutable borrow, by `a`, occurs here
+   |                                     |               value is mutably borrowed by `b` here
+   |                                     value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:89:9
@@ -193,8 +193,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |         ---------^^^^^^---------^
    |         |              |
-   |         |              another mutable borrow, by `b`, occurs here
-   |         first mutable borrow, by `a`, occurs here
+   |         |              value is mutably borrowed by `b` here
+   |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:89:37
@@ -202,8 +202,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |                                     ---------^^^^^^^---------^
    |                                     |               |
-   |                                     |               another mutable borrow, by `b`, occurs here
-   |                                     first mutable borrow, by `a`, occurs here
+   |                                     |               value is mutably borrowed by `b` here
+   |                                     value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:101:9
@@ -211,8 +211,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |         ---------^^^^^^---------^
    |         |              |
-   |         |              another mutable borrow, by `b`, occurs here
-   |         first mutable borrow, by `a`, occurs here
+   |         |              value is mutably borrowed by `b` here
+   |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:101:37
@@ -220,8 +220,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |                                     ---------^^^^^^^---------^
    |                                     |               |
-   |                                     |               another mutable borrow, by `b`, occurs here
-   |                                     first mutable borrow, by `a`, occurs here
+   |                                     |               value is mutably borrowed by `b` here
+   |                                     value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:8:11
@@ -229,8 +229,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |     fn f1(ref mut a @ ref mut b: U) {}
    |           ---------^^^---------
    |           |           |
-   |           |           another mutable borrow, by `b`, occurs here
-   |           first mutable borrow, by `a`, occurs here
+   |           |           value is mutably borrowed by `b` here
+   |           value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:10:11
@@ -238,8 +238,8 @@ error: cannot borrow value as mutable more than once at a time
 LL |     fn f2(ref mut a @ ref mut b: U) {}
    |           ---------^^^---------
    |           |           |
-   |           |           another mutable borrow, by `b`, occurs here
-   |           first mutable borrow, by `a`, occurs here
+   |           |           value is mutably borrowed by `b` here
+   |           value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:13:9
@@ -247,13 +247,13 @@ error: cannot borrow value as mutable more than once at a time
 LL |           ref mut a @ [
    |           ^--------
    |           |
-   |  _________first mutable borrow, by `a`, occurs here
+   |  _________value is mutably borrowed by `a` here
    | |
 LL | |
 LL | |             [ref b @ .., _],
-   | |              ---------- also borrowed as immutable, by `b`, here
+   | |              ---------- value is borrowed by `b` here
 LL | |             [_, ref mut mid @ ..],
-   | |                 ---------------- another mutable borrow, by `mid`, occurs here
+   | |                 ---------------- value is mutably borrowed by `mid` here
 LL | |             ..,
 LL | |             [..],
 LL | |         ] : [[U; 4]; 5]
@@ -265,9 +265,9 @@ error: cannot borrow value as mutable more than once at a time
 LL |     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
    |                      ---------^^^-------------
    |                      |           |           |
-   |                      |           |           also moved into `c` here
-   |                      |           another mutable borrow, by `b`, occurs here
-   |                      first mutable borrow, by `a`, occurs here
+   |                      |           |           value is moved into `c` here
+   |                      |           value is mutably borrowed by `b` here
+   |                      value is mutably borrowed by `a` here
 
 error: cannot move out of value because it is borrowed
   --> $DIR/borrowck-pat-ref-mut-twice.rs:21:34
@@ -275,8 +275,8 @@ error: cannot move out of value because it is borrowed
 LL |     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
    |                                  ---------^^^-
    |                                  |           |
-   |                                  |           value moved into `c` here
-   |                                  value borrowed, by `b`, here
+   |                                  |           value is moved into `c` here
+   |                                  value is mutably borrowed by `b` here
 
 error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:29:9
