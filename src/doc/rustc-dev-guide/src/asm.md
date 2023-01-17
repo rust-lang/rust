@@ -277,7 +277,7 @@ pub enum InlineAsmOperand<'tcx> {
 }
 ```
 
-As part of HAIR lowering, `InOut` and `SplitInOut` operands are lowered to a split form with a
+As part of THIR lowering, `InOut` and `SplitInOut` operands are lowered to a split form with a
 separate `in_value` and `out_place`.
 
 Semantically, the `InlineAsm` terminator is similar to the `Call` terminator except that it has
