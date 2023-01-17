@@ -3,8 +3,11 @@
 name = "syntax-fuzz"
 version = "0.0.1"
 publish = false
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [package.metadata]
 cargo-fuzz = true
