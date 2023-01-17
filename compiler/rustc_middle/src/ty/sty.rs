@@ -1257,7 +1257,7 @@ pub struct AliasTy<'tcx> {
 impl<'tcx> AliasTy<'tcx> {
     pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.def_id) {
-            DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
+            DefKind::AssocTy => tcx.parent(self.def_id),
             DefKind::ImplTraitPlaceholder => {
                 tcx.parent(tcx.impl_trait_in_trait_parent(self.def_id))
             }
