@@ -1,14 +1,15 @@
 use crate::traits::{specialization_graph, translate_substs};
 
 use super::assembly::{self, Candidate, CandidateSource};
+use super::infcx_ext::InferCtxtExt;
 use super::{Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
-use rustc_infer::traits::{ObligationCause, Reveal};
+use rustc_infer::traits::Reveal;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::ProjectionPredicate;
 use rustc_middle::ty::TypeVisitable;
@@ -112,14 +113,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             let impl_substs = ecx.infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
             let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
-            let Ok(InferOk { obligations, .. }) = ecx.infcx
-                .at(&ObligationCause::dummy(), goal.param_env)
-                .define_opaque_types(false)
-                .eq(goal_trait_ref, impl_trait_ref)
-                .map_err(|e| debug!("failed to equate trait refs: {e:?}"))
-            else {
-                return Err(NoSolution)
-            };
+            let mut nested_goals = ecx.infcx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
             let where_clause_bounds = tcx
                 .predicates_of(impl_def_id)
                 .instantiate(tcx, impl_substs)
@@ -127,8 +121,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
 
-            let nested_goals =
-                obligations.into_iter().map(|o| o.into()).chain(where_clause_bounds).collect();
+            nested_goals.extend(where_clause_bounds);
             let trait_ref_certainty = ecx.evaluate_all(nested_goals)?;
 
             let Some(assoc_def) = fetch_eligible_assoc_item_def(
@@ -185,16 +178,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 ty.map_bound(|ty| ty.into())
             };
 
-            let Ok(InferOk { obligations, .. }) = ecx.infcx
-                .at(&ObligationCause::dummy(), goal.param_env)
-                .define_opaque_types(false)
-                .eq(goal.predicate.term,  term.subst(tcx, substs))
-                .map_err(|e| debug!("failed to equate trait refs: {e:?}"))
-            else {
-                return Err(NoSolution);
-            };
-
-            let nested_goals = obligations.into_iter().map(|o| o.into()).collect();
+            let nested_goals =
+                ecx.infcx.eq(goal.param_env, goal.predicate.term, term.subst(tcx, substs))?;
             let rhs_certainty = ecx.evaluate_all(nested_goals)?;
 
             Ok(trait_ref_certainty.unify_and(rhs_certainty))
