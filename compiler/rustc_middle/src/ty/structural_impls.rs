@@ -7,7 +7,7 @@ use crate::mir::{Field, ProjectionKind};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
@@ -177,6 +177,15 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             }
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
         }
+    }
+}
+
+impl<'tcx> fmt::Debug for AliasTy<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AliasTy")
+            .field("substs", &self.substs)
+            .field("def_id", &self.def_id)
+            .finish()
     }
 }
 
