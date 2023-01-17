@@ -15,7 +15,7 @@ LL | use std::simd::intrinsics;
 help: consider importing this module instead
    |
 LL | use std::intrinsics;
-   |     ~~~~~~~~~~~~~~~~
+   |     ~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 
