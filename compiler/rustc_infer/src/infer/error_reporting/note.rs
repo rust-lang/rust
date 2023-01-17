@@ -330,8 +330,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let Ok(trait_predicates) = self
             .tcx
-            .explicit_predicates_of(trait_item_def_id)
-            .instantiate_own(self.tcx, trait_item_substs)
+            .bound_explicit_predicates_of(trait_item_def_id)
+            .map_bound(|p| p.predicates)
+            .subst_iter_copied(self.tcx, trait_item_substs)
             .map(|(pred, _)| {
                 if pred.is_suggestable(self.tcx, false) {
                     Ok(pred.to_string())

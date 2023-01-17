@@ -107,7 +107,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
         locations: Locations,
     ) {
-        for (predicate, span) in instantiated_predicates {
+        for (predicate, span) in instantiated_predicates
+            .predicates
+            .into_iter()
+            .zip(instantiated_predicates.spans.into_iter())
+        {
             debug!(?predicate);
             let category = ConstraintCategory::Predicate(span);
             let predicate = self.normalize_with_category(predicate, locations, category);
