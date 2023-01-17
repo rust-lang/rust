@@ -11,7 +11,9 @@ export type RunnableEnvCfg =
 
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
-    configureLang: vscode.Disposable | undefined;
+    configureLang:
+        | { handle: vscode.Disposable; typingContinueCommentsOnNewline: boolean }
+        | undefined;
 
     readonly rootSection = "rust-analyzer";
     private readonly requiresReloadOpts = [
@@ -43,7 +45,7 @@ export class Config {
     }
 
     dispose() {
-        this.configureLang?.dispose();
+        this.configureLang?.handle.dispose();
     }
 
     private refreshLogging() {
@@ -86,7 +88,15 @@ export class Config {
      * [1]: https://github.com/Microsoft/vscode/issues/11514#issuecomment-244707076
      */
     private configureLanguage() {
-        if (this.configureLang) return;
+        // Only need to dispose of the config if there's a change
+        if (
+            this.configureLang &&
+            this.typingContinueCommentsOnNewline !==
+                this.configureLang.typingContinueCommentsOnNewline
+        ) {
+            this.configureLang.handle.dispose();
+            this.configureLang = undefined;
+        }
 
         let onEnterRules: vscode.OnEnterRule[] = [
             {
@@ -157,9 +167,12 @@ export class Config {
             ];
         }
 
-        this.configureLang = vscode.languages.setLanguageConfiguration("rust", {
-            onEnterRules,
-        });
+        this.configureLang = {
+            handle: vscode.languages.setLanguageConfiguration("rust", {
+                onEnterRules,
+            }),
+            typingContinueCommentsOnNewline: this.typingContinueCommentsOnNewline,
+        };
     }
 
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
