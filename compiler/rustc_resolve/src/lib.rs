@@ -1137,7 +1137,7 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     }
 }
 
-impl Resolver<'_> {
+impl<'a> Resolver<'a> {
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.node_id_to_def_id.get(&node).copied()
     }
@@ -1193,6 +1193,10 @@ impl Resolver<'_> {
         } else {
             self.cstore().item_generics_num_lifetimes(def_id, self.session)
         }
+    }
+
+    pub fn sess(&self) -> &'a Session {
+        self.session
     }
 }
 

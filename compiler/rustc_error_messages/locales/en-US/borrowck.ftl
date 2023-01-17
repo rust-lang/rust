@@ -120,3 +120,7 @@ borrowck_cannot_move_when_borrowed =
         [value] value
         *[other] {$value_place}
     } occurs here
+
+borrowck_opaque_type_non_generic_param =
+    expected generic {$kind} parameter, found `{$ty}`
+    .label = this generic parameter must be used with a generic {$kind} parameter

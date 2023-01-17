@@ -80,8 +80,8 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                             .or_insert(span);
                     }
 
-                    Component::Projection(proj_ty) => {
-                        // This would arise from something like:
+                    Component::Alias(kind, alias) => {
+                        // This would either arise from something like:
                         //
                         // ```
                         // struct Foo<'a, T: Iterator> {
@@ -89,15 +89,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // }
                         // ```
                         //
-                        // Here we want to add an explicit `where <T as Iterator>::Item: 'a`.
-                        let ty: Ty<'tcx> = tcx.mk_projection(proj_ty.def_id, proj_ty.substs);
-                        required_predicates
-                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
-                            .or_insert(span);
-                    }
-
-                    Component::Opaque(def_id, substs) => {
-                        // This would arise from something like:
+                        // or:
                         //
                         // ```rust
                         // type Opaque<T> = impl Sized;
@@ -105,9 +97,9 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // struct Ss<'a, T>(&'a Opaque<T>);
                         // ```
                         //
-                        // Here we want to have an implied bound `Opaque<T>: 'a`
-
-                        let ty = tcx.mk_opaque(def_id, substs);
+                        // Here we want to add an explicit `where <T as Iterator>::Item: 'a`
+                        // or `Opaque<T>: 'a` depending on the alias kind.
+                        let ty: Ty<'tcx> = tcx.mk_ty(ty::Alias(kind, alias));
                         required_predicates
                             .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
                             .or_insert(span);

@@ -1,8 +1,6 @@
 error[E0405]: cannot find trait `Oops` in this scope
   --> $DIR/issue-104513-ice.rs:3:19
    |
-LL | fn f() {
-   |     - help: you might be missing a type parameter: `<Oops>`
 LL |     let _: S<impl Oops> = S;
    |                   ^^^^ not found in this scope
 

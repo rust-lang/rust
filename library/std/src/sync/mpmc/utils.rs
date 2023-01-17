@@ -91,9 +91,8 @@ impl<T> DerefMut for CachePadded<T> {
 }
 
 const SPIN_LIMIT: u32 = 6;
-const YIELD_LIMIT: u32 = 10;
 
-/// Performs exponential backoff in spin loops.
+/// Performs quadratic backoff in spin loops.
 pub struct Backoff {
     step: Cell<u32>,
 }
@@ -104,25 +103,27 @@ impl Backoff {
         Backoff { step: Cell::new(0) }
     }
 
-    /// Backs off in a lock-free loop.
+    /// Backs off using lightweight spinning.
     ///
-    /// This method should be used when we need to retry an operation because another thread made
-    /// progress.
+    /// This method should be used for:
+    ///     - Retrying an operation because another thread made progress. i.e. on CAS failure.
+    ///     - Waiting for an operation to complete by spinning optimistically for a few iterations
+    ///     before falling back to parking the thread (see `Backoff::is_completed`).
     #[inline]
-    pub fn spin(&self) {
+    pub fn spin_light(&self) {
         let step = self.step.get().min(SPIN_LIMIT);
         for _ in 0..step.pow(2) {
             crate::hint::spin_loop();
         }
 
-        if self.step.get() <= SPIN_LIMIT {
-            self.step.set(self.step.get() + 1);
-        }
+        self.step.set(self.step.get() + 1);
     }
 
-    /// Backs off in a blocking loop.
+    /// Backs off using heavyweight spinning.
+    ///
+    /// This method should be used in blocking loops where parking the thread is not an option.
     #[inline]
-    pub fn snooze(&self) {
+    pub fn spin_heavy(&self) {
         if self.step.get() <= SPIN_LIMIT {
             for _ in 0..self.step.get().pow(2) {
                 crate::hint::spin_loop()
@@ -131,14 +132,12 @@ impl Backoff {
             crate::thread::yield_now();
         }
 
-        if self.step.get() <= YIELD_LIMIT {
-            self.step.set(self.step.get() + 1);
-        }
+        self.step.set(self.step.get() + 1);
     }
 
-    /// Returns `true` if quadratic backoff has completed and blocking the thread is advised.
+    /// Returns `true` if quadratic backoff has completed and parking the thread is advised.
     #[inline]
     pub fn is_completed(&self) -> bool {
-        self.step.get() > YIELD_LIMIT
+        self.step.get() > SPIN_LIMIT
     }
 }

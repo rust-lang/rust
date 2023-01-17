@@ -31,7 +31,9 @@
 use super::FnCtxt;
 
 use crate::type_error_struct;
-use rustc_errors::{struct_span_err, Applicability, DelayDm, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    struct_span_err, Applicability, DelayDm, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
@@ -270,6 +272,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         }
                     ));
                 }
+
+                self.try_suggest_collection_to_bool(fcx, &mut err);
+
                 err.emit();
             }
             CastError::NeedViaInt => {
@@ -517,6 +522,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 } else {
                     err.span_label(self.span, "invalid cast");
                 }
+
+                self.try_suggest_collection_to_bool(fcx, &mut err);
+
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
@@ -1079,5 +1087,41 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 lint
             },
         );
+    }
+
+    /// Attempt to suggest using `.is_empty` when trying to cast from a
+    /// collection type to a boolean.
+    fn try_suggest_collection_to_bool(&self, fcx: &FnCtxt<'a, 'tcx>, err: &mut Diagnostic) {
+        if self.cast_ty.is_bool() {
+            let derefed = fcx
+                .autoderef(self.expr_span, self.expr_ty)
+                .silence_errors()
+                .find(|t| matches!(t.0.kind(), ty::Str | ty::Slice(..)));
+
+            if let Some((deref_ty, _)) = derefed {
+                // Give a note about what the expr derefs to.
+                if deref_ty != self.expr_ty.peel_refs() {
+                    err.span_note(
+                        self.expr_span,
+                        format!(
+                            "this expression `Deref`s to `{}` which implements `is_empty`",
+                            fcx.ty_to_string(deref_ty)
+                        ),
+                    );
+                }
+
+                // Create a multipart suggestion: add `!` and `.is_empty()` in
+                // place of the cast.
+                let suggestion = vec![
+                    (self.expr_span.shrink_to_lo(), "!".to_string()),
+                    (self.span.with_lo(self.expr_span.hi()), ".is_empty()".to_string()),
+                ];
+
+                err.multipart_suggestion_verbose(format!(
+                    "consider using the `is_empty` method on `{}` to determine if it contains anything",
+                    fcx.ty_to_string(self.expr_ty),
+                ),  suggestion, Applicability::MaybeIncorrect);
+            }
+        }
     }
 }

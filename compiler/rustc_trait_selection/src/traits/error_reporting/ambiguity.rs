@@ -27,7 +27,7 @@ pub fn recompute_applicable_impls<'tcx>(
             ocx.normalize(&ObligationCause::dummy(), param_env, placeholder_obligation.trait_ref);
 
         let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
-        let impl_trait_ref = tcx.bound_impl_trait_ref(impl_def_id).unwrap().subst(tcx, impl_substs);
+        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst(tcx, impl_substs);
         let impl_trait_ref = ocx.normalize(&ObligationCause::dummy(), param_env, impl_trait_ref);
 
         if let Err(_) =
@@ -82,9 +82,7 @@ pub fn recompute_applicable_impls<'tcx>(
 
     let predicates =
         tcx.predicates_of(obligation.cause.body_id.owner.to_def_id()).instantiate_identity(tcx);
-    for obligation in
-        elaborate_predicates_with_span(tcx, std::iter::zip(predicates.predicates, predicates.spans))
-    {
+    for obligation in elaborate_predicates_with_span(tcx, predicates.into_iter()) {
         let kind = obligation.predicate.kind();
         if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = kind.skip_binder()
             && param_env_candidate_may_apply(kind.rebind(trait_pred))

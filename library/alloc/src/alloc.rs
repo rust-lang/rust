@@ -20,7 +20,7 @@ use core::marker::Destruct;
 mod tests;
 
 extern "Rust" {
-    // These are the magic symbols to call the global allocator.  rustc generates
+    // These are the magic symbols to call the global allocator. rustc generates
     // them to call `__rg_alloc` etc. if there is a `#[global_allocator]` attribute
     // (the code expanding that attribute macro generates those functions), or to call
     // the default implementations in std (`__rdl_alloc` etc. in `library/std/src/alloc.rs`)
@@ -353,7 +353,7 @@ pub(crate) const unsafe fn box_free<T: ?Sized, A: ~const Allocator + ~const Dest
 
 #[cfg(not(no_global_oom_handling))]
 extern "Rust" {
-    // This is the magic symbol to call the global alloc error handler.  rustc generates
+    // This is the magic symbol to call the global alloc error handler. rustc generates
     // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
     // default implementations below (`__rdl_oom`) otherwise.
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;

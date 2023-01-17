@@ -652,13 +652,14 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Converts an <code>Option<[String]></code> into an <code>Option<[usize]></code>, preserving
-    /// the original. The [`map`] method takes the `self` argument by value, consuming the original,
-    /// so this technique uses `as_ref` to first take an `Option` to a reference
-    /// to the value inside the original.
+    /// Calculates the length of an <code>Option<[String]></code> as an <code>Option<[usize]></code>
+    /// without moving the [`String`]. The [`map`] method takes the `self` argument by value,
+    /// consuming the original, so this technique uses `as_ref` to first take an `Option` to a
+    /// reference to the value inside the original.
     ///
     /// [`map`]: Option::map
     /// [String]: ../../std/string/struct.String.html "String"
+    /// [`String`]: ../../std/string/struct.String.html "String"
     ///
     /// ```
     /// let text: Option<String> = Some("Hello, world!".to_string());
@@ -946,8 +947,8 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Converts an <code>Option<[String]></code> into an <code>Option<[usize]></code>, consuming
-    /// the original:
+    /// Calculates the length of an <code>Option<[String]></code> as an
+    /// <code>Option<[usize]></code>, consuming the original:
     ///
     /// [String]: ../../std/string/struct.String.html "String"
     /// ```

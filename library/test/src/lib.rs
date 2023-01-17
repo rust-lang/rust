@@ -116,7 +116,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
     } else {
         if !opts.nocapture {
             // If we encounter a non-unwinding panic, flush any captured output from the current test,
-            // and stop  capturing output to ensure that the non-unwinding panic message is visible.
+            // and stop capturing output to ensure that the non-unwinding panic message is visible.
             // We also acquire the locks for both output streams to prevent output from other threads
             // from interleaving with the panic message or appearing after it.
             let builtin_panic_hook = panic::take_hook();

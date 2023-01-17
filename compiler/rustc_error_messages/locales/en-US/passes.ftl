@@ -4,6 +4,9 @@
 -passes_see_issue =
     see issue #{$issue} <https://github.com/rust-lang/rust/issues/{$issue}> for more information
 
+passes_incorrect_do_not_recommend_location =
+    `#[do_not_recommend]` can only be placed on trait implementations
+
 passes_outer_crate_level_attr =
     crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
 

@@ -727,11 +727,13 @@ impl<'a> Parser<'a> {
         let mut bounds = Vec::new();
         let mut negative_bounds = Vec::new();
 
+        // In addition to looping while we find generic bounds:
+        // We continue even if we find a keyword. This is necessary for error recovery on,
+        // for example, `impl fn()`. The only keyword that can go after generic bounds is
+        // `where`, so stop if it's it.
+        // We also continue if we find types (not traits), again for error recovery.
         while self.can_begin_bound()
-            // Continue even if we find a keyword.
-            // This is necessary for error recover on, for example, `impl fn()`.
-            //
-            // The only keyword that can go after generic bounds is `where`, so stop if it's it.
+            || self.token.can_begin_type()
             || (self.token.is_reserved_ident() && !self.token.is_keyword(kw::Where))
         {
             if self.token.is_keyword(kw::Dyn) {
@@ -938,6 +940,36 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |tok| tok.kind == TokenKind::OpenDelim(Delimiter::Parenthesis))
             && let Some(path) = self.recover_path_from_fn()
         {
+            path
+        } else if !self.token.is_path_start() && self.token.can_begin_type() {
+            let ty = self.parse_ty_no_plus()?;
+            // Instead of finding a path (a trait), we found a type.
+            let mut err = self.struct_span_err(ty.span, "expected a trait, found type");
+
+            // If we can recover, try to extract a path from the type. Note
+            // that we do not use the try operator when parsing the type because
+            // if it fails then we get a parser error which we don't want (we're trying
+            // to recover from errors, not make more).
+            let path = if self.may_recover()
+                && matches!(ty.kind, TyKind::Ptr(..) | TyKind::Ref(..))
+                && let TyKind::Path(_, path) = &ty.peel_refs().kind {
+                // Just get the indirection part of the type.
+                let span = ty.span.until(path.span);
+
+                err.span_suggestion_verbose(
+                    span,
+                    "consider removing the indirection",
+                    "",
+                    Applicability::MaybeIncorrect,
+                );
+
+                path.clone()
+            } else {
+                return Err(err);
+            };
+
+            err.emit();
+
             path
         } else {
             self.parse_path(PathStyle::Type)?

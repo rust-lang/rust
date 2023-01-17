@@ -2,7 +2,9 @@ use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use hir::def_id::{DefId, LocalDefId};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
+use rustc_errors::{
+    pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
@@ -207,9 +209,11 @@ fn compare_method_predicate_entailment<'tcx>(
     //
     // We then register the obligations from the impl_m and check to see
     // if all constraints hold.
-    hybrid_preds
-        .predicates
-        .extend(trait_m_predicates.instantiate_own(tcx, trait_to_placeholder_substs).predicates);
+    hybrid_preds.predicates.extend(
+        trait_m_predicates
+            .instantiate_own(tcx, trait_to_placeholder_substs)
+            .map(|(predicate, _)| predicate),
+    );
 
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
@@ -228,7 +232,7 @@ fn compare_method_predicate_entailment<'tcx>(
     debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds());
 
     let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
-    for (predicate, span) in iter::zip(impl_m_own_bounds.predicates, impl_m_own_bounds.spans) {
+    for (predicate, span) in impl_m_own_bounds {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_hir_id);
         let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
 
@@ -320,15 +324,6 @@ fn compare_method_predicate_entailment<'tcx>(
             ty::Binder::dummy(ty::PredicateKind::WellFormed(unnormalized_impl_fty.into())),
         ));
     }
-    let emit_implied_wf_lint = || {
-        infcx.tcx.struct_span_lint_hir(
-            rustc_session::lint::builtin::IMPLIED_BOUNDS_ENTAILMENT,
-            impl_m_hir_id,
-            infcx.tcx.def_span(impl_m.def_id),
-            "impl method assumes more implied bounds than the corresponding trait method",
-            |lint| lint,
-        );
-    };
 
     // Check that all obligations are satisfied by the implementation's
     // version.
@@ -346,7 +341,7 @@ fn compare_method_predicate_entailment<'tcx>(
                 )
                 .map(|()| {
                     // If the skip-mode was successful, emit a lint.
-                    emit_implied_wf_lint();
+                    emit_implied_wf_lint(infcx.tcx, impl_m, impl_m_hir_id, vec![]);
                 });
             }
             CheckImpliedWfMode::Skip => {
@@ -382,8 +377,16 @@ fn compare_method_predicate_entailment<'tcx>(
                     CheckImpliedWfMode::Skip,
                 )
                 .map(|()| {
+                    let bad_args = extract_bad_args_for_implies_lint(
+                        tcx,
+                        &errors,
+                        (trait_m, trait_sig),
+                        // Unnormalized impl sig corresponds to the HIR types written
+                        (impl_m, unnormalized_impl_sig),
+                        impl_m_hir_id,
+                    );
                     // If the skip-mode was successful, emit a lint.
-                    emit_implied_wf_lint();
+                    emit_implied_wf_lint(tcx, impl_m, impl_m_hir_id, bad_args);
                 });
             }
             CheckImpliedWfMode::Skip => {
@@ -398,6 +401,141 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     Ok(())
+}
+
+fn extract_bad_args_for_implies_lint<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    errors: &[infer::RegionResolutionError<'tcx>],
+    (trait_m, trait_sig): (&ty::AssocItem, ty::FnSig<'tcx>),
+    (impl_m, impl_sig): (&ty::AssocItem, ty::FnSig<'tcx>),
+    hir_id: hir::HirId,
+) -> Vec<(Span, Option<String>)> {
+    let mut blame_generics = vec![];
+    for error in errors {
+        // Look for the subregion origin that contains an input/output type
+        let origin = match error {
+            infer::RegionResolutionError::ConcreteFailure(o, ..) => o,
+            infer::RegionResolutionError::GenericBoundFailure(o, ..) => o,
+            infer::RegionResolutionError::SubSupConflict(_, _, o, ..) => o,
+            infer::RegionResolutionError::UpperBoundUniverseConflict(.., o, _) => o,
+        };
+        // Extract (possible) input/output types from origin
+        match origin {
+            infer::SubregionOrigin::Subtype(trace) => {
+                if let Some((a, b)) = trace.values.ty() {
+                    blame_generics.extend([a, b]);
+                }
+            }
+            infer::SubregionOrigin::RelateParamBound(_, ty, _) => blame_generics.push(*ty),
+            infer::SubregionOrigin::ReferenceOutlivesReferent(ty, _) => blame_generics.push(*ty),
+            _ => {}
+        }
+    }
+
+    let fn_decl = tcx.hir().fn_decl_by_hir_id(hir_id).unwrap();
+    let opt_ret_ty = match fn_decl.output {
+        hir::FnRetTy::DefaultReturn(_) => None,
+        hir::FnRetTy::Return(ty) => Some(ty),
+    };
+
+    // Map late-bound regions from trait to impl, so the names are right.
+    let mapping = std::iter::zip(
+        tcx.fn_sig(trait_m.def_id).bound_vars(),
+        tcx.fn_sig(impl_m.def_id).bound_vars(),
+    )
+    .filter_map(|(impl_bv, trait_bv)| {
+        if let ty::BoundVariableKind::Region(impl_bv) = impl_bv
+            && let ty::BoundVariableKind::Region(trait_bv) = trait_bv
+        {
+            Some((impl_bv, trait_bv))
+        } else {
+            None
+        }
+    })
+    .collect();
+
+    // For each arg, see if it was in the "blame" of any of the region errors.
+    // If so, then try to produce a suggestion to replace the argument type with
+    // one from the trait.
+    let mut bad_args = vec![];
+    for (idx, (ty, hir_ty)) in
+        std::iter::zip(impl_sig.inputs_and_output, fn_decl.inputs.iter().chain(opt_ret_ty))
+            .enumerate()
+    {
+        let expected_ty = trait_sig.inputs_and_output[idx]
+            .fold_with(&mut RemapLateBound { tcx, mapping: &mapping });
+        if blame_generics.iter().any(|blame| ty.contains(*blame)) {
+            let expected_ty_sugg = expected_ty.to_string();
+            bad_args.push((
+                hir_ty.span,
+                // Only suggest something if it actually changed.
+                (expected_ty_sugg != ty.to_string()).then_some(expected_ty_sugg),
+            ));
+        }
+    }
+
+    bad_args
+}
+
+struct RemapLateBound<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    mapping: &'a FxHashMap<ty::BoundRegionKind, ty::BoundRegionKind>,
+}
+
+impl<'tcx> TypeFolder<'tcx> for RemapLateBound<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        if let ty::ReFree(fr) = *r {
+            self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
+                bound_region: self
+                    .mapping
+                    .get(&fr.bound_region)
+                    .copied()
+                    .unwrap_or(fr.bound_region),
+                ..fr
+            }))
+        } else {
+            r
+        }
+    }
+}
+
+fn emit_implied_wf_lint<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_m: &ty::AssocItem,
+    hir_id: hir::HirId,
+    bad_args: Vec<(Span, Option<String>)>,
+) {
+    let span: MultiSpan = if bad_args.is_empty() {
+        tcx.def_span(impl_m.def_id).into()
+    } else {
+        bad_args.iter().map(|(span, _)| *span).collect::<Vec<_>>().into()
+    };
+    tcx.struct_span_lint_hir(
+        rustc_session::lint::builtin::IMPLIED_BOUNDS_ENTAILMENT,
+        hir_id,
+        span,
+        "impl method assumes more implied bounds than the corresponding trait method",
+        |lint| {
+            let bad_args: Vec<_> =
+                bad_args.into_iter().filter_map(|(span, sugg)| Some((span, sugg?))).collect();
+            if !bad_args.is_empty() {
+                lint.multipart_suggestion(
+                    format!(
+                        "replace {} type{} to make the impl signature compatible",
+                        pluralize!("this", bad_args.len()),
+                        pluralize!(bad_args.len())
+                    ),
+                    bad_args,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            lint
+        },
+    );
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -480,7 +618,8 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 ) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
     let impl_m = tcx.opt_associated_item(def_id).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
-    let impl_trait_ref = tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap();
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().subst_identity();
     let param_env = tcx.param_env(def_id);
 
     // First, check a few of the same things as `compare_impl_method`,
@@ -1548,7 +1687,8 @@ pub(super) fn compare_impl_const_raw(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_const_item = tcx.associated_item(impl_const_item_def);
     let trait_const_item = tcx.associated_item(trait_const_item_def);
-    let impl_trait_ref = tcx.impl_trait_ref(impl_const_item.container_id(tcx)).unwrap();
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_const_item.container_id(tcx)).unwrap().subst_identity();
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     let impl_c_span = tcx.def_span(impl_const_item_def.to_def_id());
@@ -1690,8 +1830,7 @@ fn compare_type_predicate_entailment<'tcx>(
     check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
 
     let impl_ty_own_bounds = impl_ty_predicates.instantiate_own(tcx, impl_substs);
-
-    if impl_ty_own_bounds.is_empty() {
+    if impl_ty_own_bounds.len() == 0 {
         // Nothing to check.
         return Ok(());
     }
@@ -1706,9 +1845,11 @@ fn compare_type_predicate_entailment<'tcx>(
     // associated type in the trait are assumed.
     let impl_predicates = tcx.predicates_of(impl_ty_predicates.parent.unwrap());
     let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
-    hybrid_preds
-        .predicates
-        .extend(trait_ty_predicates.instantiate_own(tcx, trait_to_impl_substs).predicates);
+    hybrid_preds.predicates.extend(
+        trait_ty_predicates
+            .instantiate_own(tcx, trait_to_impl_substs)
+            .map(|(predicate, _)| predicate),
+    );
 
     debug!("compare_type_predicate_entailment: bounds={:?}", hybrid_preds);
 
@@ -1724,9 +1865,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
     debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds());
 
-    assert_eq!(impl_ty_own_bounds.predicates.len(), impl_ty_own_bounds.spans.len());
-    for (span, predicate) in std::iter::zip(impl_ty_own_bounds.spans, impl_ty_own_bounds.predicates)
-    {
+    for (predicate, span) in impl_ty_own_bounds {
         let cause = ObligationCause::misc(span, impl_ty_hir_id);
         let predicate = ocx.normalize(&cause, param_env, predicate);
 

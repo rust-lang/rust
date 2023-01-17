@@ -1,6 +1,6 @@
 use rustc_errors::{IntoDiagnosticArg, MultiSpan};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{GenericArg, Ty};
 use rustc_span::Span;
 
 use crate::diagnostics::RegionName;
@@ -239,4 +239,15 @@ pub(crate) struct MoveBorrow<'a> {
     pub span: Span,
     #[label]
     pub borrow_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(borrowck_opaque_type_non_generic_param, code = "E0792")]
+pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
+    pub ty: GenericArg<'tcx>,
+    pub kind: &'a str,
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub param_span: Span,
 }

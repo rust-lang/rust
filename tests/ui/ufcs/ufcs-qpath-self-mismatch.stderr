@@ -21,6 +21,13 @@ LL |     <i32 as Add<i32>>::add(1u32, 2);
    |     |
    |     arguments to this function are incorrect
    |
+help: the return type of this call is `u32` due to the type of the argument passed
+  --> $DIR/ufcs-qpath-self-mismatch.rs:7:5
+   |
+LL |     <i32 as Add<i32>>::add(1u32, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^----^^^^
+   |                            |
+   |                            this argument influences the return type of `Add`
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: change the type of the numeric literal from `u32` to `i32`
@@ -36,6 +43,13 @@ LL |     <i32 as Add<i32>>::add(1, 2u32);
    |     |
    |     arguments to this function are incorrect
    |
+help: the return type of this call is `u32` due to the type of the argument passed
+  --> $DIR/ufcs-qpath-self-mismatch.rs:9:5
+   |
+LL |     <i32 as Add<i32>>::add(1, 2u32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^----^
+   |                               |
+   |                               this argument influences the return type of `Add`
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: change the type of the numeric literal from `u32` to `i32`

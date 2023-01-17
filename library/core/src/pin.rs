@@ -753,7 +753,7 @@ impl<P: DerefMut> Pin<P> {
 impl<'a, T: ?Sized> Pin<&'a T> {
     /// Constructs a new pin by mapping the interior value.
     ///
-    /// For example, if you  wanted to get a `Pin` of a field of something,
+    /// For example, if you wanted to get a `Pin` of a field of something,
     /// you could use this to get access to that field in one line of code.
     /// However, there are several gotchas with these "pinning projections";
     /// see the [`pin` module] documentation for further details on that topic.
@@ -856,7 +856,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
 
     /// Construct a new pin by mapping the interior value.
     ///
-    /// For example, if you  wanted to get a `Pin` of a field of something,
+    /// For example, if you wanted to get a `Pin` of a field of something,
     /// you could use this to get access to that field in one line of code.
     /// However, there are several gotchas with these "pinning projections";
     /// see the [`pin` module] documentation for further details on that topic.

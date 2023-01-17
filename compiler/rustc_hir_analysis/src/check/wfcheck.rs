@@ -32,7 +32,6 @@ use rustc_trait_selection::traits::{
 };
 
 use std::cell::LazyCell;
-use std::iter;
 use std::ops::{ControlFlow, Deref};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
@@ -182,7 +181,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         hir::ItemKind::Impl(ref impl_) => {
             let is_auto = tcx
                 .impl_trait_ref(def_id)
-                .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
+                .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.skip_binder().def_id));
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
                 let mut err =
@@ -1253,8 +1252,12 @@ fn check_impl<'tcx>(
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
-                let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap();
-                let trait_ref = wfcx.normalize(ast_trait_ref.path.span, None, trait_ref);
+                let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap().subst_identity();
+                let trait_ref = wfcx.normalize(
+                    ast_trait_ref.path.span,
+                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
+                    trait_ref,
+                );
                 let trait_pred = ty::TraitPredicate {
                     trait_ref,
                     constness: match constness {
@@ -1263,7 +1266,7 @@ fn check_impl<'tcx>(
                     },
                     polarity: ty::ImplPolarity::Positive,
                 };
-                let obligations = traits::wf::trait_obligations(
+                let mut obligations = traits::wf::trait_obligations(
                     wfcx.infcx,
                     wfcx.param_env,
                     wfcx.body_id,
@@ -1271,6 +1274,13 @@ fn check_impl<'tcx>(
                     ast_trait_ref.path.span,
                     item,
                 );
+                for obligation in &mut obligations {
+                    if let Some(pred) = obligation.predicate.to_opt_poly_trait_pred()
+                        && pred.self_ty().skip_binder() == trait_ref.self_ty()
+                    {
+                        obligation.cause.span = ast_self_ty.span;
+                    }
+                }
                 debug!(?obligations);
                 wfcx.register_obligations(obligations);
             }
@@ -1299,7 +1309,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
 
-    let predicates = tcx.bound_predicates_of(def_id.to_def_id());
+    let predicates = tcx.predicates_of(def_id.to_def_id());
     let generics = tcx.generics_of(def_id);
 
     let is_our_default = |def: &ty::GenericParamDef| match def.kind {
@@ -1339,7 +1349,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     // is incorrect when dealing with unused substs, for example
                     // for `struct Foo<const N: usize, const M: usize = { 1 - 2 }>`
                     // we should eagerly error.
-                    let default_ct = tcx.const_param_default(param.def_id);
+                    let default_ct = tcx.const_param_default(param.def_id).subst_identity();
                     if !default_ct.needs_subst() {
                         wfcx.register_wf_obligation(
                             tcx.def_span(param.def_id),
@@ -1385,7 +1395,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             GenericParamDefKind::Const { .. } => {
                 // If the param has a default, ...
                 if is_our_default(param) {
-                    let default_ct = tcx.const_param_default(param.def_id);
+                    let default_ct = tcx.const_param_default(param.def_id).subst_identity();
                     // ... and it's not a dependent default, ...
                     if !default_ct.needs_subst() {
                         // ... then substitute it with the default.
@@ -1400,7 +1410,6 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     // Now we build the substituted predicates.
     let default_obligations = predicates
-        .0
         .predicates
         .iter()
         .flat_map(|&(pred, sp)| {
@@ -1431,13 +1440,13 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
-            let substituted_pred = predicates.rebind(pred).subst(tcx, substs);
+            let substituted_pred = ty::EarlyBinder(pred).subst(tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
             if substituted_pred.has_non_region_param() || param_count.params.len() > 1 || has_region
             {
                 None
-            } else if predicates.0.predicates.iter().any(|&(p, _)| p == substituted_pred) {
+            } else if predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
                 // Avoid duplication of predicates that contain no parameters, for example.
                 None
             } else {
@@ -1463,22 +1472,21 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             traits::Obligation::new(tcx, cause, wfcx.param_env, pred)
         });
 
-    let predicates = predicates.0.instantiate_identity(tcx);
+    let predicates = predicates.instantiate_identity(tcx);
 
     let predicates = wfcx.normalize(span, None, predicates);
 
     debug!(?predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
-    let wf_obligations =
-        iter::zip(&predicates.predicates, &predicates.spans).flat_map(|(&p, &sp)| {
-            traits::wf::predicate_obligations(
-                infcx,
-                wfcx.param_env.without_const(),
-                wfcx.body_id,
-                p,
-                sp,
-            )
-        });
+    let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
+        traits::wf::predicate_obligations(
+            infcx,
+            wfcx.param_env.without_const(),
+            wfcx.body_id,
+            p,
+            sp,
+        )
+    });
 
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
     wfcx.register_obligations(obligations);

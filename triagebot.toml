@@ -185,7 +185,6 @@ trigger_files = [
     "src/tools/x",
     "configure",
     "Cargo.toml",
-    "Cargo.lock",
     "config.toml.example",
     "src/stage0.json"
 ]
@@ -251,7 +250,7 @@ new_pr = true
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
-    "compiler/rustc_trait_selection/solve"
+    "compiler/rustc_trait_selection/src/solve"
 ]
 
 [notify-zulip."I-prioritize"]

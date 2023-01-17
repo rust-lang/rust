@@ -21,7 +21,12 @@ error[E0223]: ambiguous associated type
   --> $DIR/let-binding-init-expr-as-ty.rs:2:14
    |
 LL |     let foo: i32::from_be(num);
-   |              ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<i32 as Trait>::from_be`
+   |              ^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `from_be` implemented for `i32`, you could use the fully-qualified path
+   |
+LL |     let foo: <i32 as Example>::from_be;
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

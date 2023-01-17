@@ -738,6 +738,15 @@ impl<T> SyncSender<T> {
     pub fn try_send(&self, t: T) -> Result<(), TrySendError<T>> {
         self.inner.try_send(t)
     }
+
+    // Attempts to send for a value on this receiver, returning an error if the
+    // corresponding channel has hung up, or if it waits more than `timeout`.
+    //
+    // This method is currently private and only used for tests.
+    #[allow(unused)]
+    fn send_timeout(&self, t: T, timeout: Duration) -> Result<(), mpmc::SendTimeoutError<T>> {
+        self.inner.send_timeout(t, timeout)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

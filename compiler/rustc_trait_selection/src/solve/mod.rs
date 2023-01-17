@@ -19,15 +19,19 @@
 
 use std::mem;
 
-use rustc_infer::infer::canonical::OriginalQueryValues;
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::canonical::{OriginalQueryValues, QueryRegionConstraints, QueryResponse};
+use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::Obligation;
+use rustc_middle::infer::canonical::Certainty as OldCertainty;
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{RegionOutlivesPredicate, ToPredicate, TypeOutlivesPredicate};
 use rustc_span::DUMMY_SP;
 
+use crate::traits::ObligationCause;
+
+use self::cache::response_no_constraints;
 use self::infcx_ext::InferCtxtExt;
 
 mod assembly;
@@ -119,7 +123,7 @@ pub enum MaybeCause {
 }
 
 /// Additional constraints returned on success.
-#[derive(Debug, PartialEq, Eq, Clone, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, TypeFoldable, TypeVisitable, Default)]
 pub struct ExternalConstraints<'tcx> {
     // FIXME: implement this.
     regions: (),
@@ -175,7 +179,7 @@ impl<'tcx> EvalCtxt<'tcx> {
         let canonical_response = self.evaluate_canonical_goal(canonical_goal)?;
         Ok((
             true, // FIXME: check whether `var_values` are an identity substitution.
-            fixme_instantiate_canonical_query_response(infcx, &orig_values, canonical_response),
+            instantiate_canonical_query_response(infcx, &orig_values, canonical_response),
         ))
     }
 
@@ -208,7 +212,8 @@ impl<'tcx> EvalCtxt<'tcx> {
         // of `PredicateKind` this is the case and it is and faster than instantiating and
         // recanonicalizing.
         let Goal { param_env, predicate } = canonical_goal.value;
-        if let Some(kind) = predicate.kind().no_bound_vars() {
+
+        if let Some(kind) = predicate.kind().no_bound_vars_ignoring_escaping(self.tcx) {
             match kind {
                 ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) => self.compute_trait_goal(
                     canonical_goal.unchecked_rebind(Goal { param_env, predicate }),
@@ -234,7 +239,10 @@ impl<'tcx> EvalCtxt<'tcx> {
                 | ty::PredicateKind::ConstEvaluatable(_)
                 | ty::PredicateKind::ConstEquate(_, _)
                 | ty::PredicateKind::TypeWellFormedFromEnv(_)
-                | ty::PredicateKind::Ambiguous => unimplemented!(),
+                | ty::PredicateKind::Ambiguous => {
+                    // FIXME
+                    response_no_constraints(self.tcx, canonical_goal, Certainty::Yes)
+                }
             }
         } else {
             let (infcx, goal, var_values) =
@@ -248,16 +256,18 @@ impl<'tcx> EvalCtxt<'tcx> {
 
     fn compute_type_outlives_goal(
         &mut self,
-        _goal: CanonicalGoal<'tcx, TypeOutlivesPredicate<'tcx>>,
+        goal: CanonicalGoal<'tcx, TypeOutlivesPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        todo!()
+        // FIXME
+        response_no_constraints(self.tcx, goal, Certainty::Yes)
     }
 
     fn compute_region_outlives_goal(
         &mut self,
-        _goal: CanonicalGoal<'tcx, RegionOutlivesPredicate<'tcx>>,
+        goal: CanonicalGoal<'tcx, RegionOutlivesPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        todo!()
+        // FIXME
+        response_no_constraints(self.tcx, goal, Certainty::Yes)
     }
 }
 
@@ -300,10 +310,27 @@ impl<'tcx> EvalCtxt<'tcx> {
     }
 }
 
-fn fixme_instantiate_canonical_query_response<'tcx>(
-    _: &InferCtxt<'tcx>,
-    _: &OriginalQueryValues<'tcx>,
-    _: CanonicalResponse<'tcx>,
+fn instantiate_canonical_query_response<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    original_values: &OriginalQueryValues<'tcx>,
+    response: CanonicalResponse<'tcx>,
 ) -> Certainty {
-    unimplemented!()
+    let Ok(InferOk { value, obligations }) = infcx
+        .instantiate_query_response_and_region_obligations(
+            &ObligationCause::dummy(),
+            ty::ParamEnv::empty(),
+            original_values,
+            &response.unchecked_map(|resp| QueryResponse {
+                var_values: resp.var_values,
+                region_constraints: QueryRegionConstraints::default(),
+                certainty: match resp.certainty {
+                    Certainty::Yes => OldCertainty::Proven,
+                    Certainty::Maybe(_) => OldCertainty::Ambiguous,
+                },
+                opaque_types: resp.external_constraints.opaque_types,
+                value: resp.certainty,
+            }),
+        ) else { bug!(); };
+    assert!(obligations.is_empty());
+    value
 }

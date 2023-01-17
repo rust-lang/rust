@@ -29,13 +29,13 @@ pub(crate) fn build_index<'tcx>(
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
     for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
-        if let Some(&(ref fqp, _)) = cache.paths.get(&parent) {
+        if let Some((fqp, _)) = cache.paths.get(&parent) {
             let desc = item
                 .doc_value()
                 .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
-                name: item.name.unwrap().to_string(),
+                name: item.name.unwrap(),
                 path: join_with_double_colon(&fqp[..fqp.len() - 1]),
                 desc,
                 parent: Some(parent),
@@ -58,8 +58,8 @@ pub(crate) fn build_index<'tcx>(
     // Sort search index items. This improves the compressibility of the search index.
     cache.search_index.sort_unstable_by(|k1, k2| {
         // `sort_unstable_by_key` produces lifetime errors
-        let k1 = (&k1.path, &k1.name, &k1.ty, &k1.parent);
-        let k2 = (&k2.path, &k2.name, &k2.ty, &k2.parent);
+        let k1 = (&k1.path, k1.name.as_str(), &k1.ty, &k1.parent);
+        let k2 = (&k2.path, k2.name.as_str(), &k2.ty, &k2.parent);
         std::cmp::Ord::cmp(&k1, &k2)
     });
 
@@ -240,7 +240,7 @@ pub(crate) fn build_index<'tcx>(
             )?;
             crate_data.serialize_field(
                 "n",
-                &self.items.iter().map(|item| &item.name).collect::<Vec<_>>(),
+                &self.items.iter().map(|item| item.name.as_str()).collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(
                 "q",
@@ -299,7 +299,7 @@ pub(crate) fn build_index<'tcx>(
             )?;
             crate_data.serialize_field(
                 "p",
-                &self.paths.iter().map(|(it, s)| (it, s.to_string())).collect::<Vec<_>>(),
+                &self.paths.iter().map(|(it, s)| (it, s.as_str())).collect::<Vec<_>>(),
             )?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
@@ -573,7 +573,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
     let decl = &func.decl;
 
     let combined_generics;
-    let (self_, generics) = if let Some(&(ref impl_self, ref impl_generics)) = impl_generics {
+    let (self_, generics) = if let Some((impl_self, impl_generics)) = impl_generics {
         match (impl_generics.is_empty(), func.generics.is_empty()) {
             (true, _) => (Some(impl_self), &func.generics),
             (_, true) => (Some(impl_self), impl_generics),

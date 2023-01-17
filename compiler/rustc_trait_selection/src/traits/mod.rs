@@ -115,14 +115,12 @@ pub fn predicates_for_generics<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    std::iter::zip(generic_bounds.predicates, generic_bounds.spans).enumerate().map(
-        move |(idx, (predicate, span))| Obligation {
-            cause: cause(idx, span),
-            recursion_depth: 0,
-            param_env,
-            predicate,
-        },
-    )
+    generic_bounds.into_iter().enumerate().map(move |(idx, (predicate, span))| Obligation {
+        cause: cause(idx, span),
+        recursion_depth: 0,
+        param_env,
+        predicate,
+    })
 }
 
 /// Determines whether the type `ty` is known to meet `bound` and
@@ -308,7 +306,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // the `TypeOutlives` predicates first inside the unnormalized parameter environment, and
     // then we normalize the `TypeOutlives` bounds inside the normalized parameter environment.
     //
-    // This works fairly well because trait matching  does not actually care about param-env
+    // This works fairly well because trait matching does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
         .drain_filter(|predicate| {
@@ -521,8 +519,10 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
 
     let generics = tcx.generics_of(trait_item_def_id);
     let predicates = tcx.predicates_of(trait_item_def_id);
-    let impl_trait_ref =
-        tcx.impl_trait_ref(impl_def_id).expect("expected impl to correspond to trait");
+    let impl_trait_ref = tcx
+        .impl_trait_ref(impl_def_id)
+        .expect("expected impl to correspond to trait")
+        .subst_identity();
     let param_env = tcx.param_env(impl_def_id);
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };

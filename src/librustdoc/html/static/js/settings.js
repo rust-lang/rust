@@ -150,10 +150,10 @@
                 });
                 output += "</div></div>";
             } else {
-                // This is a toggle.
+                // This is a checkbox toggle.
                 const checked = setting["default"] === true ? " checked" : "";
                 output += `\
-<label class="toggle">\
+<label class="settings-toggle">\
     <input type="checkbox" id="${js_data_name}"${checked}>\
     <span class="label">${setting_name}</span>\
 </label>`;

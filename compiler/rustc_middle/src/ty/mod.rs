@@ -1252,6 +1252,35 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     pub fn is_empty(&self) -> bool {
         self.predicates.is_empty()
     }
+
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        (&self).into_iter()
+    }
+}
+
+impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
+    type Item = (Predicate<'tcx>, Span);
+
+    type IntoIter = std::iter::Zip<std::vec::IntoIter<Predicate<'tcx>>, std::vec::IntoIter<Span>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        debug_assert_eq!(self.predicates.len(), self.spans.len());
+        std::iter::zip(self.predicates, self.spans)
+    }
+}
+
+impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
+    type Item = (Predicate<'tcx>, Span);
+
+    type IntoIter = std::iter::Zip<
+        std::iter::Copied<std::slice::Iter<'a, Predicate<'tcx>>>,
+        std::iter::Copied<std::slice::Iter<'a, Span>>,
+    >;
+
+    fn into_iter(self) -> Self::IntoIter {
+        debug_assert_eq!(self.predicates.len(), self.spans.len());
+        std::iter::zip(self.predicates.iter().copied(), self.spans.iter().copied())
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable, Lift)]
@@ -2187,8 +2216,10 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Option<ImplOverlapKind> {
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.references_error())
-            || self.impl_trait_ref(def_id2).map_or(false, |tr| tr.references_error())
+        if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.subst_identity().references_error())
+            || self
+                .impl_trait_ref(def_id2)
+                .map_or(false, |tr| tr.subst_identity().references_error())
         {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
@@ -2218,7 +2249,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_marker_overlap = {
             let is_marker_impl = |def_id: DefId| -> bool {
                 let trait_ref = self.impl_trait_ref(def_id);
-                trait_ref.map_or(false, |tr| self.trait_def(tr.def_id).is_marker)
+                trait_ref.map_or(false, |tr| self.trait_def(tr.skip_binder().def_id).is_marker)
             };
             is_marker_impl(def_id1) && is_marker_impl(def_id2)
         };
@@ -2364,7 +2395,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
     /// If it implements no trait, returns `None`.
     pub fn trait_id_of_impl(self, def_id: DefId) -> Option<DefId> {
-        self.impl_trait_ref(def_id).map(|tr| tr.def_id)
+        self.impl_trait_ref(def_id).map(|tr| tr.skip_binder().def_id)
     }
 
     /// If the given `DefId` describes an item belonging to a trait,

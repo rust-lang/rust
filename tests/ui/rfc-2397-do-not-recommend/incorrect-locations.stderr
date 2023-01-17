@@ -1,0 +1,50 @@
+error: `#[do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:3:1
+   |
+LL | #[do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `#[do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:7:1
+   |
+LL | #[do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `#[do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:11:1
+   |
+LL | #[do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `#[do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:15:1
+   |
+LL | #[do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `#[do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:20:1
+   |
+LL | #[do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `#[do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:25:1
+   |
+LL | #[do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `#[do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:30:1
+   |
+LL | #[do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `#[do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/incorrect-locations.rs:35:1
+   |
+LL | #[do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

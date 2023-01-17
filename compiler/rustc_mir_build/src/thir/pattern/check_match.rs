@@ -6,8 +6,9 @@ use super::{PatCtxt, PatternError};
 
 use crate::errors::*;
 
+use hir::{ExprKind, PatKind};
 use rustc_arena::TypedArena;
-use rustc_ast::Mutability;
+use rustc_ast::{LitKind, Mutability};
 use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
@@ -389,7 +390,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             return;
         }
 
-        let (inform, interpreted_as_const, res_defined_here,let_suggestion) =
+        let (inform, interpreted_as_const, res_defined_here,let_suggestion, misc_suggestion) =
             if let hir::PatKind::Path(hir::QPath::Resolved(
                 None,
                 hir::Path {
@@ -413,6 +414,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                         }
                     },
                     None,
+                    None,
                 )
             } else if let Some(span) = sp && self.tcx.sess.source_map().is_span_accessible(span) {
                 let mut bindings = vec![];
@@ -426,10 +428,19 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 let end_span = semi_span.shrink_to_lo();
                 let count = witnesses.len();
 
+                // If the pattern to match is an integer literal:
+                let int_suggestion = if
+                    let PatKind::Lit(expr) = &pat.kind
+                    && bindings.is_empty()
+                    && let ExprKind::Lit(Spanned { node: LitKind::Int(_, _), span }) = expr.kind {
+                    // Then give a suggestion, the user might've meant to create a binding instead.
+                    Some(MiscPatternSuggestion::AttemptedIntegerLiteral { start_span: span.shrink_to_lo() })
+                } else { None };
+
                 let let_suggestion = if bindings.is_empty() {SuggestLet::If{start_span, semi_span, count}} else{ SuggestLet::Else{end_span, count }};
-                (sp.map(|_|Inform), None, None, Some(let_suggestion))
+                (sp.map(|_|Inform), None, None, Some(let_suggestion), int_suggestion)
             } else{
-                (sp.map(|_|Inform), None, None,  None)
+                (sp.map(|_|Inform), None, None,  None, None)
             };
 
         let adt_defined_here = try {
@@ -453,6 +464,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             _p: (),
             pattern_ty,
             let_suggestion,
+            misc_suggestion,
             res_defined_here,
             adt_defined_here,
         });

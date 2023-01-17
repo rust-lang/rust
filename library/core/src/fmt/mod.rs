@@ -174,6 +174,11 @@ pub trait Write {
     /// This method should generally not be invoked manually, but rather through
     /// the [`write!`] macro itself.
     ///
+    /// # Errors
+    ///
+    /// This function will return an instance of [`Error`] on error. Please see
+    /// [write_str](Write::write_str) for details.
+    ///
     /// # Examples
     ///
     /// ```

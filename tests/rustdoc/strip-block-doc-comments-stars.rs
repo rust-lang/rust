@@ -4,7 +4,7 @@
 // block doc comments can have their lines starting with a star.
 
 // @has foo/fn.foo.html
-// @snapshot docblock - '//*[@class="rustdoc-toggle top-doc"]//*[@class="docblock"]'
+// @snapshot docblock - '//*[@class="toggle top-doc"]//*[@class="docblock"]'
 /**
  *     a
  */

@@ -110,7 +110,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     ) {
         let tcx = acx.cx.tcx;
         let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);
-        let impl_trait_ref = tcx.bound_impl_trait_ref(impl_def_id).unwrap();
+        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsPlaceholder };
         if iter::zip(goal_trait_ref.substs, impl_trait_ref.skip_binder().substs)
             .any(|(goal, imp)| !drcx.generic_args_may_unify(goal, imp))
@@ -171,7 +171,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             let impl_substs_with_gat = goal.predicate.projection_ty.substs.rebase_onto(
                 tcx,
                 goal_trait_ref.def_id,
-                impl_trait_ref.substs,
+                impl_substs,
             );
             let substs = translate_substs(
                 acx.infcx,

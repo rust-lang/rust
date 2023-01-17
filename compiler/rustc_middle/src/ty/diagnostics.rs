@@ -17,7 +17,7 @@ use rustc_type_ir::sty::TyKind::*;
 
 impl<'tcx> IntoDiagnosticArg for Ty<'tcx> {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        format!("{}", self).into_diagnostic_arg()
+        self.to_string().into_diagnostic_arg()
     }
 }
 

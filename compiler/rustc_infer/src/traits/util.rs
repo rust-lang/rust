@@ -1,7 +1,7 @@
 use smallvec::smallvec;
 
 use crate::infer::outlives::components::{push_outlives_components, Component};
-use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use crate::traits::{self, Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_middle::ty::{self, ToPredicate, TyCtxt};
 use rustc_span::symbol::Ident;
@@ -145,16 +145,28 @@ impl<'tcx> Elaborator<'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.iter().map(|&(mut pred, _)| {
+                let obligations = predicates.predicates.iter().map(|&(mut pred, span)| {
                     // when parent predicate is non-const, elaborate it to non-const predicates.
                     if data.constness == ty::BoundConstness::NotConst {
                         pred = pred.without_const(tcx);
                     }
 
+                    let cause = obligation.cause.clone().derived_cause(
+                        bound_predicate.rebind(data),
+                        |derived| {
+                            traits::ImplDerivedObligation(Box::new(
+                                traits::ImplDerivedObligationCause {
+                                    derived,
+                                    impl_def_id: data.def_id(),
+                                    span,
+                                },
+                            ))
+                        },
+                    );
                     predicate_obligation(
                         pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
                         obligation.param_env,
-                        obligation.cause.clone(),
+                        cause,
                     )
                 });
                 debug!(?data, ?obligations, "super_predicates");
@@ -249,17 +261,8 @@ impl<'tcx> Elaborator<'tcx> {
 
                             Component::UnresolvedInferenceVariable(_) => None,
 
-                            Component::Opaque(def_id, substs) => {
-                                let ty = tcx.mk_opaque(def_id, substs);
-                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
-                                    ty::OutlivesPredicate(ty, r_min),
-                                )))
-                            }
-
-                            Component::Projection(projection) => {
-                                // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
-                                // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
-                                let ty = tcx.mk_projection(projection.def_id, projection.substs);
+                            Component::Alias(kind, data) => {
+                                let ty = tcx.mk_ty(ty::Alias(kind, data));
                                 Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
                                     ty::OutlivesPredicate(ty, r_min),
                                 )))

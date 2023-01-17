@@ -7,6 +7,7 @@ use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::Interned;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
@@ -34,6 +35,12 @@ use std::slice;
 pub struct GenericArg<'tcx> {
     ptr: NonZeroUsize,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
+}
+
+impl<'tcx> IntoDiagnosticArg for GenericArg<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
 }
 
 const TAG_MASK: usize = 0b11;
@@ -202,7 +209,7 @@ impl<'tcx> GenericArg<'tcx> {
     pub fn is_non_region_infer(self) -> bool {
         match self.unpack() {
             GenericArgKind::Lifetime(_) => false,
-            GenericArgKind::Type(ty) => ty.is_ty_infer(),
+            GenericArgKind::Type(ty) => ty.is_ty_or_numeric_infer(),
             GenericArgKind::Const(ct) => ct.is_ct_infer(),
         }
     }
@@ -538,6 +545,9 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &'tcx ty::List<T> {
 /// Similar to [`super::Binder`] except that it tracks early bound generics, i.e. `struct Foo<T>(T)`
 /// needs `T` substituted immediately. This type primarily exists to avoid forgetting to call
 /// `subst`.
+///
+/// If you don't have anything to `subst`, you may be looking for
+/// [`subst_identity`](EarlyBinder::subst_identity) or [`skip_binder`](EarlyBinder::skip_binder).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable)]
 pub struct EarlyBinder<T>(pub T);
@@ -578,6 +588,14 @@ impl<T> EarlyBinder<T> {
         EarlyBinder(value)
     }
 
+    /// Skips the binder and returns the "bound" value.
+    /// This can be used to extract data that does not depend on generic parameters
+    /// (e.g., getting the `DefId` of the inner value or getting the number of
+    /// arguments of an `FnSig`). Otherwise, consider using
+    /// [`subst_identity`](EarlyBinder::subst_identity).
+    ///
+    /// See also [`Binder::skip_binder`](super::Binder::skip_binder), which is
+    /// the analogous operation on [`super::Binder`].
     pub fn skip_binder(self) -> T {
         self.0
     }
@@ -639,6 +657,13 @@ where
     }
 }
 
+impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIter<'_, 'tcx, I>
+where
+    I::IntoIter: ExactSizeIterator,
+    I::Item: TypeFoldable<'tcx>,
+{
+}
+
 impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
 where
     I::Item: Deref,
@@ -686,6 +711,14 @@ where
     }
 }
 
+impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIterCopied<'_, 'tcx, I>
+where
+    I::IntoIter: ExactSizeIterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
+}
+
 pub struct EarlyBinderIter<T> {
     t: T,
 }
@@ -712,6 +745,18 @@ impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
     pub fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
         self.0.fold_with(&mut folder)
+    }
+
+    /// Makes the identity substitution `T0 => T0, ..., TN => TN`.
+    /// Conceptually, this converts universally bound variables into placeholders
+    /// when inside of a given item.
+    ///
+    /// For example, consider `for<T> fn foo<T>(){ .. }`:
+    /// - Outside of `foo`, `T` is bound (represented by the presence of `EarlyBinder`).
+    /// - Inside of the body of `foo`, we treat `T` as a placeholder by calling
+    /// `subst_identity` to discharge the `EarlyBinder`.
+    pub fn subst_identity(self) -> T {
+        self.0
     }
 }
 

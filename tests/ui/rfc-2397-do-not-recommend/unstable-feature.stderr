@@ -1,5 +1,5 @@
 error[E0658]: the `#[do_not_recommend]` attribute is an experimental feature
-  --> $DIR/unstable-feature.rs:1:1
+  --> $DIR/unstable-feature.rs:4:1
    |
 LL | #[do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^

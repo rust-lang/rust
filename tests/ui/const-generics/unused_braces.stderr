@@ -1,5 +1,5 @@
 warning: unnecessary braces around const expression
-  --> $DIR/unused_braces.rs:9:14
+  --> $DIR/unused_braces.rs:15:14
    |
 LL |     let _: A<{ 7 }>;
    |              ^^ ^^

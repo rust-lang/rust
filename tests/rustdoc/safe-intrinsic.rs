@@ -7,16 +7,16 @@
 
 extern "rust-intrinsic" {
     // @has 'foo/fn.abort.html'
-    // @has - '//pre[@class="rust fn"]' 'pub extern "rust-intrinsic" fn abort() -> !'
+    // @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub extern "rust-intrinsic" fn abort() -> !'
     #[rustc_safe_intrinsic]
     pub fn abort() -> !;
     // @has 'foo/fn.unreachable.html'
-    // @has - '//pre[@class="rust fn"]' 'pub unsafe extern "rust-intrinsic" fn unreachable() -> !'
+    // @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub unsafe extern "rust-intrinsic" fn unreachable() -> !'
     pub fn unreachable() -> !;
 }
 
 extern "C" {
     // @has 'foo/fn.needs_drop.html'
-    // @has - '//pre[@class="rust fn"]' 'pub unsafe extern "C" fn needs_drop() -> !'
+    // @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub unsafe extern "C" fn needs_drop() -> !'
     pub fn needs_drop() -> !;
 }

@@ -52,8 +52,15 @@ pub(crate) fn parse_token_trees<'a>(
     }
 
     let cursor = Cursor::new(src);
-    let string_reader =
-        StringReader { sess, start_pos, pos: start_pos, src, cursor, override_span };
+    let string_reader = StringReader {
+        sess,
+        start_pos,
+        pos: start_pos,
+        src,
+        cursor,
+        override_span,
+        nbsp_is_whitespace: false,
+    };
     tokentrees::TokenTreesReader::parse_all_token_trees(string_reader)
 }
 
@@ -68,6 +75,10 @@ struct StringReader<'a> {
     /// Cursor for getting lexer tokens.
     cursor: Cursor<'a>,
     override_span: Option<Span>,
+    /// When a "unknown start of token: \u{a0}" has already been emitted earlier
+    /// in this file, it's safe to treat further occurrences of the non-breaking
+    /// space character as whitespace.
+    nbsp_is_whitespace: bool,
 }
 
 impl<'a> StringReader<'a> {
@@ -79,7 +90,7 @@ impl<'a> StringReader<'a> {
     /// preceded by whitespace.
     fn next_token(&mut self) -> (Token, bool) {
         let mut preceded_by_whitespace = false;
-
+        let mut swallow_next_invalid = 0;
         // Skip trivial (whitespace & comments) tokens
         loop {
             let token = self.cursor.advance_token();
@@ -232,18 +243,43 @@ impl<'a> StringReader<'a> {
                 rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
 
                 rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
-                    let c = self.str_from(start).chars().next().unwrap();
+                    // Don't emit diagnostics for sequences of the same invalid token
+                    if swallow_next_invalid > 0 {
+                        swallow_next_invalid -= 1;
+                        continue;
+                    }
+                    let mut it = self.str_from_to_end(start).chars();
+                    let c = it.next().unwrap();
+                    if c == '\u{00a0}' {
+                        // If an error has already been reported on non-breaking
+                        // space characters earlier in the file, treat all
+                        // subsequent occurrences as whitespace.
+                        if self.nbsp_is_whitespace {
+                            preceded_by_whitespace = true;
+                            continue;
+                        }
+                        self.nbsp_is_whitespace = true;
+                    }
+                    let repeats = it.take_while(|c1| *c1 == c).count();
                     let mut err =
-                        self.struct_err_span_char(start, self.pos, "unknown start of token", c);
+                        self.struct_err_span_char(start, self.pos + Pos::from_usize(repeats * c.len_utf8()), "unknown start of token", c);
                     // FIXME: the lexer could be used to turn the ASCII version of unicode
                     // homoglyphs, instead of keeping a table in `check_for_substitution`into the
                     // token. Ideally, this should be inside `rustc_lexer`. However, we should
                     // first remove compound tokens like `<<` from `rustc_lexer`, and then add
                     // fancier error recovery to it, as there will be less overall work to do this
                     // way.
-                    let token = unicode_chars::check_for_substitution(self, start, c, &mut err);
+                    let token = unicode_chars::check_for_substitution(self, start, c, &mut err, repeats+1);
                     if c == '\x00' {
                         err.help("source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used");
+                    }
+                    if repeats > 0 {
+                        if repeats == 1 {
+                            err.note(format!("character appears once more"));
+                        } else {
+                            err.note(format!("character appears {repeats} more times"));
+                        }
+                        swallow_next_invalid = repeats;
                     }
                     err.emit();
                     if let Some(token) = token {
@@ -471,7 +507,7 @@ impl<'a> StringReader<'a> {
 
     /// Slice of the source text from `start` up to but excluding `self.pos`,
     /// meaning the slice does not include the character `self.ch`.
-    fn str_from(&self, start: BytePos) -> &str {
+    fn str_from(&self, start: BytePos) -> &'a str {
         self.str_from_to(start, self.pos)
     }
 
@@ -482,8 +518,13 @@ impl<'a> StringReader<'a> {
     }
 
     /// Slice of the source text spanning from `start` up to but excluding `end`.
-    fn str_from_to(&self, start: BytePos, end: BytePos) -> &str {
+    fn str_from_to(&self, start: BytePos, end: BytePos) -> &'a str {
         &self.src[self.src_index(start)..self.src_index(end)]
+    }
+
+    /// Slice of the source text spanning from `start` until the end
+    fn str_from_to_end(&self, start: BytePos) -> &'a str {
+        &self.src[self.src_index(start)..]
     }
 
     fn report_raw_str_error(&self, start: BytePos, prefix_len: u32) -> ! {

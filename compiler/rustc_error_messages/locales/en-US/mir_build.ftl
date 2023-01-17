@@ -364,3 +364,5 @@ mir_build_suggest_let_else = you might want to use `let else` to handle the {$co
         [one] variant that isn't
         *[other] variants that aren't
     } matched
+
+mir_build_suggest_attempted_int_lit = alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits

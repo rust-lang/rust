@@ -12,6 +12,8 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 
+use crate::session_diagnostics::NonGenericOpaqueTypeParam;
+
 use super::RegionInferenceContext;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -235,7 +237,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// # Parameters
     ///
     /// - `def_id`, the `impl Trait` type
-    /// - `substs`, the substs  used to instantiate this opaque type
+    /// - `substs`, the substs used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
     #[instrument(level = "debug", skip(self))]
@@ -389,17 +391,13 @@ fn check_opaque_type_parameter_valid(
         } else {
             // Prevent `fn foo() -> Foo<u32>` from being defining.
             let opaque_param = opaque_generics.param_at(i, tcx);
-            tcx.sess
-                .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .span_note(
-                    tcx.def_span(opaque_param.def_id),
-                    &format!(
-                        "used non-generic {} `{}` for generic parameter",
-                        opaque_param.kind.descr(),
-                        arg,
-                    ),
-                )
-                .emit();
+            let kind = opaque_param.kind.descr();
+            tcx.sess.emit_err(NonGenericOpaqueTypeParam {
+                ty: arg,
+                kind,
+                span,
+                param_span: tcx.def_span(opaque_param.def_id),
+            });
             return false;
         }
     }

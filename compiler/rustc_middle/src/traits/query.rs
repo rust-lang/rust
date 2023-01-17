@@ -8,9 +8,8 @@
 use crate::error::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::error::TypeError;
-use crate::ty::subst::{GenericArg, SubstsRef};
+use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
-use rustc_hir::def_id::DefId;
 use rustc_span::source_map::Span;
 
 pub mod type_op {
@@ -214,6 +213,5 @@ pub struct NormalizationResult<'tcx> {
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
-    RegionSubProjection(ty::Region<'tcx>, ty::AliasTy<'tcx>),
-    RegionSubOpaque(ty::Region<'tcx>, DefId, SubstsRef<'tcx>),
+    RegionSubAlias(ty::Region<'tcx>, ty::AliasKind, ty::AliasTy<'tcx>),
 }

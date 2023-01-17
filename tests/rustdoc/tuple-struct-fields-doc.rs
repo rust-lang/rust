@@ -19,7 +19,7 @@ pub struct Foo(
 );
 
 // @has foo/enum.Bar.html
-// @has - '//pre[@class="rust enum"]' 'BarVariant(String),'
+// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'BarVariant(String),'
 // @matches - '//*[@id="variant.BarVariant.fields"]/h4' '^Tuple Fields$'
 // @has - '//*[@id="variant.BarVariant.field.0"]' '0: String'
 // @has - '//*[@id="variant.BarVariant.fields"]//*[@class="docblock"]' 'Hello docs'

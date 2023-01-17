@@ -78,7 +78,7 @@ impl InferenceDiagnosticsData {
     }
 
     fn where_x_is_kind(&self, in_type: Ty<'_>) -> &'static str {
-        if in_type.is_ty_infer() {
+        if in_type.is_ty_or_numeric_infer() {
             ""
         } else if self.name == "_" {
             // FIXME: Consider specializing this message if there is a single `_`
@@ -195,12 +195,12 @@ fn ty_to_string<'tcx>(
         // invalid pseudo-syntax, we want the `fn`-pointer output instead.
         (ty::FnDef(..), _) => ty.fn_sig(infcx.tcx).print(printer).unwrap().into_buffer(),
         (_, Some(def_id))
-            if ty.is_ty_infer()
+            if ty.is_ty_or_numeric_infer()
                 && infcx.tcx.get_diagnostic_item(sym::iterator_collect_fn) == Some(def_id) =>
         {
             "Vec<_>".to_string()
         }
-        _ if ty.is_ty_infer() => "/* Type */".to_string(),
+        _ if ty.is_ty_or_numeric_infer() => "/* Type */".to_string(),
         // FIXME: The same thing for closures, but this only works when the closure
         // does not capture anything.
         //
@@ -680,7 +680,7 @@ impl<'tcx> InferSourceKind<'tcx> {
             | InferSourceKind::ClosureReturn { ty, .. } => {
                 if ty.is_closure() {
                     ("closure", closure_as_fn_str(infcx, ty))
-                } else if !ty.is_ty_infer() {
+                } else if !ty.is_ty_or_numeric_infer() {
                     ("normal", ty_to_string(infcx, ty, None))
                 } else {
                     ("other", String::new())
@@ -813,7 +813,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         self.attempt += 1;
         if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id: did, ..}, .. }) = self.infer_source
             && let InferSourceKind::LetBinding { ref ty, ref mut def_id, ..} = new_source.kind
-            && ty.is_ty_infer()
+            && ty.is_ty_or_numeric_infer()
         {
             // Customize the output so we talk about `let x: Vec<_> = iter.collect();` instead of
             // `let x: _ = iter.collect();`, as this is a very common case.

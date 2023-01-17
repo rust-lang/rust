@@ -88,7 +88,7 @@ impl GenericParamDef {
                 Some(tcx.bound_type_of(self.def_id).map_bound(|t| t.into()))
             }
             GenericParamDefKind::Const { has_default } if has_default => {
-                Some(tcx.bound_const_param_default(self.def_id).map_bound(|c| c.into()))
+                Some(tcx.const_param_default(self.def_id).map_bound(|c| c.into()))
             }
             _ => None,
         }
@@ -341,15 +341,9 @@ impl<'tcx> GenericPredicates<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
-    ) -> InstantiatedPredicates<'tcx> {
-        InstantiatedPredicates {
-            predicates: self
-                .predicates
-                .iter()
-                .map(|(p, _)| EarlyBinder(*p).subst(tcx, substs))
-                .collect(),
-            spans: self.predicates.iter().map(|(_, sp)| *sp).collect(),
-        }
+    ) -> impl Iterator<Item = (Predicate<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
+    {
+        EarlyBinder(self.predicates).subst_iter_copied(tcx, substs)
     }
 
     #[instrument(level = "debug", skip(self, tcx))]

@@ -2091,7 +2091,7 @@ fn parse_libs(matches: &getopts::Matches, error_format: ErrorOutputType) -> Vec<
         .map(|s| {
             // Parse string of the form "[KIND[:MODIFIERS]=]lib[:new_name]",
             // where KIND is one of "dylib", "framework", "static", "link-arg" and
-            // where MODIFIERS are  a comma separated list of supported modifiers
+            // where MODIFIERS are a comma separated list of supported modifiers
             // (bundle, verbatim, whole-archive, as-needed). Each modifier is prefixed
             // with either + or - to indicate whether it is enabled or disabled.
             // The last value specified for a given modifier wins.
@@ -2458,6 +2458,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let remap_path_prefix = parse_remap_path_prefix(matches, &unstable_opts, error_format);
 
     let pretty = parse_pretty(&unstable_opts, error_format);
+
+    // query-dep-graph is required if dump-dep-graph is given #106736
+    if unstable_opts.dump_dep_graph && !unstable_opts.query_dep_graph {
+        early_error(error_format, "can't dump dependency graph without `-Z query-dep-graph`");
+    }
 
     // Try to find a directory containing the Rust `src`, for more details see
     // the doc comment on the `real_rust_source_base_dir` field.

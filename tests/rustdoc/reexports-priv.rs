@@ -32,7 +32,7 @@ pub(self) use reexports::BarSelf;
 // @!has 'foo/enum.BarLocal.html'
 use reexports::BarLocal;
 
-// @has 'foo/fn.foo.html' '//*[@class="rust fn"]' 'pub fn foo()'
+// @has 'foo/fn.foo.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn foo()'
 pub use reexports::foo;
 // @!has 'foo/fn.foo_crate.html'
 pub(crate) use reexports::foo_crate;
@@ -41,7 +41,7 @@ pub(self) use reexports::foo_self;
 // @!has 'foo/fn.foo_local.html'
 use reexports::foo_local;
 
-// @has 'foo/type.Type.html' '//*[@class="rust typedef"]' 'pub type Type ='
+// @has 'foo/type.Type.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub type Type ='
 pub use reexports::Type;
 // @!has 'foo/type.TypeCrate.html'
 pub(crate) use reexports::TypeCrate;
@@ -94,22 +94,22 @@ pub mod outer {
         // @!has 'foo/outer/inner/enum.BarLocal.html'
         use reexports::BarLocal;
 
-        // @has 'foo/outer/inner/fn.foo.html' '//*[@class="rust fn"]' 'pub fn foo()'
+        // @has 'foo/outer/inner/fn.foo.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn foo()'
         pub use reexports::foo;
-        // @has 'foo/outer/inner/fn.foo_crate.html' '//*[@class="rust fn"]' 'pub(crate) fn foo_crate()'
+        // @has 'foo/outer/inner/fn.foo_crate.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub(crate) fn foo_crate()'
         pub(crate) use reexports::foo_crate;
-        // @has 'foo/outer/inner/fn.foo_super.html' '//*[@class="rust fn"]' 'pub(in outer) fn foo_super()'
+        // @has 'foo/outer/inner/fn.foo_super.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub(in outer) fn foo_super()'
         pub(super) use::reexports::foo_super;
         // @!has 'foo/outer/inner/fn.foo_self.html'
         pub(self) use reexports::foo_self;
         // @!has 'foo/outer/inner/fn.foo_local.html'
         use reexports::foo_local;
 
-        // @has 'foo/outer/inner/type.Type.html' '//*[@class="rust typedef"]' 'pub type Type ='
+        // @has 'foo/outer/inner/type.Type.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub type Type ='
         pub use reexports::Type;
-        // @has 'foo/outer/inner/type.TypeCrate.html' '//*[@class="rust typedef"]' 'pub(crate) type TypeCrate ='
+        // @has 'foo/outer/inner/type.TypeCrate.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub(crate) type TypeCrate ='
         pub(crate) use reexports::TypeCrate;
-        // @has 'foo/outer/inner/type.TypeSuper.html' '//*[@class="rust typedef"]' 'pub(in outer) type TypeSuper ='
+        // @has 'foo/outer/inner/type.TypeSuper.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub(in outer) type TypeSuper ='
         pub(super) use reexports::TypeSuper;
         // @!has 'foo/outer/inner/type.TypeSelf.html'
         pub(self) use reexports::TypeSelf;

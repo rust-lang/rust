@@ -38,6 +38,6 @@
   }
   
   alloc1 (static: STATIC, size: 4, align: 4) {
-      2a 00 00 00                                     │ *...
+      42 42 42 42                                     │ BBBB
   }
   

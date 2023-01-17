@@ -1512,7 +1512,7 @@ impl FileType {
     }
 
     /// Tests whether this file type represents a regular file.
-    /// The result is  mutually exclusive to the results of
+    /// The result is mutually exclusive to the results of
     /// [`is_dir`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
     ///
