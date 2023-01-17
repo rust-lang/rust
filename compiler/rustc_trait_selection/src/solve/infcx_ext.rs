@@ -3,6 +3,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::DUMMY_SP;
 
@@ -16,6 +17,7 @@ use super::Goal;
 /// help.
 pub(super) trait InferCtxtExt<'tcx> {
     fn next_ty_infer(&self) -> Ty<'tcx>;
+    fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx>;
 
     fn eq<T: ToTrace<'tcx>>(
         &self,
@@ -31,6 +33,12 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             kind: TypeVariableOriginKind::MiscVariable,
             span: DUMMY_SP,
         })
+    }
+    fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx> {
+        self.next_const_var(
+            ty,
+            ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span: DUMMY_SP },
+        )
     }
 
     #[instrument(level = "debug", skip(self, param_env), ret)]

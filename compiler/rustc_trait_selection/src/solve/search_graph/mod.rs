@@ -105,7 +105,7 @@ impl<'tcx> SearchGraph<'tcx> {
         }
     }
 
-    /// We cannot simply store the result of [EvalCtxt::compute_goal] as we have to deal with
+    /// We cannot simply store the result of [super::EvalCtxt::compute_goal] as we have to deal with
     /// coinductive cycles.
     ///
     /// When we encounter a coinductive cycle, we have to prove the final result of that cycle
