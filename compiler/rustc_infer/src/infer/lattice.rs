@@ -78,7 +78,7 @@ where
         //
         // Example: if the LHS is a type variable, and RHS is
         // `Box<i32>`, then we current compare `v` to the RHS first,
-        // which will instantiate `v` with `Box<i32>`.  Then when `v`
+        // which will instantiate `v` with `Box<i32>`. Then when `v`
         // is compared to the LHS, we instantiate LHS with `Box<i32>`.
         // But if we did in reverse order, we would create a `v <:
         // LHS` (or vice versa) constraint and then instantiate

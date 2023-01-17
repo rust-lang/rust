@@ -90,7 +90,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
     // If the user requests metadata as output, rename `metadata_filename`
-    // to the expected output `out_filename`.  The match above should ensure
+    // to the expected output `out_filename`. The match above should ensure
     // this file always exists.
     let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
     let (metadata_filename, metadata_tmpdir) = if need_metadata_file {

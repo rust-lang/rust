@@ -430,7 +430,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         //     impl<T:Clone> Vec<T> { fn push_clone(...) { ... } }
         //
         // and we were to see some code `foo.push_clone()` where `boo`
-        // is a `Vec<Bar>` and `Bar` does not implement `Clone`.  If
+        // is a `Vec<Bar>` and `Bar` does not implement `Clone`. If
         // we were to winnow, we'd wind up with zero candidates.
         // Instead, we select the right impl now but report "`Bar` does
         // not implement `Clone`".
@@ -1604,7 +1604,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
             }
         };
-        let bounds = tcx.bound_item_bounds(def_id).subst(tcx, substs);
+        let bounds = tcx.item_bounds(def_id).subst(tcx, substs);
 
         // The bounds returned by `item_bounds` may contain duplicates after
         // normalization, so try to deduplicate when possible to avoid
@@ -2324,7 +2324,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // Matching
     //
     // Matching is a common path used for both evaluation and
-    // confirmation.  It basically unifies types that appear in impls
+    // confirmation. It basically unifies types that appear in impls
     // and traits. This does affect the surrounding environment;
     // therefore, when used during evaluation, match routines must be
     // run inside of a `probe()` so that their side-effects are
@@ -2643,7 +2643,7 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
 /// In Issue #60010, we found a bug in rustc where it would cache
 /// these intermediate results. This was fixed in #60444 by disabling
 /// *all* caching for things involved in a cycle -- in our example,
-/// that would mean we don't cache that `Bar<T>: Send`.  But this led
+/// that would mean we don't cache that `Bar<T>: Send`. But this led
 /// to large slowdowns.
 ///
 /// Specifically, imagine this scenario, where proving `Baz<T>: Send`
@@ -2669,7 +2669,7 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
 /// a result at `reached_depth`, so it marks the *current* solution as
 /// provisional as well. If an error is encountered, we toss out any
 /// provisional results added from the subtree that encountered the
-/// error.  When we pop the node at `reached_depth` from the stack, we
+/// error. When we pop the node at `reached_depth` from the stack, we
 /// can commit all the things that remain in the provisional cache.
 struct ProvisionalEvaluationCache<'tcx> {
     /// next "depth first number" to issue -- just a counter
@@ -2780,7 +2780,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     }
 
     /// Invoked when the node with dfn `dfn` does not get a successful
-    /// result.  This will clear out any provisional cache entries
+    /// result. This will clear out any provisional cache entries
     /// that were added since `dfn` was created. This is because the
     /// provisional entries are things which must assume that the
     /// things on the stack at the time of their creation succeeded --

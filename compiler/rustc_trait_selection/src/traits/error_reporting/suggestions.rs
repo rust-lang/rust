@@ -1123,7 +1123,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
                 }
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                    self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
+                    self.tcx.item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                         if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be substs[1]
@@ -2312,7 +2312,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // generator interior are not generally known, so we
             // want to erase them when comparing (and anyway,
             // `Send` and other bounds are generally unaffected by
-            // the choice of region).  When erasing regions, we
+            // the choice of region). When erasing regions, we
             // also have to erase late-bound regions. This is
             // because the types that appear in the generator
             // interior generally contain "bound regions" to
@@ -2328,7 +2328,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         // Get the typeck results from the infcx if the generator is the function we are currently
-        // type-checking; otherwise, get them by performing a query.  This is needed to avoid
+        // type-checking; otherwise, get them by performing a query. This is needed to avoid
         // cycles. If we can't use resolved types because the generator comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
         let generator_data = match &self.typeck_results {

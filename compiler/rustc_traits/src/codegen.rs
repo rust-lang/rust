@@ -1,5 +1,5 @@
 // This file contains various trait resolution methods used by codegen.
-// They all assume regions can be erased and monomorphic types.  It
+// They all assume regions can be erased and monomorphic types. It
 // seems likely that they should eventually be merged into more
 // general routines.
 

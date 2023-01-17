@@ -524,7 +524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // FIXME(#45727): As discussed in [this comment][c1], naively
         // forcing equality here actually results in suboptimal error
-        // messages in some cases.  For now, if there would have been
+        // messages in some cases. For now, if there would have been
         // an obvious error, we fallback to declaring the type of the
         // closure to be the one the user gave, which allows other
         // error message code to trigger.

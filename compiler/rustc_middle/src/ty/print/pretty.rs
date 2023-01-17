@@ -2132,9 +2132,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
-        // These printouts are concise.  They do not contain all the information
+        // These printouts are concise. They do not contain all the information
         // the user might want to diagnose an error, but there is basically no way
-        // to fit that into a short string.  Hence the recommendation to use
+        // to fit that into a short string. Hence the recommendation to use
         // `explain_region()` or `note_and_explain_region()`.
         match *region {
             ty::ReEarlyBound(ref data) => {

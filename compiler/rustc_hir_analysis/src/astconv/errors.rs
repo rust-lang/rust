@@ -331,7 +331,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             if potential_assoc_types.len() == assoc_items.len() {
                 // When the amount of missing associated types equals the number of
-                // extra type arguments present.  A suggesting to replace the generic args with
+                // extra type arguments present. A suggesting to replace the generic args with
                 // associated types is already emitted.
                 already_has_generics_args_suggestion = true;
             } else if let (Ok(snippet), false) =

@@ -523,7 +523,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //
                 // The first two are produced by recursively invoking
                 // `lower_use_tree` (and indeed there may be things
-                // like `use foo::{a::{b, c}}` and so forth).  They
+                // like `use foo::{a::{b, c}}` and so forth). They
                 // wind up being directly added to
                 // `self.items`. However, the structure of this
                 // function also requires us to return one item, and

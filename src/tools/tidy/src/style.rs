@@ -45,6 +45,9 @@ C++ code used llvm_unreachable, which triggers undefined behavior
 when executed when assertions are disabled.
 Use llvm::report_fatal_error for increased robustness.";
 
+const DOUBLE_SPACE_AFTER_DOT: &str = r"\
+Use a single space after dots in comments.";
+
 const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "// @!has",
     "// @has",
@@ -279,6 +282,10 @@ pub fn check(path: &Path, bad: &mut bool) {
         if filename.contains("ignore-tidy") {
             return;
         }
+        // apfloat shouldn't be changed because of license problems
+        if is_in(file, "compiler", "rustc_apfloat") {
+            return;
+        }
         let mut skip_cr = contains_ignore_directive(can_contain, &contents, "cr");
         let mut skip_undocumented_unsafe =
             contains_ignore_directive(can_contain, &contents, "undocumented-unsafe");
@@ -404,6 +411,19 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
             if filename.ends_with(".cpp") && line.contains("llvm_unreachable") {
                 err(LLVM_UNREACHABLE_INFO);
+            }
+
+            // For now only enforce in compiler
+            let is_compiler = || file.components().any(|c| c.as_os_str() == "compiler");
+            if is_compiler()
+                && line.contains("//")
+                && line
+                    .chars()
+                    .collect::<Vec<_>>()
+                    .windows(4)
+                    .any(|cs| matches!(cs, ['.', ' ', ' ', last] if last.is_alphabetic()))
+            {
+                err(DOUBLE_SPACE_AFTER_DOT)
             }
         }
         if leading_new_lines {

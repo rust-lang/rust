@@ -205,7 +205,7 @@ static_assert_size!(TyKind<'_>, 32);
 ///
 /// ## Generators
 ///
-/// Generators are handled similarly in `GeneratorSubsts`.  The set of
+/// Generators are handled similarly in `GeneratorSubsts`. The set of
 /// type parameters is similar, but `CK` and `CS` are replaced by the
 /// following type parameters:
 ///
@@ -1226,7 +1226,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
 /// For a projection, this would be `<Ty as Trait<...>>::N`.
 ///
 /// For an opaque type, there is no explicit syntax.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct AliasTy<'tcx> {
     /// The parameters of the associated or opaque item.

@@ -459,9 +459,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             hir::BorrowKind::Ref => {
                 // Note: at this point, we cannot say what the best lifetime
-                // is to use for resulting pointer.  We want to use the
+                // is to use for resulting pointer. We want to use the
                 // shortest lifetime possible so as to avoid spurious borrowck
-                // errors.  Moreover, the longest lifetime will depend on the
+                // errors. Moreover, the longest lifetime will depend on the
                 // precise details of the value whose address is being taken
                 // (and how long it is valid), which we don't know yet until
                 // type inference is complete.
@@ -687,7 +687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             } else {
                 // If `ctxt.coerce` is `None`, we can just ignore
-                // the type of the expression.  This is because
+                // the type of the expression. This is because
                 // either this was a break *without* a value, in
                 // which case it is always a legal type (`()`), or
                 // else an error would have been flagged by the

@@ -336,7 +336,7 @@ pub fn transitive_bounds<'tcx>(
 /// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may
 /// define the given associated type `assoc_name`. It uses the
 /// `super_predicates_that_define_assoc_type` query to avoid enumerating super-predicates that
-/// aren't related to `assoc_item`.  This is used when resolving types like `Self::Item` or
+/// aren't related to `assoc_item`. This is used when resolving types like `Self::Item` or
 /// `T::Item` and helps to avoid cycle errors (see e.g. #35237).
 pub fn transitive_bounds_that_define_assoc_type<'tcx>(
     tcx: TyCtxt<'tcx>,

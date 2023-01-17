@@ -874,7 +874,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         // Leak a read lock once we start iterating on definitions, to prevent adding new ones
-        // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
+        // while iterating. If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.untracked.definitions.leak();
         definitions.def_path_table()
     }
@@ -886,7 +886,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // definitions change.
         self.ensure().hir_crate(());
         // Leak a read lock once we start iterating on definitions, to prevent adding new ones
-        // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
+        // while iterating. If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.untracked.definitions.leak();
         definitions.def_path_hash_to_def_index_map()
     }

@@ -36,7 +36,7 @@
 //! ```
 //!
 //! `Frozen` impls `Deref`, so we can ergonomically call methods on `Bar`, but it doesn't `impl
-//! DerefMut`.  Now calling `foo.compute.mutate()` will result in a compile-time error stating that
+//! DerefMut`. Now calling `foo.compute.mutate()` will result in a compile-time error stating that
 //! `mutate` requires a mutable reference but we don't have one.
 //!
 //! # Caveats

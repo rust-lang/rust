@@ -27,7 +27,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// suitable also to be passed as function arguments.
     ///
     /// The operand returned from this function will *not be valid* after an ExprKind::Scope is
-    /// passed, so please do *not* return it from functions to avoid bad miscompiles.  Returns an
+    /// passed, so please do *not* return it from functions to avoid bad miscompiles. Returns an
     /// operand suitable for use as a call argument. This is almost always equivalent to
     /// `as_operand`, except for the particular case of passing values of (potentially) unsized
     /// types "by value" (see details below).

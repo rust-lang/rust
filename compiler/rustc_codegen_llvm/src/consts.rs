@@ -140,7 +140,7 @@ pub fn codegen_static_initializer<'ll, 'tcx>(
 fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Align) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
-    // which can force it to be smaller.  Rust doesn't support this yet.
+    // which can force it to be smaller. Rust doesn't support this yet.
     if let Some(min) = cx.sess().target.min_global_align {
         match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
@@ -171,7 +171,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
             // Declare an internal global `extern_with_linkage_foo` which
-            // is initialized with the address of `foo`.  If `foo` is
+            // is initialized with the address of `foo`. If `foo` is
             // discarded during linking (for example, if `foo` has weak
             // linkage and there are no definitions), then
             // `extern_with_linkage_foo` will instead be initialized to

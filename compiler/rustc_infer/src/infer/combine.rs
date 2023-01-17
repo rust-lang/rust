@@ -331,7 +331,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         debug_assert!(self.infcx.inner.borrow_mut().type_variables().probe(b_vid).is_unknown());
 
         // Generalize type of `a_ty` appropriately depending on the
-        // direction.  As an example, assume:
+        // direction. As an example, assume:
         //
         // - `a_ty == &'x ?1`, where `'x` is some free region and `?1` is an
         //   inference variable,

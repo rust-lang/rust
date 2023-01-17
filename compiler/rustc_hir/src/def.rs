@@ -751,7 +751,7 @@ pub enum LifetimeRes {
         binder: NodeId,
     },
     /// This variant is used for anonymous lifetimes that we did not resolve during
-    /// late resolution.  Those lifetimes will be inferred by typechecking.
+    /// late resolution. Those lifetimes will be inferred by typechecking.
     Infer,
     /// Explicit `'static` lifetime.
     Static,

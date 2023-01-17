@@ -52,7 +52,7 @@ pub struct LexicalRegionResolutions<'tcx> {
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum VarValue<'tcx> {
-    /// Empty lifetime is for data that is never accessed.  We tag the
+    /// Empty lifetime is for data that is never accessed. We tag the
     /// empty lifetime with a universe -- the idea is that we don't
     /// want `exists<'a> { forall<'b> { 'b: 'a } }` to be satisfiable.
     /// Therefore, the `'empty` in a universe `U` is less than all
@@ -510,7 +510,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
 
         // If both `a` and `b` are free, consult the declared
-        // relationships.  Note that this can be more precise than the
+        // relationships. Note that this can be more precise than the
         // `lub` relationship defined below, since sometimes the "lub"
         // is actually the `postdom_upper_bound` (see
         // `TransitiveRelation` for more details).
@@ -665,7 +665,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // conflicting regions to report to the user. As we walk, we
         // trip the flags from false to true, and if we find that
         // we've already reported an error involving any particular
-        // node we just stop and don't report the current error.  The
+        // node we just stop and don't report the current error. The
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.

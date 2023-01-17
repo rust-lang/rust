@@ -138,7 +138,7 @@ pub(super) fn compare_impl_method<'tcx>(
 ///     <'a> fn(t: &'i0 U0, m: &'a) -> Foo
 ///
 /// This type is also the same but the name of the bound region (`'a`
-/// vs `'b`).  However, the normal subtyping rules on fn types handle
+/// vs `'b`). However, the normal subtyping rules on fn types handle
 /// this kind of equivalency just fine.
 ///
 /// We now use these substitutions to ensure that all declared bounds are
@@ -764,7 +764,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         match infcx.fully_resolve(ty) {
             Ok(ty) => {
                 // `ty` contains free regions that we created earlier while liberating the
-                // trait fn signature.  However, projection normalization expects `ty` to
+                // trait fn signature. However, projection normalization expects `ty` to
                 // contains `def_id`'s early-bound regions.
                 let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
                 debug!(?id_substs, ?substs);
@@ -1022,7 +1022,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
 
     // Must have same number of early-bound lifetime parameters.
     // Unfortunately, if the user screws up the bounds, then this
-    // will change classification between early and late.  E.g.,
+    // will change classification between early and late. E.g.,
     // if in trait we have `<'a,'b:'a>`, and in impl we just have
     // `<'a,'b>`, then we have 2 early-bound lifetime parameters
     // in trait but 0 in the impl. But if we report "expected 2
@@ -1133,9 +1133,9 @@ fn compare_self_type<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     // Try to give more informative error messages about self typing
-    // mismatches.  Note that any mismatch will also be detected
+    // mismatches. Note that any mismatch will also be detected
     // below, where we construct a canonical function type that
-    // includes the self parameter as a normal parameter.  It's just
+    // includes the self parameter as a normal parameter. It's just
     // that the error messages you get out of this code are a bit more
     // inscrutable, particularly for cases where one method has no
     // self.

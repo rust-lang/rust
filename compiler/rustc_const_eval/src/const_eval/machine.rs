@@ -408,7 +408,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
-            // sensitive check here.  But we can at least rule out functions that are not const
+            // sensitive check here. But we can at least rule out functions that are not const
             // at all.
             if !ecx.tcx.is_const_fn_raw(def.did) {
                 // allow calling functions inside a trait marked with #[const_trait].

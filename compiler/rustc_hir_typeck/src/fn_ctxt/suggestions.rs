@@ -361,7 +361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && method_call_list.contains(&conversion_method.name)
                             // If receiver is `.clone()` and found type has one of those methods,
                             // we guess that the user wants to convert from a slice type (`&[]` or `&str`)
-                            // to an owned type (`Vec` or `String`).  These conversions clone internally,
+                            // to an owned type (`Vec` or `String`). These conversions clone internally,
                             // so we remove the user's `clone` call.
                         {
                             vec![(
@@ -558,7 +558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ty::Adt(def, _) if def.is_box() && self.can_coerce(box_found, expected) => {
-                // Check if the parent expression is a call to Pin::new.  If it
+                // Check if the parent expression is a call to Pin::new. If it
                 // is and we were expecting a Box, ergo Pin<Box<expected>>, we
                 // can suggest Box::pin.
                 let parent = self.tcx.hir().parent_id(expr.hir_id);

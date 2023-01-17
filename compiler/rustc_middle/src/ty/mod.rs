@@ -689,7 +689,7 @@ impl<'tcx> Predicate<'tcx> {
         //
         // In terms of why this is sound, the idea is that whenever there
         // is an impl of `T:Foo<'a>`, it must show that `T:Bar<'a,'a>`
-        // holds.  So if there is an impl of `T:Foo<'a>` that applies to
+        // holds. So if there is an impl of `T:Foo<'a>` that applies to
         // all `'a`, then we must know that `T:Bar<'a,'a>` holds for all
         // `'a`.
         //
@@ -701,7 +701,7 @@ impl<'tcx> Predicate<'tcx> {
         // Here, if we have `for<'x> T: Foo1<'x>`, then what do we know?
         // The answer is that we know `for<'x,'b> T: Bar1<'x,'b>`. The
         // reason is similar to the previous example: any impl of
-        // `T:Foo1<'x>` must show that `for<'b> T: Bar1<'x, 'b>`.  So
+        // `T:Foo1<'x>` must show that `for<'b> T: Bar1<'x, 'b>`. So
         // basically we would want to collapse the bound lifetimes from
         // the input (`trait_ref`) and the supertraits.
         //
@@ -1359,7 +1359,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         debug!(?id_substs);
 
         // This zip may have several times the same lifetime in `substs` paired with a different
-        // lifetime from `id_substs`.  Simply `collect`ing the iterator is the correct behaviour:
+        // lifetime from `id_substs`. Simply `collect`ing the iterator is the correct behaviour:
         // it will pick the last one, which is the one we introduced in the impl-trait desugaring.
         let map = substs.iter().zip(id_substs);
 
@@ -2170,7 +2170,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Look up the name of a definition across crates. This does not look at HIR.
     ///
-    /// This method will ICE if the corresponding item does not have a name.  In these cases, use
+    /// This method will ICE if the corresponding item does not have a name. In these cases, use
     /// [`opt_item_name`] instead.
     ///
     /// [`opt_item_name`]: Self::opt_item_name

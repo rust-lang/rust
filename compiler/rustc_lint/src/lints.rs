@@ -277,7 +277,7 @@ impl AddToDiagnostic for SuggestChangingAssocTypes<'_, '_> {
         ) -> rustc_errors::SubdiagnosticMessage,
     {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
-        // bound.  Let's see if this type does that.
+        // bound. Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
         use rustc_hir::intravisit::{self, Visitor};

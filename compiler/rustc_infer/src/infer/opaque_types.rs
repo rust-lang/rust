@@ -112,7 +112,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     DefiningAnchor::Bind(_) => {
                         // Check that this is `impl Trait` type is
                         // declared by `parent_def_id` -- i.e., one whose
-                        // value we are inferring.  At present, this is
+                        // value we are inferring. At present, this is
                         // always true during the first phase of
                         // type-check, but not always true later on during
                         // NLL. Once we support named opaque types more fully,
@@ -380,7 +380,7 @@ impl<'tcx> InferCtxt<'tcx> {
         };
         let item_kind = &self.tcx.hir().expect_item(def_id).kind;
 
-        let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, ..  }) = item_kind else {
+        let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item_kind else {
             span_bug!(
                 span,
                 "weird opaque type: {:#?}, {:#?}",

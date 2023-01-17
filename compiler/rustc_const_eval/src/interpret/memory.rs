@@ -146,7 +146,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
-    /// the machine pointer to the allocation.  Must never be used
+    /// the machine pointer to the allocation. Must never be used
     /// for any other pointers, nor for TLS statics.
     ///
     /// Using the resulting pointer represents a *direct* access to that memory
@@ -536,7 +536,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         id: AllocId,
     ) -> InterpResult<'tcx, &Allocation<M::Provenance, M::AllocExtra>> {
-        // The error type of the inner closure here is somewhat funny.  We have two
+        // The error type of the inner closure here is somewhat funny. We have two
         // ways of "erroring": An actual error, or because we got a reference from
         // `get_global_alloc` that we can actually use directly without inserting anything anywhere.
         // So the error type is `InterpResult<'tcx, &Allocation<M::Provenance>>`.
