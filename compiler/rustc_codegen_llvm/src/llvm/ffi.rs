@@ -999,6 +999,101 @@ pub enum LLVMVerifierFailureAction {
     LLVMReturnStatusAction,
 }
 
+pub(crate) unsafe fn enzyme_rust_forward_diff(
+    logic_ref: EnzymeLogicRef,
+    type_analysis: EnzymeTypeAnalysisRef,
+    fnc: &Value,
+    input_activity: Vec<CDIFFE_TYPE>,
+    ret_activity: CDIFFE_TYPE,
+    ret_primary_ret: bool) -> &Value{
+
+    let tree_tmp =  TypeTree::new();
+    let mut args_tree = vec![tree_tmp.inner; input_activity.len()];
+    // We don't support volatile / extern / (global?) values.
+    // Just because I didn't had time to test them, and it seems less urgent.
+    let args_uncacheable = vec![0; input_activity.len()];
+    let ret = TypeTree::new();
+    let kv_tmp = IntList {
+        data: std::ptr::null_mut(),
+        size: 0,
+    };
+
+    let mut known_values = vec![kv_tmp; input_activity.len()];
+
+    let dummy_type = CFnTypeInfo {
+        Arguments: args_tree.as_mut_ptr(),
+        Return: ret.inner,
+        KnownValues: known_values.as_mut_ptr(),
+    };
+
+    EnzymeCreateForwardDiff(
+        logic_ref, // Logic
+        fnc,
+        ret_activity, // LLVM function, return type
+        input_activity.as_ptr(),
+        input_activity.len(), // constant arguments
+        type_analysis,         // type analysis struct
+        ret_primary_ret as u8,
+        CDerivativeMode::DEM_ForwardMode, // return value, dret_used, top_level which was 1
+        1,                                        // free memory
+        1,                                        // vector mode width
+        Option::None,
+        dummy_type, // additional_arg, type info (return + args)
+        args_uncacheable.as_ptr(),
+        args_uncacheable.len(), // uncacheable arguments
+        std::ptr::null_mut(),               // write augmented function to this
+        )
+}
+
+pub(crate) unsafe fn enzyme_rust_reverse_diff(
+    logic_ref: EnzymeLogicRef,
+    type_analysis: EnzymeTypeAnalysisRef,
+    fnc: &Value,
+    input_activity: Vec<CDIFFE_TYPE>,
+    ret_activity: CDIFFE_TYPE,
+    ret_primary_ret: bool,
+    diff_primary_ret: bool
+    ) -> &Value{
+
+    let tree_tmp =  TypeTree::new();
+    let mut args_tree = vec![tree_tmp.inner; input_activity.len()];
+    // We don't support volatile / extern / (global?) values.
+    // Just because I didn't had time to test them, and it seems less urgent.
+    let args_uncacheable = vec![0; input_activity.len()];
+    let ret = TypeTree::new();
+    let kv_tmp = IntList {
+        data: std::ptr::null_mut(),
+        size: 0,
+    };
+
+    let mut known_values = vec![kv_tmp; input_activity.len()];
+
+    let dummy_type = CFnTypeInfo {
+        Arguments: args_tree.as_mut_ptr(),
+        Return: ret.inner,
+        KnownValues: known_values.as_mut_ptr(),
+    };
+    EnzymeCreatePrimalAndGradient(
+        logic_ref, // Logic
+        fnc,
+        ret_activity, // LLVM function, return type
+        input_activity.as_ptr(),
+        input_activity.len(), // constant arguments
+        type_analysis,         // type analysis struct
+        ret_primary_ret as u8,
+        diff_primary_ret as u8,                                        //0
+        CDerivativeMode::DEM_ReverseModeCombined, // return value, dret_used, top_level which was 1
+        1,                                        // vector mode width
+        1,                                        // free memory
+        Option::None,
+        dummy_type, // additional_arg, type info (return + args)
+        args_uncacheable.as_ptr(),
+        args_uncacheable.len(), // uncacheable arguments
+        std::ptr::null_mut(),               // write augmented function to this
+        0,
+        )
+}
+
 extern "C" {
 
     // Enzyme
@@ -2646,12 +2741,12 @@ pub enum CDerivativeMode {
     DEM_ForwardModeSplit = 4,
 }
 extern "C" {
-    pub fn EnzymeCreatePrimalAndGradient<'a>(
+    fn EnzymeCreatePrimalAndGradient<'a>(
         arg1: EnzymeLogicRef,
         todiff: &'a Value,
         //todiff: LLVMValueRef,
         retType: CDIFFE_TYPE,
-        constant_args: *mut CDIFFE_TYPE,
+        constant_args: *const CDIFFE_TYPE,
         constant_args_size: size_t,
         TA: EnzymeTypeAnalysisRef,
         returnValue: u8,
@@ -2661,7 +2756,7 @@ extern "C" {
         freeMemory: u8,
         additionalArg: Option<&Type>,
         typeInfo: CFnTypeInfo,
-        _uncacheable_args: *mut u8,
+        _uncacheable_args: *const u8,
         uncacheable_args_size: size_t,
         augmented: EnzymeAugmentedReturnPtr,
         AtomicAdd: u8,
@@ -2669,11 +2764,11 @@ extern "C" {
     //) -> LLVMValueRef;
 }
 extern "C" {
-    pub fn EnzymeCreateForwardDiff<'a>(
+    fn EnzymeCreateForwardDiff<'a>(
         arg1: EnzymeLogicRef,
         todiff: &'a Value,
         retType: CDIFFE_TYPE,
-        constant_args: *mut CDIFFE_TYPE,
+        constant_args: *const CDIFFE_TYPE,
         constant_args_size: size_t,
         TA: EnzymeTypeAnalysisRef,
         returnValue: u8,
@@ -2682,7 +2777,7 @@ extern "C" {
         width: ::std::os::raw::c_uint,
         additionalArg: Option<&Type>,
         typeInfo: CFnTypeInfo,
-        _uncacheable_args: *mut u8,
+        _uncacheable_args: *const u8,
         uncacheable_args_size: size_t,
         augmented: EnzymeAugmentedReturnPtr,
         ) -> &'a Value;

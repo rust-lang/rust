@@ -3,7 +3,7 @@ use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
 };
 
-use crate::{base};
+use crate::base;
 use crate::common;
 use crate::consts;
 use crate::llvm::{ParamInfos, Value, LLVMVerifyFunction, LLVMReplaceAllUsesWith};
@@ -12,7 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{TypeTree, IntList, CFnTypeInfo, EnzymeLogicRef, EnzymeTypeAnalysisRef, EnzymeCreatePrimalAndGradient, CreateTypeAnalysis, CreateEnzymeLogic, CDerivativeMode, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, LLVMDumpModule};
+use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, LLVMDumpModule, enzyme_rust_forward_diff, enzyme_rust_reverse_diff};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -26,7 +26,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::bug;
-use rustc_middle::metadata::DiffItem;
+use rustc_middle::metadata::{DiffItem, DiffMode};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
 use rustc_session::Session;
@@ -638,6 +638,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
 pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffItem, src_name: &String
                               ) -> Result<(), FatalError> {
     let llmod = module.module_llvm.llmod();
+    let autodiff_mode = tasks.mode;
     //dbg!(llmod);
     LLVMDumpModule(llmod);
 
@@ -660,85 +661,27 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
     let name = CString::new(rust_name.to_owned()).unwrap();
     let name2 = CString::new(rust_name2.clone()).unwrap();
     let src_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
-    let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_c_str().as_ptr());
+    let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr());
+    //let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_c_str().as_ptr());
     assert!(src_fnc_tmp.is_some());
     assert!(target_fnc_tmp.is_some());
     dbg!("let there be Dragons (and Enzyme)");
     let fnc_todiff = src_fnc_tmp.unwrap();
     let target_fnc = target_fnc_tmp.unwrap();
 
-    let tree_tmp =  TypeTree::new();
-    let fwd_tree_tmp =  TypeTree::new();
-    let mut args_tree = vec![tree_tmp.inner; args_activity.len()];
-    let mut fwd_args_tree = vec![tree_tmp.inner; fwd_args_activity.len()];
-    // We don't support volatile / extern / (global?) values.
-    // Just because I didn't had time to test them, and it seems less urgent.
-    let mut args_uncacheable = vec![0; args_activity.len()];
-    let ret = TypeTree::new();
-    let kv_tmp = IntList {
-        data: std::ptr::null_mut(),
-        size: 0,
-    };
-
-    let mut known_values = vec![kv_tmp; args_activity.len()];
-
-    let dummy_type = CFnTypeInfo {
-        Arguments: args_tree.as_mut_ptr(),
-        Return: ret.inner,
-        KnownValues: known_values.as_mut_ptr(),
-    };
-
     dbg!("before-ad");
     dbg!(&fnc_todiff);
     dbg!(target_fnc);
     dbg!(&args_activity);
     let opt  = 1;
-    let ret_primary_ret = 0;
+    let ret_primary_ret = false;
+    let diff_primary_ret = false;
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
-    // let res_fwd: &Value =
-    //     llvm::EnzymeCreateForwardDiff(
-    //         logic_ref, // Logic
-    //         fnc_todiff,
-    //         CDIFFE_TYPE::DFT_DUP_ARG, // LLVM function, return type
-    //         fwd_args_activity.as_mut_ptr(),
-    //         fwd_args_activity.len(), // constant arguments
-    //         type_analysis,         // type analysis struct
-    //         ret_primary_ret as u8,
-    //         CDerivativeMode::DEM_ForwardMode, // return value, dret_used, top_level which was 1
-    //         1,                                        // free memory
-    //         1,                                        // vector mode width
-    //         Option::None,
-    //         //std::ptr::null_mut(),
-    //         dummy_type, // additional_arg, type info (return + args)
-    //         args_uncacheable.as_mut_ptr(),
-    //         args_uncacheable.len(), // uncacheable arguments
-    //         std::ptr::null_mut(),               // write augmented function to this
-    //         )
-    //     ;
-    // dbg!(res_fwd);
-    let mut res: &Value =
-        EnzymeCreatePrimalAndGradient(
-            logic_ref, // Logic
-            fnc_todiff,
-            ret_activity, // LLVM function, return type
-            args_activity.as_mut_ptr(),
-            args_activity.len(), // constant arguments
-            type_analysis,         // type analysis struct
-            ret_primary_ret as u8,
-            0,                                        //0
-            CDerivativeMode::DEM_ReverseModeCombined, // return value, dret_used, top_level which was 1
-            1,                                        // vector mode width
-            1,                                        // free memory
-            Option::None,
-            //std::ptr::null_mut(),
-            dummy_type, // additional_arg, type info (return + args)
-            args_uncacheable.as_mut_ptr(),
-            args_uncacheable.len(), // uncacheable arguments
-            std::ptr::null_mut(),               // write augmented function to this
-            0,
-            )
-        ;
+    let mut res: &Value = match tasks.mode {
+        DiffMode::Forward => enzyme_rust_forward_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret),
+        DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, diff_primary_ret)
+    };
     dbg!(res);
     let f_type = LLVMTypeOf(res);
     let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
