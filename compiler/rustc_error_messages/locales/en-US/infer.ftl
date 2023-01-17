@@ -147,8 +147,6 @@ infer_region_explanation = {$pref_kind ->
 }{$desc_kind ->
     *[should_not_happen] [{$desc_kind}]
     [restatic] the static lifetime
-    [reempty] the empty lifetime
-    [reemptyuni] the empty lifetime in universe {$desc_arg}
     [revar] lifetime {$desc_arg}
 
     [as_defined] the lifetime `{$desc_arg}` as defined here
