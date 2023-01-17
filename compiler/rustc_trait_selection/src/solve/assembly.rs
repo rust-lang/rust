@@ -4,6 +4,7 @@ use super::infcx_ext::InferCtxtExt;
 use super::{CanonicalResponse, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::util::elaborate_predicates;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::fmt::Debug;
@@ -118,6 +119,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.assemble_param_env_candidates(goal, &mut candidates);
 
         self.assemble_alias_bound_candidates(goal, &mut candidates);
+
+        self.assemble_object_bound_candidates(goal, &mut candidates);
 
         candidates
     }
@@ -267,6 +270,55 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             match G::consider_assumption(self, goal, assumption) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::AliasBound(i), result })
+                }
+                Err(NoSolution) => (),
+            }
+        }
+    }
+
+    fn assemble_object_bound_candidates<G: GoalKind<'tcx>>(
+        &mut self,
+        goal: Goal<'tcx, G>,
+        candidates: &mut Vec<Candidate<'tcx>>,
+    ) {
+        let self_ty = goal.predicate.self_ty();
+        let bounds = match *self_ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Alias(..)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(_)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Param(_)
+            | ty::Placeholder(..)
+            | ty::Infer(_)
+            | ty::Error(_) => return,
+            ty::Bound(..) => bug!("unexpected bound type: {goal:?}"),
+            ty::Dynamic(bounds, ..) => bounds,
+        };
+
+        let tcx = self.tcx();
+        for assumption in
+            elaborate_predicates(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
+        {
+            match G::consider_assumption(self, goal, assumption.predicate)
+            {
+                Ok(result) => {
+                    candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }
                 Err(NoSolution) => (),
             }
