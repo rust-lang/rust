@@ -75,7 +75,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 let mut expr_finder = FindExprBySpan::new(span);
                 expr_finder.visit_expr(body.value);
                 if let Some(mut expr) = expr_finder.result {
-                    while let hir::ExprKind::AddrOf(_, _, inner) = &expr.kind {
+                    while let hir::ExprKind::AddrOf(_, _, inner)
+                        | hir::ExprKind::Unary(hir::UnOp::Deref, inner) = &expr.kind
+                    {
                         expr = inner;
                     }
                     if let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind

@@ -1,6 +1,9 @@
 error[E0505]: cannot move out of `a` because it is borrowed
   --> $DIR/borrowck-bad-nested-calls-move.rs:25:9
    |
+LL |     let mut a: Box<_> = Box::new(1);
+   |         ----- binding `a` declared here
+...
 LL |     add(
    |     --- borrow later used by call
 LL |         &*a,
@@ -11,6 +14,8 @@ LL |         a);
 error[E0505]: cannot move out of `a` because it is borrowed
   --> $DIR/borrowck-bad-nested-calls-move.rs:32:9
    |
+LL |     let mut a: Box<_> = Box::new(1);
+   |         ----- binding `a` declared here
 LL |     add(
    |     --- borrow later used by call
 LL |         &*a,

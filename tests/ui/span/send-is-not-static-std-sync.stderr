@@ -1,6 +1,9 @@
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/send-is-not-static-std-sync.rs:13:10
    |
+LL |     let y = Box::new(1);
+   |         - binding `y` declared here
+LL |     let lock = Mutex::new(&x);
 LL |     *lock.lock().unwrap() = &*y;
    |                             --- borrow of `*y` occurs here
 LL |     drop(y);
@@ -25,6 +28,9 @@ LL |     lock.use_ref(); // (Mutex is #[may_dangle] so its dtor does not use `z`
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/send-is-not-static-std-sync.rs:27:10
    |
+LL |     let y = Box::new(1);
+   |         - binding `y` declared here
+LL |     let lock = RwLock::new(&x);
 LL |     *lock.write().unwrap() = &*y;
    |                              --- borrow of `*y` occurs here
 LL |     drop(y);
@@ -49,6 +55,9 @@ LL |     lock.use_ref(); // (RwLock is #[may_dangle] so its dtor does not use `z
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/send-is-not-static-std-sync.rs:43:10
    |
+LL |     let y = Box::new(1);
+   |         - binding `y` declared here
+...
 LL |     tx.send(&*y);
    |             --- borrow of `*y` occurs here
 LL |     drop(y);
