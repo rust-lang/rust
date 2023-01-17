@@ -1123,7 +1123,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
                 }
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                    self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
+                    self.tcx.item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                         if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be substs[1]
