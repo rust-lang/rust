@@ -524,7 +524,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .kind
                         {
                             GenericParamDefKind::Type { .. } => {
-                                let kind = ty::BoundTyKind::Param(param.name);
+                                let kind = ty::BoundTyKind::Param(param.def_id, param.name);
                                 let bound_var = ty::BoundVariableKind::Ty(kind);
                                 bound_vars.push(bound_var);
                                 tcx.mk_ty(ty::Bound(
