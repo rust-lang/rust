@@ -5,32 +5,23 @@
 // The this solution works like the implementation of macOS and
 // doesn't additional OS support
 
-use crate::cell::Cell;
-use crate::ptr;
+use crate::mem;
 
 #[thread_local]
-static DTORS: Cell<*mut List> = Cell::new(ptr::null_mut());
-
-type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
+static mut DTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
 
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
-    if DTORS.get().is_null() {
-        let v: Box<List> = box Vec::new();
-        DTORS.set(Box::into_raw(v));
-    }
-
-    let list: &mut List = &mut *DTORS.get();
+    let list = &mut DTORS;
     list.push((t, dtor));
 }
 
 // every thread call this function to run through all possible destructors
 pub unsafe fn run_dtors() {
-    let mut ptr = DTORS.replace(ptr::null_mut());
-    while !ptr.is_null() {
-        let list = Box::from_raw(ptr);
-        for (ptr, dtor) in list.into_iter() {
+    let mut list = mem::take(&mut DTORS);
+    while !list.is_empty() {
+        for (ptr, dtor) in list {
             dtor(ptr);
         }
-        ptr = DTORS.replace(ptr::null_mut());
+        list = mem::take(&mut DTORS);
     }
 }

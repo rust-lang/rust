@@ -30,7 +30,7 @@ pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut
     static DTORS: StaticKey = StaticKey::new(Some(run_dtors));
     type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
     if DTORS.get().is_null() {
-        let v: Box<List> = box Vec::new();
+        let v: Box<List> = Box::new(Vec::new());
         DTORS.set(Box::into_raw(v) as *mut u8);
     }
     let list: &mut List = &mut *(DTORS.get() as *mut List);
