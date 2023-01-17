@@ -6,8 +6,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use std::{
     borrow::Borrow,
+    collections::hash_map::Entry,
     hash::Hash,
     iter::{Product, Sum},
+    ops::Index,
 };
 
 use crate::{
@@ -187,7 +189,16 @@ impl<V: Eq + Hash> UnordSet<V> {
     }
 
     #[inline]
-    pub fn items(&self) -> UnordItems<&V, impl Iterator<Item = &V>> {
+    pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> bool
+    where
+        V: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.inner.remove(k)
+    }
+
+    #[inline]
+    pub fn items<'a>(&'a self) -> UnordItems<&'a V, impl Iterator<Item = &'a V>> {
         UnordItems(self.inner.iter())
     }
 
@@ -254,6 +265,18 @@ impl<K: Hash + Eq, V> Extend<(K, V)> for UnordMap<K, V> {
     }
 }
 
+impl<K: Hash + Eq, V> FromIterator<(K, V)> for UnordMap<K, V> {
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        UnordMap { inner: FxHashMap::from_iter(iter) }
+    }
+}
+
+impl<K: Hash + Eq, V, I: Iterator<Item = (K, V)>> From<UnordItems<(K, V), I>> for UnordMap<K, V> {
+    fn from(items: UnordItems<(K, V), I>) -> Self {
+        UnordMap { inner: FxHashMap::from_iter(items.0) }
+    }
+}
+
 impl<K: Eq + Hash, V> UnordMap<K, V> {
     #[inline]
     pub fn len(&self) -> usize {
@@ -275,7 +298,44 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     }
 
     #[inline]
-    pub fn items(&self) -> UnordItems<(&K, &V), impl Iterator<Item = (&K, &V)>> {
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    #[inline]
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
+        self.inner.entry(key)
+    }
+
+    #[inline]
+    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.inner.get(k)
+    }
+
+    #[inline]
+    pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.inner.get_mut(k)
+    }
+
+    #[inline]
+    pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.inner.remove(k)
+    }
+
+    #[inline]
+    pub fn items<'a>(&'a self) -> UnordItems<(&'a K, &'a V), impl Iterator<Item = (&'a K, &'a V)>> {
         UnordItems(self.inner.iter())
     }
 
@@ -289,6 +349,46 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     #[inline]
     pub fn extend<I: Iterator<Item = (K, V)>>(&mut self, items: UnordItems<(K, V), I>) {
         self.inner.extend(items.0)
+    }
+
+    pub fn to_sorted<HCX>(&self, hcx: &HCX) -> Vec<(&K, &V)>
+    where
+        K: ToStableHashKey<HCX>,
+    {
+        let mut items: Vec<(&K, &V)> = self.inner.iter().collect();
+        items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
+        items
+    }
+
+    pub fn into_sorted<HCX>(self, hcx: &HCX) -> Vec<(K, V)>
+    where
+        K: ToStableHashKey<HCX>,
+    {
+        let mut items: Vec<(K, V)> = self.inner.into_iter().collect();
+        items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
+        items
+    }
+
+    pub fn values_sorted<HCX>(&self, hcx: &HCX) -> impl Iterator<Item = &V>
+    where
+        K: ToStableHashKey<HCX>,
+    {
+        let mut items: Vec<(&K, &V)> = self.inner.iter().collect();
+        items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
+        items.into_iter().map(|(_, v)| v)
+    }
+}
+
+impl<K, Q: ?Sized, V> Index<&Q> for UnordMap<K, V>
+where
+    K: Eq + Hash + Borrow<Q>,
+    Q: Eq + Hash,
+{
+    type Output = V;
+
+    #[inline]
+    fn index(&self, key: &Q) -> &V {
+        &self.inner[key]
     }
 }
 
@@ -351,6 +451,12 @@ impl<V> UnordBag<V> {
 impl<T> Extend<T> for UnordBag<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         self.inner.extend(iter)
+    }
+}
+
+impl<T, I: Iterator<Item = T>> From<UnordItems<T, I>> for UnordBag<T> {
+    fn from(value: UnordItems<T, I>) -> Self {
+        UnordBag { inner: Vec::from_iter(value.0) }
     }
 }
 

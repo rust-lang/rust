@@ -6,8 +6,9 @@
 extern crate rustc_macros;
 
 pub use self::Level::*;
-use rustc_ast::node_id::{NodeId, NodeMap};
+use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
@@ -544,7 +545,7 @@ pub struct BufferedEarlyLint {
 
 #[derive(Default)]
 pub struct LintBuffer {
-    pub map: NodeMap<Vec<BufferedEarlyLint>>,
+    pub map: FxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
 }
 
 impl LintBuffer {
