@@ -187,6 +187,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
         }
         self.inside_public_path = orig_inside_public_path;
+        debug!("Leaving module {:?}", m);
     }
 
     /// Tries to resolve the target of a `pub use` statement and inlines the
@@ -290,7 +291,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         &mut self,
         item: &'tcx hir::Item<'_>,
         renamed: Option<Symbol>,
-        parent_id: Option<LocalDefId>,
+        import_id: Option<LocalDefId>,
     ) -> bool {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
@@ -347,7 +348,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         }
                     }
 
-                    self.add_to_current_mod(item, renamed, parent_id);
+                    self.add_to_current_mod(item, renamed, import_id);
                 }
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
@@ -383,13 +384,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..) => {
-                self.add_to_current_mod(item, renamed, parent_id);
+                self.add_to_current_mod(item, renamed, import_id);
             }
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
                 if name != kw::Underscore {
-                    self.add_to_current_mod(item, renamed, parent_id);
+                    self.add_to_current_mod(item, renamed, import_id);
                 }
             }
             hir::ItemKind::Impl(impl_) => {
@@ -437,12 +438,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
-        let parent_id = if self.modules.len() > 1 {
-            Some(self.modules[self.modules.len() - 2].def_id)
-        } else {
-            None
-        };
-        if self.visit_item_inner(i, None, parent_id) {
+        if self.visit_item_inner(i, None, None) {
             walk_item(self, i);
         }
     }
