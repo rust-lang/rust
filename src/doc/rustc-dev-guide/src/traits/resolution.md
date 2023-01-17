@@ -163,7 +163,7 @@ impl<T: Get> Get for Box<T> {
 }
 ```
 
-What happens when we invoke `get_it(&Box::new(1_u16))`, for example? In this
+What happens when we invoke `get(&Box::new(1_u16))`, for example? In this
 case, the `Self` type is `Box<u16>` – that unifies with both impls,
 because the first applies to all types `T`, and the second to all
 `Box<T>`. In order for this to be unambiguous, the compiler does a *winnowing*
@@ -248,7 +248,7 @@ because we know that each resolution will resolve to a particular impl.
 
 One interesting twist has to do with nested obligations. In general, in codegen,
 we only to figure out which candidate applies, we do not care about nested obligations,
-as these are already assumed to be true. Nonetheless, we *do* currently do fulfill all of them.
+as these are already assumed to be true. Nonetheless, we *do* currently fulfill all of them.
 That is because it can sometimes inform the results of type inference.
 That is, we do not have the full substitutions in terms of the type variables
 of the impl available to us, so we must run trait selection to figure
