@@ -56,6 +56,7 @@ mod const_goto;
 mod const_prop;
 mod const_prop_lint;
 mod copy_prop;
+mod cost_checker;
 mod coverage;
 mod ctfe_limit;
 mod dataflow_const_prop;
