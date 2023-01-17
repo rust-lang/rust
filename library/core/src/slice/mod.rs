@@ -2482,9 +2482,9 @@ impl<T> [T] {
             let cmp = f(unsafe { self.get_unchecked(mid) });
             
             match cmp {
-                Less => left = mid + 1,
-                Greater => right = mid,
-                Equal => {
+                Ordering::Less => left = mid + 1,
+                Ordering::Greater => right = mid,
+                Ordering::Equal => {
                     // SAFETY: same as the `get_unchecked` above
                     unsafe { crate::intrinsics::assume(mid < self.len()) };
                     return Ok(mid);
