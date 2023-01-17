@@ -487,7 +487,6 @@ fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
         &cleanup_post_borrowck::CleanupPostBorrowck,
-        &simplify_branches::SimplifyConstCondition::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::new("early-opt"),
         &deref_separator::Derefer,
