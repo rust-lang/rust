@@ -5,7 +5,7 @@ use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
-use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, DefIdTree, Expr, TyCtxt, TypeVisitable};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -361,6 +361,10 @@ pub fn thir_abstract_const(
             //
             // Right now we do neither of that and simply always fail to unify them.
             DefKind::AnonConst | DefKind::InlineConst => (),
+            DefKind::AssocConst if let Some(parent) = tcx.opt_local_parent(def.did)
+              && DefKind::Impl == tcx.def_kind(parent) => {
+                ()
+            },
             _ => return Ok(None),
         }
 

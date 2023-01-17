@@ -205,10 +205,11 @@ fn satisfied_from_param_env<'tcx>(
 
     let mut single_match: Option<Result<ty::Const<'tcx>, ()>> = None;
 
+    let ct = tcx.erase_regions(ct);
     for pred in param_env.caller_bounds() {
         match pred.kind().skip_binder() {
             ty::PredicateKind::ConstEvaluatable(ce) => {
-                let b_ct = tcx.expand_abstract_consts(ce);
+                let b_ct = tcx.erase_regions(tcx.expand_abstract_consts(ce));
                 let mut v = Visitor { ct, infcx, param_env, single_match };
                 let _ = b_ct.visit_with(&mut v);
 

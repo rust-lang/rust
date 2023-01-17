@@ -9,6 +9,7 @@
 #![feature(control_flow_enum)]
 #![feature(never_type)]
 #![feature(box_patterns)]
+#![feature(if_let_guard)]
 #![recursion_limit = "256"]
 
 #[macro_use]

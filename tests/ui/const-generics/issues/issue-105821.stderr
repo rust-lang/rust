@@ -1,0 +1,19 @@
+error: overly complex generic constant
+  --> $DIR/issue-105821.rs:17:43
+   |
+LL |     const ZEROS: &'static [u8; A.len()] = &[0_u8; A.len()];
+   |                                           ^^^^^^^^^^^^^^^^ borrowing is not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error: overly complex generic constant
+  --> $DIR/issue-105821.rs:19:30
+   |
+LL |     const R: &'static [u8] = &catone(Self::ZEROS);
+   |                              ^^^^^^^^^^^^^^^^^^^^ pointer casts are not allowed in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+
+error: aborting due to 2 previous errors
+
