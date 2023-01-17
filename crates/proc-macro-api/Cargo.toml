@@ -25,9 +25,10 @@ tracing = "0.1.37"
 memmap2 = "0.5.4"
 snap = "1.0.5"
 
-paths = { path = "../paths", version = "0.0.0" }
-tt = { path = "../tt", version = "0.0.0" }
-stdx = { path = "../stdx", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
+# local deps
+paths.workspace = true
+tt.workspace = true
+stdx.workspace = true
+profile.workspace = true
 # Intentionally *not* depend on anything salsa-related
-# base-db = { path = "../base-db", version = "0.0.0" }
+# base-db.workspace = true

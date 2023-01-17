@@ -14,4 +14,4 @@ doctest = false
 [dependencies]
 smol_str = "0.1.23"
 
-stdx = { path = "../stdx", version = "0.0.0" }
+stdx.workspace = true

@@ -18,5 +18,5 @@ walkdir = "2.3.2"
 crossbeam-channel = "0.5.5"
 notify = "5.0"
 
-vfs = { path = "../vfs", version = "0.0.0" }
-paths = { path = "../paths", version = "0.0.0" }
+vfs.workspace = true
+paths.workspace = true
