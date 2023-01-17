@@ -1895,18 +1895,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut fx_hash_map: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
             FxHashMap::default();
 
-        // for id in tcx.impls_in_crate(LOCAL_CRATE) {
-        //     if let Some(trait_ref) = tcx.impl_trait_ref(id) {
-        //         let simplified_self_ty =
-        //             fast_reject::simplify_type(self.tcx, trait_ref.self_ty(), TreatParams::AsInfer);
-
-        //         fx_hash_map
-        //             .entry(trait_ref.def_id)
-        //             .or_default()
-        //             .push((id.expect_local().local_def_index, simplified_self_ty));
-
         for id in tcx.impls_in_crate(LOCAL_CRATE) {
-            if let Some(trait_ref) = tcx.impl_trait_ref(id.owner_id) {
+            if let Some(trait_ref) = tcx.impl_trait_ref(id) {
                 let trait_ref = trait_ref.subst_identity();
 
                 let simplified_self_ty =
@@ -1915,7 +1905,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 fx_hash_map
                     .entry(trait_ref.def_id)
                     .or_default()
-                    .push((id.local_def_index, simplified_self_ty));
+                    .push((id.expect_local().local_def_index, simplified_self_ty));
             }
         }
 
