@@ -77,7 +77,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 if let Some(mut expr) = expr_finder.result {
                     while let hir::ExprKind::AddrOf(_, _, inner)
                         | hir::ExprKind::Unary(hir::UnOp::Deref, inner)
-                        | hir::ExprKind::Field(inner, _) = &expr.kind
+                        | hir::ExprKind::Field(inner, _)
+                        | hir::ExprKind::MethodCall(_, inner, _, _)
+                        | hir::ExprKind::Index(inner, _) = &expr.kind
                     {
                         expr = inner;
                     }
