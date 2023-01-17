@@ -7,10 +7,12 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
+use rustc_hir::def::DefKind;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::Span;
 
 use crate::universal_regions::UniversalRegions;
@@ -148,6 +150,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
+        let (a, b) = (a, b).fold_with(&mut BottomUpFolder {
+            tcx: self.infcx.tcx,
+            ty_op: |ty| {
+                if let ty::Alias(ty::Projection, ty::AliasTy { def_id, substs, .. }) = *ty.kind()
+                    && self.infcx.tcx.def_kind(def_id) == DefKind::ImplTraitPlaceholder
+                    && def_id.as_local().map_or(false, |def_id| self.infcx.opaque_type_origin(def_id, span).is_some())
+                {
+                    self.infcx.tcx.mk_opaque(def_id, substs)
+                } else {
+                    ty
+                }
+            },
+            lt_op: |lt| lt,
+            ct_op: |ct| ct,
+        });
+
         if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
         {

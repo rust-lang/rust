@@ -27,6 +27,7 @@ use crate::infer::{ConstVarValue, ConstVariableValue};
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::{Obligation, PredicateObligation};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def::DefKind;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -410,7 +411,7 @@ where
         let (a, b) = match (a.kind(), b.kind()) {
             (&ty::Alias(ty::Opaque, ..), _) => (a, generalize(b, false)?),
             (_, &ty::Alias(ty::Opaque, ..)) => (generalize(a, true)?, b),
-            _ => unreachable!(),
+            _ => unreachable!("expected an opaque, got {a} and {b}"),
         };
         let cause = ObligationCause::dummy_with_span(self.delegate.span());
         let obligations = self
@@ -625,6 +626,42 @@ where
                 if def_id.is_local() =>
             {
                 self.relate_opaques(a, b)
+            }
+
+            // Handle default-body RPITITs
+            (
+                &ty::Alias(ty::Projection, ty::AliasTy { def_id: a_def_id, .. }),
+                &ty::Alias(ty::Projection, ty::AliasTy { def_id: b_def_id, .. }),
+            ) if a_def_id == b_def_id
+                && self.tcx().def_kind(a_def_id) == DefKind::ImplTraitPlaceholder
+                && a_def_id.as_local().map_or(false, |def_id| {
+                    self.infcx.opaque_type_origin(def_id, self.delegate.span()).is_some()
+                }) =>
+            {
+                infcx.super_combine_tys(self, a, b).or_else(|err| {
+                    self.tcx().sess.delay_span_bug(
+                        self.delegate.span(),
+                        "failure to relate an opaque to itself should result in an error later on",
+                    );
+                    if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
+                })
+            }
+            (&ty::Alias(ty::Projection, ty::AliasTy { def_id, substs, .. }), _)
+                if self.tcx().def_kind(def_id) == DefKind::ImplTraitPlaceholder
+                    && def_id.as_local().map_or(false, |def_id| {
+                        self.infcx.opaque_type_origin(def_id, self.delegate.span()).is_some()
+                    }) =>
+            {
+                self.relate_opaques(self.tcx().mk_opaque(def_id, substs), b)
+            }
+
+            (_, &ty::Alias(ty::Projection, ty::AliasTy { def_id, substs, .. }))
+                if self.tcx().def_kind(def_id) == DefKind::ImplTraitPlaceholder
+                    && def_id.as_local().map_or(false, |def_id| {
+                        self.infcx.opaque_type_origin(def_id, self.delegate.span()).is_some()
+                    }) =>
+            {
+                self.relate_opaques(a, self.tcx().mk_opaque(def_id, substs))
             }
 
             (&ty::Alias(ty::Projection, projection_ty), _)
