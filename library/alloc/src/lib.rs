@@ -106,6 +106,7 @@
 #![feature(const_size_of_val)]
 #![feature(const_align_of_val)]
 #![feature(const_ptr_read)]
+#![feature(const_maybe_uninit_zeroed)]
 #![feature(const_maybe_uninit_write)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_refs_to_cell)]
