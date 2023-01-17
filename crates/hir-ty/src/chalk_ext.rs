@@ -1,6 +1,6 @@
 //! Various extensions traits for Chalk types.
 
-use chalk_ir::{FloatTy, IntTy, Mutability, Scalar, UintTy};
+use chalk_ir::{FloatTy, IntTy, Mutability, Scalar, TyVariableKind, UintTy};
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
     generics::TypeOrConstParamData,
@@ -18,6 +18,8 @@ use crate::{
 
 pub trait TyExt {
     fn is_unit(&self) -> bool;
+    fn is_integral(&self) -> bool;
+    fn is_floating_point(&self) -> bool;
     fn is_never(&self) -> bool;
     fn is_unknown(&self) -> bool;
     fn is_ty_var(&self) -> bool;
@@ -49,6 +51,21 @@ pub trait TyExt {
 impl TyExt for Ty {
     fn is_unit(&self) -> bool {
         matches!(self.kind(Interner), TyKind::Tuple(0, _))
+    }
+
+    fn is_integral(&self) -> bool {
+        matches!(
+            self.kind(Interner),
+            TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
+                | TyKind::InferenceVar(_, TyVariableKind::Integer)
+        )
+    }
+
+    fn is_floating_point(&self) -> bool {
+        matches!(
+            self.kind(Interner),
+            TyKind::Scalar(Scalar::Float(_)) | TyKind::InferenceVar(_, TyVariableKind::Float)
+        )
     }
 
     fn is_never(&self) -> bool {

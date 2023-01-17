@@ -10,8 +10,7 @@ use chalk_ir::{
 };
 use hir_def::{
     expr::{
-        ArithOp, Array, BinaryOp, ClosureKind, CmpOp, Expr, ExprId, LabelId, Literal, Statement,
-        UnaryOp,
+        ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     generics::TypeOrConstParamData,
     path::{GenericArg, GenericArgs},
@@ -1017,11 +1016,21 @@ impl<'a> InferenceContext<'a> {
         let (trait_, func) = match trait_func {
             Some(it) => it,
             None => {
-                let rhs_ty = self.builtin_binary_op_rhs_expectation(op, lhs_ty.clone());
-                let rhs_ty = self.infer_expr_coerce(rhs, &Expectation::from_option(rhs_ty));
-                return self
-                    .builtin_binary_op_return_ty(op, lhs_ty, rhs_ty)
-                    .unwrap_or_else(|| self.err_ty());
+                // HACK: `rhs_ty` is a general inference variable with no clue at all at this
+                // point. Passing `lhs_ty` as both operands just to check if `lhs_ty` is a builtin
+                // type applicable to `op`.
+                let ret_ty = if self.is_builtin_binop(&lhs_ty, &lhs_ty, op) {
+                    // Assume both operands are builtin so we can continue inference. No guarantee
+                    // on the correctness, rustc would complain as necessary lang items don't seem
+                    // to exist anyway.
+                    self.enforce_builtin_binop_types(&lhs_ty, &rhs_ty, op)
+                } else {
+                    self.err_ty()
+                };
+
+                self.infer_expr_coerce(rhs, &Expectation::has_type(rhs_ty));
+
+                return ret_ty;
             }
         };
 
@@ -1071,11 +1080,9 @@ impl<'a> InferenceContext<'a> {
 
         let ret_ty = self.normalize_associated_types_in(ret_ty);
 
-        // use knowledge of built-in binary ops, which can sometimes help inference
-        if let Some(builtin_rhs) = self.builtin_binary_op_rhs_expectation(op, lhs_ty.clone()) {
-            self.unify(&builtin_rhs, &rhs_ty);
-        }
-        if let Some(builtin_ret) = self.builtin_binary_op_return_ty(op, lhs_ty, rhs_ty) {
+        if self.is_builtin_binop(&lhs_ty, &rhs_ty, op) {
+            // use knowledge of built-in binary ops, which can sometimes help inference
+            let builtin_ret = self.enforce_builtin_binop_types(&lhs_ty, &rhs_ty, op);
             self.unify(&builtin_ret, &ret_ty);
         }
 
@@ -1477,92 +1484,124 @@ impl<'a> InferenceContext<'a> {
         indices
     }
 
-    fn builtin_binary_op_return_ty(&mut self, op: BinaryOp, lhs_ty: Ty, rhs_ty: Ty) -> Option<Ty> {
-        let lhs_ty = self.resolve_ty_shallow(&lhs_ty);
-        let rhs_ty = self.resolve_ty_shallow(&rhs_ty);
-        match op {
-            BinaryOp::LogicOp(_) | BinaryOp::CmpOp(_) => {
-                Some(TyKind::Scalar(Scalar::Bool).intern(Interner))
-            }
-            BinaryOp::Assignment { .. } => Some(TyBuilder::unit()),
-            BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => {
-                // all integer combinations are valid here
-                if matches!(
-                    lhs_ty.kind(Interner),
-                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
-                        | TyKind::InferenceVar(_, TyVariableKind::Integer)
-                ) && matches!(
-                    rhs_ty.kind(Interner),
-                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
-                        | TyKind::InferenceVar(_, TyVariableKind::Integer)
-                ) {
-                    Some(lhs_ty)
-                } else {
-                    None
-                }
-            }
-            BinaryOp::ArithOp(_) => match (lhs_ty.kind(Interner), rhs_ty.kind(Interner)) {
-                // (int, int) | (uint, uint) | (float, float)
-                (TyKind::Scalar(Scalar::Int(_)), TyKind::Scalar(Scalar::Int(_)))
-                | (TyKind::Scalar(Scalar::Uint(_)), TyKind::Scalar(Scalar::Uint(_)))
-                | (TyKind::Scalar(Scalar::Float(_)), TyKind::Scalar(Scalar::Float(_))) => {
-                    Some(rhs_ty)
-                }
-                // ({int}, int) | ({int}, uint)
-                (
-                    TyKind::InferenceVar(_, TyVariableKind::Integer),
-                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)),
-                ) => Some(rhs_ty),
-                // (int, {int}) | (uint, {int})
-                (
-                    TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)),
-                    TyKind::InferenceVar(_, TyVariableKind::Integer),
-                ) => Some(lhs_ty),
-                // ({float} | float)
-                (
-                    TyKind::InferenceVar(_, TyVariableKind::Float),
-                    TyKind::Scalar(Scalar::Float(_)),
-                ) => Some(rhs_ty),
-                // (float, {float})
-                (
-                    TyKind::Scalar(Scalar::Float(_)),
-                    TyKind::InferenceVar(_, TyVariableKind::Float),
-                ) => Some(lhs_ty),
-                // ({int}, {int}) | ({float}, {float})
-                (
-                    TyKind::InferenceVar(_, TyVariableKind::Integer),
-                    TyKind::InferenceVar(_, TyVariableKind::Integer),
-                )
-                | (
-                    TyKind::InferenceVar(_, TyVariableKind::Float),
-                    TyKind::InferenceVar(_, TyVariableKind::Float),
-                ) => Some(rhs_ty),
-                _ => None,
-            },
+    /// Dereferences a single level of immutable referencing.
+    fn deref_ty_if_possible(&mut self, ty: &Ty) -> Ty {
+        let ty = self.resolve_ty_shallow(ty);
+        match ty.kind(Interner) {
+            TyKind::Ref(Mutability::Not, _, inner) => self.resolve_ty_shallow(inner),
+            _ => ty,
         }
     }
 
-    fn builtin_binary_op_rhs_expectation(&mut self, op: BinaryOp, lhs_ty: Ty) -> Option<Ty> {
-        Some(match op {
-            BinaryOp::LogicOp(..) => TyKind::Scalar(Scalar::Bool).intern(Interner),
-            BinaryOp::Assignment { op: None } => lhs_ty,
-            BinaryOp::CmpOp(CmpOp::Eq { .. }) => match self
-                .resolve_ty_shallow(&lhs_ty)
-                .kind(Interner)
-            {
-                TyKind::Scalar(_) | TyKind::Str => lhs_ty,
-                TyKind::InferenceVar(_, TyVariableKind::Integer | TyVariableKind::Float) => lhs_ty,
-                _ => return None,
-            },
-            BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => return None,
-            BinaryOp::CmpOp(CmpOp::Ord { .. })
-            | BinaryOp::Assignment { op: Some(_) }
-            | BinaryOp::ArithOp(_) => match self.resolve_ty_shallow(&lhs_ty).kind(Interner) {
-                TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_)) => lhs_ty,
-                TyKind::InferenceVar(_, TyVariableKind::Integer | TyVariableKind::Float) => lhs_ty,
-                _ => return None,
-            },
-        })
+    /// Enforces expectations on lhs type and rhs type depending on the operator and returns the
+    /// output type of the binary op.
+    fn enforce_builtin_binop_types(&mut self, lhs: &Ty, rhs: &Ty, op: BinaryOp) -> Ty {
+        // Special-case a single layer of referencing, so that things like `5.0 + &6.0f32` work (See rust-lang/rust#57447).
+        let lhs = self.deref_ty_if_possible(lhs);
+        let rhs = self.deref_ty_if_possible(rhs);
+
+        let (op, is_assign) = match op {
+            BinaryOp::Assignment { op: Some(inner) } => (BinaryOp::ArithOp(inner), true),
+            _ => (op, false),
+        };
+
+        let output_ty = match op {
+            BinaryOp::LogicOp(_) => {
+                let bool_ = self.result.standard_types.bool_.clone();
+                self.unify(&lhs, &bool_);
+                self.unify(&rhs, &bool_);
+                bool_
+            }
+
+            BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => {
+                // result type is same as LHS always
+                lhs
+            }
+
+            BinaryOp::ArithOp(_) => {
+                // LHS, RHS, and result will have the same type
+                self.unify(&lhs, &rhs);
+                lhs
+            }
+
+            BinaryOp::CmpOp(_) => {
+                // LHS and RHS will have the same type
+                self.unify(&lhs, &rhs);
+                self.result.standard_types.bool_.clone()
+            }
+
+            BinaryOp::Assignment { op: None } => {
+                stdx::never!("Simple assignment operator is not binary op.");
+                lhs
+            }
+
+            BinaryOp::Assignment { .. } => unreachable!("handled above"),
+        };
+
+        if is_assign {
+            self.result.standard_types.unit.clone()
+        } else {
+            output_ty
+        }
+    }
+
+    fn is_builtin_binop(&mut self, lhs: &Ty, rhs: &Ty, op: BinaryOp) -> bool {
+        // Special-case a single layer of referencing, so that things like `5.0 + &6.0f32` work (See rust-lang/rust#57447).
+        let lhs = self.deref_ty_if_possible(lhs);
+        let rhs = self.deref_ty_if_possible(rhs);
+
+        let op = match op {
+            BinaryOp::Assignment { op: Some(inner) } => BinaryOp::ArithOp(inner),
+            _ => op,
+        };
+
+        match op {
+            BinaryOp::LogicOp(_) => true,
+
+            BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => {
+                lhs.is_integral() && rhs.is_integral()
+            }
+
+            BinaryOp::ArithOp(
+                ArithOp::Add | ArithOp::Sub | ArithOp::Mul | ArithOp::Div | ArithOp::Rem,
+            ) => {
+                lhs.is_integral() && rhs.is_integral()
+                    || lhs.is_floating_point() && rhs.is_floating_point()
+            }
+
+            BinaryOp::ArithOp(ArithOp::BitAnd | ArithOp::BitOr | ArithOp::BitXor) => {
+                lhs.is_integral() && rhs.is_integral()
+                    || lhs.is_floating_point() && rhs.is_floating_point()
+                    || matches!(
+                        (lhs.kind(Interner), rhs.kind(Interner)),
+                        (TyKind::Scalar(Scalar::Bool), TyKind::Scalar(Scalar::Bool))
+                    )
+            }
+
+            BinaryOp::CmpOp(_) => {
+                let is_scalar = |kind| {
+                    matches!(
+                        kind,
+                        &TyKind::Scalar(_)
+                            | TyKind::FnDef(..)
+                            | TyKind::Function(_)
+                            | TyKind::Raw(..)
+                            | TyKind::InferenceVar(
+                                _,
+                                TyVariableKind::Integer | TyVariableKind::Float
+                            )
+                    )
+                };
+                is_scalar(lhs.kind(Interner)) && is_scalar(rhs.kind(Interner))
+            }
+
+            BinaryOp::Assignment { op: None } => {
+                stdx::never!("Simple assignment operator is not binary op.");
+                false
+            }
+
+            BinaryOp::Assignment { .. } => unreachable!("handled above"),
+        }
     }
 
     fn with_breakable_ctx<T>(

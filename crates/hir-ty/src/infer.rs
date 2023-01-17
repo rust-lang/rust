@@ -1041,10 +1041,6 @@ impl Expectation {
         }
     }
 
-    fn from_option(ty: Option<Ty>) -> Self {
-        ty.map_or(Expectation::None, Expectation::HasType)
-    }
-
     /// The following explanation is copied straight from rustc:
     /// Provides an expectation for an rvalue expression given an *optional*
     /// hint, which is not required for type safety (the resulting type might
