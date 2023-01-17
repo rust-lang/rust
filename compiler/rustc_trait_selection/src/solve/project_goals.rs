@@ -347,6 +347,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         bug!("`Sized` does not have an associated type: {:?}", goal);
     }
+
+    fn consider_builtin_copy_clone_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`Copy`/`Clone` does not have an associated type: {:?}", goal);
+    }
 }
 
 /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.

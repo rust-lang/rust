@@ -6,6 +6,7 @@ use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
 use super::{EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
+use rustc_hir::{Movability, Mutability};
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
@@ -106,10 +107,27 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     }
 
     fn consider_builtin_sized_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        unimplemented!();
+        ecx.infcx.probe(|_| {
+            let constituent_tys =
+                instantiate_constituent_tys_for_sized_trait(ecx.infcx, goal.predicate.self_ty())?;
+            ecx.evaluate_goal_for_constituent_tys_and_make_canonical_response(goal, constituent_tys)
+        })
+    }
+
+    fn consider_builtin_copy_clone_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.infcx.probe(|_| {
+            let constituent_tys = instantiate_constituent_tys_for_copy_clone_trait(
+                ecx.infcx,
+                goal.predicate.self_ty(),
+            )?;
+            ecx.evaluate_goal_for_constituent_tys_and_make_canonical_response(goal, constituent_tys)
+        })
     }
 }
 
@@ -275,6 +293,119 @@ fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
             Ok(vec![tcx.bound_type_of(def_id).subst(tcx, substs)])
+        }
+    }
+}
+
+fn instantiate_constituent_tys_for_sized_trait<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Result<Vec<Ty<'tcx>>, NoSolution> {
+    match *ty.kind() {
+        ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::Uint(_)
+        | ty::Int(_)
+        | ty::Bool
+        | ty::Float(_)
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::RawPtr(..)
+        | ty::Char
+        | ty::Ref(..)
+        | ty::Generator(..)
+        | ty::GeneratorWitness(..)
+        | ty::Array(..)
+        | ty::Closure(..)
+        | ty::Never
+        | ty::Dynamic(_, _, ty::DynStar)
+        | ty::Error(_) => Ok(vec![]),
+
+        ty::Str
+        | ty::Slice(_)
+        | ty::Dynamic(..)
+        | ty::Foreign(..)
+        | ty::Alias(..)
+        | ty::Param(_) => Err(NoSolution),
+
+        ty::Infer(ty::TyVar(_)) => bug!("FIXME: ambiguous"),
+
+        ty::Placeholder(..)
+        | ty::Bound(..)
+        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+
+        ty::Tuple(tys) => Ok(tys.to_vec()),
+
+        ty::Adt(def, substs) => {
+            let sized_crit = def.sized_constraint(infcx.tcx);
+            Ok(sized_crit
+                .0
+                .iter()
+                .map(|ty| sized_crit.rebind(*ty).subst(infcx.tcx, substs))
+                .collect())
+        }
+    }
+}
+
+fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Result<Vec<Ty<'tcx>>, NoSolution> {
+    match *ty.kind() {
+        ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Error(_) => Ok(vec![]),
+
+        // Implementations are provided in core
+        ty::Uint(_)
+        | ty::Int(_)
+        | ty::Bool
+        | ty::Float(_)
+        | ty::Char
+        | ty::RawPtr(..)
+        | ty::Never
+        | ty::Ref(_, _, Mutability::Not)
+        | ty::Array(..) => Err(NoSolution),
+
+        ty::Dynamic(..)
+        | ty::Str
+        | ty::Slice(_)
+        | ty::Generator(_, _, Movability::Static)
+        | ty::Foreign(..)
+        | ty::Ref(_, _, Mutability::Mut)
+        | ty::Adt(_, _)
+        | ty::Alias(_, _)
+        | ty::Param(_) => Err(NoSolution),
+
+        ty::Infer(ty::TyVar(_)) => bug!("FIXME: ambiguous"),
+
+        ty::Placeholder(..)
+        | ty::Bound(..)
+        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+
+        ty::Tuple(tys) => Ok(tys.to_vec()),
+
+        ty::Closure(_, substs) => match *substs.as_closure().tupled_upvars_ty().kind() {
+            ty::Tuple(tys) => Ok(tys.to_vec()),
+            ty::Infer(ty::TyVar(_)) => bug!("FIXME: ambiguous"),
+            _ => bug!(),
+        },
+
+        ty::Generator(_, substs, Movability::Movable) => {
+            if infcx.tcx.features().generator_clone {
+                let generator = substs.as_generator();
+                match *generator.tupled_upvars_ty().kind() {
+                    ty::Tuple(tys) => Ok(tys.iter().chain([generator.witness()]).collect()),
+                    ty::Infer(ty::TyVar(_)) => bug!("FIXME: ambiguous"),
+                    _ => bug!(),
+                }
+            } else {
+                Err(NoSolution)
+            }
+        }
+
+        ty::GeneratorWitness(types) => {
+            Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
         }
     }
 }
