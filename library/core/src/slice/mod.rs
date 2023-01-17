@@ -2480,20 +2480,17 @@ impl<T> [T] {
             // coupled with the `left + size <= self.len()` invariant means
             // we have `left + size/2 < self.len()`, and this is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });
-
-            // The reason why we use if/else control flow rather than match
-            // is because match reorders comparison operations, which is perf sensitive.
-            // This is x86 asm for u8: https://rust.godbolt.org/z/8Y8Pra.
-            if cmp == Less {
-                left = mid + 1;
-            } else if cmp == Greater {
-                right = mid;
-            } else {
-                // SAFETY: same as the `get_unchecked` above
-                unsafe { crate::intrinsics::assume(mid < self.len()) };
-                return Ok(mid);
+            
+            match cmp {
+                Less => left = mid + 1,
+                Greater => right = mid,
+                Equal => {
+                    // SAFETY: same as the `get_unchecked` above
+                    unsafe { crate::intrinsics::assume(mid < self.len()) };
+                    return Ok(mid);
+                }
             }
-
+            
             size = right - left;
         }
 
