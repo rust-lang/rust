@@ -472,6 +472,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             external_html,
             default_settings,
             krate: krate.name(tcx).to_string(),
+            crate_version: cache.crate_version.clone().unwrap_or_default(),
             css_file_extension: extension_css,
             scrape_examples_extension: !call_locations.is_empty(),
         };
