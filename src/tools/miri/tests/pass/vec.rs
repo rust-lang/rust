@@ -162,6 +162,11 @@ fn reverse() {
     assert!(v[0].0 == 49);
 }
 
+fn miri_issue_2759() {
+    let mut input = "1".to_string();
+    input.replace_range(0..0, "0");
+}
+
 fn main() {
     assert_eq!(vec_reallocate().len(), 5);
 
@@ -191,4 +196,5 @@ fn main() {
     swap();
     swap_remove();
     reverse();
+    miri_issue_2759();
 }
