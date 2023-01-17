@@ -59,6 +59,10 @@ impl<'tcx> ProvisionalCache<'tcx> {
     /// Adds a dependency from the current leaf to `target` in the cache
     /// to prevent us from moving any goals which depend on the current leaf
     /// to the global cache while we're still computing `target`.
+    ///
+    /// Its important to note that `target` may already be part of a different cycle.
+    /// In this case we have to ensure that we also depend on all other goals
+    /// in the existing cycle in addition to the potentially direct cycle with `target`.
     pub(super) fn add_dependency_of_leaf_on(&mut self, target: EntryIndex) {
         let depth = self.entries[target].depth;
         for provisional_entry in &mut self.entries.raw[target.index()..] {
