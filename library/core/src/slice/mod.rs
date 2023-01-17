@@ -2480,7 +2480,7 @@ impl<T> [T] {
             // coupled with the `left + size <= self.len()` invariant means
             // we have `left + size/2 < self.len()`, and this is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });
-            
+
             match cmp {
                 Ordering::Less => left = mid + 1,
                 Ordering::Greater => right = mid,
@@ -2490,7 +2490,7 @@ impl<T> [T] {
                     return Ok(mid);
                 }
             }
-            
+
             size = right - left;
         }
 
