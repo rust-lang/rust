@@ -325,7 +325,6 @@ fn check_item<'tcx>(
     }
 
     // We need only trait impls here, not inherent impls, and only non-exported ones
-    // todo can this be made more efficient
     let item = tcx.hir().item(id);
     if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
         item.kind
