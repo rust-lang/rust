@@ -92,15 +92,25 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
         impl_def_id: DefId,
     ) -> QueryResult<'tcx>;
 
-    fn consider_builtin_sized_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx>;
-
     fn consider_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
+    ) -> QueryResult<'tcx>;
+
+    fn consider_auto_trait_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    fn consider_trait_alias_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_sized_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 }
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -198,7 +208,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) {
         let lang_items = self.tcx().lang_items();
         let trait_def_id = goal.predicate.trait_def_id(self.tcx());
-        let result = if lang_items.sized_trait() == Some(trait_def_id) {
+        let result = if self.tcx().trait_is_auto(trait_def_id) {
+            G::consider_auto_trait_candidate(self, goal)
+        } else if self.tcx().trait_is_alias(trait_def_id) {
+            G::consider_trait_alias_candidate(self, goal)
+        } else if lang_items.sized_trait() == Some(trait_def_id) {
             G::consider_builtin_sized_candidate(self, goal)
         } else {
             Err(NoSolution)
@@ -315,8 +329,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for assumption in
             elaborate_predicates(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
         {
-            match G::consider_assumption(self, goal, assumption.predicate)
-            {
+            match G::consider_assumption(self, goal, assumption.predicate) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }

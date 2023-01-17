@@ -290,13 +290,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         })
     }
 
-    fn consider_builtin_sized_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
-        bug!("`Sized` does not have an associated type: {:?}", goal);
-    }
-
     fn consider_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -332,6 +325,27 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         } else {
             Err(NoSolution)
         }
+    }
+
+    fn consider_auto_trait_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("auto traits do not have associated types: {:?}", goal);
+    }
+
+    fn consider_trait_alias_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("trait aliases do not have associated types: {:?}", goal);
+    }
+
+    fn consider_builtin_sized_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`Sized` does not have an associated type: {:?}", goal);
     }
 }
 

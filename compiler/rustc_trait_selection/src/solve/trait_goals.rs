@@ -6,7 +6,7 @@ use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
 use super::{EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -58,13 +58,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         })
     }
 
-    fn consider_builtin_sized_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
-        unimplemented!();
-    }
-
     fn consider_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -84,9 +77,61 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             Err(NoSolution)
         }
     }
+
+    fn consider_auto_trait_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.infcx.probe(|_| {
+            let constituent_tys =
+                instantiate_constituent_tys_for_auto_trait(ecx.infcx, goal.predicate.self_ty())?;
+            ecx.evaluate_goal_for_constituent_tys_and_make_canonical_response(goal, constituent_tys)
+        })
+    }
+
+    fn consider_trait_alias_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+
+        ecx.infcx.probe(|_| {
+            let nested_obligations = tcx
+                .predicates_of(goal.predicate.def_id())
+                .instantiate(tcx, goal.predicate.trait_ref.substs);
+            ecx.evaluate_all_and_make_canonical_response(
+                nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)).collect(),
+            )
+        })
+    }
+
+    fn consider_builtin_sized_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        unimplemented!();
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
+    fn evaluate_goal_for_constituent_tys_and_make_canonical_response(
+        &mut self,
+        goal: Goal<'tcx, TraitPredicate<'tcx>>,
+        constituent_tys: Vec<Ty<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        self.evaluate_all_and_make_canonical_response(
+            constituent_tys
+                .into_iter()
+                .map(|ty| {
+                    goal.with(
+                        self.tcx(),
+                        ty::Binder::dummy(goal.predicate.with_self_ty(self.tcx(), ty)),
+                    )
+                })
+                .collect(),
+        )
+    }
+
     pub(super) fn compute_trait_goal(
         &mut self,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
@@ -160,5 +205,76 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
 
         candidate
+    }
+}
+
+// Calculates the constituent types of a type for `auto trait` purposes.
+//
+// For types with an "existential" binder, i.e. generator witnesses, we also
+// instantiate the binder with placeholders eagerly.
+fn instantiate_constituent_tys_for_auto_trait<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Result<Vec<Ty<'tcx>>, NoSolution> {
+    let tcx = infcx.tcx;
+    match *ty.kind() {
+        ty::Uint(_)
+        | ty::Int(_)
+        | ty::Bool
+        | ty::Float(_)
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Str
+        | ty::Error(_)
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::Never
+        | ty::Char => Ok(vec![]),
+
+        ty::Placeholder(..)
+        | ty::Dynamic(..)
+        | ty::Param(..)
+        | ty::Foreign(..)
+        | ty::Alias(ty::Projection, ..)
+        | ty::Bound(..)
+        | ty::Infer(ty::TyVar(_)) => {
+            // FIXME: Do we need to mark anything as ambiguous here? Yeah?
+            Err(NoSolution)
+        }
+
+        ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+
+        ty::RawPtr(ty::TypeAndMut { ty: element_ty, .. }) | ty::Ref(_, element_ty, _) => {
+            Ok(vec![element_ty])
+        }
+
+        ty::Array(element_ty, _) | ty::Slice(element_ty) => Ok(vec![element_ty]),
+
+        ty::Tuple(ref tys) => {
+            // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
+            Ok(tys.iter().collect())
+        }
+
+        ty::Closure(_, ref substs) => Ok(vec![substs.as_closure().tupled_upvars_ty()]),
+
+        ty::Generator(_, ref substs, _) => {
+            let generator_substs = substs.as_generator();
+            Ok(vec![generator_substs.tupled_upvars_ty(), generator_substs.witness()])
+        }
+
+        ty::GeneratorWitness(types) => {
+            Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
+        }
+
+        // For `PhantomData<T>`, we pass `T`.
+        ty::Adt(def, substs) if def.is_phantom_data() => Ok(vec![substs.type_at(0)]),
+
+        ty::Adt(def, substs) => Ok(def.all_fields().map(|f| f.ty(tcx, substs)).collect()),
+
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
+            // We can resolve the `impl Trait` to its concrete type,
+            // which enforces a DAG between the functions requiring
+            // the auto trait bounds in question.
+            Ok(vec![tcx.bound_type_of(def_id).subst(tcx, substs)])
+        }
     }
 }
