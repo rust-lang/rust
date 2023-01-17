@@ -52,7 +52,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
-        if !value.has_opaque_types() {
+        if !value.has_projections() {
             return InferOk { value, obligations: vec![] };
         }
         let mut obligations = vec![];
@@ -66,8 +66,11 @@ impl<'tcx> InferCtxt<'tcx> {
             lt_op: |lt| lt,
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
-                    if replace_opaque_type(def_id) =>
+                ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+                    if matches!(
+                        self.tcx.def_kind(def_id),
+                        DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder
+                    ) && replace_opaque_type(def_id) =>
                 {
                     let def_span = self.tcx.def_span(def_id);
                     let span = if span.contains(def_span) { def_span } else { span };
@@ -81,9 +84,15 @@ impl<'tcx> InferCtxt<'tcx> {
                         span,
                     });
                     obligations.extend(
-                        self.handle_opaque_type(ty, ty_var, true, &cause, param_env)
-                            .unwrap()
-                            .obligations,
+                        self.handle_opaque_type(
+                            self.tcx.mk_opaque(def_id, substs),
+                            ty_var,
+                            true,
+                            &cause,
+                            param_env,
+                        )
+                        .unwrap()
+                        .obligations,
                     );
                     ty_var
                 }
