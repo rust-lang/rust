@@ -2465,7 +2465,7 @@ fn show_candidates(
                 msg.push_str(&candidate.0);
             }
 
-            err.note(&msg);
+            err.help(&msg);
         }
     } else if !matches!(mode, DiagnosticMode::Import) {
         assert!(!inaccessible_path_strings.is_empty());
