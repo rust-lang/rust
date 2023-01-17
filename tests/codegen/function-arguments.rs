@@ -1,11 +1,11 @@
 // compile-flags: -O -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
 
 use std::mem::MaybeUninit;
 use std::num::NonZeroU64;
 use std::marker::PhantomPinned;
+use std::ptr::NonNull;
 
 pub struct S {
   _field: [i32; 8],
@@ -61,7 +61,7 @@ pub fn maybeuninit_char(x: MaybeUninit<char>) -> MaybeUninit<char> {
   x
 }
 
-// CHECK: i64 @int(i64 %x)
+// CHECK: noundef i64 @int(i64 noundef %x)
 #[no_mangle]
 pub fn int(x: u64) -> u64 {
   x
@@ -73,7 +73,7 @@ pub fn nonzero_int(x: NonZeroU64) -> NonZeroU64 {
   x
 }
 
-// CHECK: i64 @option_nonzero_int(i64 %x)
+// CHECK: noundef i64 @option_nonzero_int(i64 noundef %x)
 #[no_mangle]
 pub fn option_nonzero_int(x: Option<NonZeroU64>) -> Option<NonZeroU64> {
   x
@@ -138,10 +138,26 @@ pub fn indirect_struct(_: S) {
 pub fn borrowed_struct(_: &S) {
 }
 
-// CHECK: @raw_struct({{%S\*|ptr}} %_1)
+// CHECK: @option_borrow({{i32\*|ptr}} noalias noundef readonly align 4 dereferenceable_or_null(4) %x)
+#[no_mangle]
+pub fn option_borrow(x: Option<&i32>) {
+}
+
+// CHECK: @option_borrow_mut({{i32\*|ptr}} noalias noundef align 4 dereferenceable_or_null(4) %x)
+#[no_mangle]
+pub fn option_borrow_mut(x: Option<&mut i32>) {
+}
+
+// CHECK: @raw_struct({{%S\*|ptr}} noundef %_1)
 #[no_mangle]
 pub fn raw_struct(_: *const S) {
 }
+
+// CHECK: @raw_option_nonnull_struct({{i32\*|ptr}} noundef %_1)
+#[no_mangle]
+pub fn raw_option_nonnull_struct(_: Option<NonNull<S>>) {
+}
+
 
 // `Box` can get deallocated during execution of the function, so it should
 // not get `dereferenceable`.
@@ -160,35 +176,35 @@ pub fn struct_return() -> S {
 }
 
 // Hack to get the correct size for the length part in slices
-// CHECK: @helper([[USIZE:i[0-9]+]] %_1)
+// CHECK: @helper([[USIZE:i[0-9]+]] noundef %_1)
 #[no_mangle]
 pub fn helper(_: usize) {
 }
 
-// CHECK: @slice({{\[0 x i8\]\*|ptr}} noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] %_1.1)
+// CHECK: @slice({{\[0 x i8\]\*|ptr}} noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice({{\[0 x i8\]\*|ptr}} noalias noundef nonnull align 1 %_1.0, [[USIZE]] %_1.1)
+// CHECK: @mutable_slice({{\[0 x i8\]\*|ptr}} noalias noundef nonnull align 1 %_1.0, [[USIZE]] noundef %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_slice(_: &mut [u8]) {
 }
 
-// CHECK: @unsafe_slice({{\[0 x i16\]\*|ptr}} noundef nonnull align 2 %_1.0, [[USIZE]] %_1.1)
+// CHECK: @unsafe_slice({{\[0 x i16\]\*|ptr}} noundef nonnull align 2 %_1.0, [[USIZE]] noundef %_1.1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_slice(_: &[UnsafeInner]) {
 }
 
-// CHECK: @raw_slice({{\[0 x i8\]\*|ptr}} %_1.0, [[USIZE]] %_1.1)
+// CHECK: @raw_slice({{\[0 x i8\]\*|ptr}} noundef %_1.0, [[USIZE]] noundef %_1.1)
 #[no_mangle]
 pub fn raw_slice(_: *const [u8]) {
 }
 
-// CHECK: @str({{\[0 x i8\]\*|ptr}} noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] %_1.1)
+// CHECK: @str({{\[0 x i8\]\*|ptr}} noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn str(_: &[u8]) {
@@ -197,26 +213,36 @@ pub fn str(_: &[u8]) {
 // CHECK: @trait_borrow({{\{\}\*|ptr}} noundef nonnull align 1 %_1.0, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-pub fn trait_borrow(_: &Drop) {
+pub fn trait_borrow(_: &dyn Drop) {
 }
 
-// CHECK: @trait_raw({{\{\}\*|ptr}} %_1.0, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %_1.1)
+// CHECK: @option_trait_borrow({{i8\*|ptr}} noundef align 1 %x.0, {{i8\*|ptr}} %x.1)
 #[no_mangle]
-pub fn trait_raw(_: *const Drop) {
+pub fn option_trait_borrow(x: Option<&dyn Drop>) {
+}
+
+// CHECK: @option_trait_borrow_mut({{i8\*|ptr}} noundef align 1 %x.0, {{i8\*|ptr}} %x.1)
+#[no_mangle]
+pub fn option_trait_borrow_mut(x: Option<&mut dyn Drop>) {
+}
+
+// CHECK: @trait_raw({{\{\}\*|ptr}} noundef %_1.0, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %_1.1)
+#[no_mangle]
+pub fn trait_raw(_: *const dyn Drop) {
 }
 
 // CHECK: @trait_box({{\{\}\*|ptr}} noalias noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
 #[no_mangle]
-pub fn trait_box(_: Box<Drop>) {
+pub fn trait_box(_: Box<dyn Drop>) {
 }
 
 // CHECK: { {{i8\*|ptr}}, {{i8\*|ptr}} } @trait_option({{i8\*|ptr}} noalias noundef align 1 %x.0, {{i8\*|ptr}} %x.1)
 #[no_mangle]
-pub fn trait_option(x: Option<Box<Drop>>) -> Option<Box<Drop>> {
+pub fn trait_option(x: Option<Box<dyn Drop>>) -> Option<Box<dyn Drop>> {
   x
 }
 
-// CHECK: { {{\[0 x i16\]\*|ptr}}, [[USIZE]] } @return_slice({{\[0 x i16\]\*|ptr}} noalias noundef nonnull readonly align 2 %x.0, [[USIZE]] %x.1)
+// CHECK: { {{\[0 x i16\]\*|ptr}}, [[USIZE]] } @return_slice({{\[0 x i16\]\*|ptr}} noalias noundef nonnull readonly align 2 %x.0, [[USIZE]] noundef %x.1)
 #[no_mangle]
 pub fn return_slice(x: &[u16]) -> &[u16] {
   x

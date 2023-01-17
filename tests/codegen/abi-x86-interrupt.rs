@@ -3,7 +3,7 @@
 // of the x86-interrupt abi.
 
 // needs-llvm-components: x86
-// compile-flags: -C no-prepopulate-passes --target=x86_64-unknown-linux-gnu
+// compile-flags: -C no-prepopulate-passes --target=x86_64-unknown-linux-gnu -Copt-level=0
 
 #![crate_type = "lib"]
 #![no_core]

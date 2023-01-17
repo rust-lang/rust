@@ -219,8 +219,7 @@ fn adjust_for_rust_scalar<'tcx>(
         return;
     }
 
-    // Scalars which have invalid values cannot be undef.
-    if !scalar.is_always_valid(&cx) {
+    if !scalar.is_uninit_valid() {
         attrs.set(ArgAttribute::NoUndef);
     }
 
@@ -245,11 +244,6 @@ fn adjust_for_rust_scalar<'tcx>(
                 | PointerKind::Frozen => pointee.size,
                 PointerKind::SharedMutable | PointerKind::UniqueOwned => Size::ZERO,
             };
-
-            // `Box`, `&T`, and `&mut T` cannot be undef.
-            // Note that this only applies to the value of the pointer itself;
-            // this attribute doesn't make it UB for the pointed-to data to be undef.
-            attrs.set(ArgAttribute::NoUndef);
 
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
             // `noalias` for it. This can be turned off using an unstable flag.

@@ -1,5 +1,5 @@
 // ignore-emscripten
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Copt-level=0
 
 // Test that tuples get optimized layout, in particular with a ZST in the last field (#63244)
 

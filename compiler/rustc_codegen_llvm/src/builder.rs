@@ -501,7 +501,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             layout: TyAndLayout<'tcx>,
             offset: Size,
         ) {
-            if !scalar.is_always_valid(bx) {
+            if !scalar.is_uninit_valid() {
                 bx.noundef_metadata(load);
             }
 

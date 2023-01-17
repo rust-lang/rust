@@ -29,25 +29,25 @@ pub extern "C" fn f_scalar_0(a: bool) -> bool {
     a
 }
 
-// CHECK: define signext i8 @f_scalar_1(i8 signext %x)
+// CHECK: define noundef signext i8 @f_scalar_1(i8 noundef signext %x)
 #[no_mangle]
 pub extern "C" fn f_scalar_1(x: i8) -> i8 {
     x
 }
 
-// CHECK: define zeroext i8 @f_scalar_2(i8 zeroext %x)
+// CHECK: define noundef zeroext i8 @f_scalar_2(i8 noundef zeroext %x)
 #[no_mangle]
 pub extern "C" fn f_scalar_2(x: u8) -> u8 {
     x
 }
 
-// CHECK: define signext i32 @f_scalar_3(i32 signext %x)
+// CHECK: define noundef signext i32 @f_scalar_3(i32 noundef signext %x)
 #[no_mangle]
 pub extern "C" fn f_scalar_3(x: i32) -> u32 {
     x as u32
 }
 
-// CHECK: define i64 @f_scalar_4(i64 %x)
+// CHECK: define noundef i64 @f_scalar_4(i64 noundef %x)
 #[no_mangle]
 pub extern "C" fn f_scalar_4(x: i64) -> i64 {
     x
@@ -132,13 +132,13 @@ pub struct Large {
 pub extern "C" fn f_agg_large(mut x: Large) {
 }
 
-// CHECK: define void @f_agg_large_ret({{%Large\*|ptr}} {{.*}}sret{{.*}}, i32 signext %i, i8 signext %j)
+// CHECK: define void @f_agg_large_ret({{%Large\*|ptr}} {{.*}}sret{{.*}}, i32 noundef signext %i, i8 noundef signext %j)
 #[no_mangle]
 pub extern "C" fn f_agg_large_ret(i: i32, j: i8) -> Large {
     Large { a: 1, b: 2, c: 3, d: 4 }
 }
 
-// CHECK: define void @f_scalar_stack_1(i64 %0, [2 x i64] %1, i128 %2, {{%Large\*|ptr}} {{.*}}%d, i8 zeroext %e, i8 signext %f, i8 %g, i8 %h)
+// CHECK: define void @f_scalar_stack_1(i64 %0, [2 x i64] %1, i128 %2, {{%Large\*|ptr}} {{.*}}%d, i8 noundef zeroext %e, i8 noundef signext %f, i8 noundef %g, i8 noundef %h)
 #[no_mangle]
 pub extern "C" fn f_scalar_stack_1(
     a: Tiny,
@@ -152,7 +152,7 @@ pub extern "C" fn f_scalar_stack_1(
 ) {
 }
 
-// CHECK: define void @f_scalar_stack_2({{%Large\*|ptr}} {{.*}}sret{{.*}} %0, i64 %a, i128 %1, i128 %2, i64 %d, i8 zeroext %e, i8 %f, i8 %g)
+// CHECK: define void @f_scalar_stack_2({{%Large\*|ptr}} {{.*}}sret{{.*}} %0, i64 noundef %a, i128 %1, i128 %2, i64 noundef %d, i8 noundef zeroext %e, i8 noundef %f, i8 noundef %g)
 #[no_mangle]
 pub extern "C" fn f_scalar_stack_2(
     a: u64,
@@ -172,7 +172,7 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe extern "C" fn f_va_caller() {
-    // CHECK: call signext i32 (i32, ...) @f_va_callee(i32 signext 1, i32 signext 2, i64 3, double {{.*}}, double {{.*}}, i64 {{.*}}, [2 x i64] {{.*}}, i128 {{.*}}, {{%Large\*|ptr}} {{.*}})
+    // CHECK: call noundef signext i32 (i32, ...) @f_va_callee(i32 noundef signext 1, i32 noundef signext 2, i64 noundef 3, double {{.*}}, double {{.*}}, i64 {{.*}}, [2 x i64] {{.*}}, i128 {{.*}}, {{%Large\*|ptr}} {{.*}})
     f_va_callee(
         1,
         2i32,
@@ -184,6 +184,6 @@ pub unsafe extern "C" fn f_va_caller() {
         SmallAligned { a: 11 },
         Large { a: 12, b: 13, c: 14, d: 15 },
     );
-    // CHECK: call signext i32 (i32, ...) @f_va_callee(i32 signext 1, i32 signext 2, i32 signext 3, i32 signext 4, i128 {{.*}}, i32 signext 6, i32 signext 7, i32 8, i32 9)
+    // CHECK: call noundef signext i32 (i32, ...) @f_va_callee(i32 noundef signext 1, i32 noundef signext 2, i32 noundef signext 3, i32 noundef signext 4, i128 {{.*}}, i32 noundef signext 6, i32 noundef signext 7, i32 noundef 8, i32 noundef 9)
     f_va_callee(1, 2i32, 3i32, 4i32, SmallAligned { a: 5 }, 6i32, 7i32, 8i32, 9i32);
 }

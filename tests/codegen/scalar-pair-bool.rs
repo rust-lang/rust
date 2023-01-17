@@ -8,13 +8,13 @@ pub fn pair_bool_bool(pair: (bool, bool)) -> (bool, bool) {
     pair
 }
 
-// CHECK: define{{.*}}{ i8, i32 } @pair_bool_i32(i1 noundef zeroext %pair.0, i32 %pair.1)
+// CHECK: define{{.*}}{ i8, i32 } @pair_bool_i32(i1 noundef zeroext %pair.0, i32 noundef %pair.1)
 #[no_mangle]
 pub fn pair_bool_i32(pair: (bool, i32)) -> (bool, i32) {
     pair
 }
 
-// CHECK: define{{.*}}{ i32, i8 } @pair_i32_bool(i32 %pair.0, i1 noundef zeroext %pair.1)
+// CHECK: define{{.*}}{ i32, i8 } @pair_i32_bool(i32 noundef %pair.0, i1 noundef zeroext %pair.1)
 #[no_mangle]
 pub fn pair_i32_bool(pair: (i32, bool)) -> (i32, bool) {
     pair
