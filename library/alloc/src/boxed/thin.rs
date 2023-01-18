@@ -61,7 +61,7 @@ impl<T> ThinBox<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     pub fn new(value: T) -> Self {
-        let meta = ptr::metadata(&value);
+        let meta: () = ptr::metadata(&value);
         let ptr = WithOpaqueHeader::new(meta, value);
         ThinBox { ptr, _marker: PhantomData }
     }
