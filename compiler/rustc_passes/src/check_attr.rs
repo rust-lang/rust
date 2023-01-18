@@ -6,11 +6,12 @@
 
 use crate::errors::{
     self, AttrApplication, DebugVisualizerUnreadable, InvalidAttrAtCrateLevel, ObjectLifetimeErr,
-    OnlyHasEffectOn, TransparentIncompatible, UnrecognizedReprHint,
+    OnlyHasEffectOn, ProcMacroDiffArguments, ProcMacroInvalidAbi, ProcMacroMissingArguments,
+    ProcMacroTypeError, ProcMacroUnsafe, TransparentIncompatible, UnrecognizedReprHint,
 };
 use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{fluent, Applicability, MultiSpan};
+use rustc_errors::{fluent, Applicability, IntoDiagnosticArg, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -19,11 +20,12 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
 };
-use rustc_hir::{MethodKind, Target};
+use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
@@ -31,6 +33,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
+use std::cell::Cell;
 use std::collections::hash_map::Entry;
 
 pub(crate) fn target_from_impl_item<'tcx>(
@@ -62,8 +65,29 @@ enum ItemLike<'tcx> {
     ForeignItem,
 }
 
+#[derive(Copy, Clone)]
+pub(crate) enum ProcMacroKind {
+    FunctionLike,
+    Derive,
+    Attribute,
+}
+
+impl IntoDiagnosticArg for ProcMacroKind {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        match self {
+            ProcMacroKind::Attribute => "attribute proc macro",
+            ProcMacroKind::Derive => "derive proc macro",
+            ProcMacroKind::FunctionLike => "function-like proc macro",
+        }
+        .into_diagnostic_arg()
+    }
+}
+
 struct CheckAttrVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+
+    // Whether or not this visitor should abort after finding errors
+    abort: Cell<bool>,
 }
 
 impl CheckAttrVisitor<'_> {
@@ -173,7 +197,7 @@ impl CheckAttrVisitor<'_> {
                 sym::path => self.check_generic_attr(hir_id, attr, target, Target::Mod),
                 sym::plugin_registrar => self.check_plugin_registrar(hir_id, attr, target),
                 sym::macro_export => self.check_macro_export(hir_id, attr, target),
-                sym::ignore | sym::should_panic | sym::proc_macro_derive => {
+                sym::ignore | sym::should_panic => {
                     self.check_generic_attr(hir_id, attr, target, Target::Fn)
                 }
                 sym::automatically_derived => {
@@ -183,6 +207,16 @@ impl CheckAttrVisitor<'_> {
                     self.check_generic_attr(hir_id, attr, target, Target::Mod)
                 }
                 sym::rustc_object_lifetime_default => self.check_object_lifetime_default(hir_id),
+                sym::proc_macro => {
+                    self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
+                }
+                sym::proc_macro_attribute => {
+                    self.check_proc_macro(hir_id, target, ProcMacroKind::Attribute);
+                }
+                sym::proc_macro_derive => {
+                    self.check_generic_attr(hir_id, attr, target, Target::Fn);
+                    self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
+                }
                 _ => {}
             }
 
@@ -2063,6 +2097,103 @@ impl CheckAttrVisitor<'_> {
             errors::Unused { attr_span: attr.span, note },
         );
     }
+
+    /// A best effort attempt to create an error for a mismatching proc macro signature.
+    ///
+    /// If this best effort goes wrong, it will just emit a worse error later (see #102923)
+    fn check_proc_macro(&self, hir_id: HirId, target: Target, kind: ProcMacroKind) {
+        let expected_input_count = match kind {
+            ProcMacroKind::Attribute => 2,
+            ProcMacroKind::Derive | ProcMacroKind::FunctionLike => 1,
+        };
+
+        let expected_signature = match kind {
+            ProcMacroKind::Attribute => "fn(TokenStream, TokenStream) -> TokenStream",
+            ProcMacroKind::Derive | ProcMacroKind::FunctionLike => "fn(TokenStream) -> TokenStream",
+        };
+
+        let tcx = self.tcx;
+        if target == Target::Fn {
+            let Some(tokenstream) = tcx.get_diagnostic_item(sym::TokenStream) else {return};
+            let tokenstream = tcx.type_of(tokenstream);
+
+            let id = hir_id.expect_owner();
+            let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id).unwrap();
+
+            let sig = tcx.liberate_late_bound_regions(id.to_def_id(), tcx.fn_sig(id));
+            let sig = tcx.normalize_erasing_regions(ParamEnv::empty(), sig);
+
+            // We don't currently require that the function signature is equal to
+            // `fn(TokenStream) -> TokenStream`, but instead monomorphizes to
+            // `fn(TokenStream) -> TokenStream` after some substitution of generic arguments.
+            //
+            // Properly checking this means pulling in additional `rustc` crates, so we don't.
+            let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsInfer };
+
+            if sig.abi != Abi::Rust {
+                tcx.sess.emit_err(ProcMacroInvalidAbi { span: hir_sig.span, abi: sig.abi.name() });
+                self.abort.set(true);
+            }
+
+            if sig.unsafety == Unsafety::Unsafe {
+                tcx.sess.emit_err(ProcMacroUnsafe { span: hir_sig.span });
+                self.abort.set(true);
+            }
+
+            let output = sig.output();
+
+            // Typecheck the output
+            if !drcx.types_may_unify(output, tokenstream) {
+                tcx.sess.emit_err(ProcMacroTypeError {
+                    span: hir_sig.decl.output.span(),
+                    found: output,
+                    kind,
+                    expected_signature,
+                });
+                self.abort.set(true);
+            }
+
+            if sig.inputs().len() < expected_input_count {
+                tcx.sess.emit_err(ProcMacroMissingArguments {
+                    expected_input_count,
+                    span: hir_sig.span,
+                    kind,
+                    expected_signature,
+                });
+                self.abort.set(true);
+            }
+
+            // Check that the inputs are correct, if there are enough.
+            if sig.inputs().len() >= expected_input_count {
+                for (arg, input) in
+                    sig.inputs().iter().zip(hir_sig.decl.inputs).take(expected_input_count)
+                {
+                    if !drcx.types_may_unify(*arg, tokenstream) {
+                        tcx.sess.emit_err(ProcMacroTypeError {
+                            span: input.span,
+                            found: *arg,
+                            kind,
+                            expected_signature,
+                        });
+                        self.abort.set(true);
+                    }
+                }
+            }
+
+            // Check that there are not too many arguments
+            let body_id = tcx.hir().body_owned_by(id.def_id);
+            let excess = tcx.hir().body(body_id).params.get(expected_input_count..);
+            if let Some(excess @ [begin @ end] | excess @ [begin, .., end]) = excess {
+                tcx.sess.emit_err(ProcMacroDiffArguments {
+                    span: begin.span.to(end.span),
+                    count: excess.len(),
+                    kind,
+                    expected_signature,
+                });
+                self.abort.set(true);
+            }
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
@@ -2225,11 +2356,14 @@ fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) 
 }
 
 fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    let check_attr_visitor = &mut CheckAttrVisitor { tcx };
+    let check_attr_visitor = &mut CheckAttrVisitor { tcx, abort: Cell::new(false) };
     tcx.hir().visit_item_likes_in_module(module_def_id, check_attr_visitor);
     if module_def_id.is_top_level_module() {
         check_attr_visitor.check_attributes(CRATE_HIR_ID, DUMMY_SP, Target::Mod, None);
         check_invalid_crate_level_attr(tcx, tcx.hir().krate_attrs());
+    }
+    if check_attr_visitor.abort.get() {
+        tcx.sess.abort_if_errors()
     }
 }
 

@@ -287,6 +287,7 @@ symbols! {
         Target,
         ToOwned,
         ToString,
+        TokenStream,
         Try,
         TryCaptureGeneric,
         TryCapturePrintable,
