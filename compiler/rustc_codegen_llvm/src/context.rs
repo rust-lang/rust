@@ -14,6 +14,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
@@ -54,57 +55,57 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// Cache generated vtables
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
-    /// Cache of constant strings,
-    pub const_str_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
+        /// Cache of constant strings,
+        pub const_str_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
-    /// Reverse-direction for const ptrs cast from globals.
-    ///
-    /// Key is a Value holding a `*T`,
-    /// Val is a Value holding a `*[T]`.
-    ///
-    /// Needed because LLVM loses pointer->pointee association
-    /// when we ptrcast, and we have to ptrcast during codegen
-    /// of a `[T]` const because we form a slice, a `(*T,usize)` pair, not
-    /// a pointer to an LLVM array type. Similar for trait objects.
-    pub const_unsized: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
+        /// Reverse-direction for const ptrs cast from globals.
+        ///
+        /// Key is a Value holding a `*T`,
+        /// Val is a Value holding a `*[T]`.
+        ///
+        /// Needed because LLVM loses pointer->pointee association
+        /// when we ptrcast, and we have to ptrcast during codegen
+        /// of a `[T]` const because we form a slice, a `(*T,usize)` pair, not
+        /// a pointer to an LLVM array type. Similar for trait objects.
+        pub const_unsized: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
-    /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
+        /// Cache of emitted const globals (value -> global)
+        pub const_globals: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
-    /// List of globals for static variables which need to be passed to the
-    /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
-    /// (We have to make sure we don't invalidate any Values referring
-    /// to constants.)
-    pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
+        /// List of globals for static variables which need to be passed to the
+        /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
+        /// (We have to make sure we don't invalidate any Values referring
+        /// to constants.)
+        pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
-    /// Statics that will be placed in the llvm.used variable
-    /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
-    pub used_statics: RefCell<Vec<&'ll Value>>,
+        /// Statics that will be placed in the llvm.used variable
+        /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
+        pub used_statics: RefCell<Vec<&'ll Value>>,
 
-    /// Statics that will be placed in the llvm.compiler.used variable
-    /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
-    pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
+        /// Statics that will be placed in the llvm.compiler.used variable
+        /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
+        pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
 
-    /// Mapping of non-scalar types to llvm types and field remapping if needed.
-    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), TypeLowering<'ll>>>,
+        /// Mapping of non-scalar types to llvm types and field remapping if needed.
+        pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), TypeLowering<'ll>>>,
 
-    /// Mapping of scalar types to llvm types.
-    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
+        /// Mapping of scalar types to llvm types.
+        pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
 
-    pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
-    pub isize_ty: &'ll Type,
+        pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
+        pub isize_ty: &'ll Type,
 
-    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
-    pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
+        pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
+        pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
-    eh_personality: Cell<Option<&'ll Value>>,
-    eh_catch_typeinfo: Cell<Option<&'ll Value>>,
-    pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
+        eh_personality: Cell<Option<&'ll Value>>,
+        eh_catch_typeinfo: Cell<Option<&'ll Value>>,
+        pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
 
-    intrinsics: RefCell<FxHashMap<&'static str, (&'ll Type, &'ll Value)>>,
+        intrinsics: RefCell<FxHashMap<&'static str, (&'ll Type, &'ll Value)>>,
 
-    /// A counter that is used for generating local symbol names
-    local_gen_sym_counter: Cell<usize>,
+        /// A counter that is used for generating local symbol names
+        local_gen_sym_counter: Cell<usize>,
 }
 
 pub struct TypeLowering<'ll> {
@@ -129,7 +130,7 @@ pub unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
     mod_name: &str,
-) -> &'ll llvm::Module {
+    ) -> &'ll llvm::Module {
     let sess = tcx.sess;
     let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
@@ -150,11 +151,11 @@ pub unsafe fn create_module<'ll>(
     if llvm_version < (14, 0, 0) {
         if sess.target.llvm_target == "i686-pc-windows-msvc"
             || sess.target.llvm_target == "i586-pc-windows-msvc"
-        {
-            target_data_layout =
-                "e-m:x-p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:32-n8:16:32-a:0:32-S32"
+            {
+                target_data_layout =
+                    "e-m:x-p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:32-n8:16:32-a:0:32-S32"
                     .to_string();
-        }
+            }
         if sess.target.arch == "wasm32" {
             target_data_layout = target_data_layout.replace("-p10:8:8-p20:8:8", "");
         }
@@ -192,11 +193,11 @@ pub unsafe fn create_module<'ll>(
             bug!(
                 "data-layout for target `{rustc_target}`, `{rustc_layout}`, \
                   differs from LLVM target's `{llvm_target}` default layout, `{llvm_layout}`",
-                rustc_target = sess.opts.target_triple,
-                rustc_layout = target_data_layout,
-                llvm_target = sess.target.llvm_target,
-                llvm_layout = llvm_data_layout
-            );
+                  rustc_target = sess.opts.target_triple,
+                  rustc_layout = target_data_layout,
+                  llvm_target = sess.target.llvm_target,
+                  llvm_layout = llvm_data_layout
+                );
         }
     }
 
@@ -213,9 +214,9 @@ pub unsafe fn create_module<'ll>(
         // If all our outputs are executables, then we can relax PIC to PIE.
         if reloc_model == RelocModel::Pie
             || sess.crate_types().iter().all(|ty| *ty == CrateType::Executable)
-        {
-            llvm::LLVMRustSetModulePIELevel(llmod);
-        }
+            {
+                llvm::LLVMRustSetModulePIELevel(llmod);
+            }
     }
 
     // Linking object files with different code models is undefined behavior
@@ -241,7 +242,7 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMModFlagBehavior::Warning,
             canonical_jump_tables,
             1,
-        );
+            );
     }
 
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
@@ -255,7 +256,7 @@ pub unsafe fn create_module<'ll>(
                     llvm::LLVMModFlagBehavior::Warning,
                     "cfguard\0".as_ptr() as *const _,
                     1,
-                )
+                    )
             }
             CFGuard::Checks => {
                 // Set `cfguard=2` module flag to emit metadata and checks.
@@ -264,7 +265,7 @@ pub unsafe fn create_module<'ll>(
                     llvm::LLVMModFlagBehavior::Warning,
                     "cfguard\0".as_ptr() as *const _,
                     2,
-                )
+                    )
             }
         }
     }
@@ -278,26 +279,26 @@ pub unsafe fn create_module<'ll>(
                 llvm::LLVMModFlagBehavior::Error,
                 "branch-target-enforcement\0".as_ptr().cast(),
                 bti.into(),
-            );
+                );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 llvm::LLVMModFlagBehavior::Error,
                 "sign-return-address\0".as_ptr().cast(),
                 pac_ret.is_some().into(),
-            );
+                );
             let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 llvm::LLVMModFlagBehavior::Error,
                 "sign-return-address-all\0".as_ptr().cast(),
                 pac_opts.leaf.into(),
-            );
+                );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 llvm::LLVMModFlagBehavior::Error,
                 "sign-return-address-with-bkey\0".as_ptr().cast(),
                 u32::from(pac_opts.key == PAuthKey::B),
-            );
+                );
         }
     }
 
@@ -308,7 +309,7 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMModFlagBehavior::Override,
             "cf-protection-branch\0".as_ptr().cast(),
             1,
-        )
+            )
     }
     if let CFProtection::Return | CFProtection::Full = sess.opts.debugging_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
@@ -316,7 +317,7 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMModFlagBehavior::Override,
             "cf-protection-return\0".as_ptr().cast(),
             1,
-        )
+            )
     }
 
     llmod
@@ -327,7 +328,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
         llvm_module: &'ll crate::ModuleLlvm,
-    ) -> Self {
+        ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -401,7 +402,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 tcx,
                 codegen_unit.name().as_str(),
                 &dctx,
-            );
+                );
             Some(dctx)
         } else {
             None
@@ -443,6 +444,28 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self.statics_to_rauw
     }
 
+    pub fn get_enzyme_typtree(&self, id: DefId) -> llvm::TypeTree {
+        let tree = llvm::TypeTree::new();
+        let tcx: TyCtxt<'_> = self.tcx;
+        let fn_ty: Ty<'_> = tcx.type_of(id);
+        dbg!(fn_ty);
+        dbg!(fn_ty.is_fn());
+        if !fn_ty.is_fn() {
+            return tree;
+        }
+        let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
+        let tmp = fnc_binder.no_bound_vars();
+        dbg!(tmp.is_some());
+        if tmp.is_some() {
+            let x: ty::FnSig<'_> = tmp.unwrap();
+            dbg!(x);
+            for io in x.inputs_and_output {
+                dbg!(io);
+            }
+        }
+        return tree;
+    }
+
     #[inline]
     pub fn coverage_context(&self) -> Option<&coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
         self.coverage_cx.as_ref()
@@ -464,7 +487,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(
         &self,
-    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
+        ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
     {
         &self.vtables
     }
@@ -509,10 +532,10 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     ty::ParamEnv::reveal_all(),
                     def_id,
                     tcx.intern_substs(&[]),
-                )
+                    )
                 .unwrap()
                 .unwrap(),
-            ),
+                ),
             _ => {
                 let name = if wants_msvc_seh(self.sess()) {
                     "__CxxFrameHandler3"
@@ -575,7 +598,7 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.create_used_variable_impl(
             cstr!("llvm.compiler.used"),
             &*self.compiler_used_statics.borrow(),
-        );
+            );
     }
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
@@ -615,7 +638,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         name: &'static str,
         args: Option<&[&'ll llvm::Type]>,
         ret: &'ll llvm::Type,
-    ) -> (&'ll llvm::Type, &'ll llvm::Value) {
+        ) -> (&'ll llvm::Type, &'ll llvm::Value) {
         let fn_ty = if let Some(args) = args {
             self.type_func(args, ret)
         } else {
@@ -632,17 +655,17 @@ impl<'ll> CodegenCx<'ll, '_> {
                 if key == $name {
                     return Some(self.insert_intrinsic($name, Some(&[]), $ret));
                 }
-            );
+                );
             ($name:expr, fn(...) -> $ret:expr) => (
                 if key == $name {
                     return Some(self.insert_intrinsic($name, None, $ret));
                 }
-            );
+                );
             ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
                 if key == $name {
                     return Some(self.insert_intrinsic($name, Some(&[$($arg),*]), $ret));
                 }
-            );
+                );
         }
         macro_rules! mk_struct {
             ($($field_ty:expr),*) => (self.type_struct( &[$($field_ty),*], false))
@@ -978,7 +1001,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         err: FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
-    ) -> ! {
+        ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
             self.sess().span_fatal(span, &err.to_string())
         } else {
@@ -990,7 +1013,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
                         sig,
                         extra_args,
                         err
-                    );
+                        );
                 }
                 FnAbiRequest::OfInstance { instance, extra_args } => {
                     span_bug!(
@@ -999,7 +1022,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
                         instance,
                         extra_args,
                         err
-                    );
+                        );
                 }
             }
         }
