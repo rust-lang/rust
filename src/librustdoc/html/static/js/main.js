@@ -803,15 +803,10 @@ function loadCss(cssUrl) {
         }
     });
 
-    function handleClick(id, f) {
-        const elem = document.getElementById(id);
-        if (elem) {
-            elem.addEventListener("click", f);
-        }
+    const mainElem = document.getElementById(MAIN_ID);
+    if (mainElem) {
+        mainElem.addEventListener("click", hideSidebar);
     }
-    handleClick(MAIN_ID, () => {
-        hideSidebar();
-    });
 
     onEachLazy(document.querySelectorAll("a[href^='#']"), el => {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
