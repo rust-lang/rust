@@ -262,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty_str = with_forced_trimmed_paths!(self.ty_to_string(rcvr_ty));
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
-        let lev_candidate = no_match_data.lev_candidate;
+        let similar_candidate = no_match_data.similar_candidate;
         let item_kind = if is_method {
             "method"
         } else if rcvr_ty.is_enum() {
@@ -937,7 +937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // give a helping note that it has to be called as `(x.f)(...)`.
         if let SelfSource::MethodCall(expr) = source {
             if !self.suggest_calling_field_as_fn(span, rcvr_ty, expr, item_name, &mut err)
-                && lev_candidate.is_none()
+                && similar_candidate.is_none()
                 && !custom_span_label
             {
                 label_span_not_found(&mut err);
@@ -1015,20 +1015,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if fallback_span {
                 err.span_label(span, msg);
             }
-        } else if let Some(lev_candidate) = lev_candidate {
+        } else if let Some(similar_candidate) = similar_candidate {
             // Don't emit a suggestion if we found an actual method
             // that had unsatisfied trait bounds
             if unsatisfied_predicates.is_empty() {
-                let def_kind = lev_candidate.kind.as_def_kind();
+                let def_kind = similar_candidate.kind.as_def_kind();
                 // Methods are defined within the context of a struct and their first parameter is always self,
                 // which represents the instance of the struct the method is being called on
                 // Associated functions don’t take self as a parameter and
                 // they are not methods because they don’t have an instance of the struct to work with.
-                if def_kind == DefKind::AssocFn && lev_candidate.fn_has_self_parameter {
+                if def_kind == DefKind::AssocFn && similar_candidate.fn_has_self_parameter {
                     err.span_suggestion(
                         span,
                         "there is a method with a similar name",
-                        lev_candidate.name,
+                        similar_candidate.name,
                         Applicability::MaybeIncorrect,
                     );
                 } else {
@@ -1037,9 +1037,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &format!(
                             "there is {} {} with a similar name",
                             def_kind.article(),
-                            def_kind.descr(lev_candidate.def_id),
+                            def_kind.descr(similar_candidate.def_id),
                         ),
-                        lev_candidate.name,
+                        similar_candidate.name,
                         Applicability::MaybeIncorrect,
                     );
                 }
