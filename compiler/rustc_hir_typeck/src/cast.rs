@@ -31,6 +31,7 @@
 use super::FnCtxt;
 
 use crate::type_error_struct;
+use hir::ExprKind;
 use rustc_errors::{
     struct_span_err, Applicability, DelayDm, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
 };
@@ -237,12 +238,23 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx,
                 );
 
-                err.span_suggestion_verbose(
-                    self.expr_span.shrink_to_lo(),
-                    "dereference the expression",
-                    "*",
-                    Applicability::MachineApplicable,
-                );
+                if matches!(self.expr.kind, ExprKind::AddrOf(..)) {
+                    // get just the borrow part of the expression
+                    let span = self.expr_span.with_hi(self.expr.peel_borrows().span.lo());
+                    err.span_suggestion_verbose(
+                        span,
+                        "remove the unneeded borrow",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    err.span_suggestion_verbose(
+                        self.expr_span.shrink_to_lo(),
+                        "dereference the expression",
+                        "*",
+                        Applicability::MachineApplicable,
+                    );
+                }
 
                 err.emit();
             }
