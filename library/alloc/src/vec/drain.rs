@@ -223,9 +223,9 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         }
 
         // as_slice() must only be called when iter.len() is > 0 because
-        // vec::Splice modifies vec::Drain fields and may grow the vec which would invalidate
-        // the iterator's internal pointers. Creating a reference to deallocated memory
-        // is invalid even when it is zero-length
+        // it also gets touched by vec::Splice which may turn it into a dangling pointer
+        // which would make it and the vec pointer point to different allocations which would
+        // lead to invalid pointer arithmetic below.
         let drop_ptr = iter.as_slice().as_ptr();
 
         unsafe {
