@@ -4,7 +4,8 @@ use crate::boxed::Box;
 
 #[rustc_specialization_trait]
 pub(super) unsafe trait IsZero {
-    /// Whether this value's representation is all zeros
+    /// Whether this value's representation is all zeros,
+    /// or can be represented with all zeroes.
     fn is_zero(&self) -> bool;
 }
 
