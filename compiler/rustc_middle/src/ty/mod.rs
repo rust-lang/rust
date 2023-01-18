@@ -28,7 +28,6 @@ use crate::ty::util::Discr;
 pub use adt::*;
 pub use assoc::*;
 pub use generics::*;
-use hir::OpaqueTyOrigin;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
@@ -1345,7 +1344,6 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         tcx: TyCtxt<'tcx>,
         // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
         ignore_errors: bool,
-        origin: OpaqueTyOrigin,
     ) -> Self {
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
@@ -1361,30 +1359,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         // This zip may have several times the same lifetime in `substs` paired with a different
         // lifetime from `id_substs`. Simply `collect`ing the iterator is the correct behaviour:
         // it will pick the last one, which is the one we introduced in the impl-trait desugaring.
-        let map = substs.iter().zip(id_substs);
-
-        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = match origin {
-            // HACK: The HIR lowering for async fn does not generate
-            // any `+ Captures<'x>` bounds for the `impl Future<...>`, so all async fns with lifetimes
-            // would now fail to compile. We should probably just make hir lowering fill this in properly.
-            OpaqueTyOrigin::AsyncFn(_) => map.collect(),
-            OpaqueTyOrigin::FnReturn(_) | OpaqueTyOrigin::TyAlias => {
-                // Opaque types may only use regions that are bound. So for
-                // ```rust
-                // type Foo<'a, 'b, 'c> = impl Trait<'a> + 'b;
-                // ```
-                // we may not use `'c` in the hidden type.
-                let variances = tcx.variances_of(def_id);
-                debug!(?variances);
-
-                map.filter(|(_, v)| {
-                    let ty::GenericArgKind::Lifetime(lt) = v.unpack() else { return true };
-                    let ty::ReEarlyBound(ebr) = lt.kind() else { bug!() };
-                    variances[ebr.index as usize] == ty::Variance::Invariant
-                })
-                .collect()
-            }
-        };
+        let map = substs.iter().zip(id_substs).collect();
         debug!("map = {:#?}", map);
 
         // Convert the type from the function into a type valid outside
