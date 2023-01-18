@@ -3,8 +3,8 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
 
-use super::cache::response_no_constraints;
-use super::{Certainty, EvalCtxt, MaybeCause, QueryResult};
+use super::SearchGraph;
+use crate::solve::{response_no_constraints, Certainty, EvalCtxt, MaybeCause, QueryResult};
 
 /// When detecting a solver overflow, we return ambiguity. Overflow can be
 /// *hidden* by either a fatal error in an **AND** or a trivial success in an **OR**.
@@ -50,32 +50,35 @@ impl OverflowData {
     }
 }
 
-impl<'tcx> EvalCtxt<'tcx> {
-    pub(super) fn deal_with_overflow(
+impl<'tcx> SearchGraph<'tcx> {
+    pub fn deal_with_overflow(
         &mut self,
+        tcx: TyCtxt<'tcx>,
         goal: Canonical<'tcx, impl Sized>,
     ) -> QueryResult<'tcx> {
         self.overflow_data.deal_with_overflow();
-        response_no_constraints(self.tcx, goal, Certainty::Maybe(MaybeCause::Overflow))
+        response_no_constraints(tcx, goal, Certainty::Maybe(MaybeCause::Overflow))
     }
+}
 
+impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// A `while`-loop which tracks overflow.
-    pub(super) fn repeat_while_none(
+    pub fn repeat_while_none(
         &mut self,
         mut loop_body: impl FnMut(&mut Self) -> Option<Result<Certainty, NoSolution>>,
     ) -> Result<Certainty, NoSolution> {
-        let start_depth = self.overflow_data.additional_depth;
-        let depth = self.provisional_cache.current_depth();
-        while !self.overflow_data.has_overflow(depth) {
+        let start_depth = self.search_graph.overflow_data.additional_depth;
+        let depth = self.search_graph.stack.len();
+        while !self.search_graph.overflow_data.has_overflow(depth) {
             if let Some(result) = loop_body(self) {
-                self.overflow_data.additional_depth = start_depth;
+                self.search_graph.overflow_data.additional_depth = start_depth;
                 return result;
             }
 
-            self.overflow_data.additional_depth += 1;
+            self.search_graph.overflow_data.additional_depth += 1;
         }
-        self.overflow_data.additional_depth = start_depth;
-        self.overflow_data.deal_with_overflow();
+        self.search_graph.overflow_data.additional_depth = start_depth;
+        self.search_graph.overflow_data.deal_with_overflow();
         Ok(Certainty::Maybe(MaybeCause::Overflow))
     }
 }

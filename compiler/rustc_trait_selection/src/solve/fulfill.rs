@@ -10,7 +10,7 @@ use rustc_infer::{
 };
 use rustc_middle::ty;
 
-use super::{Certainty, EvalCtxt};
+use super::{search_graph, Certainty, EvalCtxt};
 
 /// A trait engine using the new trait solver.
 ///
@@ -67,9 +67,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
 
             let mut has_changed = false;
             for obligation in mem::take(&mut self.obligations) {
-                let mut cx = EvalCtxt::new(infcx.tcx);
-                let (changed, certainty) = match cx.evaluate_goal(infcx, obligation.clone().into())
-                {
+                let goal = obligation.clone().into();
+                let search_graph = &mut search_graph::SearchGraph::new(infcx.tcx);
+                let mut ecx = EvalCtxt::new_outside_solver(infcx, search_graph);
+                let (changed, certainty) = match ecx.evaluate_goal(goal) {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(FulfillmentError {

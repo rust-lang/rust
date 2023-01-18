@@ -1113,17 +1113,6 @@ impl<'tcx, T> Binder<'tcx, T> {
         if self.0.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
 
-    pub fn no_bound_vars_ignoring_escaping(self, tcx: TyCtxt<'tcx>) -> Option<T>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        if !self.0.has_escaping_bound_vars() {
-            Some(self.skip_binder())
-        } else {
-            self.0.try_fold_with(&mut SkipBindersAt { index: ty::INNERMOST, tcx }).ok()
-        }
-    }
-
     /// Splits the contents into two things that share the same binder
     /// level as the original, returning two distinct binders.
     ///

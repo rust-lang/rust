@@ -1,23 +1,30 @@
-use rustc_infer::infer::canonical::CanonicalVarValues;
+use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::query::NoSolution;
-use rustc_middle::ty::Ty;
+use rustc_infer::traits::ObligationCause;
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::DUMMY_SP;
 
-use crate::solve::ExternalConstraints;
-
-use super::{Certainty, QueryResult, Response};
+use super::Goal;
 
 /// Methods used inside of the canonical queries of the solver.
+///
+/// Most notably these do not care about diagnostics information.
+/// If you find this while looking for methods to use outside of the
+/// solver, you may look at the implementation of these method for
+/// help.
 pub(super) trait InferCtxtExt<'tcx> {
     fn next_ty_infer(&self) -> Ty<'tcx>;
+    fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx>;
 
-    fn make_canonical_response(
+    fn eq<T: ToTrace<'tcx>>(
         &self,
-        var_values: CanonicalVarValues<'tcx>,
-        certainty: Certainty,
-    ) -> QueryResult<'tcx>;
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        rhs: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>;
 }
 
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
@@ -27,29 +34,29 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             span: DUMMY_SP,
         })
     }
-
-    fn make_canonical_response(
-        &self,
-        var_values: CanonicalVarValues<'tcx>,
-        certainty: Certainty,
-    ) -> QueryResult<'tcx> {
-        let external_constraints = take_external_constraints(self)?;
-
-        Ok(self.canonicalize_response(Response { var_values, external_constraints, certainty }))
+    fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx> {
+        self.next_const_var(
+            ty,
+            ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span: DUMMY_SP },
+        )
     }
-}
 
-#[instrument(level = "debug", skip(infcx), ret)]
-fn take_external_constraints<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-) -> Result<ExternalConstraints<'tcx>, NoSolution> {
-    let region_obligations = infcx.take_registered_region_obligations();
-    let opaque_types = infcx.take_opaque_types_for_query_response();
-    Ok(ExternalConstraints {
-        // FIXME: Now that's definitely wrong :)
-        //
-        // Should also do the leak check here I think
-        regions: drop(region_obligations),
-        opaque_types,
-    })
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    fn eq<T: ToTrace<'tcx>>(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        rhs: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
+        self.at(&ObligationCause::dummy(), param_env)
+            .define_opaque_types(false)
+            .eq(lhs, rhs)
+            .map(|InferOk { value: (), obligations }| {
+                obligations.into_iter().map(|o| o.into()).collect()
+            })
+            .map_err(|e| {
+                debug!(?e, "failed to equate");
+                NoSolution
+            })
+    }
 }
