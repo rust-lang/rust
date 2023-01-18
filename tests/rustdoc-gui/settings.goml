@@ -212,6 +212,16 @@ press-key: "?"
 wait-for-css: ("#settings-menu .popover", {"display": "none"})
 wait-for-css: ("#help-button .popover", {"display": "block"})
 
+// Now switch back to the settings popover, and make sure the keyboard
+// shortcut works when a check box is selected.
+click: "#settings-menu > a"
+wait-for-css: ("#settings-menu .popover", {"display": "block"})
+wait-for-css: ("#help-button .popover", {"display": "none"})
+focus: "#theme-system-preference"
+press-key: "?"
+wait-for-css: ("#settings-menu .popover", {"display": "none"})
+wait-for-css: ("#help-button .popover", {"display": "block"})
+
 // Now we go to the settings page to check that the CSS is loaded as expected.
 goto: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"

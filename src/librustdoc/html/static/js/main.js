@@ -390,7 +390,8 @@ function loadCss(cssUrl) {
         }
 
         if (document.activeElement.tagName === "INPUT" &&
-            document.activeElement.type !== "checkbox") {
+            document.activeElement.type !== "checkbox" &&
+            document.activeElement.type !== "radio") {
             switch (getVirtualKey(ev)) {
             case "Escape":
                 handleEscape(ev);
