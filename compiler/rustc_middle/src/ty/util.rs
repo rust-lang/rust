@@ -1315,7 +1315,10 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Determines whether an item is an intrinsic by Abi.
 pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    matches!(tcx.fn_sig(def_id).abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
+    matches!(
+        tcx.bound_fn_sig(def_id).skip_binder().abi(),
+        Abi::RustIntrinsic | Abi::PlatformIntrinsic
+    )
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

@@ -759,7 +759,7 @@ fn walk_parents<'tcx>(
             }) if span.ctxt() == ctxt => {
                 let output = cx
                     .tcx
-                    .erase_late_bound_regions(cx.tcx.fn_sig(owner_id.to_def_id()).output());
+                    .erase_late_bound_regions(cx.tcx.bound_fn_sig(owner_id.to_def_id()).subst_identity().output());
                 Some(ty_auto_deref_stability(cx, output, precedence).position_for_result(cx))
             },
 
@@ -791,7 +791,7 @@ fn walk_parents<'tcx>(
                         } else {
                             let output = cx
                                 .tcx
-                                .erase_late_bound_regions(cx.tcx.fn_sig(cx.tcx.hir().local_def_id(owner_id)).output());
+                                .erase_late_bound_regions(cx.tcx.bound_fn_sig(cx.tcx.hir().local_def_id(owner_id).into()).subst_identity().output());
                             ty_auto_deref_stability(cx, output, precedence).position_for_result(cx)
                         },
                     )
@@ -858,7 +858,7 @@ fn walk_parents<'tcx>(
                             && let subs = cx
                                 .typeck_results()
                                 .node_substs_opt(parent.hir_id).map(|subs| &subs[1..]).unwrap_or_default()
-                            && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
+                            && let impl_ty = if cx.tcx.bound_fn_sig(id).subst_identity().skip_binder().inputs()[0].is_ref() {
                                 // Trait methods taking `&self`
                                 sub_ty
                             } else {
@@ -879,7 +879,7 @@ fn walk_parents<'tcx>(
                         return Some(Position::MethodReceiver);
                     }
                     args.iter().position(|arg| arg.hir_id == child_id).map(|i| {
-                        let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i + 1];
+                        let ty = cx.tcx.bound_fn_sig(id).subst_identity().skip_binder().inputs()[i + 1];
                         // `e.hir_id == child_id` for https://github.com/rust-lang/rust-clippy/issues/9739
                         // `method.args.is_none()` for https://github.com/rust-lang/rust-clippy/issues/9782
                         if e.hir_id == child_id && method.args.is_none() && let ty::Param(param_ty) = ty.kind() {
@@ -896,7 +896,7 @@ fn walk_parents<'tcx>(
                         } else {
                             ty_auto_deref_stability(
                                 cx,
-                                cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).input(i + 1)),
+                                cx.tcx.erase_late_bound_regions(cx.tcx.bound_fn_sig(id).subst_identity().input(i + 1)),
                                 precedence,
                             )
                             .position_for_arg()
@@ -1093,7 +1093,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
     let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
 
     let Some(callee_def_id) = fn_def_id(cx, parent) else { return Position::Other(precedence) };
-    let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
+    let fn_sig = cx.tcx.bound_fn_sig(callee_def_id).subst_identity().skip_binder();
     let substs_with_expr_ty = cx
         .typeck_results()
         .node_substs(if let ExprKind::Call(callee, _) = parent.kind {
@@ -1221,7 +1221,7 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
         .in_definition_order()
         .any(|assoc_item| {
             if assoc_item.fn_has_self_parameter {
-                let self_ty = cx.tcx.fn_sig(assoc_item.def_id).skip_binder().inputs()[0];
+                let self_ty = cx.tcx.bound_fn_sig(assoc_item.def_id).subst_identity().skip_binder().inputs()[0];
                 matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Mut))
             } else {
                 false

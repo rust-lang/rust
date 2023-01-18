@@ -1136,7 +1136,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             && let self_ty = infcx.replace_bound_vars_with_fresh_vars(
                                 fn_call_span,
                                 LateBoundRegionConversionTime::FnCall,
-                                tcx.fn_sig(method_did).input(0),
+                                tcx.bound_fn_sig(method_did).subst_identity().input(0),
                             )
                             && infcx.can_eq(self.param_env, ty, self_ty).is_ok()
                         {

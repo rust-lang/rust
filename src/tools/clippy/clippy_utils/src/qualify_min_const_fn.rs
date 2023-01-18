@@ -55,7 +55,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
-        tcx.fn_sig(def_id).output().skip_binder(),
+        tcx.bound_fn_sig(def_id).subst_identity().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
     )?;
 

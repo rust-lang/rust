@@ -798,7 +798,11 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     let param_env = tcx.param_env(ctor_id);
 
     // Normalize the sig.
-    let sig = tcx.fn_sig(ctor_id).no_bound_vars().expect("LBR in ADT constructor signature");
+    let sig = tcx
+        .bound_fn_sig(ctor_id)
+        .subst_identity()
+        .no_bound_vars()
+        .expect("LBR in ADT constructor signature");
     let sig = tcx.normalize_erasing_regions(param_env, sig);
 
     let ty::Adt(adt_def, substs) = sig.output().kind() else {
