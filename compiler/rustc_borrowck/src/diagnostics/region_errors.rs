@@ -5,8 +5,13 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::GenericBound::Trait;
+use rustc_hir::QPath::Resolved;
+use rustc_hir::WherePredicate::BoundPredicate;
+use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
 use rustc_infer::infer::{
     error_reporting::nice_region_error::{
         self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
@@ -186,6 +191,101 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         false
     }
 
+    // For generic associated types (GATs) which implied 'static requirement
+    // from higher-ranked trait bounds (HRTB). Try to locate span of the trait
+    // and the span which bounded to the trait for adding 'static lifetime suggestion
+    fn suggest_static_lifetime_for_gat_from_hrtb(
+        &self,
+        diag: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        lower_bound: RegionVid,
+    ) {
+        let mut suggestions = vec![];
+        let hir = self.infcx.tcx.hir();
+
+        // find generic associated types in the given region 'lower_bound'
+        let gat_id_and_generics = self
+            .regioncx
+            .placeholders_contained_in(lower_bound)
+            .map(|placeholder| {
+                if let Some(id) = placeholder.name.get_id()
+                    && let Some(placeholder_id) = id.as_local()
+                    && let gat_hir_id = hir.local_def_id_to_hir_id(placeholder_id)
+                    && let Some(generics_impl) = hir.get_parent(gat_hir_id).generics()
+                {
+                    Some((gat_hir_id, generics_impl))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        debug!(?gat_id_and_generics);
+
+        // find higher-ranked trait bounds bounded to the generic associated types
+        let mut hrtb_bounds = vec![];
+        gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
+            for pred in generics.predicates {
+                let BoundPredicate(
+                        WhereBoundPredicate {
+                            bound_generic_params,
+                            bounds,
+                            ..
+                        }) = pred else { continue; };
+                if bound_generic_params
+                    .iter()
+                    .rfind(|bgp| hir.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
+                    .is_some()
+                {
+                    for bound in *bounds {
+                        hrtb_bounds.push(bound);
+                    }
+                }
+            }
+        });
+        debug!(?hrtb_bounds);
+
+        hrtb_bounds.iter().for_each(|bound| {
+            let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else { return; };
+            diag.span_note(
+                *trait_span,
+                format!("due to current limitations in the borrow checker, this implies a `'static` lifetime")
+            );
+            let Some(generics_fn) = hir.get_generics(self.body.source.def_id().expect_local()) else { return; };
+            let Def(_, trait_res_defid) = trait_ref.path.res else { return; };
+            debug!(?generics_fn);
+            generics_fn.predicates.iter().for_each(|predicate| {
+                let BoundPredicate(
+                    WhereBoundPredicate {
+                        span: bounded_span,
+                        bounded_ty,
+                        bounds,
+                        ..
+                    }
+                ) = predicate else { return; };
+                bounds.iter().for_each(|bd| {
+                    if let Trait(PolyTraitRef { trait_ref: tr_ref, .. }, _) = bd
+                        && let Def(_, res_defid) = tr_ref.path.res
+                        && res_defid == trait_res_defid // trait id matches
+                        && let TyKind::Path(Resolved(_, path)) = bounded_ty.kind
+                        && let Def(_, defid) = path.res
+                        && generics_fn.params
+                            .iter()
+                            .rfind(|param| param.def_id.to_def_id() == defid)
+                            .is_some() {
+                            suggestions.push((bounded_span.shrink_to_hi(), format!(" + 'static")));
+                        }
+                });
+            });
+        });
+        if suggestions.len() > 0 {
+            suggestions.dedup();
+            diag.multipart_suggestion_verbose(
+                format!("consider restricting the type parameter to the `'static` lifetime"),
+                suggestions,
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
     /// Produces nice borrowck error diagnostics for all the errors collected in `nll_errors`.
     pub(crate) fn report_region_errors(&mut self, nll_errors: RegionErrors<'tcx>) {
         // Iterate through all the errors, producing a diagnostic for each one. The diagnostics are
@@ -223,12 +323,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // to report it; we could probably handle it by
                         // iterating over the universal regions and reporting
                         // an error that multiple bounds are required.
-                        self.buffer_error(self.infcx.tcx.sess.create_err(
-                            GenericDoesNotLiveLongEnough {
+                        let mut diag =
+                            self.infcx.tcx.sess.create_err(GenericDoesNotLiveLongEnough {
                                 kind: type_test.generic_kind.to_string(),
                                 span: type_test_span,
-                            },
-                        ));
+                            });
+
+                        // Add notes and suggestions for the case of 'static lifetime
+                        // implied but not specified when a generic associated types
+                        // are from higher-ranked trait bounds
+                        self.suggest_static_lifetime_for_gat_from_hrtb(
+                            &mut diag,
+                            type_test.lower_bound,
+                        );
+
+                        self.buffer_error(diag);
                     }
                 }
 
