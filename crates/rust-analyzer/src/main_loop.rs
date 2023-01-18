@@ -287,8 +287,10 @@ impl GlobalState {
                 || self.fetch_build_data_queue.op_requested());
 
             if became_quiescent {
-                // Project has loaded properly, kick off initial flycheck
-                self.flycheck.iter().for_each(FlycheckHandle::restart);
+                if self.config.check_on_save() {
+                    // Project has loaded properly, kick off initial flycheck
+                    self.flycheck.iter().for_each(FlycheckHandle::restart);
+                }
                 if self.config.prefill_caches() {
                     self.prime_caches_queue.request_op("became quiescent".to_string());
                 }
