@@ -1082,6 +1082,9 @@ function loadCss(cssUrl) {
      * Show the help popup menu.
      */
     function showHelp() {
+        // Prevent `blur` events from being dispatched as a result of closing
+        // other modals.
+        getHelpButton().querySelector("a").focus();
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
             window.hideAllModals();
