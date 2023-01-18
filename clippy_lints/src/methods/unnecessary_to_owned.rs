@@ -246,7 +246,7 @@ fn check_other_call_arg<'tcx>(
     if_chain! {
         if let Some((maybe_call, maybe_arg)) = skip_addr_of_ancestors(cx, expr);
         if let Some((callee_def_id, _, recv, call_args)) = get_callee_substs_and_args(cx, maybe_call);
-        let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
+        let fn_sig = cx.tcx.bound_fn_sig(callee_def_id).subst_identity().skip_binder();
         if let Some(i) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == maybe_arg.hir_id);
         if let Some(input) = fn_sig.inputs().get(i);
         let (input, n_refs) = peel_mid_ty_refs(*input);
@@ -386,7 +386,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
             Node::Expr(parent_expr) => {
                 if let Some((callee_def_id, call_substs, recv, call_args)) = get_callee_substs_and_args(cx, parent_expr)
                 {
-                    let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
+                    let fn_sig = cx.tcx.bound_fn_sig(callee_def_id).subst_identity().skip_binder();
                     if let Some(arg_index) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == expr.hir_id)
                         && let Some(param_ty) = fn_sig.inputs().get(arg_index)
                         && let ty::Param(ParamTy { index: param_index , ..}) = param_ty.kind()

@@ -287,7 +287,8 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
         if let Some(def_id) = fn_def_id(cx, e)
             && cx
                 .tcx
-                .fn_sig(def_id)
+                .bound_fn_sig(def_id)
+                .subst_identity()
                 .skip_binder()
                 .output()
                 .walk()

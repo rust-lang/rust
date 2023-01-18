@@ -392,12 +392,12 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                         .cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(false, |id| self.cx.tcx.fn_sig(id).unsafety() == Unsafety::Unsafe) =>
+                        .map_or(false, |id| self.cx.tcx.bound_fn_sig(id).skip_binder().unsafety() == Unsafety::Unsafe) =>
                 {
                     self.is_unsafe = true;
                 },
                 ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
-                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
+                    ty::FnDef(id, _) if self.cx.tcx.bound_fn_sig(id).skip_binder().unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
                     ty::FnPtr(sig) if sig.unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
                     _ => walk_expr(self, e),
                 },
