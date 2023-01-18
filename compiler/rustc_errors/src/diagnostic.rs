@@ -630,18 +630,27 @@ impl Diagnostic {
         style: SuggestionStyle,
     ) -> &mut Self {
         assert!(!suggestion.is_empty());
-        debug_assert!(
-            !(suggestion.iter().any(|(sp, text)| sp.is_empty() && text.is_empty())),
-            "Span must not be empty and have no suggestion"
+
+        let mut parts = suggestion
+            .into_iter()
+            .map(|(span, snippet)| SubstitutionPart { snippet, span })
+            .collect::<Vec<_>>();
+
+        parts.sort_unstable_by_key(|part| part.span);
+
+        debug_assert_eq!(
+            None,
+            parts.iter().find(|part| part.span.is_empty() && part.snippet.is_empty()),
+            "Span must not be empty and have no suggestion",
+        );
+        debug_assert_eq!(
+            None,
+            parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
+            "suggestion must not have overlapping parts",
         );
 
         self.push_suggestion(CodeSuggestion {
-            substitutions: vec![Substitution {
-                parts: suggestion
-                    .into_iter()
-                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
-                    .collect(),
-            }],
+            substitutions: vec![Substitution { parts }],
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
             style,
             applicability,
