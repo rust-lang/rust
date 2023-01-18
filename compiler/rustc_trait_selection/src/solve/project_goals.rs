@@ -23,7 +23,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        // To only compute normalization ones for each projection we only
+        // To only compute normalization once for each projection we only
         // normalize if the expected term is an unconstrained inference variable.
         //
         // E.g. for `<T as Trait>::Assoc = u32` we recursively compute the goal
