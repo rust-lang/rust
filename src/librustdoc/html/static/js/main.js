@@ -940,7 +940,7 @@ function loadCss(cssUrl) {
                 return;
             }
             if (!this.NOTABLE_FORCE_VISIBLE &&
-                !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
+                !elemIsInParent(ev.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
                 hideNotable(true);
             }
         };
