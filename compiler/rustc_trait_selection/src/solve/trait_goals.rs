@@ -4,13 +4,13 @@ use std::iter;
 
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
-use super::{EvalCtxt, Goal, QueryResult};
+use super::{Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::TraitPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{TraitPredicate, TypeVisitable};
 use rustc_span::DUMMY_SP;
 
 mod structural_traits;
@@ -126,6 +126,29 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             goal,
             structural_traits::instantiate_constituent_tys_for_copy_clone_trait,
         )
+    }
+
+    fn consider_builtin_pointer_sized_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if goal.predicate.self_ty().has_non_region_infer() {
+            return ecx.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity));
+        }
+
+        let tcx = ecx.tcx();
+        let self_ty = tcx.erase_regions(goal.predicate.self_ty());
+
+        if let Ok(layout) = tcx.layout_of(goal.param_env.and(self_ty))
+            &&  let usize_layout = tcx.layout_of(ty::ParamEnv::empty().and(tcx.types.usize)).unwrap().layout
+            && layout.layout.size() == usize_layout.size()
+            && layout.layout.align().abi == usize_layout.align().abi
+        {
+            // FIXME: We could make this faster by making a no-constraints response
+            ecx.make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
     }
 }
 

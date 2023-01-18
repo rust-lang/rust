@@ -117,6 +117,11 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_pointer_sized_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -237,6 +242,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             || lang_items.clone_trait() == Some(trait_def_id)
         {
             G::consider_builtin_copy_clone_candidate(self, goal)
+        } else if lang_items.pointer_sized() == Some(trait_def_id) {
+            G::consider_builtin_pointer_sized_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
