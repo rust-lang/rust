@@ -551,7 +551,7 @@ use crate::marker::Destruct;
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
-    convert, hint, mem,
+    cmp, convert, hint, mem,
     ops::{self, ControlFlow, Deref, DerefMut},
 };
 
@@ -2143,6 +2143,14 @@ impl<T> SpecOptionPartialEq for crate::ptr::NonNull<T> {
     fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
         l.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
             == r.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl SpecOptionPartialEq for cmp::Ordering {
+    #[inline]
+    fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
+        l.map_or(2, |x| x as i8) == r.map_or(2, |x| x as i8)
     }
 }
 
