@@ -1,10 +1,10 @@
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::DUMMY_SP;
 
 use super::Goal;
@@ -25,6 +25,11 @@ pub(super) trait InferCtxtExt<'tcx> {
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>;
+
+    fn instantiate_bound_vars_with_infer<T: TypeFoldable<'tcx> + Copy>(
+        &self,
+        value: ty::Binder<'tcx, T>,
+    ) -> T;
 }
 
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
@@ -58,5 +63,16 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 debug!(?e, "failed to equate");
                 NoSolution
             })
+    }
+
+    fn instantiate_bound_vars_with_infer<T: TypeFoldable<'tcx> + Copy>(
+        &self,
+        value: ty::Binder<'tcx, T>,
+    ) -> T {
+        self.replace_bound_vars_with_fresh_vars(
+            DUMMY_SP,
+            LateBoundRegionConversionTime::HigherRankedType,
+            value,
+        )
     }
 }
