@@ -53,6 +53,7 @@ trivially_parameterized_over_tcx! {
     usize,
     (),
     u32,
+    bool,
     std::string::String,
     crate::metadata::ModChild,
     crate::middle::codegen_fn_attrs::CodegenFnAttrs,

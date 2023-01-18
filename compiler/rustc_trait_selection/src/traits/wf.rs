@@ -652,7 +652,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     // All of the requirements on type parameters
                     // have already been checked for `impl Trait` in
                     // return position. We do need to check type-alias-impl-trait though.
-                    if ty::is_impl_trait_defn(self.tcx, did).is_none() {
+                    if self.tcx.is_type_alias_impl_trait(did) {
                         let obligations = self.nominal_obligations(did, substs);
                         self.out.extend(obligations);
                     }

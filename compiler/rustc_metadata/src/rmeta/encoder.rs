@@ -1537,6 +1537,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::OpaqueTy(..) => {
                 self.encode_explicit_item_bounds(def_id);
+                record!(self.tables.is_type_alias_impl_trait[def_id] <- self.tcx.is_type_alias_impl_trait(def_id));
             }
             hir::ItemKind::Enum(..) => {
                 let adt_def = self.tcx.adt_def(def_id);
