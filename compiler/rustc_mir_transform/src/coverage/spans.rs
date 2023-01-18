@@ -341,11 +341,11 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                     if a.is_in_same_bcb(b) {
                         Some(Ordering::Equal)
                     } else {
-                        // Sort equal spans by dominator relationship, in reverse order (so
-                        // dominators always come after the dominated equal spans). When later
-                        // comparing two spans in order, the first will either dominate the second,
-                        // or they will have no dominator relationship.
-                        self.basic_coverage_blocks.dominators().rank_partial_cmp(b.bcb, a.bcb)
+                        // Sort equal spans by dominator relationship (so dominators always come
+                        // before the dominated equal spans). When later comparing two spans in
+                        // order, the first will either dominate the second, or they will have no
+                        // dominator relationship.
+                        self.basic_coverage_blocks.dominators().rank_partial_cmp(a.bcb, b.bcb)
                     }
                 } else {
                     // Sort hi() in reverse order so shorter spans are attempted after longer spans.
