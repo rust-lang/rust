@@ -803,15 +803,10 @@ function loadCss(cssUrl) {
         }
     });
 
-    function handleClick(id, f) {
-        const elem = document.getElementById(id);
-        if (elem) {
-            elem.addEventListener("click", f);
-        }
+    const mainElem = document.getElementById(MAIN_ID);
+    if (mainElem) {
+        mainElem.addEventListener("click", hideSidebar);
     }
-    handleClick(MAIN_ID, () => {
-        hideSidebar();
-    });
 
     onEachLazy(document.querySelectorAll("a[href^='#']"), el => {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
@@ -945,7 +940,7 @@ function loadCss(cssUrl) {
                 return;
             }
             if (!this.NOTABLE_FORCE_VISIBLE &&
-                !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
+                !elemIsInParent(ev.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
                 hideNotable(true);
             }
         };
