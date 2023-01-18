@@ -2317,7 +2317,7 @@ impl<'tcx> ConstantKind<'tcx> {
 
     #[inline]
     pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
-        Some(self.try_to_scalar()?.assert_int())
+        self.try_to_scalar()?.try_to_int().ok()
     }
 
     #[inline]
