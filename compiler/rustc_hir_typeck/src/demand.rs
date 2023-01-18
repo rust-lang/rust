@@ -299,7 +299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 // We special case methods, because they can influence inference through the
                 // call's arguments and we can provide a more explicit span.
-                let sig = self.tcx.bound_fn_sig(def_id).subst_identity();
+                let sig = self.tcx.fn_sig(def_id).subst_identity();
                 let def_self_ty = sig.input(0).skip_binder();
                 let rcvr_ty = self.node_ty(rcvr.hir_id);
                 // Get the evaluated type *after* calling the method call, so that the influence
@@ -613,7 +613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ),
                             match self
                                 .tcx
-                                .bound_fn_sig(m.def_id)
+                                .fn_sig(m.def_id)
                                 .subst_identity()
                                 .input(0)
                                 .skip_binder()
@@ -1043,13 +1043,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match method.kind {
             ty::AssocKind::Fn => {
                 method.fn_has_self_parameter
-                    && self
-                        .tcx
-                        .bound_fn_sig(method.def_id)
-                        .skip_binder()
-                        .inputs()
-                        .skip_binder()
-                        .len()
+                    && self.tcx.fn_sig(method.def_id).skip_binder().inputs().skip_binder().len()
                         == 1
             }
             _ => false,

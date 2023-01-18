@@ -143,7 +143,7 @@ impl<'tcx> PassByRefOrValue {
             return;
         }
 
-        let fn_sig = cx.tcx.bound_fn_sig(def_id.into()).subst_identity();
+        let fn_sig = cx.tcx.fn_sig(def_id).subst_identity();
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
 
         // Gather all the lifetimes found in the output type which may affect whether

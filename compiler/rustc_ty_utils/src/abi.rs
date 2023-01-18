@@ -41,7 +41,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // We normalize the `fn_sig` again after substituting at a later point.
             let mut sig = match *ty.kind() {
                 ty::FnDef(def_id, substs) => tcx
-                    .bound_fn_sig(def_id)
+                    .fn_sig(def_id)
                     .map_bound(|fn_sig| {
                         tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig)
                     })

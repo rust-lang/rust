@@ -121,7 +121,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::FnDef(..) => {
                 self.add_constraints_from_sig(
                     current_item,
-                    tcx.bound_fn_sig(def_id.into()).subst_identity(),
+                    tcx.fn_sig(def_id).subst_identity(),
                     self.covariant,
                 );
             }

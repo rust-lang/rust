@@ -331,7 +331,7 @@ impl<'tcx> Inliner<'tcx> {
                     return None;
                 }
 
-                let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, substs);
+                let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
                 let source_info = SourceInfo { span: fn_span, ..terminator.source_info };
 
                 return Some(CallSite { callee, fn_sig, block: bb, target, source_info });

@@ -542,7 +542,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let ty::FnDef(did, ..) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
-            if tcx.bound_fn_sig(did).skip_binder().abi() == RustIntrinsic
+            if tcx.fn_sig(did).skip_binder().abi() == RustIntrinsic
                 && tcx.item_name(did) == sym::transmute
             {
                 let from = fn_sig.inputs().skip_binder()[0];

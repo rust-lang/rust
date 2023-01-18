@@ -138,7 +138,7 @@ impl MutableKeyType {
 
     fn check_sig(&self, cx: &LateContext<'_>, item_hir_id: hir::HirId, decl: &hir::FnDecl<'_>) {
         let fn_def_id = cx.tcx.hir().local_def_id(item_hir_id);
-        let fn_sig = cx.tcx.bound_fn_sig(fn_def_id.into()).subst_identity();
+        let fn_sig = cx.tcx.fn_sig(fn_def_id).subst_identity();
         for (hir_ty, ty) in iter::zip(decl.inputs, fn_sig.inputs().skip_binder()) {
             self.check_ty_(cx, hir_ty.span, *ty);
         }

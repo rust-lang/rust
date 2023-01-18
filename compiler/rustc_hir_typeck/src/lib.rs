@@ -207,7 +207,7 @@ fn typeck_with_fallback<'tcx>(
             let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
                 fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
             } else {
-                tcx.bound_fn_sig(def_id.into()).subst_identity()
+                tcx.fn_sig(def_id).subst_identity()
             };
 
             check_abi(tcx, id, span, fn_sig.abi());
