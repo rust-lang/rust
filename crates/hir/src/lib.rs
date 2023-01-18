@@ -50,6 +50,7 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
+    type_ref::ConstScalar,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
     EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
@@ -65,8 +66,9 @@ use hir_ty::{
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
-    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
-    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, WhereClause,
+    ConcreteConst, ConstValue, GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar,
+    Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind,
+    WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -3229,6 +3231,19 @@ impl Type {
                 .collect()
         } else {
             Vec::new()
+        }
+    }
+
+    pub fn as_array(&self, _db: &dyn HirDatabase) -> Option<(Type, usize)> {
+        if let TyKind::Array(ty, len) = &self.ty.kind(Interner) {
+            match len.data(Interner).value {
+                ConstValue::Concrete(ConcreteConst { interned: ConstScalar::UInt(len) }) => {
+                    Some((self.derived(ty.clone()), len as usize))
+                }
+                _ => None,
+            }
+        } else {
+            None
         }
     }
 

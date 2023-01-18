@@ -520,6 +520,15 @@ pub fn literal_pat(lit: &str) -> ast::LiteralPat {
     }
 }
 
+pub fn slice_pat(pats: impl IntoIterator<Item = ast::Pat>) -> ast::SlicePat {
+    let pats_str = pats.into_iter().join(", ");
+    return from_text(&format!("[{pats_str}]"));
+
+    fn from_text(text: &str) -> ast::SlicePat {
+        ast_from_text(&format!("fn f() {{ match () {{{text} => ()}} }}"))
+    }
+}
+
 /// Creates a tuple of patterns from an iterator of patterns.
 ///
 /// Invariant: `pats` must be length > 0
