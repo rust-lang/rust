@@ -440,16 +440,16 @@ where
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
         t.super_visit_with(self);
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
             // ignore bound regions, keep visiting
-            ty::ReLateBound(_, _) => ControlFlow::CONTINUE,
+            ty::ReLateBound(_, _) => ControlFlow::Continue(()),
             _ => {
                 (self.op)(r);
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
         }
     }
@@ -457,7 +457,7 @@ where
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         // We're only interested in types involving regions
         if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
-            return ControlFlow::CONTINUE;
+            return ControlFlow::Continue(());
         }
 
         match ty.kind() {
@@ -507,7 +507,7 @@ where
             }
         }
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 

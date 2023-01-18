@@ -416,13 +416,13 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
             if t != self.self_ty_root {
                 for impl_def_id in tcx.non_blanket_impls_for_ty(self.trait_def_id, t) {
                     match tcx.impl_polarity(impl_def_id) {
-                        ImplPolarity::Negative => return ControlFlow::BREAK,
+                        ImplPolarity::Negative => return ControlFlow::Break(()),
                         ImplPolarity::Reservation => {}
                         // FIXME(@lcnr): That's probably not good enough, idk
                         //
                         // We might just want to take the rustdoc code and somehow avoid
                         // explicit impls for `Self`.
-                        ImplPolarity::Positive => return ControlFlow::CONTINUE,
+                        ImplPolarity::Positive => return ControlFlow::Continue(()),
                     }
                 }
             }
@@ -440,7 +440,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
                         }
                     }
 
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 }
                 _ => t.super_visit_with(self),
             }

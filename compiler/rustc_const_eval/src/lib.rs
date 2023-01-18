@@ -6,7 +6,6 @@ Rust MIR: a lowered representation of Rust.
 
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(decl_macro)]
 #![feature(exact_size_is_empty)]
 #![feature(let_chains)]

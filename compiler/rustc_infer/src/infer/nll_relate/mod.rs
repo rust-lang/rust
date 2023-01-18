@@ -849,7 +849,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
         t.super_visit_with(self);
         self.target_index.shift_out(1);
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -863,7 +863,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
             _ => {}
         }
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 

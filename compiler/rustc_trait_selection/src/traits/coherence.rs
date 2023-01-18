@@ -614,12 +614,12 @@ impl<'tcx> OrphanChecker<'tcx> {
 
     fn found_non_local_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx>> {
         self.non_local_tys.push((t, self.in_self_ty));
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn found_param_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx>> {
         if self.search_first_local_ty {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         } else {
             ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(t))
         }
@@ -641,7 +641,7 @@ enum OrphanCheckEarlyExit<'tcx> {
 impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
     type BreakTy = OrphanCheckEarlyExit<'tcx>;
     fn visit_region(&mut self, _r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -756,6 +756,6 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
     /// parameters, allowing uncovered const parameters in impls seems more useful
     /// than allowing `impl<T> Trait<local_fn_ptr, T> for i32` to compile.
     fn visit_const(&mut self, _c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }

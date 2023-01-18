@@ -2468,7 +2468,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 if not_previously_inserted {
                     ty.super_visit_with(self)
                 } else {
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 }
             }
         }
