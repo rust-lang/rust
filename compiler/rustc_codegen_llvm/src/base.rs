@@ -65,7 +65,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
         cgu_name,
         module_codegen,
         Some(dep_graph::hash_result),
-    );
+        );
     let time_to_codegen = start_time.elapsed();
 
     // We assume that the cost to run LLVM on a CGU is proportional to
@@ -77,7 +77,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
         let _prof_timer = tcx.prof.generic_activity_with_args(
             "codegen_module",
             &[cgu_name.to_string(), cgu.size_estimate().to_string()],
-        );
+            );
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         let out = {
@@ -132,13 +132,15 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             let out = tcx.autodiff_functions(()).into_iter()
                 .filter_map(|item| {
                     let instance = Instance::mono(tcx, item.source);
+                    // First step towards EnzymeTypeTree
+                    cx.get_enzyme_typtree(item.source);
                     let fnc: &Value = cx.instances.borrow().get(&instance)?;
                     let name = llvm::get_value_name(fnc);
                     let name = String::from_utf8(name.to_vec()).ok()?;
 
                     Some((item.clone(), name))
                 })
-                .collect::<Vec<_>>();
+            .collect::<Vec<_>>();
 
             out
         };
