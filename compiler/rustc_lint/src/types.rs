@@ -1147,7 +1147,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if !ty.has_opaque_types() {
-                    return ControlFlow::CONTINUE;
+                    return ControlFlow::Continue(());
                 }
 
                 if let ty::Alias(ty::Opaque, ..) = ty.kind() {

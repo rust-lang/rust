@@ -225,7 +225,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
     /// `align_offset(ptr, target_align)` needs special handling in const eval, because the pointer
     /// may not have an address.
     ///
-    /// If `ptr` does have a known address, then we return `CONTINUE` and the function call should
+    /// If `ptr` does have a known address, then we return `Continue(())` and the function call should
     /// proceed as normal.
     ///
     /// If `ptr` doesn't have an address, but its underlying allocation's alignment is at most
@@ -273,18 +273,18 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                         ret,
                         StackPopUnwind::NotAllowed,
                     )?;
-                    Ok(ControlFlow::BREAK)
+                    Ok(ControlFlow::Break(()))
                 } else {
                     // Not alignable in const, return `usize::MAX`.
                     let usize_max = Scalar::from_machine_usize(self.machine_usize_max(), self);
                     self.write_scalar(usize_max, dest)?;
                     self.return_to_block(ret)?;
-                    Ok(ControlFlow::BREAK)
+                    Ok(ControlFlow::Break(()))
                 }
             }
             Err(_addr) => {
                 // The pointer has an address, continue with function call.
-                Ok(ControlFlow::CONTINUE)
+                Ok(ControlFlow::Continue(()))
             }
         }
     }

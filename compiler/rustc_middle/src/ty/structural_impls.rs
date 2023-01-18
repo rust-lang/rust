@@ -367,7 +367,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::AdtDef<'tcx> {
 
 impl<'tcx> TypeVisitable<'tcx> for ty::AdtDef<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 
@@ -714,7 +714,7 @@ impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
             | ty::Placeholder(..)
             | ty::Param(..)
             | ty::Never
-            | ty::Foreign(..) => ControlFlow::CONTINUE,
+            | ty::Foreign(..) => ControlFlow::Continue(()),
         }
     }
 }
@@ -742,7 +742,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> TypeSuperVisitable<'tcx> for ty::Region<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 
@@ -844,7 +844,7 @@ impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
 
 impl<'tcx> TypeVisitable<'tcx> for InferConst<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 

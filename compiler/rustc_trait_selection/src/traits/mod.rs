@@ -493,7 +493,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 && let param_def_id = self.generics.type_param(param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(());
             }
             t.super_visit_with(self)
         }
@@ -502,7 +502,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(());
             }
             r.super_visit_with(self)
         }
@@ -511,7 +511,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 && let param_def_id = self.generics.const_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(());
             }
             ct.super_visit_with(self)
         }

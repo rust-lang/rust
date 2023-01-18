@@ -118,7 +118,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             // A diverging InlineAsm is treated as non-recursing
             TerminatorKind::InlineAsm { destination, .. } => {
                 if destination.is_some() {
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 } else {
                     ControlFlow::Break(NonRecursive)
                 }
@@ -132,7 +132,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. } => ControlFlow::CONTINUE,
+            | TerminatorKind::SwitchInt { .. } => ControlFlow::Continue(()),
         }
     }
 
@@ -145,7 +145,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             }
         }
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {
