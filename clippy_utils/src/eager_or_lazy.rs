@@ -79,7 +79,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
             && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))
         {
             // Limit the function to either `(self) -> bool` or `(&self) -> bool`
-            match &**cx.tcx.bound_fn_sig(fn_id).subst_identity().skip_binder().inputs_and_output {
+            match &**cx.tcx.fn_sig(fn_id).subst_identity().skip_binder().inputs_and_output {
                 [arg, res] if !arg.is_mutable_ptr() && arg.peel_refs() == ty && res.is_bool() => NoChange,
                 _ => Lazy,
             }

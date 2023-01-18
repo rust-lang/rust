@@ -104,7 +104,7 @@ fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
 
     if let ty::FnDef(id, _) = *ty.kind() {
-        if let Some(fn_type) = cx.tcx.bound_fn_sig(id).subst_identity().no_bound_vars() {
+        if let Some(fn_type) = cx.tcx.fn_sig(id).subst_identity().no_bound_vars() {
             return is_unit_type(fn_type.output());
         }
     }

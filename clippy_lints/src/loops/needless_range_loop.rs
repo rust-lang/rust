@@ -370,7 +370,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             ExprKind::MethodCall(_, receiver, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in iter::zip(
-                    self.cx.tcx.bound_fn_sig(def_id).subst_identity().inputs().skip_binder(),
+                    self.cx.tcx.fn_sig(def_id).subst_identity().inputs().skip_binder(),
                     std::iter::once(receiver).chain(args.iter()),
                 ) {
                     self.prefer_mutable = false;

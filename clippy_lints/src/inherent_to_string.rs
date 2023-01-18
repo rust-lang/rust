@@ -124,7 +124,7 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
         .expect("Failed to get trait ID of `Display`!");
 
     // Get the real type of 'self'
-    let self_type = cx.tcx.bound_fn_sig(item.owner_id.to_def_id()).skip_binder().input(0);
+    let self_type = cx.tcx.fn_sig(item.owner_id).skip_binder().input(0);
     let self_type = self_type.skip_binder().peel_refs();
 
     // Emit either a warning or an error
