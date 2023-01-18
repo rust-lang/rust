@@ -1671,7 +1671,7 @@ options! {
         "adds unstable command line options to rustc interface (default: no)"),
     use_ctors_section: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "use legacy .ctors section for initializers rather than .init_array"),
-    validate_mir: bool = (false, parse_bool, [UNTRACKED],
+    validate_mir: bool = (true, parse_bool, [UNTRACKED],
         "validate MIR after each transformation"),
     #[rustc_lint_opt_deny_field_access("use `Session::verbose` instead of this field")]
     verbose: bool = (false, parse_bool, [UNTRACKED],
