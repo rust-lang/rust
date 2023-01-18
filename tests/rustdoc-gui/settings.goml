@@ -8,6 +8,10 @@ assert-false: "#settings"
 click: "#settings-menu"
 wait-for: "#settings"
 assert-css: ("#settings", {"display": "block"})
+
+// Store the line margin to compare with the settings.html later.
+store-css: (setting_line_margin, ".setting-line", "margin")
+
 // Let's close it by clicking on the same button.
 click: "#settings-menu"
 wait-for-css: ("#settings", {"display": "none"})
@@ -229,6 +233,9 @@ assert-css: (".setting-line", {"position": "relative"})
 
 assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
 compare-elements-position: (".sub form", "#settings", ("x"))
+
+// Check that setting-line has the same margin in this mode as in the popover.
+assert-css: (".setting-line", {"margin": |setting_line_margin|})
 
 // We now check the display with JS disabled.
 assert-false: "noscript section"
