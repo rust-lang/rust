@@ -82,6 +82,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         };
 
+        // Guard against `<T as Trait<?0>>::Assoc = ?0>`.
         struct ContainsTerm<'tcx> {
             term: ty::Term<'tcx>,
         }
