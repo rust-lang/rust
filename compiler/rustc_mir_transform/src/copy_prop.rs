@@ -117,8 +117,10 @@ impl<'tcx> Visitor<'tcx> for SsaLocals {
                 self.assignments[local].insert(LocationExtended::Plain(loc));
                 self.assignment_order.push(local);
             }
-            PlaceContext::MutatingUse(_) => self.assignments[local] = Set1::Many,
-            // Immutable borrows and AddressOf are taken into account in `SsaLocals::new` by
+            // Anything can happen with raw pointers, so remove them.
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
+            | PlaceContext::MutatingUse(_) => self.assignments[local] = Set1::Many,
+            // Immutable borrows are taken into account in `SsaLocals::new` by
             // removing non-freeze locals.
             PlaceContext::NonMutatingUse(_) => {
                 let set = &mut self.assignments[local];

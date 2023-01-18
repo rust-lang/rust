@@ -1,0 +1,19 @@
+- // MIR for `f` before CopyProp
++ // MIR for `f` after CopyProp
+  
+  fn f(_1: bool) -> bool {
+      let mut _0: bool;                    // return place in scope 0 at $DIR/mutate_through_pointer.rs:+0:18: +0:22
+      let mut _2: bool;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _3: *const bool;             // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _4: *mut bool;               // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+  
+      bb0: {
+          _2 = _1;                         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+          _3 = &raw const _2;              // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+          _4 = &raw mut (*_3);             // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+          (*_4) = const false;             // scope 0 at $DIR/mutate_through_pointer.rs:+5:9: +5:20
+          _0 = _1;                         // scope 0 at $DIR/mutate_through_pointer.rs:+6:9: +6:16
+          return;                          // scope 0 at $DIR/mutate_through_pointer.rs:+7:9: +7:17
+      }
+  }
+  
