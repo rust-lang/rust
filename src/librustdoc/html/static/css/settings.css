@@ -1,5 +1,5 @@
 .setting-line {
-	margin: 0.6em 0 0.6em 0.3em;
+	margin: 1.2em 0.6em;
 	position: relative;
 }
 
@@ -53,10 +53,6 @@
 	display: flex;
 	align-items: center;
 	cursor: pointer;
-}
-
-#settings .setting-line {
-	margin: 1.2em 0.6em;
 }
 
 .setting-line .radio-line input:checked {
