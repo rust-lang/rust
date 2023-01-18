@@ -26,7 +26,7 @@ where
 
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             if !ty.needs_subst() {
-                return ControlFlow::CONTINUE;
+                return ControlFlow::Continue(());
             }
 
             match *ty.kind() {
@@ -48,7 +48,7 @@ where
                             return subst.visit_with(self);
                         }
                     }
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 }
                 _ => ty.super_visit_with(self),
             }

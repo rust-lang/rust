@@ -93,7 +93,7 @@ macro_rules! TrivialTypeTraversalImpls {
                     _: &mut F)
                     -> ::std::ops::ControlFlow<F::BreakTy>
                 {
-                    ::std::ops::ControlFlow::CONTINUE
+                    ::std::ops::ControlFlow::Continue(())
                 }
             }
         )+
@@ -219,7 +219,7 @@ macro_rules! EnumTypeTraversalImpl {
                         $($crate::ty::visit::TypeVisitable::visit_with(
                             $variant_arg, $visitor
                         )?;)*
-                        ::std::ops::ControlFlow::CONTINUE
+                        ::std::ops::ControlFlow::Continue(())
                     }
                     $($output)*
                 )
@@ -237,7 +237,7 @@ macro_rules! EnumTypeTraversalImpl {
                         $($crate::ty::visit::TypeVisitable::visit_with(
                             $variant_arg, $visitor
                         )?;)*
-                        ::std::ops::ControlFlow::CONTINUE
+                        ::std::ops::ControlFlow::Continue(())
                     }
                     $($output)*
                 )
@@ -251,7 +251,7 @@ macro_rules! EnumTypeTraversalImpl {
             @VisitVariants($this, $visitor)
                 input($($input)*)
                 output(
-                    $variant => { ::std::ops::ControlFlow::CONTINUE }
+                    $variant => { ::std::ops::ControlFlow::Continue(()) }
                     $($output)*
                 )
         )
