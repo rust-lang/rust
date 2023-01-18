@@ -14,7 +14,7 @@ use std::{
 
 use crate::{
     fingerprint::Fingerprint,
-    stable_hasher::{HashStable, StableHasher, ToStableHashKey},
+    stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey},
 };
 
 /// `UnordItems` is the order-less version of `Iterator`. It only contains methods
@@ -158,6 +158,7 @@ pub struct UnordSet<V: Eq + Hash> {
 }
 
 impl<V: Eq + Hash> Default for UnordSet<V> {
+    #[inline]
     fn default() -> Self {
         Self { inner: FxHashSet::default() }
     }
@@ -207,6 +208,46 @@ impl<V: Eq + Hash> UnordSet<V> {
         UnordItems(self.inner.into_iter())
     }
 
+    #[inline]
+    pub fn to_sorted<HCX>(&self, hcx: &HCX, cache_sort_key: bool) -> Vec<&V>
+    where
+        V: ToStableHashKey<HCX>,
+    {
+        let mut items: Vec<&V> = self.inner.iter().collect();
+        if cache_sort_key {
+            items.sort_by_cached_key(|k| k.to_stable_hash_key(hcx));
+        } else {
+            items.sort_unstable_by_key(|k| k.to_stable_hash_key(hcx));
+        }
+
+        items
+    }
+
+    #[inline]
+    pub fn to_sorted_stable_ord(&self) -> Vec<V>
+    where
+        V: Ord + StableOrd + Copy,
+    {
+        let mut items: Vec<V> = self.inner.iter().copied().collect();
+        items.sort_unstable();
+        items
+    }
+
+    #[inline]
+    pub fn into_sorted<HCX>(self, hcx: &HCX, cache_sort_key: bool) -> Vec<V>
+    where
+        V: ToStableHashKey<HCX>,
+    {
+        let mut items: Vec<V> = self.inner.into_iter().collect();
+        if cache_sort_key {
+            items.sort_by_cached_key(|k| k.to_stable_hash_key(hcx));
+        } else {
+            items.sort_unstable_by_key(|k| k.to_stable_hash_key(hcx));
+        }
+
+        items
+    }
+
     // We can safely extend this UnordSet from a set of unordered values because that
     // won't expose the internal ordering anywhere.
     #[inline]
@@ -221,12 +262,14 @@ impl<V: Eq + Hash> UnordSet<V> {
 }
 
 impl<V: Hash + Eq> Extend<V> for UnordSet<V> {
+    #[inline]
     fn extend<T: IntoIterator<Item = V>>(&mut self, iter: T) {
         self.inner.extend(iter)
     }
 }
 
 impl<V: Hash + Eq> FromIterator<V> for UnordSet<V> {
+    #[inline]
     fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
         UnordSet { inner: FxHashSet::from_iter(iter) }
     }
@@ -254,24 +297,28 @@ pub struct UnordMap<K: Eq + Hash, V> {
 }
 
 impl<K: Eq + Hash, V> Default for UnordMap<K, V> {
+    #[inline]
     fn default() -> Self {
         Self { inner: FxHashMap::default() }
     }
 }
 
 impl<K: Hash + Eq, V> Extend<(K, V)> for UnordMap<K, V> {
+    #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         self.inner.extend(iter)
     }
 }
 
 impl<K: Hash + Eq, V> FromIterator<(K, V)> for UnordMap<K, V> {
+    #[inline]
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         UnordMap { inner: FxHashMap::from_iter(iter) }
     }
 }
 
 impl<K: Hash + Eq, V, I: Iterator<Item = (K, V)>> From<UnordItems<(K, V), I>> for UnordMap<K, V> {
+    #[inline]
     fn from(items: UnordItems<(K, V), I>) -> Self {
         UnordMap { inner: FxHashMap::from_iter(items.0) }
     }
@@ -351,30 +398,56 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
         self.inner.extend(items.0)
     }
 
-    pub fn to_sorted<HCX>(&self, hcx: &HCX) -> Vec<(&K, &V)>
+    #[inline]
+    pub fn to_sorted<HCX>(&self, hcx: &HCX, cache_sort_key: bool) -> Vec<(&K, &V)>
     where
         K: ToStableHashKey<HCX>,
     {
         let mut items: Vec<(&K, &V)> = self.inner.iter().collect();
-        items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
+        if cache_sort_key {
+            items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
+        } else {
+            items.sort_unstable_by_key(|(k, _)| k.to_stable_hash_key(hcx));
+        }
+
         items
     }
 
-    pub fn into_sorted<HCX>(self, hcx: &HCX) -> Vec<(K, V)>
+    #[inline]
+    pub fn to_sorted_stable_ord(&self) -> Vec<(K, &V)>
+    where
+        K: Ord + StableOrd + Copy,
+    {
+        let mut items: Vec<(K, &V)> = self.inner.iter().map(|(&k, v)| (k, v)).collect();
+        items.sort_unstable_by_key(|&(k, _)| k);
+        items
+    }
+
+    #[inline]
+    pub fn into_sorted<HCX>(self, hcx: &HCX, cache_sort_key: bool) -> Vec<(K, V)>
     where
         K: ToStableHashKey<HCX>,
     {
         let mut items: Vec<(K, V)> = self.inner.into_iter().collect();
-        items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
+        if cache_sort_key {
+            items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
+        } else {
+            items.sort_unstable_by_key(|(k, _)| k.to_stable_hash_key(hcx));
+        }
         items
     }
 
-    pub fn values_sorted<HCX>(&self, hcx: &HCX) -> impl Iterator<Item = &V>
+    #[inline]
+    pub fn values_sorted<HCX>(&self, hcx: &HCX, cache_sort_key: bool) -> impl Iterator<Item = &V>
     where
         K: ToStableHashKey<HCX>,
     {
         let mut items: Vec<(&K, &V)> = self.inner.iter().collect();
-        items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
+        if cache_sort_key {
+            items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
+        } else {
+            items.sort_unstable_by_key(|(k, _)| k.to_stable_hash_key(hcx));
+        }
         items.into_iter().map(|(_, v)| v)
     }
 }

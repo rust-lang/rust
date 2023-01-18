@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
             }
 
             cx.tcx.with_stable_hashing_context(|hcx| {
-                for assoc in provided.values_sorted(&hcx) {
+                for assoc in provided.values_sorted(&hcx, true) {
                     let source_map = cx.tcx.sess.source_map();
                     let definition_span = source_map.guess_head_span(cx.tcx.def_span(assoc.def_id));
 

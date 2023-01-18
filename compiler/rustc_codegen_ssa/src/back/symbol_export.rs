@@ -177,7 +177,7 @@ fn exported_symbols_provider_local(
     //        Can we skip the later sorting?
     let mut symbols: Vec<_> = tcx.with_stable_hashing_context(|hcx| {
         tcx.reachable_non_generics(LOCAL_CRATE)
-            .to_sorted(&hcx)
+            .to_sorted(&hcx, true)
             .into_iter()
             .map(|(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info))
             .collect()

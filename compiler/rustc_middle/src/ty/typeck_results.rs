@@ -27,7 +27,7 @@ use rustc_session::Session;
 use rustc_span::Span;
 use std::{collections::hash_map::Entry, hash::Hash, iter};
 
-use super::{RvalueScopes, TyCtxt};
+use super::RvalueScopes;
 
 #[derive(TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct TypeckResults<'tcx> {
@@ -575,9 +575,8 @@ impl<'a, V> LocalTableInContext<'a, V> {
         self.data.items().map(|(id, value)| (*id, value))
     }
 
-    #[allow(rustc::pass_by_value)]
-    pub fn items_in_stable_order(&self, tcx: TyCtxt<'_>) -> Vec<(&'a ItemLocalId, &'a V)> {
-        tcx.with_stable_hashing_context(|hcx| self.data.to_sorted(&hcx))
+    pub fn items_in_stable_order(&self) -> Vec<(ItemLocalId, &'a V)> {
+        self.data.to_sorted_stable_ord()
     }
 }
 

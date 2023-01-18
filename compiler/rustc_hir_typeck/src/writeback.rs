@@ -19,7 +19,6 @@ use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use smallvec::SmallVec;
 
 use std::mem;
 use std::ops::ControlFlow;
@@ -450,9 +449,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
         let fcx_closure_kind_origins =
-            fcx_typeck_results.closure_kind_origins().items_in_stable_order(self.tcx());
+            fcx_typeck_results.closure_kind_origins().items_in_stable_order();
 
-        for (&local_id, origin) in fcx_closure_kind_origins {
+        for (local_id, origin) in fcx_closure_kind_origins {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let place_span = origin.0;
             let place = self.resolve(origin.1.clone(), &place_span);
@@ -465,14 +464,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
-        self.tcx().with_stable_hashing_context(|hcx| {
-            let fcx_coercion_casts: SmallVec<[_; 32]> =
-                fcx_typeck_results.coercion_casts().items().cloned().into_sorted_small_vec(&hcx);
-
-            for local_id in fcx_coercion_casts {
-                self.typeck_results.set_coercion_cast(local_id);
-            }
-        });
+        let fcx_coercion_casts = fcx_typeck_results.coercion_casts().to_sorted_stable_ord();
+        for local_id in fcx_coercion_casts {
+            self.typeck_results.set_coercion_cast(local_id);
+        }
     }
 
     fn visit_user_provided_tys(&mut self) {
@@ -482,10 +477,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         if self.rustc_dump_user_substs {
             let sorted_user_provided_types =
-                fcx_typeck_results.user_provided_types().items_in_stable_order(self.tcx());
+                fcx_typeck_results.user_provided_types().items_in_stable_order();
 
             let mut errors_buffer = Vec::new();
-            for (&local_id, c_ty) in sorted_user_provided_types {
+            for (local_id, c_ty) in sorted_user_provided_types {
                 let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
                 if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
@@ -661,10 +656,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        let fcx_liberated_fn_sigs =
-            fcx_typeck_results.liberated_fn_sigs().items_in_stable_order(self.tcx());
+        let fcx_liberated_fn_sigs = fcx_typeck_results.liberated_fn_sigs().items_in_stable_order();
 
-        for (&local_id, &fn_sig) in fcx_liberated_fn_sigs {
+        for (local_id, &fn_sig) in fcx_liberated_fn_sigs {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let fn_sig = self.resolve(fn_sig, &hir_id);
             self.typeck_results.liberated_fn_sigs_mut().insert(hir_id, fn_sig);
@@ -676,10 +670,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        let fcx_fru_field_types =
-            fcx_typeck_results.fru_field_types().items_in_stable_order(self.tcx());
+        let fcx_fru_field_types = fcx_typeck_results.fru_field_types().items_in_stable_order();
 
-        for (&local_id, ftys) in fcx_fru_field_types {
+        for (local_id, ftys) in fcx_fru_field_types {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let ftys = self.resolve(ftys.clone(), &hir_id);
             self.typeck_results.fru_field_types_mut().insert(hir_id, ftys);

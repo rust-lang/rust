@@ -1188,7 +1188,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
         let inherent_impls = tcx.with_stable_hashing_context(|hcx| {
-            tcx.crate_inherent_impls(()).inherent_impls.to_sorted(&hcx)
+            tcx.crate_inherent_impls(()).inherent_impls.to_sorted(&hcx, true)
         });
 
         for (def_id, implementations) in inherent_impls {
