@@ -1,5 +1,6 @@
 use core::fmt::Debug;
 use core::mem::size_of;
+use core::ptr;
 use std::boxed::ThinBox;
 
 #[test]
@@ -24,6 +25,14 @@ fn want_thin() {
     assert!(is_thin::<dyn Tr>());
     assert!(is_thin::<[i32]>());
     assert!(is_thin::<i32>());
+}
+
+#[test]
+fn empty_slice() {
+    let a: ThinBox<[i32]> = ThinBox::new_unsize([]);
+    assert!(a.len() == 0);
+    let b: ThinBox<[i32]> = ThinBox::new_unsize([]);
+    assert!(ptr::eq((*a).as_ptr(), (*b).as_ptr()));
 }
 
 #[allow(dead_code)]

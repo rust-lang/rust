@@ -85,6 +85,27 @@ impl<Dyn: ?Sized> ThinBox<Dyn> {
     where
         T: Unsize<Dyn>,
     {
+        // Empty slice metadata is `0usize`, allocate it once
+        // and return the pointer past it which is a valid empty slice data.
+        // We could do the same optimization for other DSTs,
+        // but there is currently no way to obtain metadata for arbitrary empty DST
+        // in const expression.
+        if (&value as &Dyn).is_empty_slice() {
+            // This is `usize`.
+            // We use `[u32]`, but it does not matter which slice type to use
+            // because all slices metadata is `usize`.
+            type SliceMetadata = <[u32] as Pointee>::Metadata;
+
+            const EMPTY_SLICE_METADATA: SliceMetadata = 0;
+
+            unsafe {
+                let ptr = NonNull::new_unchecked(
+                    (&EMPTY_SLICE_METADATA as *const SliceMetadata).add(1) as *mut u8,
+                );
+                return ThinBox { ptr: WithOpaqueHeader(ptr), _marker: PhantomData };
+            }
+        }
+
         let meta = ptr::metadata(&value as &Dyn);
         let ptr = WithOpaqueHeader::new(meta, value);
         ThinBox { ptr, _marker: PhantomData }
@@ -132,6 +153,12 @@ impl<T: ?Sized> Drop for ThinBox<T> {
     fn drop(&mut self) {
         unsafe {
             let value = self.deref_mut();
+
+            // Empty slice is statically allocated, we should not drop it.
+            if (value as &T).is_empty_slice() {
+                return;
+            }
+
             let value = value as *mut T;
             self.with_header().drop::<T>(value);
         }
@@ -298,5 +325,22 @@ impl<H> WithHeader<H> {
 impl<T: ?Sized + Error> Error for ThinBox<T> {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.deref().source()
+    }
+}
+
+/// Check if `Self` is `[]` and it is empty.
+trait MaybeEmptySlice {
+    fn is_empty_slice(&self) -> bool;
+}
+
+impl<T: ?Sized> MaybeEmptySlice for T {
+    default fn is_empty_slice(&self) -> bool {
+        false
+    }
+}
+
+impl<A> MaybeEmptySlice for [A] {
+    fn is_empty_slice(&self) -> bool {
+        self.len() == 0
     }
 }
