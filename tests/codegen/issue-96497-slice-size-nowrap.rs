@@ -3,7 +3,7 @@
 // in some situations, see https://github.com/rust-lang/rust/issues/96497#issuecomment-1112865218
 
 // compile-flags: -O
-// min-llvm-version: 14.0
+// min-llvm-version: 15.0
 
 #![crate_type="lib"]
 
