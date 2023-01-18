@@ -1,5 +1,5 @@
 // build-fail
-// normalize-stderr-test "\[&usize; \d+\]" -> "[&usize; N]"
+// normalize-stderr-test "\[&usize; \d+\]" -> "[&usize; usize::MAX]"
 // error-pattern: too big for the current architecture
 
 // FIXME https://github.com/rust-lang/rust/issues/59774
