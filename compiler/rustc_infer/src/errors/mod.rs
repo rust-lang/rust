@@ -933,3 +933,40 @@ pub struct ButNeedsToSatisfy {
     pub has_lifetime: bool,
     pub lifetime: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(infer_outlives_content, code = "E0312")]
+pub struct OutlivesContent<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub notes: Vec<note_and_explain::RegionExplanation<'a>>,
+}
+
+#[derive(Diagnostic)]
+#[diag(infer_outlives_bound, code = "E0476")]
+pub struct OutlivesBound<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub notes: Vec<note_and_explain::RegionExplanation<'a>>,
+}
+
+#[derive(Diagnostic)]
+#[diag(infer_fullfill_req_lifetime, code = "E0477")]
+pub struct FullfillReqLifetime<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
+    #[subdiagnostic]
+    pub note: Option<note_and_explain::RegionExplanation<'a>>,
+}
+
+#[derive(Diagnostic)]
+#[diag(infer_lf_bound_not_satisfied, code = "E0478")]
+pub struct LfBoundNotSatisfied<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub notes: Vec<note_and_explain::RegionExplanation<'a>>,
+}

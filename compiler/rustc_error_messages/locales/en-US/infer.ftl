@@ -140,6 +140,14 @@ infer_lifetime_param_suggestion_elided = each elided lifetime in input position 
 
 infer_region_explanation = {$pref_kind ->
     *[should_not_happen] [{$pref_kind}]
+    [ref_valid_for] ...the reference is valid for
+    [content_valid_for] ...but the borrowed content is only valid for
+    [type_valid_for] object type is valid for
+    [source_pointer_valid_for] source pointer is only valid for
+    [type_satisfy] type must satisfy
+    [type_outlive] type must outlive
+    [lf_instantiated_with] lifetime parameter instantiated with
+    [lf_must_outlive] but lifetime parameter must outlive
     [empty] {""}
 }{$pref_kind ->
     [empty] {""}
@@ -158,7 +166,13 @@ infer_region_explanation = {$pref_kind ->
     *[should_not_happen] [{$suff_kind}]
     [empty]{""}
     [continues] ...
+    [req_by_binding] {" "}as required by this binding
 }
+
+infer_outlives_content = lifetime of reference outlives lifetime of borrowed content...
+infer_outlives_bound = lifetime of the source pointer does not outlive lifetime bound of the object type
+infer_fullfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
+infer_lf_bound_not_satisfied = lifetime bound not satisfied
 
 infer_mismatched_static_lifetime = incompatible lifetime on type
 infer_does_not_outlive_static_from_impl = ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
