@@ -10,7 +10,7 @@ error[E0770]: the type of const parameters must not depend on other generic para
 LL | pub struct SelfDependent<const N: [u8; N]>;
    |                                        ^ the type must not depend on the parameter `N`
 
-error: `[u8; _]` is forbidden as the type of a const generic parameter
+error: `[u8; N]` is forbidden as the type of a const generic parameter
   --> $DIR/const-param-type-depends-on-const-param.rs:11:47
    |
 LL | pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
@@ -19,7 +19,7 @@ LL | pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
    = note: the only supported types are integers, `bool` and `char`
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
-error: `[u8; _]` is forbidden as the type of a const generic parameter
+error: `[u8; N]` is forbidden as the type of a const generic parameter
   --> $DIR/const-param-type-depends-on-const-param.rs:15:35
    |
 LL | pub struct SelfDependent<const N: [u8; N]>;

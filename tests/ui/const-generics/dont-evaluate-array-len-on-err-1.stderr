@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `[Adt; _]: Foo` is not satisfied
+error[E0277]: the trait bound `[Adt; std::mem::size_of::<Self::Assoc>()]: Foo` is not satisfied
   --> $DIR/dont-evaluate-array-len-on-err-1.rs:15:9
    |
 LL |         <[Adt; std::mem::size_of::<Self::Assoc>()] as Foo>::bar()
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `[Adt; _]`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `[Adt; std::mem::size_of::<Self::Assoc>()]`
 
 error: aborting due to previous error
 

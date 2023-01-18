@@ -831,12 +831,33 @@ fn partition_at_index_loop<'a, T, F>(
 ) where
     F: FnMut(&T, &T) -> bool,
 {
+    // Limit the amount of iterations and fall back to heapsort, similarly to `slice::sort_unstable`.
+    // This lowers the worst case running time from O(n^2) to O(n log n).
+    // FIXME: Investigate whether it would be better to use something like Median of Medians
+    // or Fast Deterministic Selection to guarantee O(n) worst case.
+    let mut limit = usize::BITS - v.len().leading_zeros();
+
+    // True if the last partitioning was reasonably balanced.
+    let mut was_balanced = true;
+
     loop {
         // For slices of up to this length it's probably faster to simply sort them.
         const MAX_INSERTION: usize = 10;
         if v.len() <= MAX_INSERTION {
             insertion_sort(v, is_less);
             return;
+        }
+
+        if limit == 0 {
+            heapsort(v, is_less);
+            return;
+        }
+
+        // If the last partitioning was imbalanced, try breaking patterns in the slice by shuffling
+        // some elements around. Hopefully we'll choose a better pivot this time.
+        if !was_balanced {
+            break_patterns(v);
+            limit -= 1;
         }
 
         // Choose a pivot
@@ -863,6 +884,7 @@ fn partition_at_index_loop<'a, T, F>(
         }
 
         let (mid, _) = partition(v, pivot, is_less);
+        was_balanced = cmp::min(mid, v.len() - mid) >= v.len() / 8;
 
         // Split the slice into `left`, `pivot`, and `right`.
         let (left, right) = v.split_at_mut(mid);

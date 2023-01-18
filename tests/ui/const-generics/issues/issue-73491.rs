@@ -6,6 +6,6 @@
 const LEN: usize = 1024;
 
 fn hoge<const IN: [u32; LEN]>() {}
-//[min]~^ ERROR `[u32; _]` is forbidden as the type of a const generic parameter
+//[min]~^ ERROR `[u32; LEN]` is forbidden as the type of a const generic parameter
 
 fn main() {}

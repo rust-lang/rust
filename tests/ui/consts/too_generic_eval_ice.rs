@@ -7,7 +7,7 @@ impl<A, B> Foo<A, B> {
         [5; Self::HOST_SIZE] == [6; 0]
         //~^ ERROR constant expression depends on a generic parameter
         //~| ERROR constant expression depends on a generic parameter
-        //~| ERROR can't compare `[{integer}; _]` with `[{integer}; 0]`
+        //~| ERROR can't compare `[{integer}; Self::HOST_SIZE]` with `[{integer}; 0]`
     }
 }
 
