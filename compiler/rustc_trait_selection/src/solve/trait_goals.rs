@@ -10,8 +10,8 @@ use rustc_hir::{Movability, Mutability};
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::TraitPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ToPolyTraitRef, TraitPredicate};
 use rustc_span::DUMMY_SP;
 
 impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
@@ -67,10 +67,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred() {
             // FIXME: Constness and polarity
             ecx.infcx.probe(|_| {
-                let nested_goals = ecx.infcx.sup(
+                let assumption_trait_pred =
+                    ecx.infcx.instantiate_bound_vars_with_infer(poly_trait_pred);
+                let nested_goals = ecx.infcx.eq(
                     goal.param_env,
-                    ty::Binder::dummy(goal.predicate.trait_ref),
-                    poly_trait_pred.to_poly_trait_ref(),
+                    goal.predicate.trait_ref,
+                    assumption_trait_pred.trait_ref,
                 )?;
                 ecx.evaluate_all_and_make_canonical_response(nested_goals)
             })

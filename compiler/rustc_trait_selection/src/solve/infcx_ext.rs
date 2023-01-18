@@ -1,10 +1,10 @@
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::DUMMY_SP;
 
 use super::Goal;
@@ -26,12 +26,10 @@ pub(super) trait InferCtxtExt<'tcx> {
         rhs: T,
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>;
 
-    fn sup<T: ToTrace<'tcx>>(
+    fn instantiate_bound_vars_with_infer<T: TypeFoldable<'tcx> + Copy>(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
-        lhs: T,
-        rhs: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>;
+        value: ty::Binder<'tcx, T>,
+    ) -> T;
 }
 
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
@@ -67,22 +65,14 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             })
     }
 
-    #[instrument(level = "debug", skip(self, param_env), ret)]
-    fn sup<T: ToTrace<'tcx>>(
+    fn instantiate_bound_vars_with_infer<T: TypeFoldable<'tcx> + Copy>(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
-        lhs: T,
-        rhs: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
-        self.at(&ObligationCause::dummy(), param_env)
-            .define_opaque_types(false)
-            .sup(lhs, rhs)
-            .map(|InferOk { value: (), obligations }| {
-                obligations.into_iter().map(|o| o.into()).collect()
-            })
-            .map_err(|e| {
-                debug!(?e, "failed to sup");
-                NoSolution
-            })
+        value: ty::Binder<'tcx, T>,
+    ) -> T {
+        self.replace_bound_vars_with_fresh_vars(
+            DUMMY_SP,
+            LateBoundRegionConversionTime::HigherRankedType,
+            value,
+        )
     }
 }

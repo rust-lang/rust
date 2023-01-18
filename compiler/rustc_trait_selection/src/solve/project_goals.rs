@@ -6,7 +6,7 @@ use super::{Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{InferCtxt, LateBoundRegionConversionTime};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
@@ -297,12 +297,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         if let Some(poly_projection_pred) = assumption.to_opt_poly_projection_pred() {
             ecx.infcx.probe(|_| {
-                let assumption_projection_pred = ecx.infcx.replace_bound_vars_with_fresh_vars(
-                    DUMMY_SP,
-                    LateBoundRegionConversionTime::HigherRankedType,
-                    poly_projection_pred,
-                );
-                let nested_goals = ecx.infcx.sup(
+                let assumption_projection_pred =
+                    ecx.infcx.instantiate_bound_vars_with_infer(poly_projection_pred);
+                let nested_goals = ecx.infcx.eq(
                     goal.param_env,
                     goal.predicate.projection_ty,
                     assumption_projection_pred.projection_ty,
