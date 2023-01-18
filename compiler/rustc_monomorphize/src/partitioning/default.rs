@@ -32,6 +32,9 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         let is_incremental_build = cx.tcx.sess.opts.incremental.is_some();
         let mut internalization_candidates = FxHashSet::default();
 
+        // Get autodiff source function and ensure they are marked external
+        let autodiff_fncs = cx.tcx.autodiff_functions(()).into_iter().map(|x| x.source).collect::<FxHashSet<_>>();
+
         // Determine if monomorphizations instantiated in this crate will be made
         // available to downstream crates. This depends on whether we are in
         // share-generics mode and whether the current crate can even have
@@ -66,14 +69,19 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
                 .entry(codegen_unit_name)
                 .or_insert_with(|| CodegenUnit::new(codegen_unit_name));
 
-            let mut can_be_internalized = true;
-            let (linkage, visibility) = mono_item_linkage_and_visibility(
+            let mut can_be_internalized = true; 
+
+            let (mut linkage, visibility) = mono_item_linkage_and_visibility(
                 cx.tcx,
                 &mono_item,
                 &mut can_be_internalized,
                 export_generics,
             );
-            if visibility == Visibility::Hidden && can_be_internalized {
+            if characteristic_def_id_of_mono_item(cx.tcx, mono_item)
+                .map(|def_id| autodiff_fncs.contains(&def_id))
+                .unwrap_or(false) {
+                linkage = Linkage::External;
+            } else if visibility == Visibility::Hidden && can_be_internalized {
                 internalization_candidates.insert(mono_item);
             }
 

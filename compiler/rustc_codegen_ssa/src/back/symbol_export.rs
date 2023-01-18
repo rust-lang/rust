@@ -186,9 +186,7 @@ fn exported_symbols_provider_local<'tcx>(
     //        ])
     //        .flatten()
     //);
-    //
-    //dbg!(&symbols);
-
+    
     if tcx.allocator_kind(()).is_some() {
         for method in ALLOCATOR_METHODS {
             let symbol_name = format!("__rust_{}", method.name);

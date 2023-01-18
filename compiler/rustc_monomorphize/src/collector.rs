@@ -311,6 +311,13 @@ pub fn collect_crate_mono_items(
                 );
             });
         });
+
+        tcx.autodiff_functions(())
+            .into_iter()
+            //.map(|x| x.source.as_local().&unwrap())
+            .map(|x| Instance::mono(tcx, x.source))
+            .map(|x| MonoItem::Fn(x.polymorphize(tcx)))
+            .for_each(|x| {visited.lock_mut().insert(x);});
     }
 
     (visited.into_inner(), inlining_map.into_inner())
