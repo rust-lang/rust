@@ -96,3 +96,12 @@ mod missing_crate_name {
 
     use self::fluent_generated::{DEFAULT_LOCALE_RESOURCES, test_crate_foo, with_hyphens};
 }
+
+mod missing_message_ref {
+    use super::fluent_messages;
+
+    fluent_messages! {
+        missing => "./missing-message-ref.ftl"
+//~^ ERROR referenced message `message` does not exist
+    }
+}
