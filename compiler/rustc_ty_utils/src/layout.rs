@@ -826,7 +826,7 @@ fn record_layout_for_printing_outlined<'tcx>(
 
     // (delay format until we actually need it)
     let record = |kind, packed, opt_discr_size, variants| {
-        let type_desc = format!("{:?}", layout.ty);
+        let type_desc = format!("{}", layout.ty);
         cx.tcx.sess.code_stats.record_type_size(
             kind,
             type_desc,

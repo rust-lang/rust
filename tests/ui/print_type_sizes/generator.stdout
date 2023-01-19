@@ -1,4 +1,4 @@
-print-type-size type: `Generator(DefId(0:7 ~ generator[151b]::generator::{closure#0}), [Const { ty: Uint(Usize), kind: Value(Leaf(0x0000000000002000)) }, Tuple([]), Tuple([]), Tuple([]), GeneratorWitness(Binder([Tuple([])], [])), Tuple([Array(Uint(U8), Const { ty: Uint(Usize), kind: Value(Leaf(0x0000000000002000)) })])], Movable)`: 8193 bytes, alignment: 1 bytes
+print-type-size type: `[generator@$DIR/generator.rs:10:5: 10:14]`: 8193 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 8192 bytes
 print-type-size         field `.array`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
