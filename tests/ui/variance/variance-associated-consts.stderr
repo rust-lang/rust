@@ -1,4 +1,4 @@
-error[E0208]: [o]
+error: [o]
   --> $DIR/variance-associated-consts.rs:13:1
    |
 LL | struct Foo<T: Trait> {
@@ -6,4 +6,3 @@ LL | struct Foo<T: Trait> {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0208`.
