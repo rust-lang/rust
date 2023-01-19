@@ -7,4 +7,4 @@
 #[lang="copy"] pub trait Copy { }
 #[lang="sized"] pub trait Sized { }
 
-async fn x() {} //~ ERROR requires `ResumeTy` lang_item
+async fn x() {} //~ ERROR requires `future_trait` lang_item
