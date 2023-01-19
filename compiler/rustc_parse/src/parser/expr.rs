@@ -1300,6 +1300,8 @@ impl<'a> Parser<'a> {
             })
         } else if self.check(&token::OpenDelim(Delimiter::Bracket)) {
             self.parse_expr_array_or_repeat(Delimiter::Bracket)
+        } else if self.is_builtin() {
+            self.parse_expr_builtin()
         } else if self.check_path() {
             self.parse_expr_path_start()
         } else if self.check_keyword(kw::Move)
@@ -1753,6 +1755,42 @@ impl<'a> Parser<'a> {
         self.sess.gated_spans.gate(sym::generators, span);
         let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
+    }
+
+    /// Parse `builtin # ident(args,*)`.
+    fn parse_expr_builtin(&mut self) -> PResult<'a, P<Expr>> {
+        self.parse_builtin(|_this, _lo, _ident| {
+            Ok(None)
+        })
+    }
+
+    pub(crate) fn parse_builtin<T>(
+        &mut self,
+        parse: impl FnOnce(&mut Parser<'a>, Span, Ident) -> PResult<'a, Option<T>>,
+    ) -> PResult<'a, T> {
+        let lo = self.token.span;
+
+        self.bump(); // `builtin`
+        self.bump(); // `#`
+
+        let Some((ident, false)) = self.token.ident() else {
+            let err = errors::ExpectedBuiltinIdent { span: self.token.span }
+                .into_diagnostic(&self.sess.span_diagnostic);
+            return Err(err);
+        };
+        self.bump();
+
+        self.expect(&TokenKind::OpenDelim(Delimiter::Parenthesis))?;
+        let ret = if let Some(res) = parse(self, lo, ident)? {
+            Ok(res)
+        } else {
+            let err = errors::UnknownBuiltinConstruct { span: lo.to(ident.span), name: ident.name }
+                .into_diagnostic(&self.sess.span_diagnostic);
+            return Err(err);
+        };
+        self.expect(&TokenKind::CloseDelim(Delimiter::Parenthesis))?;
+
+        ret
     }
 
     /// Returns a string literal if the next token is a string literal.
@@ -2822,6 +2860,10 @@ impl<'a> Parser<'a> {
                 TrailingToken::None,
             ))
         })
+    }
+
+    pub(crate) fn is_builtin(&self) -> bool {
+        self.token.is_keyword(kw::Builtin) && self.look_ahead(1, |t| *t == token::Pound)
     }
 
     /// Parses a `try {...}` expression (`try` token already eaten).

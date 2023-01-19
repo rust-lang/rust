@@ -1,0 +1,14 @@
+error: unknown `builtin #` construct `foobar`
+  --> $DIR/builtin-syntax.rs:2:5
+   |
+LL |     builtin # foobar();
+   |     ^^^^^^^^^^^^^^^^
+
+error: expected identifier after `builtin #`
+  --> $DIR/builtin-syntax.rs:6:15
+   |
+LL |     builtin # {}();
+   |               ^
+
+error: aborting due to 2 previous errors
+

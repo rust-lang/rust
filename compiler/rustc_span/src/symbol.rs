@@ -95,6 +95,7 @@ symbols! {
 
         // Weak keywords, have special meaning only in specific contexts.
         Auto:               "auto",
+        Builtin:            "builtin",
         Catch:              "catch",
         Default:            "default",
         MacroRules:         "macro_rules",
