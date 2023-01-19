@@ -2921,7 +2921,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         // Look for the example file in the source map if it exists, otherwise return a dummy span
         let file_span = (|| {
             let source_map = tcx.sess.source_map();
-            let crate_src = tcx.sess.local_crate_source_file.as_ref()?;
+            let crate_src = tcx.sess.local_crate_source_file()?;
             let abs_crate_src = crate_src.canonicalize().ok()?;
             let crate_root = abs_crate_src.parent()?.parent()?;
             let rel_path = path.strip_prefix(crate_root).ok()?;

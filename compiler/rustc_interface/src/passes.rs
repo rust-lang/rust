@@ -13,7 +13,6 @@ use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
-use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
@@ -31,7 +30,7 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
+use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -51,8 +50,8 @@ use std::rc::Rc;
 use std::sync::LazyLock;
 use std::{env, fs, iter};
 
-pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
-    let krate = sess.time("parse_crate", || match input {
+pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
+    let krate = sess.time("parse_crate", || match &sess.io.input {
         Input::File(file) => parse_crate_from_file(file, &sess.parse_sess),
         Input::Str { input, name } => {
             parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
@@ -666,7 +665,6 @@ fn write_out_deps(
 
 pub fn prepare_outputs(
     sess: &Session,
-    compiler: &Compiler,
     krate: &ast::Crate,
     boxed_resolver: &RefCell<BoxedResolver>,
     crate_name: Symbol,
@@ -674,20 +672,13 @@ pub fn prepare_outputs(
     let _timer = sess.timer("prepare_outputs");
 
     // FIXME: rustdoc passes &[] instead of &krate.attrs here
-    let outputs = util::build_output_filenames(
-        &compiler.input,
-        &compiler.output_dir,
-        &compiler.output_file,
-        &compiler.temps_dir,
-        &krate.attrs,
-        sess,
-    );
+    let outputs = util::build_output_filenames(&krate.attrs, sess);
 
     let output_paths =
-        generated_output_paths(sess, &outputs, compiler.output_file.is_some(), crate_name);
+        generated_output_paths(sess, &outputs, sess.io.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
-    if let Some(ref input_path) = compiler.input_path {
+    if let Some(ref input_path) = sess.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
                 let reported = sess.emit_err(InputFileWouldBeOverWritten { path: input_path });
@@ -701,7 +692,7 @@ pub fn prepare_outputs(
         }
     }
 
-    if let Some(ref dir) = compiler.temps_dir {
+    if let Some(ref dir) = sess.io.temps_dir {
         if fs::create_dir_all(dir).is_err() {
             let reported = sess.emit_err(TempsDirError);
             return Err(reported);
@@ -714,7 +705,7 @@ pub fn prepare_outputs(
         && sess.opts.output_types.len() == 1;
 
     if !only_dep_info {
-        if let Some(ref dir) = compiler.output_dir {
+        if let Some(ref dir) = sess.io.output_dir {
             if fs::create_dir_all(dir).is_err() {
                 let reported = sess.emit_err(OutDirError);
                 return Err(reported);
@@ -775,11 +766,8 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
-    krate: Lrc<ast::Crate>,
     dep_graph: DepGraph,
-    resolver: Rc<RefCell<BoxedResolver>>,
-    outputs: OutputFilenames,
-    crate_name: Symbol,
+    untracked: Untracked,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
@@ -789,8 +777,6 @@ pub fn create_global_ctxt<'tcx>(
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
     dep_graph.assert_ignored();
-
-    let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
 
     let sess = &compiler.session();
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
@@ -810,12 +796,6 @@ pub fn create_global_ctxt<'tcx>(
         TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
     });
 
-    let ty::ResolverOutputs {
-        global_ctxt: untracked_resolutions,
-        ast_lowering: untracked_resolver_for_lowering,
-        untracked,
-    } = resolver_outputs;
-
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(move || {
             TyCtxt::create_global_ctxt(
@@ -832,19 +812,7 @@ pub fn create_global_ctxt<'tcx>(
         })
     });
 
-    let mut qcx = QueryContext { gcx };
-    qcx.enter(|tcx| {
-        let feed = tcx.feed_unit_query();
-        feed.resolver_for_lowering(
-            tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
-        );
-        feed.resolutions(tcx.arena.alloc(untracked_resolutions));
-        feed.output_filenames(tcx.arena.alloc(std::sync::Arc::new(outputs)));
-        feed.features_query(sess.features_untracked());
-        let feed = tcx.feed_local_crate();
-        feed.crate_name(crate_name);
-    });
-    qcx
+    QueryContext { gcx }
 }
 
 /// Runs the resolution, type-checking, region checking and other

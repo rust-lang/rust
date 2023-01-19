@@ -45,7 +45,7 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) -> Symbol {
+pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute]) -> Symbol {
     let validate = |s: Symbol, span: Option<Span>| {
         validate_crate_name(sess, s, span);
         s
@@ -71,7 +71,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
     if let Some((attr, s)) = attr_crate_name {
         return validate(s, Some(attr.span));
     }
-    if let Input::File(ref path) = *input {
+    if let Input::File(ref path) = sess.io.input {
         if let Some(s) = path.file_stem().and_then(|s| s.to_str()) {
             if s.starts_with('-') {
                 sess.emit_err(CrateNameInvalid { s });
