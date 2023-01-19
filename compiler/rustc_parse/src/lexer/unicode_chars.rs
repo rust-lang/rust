@@ -296,6 +296,7 @@ pub(crate) const UNICODE_ARRAY: &[(char, &str, &str)] = &[
     ('〉', "Right Angle Bracket", ">"),
     ('》', "Right Double Angle Bracket", ">"),
     ('＞', "Fullwidth Greater-Than Sign", ">"),
+    ('⩵', "Two Consecutive Equals Signs", "==")
 ];
 
 // FIXME: the lexer could be used to turn the ASCII version of unicode homoglyphs, instead of
@@ -325,6 +326,7 @@ const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
     ("+", "Plus Sign", Some(token::BinOp(token::Plus))),
     ("<", "Less-Than Sign", Some(token::Lt)),
     ("=", "Equals Sign", Some(token::Eq)),
+    ("==", "Double Equals Sign", Some(token::EqEq)),
     (">", "Greater-Than Sign", Some(token::Gt)),
     // FIXME: Literals are already lexed by this point, so we can't recover gracefully just by
     // spitting the correct token out.
