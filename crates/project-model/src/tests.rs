@@ -29,7 +29,7 @@ fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> CrateGr
         rustc_cfg: Vec::new(),
         cfg_overrides,
         toolchain: None,
-        target_layout: None,
+        target_layout: Err("target_data_layout not loaded".into()),
     };
     to_crate_graph(project_workspace)
 }
@@ -151,7 +151,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -221,7 +223,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -300,7 +304,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -379,7 +385,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -467,7 +475,9 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "feature=use_std",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -553,7 +563,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -625,7 +637,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -706,7 +720,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -787,7 +803,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -875,7 +893,9 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "feature=use_std",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -952,7 +972,9 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1024,7 +1046,9 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1105,7 +1129,9 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1186,7 +1212,9 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1274,7 +1302,9 @@ fn cargo_hello_world_project_model() {
                                 "feature=use_std",
                             ],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1343,7 +1373,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1388,7 +1420,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1423,7 +1457,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1458,7 +1494,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1493,7 +1531,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1538,7 +1578,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1573,7 +1615,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1681,7 +1725,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1716,7 +1762,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1751,7 +1799,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1786,7 +1836,9 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: None,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
                         env: Env {
                             entries: {},
                         },
