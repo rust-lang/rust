@@ -138,9 +138,9 @@ impl<'tcx> OutlivesEnvironmentBuilder<'tcx> {
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Param(param_b), r_a));
                 }
-                OutlivesBound::RegionSubAlias(r_a, kind, projection_b) => {
+                OutlivesBound::RegionSubAlias(r_a, alias_b) => {
                     self.region_bound_pairs
-                        .insert(ty::OutlivesPredicate(GenericKind::Alias(kind, projection_b), r_a));
+                        .insert(ty::OutlivesPredicate(GenericKind::Alias(alias_b), r_a));
                 }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => {
                     if let (ReEarlyBound(_) | ReFree(_), ReVar(vid_b)) = (r_a.kind(), r_b.kind()) {

@@ -167,7 +167,7 @@ pub struct Verify<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
-    Alias(ty::AliasKind, ty::AliasTy<'tcx>),
+    Alias(ty::AliasTy<'tcx>),
 }
 
 /// Describes the things that some `GenericKind` value `G` is known to
@@ -746,10 +746,7 @@ impl<'tcx> fmt::Debug for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{:?}", p),
-            GenericKind::Alias(ty::Projection, ref p) => write!(f, "{:?}", p),
-            GenericKind::Alias(ty::Opaque, ref p) => ty::tls::with(|tcx| {
-                write!(f, "{}", tcx.def_path_str_with_substs(p.def_id, tcx.lift(p.substs).unwrap()))
-            }),
+            GenericKind::Alias(ref p) => write!(f, "{:?}", p),
         }
     }
 }
@@ -758,10 +755,7 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             GenericKind::Param(ref p) => write!(f, "{}", p),
-            GenericKind::Alias(ty::Projection, ref p) => write!(f, "{}", p),
-            GenericKind::Alias(ty::Opaque, ref p) => ty::tls::with(|tcx| {
-                write!(f, "{}", tcx.def_path_str_with_substs(p.def_id, tcx.lift(p.substs).unwrap()))
-            }),
+            GenericKind::Alias(ref p) => write!(f, "{}", p),
         }
     }
 }
@@ -770,7 +764,7 @@ impl<'tcx> GenericKind<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
-            GenericKind::Alias(kind, data) => tcx.mk_ty(ty::Alias(kind, data)),
+            GenericKind::Alias(ref p) => p.to_ty(tcx),
         }
     }
 }

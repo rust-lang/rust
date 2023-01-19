@@ -261,14 +261,15 @@ impl<'tcx> Elaborator<'tcx> {
 
                             Component::UnresolvedInferenceVariable(_) => None,
 
-                            Component::Alias(kind, data) => {
-                                let ty = tcx.mk_ty(ty::Alias(kind, data));
+                            Component::Alias(alias_ty) => {
+                                // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
+                                // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
                                 Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
-                                    ty::OutlivesPredicate(ty, r_min),
+                                    ty::OutlivesPredicate(alias_ty.to_ty(tcx), r_min),
                                 )))
                             }
 
-                            Component::EscapingProjection(_) => {
+                            Component::EscapingAlias(_) => {
                                 // We might be able to do more here, but we don't
                                 // want to deal with escaping vars right now.
                                 None

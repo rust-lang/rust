@@ -1,11 +1,10 @@
 use crate::infer::outlives::components::{compute_components_recursive, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
-use crate::infer::{GenericKind, VerifyBound};
+use crate::infer::VerifyBound;
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_hir::def_id::DefId;
 use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, OutlivesPredicate, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
 
 use smallvec::smallvec;
 
@@ -94,29 +93,26 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// this list.
     pub fn approx_declared_bounds_from_env(
         &self,
-        generic: GenericKind<'tcx>,
+        alias_ty: ty::AliasTy<'tcx>,
     ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
-        let projection_ty = generic.to_ty(self.tcx);
-        let erased_projection_ty = self.tcx.erase_regions(projection_ty);
-        self.declared_generic_bounds_from_env_for_erased_ty(erased_projection_ty)
+        let erased_alias_ty = self.tcx.erase_regions(alias_ty.to_ty(self.tcx));
+        self.declared_generic_bounds_from_env_for_erased_ty(erased_alias_ty)
     }
 
     #[instrument(level = "debug", skip(self, visited))]
-    pub fn projection_opaque_bounds(
+    pub fn alias_bound(
         &self,
-        generic: GenericKind<'tcx>,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        alias_ty: ty::AliasTy<'tcx>,
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
-        let generic_ty = generic.to_ty(self.tcx);
+        let alias_ty_as_ty = alias_ty.to_ty(self.tcx);
 
         // Search the env for where clauses like `P: 'a`.
-        let projection_opaque_bounds = self
-            .approx_declared_bounds_from_env(generic)
+        let env_bounds = self
+            .approx_declared_bounds_from_env(alias_ty)
             .into_iter()
             .map(|binder| {
-                if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars() && ty == generic_ty {
+                if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars() && ty == alias_ty_as_ty {
                     // Micro-optimize if this is an exact match (this
                     // occurs often when there are no region variables
                     // involved).
@@ -126,19 +122,19 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                     VerifyBound::IfEq(verify_if_eq_b)
                 }
             });
-        // Extend with bounds that we can find from the trait.
-        let trait_bounds =
-            self.declared_region_bounds(def_id, substs).map(|r| VerifyBound::OutlivedBy(r));
+
+        // Extend with bounds that we can find from the definition.
+        let definition_bounds =
+            self.declared_bounds_from_definition(alias_ty).map(|r| VerifyBound::OutlivedBy(r));
 
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
             let mut components = smallvec![];
-            compute_components_recursive(self.tcx, generic_ty.into(), &mut components, visited);
+            compute_components_recursive(self.tcx, alias_ty_as_ty.into(), &mut components, visited);
             self.bound_from_components(&components, visited)
         };
 
-        VerifyBound::AnyBound(projection_opaque_bounds.chain(trait_bounds).collect())
-            .or(recursive_bound)
+        VerifyBound::AnyBound(env_bounds.chain(definition_bounds).collect()).or(recursive_bound)
     }
 
     fn bound_from_components(
@@ -149,10 +145,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let mut bounds = components
             .iter()
             .map(|component| self.bound_from_single_component(component, visited))
-            .filter(|bound| {
-                // Remove bounds that must hold, since they are not interesting.
-                !bound.must_hold()
-            });
+            // Remove bounds that must hold, since they are not interesting.
+            .filter(|bound| !bound.must_hold());
 
         match (bounds.next(), bounds.next()) {
             (Some(first), None) => first,
@@ -170,13 +164,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         match *component {
             Component::Region(lt) => VerifyBound::OutlivedBy(lt),
             Component::Param(param_ty) => self.param_bound(param_ty),
-            Component::Alias(kind, data) => self.projection_opaque_bounds(
-                GenericKind::Alias(kind, data),
-                data.def_id,
-                data.substs,
-                visited,
-            ),
-            Component::EscapingProjection(ref components) => {
+            Component::Alias(alias_ty) => self.alias_bound(alias_ty, visited),
+            Component::EscapingAlias(ref components) => {
                 self.bound_from_components(components, visited)
             }
             Component::UnresolvedInferenceVariable(v) => {
@@ -292,16 +281,15 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///
     /// This is for simplicity, and because we are not really smart
     /// enough to cope with such bounds anywhere.
-    pub fn declared_region_bounds(
+    pub fn declared_bounds_from_definition(
         &self,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        alias_ty: ty::AliasTy<'tcx>,
     ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
-        let bounds = tcx.item_bounds(def_id);
+        let bounds = tcx.item_bounds(alias_ty.def_id);
         trace!("{:#?}", bounds.0);
         bounds
-            .subst_iter(tcx, substs)
+            .subst_iter(tcx, alias_ty.substs)
             .filter_map(|p| p.to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
             .map(|OutlivesPredicate(_, r)| r)

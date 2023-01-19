@@ -154,10 +154,8 @@ fn implied_bounds_from_components<'tcx>(
             match component {
                 Component::Region(r) => Some(OutlivesBound::RegionSubRegion(sub_region, r)),
                 Component::Param(p) => Some(OutlivesBound::RegionSubParam(sub_region, p)),
-                Component::Alias(kind, p) => {
-                    Some(OutlivesBound::RegionSubAlias(sub_region, kind, p))
-                }
-                Component::EscapingProjection(_) =>
+                Component::Alias(p) => Some(OutlivesBound::RegionSubAlias(sub_region, p)),
+                Component::EscapingAlias(_) =>
                 // If the projection has escaping regions, don't
                 // try to infer any implied bounds even for its
                 // free components. This is conservative, because
