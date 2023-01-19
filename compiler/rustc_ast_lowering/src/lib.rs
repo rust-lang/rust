@@ -474,7 +474,7 @@ struct AsyncReturn {
 }
 
 impl AsyncReturn {
-    /// Creates a new Option<AsyncReturn> from an Option<(NodeId, Span)> that is typically
+    /// Creates a new `Option<AsyncReturn>` from an `Option<(NodeId, Span)>` that is typically
     /// returned from `Async::opt_node_id()` and a list of attributes to determine whether the
     /// resulting type should be Send.
     fn new_opt(opt_return_id: Option<(NodeId, Span)>, attrs: &[Attribute]) -> Option<Self> {
