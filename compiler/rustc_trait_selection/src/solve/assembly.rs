@@ -79,7 +79,7 @@ pub(super) enum CandidateSource {
     AliasBound(usize),
 }
 
-pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
+pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
     fn self_ty(self) -> Ty<'tcx>;
 
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self;
@@ -124,6 +124,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
+        debug_assert_eq!(goal, self.infcx.resolve_vars_if_possible(goal));
+
         // HACK: `_: Trait` is ambiguous, because it may be satisfied via a builtin rule,
         // object bound, alias bound, etc. We are unable to determine this until we can at
         // least structually resolve the type one layer.
@@ -179,6 +181,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 Ok((_, certainty)) => certainty,
                 Err(NoSolution) => return,
             };
+            let normalized_ty = self.infcx.resolve_vars_if_possible(normalized_ty);
 
             // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
             // This doesn't work as long as we use `CandidateSource` in winnowing.
