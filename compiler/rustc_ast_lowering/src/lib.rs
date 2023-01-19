@@ -1801,6 +1801,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
         let fn_def_id = self.local_def_id(fn_node_id);
+        let fn_local_id = self.lower_node_id(fn_node_id).local_id;
 
         let opaque_ty_def_id =
             self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait, opaque_ty_span);
@@ -1967,6 +1968,31 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ));
                 debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
+                let is_async_send = this.tcx.features().async_fn_in_trait
+                    && (true
+                        || this.attrs.get(&fn_local_id).map_or(false, |attrs| {
+                            attrs.into_iter().any(|attr| attr.has_name(sym::async_send))
+                        }));
+
+                // Add Send bound if `#[async_send]` attribute is present
+                let bounds = if is_async_send {
+                    let send_bound = hir::GenericBound::LangItemTrait(
+                        hir::LangItem::Send,
+                        this.lower_span(span),
+                        this.next_id(),
+                        this.arena.alloc(hir::GenericArgs {
+                            args: &[],
+                            bindings: &[],
+                            parenthesized: false,
+                            span_ext: DUMMY_SP,
+                        }),
+                    );
+
+                    arena_vec![this; future_bound, send_bound]
+                } else {
+                    arena_vec![this; future_bound]
+                };
+
                 let opaque_ty_item = hir::OpaqueTy {
                     generics: this.arena.alloc(hir::Generics {
                         params: generic_params,
@@ -1975,7 +2001,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         where_clause_span: this.lower_span(span),
                         span: this.lower_span(span),
                     }),
-                    bounds: arena_vec![this; future_bound],
+                    bounds,
                     origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
                     in_trait,
                 };

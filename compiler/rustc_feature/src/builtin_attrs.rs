@@ -490,6 +490,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // RFC 2397
     gated!(do_not_recommend, Normal, template!(Word), WarnFollowing, experimental!(do_not_recommend)),
 
+    gated!(async_send, Normal, template!(Word), ErrorFollowing, async_fn_in_trait,
+        "`async_send` is a temporary placeholder for marking async methods as returning a future \
+        that is also Send and may be removed or renamed in the future."),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

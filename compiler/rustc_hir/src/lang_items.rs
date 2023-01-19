@@ -216,6 +216,7 @@ language_item_table! {
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
+    Send,                    sym::send,                send_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     GeneratorState,          sym::generator_state,     gen_state,                  Target::Enum,           GenericRequirement::None;
     Generator,               sym::generator,           gen_trait,                  Target::Trait,          GenericRequirement::Minimum(1);
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
