@@ -1535,9 +1535,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Mod(ref m) => {
                 return self.encode_info_for_mod(item.owner_id.def_id, m);
             }
-            hir::ItemKind::OpaqueTy(..) => {
+            hir::ItemKind::OpaqueTy(ref opaque) => {
                 self.encode_explicit_item_bounds(def_id);
-                record!(self.tables.is_type_alias_impl_trait[def_id] <- self.tcx.is_type_alias_impl_trait(def_id));
+                if matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias) {
+                    self.tables.is_type_alias_impl_trait.set(def_id.index, ());
+                }
             }
             hir::ItemKind::Enum(..) => {
                 let adt_def = self.tcx.adt_def(def_id);

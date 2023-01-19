@@ -223,7 +223,15 @@ provide! { tcx, def_id, other, cdata,
     generator_kind => { table }
     trait_def => { table }
     deduced_param_attrs => { table }
-    is_type_alias_impl_trait => { table }
+    is_type_alias_impl_trait => {
+        debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
+        cdata
+            .root
+            .tables
+            .is_type_alias_impl_trait
+            .get(cdata, def_id.index)
+            .is_some()
+    }
     collect_trait_impl_trait_tys => {
         Ok(cdata
             .root
