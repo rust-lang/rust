@@ -603,6 +603,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let substs = ty::InternalSubsts::for_item(self.tcx, m.def_id, |param, _| {
                     self.var_for_def(deref.span, param)
                 });
+                let mutability =
+                    match self.tcx.fn_sig(m.def_id).skip_binder().input(0).skip_binder().kind() {
+                        ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
+                        ty::Ref(_, _, _) => "&",
+                        _ => "",
+                    };
                 vec![
                     (
                         deref.span.until(base.span),
@@ -611,18 +617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             with_no_trimmed_paths!(
                                 self.tcx.def_path_str_with_substs(m.def_id, substs,)
                             ),
-                            match self
-                                .tcx
-                                .fn_sig(m.def_id)
-                                .subst_identity()
-                                .input(0)
-                                .skip_binder()
-                                .kind()
-                            {
-                                ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
-                                ty::Ref(_, _, _) => "&",
-                                _ => "",
-                            },
+                            mutability,
                         ),
                     ),
                     match &args[..] {

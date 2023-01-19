@@ -921,26 +921,22 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         expected: Ty<'tcx>,
     ) -> bool {
         match method.kind {
-            ty::AssocKind::Fn => {
-                let fty = self.tcx.fn_sig(method.def_id);
-                self.probe(|_| {
-                    let substs = self.fresh_substs_for_item(self.span, method.def_id);
-                    let fty = fty.subst(self.tcx, substs);
-                    let fty =
-                        self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
+            ty::AssocKind::Fn => self.probe(|_| {
+                let substs = self.fresh_substs_for_item(self.span, method.def_id);
+                let fty = self.tcx.fn_sig(method.def_id).subst(self.tcx, substs);
+                let fty = self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
 
-                    if let Some(self_ty) = self_ty {
-                        if self
-                            .at(&ObligationCause::dummy(), self.param_env)
-                            .sup(fty.inputs()[0], self_ty)
-                            .is_err()
-                        {
-                            return false;
-                        }
+                if let Some(self_ty) = self_ty {
+                    if self
+                        .at(&ObligationCause::dummy(), self.param_env)
+                        .sup(fty.inputs()[0], self_ty)
+                        .is_err()
+                    {
+                        return false;
                     }
-                    self.can_sub(self.param_env, fty.output(), expected).is_ok()
-                })
-            }
+                }
+                self.can_sub(self.param_env, fty.output(), expected).is_ok()
+            }),
             _ => false,
         }
     }

@@ -161,7 +161,8 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             .as_ref()
             .assert_crate_local()
             .lint_root;
-        let fn_sig = self.tcx.fn_sig(fn_id).skip_binder();
+        // FIXME: use existing printing routines to print the function signature
+        let fn_sig = self.tcx.fn_sig(fn_id).subst(self.tcx, fn_substs);
         let unsafety = fn_sig.unsafety().prefix_str();
         let abi = match fn_sig.abi() {
             Abi::Rust => String::from(""),

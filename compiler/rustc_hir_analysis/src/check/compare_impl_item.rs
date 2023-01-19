@@ -422,8 +422,8 @@ fn extract_bad_args_for_implies_lint<'tcx>(
 
     // Map late-bound regions from trait to impl, so the names are right.
     let mapping = std::iter::zip(
-        tcx.fn_sig(trait_m.def_id).subst_identity().bound_vars(),
-        tcx.fn_sig(impl_m.def_id).subst_identity().bound_vars(),
+        tcx.fn_sig(trait_m.def_id).skip_binder().bound_vars(),
+        tcx.fn_sig(impl_m.def_id).skip_binder().bound_vars(),
     )
     .filter_map(|(impl_bv, trait_bv)| {
         if let ty::BoundVariableKind::Region(impl_bv) = impl_bv
@@ -540,7 +540,7 @@ fn compare_asyncness<'tcx>(
     trait_item_span: Option<Span>,
 ) -> Result<(), ErrorGuaranteed> {
     if tcx.asyncness(trait_m.def_id) == hir::IsAsync::Async {
-        match tcx.fn_sig(impl_m.def_id).subst_identity().skip_binder().output().kind() {
+        match tcx.fn_sig(impl_m.def_id).skip_binder().skip_binder().output().kind() {
             ty::Alias(ty::Opaque, ..) => {
                 // allow both `async fn foo()` and `fn foo() -> impl Future`
             }

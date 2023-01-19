@@ -198,6 +198,7 @@ where
                 // Something like `fn() -> Priv {my_func}` is considered a private type even if
                 // `my_func` is public, so we need to visit signatures.
                 if let ty::FnDef(..) = ty.kind() {
+                    // FIXME: this should probably use `substs` from `FnDef`
                     tcx.fn_sig(def_id).subst_identity().visit_with(self)?;
                 }
                 // Inherent static methods don't have self type in substs.
