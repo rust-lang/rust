@@ -11,27 +11,20 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body:
     {
         if let FnKind::ItemFn(ident, generics, _) = kind {
             for param in generics.params {
-                if param.is_impl_trait()
-                    && !param.name.ident().as_str().contains('<')
-                    && !param.name.ident().as_str().contains('(')
-                {
+                if param.is_impl_trait() {
                     // No generics with nested generics, and no generics like FnMut(x)
                     span_lint_and_then(
                         cx,
                         IMPL_TRAIT_IN_PARAMS,
                         param.span,
-                        &format!("'{}' in the function's parameters", param.name.ident().as_str()),
+                        "'`impl Trait` used as a function parameter'",
                         |diag| {
                             let next_letter = next_valid_letter(generics);
                             if let Some(gen_span) = generics.span_for_param_suggestion() {
                                 diag.span_suggestion_with_style(
                                     gen_span,
-                                    format!(
-                                        "create a generic type here and replace that `{}` with `{}`",
-                                        param.name.ident().as_str(),
-                                        next_letter
-                                    ),
-                                    ", T: Trait",
+                                    "add a type paremeter, `{}`: `{}`",
+                                    format!(", {next_letter}: {}", &param.name.ident().as_str()[5..]),
                                     rustc_errors::Applicability::MaybeIncorrect,
                                     rustc_errors::SuggestionStyle::ShowAlways,
                                 );
@@ -46,12 +39,8 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body:
                                         ident.span.ctxt(),
                                         ident.span.parent(),
                                     ),
-                                    format!(
-                                        "create a generic type here and replace that '{}' with `{}`",
-                                        param.name.ident().as_str(),
-                                        next_letter
-                                    ),
-                                    "<T: Trait>",
+                                    "add a type paremeter",
+                                    format!("<{next_letter}: {}>", &param.name.ident().as_str()[5..]),
                                     rustc_errors::Applicability::MaybeIncorrect,
                                     rustc_errors::SuggestionStyle::ShowAlways,
                                 );

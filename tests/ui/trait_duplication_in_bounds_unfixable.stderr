@@ -1,5 +1,5 @@
 error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:7:15
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:6:15
    |
 LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
    |               ^^^^^
@@ -12,7 +12,7 @@ LL | #![deny(clippy::trait_duplication_in_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:7:23
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:6:23
    |
 LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
    |                       ^^^^^^^
@@ -20,7 +20,7 @@ LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:36:15
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:35:15
    |
 LL |         Self: Default;
    |               ^^^^^^^
@@ -28,7 +28,7 @@ LL |         Self: Default;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:50:15
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:49:15
    |
 LL |         Self: Default + Clone;
    |               ^^^^^^^
@@ -36,7 +36,7 @@ LL |         Self: Default + Clone;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:56:15
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:55:15
    |
 LL |         Self: Default + Clone;
    |               ^^^^^^^
@@ -44,7 +44,7 @@ LL |         Self: Default + Clone;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:56:25
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:55:25
    |
 LL |         Self: Default + Clone;
    |                         ^^^^^
@@ -52,7 +52,7 @@ LL |         Self: Default + Clone;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:59:15
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:58:15
    |
 LL |         Self: Default;
    |               ^^^^^^^
@@ -60,7 +60,7 @@ LL |         Self: Default;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:94:15
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:93:15
    |
 LL |         Self: Iterator<Item = Foo>,
    |               ^^^^^^^^^^^^^^^^^^^^

@@ -1,22 +1,22 @@
-error: 'impl Trait' in the function's parameters
+error: '`impl Trait` used as a function parameter'
   --> $DIR/impl_trait_in_params.rs:8:13
    |
 LL | pub fn a(_: impl Trait) {}
    |             ^^^^^^^^^^
    |
    = note: `-D clippy::impl-trait-in-params` implied by `-D warnings`
-help: create a generic type here and replace that 'impl Trait' with `T`
+help: add a type paremeter
    |
 LL | pub fn a<T: Trait>(_: impl Trait) {}
    |         ++++++++++
 
-error: 'impl Trait' in the function's parameters
+error: '`impl Trait` used as a function parameter'
   --> $DIR/impl_trait_in_params.rs:9:29
    |
 LL | pub fn c<C: Trait>(_: C, _: impl Trait) {}
    |                             ^^^^^^^^^^
    |
-help: create a generic type here and replace that `impl Trait` with `T`
+help: add a type paremeter, `{}`: `{}`
    |
 LL | pub fn c<C: Trait, T: Trait>(_: C, _: impl Trait) {}
    |                  ++++++++++
