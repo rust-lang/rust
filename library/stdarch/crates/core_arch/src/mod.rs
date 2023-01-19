@@ -255,8 +255,8 @@ pub mod arch {
     /// Platform-specific intrinsics for the `NVPTX` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "nvptx", target_arch = "nvptx64", doc))]
-    #[doc(cfg(any(target_arch = "nvptx", target_arch = "nvptx64")))]
+    #[cfg(any(target_arch = "nvptx64", doc))]
+    #[doc(cfg(target_arch = "nvptx64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod nvptx {
         pub use crate::core_arch::nvptx::*;
@@ -299,6 +299,6 @@ mod powerpc;
 #[doc(cfg(target_arch = "powerpc64"))]
 mod powerpc64;
 
-#[cfg(any(target_arch = "nvptx", target_arch = "nvptx64", doc))]
-#[doc(cfg(any(target_arch = "nvptx", target_arch = "nvptx64")))]
+#[cfg(any(target_arch = "nvptx64", doc))]
+#[doc(cfg(target_arch = "nvptx64"))]
 mod nvptx;
