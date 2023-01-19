@@ -5,12 +5,21 @@ LL |     with_signature(x, |y| y)
    |                       ^^^
    |
    = note: defining type: no_region::<'_#1r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn std::fmt::Debug + '_#2r)>,
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::boxed::Box, [Param(T/#1), Adt(std::alloc::Global, [])])])]; c_variadic: false)->Adt(std::boxed::Box, [Dynamic([Binder(Trait(std::fmt::Debug), [])], '_#2r, Dyn), Adt(std::alloc::Global, [])]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 3
-   = note: where T: '_#2r
+   = note: where Param(T/#1): '_#2r
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:15:1

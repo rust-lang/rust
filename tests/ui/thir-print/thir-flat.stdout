@@ -14,7 +14,9 @@ Thir {
     ],
     exprs: [
         Expr {
-            ty: (),
+            ty: Tuple(
+                [],
+            ),
             temp_lifetime: Some(
                 Node(2),
             ),
@@ -24,7 +26,9 @@ Thir {
             },
         },
         Expr {
-            ty: (),
+            ty: Tuple(
+                [],
+            ),
             temp_lifetime: Some(
                 Node(2),
             ),
@@ -38,7 +42,9 @@ Thir {
             },
         },
         Expr {
-            ty: (),
+            ty: Tuple(
+                [],
+            ),
             temp_lifetime: Some(
                 Node(2),
             ),

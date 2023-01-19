@@ -772,9 +772,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // MyNewtype and then the scalar in there).
         match op.layout.abi {
             Abi::Uninhabited => {
-                throw_validation_failure!(self.path,
-                    { "a value of uninhabited type {:?}", op.layout.ty }
-                );
+                ty::print::with_no_trimmed_paths!(throw_validation_failure!(self.path,
+                    { "a value of uninhabited type {}", op.layout.ty }
+                ));
             }
             Abi::Scalar(scalar_layout) => {
                 if !scalar_layout.is_uninit_valid() {

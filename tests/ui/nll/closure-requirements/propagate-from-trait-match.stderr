@@ -5,12 +5,21 @@ LL |     establish_relationships(value, |value| {
    |                                    ^^^^^^^
    |
    = note: defining type: supply::<'_#1r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((T,)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Param(T/#1)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 2
-   = note: where T: '_#1r
+   = note: where Param(T/#1): '_#1r
 
 note: no external requirements
   --> $DIR/propagate-from-trait-match.rs:28:1

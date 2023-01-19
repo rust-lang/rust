@@ -5,9 +5,25 @@ LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply::{closure#0} with closure substs [
-               i16,
-               for<Region(BrAnon(0, None)), Region(BrAnon(1, None))> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }) u32>)),
-               (),
+               Int(
+                   I16,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#1r, Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }), Uint(U32), Not), Not)]), Adt(std::cell::Cell, [Ref('_#2r, Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }), Uint(U32), Not), Not)]), Adt(std::cell::Cell, [Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }), Ref('_#3r, Uint(U32), Not), Not)]), Adt(std::cell::Cell, [Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }), Uint(U32), Not)]), Adt(std::cell::Cell, [Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }), Uint(U32), Not)])])]; c_variadic: false)->Tuple([]),
+                       [
+                           Region(
+                               BrAnon(0, None),
+                           ),
+                           Region(
+                               BrAnon(1, None),
+                           ),
+                       ],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: late-bound region is '_#4r
    = note: late-bound region is '_#5r

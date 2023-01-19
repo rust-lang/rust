@@ -5,9 +5,28 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                      ^^^^^^
    |
    = note: defining type: test::{closure#0} with closure substs [
-               i16,
-               for<Region(BrAnon(0, None)), Region(BrAnon(1, None)), Region(BrAnon(2, None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) mut &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }) i32, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(2, None) }) i32)),
-               (),
+               Int(
+                   I16,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }), Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }), Int(I32), Not), Mut), Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(2, None) }), Int(I32), Not)])]; c_variadic: false)->Tuple([]),
+                       [
+                           Region(
+                               BrAnon(0, None),
+                           ),
+                           Region(
+                               BrAnon(1, None),
+                           ),
+                           Region(
+                               BrAnon(2, None),
+                           ),
+                       ],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
 
 error: lifetime may not live long enough

@@ -5,9 +5,22 @@ LL |     for<'a> || -> () { for<'c> |_: &'a ()| -> () {}; };
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: main::{closure#0}::{closure#0} with closure substs [
-               i8,
-               extern "rust-call" fn((&(),)),
-               (),
+               Int(
+                   I8,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Ref('_#1r, Tuple([]), Not)])]; c_variadic: false)->Tuple([]),
+                       [
+                           Region(
+                               BrNamed(DefId(0:7 ~ nested_closures_regions[ac46]::main::{closure#0}::{closure#0}::'c), 'c),
+                           ),
+                       ],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: late-bound region is '_#4r
    = note: late-bound region is '_#2r
@@ -22,9 +35,22 @@ LL |     for<'a> || -> () { for<'c> |_: &'a ()| -> () {}; };
    |     ^^^^^^^^^^^^^^^^
    |
    = note: defining type: main::{closure#0} with closure substs [
-               i8,
-               extern "rust-call" fn(()),
-               (),
+               Int(
+                   I8,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([])]; c_variadic: false)->Tuple([]),
+                       [
+                           Region(
+                               BrNamed(DefId(0:5 ~ nested_closures_regions[ac46]::main::{closure#0}::'a), 'a),
+                           ),
+                       ],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: late-bound region is '_#2r
 

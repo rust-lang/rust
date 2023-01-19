@@ -5,13 +5,22 @@ LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
    = note: defining type: no_region::<T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#1r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#1r, Tuple([]), Not)]), Param(T/#0)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: late-bound region is '_#2r
    = note: number of external vids: 3
-   = note: where T: '_#1r
+   = note: where Param(T/#0): '_#1r
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:26:1
@@ -39,12 +48,21 @@ LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
    = note: defining type: correct_region::<'_#1r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#2r, Tuple([]), Not)]), Param(T/#1)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 3
-   = note: where T: '_#2r
+   = note: where Param(T/#1): '_#2r
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:38:1
@@ -63,13 +81,22 @@ LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
    = note: defining type: wrong_region::<'_#1r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#2r, Tuple([]), Not)]), Param(T/#1)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: late-bound region is '_#3r
    = note: number of external vids: 4
-   = note: where T: '_#2r
+   = note: where Param(T/#1): '_#2r
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:59:1
@@ -99,12 +126,21 @@ LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
    = note: defining type: outlives_region::<'_#1r, '_#2r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#3r, Tuple([]), Not)]), Param(T/#2)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 4
-   = note: where T: '_#3r
+   = note: where Param(T/#2): '_#3r
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:71:1

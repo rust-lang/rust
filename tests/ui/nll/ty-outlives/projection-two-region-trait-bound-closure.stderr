@@ -5,13 +5,22 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
    = note: defining type: no_relationships_late::<'_#1r, '_#2r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#3r, Tuple([]), Not)]), Param(T/#2)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: late-bound region is '_#4r
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType: '_#3r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#2), ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)], def_id: DefId(0:7 ~ projection_two_region_trait_bound_closure[f373]::Anything::AssocType) }): '_#3r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:34:1
@@ -39,12 +48,21 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
    = note: defining type: no_relationships_early::<'_#1r, '_#2r, '_#3r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#4r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#4r, Tuple([]), Not)]), Param(T/#3)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: '_#4r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#3), ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)], def_id: DefId(0:7 ~ projection_two_region_trait_bound_closure[f373]::Anything::AssocType) }): '_#4r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:43:1
@@ -73,12 +91,21 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
    = note: defining type: projection_outlives::<'_#1r, '_#2r, '_#3r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#4r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#4r, Tuple([]), Not)]), Param(T/#3)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: '_#4r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#3), ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)], def_id: DefId(0:7 ~ projection_two_region_trait_bound_closure[f373]::Anything::AssocType) }): '_#4r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:53:1
@@ -98,12 +125,21 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
    = note: defining type: elements_outlive1::<'_#1r, '_#2r, '_#3r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#4r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#4r, Tuple([]), Not)]), Param(T/#3)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: '_#4r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#3), ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)], def_id: DefId(0:7 ~ projection_two_region_trait_bound_closure[f373]::Anything::AssocType) }): '_#4r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:65:1
@@ -123,12 +159,21 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
    = note: defining type: elements_outlive2::<'_#1r, '_#2r, '_#3r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#4r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#4r, Tuple([]), Not)]), Param(T/#3)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 5
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: '_#4r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#3), ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)], def_id: DefId(0:7 ~ projection_two_region_trait_bound_closure[f373]::Anything::AssocType) }): '_#4r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:74:1
@@ -148,13 +193,22 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
    = note: defining type: two_regions::<'_#1r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#2r, Tuple([]), Not)]), Param(T/#1)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: late-bound region is '_#3r
    = note: number of external vids: 4
-   = note: where <T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(0, 'b)>>::AssocType: '_#2r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#1), ReEarlyBound(0, 'b), ReEarlyBound(0, 'b)], def_id: DefId(0:7 ~ projection_two_region_trait_bound_closure[f373]::Anything::AssocType) }): '_#2r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:83:1
@@ -189,12 +243,21 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
    = note: defining type: two_regions_outlive::<'_#1r, '_#2r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#3r, Tuple([]), Not)]), Param(T/#2)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 4
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(1, 'b)>>::AssocType: '_#3r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#2), ReEarlyBound(1, 'b), ReEarlyBound(1, 'b)], def_id: DefId(0:7 ~ projection_two_region_trait_bound_closure[f373]::Anything::AssocType) }): '_#3r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:92:1
@@ -214,12 +277,21 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
    = note: defining type: one_region::<'_#1r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#2r, Tuple([]), Not)]), Param(T/#1)])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 3
-   = note: where <T as Anything<ReEarlyBound(0, 'a), ReEarlyBound(0, 'a)>>::AssocType: '_#2r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#1), ReEarlyBound(0, 'a), ReEarlyBound(0, 'a)], def_id: DefId(0:7 ~ projection_two_region_trait_bound_closure[f373]::Anything::AssocType) }): '_#2r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:101:1

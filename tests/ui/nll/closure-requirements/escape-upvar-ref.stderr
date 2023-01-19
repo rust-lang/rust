@@ -5,9 +5,37 @@ LL |         let mut closure = || p = &y;
    |                           ^^
    |
    = note: defining type: test::{closure#0} with closure substs [
-               i16,
-               extern "rust-call" fn(()),
-               (&'_#1r mut &'_#2r i32, &'_#3r i32),
+               Int(
+                   I16,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([])]; c_variadic: false)->Tuple([]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [
+                       Ref(
+                           '_#1r,
+                           Ref(
+                               '_#2r,
+                               Int(
+                                   I32,
+                               ),
+                               Not,
+                           ),
+                           Mut,
+                       ),
+                       Ref(
+                           '_#3r,
+                           Int(
+                               I32,
+                           ),
+                           Not,
+                       ),
+                   ],
+               ),
            ]
    = note: number of external vids: 4
    = note: where '_#3r: '_#2r

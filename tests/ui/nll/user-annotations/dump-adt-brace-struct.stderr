@@ -1,5 +1,5 @@
-error: user substs: UserSubsts { substs: [&ReStatic u32], user_self_ty: None }
-  --> $DIR/dump-adt-brace-struct.rs:19:5
+error: user substs: UserSubsts { substs: [Ref(ReStatic, Uint(U32), Not)], user_self_ty: None }
+  --> $DIR/dump-adt-brace-struct.rs:21:5
    |
 LL |     SomeStruct::<&'static u32> { t: &22 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

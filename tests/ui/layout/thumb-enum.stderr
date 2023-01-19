@@ -1,4 +1,4 @@
-error: layout_of(A) = Layout {
+error: layout_of(Adt(A, [])) = Layout {
            size: Size(1 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
@@ -68,7 +68,7 @@ error: layout_of(A) = Layout {
 LL | enum A { Apple }
    | ^^^^^^
 
-error: layout_of(B) = Layout {
+error: layout_of(Adt(B, [])) = Layout {
            size: Size(1 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
@@ -138,7 +138,7 @@ error: layout_of(B) = Layout {
 LL | enum B { Banana = 255, }
    | ^^^^^^
 
-error: layout_of(C) = Layout {
+error: layout_of(Adt(C, [])) = Layout {
            size: Size(2 bytes),
            align: AbiAndPrefAlign {
                abi: Align(2 bytes),
@@ -208,7 +208,7 @@ error: layout_of(C) = Layout {
 LL | enum C { Chaenomeles = 256, }
    | ^^^^^^
 
-error: layout_of(P) = Layout {
+error: layout_of(Adt(P, [])) = Layout {
            size: Size(4 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
@@ -278,7 +278,7 @@ error: layout_of(P) = Layout {
 LL | enum P { Peach = 0x1000_0000isize, }
    | ^^^^^^
 
-error: layout_of(T) = Layout {
+error: layout_of(Adt(T, [])) = Layout {
            size: Size(4 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),

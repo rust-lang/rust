@@ -1,23 +1,23 @@
-error: user substs: UserSubsts { substs: [&ReStatic u32], user_self_ty: None }
-  --> $DIR/dump-fn-method.rs:29:13
+error: user substs: UserSubsts { substs: [Ref(ReStatic, Uint(U32), Not)], user_self_ty: None }
+  --> $DIR/dump-fn-method.rs:28:13
    |
 LL |     let x = foo::<&'static u32>;
    |             ^^^^^^^^^^^^^^^^^^^
 
-error: user substs: UserSubsts { substs: [^0, u32, ^1], user_self_ty: None }
-  --> $DIR/dump-fn-method.rs:35:13
+error: user substs: UserSubsts { substs: [Bound(DebruijnIndex(0), BoundTy { var: 0, kind: Anon }), Uint(U32), Bound(DebruijnIndex(0), BoundTy { var: 1, kind: Anon })], user_self_ty: None }
+  --> $DIR/dump-fn-method.rs:34:13
    |
 LL |     let x = <_ as Bazoom<u32>>::method::<_>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: user substs: UserSubsts { substs: [u8, &ReStatic u16, u32], user_self_ty: None }
-  --> $DIR/dump-fn-method.rs:44:13
+error: user substs: UserSubsts { substs: [Uint(U8), Ref(ReStatic, Uint(U16), Not), Uint(U32)], user_self_ty: None }
+  --> $DIR/dump-fn-method.rs:43:13
    |
 LL |     let x = <u8 as Bazoom<&'static u16>>::method::<u32>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: user substs: UserSubsts { substs: [^0, ^1, u32], user_self_ty: None }
-  --> $DIR/dump-fn-method.rs:52:5
+error: user substs: UserSubsts { substs: [Bound(DebruijnIndex(0), BoundTy { var: 0, kind: Anon }), Bound(DebruijnIndex(0), BoundTy { var: 1, kind: Anon }), Uint(U32)], user_self_ty: None }
+  --> $DIR/dump-fn-method.rs:51:5
    |
 LL |     y.method::<u32>(44, 66);
    |     ^^^^^^^^^^^^^^^^^^^^^^^

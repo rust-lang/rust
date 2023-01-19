@@ -1,4 +1,4 @@
-print-type-size type: `[generator@$DIR/generator_discr_placement.rs:11:13: 11:15]`: 8 bytes, alignment: 4 bytes
+print-type-size type: `Generator(DefId(0:4 ~ generator_discr_placement[c59c]::foo::{closure#0}), [Tuple([]), Tuple([]), Tuple([]), GeneratorWitness(Binder([Int(I32), Tuple([])], [])), Tuple([])], Movable)`: 8 bytes, alignment: 4 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Suspend0`: 7 bytes
 print-type-size         padding: 3 bytes

@@ -5,9 +5,22 @@ LL |     foo(cell, |cell_a, cell_x| {
    |               ^^^^^^^^^^^^^^^^
    |
    = note: defining type: case1::{closure#0} with closure substs [
-               i32,
-               for<Region(BrAnon(0, None))> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) u32>)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#1r, Uint(U32), Not)]), Adt(std::cell::Cell, [Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }), Uint(U32), Not)])])]; c_variadic: false)->Tuple([]),
+                       [
+                           Region(
+                               BrAnon(0, None),
+                           ),
+                       ],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
 
 error[E0521]: borrowed data escapes outside of closure
@@ -35,9 +48,22 @@ LL |     foo(cell, |cell_a, cell_x| {
    |               ^^^^^^^^^^^^^^^^
    |
    = note: defining type: case2::{closure#0} with closure substs [
-               i32,
-               for<Region(BrAnon(0, None))> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) u32>)),
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::cell::Cell, [Ref('_#1r, Uint(U32), Not)]), Adt(std::cell::Cell, [Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }), Uint(U32), Not)])])]; c_variadic: false)->Tuple([]),
+                       [
+                           Region(
+                               BrAnon(0, None),
+                           ),
+                       ],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 2
    = note: where '_#1r: '_#0r

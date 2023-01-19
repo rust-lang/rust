@@ -5,12 +5,28 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^
    |
    = note: defining type: generic::<T>::{closure#0} with closure substs [
-               i16,
-               for<Region(BrAnon(0, None)), Region(BrAnon(1, None))> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) ()>>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }) T)),
-               (),
+               Int(
+                   I16,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::option::Option, [Adt(std::cell::Cell, [Ref('_#1r, Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }), Tuple([]), Not), Not)])]), Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }), Param(T/#0), Not)])]; c_variadic: false)->Tuple([]),
+                       [
+                           Region(
+                               BrAnon(0, None),
+                           ),
+                           Region(
+                               BrAnon(1, None),
+                           ),
+                       ],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 2
-   = note: where T: '_#1r
+   = note: where Param(T/#0): '_#1r
 
 note: no external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:22:1
@@ -27,13 +43,29 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^
    |
    = note: defining type: generic_fail::<T>::{closure#0} with closure substs [
-               i16,
-               for<Region(BrAnon(0, None)), Region(BrAnon(1, None))> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) ()>>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }) T)),
-               (),
+               Int(
+                   I16,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::option::Option, [Adt(std::cell::Cell, [Ref('_#1r, Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }), Tuple([]), Not), Not)])]), Ref(ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }), Param(T/#0), Not)])]; c_variadic: false)->Tuple([]),
+                       [
+                           Region(
+                               BrAnon(0, None),
+                           ),
+                           Region(
+                               BrAnon(1, None),
+                           ),
+                       ],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: late-bound region is '_#2r
    = note: number of external vids: 3
-   = note: where T: '_#1r
+   = note: where Param(T/#0): '_#1r
 
 note: no external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:28:1

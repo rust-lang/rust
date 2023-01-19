@@ -5,12 +5,21 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
    |
    = note: defining type: no_region::<'_#1r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>,
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::boxed::Box, [Param(T/#1), Adt(std::alloc::Global, [])])])]; c_variadic: false)->Adt(std::boxed::Box, [Dynamic([Binder(Trait(Anything), [])], '_#2r, Dyn), Adt(std::alloc::Global, [])]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 3
-   = note: where <T as std::iter::Iterator>::Item: '_#2r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#1)], def_id: DefId(2:7157 ~ core[a28e]::iter::traits::iterator::Iterator::Item) }): '_#2r
 
 note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:21:1
@@ -38,12 +47,21 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
    |
    = note: defining type: correct_region::<'_#1r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>,
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::boxed::Box, [Param(T/#1), Adt(std::alloc::Global, [])])])]; c_variadic: false)->Adt(std::boxed::Box, [Dynamic([Binder(Trait(Anything), [])], '_#2r, Dyn), Adt(std::alloc::Global, [])]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 3
-   = note: where <T as std::iter::Iterator>::Item: '_#2r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#1)], def_id: DefId(2:7157 ~ core[a28e]::iter::traits::iterator::Iterator::Item) }): '_#2r
 
 note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:30:1
@@ -62,12 +80,21 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
    |
    = note: defining type: wrong_region::<'_#1r, '_#2r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>,
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::boxed::Box, [Param(T/#2), Adt(std::alloc::Global, [])])])]; c_variadic: false)->Adt(std::boxed::Box, [Dynamic([Binder(Trait(Anything), [])], '_#3r, Dyn), Adt(std::alloc::Global, [])]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 4
-   = note: where <T as std::iter::Iterator>::Item: '_#3r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#2)], def_id: DefId(2:7157 ~ core[a28e]::iter::traits::iterator::Iterator::Item) }): '_#3r
 
 note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:38:1
@@ -95,12 +122,21 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
    |
    = note: defining type: outlives_region::<'_#1r, '_#2r, T>::{closure#0} with closure substs [
-               i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>,
-               (),
+               Int(
+                   I32,
+               ),
+               FnPtr(
+                   Binder(
+                       ([Tuple([Adt(std::boxed::Box, [Param(T/#2), Adt(std::alloc::Global, [])])])]; c_variadic: false)->Adt(std::boxed::Box, [Dynamic([Binder(Trait(Anything), [])], '_#3r, Dyn), Adt(std::alloc::Global, [])]),
+                       [],
+                   ),
+               ),
+               Tuple(
+                   [],
+               ),
            ]
    = note: number of external vids: 4
-   = note: where <T as std::iter::Iterator>::Item: '_#3r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#2)], def_id: DefId(2:7157 ~ core[a28e]::iter::traits::iterator::Iterator::Item) }): '_#3r
 
 note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:47:1

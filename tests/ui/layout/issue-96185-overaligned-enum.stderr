@@ -1,4 +1,4 @@
-error: layout_of(Aligned1) = Layout {
+error: layout_of(Adt(Aligned1, [])) = Layout {
            size: Size(8 bytes),
            align: AbiAndPrefAlign {
                abi: Align(8 bytes),
@@ -80,7 +80,7 @@ error: layout_of(Aligned1) = Layout {
 LL | pub enum Aligned1 {
    | ^^^^^^^^^^^^^^^^^
 
-error: layout_of(Aligned2) = Layout {
+error: layout_of(Adt(Aligned2, [])) = Layout {
            size: Size(1 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
