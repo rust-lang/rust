@@ -163,7 +163,10 @@ impl ChangeFixture {
                     Ok(Vec::new()),
                     false,
                     origin,
-                    meta.target_data_layout.as_deref().map(Arc::from),
+                    meta.target_data_layout
+                        .as_deref()
+                        .map(Arc::from)
+                        .ok_or_else(|| "target_data_layout unset".into()),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
@@ -200,7 +203,9 @@ impl ChangeFixture {
                 Ok(Vec::new()),
                 false,
                 CrateOrigin::CratesIo { repo: None, name: None },
-                default_target_data_layout.map(|x| x.into()),
+                default_target_data_layout
+                    .map(|x| x.into())
+                    .ok_or_else(|| "target_data_layout unset".into()),
             );
         } else {
             for (from, to, prelude) in crate_deps {
@@ -214,8 +219,10 @@ impl ChangeFixture {
                     .unwrap();
             }
         }
-        let target_layout =
-            crate_graph.iter().next().and_then(|it| crate_graph[it].target_layout.clone());
+        let target_layout = crate_graph.iter().next().map_or_else(
+            || Err("target_data_layout unset".into()),
+            |it| crate_graph[it].target_layout.clone(),
+        );
 
         if let Some(mini_core) = mini_core {
             let core_file = file_id;

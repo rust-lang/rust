@@ -243,6 +243,7 @@ pub enum ProcMacroExpansionError {
 }
 
 pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, String>;
+pub type TargetLayoutLoadResult = Result<Arc<str>, Arc<str>>;
 
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
@@ -265,7 +266,7 @@ pub struct CrateData {
     pub display_name: Option<CrateDisplayName>,
     pub cfg_options: CfgOptions,
     pub potential_cfg_options: CfgOptions,
-    pub target_layout: Option<Arc<str>>,
+    pub target_layout: TargetLayoutLoadResult,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
     pub proc_macro: ProcMacroLoadResult,
@@ -324,7 +325,7 @@ impl CrateGraph {
         proc_macro: ProcMacroLoadResult,
         is_proc_macro: bool,
         origin: CrateOrigin,
-        target_layout: Option<Arc<str>>,
+        target_layout: Result<Arc<str>, Arc<str>>,
     ) -> CrateId {
         let data = CrateData {
             root_file_id,
@@ -647,7 +648,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -660,7 +661,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -673,7 +674,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -700,7 +701,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -713,7 +714,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -737,7 +738,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -750,7 +751,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -763,7 +764,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -787,7 +788,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -800,7 +801,7 @@ mod tests {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
-            None,
+            Err("".into()),
         );
         assert!(graph
             .add_dep(
