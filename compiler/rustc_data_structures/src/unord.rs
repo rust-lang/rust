@@ -208,21 +208,24 @@ impl<V: Eq + Hash> UnordSet<V> {
         UnordItems(self.inner.into_iter())
     }
 
+    /// Returns the items of this set in stable sort order (as defined by `ToStableHashKey`).
+    ///
+    /// The `cache_sort_key` parameter controls if [slice::sort_by_cached_key] or
+    /// [slice::sort_unstable_by_key] will be used for sorting the vec. Use
+    /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
+    /// for `V` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
     pub fn to_sorted<HCX>(&self, hcx: &HCX, cache_sort_key: bool) -> Vec<&V>
     where
         V: ToStableHashKey<HCX>,
     {
-        let mut items: Vec<&V> = self.inner.iter().collect();
-        if cache_sort_key {
-            items.sort_by_cached_key(|k| k.to_stable_hash_key(hcx));
-        } else {
-            items.sort_unstable_by_key(|k| k.to_stable_hash_key(hcx));
-        }
-
-        items
+        to_sorted_vec(hcx, self.inner.iter(), cache_sort_key, |&x| x)
     }
 
+    /// Returns the items of this set in stable sort order (as defined by
+    /// `StableOrd`). This method is much more efficient than
+    /// `into_sorted` because it does not need to transform keys to their
+    /// `ToStableHashKey` equivalent.
     #[inline]
     pub fn to_sorted_stable_ord(&self) -> Vec<V>
     where
@@ -233,19 +236,18 @@ impl<V: Eq + Hash> UnordSet<V> {
         items
     }
 
+    /// Returns the items of this set in stable sort order (as defined by `ToStableHashKey`).
+    ///
+    /// The `cache_sort_key` parameter controls if [slice::sort_by_cached_key] or
+    /// [slice::sort_unstable_by_key] will be used for sorting the vec. Use
+    /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
+    /// for `V` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
     pub fn into_sorted<HCX>(self, hcx: &HCX, cache_sort_key: bool) -> Vec<V>
     where
         V: ToStableHashKey<HCX>,
     {
-        let mut items: Vec<V> = self.inner.into_iter().collect();
-        if cache_sort_key {
-            items.sort_by_cached_key(|k| k.to_stable_hash_key(hcx));
-        } else {
-            items.sort_unstable_by_key(|k| k.to_stable_hash_key(hcx));
-        }
-
-        items
+        to_sorted_vec(hcx, self.inner.into_iter(), cache_sort_key, |x| x)
     }
 
     // We can safely extend this UnordSet from a set of unordered values because that
@@ -398,21 +400,23 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
         self.inner.extend(items.0)
     }
 
+    /// Returns the entries of this map in stable sort order (as defined by `ToStableHashKey`).
+    ///
+    /// The `cache_sort_key` parameter controls if [slice::sort_by_cached_key] or
+    /// [slice::sort_unstable_by_key] will be used for sorting the vec. Use
+    /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
+    /// for `K` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
     pub fn to_sorted<HCX>(&self, hcx: &HCX, cache_sort_key: bool) -> Vec<(&K, &V)>
     where
         K: ToStableHashKey<HCX>,
     {
-        let mut items: Vec<(&K, &V)> = self.inner.iter().collect();
-        if cache_sort_key {
-            items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
-        } else {
-            items.sort_unstable_by_key(|(k, _)| k.to_stable_hash_key(hcx));
-        }
-
-        items
+        to_sorted_vec(hcx, self.inner.iter(), cache_sort_key, |&(k, _)| k)
     }
 
+    /// Returns the entries of this map in stable sort order (as defined by `StableOrd`).
+    /// This method can be much more efficient than `into_sorted` because it does not need
+    /// to transform keys to their `ToStableHashKey` equivalent.
     #[inline]
     pub fn to_sorted_stable_ord(&self) -> Vec<(K, &V)>
     where
@@ -423,32 +427,35 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
         items
     }
 
+    /// Returns the entries of this map in stable sort order (as defined by `ToStableHashKey`).
+    ///
+    /// The `cache_sort_key` parameter controls if [slice::sort_by_cached_key] or
+    /// [slice::sort_unstable_by_key] will be used for sorting the vec. Use
+    /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
+    /// for `K` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
     pub fn into_sorted<HCX>(self, hcx: &HCX, cache_sort_key: bool) -> Vec<(K, V)>
     where
         K: ToStableHashKey<HCX>,
     {
-        let mut items: Vec<(K, V)> = self.inner.into_iter().collect();
-        if cache_sort_key {
-            items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
-        } else {
-            items.sort_unstable_by_key(|(k, _)| k.to_stable_hash_key(hcx));
-        }
-        items
+        to_sorted_vec(hcx, self.inner.into_iter(), cache_sort_key, |(k, _)| k)
     }
 
+    /// Returns the values of this map in stable sort order (as defined by K's
+    /// `ToStableHashKey` implementation).
+    ///
+    /// The `cache_sort_key` parameter controls if [slice::sort_by_cached_key] or
+    /// [slice::sort_unstable_by_key] will be used for sorting the vec. Use
+    /// `cache_sort_key` when the [ToStableHashKey::to_stable_hash_key] implementation
+    /// for `K` is expensive (e.g. a `DefId -> DefPathHash` lookup).
     #[inline]
     pub fn values_sorted<HCX>(&self, hcx: &HCX, cache_sort_key: bool) -> impl Iterator<Item = &V>
     where
         K: ToStableHashKey<HCX>,
     {
-        let mut items: Vec<(&K, &V)> = self.inner.iter().collect();
-        if cache_sort_key {
-            items.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
-        } else {
-            items.sort_unstable_by_key(|(k, _)| k.to_stable_hash_key(hcx));
-        }
-        items.into_iter().map(|(_, v)| v)
+        to_sorted_vec(hcx, self.inner.iter(), cache_sort_key, |&(k, _)| k)
+            .into_iter()
+            .map(|(_, v)| v)
     }
 }
 
@@ -538,6 +545,27 @@ impl<HCX, V: Hash + Eq + HashStable<HCX>> HashStable<HCX> for UnordBag<V> {
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
+}
+
+#[inline]
+fn to_sorted_vec<HCX, T, K, I>(
+    hcx: &HCX,
+    iter: I,
+    cache_sort_key: bool,
+    extract_key: fn(&T) -> &K,
+) -> Vec<T>
+where
+    I: Iterator<Item = T>,
+    K: ToStableHashKey<HCX>,
+{
+    let mut items: Vec<T> = iter.collect();
+    if cache_sort_key {
+        items.sort_by_cached_key(|x| extract_key(x).to_stable_hash_key(hcx));
+    } else {
+        items.sort_unstable_by_key(|x| extract_key(x).to_stable_hash_key(hcx));
+    }
+
+    items
 }
 
 fn hash_iter_order_independent<
