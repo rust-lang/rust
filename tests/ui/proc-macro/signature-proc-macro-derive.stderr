@@ -1,5 +1,5 @@
 error: mismatched derive proc macro signature
-  --> $DIR/signature-proc-macro-derive.rs:7:25
+  --> $DIR/signature-proc-macro-derive.rs:10:25
    |
 LL | pub fn bad_input(input: String) -> TokenStream {
    |                         ^^^^^^ found std::string::String, expected type `proc_macro::TokenStream`
@@ -7,7 +7,7 @@ LL | pub fn bad_input(input: String) -> TokenStream {
    = note: derive proc macros must have a signature of `fn(TokenStream) -> TokenStream`
 
 error: mismatched derive proc macro signature
-  --> $DIR/signature-proc-macro-derive.rs:13:42
+  --> $DIR/signature-proc-macro-derive.rs:16:42
    |
 LL | pub fn bad_output(input: TokenStream) -> String {
    |                                          ^^^^^^ found std::string::String, expected type `proc_macro::TokenStream`
@@ -15,7 +15,7 @@ LL | pub fn bad_output(input: TokenStream) -> String {
    = note: derive proc macros must have a signature of `fn(TokenStream) -> TokenStream`
 
 error: mismatched derive proc macro signature
-  --> $DIR/signature-proc-macro-derive.rs:19:41
+  --> $DIR/signature-proc-macro-derive.rs:22:41
    |
 LL | pub fn bad_everything(input: String) -> String {
    |                                         ^^^^^^ found std::string::String, expected type `proc_macro::TokenStream`
@@ -23,7 +23,7 @@ LL | pub fn bad_everything(input: String) -> String {
    = note: derive proc macros must have a signature of `fn(TokenStream) -> TokenStream`
 
 error: mismatched derive proc macro signature
-  --> $DIR/signature-proc-macro-derive.rs:19:30
+  --> $DIR/signature-proc-macro-derive.rs:22:30
    |
 LL | pub fn bad_everything(input: String) -> String {
    |                              ^^^^^^ found std::string::String, expected type `proc_macro::TokenStream`
@@ -31,7 +31,7 @@ LL | pub fn bad_everything(input: String) -> String {
    = note: derive proc macros must have a signature of `fn(TokenStream) -> TokenStream`
 
 error: mismatched derive proc macro signature
-  --> $DIR/signature-proc-macro-derive.rs:26:33
+  --> $DIR/signature-proc-macro-derive.rs:29:33
    |
 LL | pub fn too_many(a: TokenStream, b: TokenStream, c: String) -> TokenStream {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ found unexpected arguments
