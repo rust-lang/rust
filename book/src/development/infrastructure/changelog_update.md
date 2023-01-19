@@ -95,11 +95,23 @@ As section headers, we use:
 Please also be sure to update the Beta/Unreleased sections at the top with the
 relevant commit ranges.
 
-If you have the time, it would be appreciated if you double-check, that the
-`#[clippy::version]` attributes for the added lints contains the correct version.
+#### 3.1 Include `beta-accepted` PRs
+
+Look for the [`beta-accepted`] label and make sure to also include the PRs with
+that label in the changelog. If you can, remove the `beta-accepted` labels
+**after** the changelog PR was merged.
+
+> _Note:_ Some of those PRs might even got backported to the previous `beta`.
+> Those have to be included in the changelog of the _previous_ release.
+
+### 4. Update `clippy::version` attributes
+
+Next, make sure to check that the `#[clippy::version]` attributes for the added
+lints contain the correct version.
 
 [changelog]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md
 [forge]: https://forge.rust-lang.org/
 [rust_master_tools]: https://github.com/rust-lang/rust/tree/master/src/tools/clippy
 [rust_beta_tools]: https://github.com/rust-lang/rust/tree/beta/src/tools/clippy
 [rust_stable_tools]: https://github.com/rust-lang/rust/releases
+[`beta-accepted`]: https://github.com/rust-lang/rust-clippy/issues?q=label%3Abeta-accepted+
