@@ -67,7 +67,7 @@ enum LocationExtended {
 #[derive(Debug)]
 struct SsaLocals {
     dominators: Dominators<BasicBlock>,
-    /// Assignments to each local.  This defines whether the local is SSA.
+    /// Assignments to each local. This defines whether the local is SSA.
     assignments: IndexVec<Local, Set1<LocationExtended>>,
     /// We visit the body in reverse postorder, to ensure each local is assigned before it is used.
     /// We remember the order in which we saw the assignments to compute the SSA values in a single
@@ -157,7 +157,7 @@ impl<'tcx> Visitor<'tcx> for SsaLocals {
 ///   _d => _a // transitively through _c
 ///
 /// This function also returns whether all the `move?` in the pattern are `move` and not copies.
-/// A local which is in the bitset can be replaced by `move _a`.  Otherwise, it must be
+/// A local which is in the bitset can be replaced by `move _a`. Otherwise, it must be
 /// replaced by `copy _a`, as we cannot move multiple times from `_a`.
 ///
 /// If an operand copies `_c`, it must happen before the assignment `_d = _c`, otherwise it is UB.
@@ -221,7 +221,7 @@ fn compute_copy_classes(
 fn meet_copy_equivalence(copies: &IndexVec<Local, Local>, property: &mut BitSet<Local>) {
     // Consolidate to have a local iff all its copies are.
     //
-    // `copies` defines equivalence classes between locals.  The `local`s that recursively
+    // `copies` defines equivalence classes between locals. The `local`s that recursively
     // move/copy the same local all have the same `head`.
     for (local, &head) in copies.iter_enumerated() {
         // If any copy does not have `property`, then the head is not.
