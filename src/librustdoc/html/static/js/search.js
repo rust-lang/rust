@@ -781,7 +781,29 @@ function initSearch(rawSearchIndex) {
                     return a - b;
                 }
 
-                // Sort by non levenshtein results and then levenshtein results by the distance
+                // sort by index of keyword in item name (no literal occurrence goes later)
+                a = (aaa.index < 0);
+                b = (bbb.index < 0);
+                if (a !== b) {
+                    return a - b;
+                }
+
+                // Sort by distance in the path part, if specified
+                // (less changes required to match means higher rankings)
+                a = aaa.path_lev;
+                b = bbb.path_lev;
+                if (a !== b) {
+                    return a - b;
+                }
+
+                // (later literal occurrence, if any, goes later)
+                a = aaa.index;
+                b = bbb.index;
+                if (a !== b) {
+                    return a - b;
+                }
+
+                // Sort by distance in the name part, the last part of the path
                 // (less changes required to match means higher rankings)
                 a = (aaa.lev);
                 b = (bbb.lev);
@@ -808,19 +830,6 @@ function initSearch(rawSearchIndex) {
                 b = bbb.word;
                 if (a !== b) {
                     return (a > b ? +1 : -1);
-                }
-
-                // sort by index of keyword in item name (no literal occurrence goes later)
-                a = (aaa.index < 0);
-                b = (bbb.index < 0);
-                if (a !== b) {
-                    return a - b;
-                }
-                // (later literal occurrence, if any, goes later)
-                a = aaa.index;
-                b = bbb.index;
-                if (a !== b) {
-                    return a - b;
                 }
 
                 // special precedence for primitive and keyword pages
@@ -1230,15 +1239,19 @@ function initSearch(rawSearchIndex) {
          * * `id` is the index in both `searchWords` and `searchIndex` arrays for this element.
          * * `index` is an `integer`` used to sort by the position of the word in the item's name.
          * * `lev` is the main metric used to sort the search results.
+         * * `path_lev` is zero if a single-component search query is used, otherwise it's the
+         *   distance computed for everything other than the last path component.
          *
          * @param {Results} results
          * @param {string} fullId
          * @param {integer} id
          * @param {integer} index
          * @param {integer} lev
+         * @param {integer} path_lev
          */
-        function addIntoResults(results, fullId, id, index, lev) {
-            if (lev === 0 || (!parsedQuery.literalSearch && lev <= MAX_LEV_DISTANCE)) {
+        function addIntoResults(results, fullId, id, index, lev, path_lev) {
+            const inBounds = lev <= MAX_LEV_DISTANCE || index !== -1;
+            if (lev === 0 || (!parsedQuery.literalSearch && inBounds)) {
                 if (results[fullId] !== undefined) {
                     const result = results[fullId];
                     if (result.dontValidate || result.lev <= lev) {
@@ -1250,6 +1263,7 @@ function initSearch(rawSearchIndex) {
                     index: index,
                     dontValidate: parsedQuery.literalSearch,
                     lev: lev,
+                    path_lev: path_lev,
                 };
             }
         }
@@ -1280,68 +1294,68 @@ function initSearch(rawSearchIndex) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
             }
-            let lev, lev_add = 0, index = -1;
+            let lev, index = -1, path_lev = 0;
             const fullId = row.id;
+            const searchWord = searchWords[pos];
 
             const in_args = findArg(row, elem, parsedQuery.typeFilter);
             const returned = checkReturned(row, elem, parsedQuery.typeFilter);
 
-            addIntoResults(results_in_args, fullId, pos, index, in_args);
-            addIntoResults(results_returned, fullId, pos, index, returned);
+            // path_lev is 0 because no parent path information is currently stored
+            // in the search index
+            addIntoResults(results_in_args, fullId, pos, -1, in_args, 0);
+            addIntoResults(results_returned, fullId, pos, -1, returned, 0);
 
             if (!typePassesFilter(parsedQuery.typeFilter, row.ty)) {
                 return;
             }
-            const searchWord = searchWords[pos];
 
-            if (parsedQuery.literalSearch) {
-                if (searchWord === elem.name) {
-                    addIntoResults(results_others, fullId, pos, -1, 0);
-                }
-                return;
+            const row_index = row.normalizedName.indexOf(elem.pathLast);
+            const word_index = searchWord.indexOf(elem.pathLast);
+
+            // lower indexes are "better" matches
+            // rank based on the "best" match
+            if (row_index === -1) {
+                index = word_index;
+            } else if (word_index === -1) {
+                index = row_index;
+            } else if (word_index < row_index) {
+                index = word_index;
+            } else {
+                index = row_index;
             }
 
             // No need to check anything else if it's a "pure" generics search.
             if (elem.name.length === 0) {
                 if (row.type !== null) {
                     lev = checkGenerics(row.type, elem, MAX_LEV_DISTANCE + 1);
-                    addIntoResults(results_others, fullId, pos, index, lev);
+                    // path_lev is 0 because we know it's empty
+                    addIntoResults(results_others, fullId, pos, index, lev, 0);
                 }
                 return;
             }
 
             if (elem.fullPath.length > 1) {
-                lev = checkPath(elem.pathWithoutLast, row);
-                if (lev > MAX_LEV_DISTANCE || (parsedQuery.literalSearch && lev !== 0)) {
+                path_lev = checkPath(elem.pathWithoutLast, row);
+                if (path_lev > MAX_LEV_DISTANCE) {
                     return;
-                } else if (lev > 0) {
-                    lev_add = lev / 10;
                 }
             }
 
-            if (searchWord.indexOf(elem.pathLast) > -1 ||
-                row.normalizedName.indexOf(elem.pathLast) > -1
-            ) {
-                index = row.normalizedName.indexOf(elem.pathLast);
-            }
-            lev = levenshtein(searchWord, elem.pathLast);
-            if (lev > 0 && elem.pathLast.length > 2 && searchWord.indexOf(elem.pathLast) > -1) {
-                if (elem.pathLast.length < 6) {
-                    lev = 1;
-                } else {
-                    lev = 0;
+            if (parsedQuery.literalSearch) {
+                if (searchWord === elem.name) {
+                    addIntoResults(results_others, fullId, pos, index, 0, path_lev);
                 }
-            }
-            lev += lev_add;
-            if (lev > MAX_LEV_DISTANCE) {
                 return;
-            } else if (index !== -1 && elem.fullPath.length < 2) {
-                lev -= 1;
             }
-            if (lev < 0) {
-                lev = 0;
+
+            lev = levenshtein(searchWord, elem.pathLast);
+
+            if (index === -1 && lev + path_lev > MAX_LEV_DISTANCE) {
+                return;
             }
-            addIntoResults(results_others, fullId, pos, index, lev);
+
+            addIntoResults(results_others, fullId, pos, index, lev, path_lev);
         }
 
         /**
@@ -1386,7 +1400,7 @@ function initSearch(rawSearchIndex) {
                 return;
             }
             const lev = Math.round(totalLev / nbLev);
-            addIntoResults(results, row.id, pos, 0, lev);
+            addIntoResults(results, row.id, pos, 0, lev, 0);
         }
 
         function innerRunQuery() {

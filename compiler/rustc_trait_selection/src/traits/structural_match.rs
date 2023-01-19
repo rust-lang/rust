@@ -107,25 +107,25 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
             ty::FnDef(..) => {
                 // Types of formals and return in `fn(_) -> _` are also irrelevant;
                 // so we do not recur into them via `super_visit_with`
-                return ControlFlow::CONTINUE;
+                return ControlFlow::Continue(());
             }
             ty::Array(_, n)
                 if { n.try_eval_usize(self.tcx, ty::ParamEnv::reveal_all()) == Some(0) } =>
             {
                 // rust-lang/rust#62336: ignore type of contents
                 // for empty array.
-                return ControlFlow::CONTINUE;
+                return ControlFlow::Continue(());
             }
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Str | ty::Never => {
                 // These primitive types are always structural match.
                 //
                 // `Never` is kind of special here, but as it is not inhabitable, this should be fine.
-                return ControlFlow::CONTINUE;
+                return ControlFlow::Continue(());
             }
 
             ty::FnPtr(..) => {
                 if !self.adt_const_param {
-                    return ControlFlow::CONTINUE;
+                    return ControlFlow::Continue(());
                 } else {
                     return ControlFlow::Break(ty);
                 }
@@ -147,7 +147,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                     // Even though `NonStructural` does not implement `PartialEq`,
                     // structural equality on `T` does not recur into the raw
                     // pointer. Therefore, one can still use `C` in a pattern.
-                    return ControlFlow::CONTINUE;
+                    return ControlFlow::Continue(());
                 } else {
                     return ControlFlow::Break(ty);
                 }
@@ -155,7 +155,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
 
             ty::Float(_) => {
                 if !self.adt_const_param {
-                    return ControlFlow::CONTINUE;
+                    return ControlFlow::Continue(());
                 } else {
                     return ControlFlow::Break(ty);
                 }
@@ -172,13 +172,13 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 self.tcx.sess.delay_span_bug(self.span, "ty::Error in structural-match check");
                 // We still want to check other types after encountering an error,
                 // as this may still emit relevant errors.
-                return ControlFlow::CONTINUE;
+                return ControlFlow::Continue(());
             }
         };
 
         if !self.seen.insert(adt_def.did()) {
             debug!("Search already seen adt_def: {:?}", adt_def);
-            return ControlFlow::CONTINUE;
+            return ControlFlow::Continue(());
         }
 
         if !self.type_marked_structural(ty) {

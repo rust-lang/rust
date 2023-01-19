@@ -300,20 +300,20 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !c.has_non_region_param() {
-            return ControlFlow::CONTINUE;
+            return ControlFlow::Continue(());
         }
 
         match c.kind() {
             ty::ConstKind::Param(param) => {
                 debug!(?param);
                 self.unused_parameters.mark_used(param.index);
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs })
                 if matches!(self.tcx.def_kind(def.did), DefKind::AnonConst) =>
             {
                 self.visit_child_body(def.did, substs);
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
             _ => c.super_visit_with(self),
         }
@@ -322,7 +322,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !ty.has_non_region_param() {
-            return ControlFlow::CONTINUE;
+            return ControlFlow::Continue(());
         }
 
         match *ty.kind() {
@@ -330,18 +330,18 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 debug!(?def_id);
                 // Avoid cycle errors with generators.
                 if def_id == self.def_id {
-                    return ControlFlow::CONTINUE;
+                    return ControlFlow::Continue(());
                 }
 
                 // Consider any generic parameters used by any closures/generators as used in the
                 // parent.
                 self.visit_child_body(def_id, substs);
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
             ty::Param(param) => {
                 debug!(?param);
                 self.unused_parameters.mark_used(param.index);
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
             _ => ty.super_visit_with(self),
         }

@@ -2932,7 +2932,7 @@ impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
         if matches!(ty.kind(), ty::Infer(ty::FloatVar(_) | ty::IntVar(_))) {
             ControlFlow::Break(())
         } else {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         }
     }
 }

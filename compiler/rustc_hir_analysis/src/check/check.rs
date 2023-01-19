@@ -267,7 +267,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!(?t, "root_visit_ty");
             if t == self.opaque_identity_ty {
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             } else {
                 t.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
                     tcx: self.tcx,
@@ -282,7 +282,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
                 if self.references_parent_regions {
                     ControlFlow::Break(t)
                 } else {
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 }
             }
         }
@@ -1439,7 +1439,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> E
                         match *t.kind() {
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
                                 self.0.push(def);
-                                ControlFlow::CONTINUE
+                                ControlFlow::Continue(())
                             }
                             _ => t.super_visit_with(self),
                         }

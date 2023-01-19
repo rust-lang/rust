@@ -543,7 +543,7 @@ impl<'tcx> TypeVisitor<'tcx> for TraitObjectVisitor {
                 if let Some(def_id) = preds.principal_def_id() {
                     self.0.insert(def_id);
                 }
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
             _ => t.super_visit_with(self),
         }

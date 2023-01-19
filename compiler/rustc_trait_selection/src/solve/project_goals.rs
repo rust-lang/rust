@@ -23,7 +23,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        // To only compute normalization ones for each projection we only
+        // To only compute normalization once for each projection we only
         // normalize if the expected term is an unconstrained inference variable.
         //
         // E.g. for `<T as Trait>::Assoc = u32` we recursively compute the goal
@@ -191,7 +191,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) -> Result<Certainty, NoSolution> {
+    ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
 
         let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);
@@ -229,7 +229,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 impl_def_id
             )? else {
                 let certainty = Certainty::Maybe(MaybeCause::Ambiguity);
-                return Ok(trait_ref_certainty.unify_and(certainty));
+                return ecx.make_canonical_response(trait_ref_certainty.unify_and(certainty));
             };
 
             if !assoc_def.item.defaultness(tcx).has_value() {
@@ -286,27 +286,70 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             let rhs_certainty =
                 ecx.evaluate_all(nested_goals).expect("failed to unify with unconstrained term");
 
-            Ok(trait_ref_certainty.unify_and(rhs_certainty))
+            ecx.make_canonical_response(trait_ref_certainty.unify_and(rhs_certainty))
         })
+    }
+
+    fn consider_assumption(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+    ) -> QueryResult<'tcx> {
+        if let Some(poly_projection_pred) = assumption.to_opt_poly_projection_pred() {
+            ecx.infcx.probe(|_| {
+                let assumption_projection_pred =
+                    ecx.infcx.instantiate_bound_vars_with_infer(poly_projection_pred);
+                let nested_goals = ecx.infcx.eq(
+                    goal.param_env,
+                    goal.predicate.projection_ty,
+                    assumption_projection_pred.projection_ty,
+                )?;
+                let subst_certainty = ecx.evaluate_all(nested_goals)?;
+
+                // The term of our goal should be fully unconstrained, so this should never fail.
+                //
+                // It can however be ambiguous when the resolved type is a projection.
+                let nested_goals = ecx
+                    .infcx
+                    .eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)
+                    .expect("failed to unify with unconstrained term");
+                let rhs_certainty = ecx
+                    .evaluate_all(nested_goals)
+                    .expect("failed to unify with unconstrained term");
+
+                ecx.make_canonical_response(subst_certainty.unify_and(rhs_certainty))
+            })
+        } else {
+            Err(NoSolution)
+        }
+    }
+
+    fn consider_auto_trait_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("auto traits do not have associated types: {:?}", goal);
+    }
+
+    fn consider_trait_alias_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("trait aliases do not have associated types: {:?}", goal);
     }
 
     fn consider_builtin_sized_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> Result<Certainty, NoSolution> {
+    ) -> QueryResult<'tcx> {
         bug!("`Sized` does not have an associated type: {:?}", goal);
     }
 
-    fn consider_assumption(
+    fn consider_builtin_copy_clone_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
-    ) -> Result<Certainty, NoSolution> {
-        if let Some(_poly_projection_pred) = assumption.to_opt_poly_projection_pred() {
-            unimplemented!()
-        } else {
-            Err(NoSolution)
-        }
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`Copy`/`Clone` does not have an associated type: {:?}", goal);
     }
 }
 
