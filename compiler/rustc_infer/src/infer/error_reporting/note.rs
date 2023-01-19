@@ -1,6 +1,6 @@
 use crate::errors::{
-    note_and_explain, FullfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
-    RegionOriginNote,
+    note_and_explain, BorrowedTooLong, FullfillReqLifetime, LfBoundNotSatisfied, OutlivesBound,
+    OutlivesContent, RegionOriginNote,
 };
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
@@ -147,7 +147,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     self.tcx,
                     sub,
                     None,
-                    note_and_explain::PrefixKind::TypeValidFor,
+                    note_and_explain::PrefixKind::TypeObjValidFor,
                     note_and_explain::SuffixKind::Empty,
                 );
                 let pointer_valid = note_and_explain::RegionExplanation::new(
@@ -197,6 +197,28 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 LfBoundNotSatisfied {
                     span,
                     notes: param_instantiated.into_iter().chain(param_must_outlive).collect(),
+                }
+                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
+            }
+            infer::DataBorrowed(ty, span) => {
+                let type_valid = note_and_explain::RegionExplanation::new(
+                    self.tcx,
+                    sub,
+                    None,
+                    note_and_explain::PrefixKind::TypeValidFor,
+                    note_and_explain::SuffixKind::Empty,
+                );
+                let borrow_lasts_for = note_and_explain::RegionExplanation::new(
+                    self.tcx,
+                    sup,
+                    None,
+                    note_and_explain::PrefixKind::BorrowLastsFor,
+                    note_and_explain::SuffixKind::Empty,
+                );
+                BorrowedTooLong {
+                    span,
+                    ty: self.resolve_vars_if_possible(ty),
+                    notes: type_valid.into_iter().chain(borrow_lasts_for).collect(),
                 }
                 .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }

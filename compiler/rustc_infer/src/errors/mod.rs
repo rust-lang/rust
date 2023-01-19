@@ -970,3 +970,13 @@ pub struct LfBoundNotSatisfied<'a> {
     #[subdiagnostic]
     pub notes: Vec<note_and_explain::RegionExplanation<'a>>,
 }
+
+#[derive(Diagnostic)]
+#[diag(infer_borrowed_too_long, code = "E0490")]
+pub struct BorrowedTooLong<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
+    #[subdiagnostic]
+    pub notes: Vec<note_and_explain::RegionExplanation<'a>>,
+}

@@ -123,12 +123,14 @@ pub enum PrefixKind {
     Empty,
     RefValidFor,
     ContentValidFor,
-    TypeValidFor,
+    TypeObjValidFor,
     SourcePointerValidFor,
     TypeSatisfy,
     TypeOutlive,
     LfInstantiatedWith,
     LfMustOutlive,
+    TypeValidFor,
+    BorrowLastsFor,
 }
 
 pub enum SuffixKind {
@@ -143,12 +145,14 @@ impl IntoDiagnosticArg for PrefixKind {
             Self::Empty => "empty",
             Self::RefValidFor => "ref_valid_for",
             Self::ContentValidFor => "content_valid_for",
-            Self::TypeValidFor => "type_valid_for",
+            Self::TypeObjValidFor => "type_obj_valid_for",
             Self::SourcePointerValidFor => "source_pointer_valid_for",
             Self::TypeSatisfy => "type_satisfy",
             Self::TypeOutlive => "type_outlive",
             Self::LfInstantiatedWith => "lf_instantiated_with",
             Self::LfMustOutlive => "lf_must_outlive",
+            Self::TypeValidFor => "type_valid_for",
+            Self::BorrowLastsFor => "borrow_lasts_for",
         }
         .into();
         rustc_errors::DiagnosticArgValue::Str(kind)
