@@ -4,7 +4,10 @@ use annotate_snippets::{
 };
 use fluent_bundle::{FluentBundle, FluentError, FluentResource};
 use fluent_syntax::{
-    ast::{Attribute, Entry, Identifier, Message},
+    ast::{
+        Attribute, Entry, Expression, Identifier, InlineExpression, Message, Pattern,
+        PatternElement,
+    },
     parser::ParserError,
 };
 use proc_macro::{Diagnostic, Level, Span};
@@ -185,9 +188,12 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
         };
 
         let mut constants = TokenStream::new();
+        let mut messagerefs = Vec::new();
         for entry in resource.entries() {
             let span = res.krate.span();
-            if let Entry::Message(Message { id: Identifier { name }, attributes, .. }) = entry {
+            if let Entry::Message(Message { id: Identifier { name }, attributes, value, .. }) =
+                entry
+            {
                 let _ = previous_defns.entry(name.to_string()).or_insert(path_span);
 
                 if name.contains('-') {
@@ -198,6 +204,18 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                     )
                     .help("replace any '-'s with '_'s")
                     .emit();
+                }
+
+                if let Some(Pattern { elements }) = value {
+                    for elt in elements {
+                        if let PatternElement::Placeable {
+                            expression:
+                                Expression::Inline(InlineExpression::MessageReference { id, .. }),
+                        } = elt
+                        {
+                            messagerefs.push((id.name, *name));
+                        }
+                    }
                 }
 
                 // Require that the message name starts with the crate name
@@ -255,6 +273,18 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                             );
                     });
                 }
+            }
+        }
+
+        for (mref, name) in messagerefs.into_iter() {
+            if !previous_defns.contains_key(mref) {
+                Diagnostic::spanned(
+                    path_span,
+                    Level::Error,
+                    format!("referenced message `{mref}` does not exist (in message `{name}`)"),
+                )
+                .help(&format!("you may have meant to use a variable reference (`{{${mref}}}`)"))
+                .emit();
             }
         }
 
