@@ -452,7 +452,7 @@ FieldExpr =
   Attr* Expr '.' NameRef
 
 ClosureExpr =
-  Attr* ('for' GenericParamList)? 'static'? 'async'? 'move'?  ParamList RetType?
+  Attr* ('for' GenericParamList)? 'const'? 'static'? 'async'? 'move'?  ParamList RetType?
   body:Expr
 
 IfExpr =
