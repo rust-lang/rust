@@ -462,6 +462,30 @@ enum ParenthesizedGenericArgs {
     Err,
 }
 
+/// Specifies options for generating an async return type
+#[derive(Debug)]
+struct AsyncReturn {
+    /// The `NodeId` of the return `impl Trait` item
+    node_id: NodeId,
+    /// Points to the `async` keyword
+    span: Span,
+    /// Whether to add a `+ Send` bound to the `-> impl Future` return type
+    is_send: bool,
+}
+
+impl AsyncReturn {
+    /// Creates a new Option<AsyncReturn> from an Option<(NodeId, Span)> that is typically
+    /// returned from `Async::opt_node_id()` and a list of attributes to determine whether the
+    /// resulting type should be Send.
+    fn new_opt(opt_return_id: Option<(NodeId, Span)>, attrs: &[Attribute]) -> Option<Self> {
+        opt_return_id.map(|(node_id, span)| AsyncReturn {
+            node_id,
+            span,
+            is_send: attrs.iter().any(|attr| attr.has_name(sym::async_send)),
+        })
+    }
+}
+
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn create_def(
         &mut self,
@@ -1666,7 +1690,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         fn_node_id: NodeId,
         fn_span: Span,
         kind: FnDeclKind,
-        make_ret_async: Option<(NodeId, Span)>,
+        make_ret_async: Option<AsyncReturn>,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
 
@@ -1695,20 +1719,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_ty_direct(&param.ty, &itctx)
         }));
 
-        let output = if let Some((ret_id, span)) = make_ret_async {
+        let output = if let Some(async_return) = make_ret_async {
             if !kind.async_fn_allowed(self.tcx) {
                 match kind {
                     FnDeclKind::Trait | FnDeclKind::Impl => {
                         self.tcx
                             .sess
                             .create_feature_err(
-                                TraitFnAsync { fn_span, span },
+                                TraitFnAsync { fn_span, span: async_return.span },
                                 sym::async_fn_in_trait,
                             )
                             .emit();
                     }
                     _ => {
-                        self.tcx.sess.emit_err(TraitFnAsync { fn_span, span });
+                        self.tcx.sess.emit_err(TraitFnAsync { fn_span, span: async_return.span });
                     }
                 }
             }
@@ -1716,7 +1740,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_async_fn_ret_ty(
                 &decl.output,
                 fn_node_id,
-                ret_id,
+                async_return,
                 matches!(kind, FnDeclKind::Trait),
             )
         } else {
@@ -1793,15 +1817,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         output: &FnRetTy,
         fn_node_id: NodeId,
-        opaque_ty_node_id: NodeId,
+        async_return: AsyncReturn,
         in_trait: bool,
     ) -> hir::FnRetTy<'hir> {
         let span = output.span();
 
+        let opaque_ty_node_id = async_return.node_id;
+
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
         let fn_def_id = self.local_def_id(fn_node_id);
-        let fn_local_id = self.lower_node_id(fn_node_id).local_id;
 
         let opaque_ty_def_id =
             self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait, opaque_ty_span);
@@ -1968,12 +1993,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ));
                 debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
-                let is_async_send = this.attrs.get(&fn_local_id).map_or(false, |attrs| {
-                    attrs.into_iter().any(|attr| attr.has_name(sym::async_send))
-                });
-
                 // Add Send bound if `#[async_send]` attribute is present
-                let bounds = if is_async_send {
+                let bounds = if async_return.is_send {
                     let send_bound = hir::GenericBound::LangItemTrait(
                         hir::LangItem::Send,
                         this.lower_span(span),

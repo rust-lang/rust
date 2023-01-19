@@ -1,3 +1,5 @@
+use crate::AsyncReturn;
+
 use super::errors::{InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
 use super::ResolverAstLoweringExt;
 use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
@@ -261,7 +263,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, id, &itctx, |this| {
-                        let ret_id = asyncness.opt_return_id();
+                        let ret_id =
+                            AsyncReturn::new_opt(asyncness.opt_return_id(), attrs.unwrap_or(&[]));
                         this.lower_fn_decl(&decl, id, *fn_sig_span, FnDeclKind::Fn, ret_id)
                     });
                     let sig = hir::FnSig {
@@ -721,7 +724,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    asyncness.opt_return_id(),
+                    AsyncReturn::new_opt(asyncness.opt_return_id(), &i.attrs),
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
@@ -734,7 +737,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    asyncness.opt_return_id(),
+                    AsyncReturn::new_opt(asyncness.opt_return_id(), &i.attrs),
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)), true)
             }
@@ -827,7 +830,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     if self.is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
-                    asyncness.opt_return_id(),
+                    AsyncReturn::new_opt(asyncness.opt_return_id(), &i.attrs),
                 );
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
@@ -1181,7 +1184,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         sig: &FnSig,
         id: NodeId,
         kind: FnDeclKind,
-        is_async: Option<(NodeId, Span)>,
+        is_async: Option<AsyncReturn>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
         let itctx = ImplTraitContext::Universal;
