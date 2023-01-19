@@ -1470,7 +1470,8 @@ pub(crate) fn handle_semantic_tokens_full(
 
     let mut highlight_config = snap.config.highlighting_config();
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
-    highlight_config.syntactic_name_ref_highlighting = !snap.proc_macros_loaded;
+    highlight_config.syntactic_name_ref_highlighting =
+        snap.workspaces.is_empty() || !snap.proc_macros_loaded;
 
     let highlights = snap.analysis.highlight(highlight_config, file_id)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
@@ -1493,7 +1494,8 @@ pub(crate) fn handle_semantic_tokens_full_delta(
 
     let mut highlight_config = snap.config.highlighting_config();
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
-    highlight_config.syntactic_name_ref_highlighting = !snap.proc_macros_loaded;
+    highlight_config.syntactic_name_ref_highlighting =
+        snap.workspaces.is_empty() || !snap.proc_macros_loaded;
 
     let highlights = snap.analysis.highlight(highlight_config, file_id)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
@@ -1524,7 +1526,12 @@ pub(crate) fn handle_semantic_tokens_range(
     let text = snap.analysis.file_text(frange.file_id)?;
     let line_index = snap.file_line_index(frange.file_id)?;
 
-    let highlights = snap.analysis.highlight_range(snap.config.highlighting_config(), frange)?;
+    let mut highlight_config = snap.config.highlighting_config();
+    // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
+    highlight_config.syntactic_name_ref_highlighting =
+        snap.workspaces.is_empty() || !snap.proc_macros_loaded;
+
+    let highlights = snap.analysis.highlight_range(highlight_config, frange)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
     Ok(Some(semantic_tokens.into()))
 }

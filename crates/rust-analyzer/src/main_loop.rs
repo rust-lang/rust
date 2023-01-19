@@ -307,6 +307,11 @@ impl GlobalState {
                 if self.config.code_lens_refresh() {
                     self.send_request::<lsp_types::request::CodeLensRefresh>((), |_, _| ());
                 }
+
+                // Refresh inlay hints if the client supports it.
+                if self.config.inlay_hints_refresh() {
+                    self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
+                }
             }
 
             if (!was_quiescent || state_changed || memdocs_added_or_removed)
@@ -606,8 +611,8 @@ impl GlobalState {
             Ok(())
         });
 
-        if let RequestDispatcher { req: Some(req), global_state: this } = &mut dispatcher {
-            if this.shutdown_requested {
+        match &mut dispatcher {
+            RequestDispatcher { req: Some(req), global_state: this } if this.shutdown_requested => {
                 this.respond(lsp_server::Response::new_err(
                     req.id.clone(),
                     lsp_server::ErrorCode::InvalidRequest as i32,
@@ -615,16 +620,7 @@ impl GlobalState {
                 ));
                 return;
             }
-
-            // Avoid flashing a bunch of unresolved references during initial load.
-            if this.workspaces.is_empty() && !this.is_quiescent() {
-                this.respond(lsp_server::Response::new_err(
-                    req.id.clone(),
-                    lsp_server::ErrorCode::ContentModified as i32,
-                    "waiting for cargo metadata or cargo check".to_owned(),
-                ));
-                return;
-            }
+            _ => (),
         }
 
         dispatcher
