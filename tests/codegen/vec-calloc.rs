@@ -161,6 +161,23 @@ pub fn vec_option_bool(n: usize) -> Vec<Option<bool>> {
     vec![Some(false); n]
 }
 
+// CHECK-LABEL: @vec_option_i32
+#[no_mangle]
+pub fn vec_option_i32(n: usize) -> Vec<Option<i32>> {
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc(
+
+    // CHECK: call {{.*}}__rust_alloc_zeroed(
+
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc(
+
+    // CHECK: ret void
+    vec![None; n]
+}
+
 // Ensure that __rust_alloc_zeroed gets the right attributes for LLVM to optimize it away.
 // CHECK: declare noalias noundef ptr @__rust_alloc_zeroed(i64 noundef, i64 allocalign noundef) unnamed_addr [[RUST_ALLOC_ZEROED_ATTRS:#[0-9]+]]
 
