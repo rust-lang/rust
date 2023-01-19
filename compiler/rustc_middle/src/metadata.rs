@@ -27,18 +27,20 @@ pub struct ModChild {
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Copy, Debug, HashStable)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, HashStable)]
 pub enum DiffMode {
     Forward,
     Reverse,
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Debug, Copy, HashStable)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, HashStable)]
 pub enum DiffActivity {
+    None,
     Active,
     Const,
-    OnlyGrad,
+    Duplicated,
+    DuplicatedNoNeed,
 }
 
 #[allow(dead_code)]
@@ -47,7 +49,8 @@ pub struct DiffItem {
     pub source: DefId,
     pub target: String,
     pub mode: DiffMode,
-    pub respect_to: Vec<DiffActivity>,
+    pub ret_activity: DiffActivity,
+    pub input_activity: Vec<DiffActivity>,
 }
 
 //impl Default for DiffItem {
