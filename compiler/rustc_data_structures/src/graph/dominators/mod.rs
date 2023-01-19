@@ -299,7 +299,7 @@ impl<Node: Idx> Dominators<Node> {
     /// of two unrelated nodes will also be consistent, but otherwise the order has no
     /// meaning.) This method cannot be used to determine if either Node dominates the other.
     pub fn rank_partial_cmp(&self, lhs: Node, rhs: Node) -> Option<Ordering> {
-        self.post_order_rank[lhs].partial_cmp(&self.post_order_rank[rhs])
+        self.post_order_rank[rhs].partial_cmp(&self.post_order_rank[lhs])
     }
 }
 
