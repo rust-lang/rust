@@ -203,7 +203,6 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
-    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
     (Some(Mode::Codegen), "parallel_compiler", None),
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
@@ -214,18 +213,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
-    (Some(Mode::Std), "target_os", Some(&["watchos"])),
-    (
-        Some(Mode::Std),
-        "target_arch",
-        Some(&["asmjs", "spirv", "nvptx", "nvptx64", "le32", "xtensa"]),
-    ),
+    // (Some(Mode::Std), "target_os", Some(&[])),
+    (Some(Mode::Std), "target_arch", Some(&["asmjs", "spirv", "nvptx", "xtensa"])),
     /* Extra names used by dependencies */
-    // FIXME: Used by rustfmt is their test but is invalid (neither cargo nor bootstrap ever set
-    // this config) should probably by removed or use a allow attribute.
-    (Some(Mode::ToolRustc), "release", None),
-    // FIXME: Used by stdarch in their test, should use a allow attribute instead.
-    (Some(Mode::Std), "dont_compile_me", None),
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
     (Some(Mode::ToolRustc), "no_btreemap_remove_entry", None),
@@ -235,8 +225,12 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "span_locations", None),
     (Some(Mode::ToolRustc), "span_locations", None),
-    // Can be passed in RUSTFLAGS to prevent direct syscalls in rustix.
-    (None, "rustix_use_libc", None),
+    // FIXME: Used by rustix, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "rustix_use_libc", None),
+    (Some(Mode::ToolRustc), "rustix_use_libc", None),
+    // FIXME: Used by filetime, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "emulate_second_only_system", None),
+    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
 ];
 
 /// A structure representing a Rust compiler.
