@@ -1,10 +1,10 @@
-error[E0208]: [-, +]
+error: [-, +]
   --> $DIR/variance-associated-types.rs:13:1
    |
 LL | struct Foo<'a, T : Trait<'a>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0208]: [o, o]
+error: [o, o]
   --> $DIR/variance-associated-types.rs:18:1
    |
 LL | struct Bar<'a, T : Trait<'a>> {
@@ -12,4 +12,3 @@ LL | struct Bar<'a, T : Trait<'a>> {
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0208`.

@@ -243,10 +243,12 @@ error[E0606]: casting `&{float}` as `f32` is invalid
   --> $DIR/cast-rfc0401.rs:71:30
    |
 LL |     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>();
-   |                              -^^^^^^^
-   |                              |
-   |                              cannot cast `&{float}` as `f32`
-   |                              help: dereference the expression: `*s`
+   |                              ^^^^^^^^
+   |
+help: dereference the expression
+   |
+LL |     vec![0.0].iter().map(|s| *s as f32).collect::<Vec<f32>>();
+   |                              +
 
 error: aborting due to 34 previous errors
 

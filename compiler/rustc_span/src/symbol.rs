@@ -164,6 +164,7 @@ symbols! {
         Capture,
         Center,
         Clone,
+        Context,
         Continue,
         Copy,
         Count,

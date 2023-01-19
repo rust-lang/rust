@@ -1,0 +1,337 @@
+// MIR for `b::{closure#0}` 0 generator_resume
+/* generator_layout = GeneratorLayout {
+    field_tys: {
+        _0: impl std::future::Future<Output = ()>,
+        _1: impl std::future::Future<Output = ()>,
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0],
+        Suspend1 (4): [_1],
+    },
+    storage_conflicts: BitMatrix(2x2) {
+        (_0, _0),
+        (_1, _1),
+    },
+} */
+
+fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>, _2: &mut Context<'_>) -> Poll<()> {
+    debug _task_context => _38;          // in scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    let mut _0: std::task::Poll<()>;     // return place in scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    let _3: ();                          // in scope 0 at $DIR/async_await.rs:+1:5: +1:14
+    let mut _4: impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _5: impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+1:5: +1:8
+    let mut _6: impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _7: ();                      // in scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    let _8: ();                          // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _9: std::task::Poll<()>;     // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _10: std::pin::Pin<&mut impl std::future::Future<Output = ()>>; // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _11: &mut impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _12: &mut impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _13: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+1:5: +1:14
+    let mut _14: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+1:5: +1:14
+    let mut _15: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _16: isize;                  // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _18: !;                      // in scope 0 at $DIR/async_await.rs:+1:5: +1:14
+    let mut _19: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _20: ();                     // in scope 0 at $DIR/async_await.rs:+1:8: +1:14
+    let mut _21: impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _22: impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+2:5: +2:8
+    let mut _23: impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let _24: ();                         // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _25: std::task::Poll<()>;    // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _26: std::pin::Pin<&mut impl std::future::Future<Output = ()>>; // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _27: &mut impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _28: &mut impl std::future::Future<Output = ()>; // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _29: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+2:5: +2:14
+    let mut _30: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+2:5: +2:14
+    let mut _31: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _32: isize;                  // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _34: !;                      // in scope 0 at $DIR/async_await.rs:+2:5: +2:14
+    let mut _35: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _36: ();                     // in scope 0 at $DIR/async_await.rs:+2:8: +2:14
+    let mut _37: ();                     // in scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    let mut _38: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    let mut _39: u32;                    // in scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    scope 1 {
+        debug __awaitee => (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#3).0: impl std::future::Future<Output = ()>); // in scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        let _17: ();                     // in scope 1 at $DIR/async_await.rs:+1:5: +1:14
+        scope 2 {
+        }
+        scope 3 {
+            debug result => _17;         // in scope 3 at $DIR/async_await.rs:+1:5: +1:14
+        }
+    }
+    scope 4 {
+        debug __awaitee => (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#4).0: impl std::future::Future<Output = ()>); // in scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        let _33: ();                     // in scope 4 at $DIR/async_await.rs:+2:5: +2:14
+        scope 5 {
+        }
+        scope 6 {
+            debug result => _33;         // in scope 6 at $DIR/async_await.rs:+2:5: +2:14
+        }
+    }
+
+    bb0: {
+        _39 = discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))); // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        switchInt(move _39) -> [0: bb1, 1: bb29, 3: bb27, 4: bb28, otherwise: bb30]; // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    }
+
+    bb1: {
+        _38 = move _2;                   // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        StorageLive(_3);                 // scope 0 at $DIR/async_await.rs:+1:5: +1:14
+        StorageLive(_4);                 // scope 0 at $DIR/async_await.rs:+1:8: +1:14
+        StorageLive(_5);                 // scope 0 at $DIR/async_await.rs:+1:5: +1:8
+        _5 = a() -> bb2;                 // scope 0 at $DIR/async_await.rs:+1:5: +1:8
+                                         // mir::Constant
+                                         // + span: $DIR/async_await.rs:15:5: 15:6
+                                         // + literal: Const { ty: fn() -> impl Future<Output = ()> {a}, val: Value(<ZST>) }
+    }
+
+    bb2: {
+        _4 = <impl Future<Output = ()> as IntoFuture>::into_future(move _5) -> bb3; // scope 0 at $DIR/async_await.rs:+1:8: +1:14
+                                         // mir::Constant
+                                         // + span: $DIR/async_await.rs:15:8: 15:14
+                                         // + literal: Const { ty: fn(impl Future<Output = ()>) -> <impl Future<Output = ()> as IntoFuture>::IntoFuture {<impl Future<Output = ()> as IntoFuture>::into_future}, val: Value(<ZST>) }
+    }
+
+    bb3: {
+        StorageDead(_5);                 // scope 0 at $DIR/async_await.rs:+1:13: +1:14
+        nop;                             // scope 0 at $DIR/async_await.rs:+1:8: +1:14
+        (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#3).0: impl std::future::Future<Output = ()>) = move _4; // scope 0 at $DIR/async_await.rs:+1:8: +1:14
+        goto -> bb4;                     // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+    }
+
+    bb4: {
+        StorageLive(_8);                 // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        StorageLive(_9);                 // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        StorageLive(_10);                // scope 2 at $DIR/async_await.rs:+1:8: +1:14
+        StorageLive(_11);                // scope 2 at $DIR/async_await.rs:+1:8: +1:14
+        StorageLive(_12);                // scope 2 at $DIR/async_await.rs:+1:8: +1:14
+        _12 = &mut (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#3).0: impl std::future::Future<Output = ()>); // scope 2 at $DIR/async_await.rs:+1:8: +1:14
+        _11 = &mut (*_12);               // scope 2 at $DIR/async_await.rs:+1:8: +1:14
+        _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _11) -> bb5; // scope 2 at $DIR/async_await.rs:+1:8: +1:14
+                                         // mir::Constant
+                                         // + span: $DIR/async_await.rs:15:8: 15:14
+                                         // + literal: Const { ty: unsafe fn(&mut impl Future<Output = ()>) -> Pin<&mut impl Future<Output = ()>> {Pin::<&mut impl Future<Output = ()>>::new_unchecked}, val: Value(<ZST>) }
+    }
+
+    bb5: {
+        StorageDead(_11);                // scope 2 at $DIR/async_await.rs:+1:13: +1:14
+        StorageLive(_13);                // scope 2 at $DIR/async_await.rs:+1:5: +1:14
+        StorageLive(_14);                // scope 2 at $DIR/async_await.rs:+1:5: +1:14
+        StorageLive(_15);                // scope 2 at $DIR/async_await.rs:+1:8: +1:14
+        _15 = _38;                       // scope 2 at $DIR/async_await.rs:+1:8: +1:14
+        _14 = move _15;                  // scope 2 at $DIR/async_await.rs:+1:5: +1:14
+        goto -> bb6;                     // scope 2 at $DIR/async_await.rs:+1:5: +1:14
+    }
+
+    bb6: {
+        _13 = &mut (*_14);               // scope 2 at $DIR/async_await.rs:+1:5: +1:14
+        StorageDead(_15);                // scope 2 at $DIR/async_await.rs:+1:13: +1:14
+        _9 = <impl Future<Output = ()> as Future>::poll(move _10, move _13) -> bb7; // scope 2 at $DIR/async_await.rs:+1:8: +1:14
+                                         // mir::Constant
+                                         // + span: $DIR/async_await.rs:15:8: 15:14
+                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(Pin<&'a mut impl Future<Output = ()>>, &'b mut Context<'c>) -> Poll<<impl Future<Output = ()> as Future>::Output> {<impl Future<Output = ()> as Future>::poll}, val: Value(<ZST>) }
+    }
+
+    bb7: {
+        StorageDead(_13);                // scope 2 at $DIR/async_await.rs:+1:13: +1:14
+        StorageDead(_10);                // scope 2 at $DIR/async_await.rs:+1:13: +1:14
+        _16 = discriminant(_9);          // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        switchInt(move _16) -> [0: bb10, 1: bb8, otherwise: bb9]; // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+    }
+
+    bb8: {
+        _8 = const ();                   // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        StorageDead(_14);                // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        StorageDead(_12);                // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        StorageDead(_9);                 // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        StorageDead(_8);                 // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        StorageLive(_19);                // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        StorageLive(_20);                // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        _20 = ();                        // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        Deinit(_0);                      // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        discriminant(_0) = 1;            // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 3; // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        return;                          // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+    }
+
+    bb9: {
+        unreachable;                     // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+    }
+
+    bb10: {
+        StorageLive(_17);                // scope 1 at $DIR/async_await.rs:+1:5: +1:14
+        _17 = ((_9 as Ready).0: ());     // scope 1 at $DIR/async_await.rs:+1:5: +1:14
+        _3 = _17;                        // scope 3 at $DIR/async_await.rs:+1:5: +1:14
+        StorageDead(_17);                // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        StorageDead(_14);                // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        StorageDead(_12);                // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        StorageDead(_9);                 // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        StorageDead(_8);                 // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        goto -> bb12;                    // scope 0 at $DIR/async_await.rs:+1:13: +1:14
+    }
+
+    bb11: {
+        StorageDead(_20);                // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        _38 = move _19;                  // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        StorageDead(_19);                // scope 1 at $DIR/async_await.rs:+1:13: +1:14
+        _7 = const ();                   // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        goto -> bb4;                     // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+    }
+
+    bb12: {
+        nop;                             // scope 0 at $DIR/async_await.rs:+1:13: +1:14
+        goto -> bb13;                    // scope 0 at $DIR/async_await.rs:+1:14: +1:15
+    }
+
+    bb13: {
+        StorageDead(_4);                 // scope 0 at $DIR/async_await.rs:+1:14: +1:15
+        StorageDead(_3);                 // scope 0 at $DIR/async_await.rs:+1:14: +1:15
+        StorageLive(_21);                // scope 0 at $DIR/async_await.rs:+2:8: +2:14
+        StorageLive(_22);                // scope 0 at $DIR/async_await.rs:+2:5: +2:8
+        _22 = a() -> bb14;               // scope 0 at $DIR/async_await.rs:+2:5: +2:8
+                                         // mir::Constant
+                                         // + span: $DIR/async_await.rs:16:5: 16:6
+                                         // + literal: Const { ty: fn() -> impl Future<Output = ()> {a}, val: Value(<ZST>) }
+    }
+
+    bb14: {
+        _21 = <impl Future<Output = ()> as IntoFuture>::into_future(move _22) -> bb15; // scope 0 at $DIR/async_await.rs:+2:8: +2:14
+                                         // mir::Constant
+                                         // + span: $DIR/async_await.rs:16:8: 16:14
+                                         // + literal: Const { ty: fn(impl Future<Output = ()>) -> <impl Future<Output = ()> as IntoFuture>::IntoFuture {<impl Future<Output = ()> as IntoFuture>::into_future}, val: Value(<ZST>) }
+    }
+
+    bb15: {
+        StorageDead(_22);                // scope 0 at $DIR/async_await.rs:+2:13: +2:14
+        nop;                             // scope 0 at $DIR/async_await.rs:+2:8: +2:14
+        (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#4).0: impl std::future::Future<Output = ()>) = move _21; // scope 0 at $DIR/async_await.rs:+2:8: +2:14
+        goto -> bb16;                    // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+    }
+
+    bb16: {
+        StorageLive(_24);                // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        StorageLive(_25);                // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        StorageLive(_26);                // scope 5 at $DIR/async_await.rs:+2:8: +2:14
+        StorageLive(_27);                // scope 5 at $DIR/async_await.rs:+2:8: +2:14
+        StorageLive(_28);                // scope 5 at $DIR/async_await.rs:+2:8: +2:14
+        _28 = &mut (((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2])) as variant#4).0: impl std::future::Future<Output = ()>); // scope 5 at $DIR/async_await.rs:+2:8: +2:14
+        _27 = &mut (*_28);               // scope 5 at $DIR/async_await.rs:+2:8: +2:14
+        _26 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _27) -> bb17; // scope 5 at $DIR/async_await.rs:+2:8: +2:14
+                                         // mir::Constant
+                                         // + span: $DIR/async_await.rs:16:8: 16:14
+                                         // + literal: Const { ty: unsafe fn(&mut impl Future<Output = ()>) -> Pin<&mut impl Future<Output = ()>> {Pin::<&mut impl Future<Output = ()>>::new_unchecked}, val: Value(<ZST>) }
+    }
+
+    bb17: {
+        StorageDead(_27);                // scope 5 at $DIR/async_await.rs:+2:13: +2:14
+        StorageLive(_29);                // scope 5 at $DIR/async_await.rs:+2:5: +2:14
+        StorageLive(_30);                // scope 5 at $DIR/async_await.rs:+2:5: +2:14
+        StorageLive(_31);                // scope 5 at $DIR/async_await.rs:+2:8: +2:14
+        _31 = _38;                       // scope 5 at $DIR/async_await.rs:+2:8: +2:14
+        _30 = move _31;                  // scope 5 at $DIR/async_await.rs:+2:5: +2:14
+        goto -> bb18;                    // scope 5 at $DIR/async_await.rs:+2:5: +2:14
+    }
+
+    bb18: {
+        _29 = &mut (*_30);               // scope 5 at $DIR/async_await.rs:+2:5: +2:14
+        StorageDead(_31);                // scope 5 at $DIR/async_await.rs:+2:13: +2:14
+        _25 = <impl Future<Output = ()> as Future>::poll(move _26, move _29) -> bb19; // scope 5 at $DIR/async_await.rs:+2:8: +2:14
+                                         // mir::Constant
+                                         // + span: $DIR/async_await.rs:16:8: 16:14
+                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(Pin<&'a mut impl Future<Output = ()>>, &'b mut Context<'c>) -> Poll<<impl Future<Output = ()> as Future>::Output> {<impl Future<Output = ()> as Future>::poll}, val: Value(<ZST>) }
+    }
+
+    bb19: {
+        StorageDead(_29);                // scope 5 at $DIR/async_await.rs:+2:13: +2:14
+        StorageDead(_26);                // scope 5 at $DIR/async_await.rs:+2:13: +2:14
+        _32 = discriminant(_25);         // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        switchInt(move _32) -> [0: bb22, 1: bb20, otherwise: bb21]; // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+    }
+
+    bb20: {
+        _24 = const ();                  // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        StorageDead(_30);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        StorageDead(_28);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        StorageDead(_25);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        StorageDead(_24);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        StorageLive(_35);                // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        StorageLive(_36);                // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        _36 = ();                        // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        Deinit(_0);                      // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        discriminant(_0) = 1;            // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 4; // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        return;                          // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+    }
+
+    bb21: {
+        unreachable;                     // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+    }
+
+    bb22: {
+        StorageLive(_33);                // scope 4 at $DIR/async_await.rs:+2:5: +2:14
+        _33 = ((_25 as Ready).0: ());    // scope 4 at $DIR/async_await.rs:+2:5: +2:14
+        _37 = _33;                       // scope 6 at $DIR/async_await.rs:+2:5: +2:14
+        StorageDead(_33);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        StorageDead(_30);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        StorageDead(_28);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        StorageDead(_25);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        StorageDead(_24);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        goto -> bb24;                    // scope 0 at $DIR/async_await.rs:+2:13: +2:14
+    }
+
+    bb23: {
+        StorageDead(_36);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        _38 = move _35;                  // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        StorageDead(_35);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
+        _7 = const ();                   // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        goto -> bb16;                    // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+    }
+
+    bb24: {
+        nop;                             // scope 0 at $DIR/async_await.rs:+2:13: +2:14
+        goto -> bb25;                    // scope 0 at $DIR/async_await.rs:+3:1: +3:2
+    }
+
+    bb25: {
+        StorageDead(_21);                // scope 0 at $DIR/async_await.rs:+3:1: +3:2
+        goto -> bb26;                    // scope 0 at $DIR/async_await.rs:+3:1: +3:2
+    }
+
+    bb26: {
+        Deinit(_0);                      // scope 0 at $DIR/async_await.rs:+3:2: +3:2
+        ((_0 as Ready).0: ()) = move _37; // scope 0 at $DIR/async_await.rs:+3:2: +3:2
+        discriminant(_0) = 0;            // scope 0 at $DIR/async_await.rs:+3:2: +3:2
+        discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 1; // scope 0 at $DIR/async_await.rs:+3:2: +3:2
+        return;                          // scope 0 at $DIR/async_await.rs:+3:2: +3:2
+    }
+
+    bb27: {
+        StorageLive(_3);                 // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        StorageLive(_4);                 // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        StorageLive(_19);                // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        StorageLive(_20);                // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        _19 = move _2;                   // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        goto -> bb11;                    // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    }
+
+    bb28: {
+        StorageLive(_21);                // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        StorageLive(_35);                // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        StorageLive(_36);                // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        _35 = move _2;                   // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        goto -> bb23;                    // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    }
+
+    bb29: {
+        assert(const false, "`async fn` resumed after completion") -> bb29; // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    }
+
+    bb30: {
+        unreachable;                     // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    }
+}
