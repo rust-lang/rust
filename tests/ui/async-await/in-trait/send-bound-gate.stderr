@@ -1,0 +1,35 @@
+error[E0658]: `async_send` is a temporary placeholder for marking async methods as returning a future that is also Send and may be removed or renamed in the future.
+  --> $DIR/send-bound-gate.rs:6:5
+   |
+LL |     #[async_send]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error[E0658]: `async_send` is a temporary placeholder for marking async methods as returning a future that is also Send and may be removed or renamed in the future.
+  --> $DIR/send-bound-gate.rs:11:1
+   |
+LL | #[async_send]
+   | ^^^^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/send-bound-gate.rs:7:5
+   |
+LL |     async fn foo(&self) -> usize;
+   |     -----^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0658, E0706.
+For more information about an error, try `rustc --explain E0658`.

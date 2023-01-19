@@ -1968,11 +1968,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ));
                 debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
-                let is_async_send = this.tcx.features().async_fn_in_trait
-                    && (true
-                        || this.attrs.get(&fn_local_id).map_or(false, |attrs| {
-                            attrs.into_iter().any(|attr| attr.has_name(sym::async_send))
-                        }));
+                let is_async_send = this.attrs.get(&fn_local_id).map_or(false, |attrs| {
+                    attrs.into_iter().any(|attr| attr.has_name(sym::async_send))
+                });
 
                 // Add Send bound if `#[async_send]` attribute is present
                 let bounds = if is_async_send {
