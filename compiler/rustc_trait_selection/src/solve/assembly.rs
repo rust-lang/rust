@@ -1,7 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::infcx_ext::InferCtxtExt;
-use super::{CanonicalResponse, EvalCtxt, Goal, QueryResult};
+use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
@@ -124,6 +124,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
+        // HACK: `_: Trait` is ambiguous, because it may be satisfied via a builtin rule,
+        // object bound, alias bound, etc. We are unable to determine this until we can at
+        // least structually resolve the type one layer.
+        if goal.predicate.self_ty().is_ty_var() {
+            return vec![Candidate {
+                source: CandidateSource::BuiltinImpl,
+                result: self.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity)).unwrap(),
+            }];
+        }
+
         let mut candidates = Vec::new();
 
         self.assemble_candidates_after_normalizing_self_ty(goal, &mut candidates);
