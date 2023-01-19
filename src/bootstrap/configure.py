@@ -462,21 +462,18 @@ cli_args = {}
 for section_key in config:
         
     section_config = config[section_key]
-        #key is not in toml file,added via --set from command line
+       
     if section_key not in sections:
         #key is not in toml file,added via --set from command line
         cli_args[section_key] = section_config
         continue
-    #raise RuntimeError("config key {} not in sections".format(section_key))
-
+    
     if section_key == 'target':
         for target in section_config:
             configure_section(targets[target], section_config[target])
-        
     else:
-        val = sections[section_key]
         configure_section(sections[section_key], section_config)
-    #sections.pop(section_key)
+    
 
 # Now that we've built up our `config.toml`, write it all out in the same
 # order that we read it in.
@@ -491,8 +488,8 @@ with bootstrap.output('config.toml') as f:
         else:
             for line in sections[section]:
                 f.write(line + "\n")
-    for key in cli_args:
-        f.write(key + ' = ' + cli_args[key] )
+    for arg in cli_args:
+        f.write(arg + ' = ' + cli_args[arg] )
 
 with bootstrap.output('Makefile') as f:
     contents = os.path.join(rust_dir, 'src', 'bootstrap', 'mk', 'Makefile.in')
