@@ -116,6 +116,28 @@ fn do_orphan_check_impl<'tcx>(
             //     impl MyAuto for dyn Trait {}      // NOT OKAY
             //     impl<T: ?Sized> MyAuto for T {}   // NOT OKAY
             //
+            // With this restriction, it's guaranteed that an auto-trait is
+            // implemented for a trait object if and only if the auto-trait is
+            // one of the trait object's trait bounds (or a supertrait of a
+            // bound). In other words `dyn Trait + AutoTrait` always implements
+            // AutoTrait, while `dyn Trait` never implements AutoTrait.
+            //
+            // This is necessary in order for autotrait bounds on methods of
+            // trait objects to be sound.
+            //
+            //     auto trait AutoTrait {}
+            //
+            //     trait ObjectSafeTrait {
+            //         fn f(&self) where Self: AutoTrait;
+            //     }
+            //
+            // We can allow f to be called on `dyn ObjectSafeTrait + AutoTrait`.
+            //
+            // If we didn't deny `impl AutoTrait for dyn Trait`, it would be
+            // unsound for the ObjectSafeTrait shown above to be object safe
+            // because someone could take some type implementing ObjectSafeTrait
+            // but not AutoTrait, unsize it to `dyn ObjectSafeTrait`, and call
+            // .f() which has no concrete implementation (issue #50781).
             let problematic_kind = match self_ty_kind {
                 ty::Dynamic(..) => Some("trait object"),
                 ty::Param(..) if !self_ty.is_sized(tcx, tcx.param_env(def_id)) => {
