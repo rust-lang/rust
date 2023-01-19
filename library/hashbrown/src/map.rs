@@ -4297,7 +4297,7 @@ impl<K: Debug, V: Debug, S, A: Allocator + Clone> Debug for Entry<'_, K, V, S, A
 /// assert_eq!(map.get(&"c"), None);
 /// assert_eq!(map.len(), 2);
 /// ```
-pub struct OccupiedEntry<'a, K, V, S, A: Allocator + Clone = Global> {
+pub struct OccupiedEntry<'a, K, V, S = DefaultHashBuilder, A: Allocator + Clone = Global> {
     hash: u64,
     key: Option<K>,
     elem: Bucket<(K, V)>,
@@ -4360,7 +4360,7 @@ impl<K: Debug, V: Debug, S, A: Allocator + Clone> Debug for OccupiedEntry<'_, K,
 /// }
 /// assert!(map[&"b"] == 20 && map.len() == 2);
 /// ```
-pub struct VacantEntry<'a, K, V, S, A: Allocator + Clone = Global> {
+pub struct VacantEntry<'a, K, V, S = DefaultHashBuilder, A: Allocator + Clone = Global> {
     hash: u64,
     key: K,
     table: &'a mut HashMap<K, V, S, A>,
