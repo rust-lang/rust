@@ -100,8 +100,10 @@ See [the rustc-dev-guide for more info][sysllvm].
    list of options in `config.toml.example`.
 
    ```sh
-   printf 'profile = "user" \nchangelog-seen = 2 \n' > config.toml
+   ./configure --set profile="user"
+   ./configure --set changelog-seen=2
    ```
+
 
    If you plan to use `x.py install` to create an installation, it is
    recommended that you set the `prefix` value in the `[install]` section to a
