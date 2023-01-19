@@ -1438,6 +1438,10 @@ impl Config {
         try_or_def!(self.caps.workspace.as_ref()?.code_lens.as_ref()?.refresh_support?)
     }
 
+    pub fn inlay_hints_refresh(&self) -> bool {
+        try_or_def!(self.caps.workspace.as_ref()?.inlay_hint.as_ref()?.refresh_support?)
+    }
+
     pub fn insert_replace_support(&self) -> bool {
         try_or_def!(
             self.caps
