@@ -327,12 +327,14 @@ fn run_compiler(
                 }
             }
 
-            queries.global_ctxt()?;
+            let mut gctxt = queries.global_ctxt()?;
             if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
 
-            queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
+            // Make sure the `output_filenames` query is run for its side
+            // effects of writing the dep-info and reporting errors.
+            gctxt.enter(|tcx| tcx.output_filenames(()));
 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
@@ -344,7 +346,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.global_ctxt()?.enter(|tcx| {
+            gctxt.enter(|tcx| {
                 let result = tcx.analysis(());
                 if sess.opts.unstable_opts.save_analysis {
                     let crate_name = tcx.crate_name(LOCAL_CRATE);
@@ -360,6 +362,8 @@ fn run_compiler(
                 }
                 result
             })?;
+
+            drop(gctxt);
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();

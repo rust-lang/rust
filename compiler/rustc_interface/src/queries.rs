@@ -65,7 +65,7 @@ impl<'a, T> std::ops::DerefMut for QueryResult<'a, T> {
 }
 
 impl<'a, 'tcx> QueryResult<'a, QueryContext<'tcx>> {
-    pub fn enter<T>(mut self, f: impl FnOnce(TyCtxt<'tcx>) -> T) -> T {
+    pub fn enter<T>(&mut self, f: impl FnOnce(TyCtxt<'tcx>) -> T) -> T {
         (*self.0).get_mut().enter(f)
     }
 }
