@@ -2538,14 +2538,15 @@ pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
     !ptr.is_null() && ptr.is_aligned()
 }
 
+const fn max_len<T>() -> usize {
+    let size = crate::mem::size_of::<T>();
+    if size == 0 { usize::MAX } else { isize::MAX as usize / size }
+}
+
 /// Checks whether an allocation of `len` instances of `T` exceeds
 /// the maximum allowed allocation size.
 pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
-    let max_len = const {
-        let size = crate::mem::size_of::<T>();
-        if size == 0 { usize::MAX } else { isize::MAX as usize / size }
-    };
-    len <= max_len
+    len <= max_len::<T>()
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
