@@ -4,7 +4,7 @@ use std::process::{self, Command};
 
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_file_name, get_rustc_version, get_toolchain_name};
-use super::utils::{spawn_and_wait, try_hard_link, CargoProject, Compiler};
+use super::utils::{remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler};
 use super::SysrootKind;
 
 static DIST_DIR: RelPath = RelPath::DIST;
@@ -230,9 +230,7 @@ fn build_clif_sysroot_for_triple(
     if !super::config::get_bool("keep_sysroot") {
         // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
         // recompilation as they are not affected by changes in cg_clif.
-        if build_dir.join("deps").exists() {
-            fs::remove_dir_all(build_dir.join("deps")).unwrap();
-        }
+        remove_dir_if_exists(&build_dir.join("deps"));
     }
 
     // Build sysroot

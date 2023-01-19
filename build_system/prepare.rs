@@ -3,18 +3,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::build_system::rustc_info::get_default_sysroot;
-
 use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
 use super::path::{Dirs, RelPath};
-use super::rustc_info::get_rustc_version;
+use super::rustc_info::{get_default_sysroot, get_rustc_version};
 use super::utils::{copy_dir_recursively, git_command, retry_spawn_and_wait, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
-    if RelPath::DOWNLOAD.to_path(dirs).exists() {
-        std::fs::remove_dir_all(RelPath::DOWNLOAD.to_path(dirs)).unwrap();
-    }
-    std::fs::create_dir_all(RelPath::DOWNLOAD.to_path(dirs)).unwrap();
+    RelPath::DOWNLOAD.ensure_fresh(dirs);
 
     spawn_and_wait(super::build_backend::CG_CLIF.fetch("cargo", dirs));
 

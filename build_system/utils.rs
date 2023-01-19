@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 
@@ -244,6 +244,14 @@ pub(crate) fn spawn_and_wait_with_input(mut cmd: Command, input: String) -> Stri
     }
 
     String::from_utf8(output.stdout).unwrap()
+}
+
+pub(crate) fn remove_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(&path) {
+        Ok(()) => {}
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+        Err(err) => panic!("Failed to remove {path}: {err}", path = path.display()),
+    }
 }
 
 pub(crate) fn copy_dir_recursively(from: &Path, to: &Path) {
