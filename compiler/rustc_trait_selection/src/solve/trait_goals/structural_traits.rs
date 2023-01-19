@@ -30,10 +30,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Foreign(..)
         | ty::Alias(ty::Projection, ..)
         | ty::Bound(..)
-        | ty::Infer(ty::TyVar(_)) => {
-            // FIXME: Do we need to mark anything as ambiguous here? Yeah?
-            Err(NoSolution)
-        }
+        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
 
         ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
 
@@ -101,9 +98,8 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Dynamic(..)
         | ty::Foreign(..)
         | ty::Alias(..)
-        | ty::Param(_) => Err(NoSolution),
-
-        ty::Infer(ty::TyVar(_)) => bug!("FIXME: ambiguous"),
+        | ty::Param(_)
+        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
 
         ty::Placeholder(..)
         | ty::Bound(..)
@@ -151,9 +147,8 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         | ty::Ref(_, _, Mutability::Mut)
         | ty::Adt(_, _)
         | ty::Alias(_, _)
-        | ty::Param(_) => Err(NoSolution),
-
-        ty::Infer(ty::TyVar(_)) => bug!("FIXME: ambiguous"),
+        | ty::Param(_)
+        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
 
         ty::Placeholder(..)
         | ty::Bound(..)
