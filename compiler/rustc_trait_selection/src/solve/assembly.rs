@@ -122,6 +122,17 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_tuple_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -137,7 +148,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         if goal.predicate.self_ty().is_ty_var() {
             return vec![Candidate {
                 source: CandidateSource::BuiltinImpl,
-                result: self.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity)).unwrap(),
+                result: self
+                    .make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity))
+                    .unwrap(),
             }];
         }
 
@@ -244,6 +257,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_copy_clone_candidate(self, goal)
         } else if lang_items.pointer_sized() == Some(trait_def_id) {
             G::consider_builtin_pointer_sized_candidate(self, goal)
+        } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
+            G::consider_builtin_fn_trait_candidates(self, goal, kind)
+        } else if lang_items.tuple_trait() == Some(trait_def_id) {
+            G::consider_builtin_tuple_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
