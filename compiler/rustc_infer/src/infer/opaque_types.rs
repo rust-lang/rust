@@ -10,12 +10,13 @@ use rustc_hir as hir;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
     self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitor,
 };
+use rustc_middle::ty::{DefIdTree, GenericArgKind};
 use rustc_span::Span;
+use smallvec::SmallVec;
 
 use std::ops::ControlFlow;
 
@@ -59,7 +60,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let replace_opaque_type = |def_id: DefId| {
             def_id
                 .as_local()
-                .map_or(false, |def_id| self.opaque_type_origin(def_id, span).is_some())
+                .map_or(false, |def_id| self.opaque_type_origin(def_id, span, param_env).is_some())
         };
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
@@ -144,7 +145,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         //     let x = || foo(); // returns the Opaque assoc with `foo`
                         // }
                         // ```
-                        self.opaque_type_origin(def_id, cause.span)?
+                        self.opaque_type_origin(def_id, cause.span, param_env)?
                     }
                     DefiningAnchor::Bubble => self.opaque_ty_origin_unchecked(def_id, cause.span),
                     DefiningAnchor::Error => return None,
@@ -155,9 +156,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if let Some(OpaqueTyOrigin::TyAlias) = b_def_id
-                        .as_local()
-                        .and_then(|b_def_id| self.opaque_type_origin(b_def_id, cause.span))
+                    if let Some(OpaqueTyOrigin::TyAlias) =
+                        b_def_id.as_local().and_then(|b_def_id| {
+                            self.opaque_type_origin(b_def_id, cause.span, param_env)
+                        })
                     {
                         self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
@@ -372,7 +374,12 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     #[instrument(skip(self), level = "trace", ret)]
-    pub fn opaque_type_origin(&self, def_id: LocalDefId, span: Span) -> Option<OpaqueTyOrigin> {
+    pub fn opaque_type_origin(
+        &self,
+        def_id: LocalDefId,
+        span: Span,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<OpaqueTyOrigin> {
         let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
             DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
@@ -395,7 +402,7 @@ impl<'tcx> InferCtxt<'tcx> {
             hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
             // Named `type Foo = impl Bar;`
             hir::OpaqueTyOrigin::TyAlias => {
-                may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
+                may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id, def_id, param_env)
             }
         };
         trace!(?origin);
@@ -639,11 +646,123 @@ impl<'tcx> InferCtxt<'tcx> {
 /// Here, `def_id` is the `LocalDefId` of the defining use of the opaque type (e.g., `f1` or `f2`),
 /// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
-fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hir::HirId) -> bool {
+#[instrument(skip(tcx), level = "trace", ret)]
+fn may_define_opaque_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    opaque_hir_id: hir::HirId,
+    opaque_def_id: LocalDefId,
+    param_env: ty::ParamEnv<'tcx>,
+) -> bool {
     let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     // Named opaque types can be defined by any siblings or children of siblings.
     let scope = tcx.hir().get_defining_scope(opaque_hir_id);
+
+    // When doing checks within the opaque type itself
+    if def_id != opaque_def_id
+        // When the opaque type is defined in the body of a function, the function may access it.
+        && hir_id != scope
+    {
+        trace!(parent = ?tcx.parent(opaque_def_id.to_def_id()));
+        fn has_tait<'tcx>(
+            val: impl TypeVisitable<'tcx>,
+            opaque_def_id: LocalDefId,
+            tcx: TyCtxt<'tcx>,
+            param_env: ty::ParamEnv<'tcx>,
+        ) -> bool {
+            struct Visitor<'tcx> {
+                opaque_def_id: DefId,
+                tcx: TyCtxt<'tcx>,
+                ignore_nested: SmallVec<[DefId; 1]>,
+                param_env: ty::ParamEnv<'tcx>,
+            }
+            impl<'tcx> TypeVisitor<'tcx> for Visitor<'tcx> {
+                type BreakTy = ();
+                #[instrument(skip(self), level = "trace", ret)]
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                    match t.kind() {
+                        ty::Alias(ty::Opaque, alias) => {
+                            if alias.def_id == self.opaque_def_id {
+                                return ControlFlow::Break(());
+                            }
+                            if !self.ignore_nested.contains(&alias.def_id) {
+                                // avoid infinite recursion since the opaque type shows
+                                // up in its own bounds.
+                                self.ignore_nested.push(alias.def_id);
+                                for (pred, _span) in self
+                                    .tcx
+                                    .bound_explicit_item_bounds(alias.def_id)
+                                    .subst_iter_copied(self.tcx, alias.substs)
+                                {
+                                    pred.visit_with(self)?;
+                                }
+                            }
+                        }
+                        ty::Alias(ty::Projection, _) => {
+                            if let Ok(proj) =
+                                self.tcx.try_normalize_erasing_regions(self.param_env, t)
+                            {
+                                proj.visit_with(self)?;
+                            }
+                        }
+                        // Types that have opaque type fields must get walked manually, they
+                        // would not be seen by the type visitor otherwise.
+                        ty::Adt(adt_def, substs) => {
+                            if !self.ignore_nested.contains(&adt_def.did()) {
+                                // avoid infinite recursion since adts can recursively refer
+                                // to themselves
+                                self.ignore_nested.push(adt_def.did());
+                                for variant in adt_def.variants() {
+                                    for field in &variant.fields {
+                                        field.ty(self.tcx, substs).visit_with(self)?;
+                                    }
+                                }
+                            }
+                        }
+                        _ => (),
+                    }
+                    t.super_visit_with(self)
+                }
+            }
+            val.visit_with(&mut Visitor {
+                opaque_def_id: opaque_def_id.to_def_id(),
+                tcx,
+                ignore_nested: SmallVec::new(),
+                param_env,
+            })
+            .is_break()
+        }
+        let tait_in_fn_sig = match tcx.def_kind(def_id) {
+            DefKind::AssocFn | DefKind::Fn => {
+                has_tait(tcx.fn_sig(def_id.to_def_id()), opaque_def_id, tcx, param_env)
+            }
+            // Opaque types in types of contsts
+            DefKind::Static(_) | DefKind::Const | DefKind::AssocConst => {
+                has_tait(tcx.type_of(def_id.to_def_id()), opaque_def_id, tcx, param_env)
+            }
+            // Nested opaque types
+            DefKind::OpaqueTy => has_tait(
+                tcx.bound_explicit_item_bounds(def_id.to_def_id()).skip_binder(),
+                opaque_def_id,
+                tcx,
+                param_env,
+            ),
+            _ => false,
+        };
+        trace!(?tait_in_fn_sig);
+        if !tait_in_fn_sig
+            && !has_tait(
+                tcx.predicates_of(def_id.to_def_id()).predicates,
+                opaque_def_id,
+                tcx,
+                param_env,
+            )
+        {
+            return false;
+        }
+    }
+
     // We walk up the node tree until we hit the root or the scope of the opaque type.
     while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
         hir_id = tcx.hir().get_parent_item(hir_id).into();

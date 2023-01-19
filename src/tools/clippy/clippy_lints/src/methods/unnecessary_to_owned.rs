@@ -17,6 +17,7 @@ use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Clause, EarlyBinder, ParamTy, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
+use rustc_infer::infer::DefiningAnchor;
 
 use super::UNNECESSARY_TO_OWNED;
 
@@ -370,7 +371,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                 if let ItemKind::Fn(_, _, body_id) = &item.kind
                 && let output_ty = return_ty(cx, item.hir_id())
                 && let local_def_id = cx.tcx.hir().local_def_id(item.hir_id())
-                && Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
+                && Inherited::build(cx.tcx, local_def_id, DefiningAnchor::Bind).enter(|inherited| {
                     let fn_ctxt = FnCtxt::new(inherited, cx.param_env, item.hir_id());
                     fn_ctxt.can_coerce(ty, output_ty)
                 }) {

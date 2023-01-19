@@ -12,7 +12,12 @@ type T = impl Sized;
 
 fn take(_: fn() -> T) {}
 
-fn main() {
+fn foo()
+where
+    T: Sized,
+{
     take(|| {});
     take(|| {});
 }
+
+fn main() {}

@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-78722.rs:18:20
+   |
+LL | type F = impl core::future::Future<Output = u8>;
+   |          -------------------------------------- the expected opaque type
+...
+LL |         let f: F = async { 1 };
+   |                    ^^^^^^^^^^^
+   |                    |
+   |                    expected opaque type, found `async` block
+   |                    arguments to this function are incorrect
+   |
+   = note: expected opaque type `F`
+            found `async` block `[async block@$DIR/issue-78722.rs:18:20: 18:31]`
+note: function defined here
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

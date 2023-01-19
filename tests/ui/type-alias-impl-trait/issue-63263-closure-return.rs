@@ -8,6 +8,13 @@
 
 pub type Closure = impl FnOnce();
 
-fn main() {
+fn foo()
+where
+    Closure: FnOnce(),
+{
     || -> Closure { || () };
+}
+
+fn main() {
+    foo();
 }
