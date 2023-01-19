@@ -2602,7 +2602,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         match path.res {
             Res::Def(DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder, did) => {
                 // Check for desugared `impl Trait`.
-                assert!(ty::is_impl_trait_defn(tcx, did).is_none());
+                assert!(tcx.is_type_alias_impl_trait(did));
                 let item_segment = path.segments.split_last().unwrap();
                 self.prohibit_generics(item_segment.1.iter(), |err| {
                     err.note("`impl Trait` types can't have type parameters");

@@ -76,6 +76,7 @@ pub fn provide(providers: &mut Providers) {
         is_foreign_item,
         generator_kind,
         collect_mod_item_types,
+        is_type_alias_impl_trait,
         ..*providers
     };
 }
@@ -1535,5 +1536,15 @@ fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> 
         })) => tcx.hir().body(body).generator_kind(),
         Some(_) => None,
         _ => bug!("generator_kind applied to non-local def-id {:?}", def_id),
+    }
+}
+
+fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    match tcx.hir().get_if_local(def_id) {
+        Some(Node::Item(hir::Item { kind: hir::ItemKind::OpaqueTy(opaque), .. })) => {
+            matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias)
+        }
+        Some(_) => bug!("tried getting opaque_ty_origin for non-opaque: {:?}", def_id),
+        _ => bug!("tried getting opaque_ty_origin for non-local def-id {:?}", def_id),
     }
 }

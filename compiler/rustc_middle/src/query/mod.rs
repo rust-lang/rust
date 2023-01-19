@@ -177,6 +177,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query is_type_alias_impl_trait(key: DefId) -> bool
+    {
+        desc { "determine whether the opaque is a type-alias impl trait" }
+        separate_provide_extern
+    }
+
     query analysis(key: ()) -> Result<(), ErrorGuaranteed> {
         eval_always
         desc { "running analysis passes on this crate" }
