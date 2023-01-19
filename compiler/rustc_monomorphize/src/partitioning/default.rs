@@ -71,17 +71,18 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
 
             let mut can_be_internalized = true; 
 
-            let (mut linkage, visibility) = mono_item_linkage_and_visibility(
+            let (linkage, visibility) = mono_item_linkage_and_visibility(
                 cx.tcx,
                 &mono_item,
                 &mut can_be_internalized,
                 export_generics,
             );
-            if characteristic_def_id_of_mono_item(cx.tcx, mono_item)
+
+            let is_diff_fnc = characteristic_def_id_of_mono_item(cx.tcx, mono_item)
                 .map(|def_id| autodiff_fncs.contains(&def_id))
-                .unwrap_or(false) {
-                linkage = Linkage::External;
-            } else if visibility == Visibility::Hidden && can_be_internalized {
+                .unwrap_or(false);
+
+            if !is_diff_fnc && visibility == Visibility::Hidden && can_be_internalized {
                 internalization_candidates.insert(mono_item);
             }
 
