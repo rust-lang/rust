@@ -94,7 +94,6 @@ impl<T> Poll<T> {
     pub const fn is_pending(&self) -> bool {
         !self.is_ready()
     }
-
 }
 
 impl<T, E> Poll<Result<T, E>> {

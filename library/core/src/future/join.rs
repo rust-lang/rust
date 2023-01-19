@@ -4,7 +4,7 @@ use crate::cell::UnsafeCell;
 use crate::future::{poll_fn, Future};
 use crate::mem;
 use crate::pin::Pin;
-use crate::task::{Context, Poll, ready};
+use crate::task::{ready, Context, Poll};
 
 /// Polls multiple futures simultaneously, returning a tuple
 /// of all results once complete.
