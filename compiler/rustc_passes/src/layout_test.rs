@@ -69,13 +69,15 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
                     }
 
                     sym::debug => {
-                        let normalized_ty = format!(
-                            "{:?}",
-                            tcx.normalize_erasing_regions(
-                                param_env.with_reveal_all_normalized(tcx),
-                                ty,
-                            )
-                        );
+                        let normalized_ty =
+                            rustc_middle::ty::print::with_no_trimmed_paths!(format!(
+                                "{}",
+                                tcx.normalize_erasing_regions(
+                                    param_env.with_reveal_all_normalized(tcx),
+                                    ty,
+                                )
+                            ));
+
                         let ty_layout = format!("{:#?}", *ty_layout);
                         tcx.sess.emit_err(LayoutOf {
                             span: tcx.def_span(item_def_id.to_def_id()),

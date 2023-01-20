@@ -1,4 +1,4 @@
-error: layout_of(Adt(MissingPayloadField, [])) = Layout {
+error: layout_of(MissingPayloadField) = Layout {
            size: Size(2 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
@@ -108,7 +108,7 @@ error: layout_of(Adt(MissingPayloadField, [])) = Layout {
 LL | pub enum MissingPayloadField {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout_of(Adt(CommonPayloadField, [])) = Layout {
+error: layout_of(CommonPayloadField) = Layout {
            size: Size(2 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
@@ -237,7 +237,7 @@ error: layout_of(Adt(CommonPayloadField, [])) = Layout {
 LL | pub enum CommonPayloadField {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout_of(Adt(CommonPayloadFieldIsMaybeUninit, [])) = Layout {
+error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            size: Size(2 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
@@ -363,7 +363,7 @@ error: layout_of(Adt(CommonPayloadFieldIsMaybeUninit, [])) = Layout {
 LL | pub enum CommonPayloadFieldIsMaybeUninit {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout_of(Adt(NicheFirst, [])) = Layout {
+error: layout_of(NicheFirst) = Layout {
            size: Size(2 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
@@ -507,7 +507,7 @@ error: layout_of(Adt(NicheFirst, [])) = Layout {
 LL | pub enum NicheFirst {
    | ^^^^^^^^^^^^^^^^^^^
 
-error: layout_of(Adt(NicheSecond, [])) = Layout {
+error: layout_of(NicheSecond) = Layout {
            size: Size(2 bytes),
            align: AbiAndPrefAlign {
                abi: Align(1 bytes),
