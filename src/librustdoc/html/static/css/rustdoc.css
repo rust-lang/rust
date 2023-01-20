@@ -497,7 +497,7 @@ ul.block, .block li {
 	padding-left: 24px;
 }
 
-.sidebar a, .sidebar .current {
+.sidebar a {
 	color: var(--sidebar-link-color);
 }
 .sidebar .current,
