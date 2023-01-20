@@ -1,5 +1,5 @@
 // check-fail
-// known-bug
+// known-bug: unknown
 
 // This gives us problems because `for<'a> I::Item<'a>: Debug` should mean "for
 // all 'a where I::Item<'a> is WF", but really means "for all 'a possible"
@@ -16,7 +16,6 @@ where
 {
     let mut iter2 = Eat(iter, f);
     let _next = iter2.next();
-    //~^ borrowed data escapes
     true
 }
 impl<I: LendingIterator> LendingIterator for &mut I {
