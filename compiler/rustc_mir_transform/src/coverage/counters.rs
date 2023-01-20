@@ -520,7 +520,7 @@ impl<'a> BcbCounters<'a> {
                 let mut found_loop_exit = false;
                 for &branch in branches.iter() {
                     if backedge_from_bcbs.iter().any(|&backedge_from_bcb| {
-                        self.bcb_is_dominated_by(backedge_from_bcb, branch.target_bcb)
+                        self.bcb_dominates(branch.target_bcb, backedge_from_bcb)
                     }) {
                         if let Some(reloop_branch) = some_reloop_branch {
                             if reloop_branch.counter(&self.basic_coverage_blocks).is_none() {
@@ -603,8 +603,8 @@ impl<'a> BcbCounters<'a> {
     }
 
     #[inline]
-    fn bcb_is_dominated_by(&self, node: BasicCoverageBlock, dom: BasicCoverageBlock) -> bool {
-        self.basic_coverage_blocks.is_dominated_by(node, dom)
+    fn bcb_dominates(&self, dom: BasicCoverageBlock, node: BasicCoverageBlock) -> bool {
+        self.basic_coverage_blocks.dominates(dom, node)
     }
 
     #[inline]

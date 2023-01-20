@@ -285,7 +285,7 @@ impl<Node: Idx> Dominators<Node> {
         Iter { dominators: self, node: Some(node) }
     }
 
-    pub fn is_dominated_by(&self, node: Node, dom: Node) -> bool {
+    pub fn dominates(&self, dom: Node, node: Node) -> bool {
         // FIXME -- could be optimized by using post-order-rank
         self.dominators(node).any(|n| n == dom)
     }
