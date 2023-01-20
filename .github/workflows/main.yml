@@ -50,11 +50,9 @@ jobs:
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: s390x-unknown-linux-gnu
-          # Native Windows build with MSVC
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-msvc
-          # cross-compile from Windows to Windows MinGW
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-gnu
@@ -114,14 +112,6 @@ jobs:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
       run: ./y.rs test
 
-    - name: Test abi-cafe
-      env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      run: |
-        if [[ "$(rustc -vV | grep host | cut -d' ' -f2)" == "$TARGET_TRIPLE" ]]; then
-          ./y.rs abi-cafe
-        fi
-
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz dist
 
@@ -138,3 +128,60 @@ jobs:
       with:
         name: cg_clif-${{ runner.os }}-cross-x86_64-mingw
         path: cg_clif.tar.xz
+
+
+  abi_cafe:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: x86_64-apple-darwin
+          - os: windows-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-msvc
+          - os: windows-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-gnu
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Cache cargo target dir
+      uses: actions/cache@v3
+      with:
+        path: build/cg_clif
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Set MinGW as the default toolchain
+      if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      run: rustup set default-host x86_64-pc-windows-gnu
+
+    - name: Use sparse cargo registry
+      run: |
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
+
+    - name: Prepare dependencies
+      run: ./y.rs prepare
+
+    - name: Build
+      run: ./y.rs build --sysroot none
+
+    - name: Test abi-cafe
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+      run: ./y.rs abi-cafe
