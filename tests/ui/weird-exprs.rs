@@ -19,6 +19,25 @@ use std::mem::swap;
 
 fn strange() -> bool { let _x: bool = return true; }
 
+fn hi() {
+    let string = "Hello, world!";
+    let string: String = {{{
+        {{{
+            {{{
+                string
+            }}}.chars()
+        }}}.collect()
+    }}};
+    {{{{{{{{{{
+        println!(
+            "{}",
+            {{{{{{{{{{{{{{{{{{{{
+                string
+            }}}}}}}}}}}}}}}}}}}}
+        )
+    }}}}}}}}}};
+}
+
 fn funny() {
     fn f(_x: ()) { }
     f(return);
@@ -206,6 +225,7 @@ fn closure_matching() {
 
 pub fn main() {
     strange();
+    hi();
     funny();
     what();
     zombiejesus();
