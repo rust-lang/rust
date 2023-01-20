@@ -2541,6 +2541,7 @@ impl Path {
     /// use std::path::{Path, PathBuf};
     ///
     /// assert_eq!(Path::new("/etc").join("passwd"), PathBuf::from("/etc/passwd"));
+    /// assert_eq!(Path::new("/etc").join("/bin/sh"), PathBuf::from("/bin/sh"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
