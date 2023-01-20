@@ -401,12 +401,12 @@ fn resolve_negative_obligation<'tcx>(
     infcx.resolve_regions(&outlives_env).is_empty()
 }
 
+#[instrument(level = "debug", skip(tcx), ret)]
 pub fn trait_ref_is_knowable<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), Conflict> {
-    debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
-    if orphan_check_trait_ref(tcx, trait_ref, InCrate::Remote).is_ok() {
+    if orphan_check_trait_ref(trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.
         return Err(Conflict::Downstream);
@@ -429,11 +429,9 @@ pub fn trait_ref_is_knowable<'tcx>(
     // and if we are an intermediate owner, then we don't care
     // about future-compatibility, which means that we're OK if
     // we are an owner.
-    if orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok() {
-        debug!("trait_ref_is_knowable: orphan check passed");
+    if orphan_check_trait_ref(trait_ref, InCrate::Local).is_ok() {
         Ok(())
     } else {
-        debug!("trait_ref_is_knowable: nonlocal, nonfundamental, unowned");
         Err(Conflict::Upstream)
     }
 }
@@ -445,6 +443,7 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
     trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, sym::fundamental)
 }
 
+#[derive(Debug)]
 pub enum OrphanCheckErr<'tcx> {
     NonLocalInputType(Vec<(Ty<'tcx>, bool /* Is this the first input type? */)>),
     UncoveredTy(Ty<'tcx>, Option<Ty<'tcx>>),
@@ -456,13 +455,12 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
+#[instrument(level = "debug", skip(tcx), ret)]
 pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanCheckErr<'_>> {
-    debug!("orphan_check({:?})", impl_def_id);
-
     // We only except this routine to be invoked on implementations
     // of a trait, not inherent implementations.
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
-    debug!("orphan_check: trait_ref={:?}", trait_ref);
+    debug!(?trait_ref);
 
     // If the *trait* is local to the crate, ok.
     if trait_ref.def_id.is_local() {
@@ -470,7 +468,7 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
         return Ok(());
     }
 
-    orphan_check_trait_ref(tcx, trait_ref, InCrate::Local)
+    orphan_check_trait_ref(trait_ref, InCrate::Local)
 }
 
 /// Checks whether a trait-ref is potentially implementable by a crate.
@@ -559,13 +557,11 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
+#[instrument(level = "trace", ret)]
 fn orphan_check_trait_ref<'tcx>(
-    tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     in_crate: InCrate,
 ) -> Result<(), OrphanCheckErr<'tcx>> {
-    debug!("orphan_check_trait_ref(trait_ref={:?}, in_crate={:?})", trait_ref, in_crate);
-
     if trait_ref.needs_infer() && trait_ref.needs_subst() {
         bug!(
             "can't orphan check a trait ref with both params and inference variables {:?}",
@@ -573,7 +569,7 @@ fn orphan_check_trait_ref<'tcx>(
         );
     }
 
-    let mut checker = OrphanChecker::new(tcx, in_crate);
+    let mut checker = OrphanChecker::new(in_crate);
     match trait_ref.visit_with(&mut checker) {
         ControlFlow::Continue(()) => Err(OrphanCheckErr::NonLocalInputType(checker.non_local_tys)),
         ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(ty)) => {
@@ -592,7 +588,6 @@ fn orphan_check_trait_ref<'tcx>(
 }
 
 struct OrphanChecker<'tcx> {
-    tcx: TyCtxt<'tcx>,
     in_crate: InCrate,
     in_self_ty: bool,
     /// Ignore orphan check failures and exclusively search for the first
@@ -602,9 +597,8 @@ struct OrphanChecker<'tcx> {
 }
 
 impl<'tcx> OrphanChecker<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, in_crate: InCrate) -> Self {
+    fn new(in_crate: InCrate) -> Self {
         OrphanChecker {
-            tcx,
             in_crate,
             in_self_ty: true,
             search_first_local_ty: false,
@@ -697,13 +691,17 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
                 }
             }
             ty::Error(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
-            ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
-                self.tcx.sess.delay_span_bug(
-                    DUMMY_SP,
-                    format!("ty_is_local invoked on closure or generator: {:?}", ty),
-                );
-                ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+            ty::Closure(did, ..) | ty::Generator(did, ..) => {
+                if self.def_id_is_local(did) {
+                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+                } else {
+                    self.found_non_local_ty(ty)
+                }
             }
+            // This should only be created when checking whether we have to check whether some
+            // auto trait impl applies. There will never be multiple impls, so we can just
+            // act as if it were a local type here.
+            ty::GeneratorWitness(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
             ty::Alias(ty::Opaque, ..) => {
                 // This merits some explanation.
                 // Normally, opaque types are not involved when performing
