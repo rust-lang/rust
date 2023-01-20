@@ -193,7 +193,7 @@ infer_actual_impl_expl_expected_signature_any = {$leading_ellipsis ->
 infer_actual_impl_expl_expected_signature_some = {$leading_ellipsis ->
     [true] ...
     *[false] {""}
-}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{lifetime_1}`...
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{$lifetime_1}`...
 infer_actual_impl_expl_expected_signature_nothing = {$leading_ellipsis ->
     [true] ...
     *[false] {""}
@@ -209,7 +209,7 @@ infer_actual_impl_expl_expected_passive_any = {$leading_ellipsis ->
 infer_actual_impl_expl_expected_passive_some = {$leading_ellipsis ->
     [true] ...
     *[false] {""}
-}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for some specific lifetime `'{lifetime_1}`...
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for some specific lifetime `'{$lifetime_1}`...
 infer_actual_impl_expl_expected_passive_nothing = {$leading_ellipsis ->
     [true] ...
     *[false] {""}
@@ -225,7 +225,7 @@ infer_actual_impl_expl_expected_other_any = {$leading_ellipsis ->
 infer_actual_impl_expl_expected_other_some = {$leading_ellipsis ->
     [true] ...
     *[false] {""}
-}`{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{lifetime_1}`...
+}`{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{$lifetime_1}`...
 infer_actual_impl_expl_expected_other_nothing = {$leading_ellipsis ->
     [true] ...
     *[false] {""}
@@ -268,11 +268,11 @@ infer_but_calling_introduces = {$has_param_name ->
     [true] `{$param_name}`
     *[false] `fn` parameter
 } has {$lifetime_kind ->
-    [named] lifetime `{lifetime}`
+    [named] lifetime `{$lifetime}`
     *[anon] an anonymous lifetime `'_`
 } but calling `{assoc_item}` introduces an implicit `'static` lifetime requirement
     .label1 = {$has_lifetime ->
-        [named] lifetime `{lifetime}`
+        [named] lifetime `{$lifetime}`
         *[anon] an anonymous lifetime `'_`
     }
     .label2 = ...is used and required to live as long as `'static` here because of an implicit lifetime bound on the {$has_impl_path ->
@@ -284,11 +284,11 @@ infer_but_needs_to_satisfy = {$has_param_name ->
     [true] `{$param_name}`
     *[false] `fn` parameter
 } has {$has_lifetime ->
-    [named] lifetime `{lifetime}`
+    [named] lifetime `{$lifetime}`
     *[anon] an anonymous lifetime `'_`
 } but it needs to satisfy a `'static` lifetime requirement
     .influencer = this data with {$has_lifetime ->
-        [named] lifetime `{lifetime}`
+        [named] lifetime `{$lifetime}`
         *[anon] an anonymous lifetime `'_`
     }...
     .require = {$spans_empty ->
@@ -302,7 +302,7 @@ infer_more_targeted = {$has_param_name ->
     [true] `{$param_name}`
     *[false] `fn` parameter
 } has {$has_lifetime ->
-    [named] lifetime `{lifetime}`
+    [named] lifetime `{$lifetime}`
     *[anon] an anonymous lifetime `'_`
 } but calling `{$ident}` introduces an implicit `'static` lifetime requirement
 
