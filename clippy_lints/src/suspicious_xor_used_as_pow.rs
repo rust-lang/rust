@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = 3_i32.pow(4);
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub SUSPICIOUS_XOR_USED_AS_POW,
     restriction,
     "XOR (`^`) operator possibly used as exponentiation operator"
