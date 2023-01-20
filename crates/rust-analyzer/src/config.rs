@@ -199,6 +199,8 @@ config_data! {
         completion_postfix_enable: bool         = "true",
         /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
         completion_privateEditable_enable: bool = "false",
+        /// Maximum number of completions to return. If `None`, the limit is infinite.
+        completion_limit: Option<usize> = "null",
         /// Custom completion snippets.
         // NOTE: Keep this list in sync with the feature docs of user snippets.
         completion_snippets_custom: FxHashMap<String, SnippetDef> = r#"{
@@ -1313,6 +1315,7 @@ impl Config {
                     .snippet_support?
             )),
             snippets: self.snippets.clone(),
+            limit: self.data.completion_limit,
         }
     }
 
