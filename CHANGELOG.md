@@ -4,13 +4,13 @@ All notable changes to this project will be documented in this file.
 See [Changelog Update](book/src/development/infrastructure/changelog_update.md) if you want to update this
 document.
 
-## Unreleased / Beta / In Rust Nightly
+## Unreleased / In Rust Nightly
 
 [d822110d...master](https://github.com/rust-lang/rust-clippy/compare/d822110d...master)
 
 ## Rust 1.67
 
-Current stable, released 2023-01-26
+Current beta, released 2023-01-26
 
 [4f142aa1...d822110d](https://github.com/rust-lang/rust-clippy/compare/4f142aa1...d822110d)
 
@@ -53,8 +53,6 @@ Current stable, released 2023-01-26
   [#9697](https://github.com/rust-lang/rust-clippy/pull/9697)
 * Moved [`bool_to_int_with_if`] to `pedantic` (Now allow-by-default)
   [#9830](https://github.com/rust-lang/rust-clippy/pull/9830)
-* [`manual_swap`]: No longer lints in const context
-  [#9871](https://github.com/rust-lang/rust-clippy/pull/9871)
 * Move `index_refutable_slice` to `pedantic` (Now warn-by-default)
   [#9975](https://github.com/rust-lang/rust-clippy/pull/9975)
 * Moved [`manual_clamp`] to `nursery` (Now allow-by-default)
@@ -156,6 +154,8 @@ Current stable, released 2023-01-26
   [#9791](https://github.com/rust-lang/rust-clippy/pull/9791)
 * [`needless_borrow`]: No longer lints borrows, if moves were illegal
   [#9711](https://github.com/rust-lang/rust-clippy/pull/9711)
+* [`manual_swap`]: No longer lints in const context
+  [#9871](https://github.com/rust-lang/rust-clippy/pull/9871)
 
 ### Suggestion Fixes/Improvements
 
@@ -203,7 +203,7 @@ Current stable, released 2023-01-26
 
 ## Rust 1.66
 
-Released 2022-12-15
+Current stable, released 2022-12-15
 
 [b52fb523...4f142aa1](https://github.com/rust-lang/rust-clippy/compare/b52fb523...4f142aa1)
 
