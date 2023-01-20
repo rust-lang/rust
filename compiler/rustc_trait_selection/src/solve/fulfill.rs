@@ -52,7 +52,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             .drain(..)
             .map(|obligation| FulfillmentError {
                 obligation: obligation.clone(),
-                code: FulfillmentErrorCode::CodeSelectionError(SelectionError::Unimplemented),
+                code: FulfillmentErrorCode::CodeAmbiguity,
                 root_obligation: obligation,
             })
             .collect()
@@ -75,7 +75,9 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                     Err(NoSolution) => {
                         errors.push(FulfillmentError {
                             obligation: obligation.clone(),
-                            code: FulfillmentErrorCode::CodeAmbiguity,
+                            code: FulfillmentErrorCode::CodeSelectionError(
+                                SelectionError::Unimplemented,
+                            ),
                             root_obligation: obligation,
                         });
                         continue;
