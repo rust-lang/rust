@@ -697,6 +697,15 @@
                         "Do no snippet completions for callables."
                     ]
                 },
+                "rust-analyzer.completion.limit": {
+                    "markdownDescription": "Maximum number of completions to return. If `None`, the limit is infinite.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
+                },
                 "rust-analyzer.completion.postfix.enable": {
                     "markdownDescription": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc.",
                     "default": true,
