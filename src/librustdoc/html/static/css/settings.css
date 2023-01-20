@@ -3,11 +3,6 @@
 	position: relative;
 }
 
-.setting-line .choices {
-	display: flex;
-	flex-wrap: wrap;
-}
-
 .setting-line .radio-line input,
 .setting-line .settings-toggle input {
 	margin-right: 0.3em;
@@ -38,7 +33,7 @@
 	margin-bottom: 0.1em;
 	min-width: 3.8em;
 	padding: 0.3em;
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	cursor: pointer;
 }
