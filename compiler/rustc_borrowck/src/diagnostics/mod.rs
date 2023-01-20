@@ -1064,7 +1064,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                     }
                 }
-                CallKind::Normal { self_arg, desugaring, method_did } => {
+                CallKind::Normal { self_arg, desugaring, method_did, method_substs } => {
                     let self_arg = self_arg.unwrap();
                     let tcx = self.infcx.tcx;
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
@@ -1136,9 +1136,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             && let self_ty = infcx.replace_bound_vars_with_fresh_vars(
                                 fn_call_span,
                                 LateBoundRegionConversionTime::FnCall,
-                                // FIXME: should use `subst` with the method substs.
-                                // Probably need to add `method_substs` to `CallKind`
-                                tcx.fn_sig(method_did).skip_binder().input(0),
+                                tcx.fn_sig(method_did).subst(tcx, method_substs).input(0),
                             )
                             && infcx.can_eq(self.param_env, ty, self_ty).is_ok()
                         {
