@@ -3,7 +3,6 @@ use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use std::fmt::Debug;
 use std::io::{self, Write};
 
 use super::generic_graph::mir_fn_to_generic_graph;
@@ -103,7 +102,7 @@ fn write_graph_label<'tcx, W: std::fmt::Write>(
         write!(w, "{:?}: {}", Place::from(arg), escape(&body.local_decls[arg].ty))?;
     }
 
-    write!(w, ") -&gt; {}", dot::escape_html(&format!("{}", body.return_ty())))?;
+    write!(w, ") -&gt; {}", escape(&body.return_ty()))?;
     write!(w, r#"<br align="left"/>"#)?;
 
     for local in body.vars_and_temps_iter() {
@@ -122,13 +121,13 @@ fn write_graph_label<'tcx, W: std::fmt::Write>(
             w,
             r#"debug {} =&gt; {};<br align="left"/>"#,
             var_debug_info.name,
-            escape(&var_debug_info.value),
+            dot::escape_html(&format!("{:?}", &var_debug_info.value)),
         )?;
     }
 
     Ok(())
 }
 
-fn escape<T: Debug>(t: &T) -> String {
-    dot::escape_html(&format!("{:?}", t))
+fn escape<T: Display>(t: &T) -> String {
+    dot::escape_html(&format!("{}", t))
 }
