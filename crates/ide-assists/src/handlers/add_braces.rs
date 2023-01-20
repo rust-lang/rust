@@ -5,36 +5,9 @@ use syntax::{
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-enum ParentType {
-    MatchArmExpr,
-    ClosureExpr,
-}
-
-fn get_replacement_node(ctx: &AssistContext<'_>) -> Option<(ParentType, ast::Expr)> {
-    if let Some(match_arm) = ctx.find_node_at_offset::<ast::MatchArm>() {
-        let match_arm_expr = match_arm.syntax().children().find_map(ast::Expr::cast)?;
-
-        if matches!(match_arm_expr, ast::Expr::BlockExpr(_)) {
-            return None;
-        }
-
-        return Some((ParentType::MatchArmExpr, match_arm_expr));
-    } else if let Some(closure_expr) = ctx.find_node_at_offset::<ast::ClosureExpr>() {
-        let body = closure_expr.body()?;
-
-        if matches!(body, ast::Expr::BlockExpr(_)) {
-            return None;
-        }
-
-        return Some((ParentType::ClosureExpr, body));
-    }
-
-    None
-}
-
 // Assist: add_braces
 //
-// Adds braces to lamda and match arm expressions
+// Adds braces to lambda and match arm expressions.
 //
 // ```
 // fn foo(n: i32) -> i32 {
@@ -61,7 +34,7 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     acc.add(
         AssistId("wrap_with_braces", AssistKind::RefactorRewrite),
         match expr_type {
-            ParentType::ClosureExpr => "Add braces to lamda expression",
+            ParentType::ClosureExpr => "Add braces to lambda expression",
             ParentType::MatchArmExpr => "Add braces to arm expression",
         },
         expr.syntax().text_range(),
@@ -76,6 +49,33 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     );
 
     Some(())
+}
+
+enum ParentType {
+    MatchArmExpr,
+    ClosureExpr,
+}
+
+fn get_replacement_node(ctx: &AssistContext<'_>) -> Option<(ParentType, ast::Expr)> {
+    if let Some(match_arm) = ctx.find_node_at_offset::<ast::MatchArm>() {
+        let match_arm_expr = match_arm.syntax().children().find_map(ast::Expr::cast)?;
+
+        if matches!(match_arm_expr, ast::Expr::BlockExpr(_)) {
+            return None;
+        }
+
+        return Some((ParentType::MatchArmExpr, match_arm_expr));
+    } else if let Some(closure_expr) = ctx.find_node_at_offset::<ast::ClosureExpr>() {
+        let body = closure_expr.body()?;
+
+        if matches!(body, ast::Expr::BlockExpr(_)) {
+            return None;
+        }
+
+        return Some((ParentType::ClosureExpr, body));
+    }
+
+    None
 }
 
 #[cfg(test)]
