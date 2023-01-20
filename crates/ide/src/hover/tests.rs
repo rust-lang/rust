@@ -214,37 +214,20 @@ m!(ab$0c);
 }
 
 #[test]
-fn hover_shows_type_of_an_expression() {
-    check(
-        r#"
-pub fn foo() -> u32 { 1 }
-
-fn main() {
-    let foo_test = foo()$0;
-}
-"#,
-        expect![[r#"
-            *foo()*
-            ```rust
-            u32
-            ```
-        "#]],
-    );
-}
-
-#[test]
 fn hover_remove_markdown_if_configured() {
     check_hover_no_markdown(
         r#"
 pub fn foo() -> u32 { 1 }
 
 fn main() {
-    let foo_test = foo()$0;
+    let foo_test = foo$0();
 }
 "#,
         expect![[r#"
-            *foo()*
-            u32
+            *foo*
+            test
+
+            pub fn foo() -> u32
         "#]],
     );
 }
@@ -300,33 +283,6 @@ fn main() { let foo_test = fo$0o(); }
 
                 ```rust
                 pub fn foo() -> u32
-                ```
-            "#]],
-    );
-
-    // Multiple candidates but results are ambiguous.
-    check(
-        r#"
-//- /a.rs
-pub fn foo() -> u32 { 1 }
-
-//- /b.rs
-pub fn foo() -> &str { "" }
-
-//- /c.rs
-pub fn foo(a: u32, b: u32) {}
-
-//- /main.rs
-mod a;
-mod b;
-mod c;
-
-fn main() { let foo_test = fo$0o(); }
-        "#,
-        expect![[r#"
-                *foo*
-                ```rust
-                {unknown}
                 ```
             "#]],
     );
@@ -1194,33 +1150,19 @@ fn test_hover_through_func_in_macro_recursive() {
 macro_rules! id_deep { ($($tt:tt)*) => { $($tt)* } }
 macro_rules! id { ($($tt:tt)*) => { id_deep!($($tt)*) } }
 fn bar() -> u32 { 0 }
-fn foo() { let a = id!([0u32, bar($0)] ); }
+fn foo() { let a = id!([0u32, bar$0()] ); }
 "#,
         expect![[r#"
-                *bar()*
-                ```rust
-                u32
-                ```
-            "#]],
-    );
-}
+            *bar*
 
-#[test]
-fn test_hover_through_literal_string_in_macro() {
-    check(
-        r#"
-macro_rules! arr { ($($tt:tt)*) => { [$($tt)*] } }
-fn foo() {
-    let mastered_for_itunes = "";
-    let _ = arr!("Tr$0acks", &mastered_for_itunes);
-}
-"#,
-        expect![[r#"
-                *"Tracks"*
-                ```rust
-                &str
-                ```
-            "#]],
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn bar() -> u32
+            ```
+        "#]],
     );
 }
 
@@ -5655,30 +5597,18 @@ fn main() {
 
 #[test]
 fn hover_underscore_type() {
-    check(
+    check_hover_no_result(
         r#"
 fn main() {
     let x: _$0 = 0;
 }
 "#,
-        expect![[r#"
-            *_*
-            ```rust
-            {unknown}
-            ```
-        "#]],
     );
-    check(
+    check_hover_no_result(
         r#"
 fn main() {
     let x: (_$0,) = (0,);
 }
 "#,
-        expect![[r#"
-            *_*
-            ```rust
-            {unknown}
-            ```
-        "#]],
     );
 }

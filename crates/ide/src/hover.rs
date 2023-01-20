@@ -15,7 +15,7 @@ use ide_db::{
     FxIndexSet, RootDatabase,
 };
 use itertools::Itertools;
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, T};
+use syntax::{ast, AstNode, SyntaxKind::*, SyntaxNode, T};
 
 use crate::{
     doc_links::token_as_doc_comment,
@@ -203,14 +203,10 @@ fn hover_simple(
             })
         });
 
-    result
-        .map(|mut res: HoverResult| {
-            res.actions = dedupe_or_merge_hover_actions(res.actions);
-            RangeInfo::new(original_token.text_range(), res)
-        })
-        // fallback to type hover if there aren't any other suggestions
-        // this finds its own range instead of using the closest token's range
-        .or_else(|| descended().find_map(|token| hover_type_fallback(sema, config, token, token)))
+    result.map(|mut res: HoverResult| {
+        res.actions = dedupe_or_merge_hover_actions(res.actions);
+        RangeInfo::new(original_token.text_range(), res)
+    })
 }
 
 fn hover_ranged(
@@ -220,8 +216,11 @@ fn hover_ranged(
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     // FIXME: make this work in attributes
-    let expr_or_pat =
-        file.covering_element(range).ancestors().find_map(Either::<ast::Expr, ast::Pat>::cast)?;
+    let expr_or_pat = file
+        .covering_element(range)
+        .ancestors()
+        .take_while(|it| ast::MacroCall::can_cast(it.kind()) || !ast::Item::can_cast(it.kind()))
+        .find_map(Either::<ast::Expr, ast::Pat>::cast)?;
     let res = match &expr_or_pat {
         Either::Left(ast::Expr::TryExpr(try_expr)) => render::try_expr(sema, config, try_expr),
         Either::Left(ast::Expr::PrefixExpr(prefix_expr))
@@ -266,39 +265,6 @@ pub(crate) fn hover_for_definition(
             .collect(),
         }
     })
-}
-
-fn hover_type_fallback(
-    sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
-    token: &SyntaxToken,
-    original_token: &SyntaxToken,
-) -> Option<RangeInfo<HoverResult>> {
-    let node =
-        token.parent_ancestors().take_while(|it| !ast::Item::can_cast(it.kind())).find(|n| {
-            ast::Expr::can_cast(n.kind())
-                || ast::Pat::can_cast(n.kind())
-                || ast::Type::can_cast(n.kind())
-        })?;
-
-    let expr_or_pat = match_ast! {
-        match node {
-            ast::Expr(it) => Either::Left(it),
-            ast::Pat(it) => Either::Right(it),
-            // If this node is a MACRO_CALL, it means that `descend_into_macros_many` failed to resolve.
-            // (e.g expanding a builtin macro). So we give up here.
-            ast::MacroCall(_it) => return None,
-            _ => return None,
-        }
-    };
-
-    let res = render::type_info_of(sema, config, &expr_or_pat)?;
-
-    let range = sema
-        .original_range_opt(&node)
-        .map(|frange| frange.range)
-        .unwrap_or_else(|| original_token.text_range());
-    Some(RangeInfo::new(range, res))
 }
 
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
