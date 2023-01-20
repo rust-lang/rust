@@ -1,4 +1,5 @@
 // normalize-stderr-test "pref: Align\([1-8] bytes\)" -> "pref: $$PREF_ALIGN"
+// normalize-stderr-test "Leaf\(0x\d+\)" -> "Leaf(...)"
 #![feature(rustc_attrs)]
 #![crate_type = "lib"]
 
@@ -18,7 +19,8 @@ type AlignedResult = Result<[u32; 0], bool>; //~ ERROR: layout_of
 // Here's another case with multiple ZST alignments, where we should
 // get the maximal alignment and matching size.
 #[rustc_layout(debug)]
-enum MultipleAlignments { //~ ERROR: layout_of
+enum MultipleAlignments {
+    //~^ ERROR: layout_of
     Align2([u16; 0]),
     Align4([u32; 0]),
     Niche(bool),
@@ -38,7 +40,9 @@ type NicheLosesToTagged = Result<[u32; 0], Packed<std::num::NonZeroU16>>; //~ ER
 // Should get tag_encoding: Direct, size == align == 4.
 
 #[repr(u16)]
-enum U16IsZero { _Zero = 0 }
+enum U16IsZero {
+    _Zero = 0,
+}
 
 #[rustc_layout(debug)]
 type NicheWinsOverTagged = Result<[u32; 0], Packed<U16IsZero>>; //~ ERROR: layout_of

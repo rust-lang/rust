@@ -1,5 +1,5 @@
 note: external requirements
-  --> $DIR/projection-no-regions-closure.rs:25:23
+  --> $DIR/projection-no-regions-closure.rs:27:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
@@ -19,10 +19,10 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                ),
            ]
    = note: number of external vids: 3
-   = note: where Alias(Projection, AliasTy { substs: [Param(T/#1)], def_id: DefId(2:7157 ~ core[a28e]::iter::traits::iterator::Iterator::Item) }): '_#2r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#1)], def_id: ...) }): '_#2r
 
 note: no external requirements
-  --> $DIR/projection-no-regions-closure.rs:21:1
+  --> $DIR/projection-no-regions-closure.rs:23:1
    |
 LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
@@ -32,7 +32,7 @@ LL | |     T: Iterator,
    = note: defining type: no_region::<'_#1r, T>
 
 error[E0309]: the associated type `<T as Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-closure.rs:25:31
+  --> $DIR/projection-no-regions-closure.rs:27:31
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                               ^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: ...so that the type `<T as Iterator>::Item` will meet its required lifetime bounds
 
 note: external requirements
-  --> $DIR/projection-no-regions-closure.rs:34:23
+  --> $DIR/projection-no-regions-closure.rs:36:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
@@ -61,10 +61,10 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                ),
            ]
    = note: number of external vids: 3
-   = note: where Alias(Projection, AliasTy { substs: [Param(T/#1)], def_id: DefId(2:7157 ~ core[a28e]::iter::traits::iterator::Iterator::Item) }): '_#2r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#1)], def_id: ...) }): '_#2r
 
 note: no external requirements
-  --> $DIR/projection-no-regions-closure.rs:30:1
+  --> $DIR/projection-no-regions-closure.rs:32:1
    |
 LL | / fn correct_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
@@ -74,7 +74,7 @@ LL | |     T: 'a + Iterator,
    = note: defining type: correct_region::<'_#1r, T>
 
 note: external requirements
-  --> $DIR/projection-no-regions-closure.rs:42:23
+  --> $DIR/projection-no-regions-closure.rs:44:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
@@ -94,10 +94,10 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                ),
            ]
    = note: number of external vids: 4
-   = note: where Alias(Projection, AliasTy { substs: [Param(T/#2)], def_id: DefId(2:7157 ~ core[a28e]::iter::traits::iterator::Iterator::Item) }): '_#3r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#2)], def_id: ...) }): '_#3r
 
 note: no external requirements
-  --> $DIR/projection-no-regions-closure.rs:38:1
+  --> $DIR/projection-no-regions-closure.rs:40:1
    |
 LL | / fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
@@ -107,7 +107,7 @@ LL | |     T: 'b + Iterator,
    = note: defining type: wrong_region::<'_#1r, '_#2r, T>
 
 error[E0309]: the associated type `<T as Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-closure.rs:42:31
+  --> $DIR/projection-no-regions-closure.rs:44:31
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                               ^^^^^^^^^^^^^^^^^^
@@ -116,7 +116,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: ...so that the type `<T as Iterator>::Item` will meet its required lifetime bounds
 
 note: external requirements
-  --> $DIR/projection-no-regions-closure.rs:52:23
+  --> $DIR/projection-no-regions-closure.rs:54:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^
@@ -136,10 +136,10 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                ),
            ]
    = note: number of external vids: 4
-   = note: where Alias(Projection, AliasTy { substs: [Param(T/#2)], def_id: DefId(2:7157 ~ core[a28e]::iter::traits::iterator::Iterator::Item) }): '_#3r
+   = note: where Alias(Projection, AliasTy { substs: [Param(T/#2)], def_id: ...) }): '_#3r
 
 note: no external requirements
-  --> $DIR/projection-no-regions-closure.rs:47:1
+  --> $DIR/projection-no-regions-closure.rs:49:1
    |
 LL | / fn outlives_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where

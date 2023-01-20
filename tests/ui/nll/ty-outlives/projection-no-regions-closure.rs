@@ -1,4 +1,5 @@
 // compile-flags:-Zverbose
+// normalize-stderr-test "DefId([^)]*)" -> "..."
 
 // Tests closures that propagate an outlives relationship to their
 // creator where the subject is a projection with no regions (`<T as
@@ -7,12 +8,13 @@
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 
-trait Anything { }
+trait Anything {}
 
-impl<T> Anything for T { }
+impl<T> Anything for T {}
 
 fn with_signature<'a, T, F>(x: Box<T>, op: F) -> Box<dyn Anything + 'a>
-    where F: FnOnce(Box<T>) -> Box<dyn Anything + 'a>
+where
+    F: FnOnce(Box<T>) -> Box<dyn Anything + 'a>,
 {
     op(x)
 }

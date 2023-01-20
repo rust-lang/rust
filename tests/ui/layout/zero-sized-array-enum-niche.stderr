@@ -1,4 +1,4 @@
-error: layout_of(Adt(std::result::Result, [Array(Uint(U32), Const { ty: Uint(Usize), kind: Value(Leaf(0x0000000000000000)) }), Bool])) = Layout {
+error: layout_of(Adt(std::result::Result, [Array(Uint(U32), Const { ty: Uint(Usize), kind: Value(Leaf(...)) }), Bool])) = Layout {
            size: Size(4 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
@@ -92,7 +92,7 @@ error: layout_of(Adt(std::result::Result, [Array(Uint(U32), Const { ty: Uint(Usi
                ],
            },
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:13:1
+  --> $DIR/zero-sized-array-enum-niche.rs:14:1
    |
 LL | type AlignedResult = Result<[u32; 0], bool>;
    | ^^^^^^^^^^^^^^^^^^
@@ -213,12 +213,12 @@ error: layout_of(Adt(MultipleAlignments, [])) = Layout {
                ],
            },
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:21:1
+  --> $DIR/zero-sized-array-enum-niche.rs:22:1
    |
 LL | enum MultipleAlignments {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout_of(Adt(std::result::Result, [Array(Uint(U32), Const { ty: Uint(Usize), kind: Value(Leaf(0x0000000000000000)) }), Adt(Packed, [Adt(std::num::NonZeroU16, [])])])) = Layout {
+error: layout_of(Adt(std::result::Result, [Array(Uint(U32), Const { ty: Uint(Usize), kind: Value(Leaf(...)) }), Adt(Packed, [Adt(std::num::NonZeroU16, [])])])) = Layout {
            size: Size(4 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
@@ -312,12 +312,12 @@ error: layout_of(Adt(std::result::Result, [Array(Uint(U32), Const { ty: Uint(Usi
                ],
            },
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:37:1
+  --> $DIR/zero-sized-array-enum-niche.rs:39:1
    |
 LL | type NicheLosesToTagged = Result<[u32; 0], Packed<std::num::NonZeroU16>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout_of(Adt(std::result::Result, [Array(Uint(U32), Const { ty: Uint(Usize), kind: Value(Leaf(0x0000000000000000)) }), Adt(Packed, [Adt(U16IsZero, [])])])) = Layout {
+error: layout_of(Adt(std::result::Result, [Array(Uint(U32), Const { ty: Uint(Usize), kind: Value(Leaf(...)) }), Adt(Packed, [Adt(U16IsZero, [])])])) = Layout {
            size: Size(4 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),
@@ -415,7 +415,7 @@ error: layout_of(Adt(std::result::Result, [Array(Uint(U32), Const { ty: Uint(Usi
                ],
            },
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:44:1
+  --> $DIR/zero-sized-array-enum-niche.rs:48:1
    |
 LL | type NicheWinsOverTagged = Result<[u32; 0], Packed<U16IsZero>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^
