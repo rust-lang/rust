@@ -127,7 +127,7 @@ impl<'tcx> Place<'tcx> {
     {
         projection
             .iter()
-            .fold(PlaceTy::from_ty(local_decls.local_decls()[local].ty), |place_ty, &elem| {
+            .fold(PlaceTy::from_ty(local_decls.local_decl(local).ty), |place_ty, &elem| {
                 place_ty.projection_ty(tcx, elem)
             })
     }

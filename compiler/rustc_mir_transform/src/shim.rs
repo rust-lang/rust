@@ -190,7 +190,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
             BorrowKind::Mut { allow_two_phase_borrow: false },
             tcx.mk_place_deref(dropee_ptr),
         );
-        let ref_ty = reborrow.ty(body.local_decls(), tcx);
+        let ref_ty = reborrow.ty(&body, tcx);
         dropee_ptr = body.local_decls.push(LocalDecl::new(ref_ty, span)).into();
         let new_statements = [
             StatementKind::Assign(Box::new((dropee_ptr, reborrow))),
@@ -268,6 +268,11 @@ pub struct DropShimElaborator<'a, 'tcx> {
 impl fmt::Debug for DropShimElaborator<'_, '_> {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         Ok(())
+    }
+}
+impl<'tcx> HasLocalDecls<'tcx> for DropShimElaborator<'_, 'tcx> {
+    fn local_decl(&self, local: Local) -> &LocalDecl<'tcx> {
+        self.patch.local_decl(self.body, local)
     }
 }
 

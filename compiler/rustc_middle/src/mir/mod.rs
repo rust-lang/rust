@@ -75,20 +75,20 @@ pub use self::pretty::{
 pub type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
 
 pub trait HasLocalDecls<'tcx> {
-    fn local_decls(&self) -> &LocalDecls<'tcx>;
+    fn local_decl(&self, local: Local) -> &LocalDecl<'tcx>;
 }
 
 impl<'tcx> HasLocalDecls<'tcx> for LocalDecls<'tcx> {
     #[inline]
-    fn local_decls(&self) -> &LocalDecls<'tcx> {
-        self
+    fn local_decl(&self, local: Local) -> &LocalDecl<'tcx> {
+        &self[local]
     }
 }
 
 impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
     #[inline]
-    fn local_decls(&self) -> &LocalDecls<'tcx> {
-        &self.local_decls
+    fn local_decl(&self, local: Local) -> &LocalDecl<'tcx> {
+        &self.local_decls[local]
     }
 }
 

@@ -131,7 +131,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 Operand::Copy(x) => Operand::Copy(*x),
                 Operand::Constant(x) => Operand::Constant(x.clone()),
             };
-            let parent_ty = parent_op.ty(body.local_decls(), tcx);
+            let parent_ty = parent_op.ty(body, tcx);
             let statements_before = bbs[parent].statements.len();
             let parent_end = Location { block: parent, statement_index: statements_before };
 
@@ -268,7 +268,7 @@ fn may_hoist<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, place: Place<'tcx>) -> 
             //    `otherwise` branch in `BBC, BBD` in the input to our transformation, which would
             //    have invalidated the data when computing `discriminant(P)`
             // So dereferencing here is correct.
-            ProjectionElem::Deref => match place.ty(body.local_decls(), tcx).ty.kind() {
+            ProjectionElem::Deref => match place.ty(body, tcx).ty.kind() {
                 ty::Ref(..) => {}
                 _ => return false,
             },
@@ -317,7 +317,7 @@ fn evaluate_candidate<'tcx>(
     } = &bbs[parent].terminator().kind else {
         return None
     };
-    let parent_ty = parent_discr.ty(body.local_decls(), tcx);
+    let parent_ty = parent_discr.ty(body, tcx);
     let parent_dest = {
         let poss = targets.otherwise();
         // If the fallthrough on the parent is trivially unreachable, we can let the
@@ -338,7 +338,7 @@ fn evaluate_candidate<'tcx>(
     } = &child_terminator.kind else {
         return None
     };
-    let child_ty = child_discr.ty(body.local_decls(), tcx);
+    let child_ty = child_discr.ty(body, tcx);
     if child_ty != parent_ty {
         return None;
     }

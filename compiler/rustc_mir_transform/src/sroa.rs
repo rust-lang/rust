@@ -32,7 +32,7 @@ impl<'tcx> MirPass<'tcx> for ScalarReplacementOfAggregates {
 fn escaping_locals(body: &Body<'_>) -> BitSet<Local> {
     let mut set = BitSet::new_empty(body.local_decls.len());
     set.insert_range(RETURN_PLACE..=Local::from_usize(body.arg_count));
-    for (local, decl) in body.local_decls().iter_enumerated() {
+    for (local, decl) in body.local_decls.iter_enumerated() {
         if decl.ty.is_union() || decl.ty.is_enum() {
             set.insert(local);
         }

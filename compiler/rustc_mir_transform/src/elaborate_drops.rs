@@ -156,6 +156,12 @@ impl fmt::Debug for Elaborator<'_, '_, '_> {
     }
 }
 
+impl<'tcx> HasLocalDecls<'tcx> for Elaborator<'_, '_, 'tcx> {
+    fn local_decl(&self, local: Local) -> &LocalDecl<'tcx> {
+        self.ctxt.patch.local_decl(self.ctxt.body, local)
+    }
+}
+
 impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
     type Path = MovePathIndex;
 

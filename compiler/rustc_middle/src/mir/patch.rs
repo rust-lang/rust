@@ -17,6 +17,12 @@ pub struct MirPatch<'tcx> {
 }
 
 impl<'tcx> MirPatch<'tcx> {
+    pub fn local_decl<'a>(&'a self, body: &'a Body<'tcx>, local: Local) -> &'a LocalDecl<'tcx> {
+        body.local_decls
+            .get(local)
+            .unwrap_or_else(|| &self.new_locals[local.as_usize() - body.local_decls.len()])
+    }
+
     pub fn new(body: &Body<'tcx>) -> Self {
         let mut result = MirPatch {
             patch_map: IndexVec::from_elem(None, &body.basic_blocks),

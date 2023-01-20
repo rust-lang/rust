@@ -95,7 +95,7 @@ impl Unwind {
     }
 }
 
-pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
+pub trait DropElaborator<'a, 'tcx>: fmt::Debug + HasLocalDecls<'tcx> {
     /// The type representing paths that can be moved out of.
     ///
     /// Users can move out of individual fields of a struct, such as `a.b.c`. This type is used to
@@ -195,7 +195,7 @@ where
     'tcx: 'b,
 {
     fn place_ty(&self, place: Place<'tcx>) -> Ty<'tcx> {
-        place.ty(self.elaborator.body(), self.tcx()).ty
+        place.ty(&*self.elaborator, self.tcx()).ty
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
