@@ -529,7 +529,7 @@ fn virtual_call_violation_for_method<'tcx>(
 
     // NOTE: This check happens last, because it results in a lint, and not a
     // hard error.
-    if tcx.predicates_of(method.def_id).predicates.iter().any(|(pred, _span)| {
+    if tcx.predicates_of(method.def_id).predicates.iter().any(|&(pred, span)| {
         // dyn Trait is okay:
         //
         //     trait Trait {
@@ -554,7 +554,8 @@ fn virtual_call_violation_for_method<'tcx>(
         // because `impl AutoTrait for dyn Trait` is disallowed by coherence.
         // Traits with a default impl are implemented for a trait object if and
         // only if the autotrait is one of the trait object's trait bounds, like
-        // in `dyn Trait + AutoTrait`.
+        // in `dyn Trait + AutoTrait`. This guarantees that trait objects only
+        // implement auto traits if the underlying type does as well.
         if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
             trait_ref: pred_trait_ref,
             constness: ty::BoundConstness::NotConst,
@@ -563,10 +564,17 @@ fn virtual_call_violation_for_method<'tcx>(
             && pred_trait_ref.self_ty() == tcx.types.self_param
             && tcx.trait_is_auto(pred_trait_ref.def_id)
         {
-            // Only check the rest of the bound's parameters. So `Self: Bound<Self>`
-            // is still considered illegal.
-            let rest_of_substs = &pred_trait_ref.substs[1..];
-            return contains_illegal_self_type_reference(tcx, trait_def_id, rest_of_substs);
+            // Consider bounds like `Self: Bound<Self>`. Auto traits are not
+            // allowed to have generic parameters so `auto trait Bound<T> {}`
+            // would already have reported an error at the definition of the
+            // auto trait.
+            if pred_trait_ref.substs.len() != 1 {
+                tcx.sess.diagnostic().delay_span_bug(
+                    span,
+                    "auto traits cannot have generic parameters",
+                );
+            }
+            return false;
         }
 
         contains_illegal_self_type_reference(tcx, trait_def_id, pred.clone())
