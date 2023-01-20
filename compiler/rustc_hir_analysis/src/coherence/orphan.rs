@@ -207,7 +207,13 @@ fn do_orphan_check_impl<'tcx>(
                 NonlocalImpl::DisallowOther,
             ),
 
-            // Some of these should perhaps be a delay_span_bug.
+            // type Opaque = impl Trait;
+            // impl AutoTrait for Opaque {}
+            ty::Alias(AliasKind::Opaque, _) => (
+                LocalImpl::Disallow { problematic_kind: "opaque type" },
+                NonlocalImpl::DisallowOther,
+            ),
+
             ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -220,16 +226,17 @@ fn do_orphan_check_impl<'tcx>(
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
-            | ty::Closure(..)
+            | ty::Never
+            | ty::Tuple(..) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
+
+            ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::Never
-            | ty::Tuple(..)
-            | ty::Alias(AliasKind::Opaque, ..)
             | ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(..)
-            | ty::Error(..) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
+            | ty::Infer(..) => span_bug!(sp, "weird self type for autotrait impl"),
+
+            ty::Error(..) => (LocalImpl::Allow, NonlocalImpl::Allow),
         };
 
         if trait_def_id.is_local() {
