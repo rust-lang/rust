@@ -120,6 +120,8 @@ pub struct DefMap {
     registered_tools: Vec<SmolStr>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
     unstable_features: FxHashSet<SmolStr>,
+    /// #[rustc_coherence_is_core]
+    rustc_coherence_is_core: bool,
 
     edition: Edition,
     recursion_limit: Option<u32>,
@@ -292,6 +294,7 @@ impl DefMap {
             registered_tools: Vec::new(),
             unstable_features: FxHashSet::default(),
             diagnostics: Vec::new(),
+            rustc_coherence_is_core: false,
         }
     }
 
@@ -325,6 +328,10 @@ impl DefMap {
         self.unstable_features.contains(feature)
     }
 
+    pub fn is_rustc_coherence_is_core(&self) -> bool {
+        self.rustc_coherence_is_core
+    }
+
     pub fn root(&self) -> LocalModuleId {
         self.root
     }
@@ -337,7 +344,7 @@ impl DefMap {
         self.proc_macro_loading_error.as_deref()
     }
 
-    pub(crate) fn krate(&self) -> CrateId {
+    pub fn krate(&self) -> CrateId {
         self.krate
     }
 
@@ -502,6 +509,7 @@ impl DefMap {
             krate: _,
             prelude: _,
             root: _,
+            rustc_coherence_is_core: _,
         } = self;
 
         extern_prelude.shrink_to_fit();

@@ -296,6 +296,11 @@ impl DefCollector<'_> {
                     continue;
                 }
 
+                if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
+                    self.def_map.rustc_coherence_is_core = true;
+                    continue;
+                }
+
                 if *attr_name == hir_expand::name![feature] {
                     let features =
                         attr.parse_path_comma_token_tree().into_iter().flatten().filter_map(

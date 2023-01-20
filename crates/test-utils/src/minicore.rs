@@ -44,6 +44,8 @@
 //!     try: infallible
 //!     unsize: sized
 
+#![rustc_coherence_is_core]
+
 pub mod marker {
     // region:sized
     #[lang = "sized"]
