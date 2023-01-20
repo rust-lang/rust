@@ -293,16 +293,16 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .depth_first_search(root_vid)
                 .any(|n| roots_reachable_from_non_diverging.visited(n));
 
-            let mut relationship = ty::FoundRelationships { self_in_trait: false, output: false };
+            let mut found_infer_var_info = ty::InferVarInfo { self_in_trait: false, output: false };
 
-            for (vid, rel) in self.inh.relationships.borrow().iter() {
+            for (vid, info) in self.inh.infer_var_info.borrow().iter() {
                 if self.infcx.root_var(*vid) == root_vid {
-                    relationship.self_in_trait |= rel.self_in_trait;
-                    relationship.output |= rel.output;
+                    found_infer_var_info.self_in_trait |= info.self_in_trait;
+                    found_infer_var_info.output |= info.output;
                 }
             }
 
-            if relationship.self_in_trait && relationship.output {
+            if found_infer_var_info.self_in_trait && found_infer_var_info.output {
                 // This case falls back to () to ensure that the code pattern in
                 // tests/ui/never_type/fallback-closure-ret.rs continues to
                 // compile when never_type_fallback is enabled.
