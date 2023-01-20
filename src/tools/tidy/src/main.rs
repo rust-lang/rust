@@ -60,7 +60,7 @@ fn main() {
 
                 let handle = s.spawn(|| {
                     let mut flag = false;
-                    $p::check($($args),* , &mut flag);
+                    $p::check($($args, )* &mut flag);
                     if (flag) {
                         bad.store(true, Ordering::Relaxed);
                     }
