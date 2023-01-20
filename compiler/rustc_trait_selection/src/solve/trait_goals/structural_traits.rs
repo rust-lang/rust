@@ -1,6 +1,6 @@
 use rustc_hir::{Movability, Mutability};
 use rustc_infer::{infer::InferCtxt, traits::query::NoSolution};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 // Calculates the constituent types of a type for `auto trait` purposes.
 //
@@ -30,10 +30,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Foreign(..)
         | ty::Alias(ty::Projection, ..)
         | ty::Bound(..)
-        | ty::Infer(ty::TyVar(_)) => {
-            // FIXME: Do we need to mark anything as ambiguous here? Yeah?
-            Err(NoSolution)
-        }
+        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
 
         ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
 
@@ -101,9 +98,8 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Dynamic(..)
         | ty::Foreign(..)
         | ty::Alias(..)
-        | ty::Param(_) => Err(NoSolution),
-
-        ty::Infer(ty::TyVar(_)) => bug!("FIXME: ambiguous"),
+        | ty::Param(_)
+        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
 
         ty::Placeholder(..)
         | ty::Bound(..)
@@ -151,9 +147,8 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         | ty::Ref(_, _, Mutability::Mut)
         | ty::Adt(_, _)
         | ty::Alias(_, _)
-        | ty::Param(_) => Err(NoSolution),
-
-        ty::Infer(ty::TyVar(_)) => bug!("FIXME: ambiguous"),
+        | ty::Param(_)
+        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
 
         ty::Placeholder(..)
         | ty::Bound(..)
@@ -175,5 +170,54 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::GeneratorWitness(types) => {
             Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
         }
+    }
+}
+
+pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    self_ty: Ty<'tcx>,
+    goal_kind: ty::ClosureKind,
+) -> Result<Option<ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>)>>, NoSolution> {
+    match *self_ty.kind() {
+        ty::FnDef(def_id, substs) => Ok(Some(
+            tcx.bound_fn_sig(def_id)
+                .subst(tcx, substs)
+                .map_bound(|sig| (tcx.mk_tup(sig.inputs().iter()), sig.output())),
+        )),
+        ty::FnPtr(sig) => {
+            Ok(Some(sig.map_bound(|sig| (tcx.mk_tup(sig.inputs().iter()), sig.output()))))
+        }
+        ty::Closure(_, substs) => {
+            let closure_substs = substs.as_closure();
+            match closure_substs.kind_ty().to_opt_closure_kind() {
+                Some(closure_kind) if closure_kind.extends(goal_kind) => {}
+                None => return Ok(None),
+                _ => return Err(NoSolution),
+            }
+            Ok(Some(closure_substs.sig().map_bound(|sig| (sig.inputs()[0], sig.output()))))
+        }
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Adt(_, _)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::Array(_, _)
+        | ty::Slice(_)
+        | ty::RawPtr(_)
+        | ty::Ref(_, _, _)
+        | ty::Dynamic(_, _, _)
+        | ty::Generator(_, _, _)
+        | ty::GeneratorWitness(_)
+        | ty::Never
+        | ty::Tuple(_)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Placeholder(_)
+        | ty::Bound(_, _)
+        | ty::Infer(_)
+        | ty::Error(_) => Err(NoSolution),
     }
 }
