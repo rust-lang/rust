@@ -2,10 +2,8 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/multiple-fn-bounds.rs:10:5
    |
 LL |     foo(move |x| v);
-   |     ^^^ --------
-   |     |   |     |
-   |     |   |     help: do not borrow the argument: `char`
-   |     |   found signature defined here
+   |     ^^^ -------- found signature defined here
+   |     |
    |     expected due to this
    |
    = note: expected closure signature `fn(char) -> _`
@@ -20,6 +18,10 @@ note: required by a bound in `foo`
    |
 LL | fn foo<F: Fn(&char) -> bool + Fn(char) -> bool>(f: F) {
    |                               ^^^^^^^^^^^^^^^^ required by this bound in `foo`
+help: do not borrow the argument
+   |
+LL |     foo(move |char| v);
+   |               ~~~~
 
 error: aborting due to previous error
 

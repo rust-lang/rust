@@ -1,5 +1,5 @@
 // check-fail
-// known-bug
+// known-bug: unknown
 // edition: 2021
 
 // We really should accept this, but we need implied bounds between the regions
@@ -13,7 +13,6 @@ pub trait FutureIterator {
 
 fn call<I: FutureIterator>() -> impl Send {
     async { // a generator checked for autotrait impl `Send`
-        //~^ lifetime bound not satisfied
         let x = None::<I::Future<'_, '_>>; // a type referencing GAT
         async {}.await; // a yield point
     }
@@ -21,16 +20,13 @@ fn call<I: FutureIterator>() -> impl Send {
 
 fn call2<'a, 'b, I: FutureIterator>() -> impl Send {
     async { // a generator checked for autotrait impl `Send`
-        //~^ lifetime bound not satisfied
         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
-        //~^ lifetime may not live long enough
         async {}.await; // a yield point
     }
 }
 
 fn call3<'a: 'b, 'b, I: FutureIterator>() -> impl Send {
     async { // a generator checked for autotrait impl `Send`
-        //~^ lifetime bound not satisfied
         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
         async {}.await; // a yield point
     }

@@ -1,7 +1,7 @@
-// check-fail
-// known-bug
+// edition:2021
+// known-bug: unknown
 // unset-rustc-env:RUST_BACKTRACE
-// compile-flags:-Z trait-solver=chalk --edition=2021
+// compile-flags:-Z trait-solver=chalk
 // error-pattern:internal compiler error
 // failure-status:101
 // normalize-stderr-test "DefId([^)]*)" -> "..."

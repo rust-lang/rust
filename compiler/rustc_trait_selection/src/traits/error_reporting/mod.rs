@@ -1350,6 +1350,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         expected_trait_ref,
                         obligation.cause.code(),
                         found_node,
+                        obligation.param_env,
                     )
                 } else {
                     let (closure_span, closure_arg_span, found) = found_did

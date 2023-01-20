@@ -61,7 +61,7 @@ declare_clippy_lint! {
     /// [`Instant::now()`]: std::time::Instant::now;
     #[clippy::version = "1.65.0"]
     pub UNCHECKED_DURATION_SUBTRACTION,
-    suspicious,
+    pedantic,
     "finds unchecked subtraction of a 'Duration' from an 'Instant'"
 }
 
