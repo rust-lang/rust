@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as os from "os";
-import { Config } from "./config";
+import { Config, substituteVSCodeVariables } from "./config";
 import { log, isValidExecutable } from "./util";
 import { PersistentState } from "./persistent_state";
 import { exec } from "child_process";
@@ -132,7 +132,7 @@ async function getServer(
     return undefined;
 }
 function serverPath(config: Config): string | null {
-    return process.env.__RA_LSP_SERVER_DEBUG ?? config.serverPath;
+    return process.env.__RA_LSP_SERVER_DEBUG ?? substituteVSCodeVariables(config.serverPath);
 }
 
 async function isNixOs(): Promise<boolean> {
