@@ -19,6 +19,7 @@ use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, T}
 
 use crate::{
     doc_links::token_as_doc_comment,
+    markdown_remove::remove_markdown,
     markup::Markup,
     runnables::{runnable_fn, runnable_mod},
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
@@ -26,14 +27,9 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
     pub links_in_hover: bool,
-    pub documentation: Option<HoverDocFormat>,
+    pub documentation: bool,
     pub keywords: bool,
-}
-
-impl HoverConfig {
-    fn markdown(&self) -> bool {
-        matches!(self.documentation, Some(HoverDocFormat::Markdown))
-    }
+    pub format: HoverDocFormat,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -90,12 +86,23 @@ pub struct HoverResult {
 // image::https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif[]
 pub(crate) fn hover(
     db: &RootDatabase,
-    FileRange { file_id, range }: FileRange,
+    file_range: FileRange,
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = &hir::Semantics::new(db);
-    let file = sema.parse(file_id).syntax().clone();
+    let mut res = hover_impl(sema, file_range, config)?;
+    if let HoverDocFormat::PlainText = config.format {
+        res.info.markup = remove_markdown(res.info.markup.as_str()).into();
+    }
+    Some(res)
+}
 
+fn hover_impl(
+    sema: &Semantics<'_, RootDatabase>,
+    FileRange { file_id, range }: FileRange,
+    config: &HoverConfig,
+) -> Option<RangeInfo<HoverResult>> {
+    let file = sema.parse(file_id).syntax().clone();
     if !range.is_empty() {
         return hover_ranged(&file, range, sema, config);
     }

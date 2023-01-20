@@ -26,13 +26,12 @@ use syntax::{
 use crate::{
     doc_links::{remove_links, rewrite_links},
     hover::walk_and_push_ty,
-    markdown_remove::remove_markdown,
     HoverAction, HoverConfig, HoverResult, Markup,
 };
 
 pub(super) fn type_info(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    _config: &HoverConfig,
     expr_or_pat: &Either<ast::Expr, ast::Pat>,
 ) -> Option<HoverResult> {
     let TypeInfo { original, adjusted } = match expr_or_pat {
@@ -55,19 +54,15 @@ pub(super) fn type_info(
         let adjusted = adjusted_ty.display(sema.db).to_string();
         let static_text_diff_len = "Coerced to: ".len() - "Type: ".len();
         format!(
-            "{bt_start}Type: {:>apad$}\nCoerced to: {:>opad$}\n{bt_end}",
+            "```text\nType: {:>apad$}\nCoerced to: {:>opad$}\n```\n",
             original,
             adjusted,
             apad = static_text_diff_len + adjusted.len().max(original.len()),
             opad = original.len(),
-            bt_start = if config.markdown() { "```text\n" } else { "" },
-            bt_end = if config.markdown() { "```\n" } else { "" }
         )
         .into()
-    } else if config.markdown() {
-        Markup::fenced_block(&original.display(sema.db))
     } else {
-        original.display(sema.db).to_string().into()
+        Markup::fenced_block(&original.display(sema.db))
     };
     res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
     Some(res)
@@ -75,7 +70,7 @@ pub(super) fn type_info(
 
 pub(super) fn try_expr(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    _config: &HoverConfig,
     try_expr: &ast::TryExpr,
 ) -> Option<HoverResult> {
     let inner_ty = sema.type_of_expr(&try_expr.expr()?)?.original;
@@ -151,14 +146,12 @@ pub(super) fn try_expr(
     let ppad = static_text_len_diff.min(0).abs() as usize;
 
     res.markup = format!(
-        "{bt_start}{} Type: {:>pad0$}\nPropagated as: {:>pad1$}\n{bt_end}",
+        "```text\n{} Type: {:>pad0$}\nPropagated as: {:>pad1$}\n```\n",
         s,
         inner_ty,
         body_ty,
         pad0 = ty_len_max + tpad,
         pad1 = ty_len_max + ppad,
-        bt_start = if config.markdown() { "```text\n" } else { "" },
-        bt_end = if config.markdown() { "```\n" } else { "" }
     )
     .into();
     Some(res)
@@ -166,7 +159,7 @@ pub(super) fn try_expr(
 
 pub(super) fn deref_expr(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    _config: &HoverConfig,
     deref_expr: &ast::PrefixExpr,
 ) -> Option<HoverResult> {
     let inner_ty = sema.type_of_expr(&deref_expr.expr()?)?.original;
@@ -195,15 +188,13 @@ pub(super) fn deref_expr(
             .max(adjusted.len() + coerced_len)
             .max(inner.len() + deref_len);
         format!(
-            "{bt_start}Dereferenced from: {:>ipad$}\nTo type: {:>apad$}\nCoerced to: {:>opad$}\n{bt_end}",
+            "```text\nDereferenced from: {:>ipad$}\nTo type: {:>apad$}\nCoerced to: {:>opad$}\n```\n",
             inner,
             original,
             adjusted,
             ipad = max_len - deref_len,
             apad = max_len - type_len,
             opad = max_len - coerced_len,
-            bt_start = if config.markdown() { "```text\n" } else { "" },
-            bt_end = if config.markdown() { "```\n" } else { "" }
         )
         .into()
     } else {
@@ -213,13 +204,11 @@ pub(super) fn deref_expr(
         let deref_len = "Dereferenced from: ".len();
         let max_len = (original.len() + type_len).max(inner.len() + deref_len);
         format!(
-            "{bt_start}Dereferenced from: {:>ipad$}\nTo type: {:>apad$}\n{bt_end}",
+            "```text\nDereferenced from: {:>ipad$}\nTo type: {:>apad$}\n```\n",
             inner,
             original,
             ipad = max_len - deref_len,
             apad = max_len - type_len,
-            bt_start = if config.markdown() { "```text\n" } else { "" },
-            bt_end = if config.markdown() { "```\n" } else { "" }
         )
         .into()
     };
@@ -233,7 +222,7 @@ pub(super) fn keyword(
     config: &HoverConfig,
     token: &SyntaxToken,
 ) -> Option<HoverResult> {
-    if !token.kind().is_keyword() || !config.documentation.is_some() || !config.keywords {
+    if !token.kind().is_keyword() || !config.documentation || !config.keywords {
         return None;
     }
     let parent = token.parent()?;
@@ -257,7 +246,7 @@ pub(super) fn keyword(
 /// i.e. `let S {a, ..} = S {a: 1, b: 2}`
 pub(super) fn struct_rest_pat(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    _config: &HoverConfig,
     pattern: &RecordPat,
 ) -> HoverResult {
     let missing_fields = sema.record_pattern_missing_fields(pattern);
@@ -286,11 +275,7 @@ pub(super) fn struct_rest_pat(
         // get rid of trailing comma
         s.truncate(s.len() - 2);
 
-        if config.markdown() {
-            Markup::fenced_block(&s)
-        } else {
-            s.into()
-        }
+        Markup::fenced_block(&s)
     };
     res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
     res
@@ -344,13 +329,8 @@ pub(super) fn process_markup(
     config: &HoverConfig,
 ) -> Markup {
     let markup = markup.as_str();
-    let markup = if !config.markdown() {
-        remove_markdown(markup)
-    } else if config.links_in_hover {
-        rewrite_links(db, markup, def)
-    } else {
-        remove_links(markup)
-    };
+    let markup =
+        if config.links_in_hover { rewrite_links(db, markup, def) } else { remove_links(markup) };
     Markup::from(markup)
 }
 
@@ -463,8 +443,9 @@ pub(super) fn definition(
         Definition::DeriveHelper(it) => (format!("derive_helper {}", it.name(db)), None),
     };
 
-    let docs = match config.documentation {
-        Some(_) => docs.or_else(|| {
+    let docs = docs
+        .filter(|_| config.documentation)
+        .or_else(|| {
             // docs are missing, for assoc items of trait impls try to fall back to the docs of the
             // original item of the trait
             let assoc = def.as_assoc_item(db)?;
@@ -472,10 +453,8 @@ pub(super) fn definition(
             let name = Some(assoc.name(db)?);
             let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
             item.docs(db)
-        }),
-        None => None,
-    };
-    let docs = docs.filter(|_| config.documentation.is_some()).map(Into::into);
+        })
+        .map(Into::into);
     markup(docs, label, mod_path)
 }
 

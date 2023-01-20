@@ -2,7 +2,7 @@ use expect_test::{expect, Expect};
 use ide_db::base_db::{FileLoader, FileRange};
 use syntax::TextRange;
 
-use crate::{fixture, hover::HoverDocFormat, HoverConfig};
+use crate::{fixture, HoverConfig, HoverDocFormat};
 
 fn check_hover_no_result(ra_fixture: &str) {
     let (analysis, position) = fixture::position(ra_fixture);
@@ -10,8 +10,9 @@ fn check_hover_no_result(ra_fixture: &str) {
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
@@ -26,8 +27,9 @@ fn check(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
@@ -47,8 +49,9 @@ fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: false,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
@@ -68,8 +71,9 @@ fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                documentation: Some(HoverDocFormat::PlainText),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::PlainText,
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
@@ -89,8 +93,9 @@ fn check_actions(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             FileRange { file_id, range: position.range_or_empty() },
         )
@@ -105,8 +110,9 @@ fn check_hover_range(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: false,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             range,
         )
@@ -121,8 +127,9 @@ fn check_hover_range_no_results(ra_fixture: &str) {
         .hover(
             &HoverConfig {
                 links_in_hover: false,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             range,
         )

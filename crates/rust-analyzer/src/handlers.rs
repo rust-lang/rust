@@ -936,8 +936,7 @@ pub(crate) fn handle_hover(
 
     let line_index = snap.file_line_index(file_range.file_id)?;
     let range = to_proto::range(&line_index, info.range);
-    let markup_kind =
-        snap.config.hover().documentation.map_or(ide::HoverDocFormat::Markdown, |kind| kind);
+    let markup_kind = snap.config.hover().format;
     let hover = lsp_ext::Hover {
         hover: lsp_types::Hover {
             contents: HoverContents::Markup(to_proto::markup_content(

@@ -1393,7 +1393,8 @@ impl Config {
     pub fn hover(&self) -> HoverConfig {
         HoverConfig {
             links_in_hover: self.data.hover_links_enable,
-            documentation: self.data.hover_documentation_enable.then(|| {
+            documentation: self.data.hover_documentation_enable,
+            format: {
                 let is_markdown = try_or_def!(self
                     .caps
                     .text_document
@@ -1409,7 +1410,7 @@ impl Config {
                 } else {
                     HoverDocFormat::PlainText
                 }
-            }),
+            },
             keywords: self.data.hover_documentation_keywords_enable,
         }
     }
