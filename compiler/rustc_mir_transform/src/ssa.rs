@@ -6,7 +6,6 @@ use rustc_middle::middle::resolve_lifetime::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
-use rustc_mir_dataflow::impls::borrowed_locals;
 
 #[derive(Debug)]
 pub struct SsaLocals {
@@ -21,19 +20,23 @@ pub struct SsaLocals {
 }
 
 impl SsaLocals {
-    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, body: &Body<'tcx>) -> SsaLocals {
+    pub fn new<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        body: &Body<'tcx>,
+        borrowed_locals: &BitSet<Local>,
+    ) -> SsaLocals {
         let assignment_order = Vec::new();
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
         let dominators = body.basic_blocks.dominators();
         let mut visitor = SsaVisitor { assignments, assignment_order, dominators };
 
-        let borrowed = borrowed_locals(body);
         for (local, decl) in body.local_decls.iter_enumerated() {
             if matches!(body.local_kind(local), LocalKind::Arg) {
                 visitor.assignments[local] = Set1::One(LocationExtended::Arg);
             }
-            if borrowed.contains(local) && !decl.ty.is_freeze(tcx, param_env) {
+            if borrowed_locals.contains(local) && !decl.ty.is_freeze(tcx, param_env) {
                 visitor.assignments[local] = Set1::Many;
             }
         }

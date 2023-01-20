@@ -3,6 +3,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::impls::borrowed_locals;
 
 use crate::ssa::SsaLocals;
 use crate::MirPass;
@@ -33,7 +34,8 @@ impl<'tcx> MirPass<'tcx> for CopyProp {
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-    let ssa = SsaLocals::new(tcx, param_env, body);
+    let borrowed_locals = borrowed_locals(body);
+    let ssa = SsaLocals::new(tcx, param_env, body, &borrowed_locals);
 
     let fully_moved = fully_moved_locals(&ssa, body);
     debug!(?fully_moved);
@@ -42,14 +44,19 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     for (local, &head) in ssa.copy_classes().iter_enumerated() {
         if local != head {
             storage_to_remove.insert(head);
-            storage_to_remove.insert(local);
         }
     }
 
     let any_replacement = ssa.copy_classes().iter_enumerated().any(|(l, &h)| l != h);
 
-    Replacer { tcx, copy_classes: &ssa.copy_classes(), fully_moved, storage_to_remove }
-        .visit_body_preserves_cfg(body);
+    Replacer {
+        tcx,
+        copy_classes: &ssa.copy_classes(),
+        fully_moved,
+        borrowed_locals,
+        storage_to_remove,
+    }
+    .visit_body_preserves_cfg(body);
 
     if any_replacement {
         crate::simplify::remove_unused_definitions(body);
@@ -94,6 +101,7 @@ struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     fully_moved: BitSet<Local>,
     storage_to_remove: BitSet<Local>,
+    borrowed_locals: BitSet<Local>,
     copy_classes: &'a IndexVec<Local, Local>,
 }
 
@@ -102,8 +110,45 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
-        *local = self.copy_classes[*local];
+    fn visit_local(&mut self, local: &mut Local, ctxt: PlaceContext, _: Location) {
+        let new_local = self.copy_classes[*local];
+        match ctxt {
+            // Do not modify the local in storage statements.
+            PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) => {}
+            // The local should have been marked as non-SSA.
+            PlaceContext::MutatingUse(_) => assert_eq!(*local, new_local),
+            // We access the value.
+            _ => *local = new_local,
+        }
+    }
+
+    fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
+        if let Some(new_projection) = self.process_projection(&place.projection, loc) {
+            place.projection = self.tcx().intern_place_elems(&new_projection);
+        }
+
+        let observes_address = match ctxt {
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::SharedBorrow
+                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::UniqueBorrow
+                | NonMutatingUseContext::AddressOf,
+            ) => true,
+            // For debuginfo, merging locals is ok.
+            PlaceContext::NonUse(NonUseContext::VarDebugInfo) => {
+                self.borrowed_locals.contains(place.local)
+            }
+            _ => false,
+        };
+        if observes_address && !place.is_indirect() {
+            // We observe the address of `place.local`. Do not replace it.
+        } else {
+            self.visit_local(
+                &mut place.local,
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                loc,
+            )
+        }
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
@@ -117,17 +162,17 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     }
 
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, loc: Location) {
-        if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
+        if let StatementKind::StorageDead(l) = stmt.kind
             && self.storage_to_remove.contains(l)
         {
             stmt.make_nop();
-        }
-        if let StatementKind::Assign(box (ref place, _)) = stmt.kind
-            && let Some(l) = place.as_local()
-            && self.copy_classes[l] != l
+        } else if let StatementKind::Assign(box (ref place, ref mut rvalue)) = stmt.kind
+            && place.as_local().is_some()
         {
-            stmt.make_nop();
+            // Do not replace assignments.
+            self.visit_rvalue(rvalue, loc)
+        } else {
+            self.super_statement(stmt, loc);
         }
-        self.super_statement(stmt, loc);
     }
 }
