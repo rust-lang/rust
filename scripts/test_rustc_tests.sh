@@ -78,6 +78,20 @@ rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
 rm tests/ui/layout/valid_range_oob.rs # different ICE message
 
+rm tests/ui/consts/issue-miri-1910.rs # different error message
+rm tests/ui/consts/offset_ub.rs # same
+rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
+rm tests/ui/lint/lint-const-item-mutation.rs # same
+rm tests/ui/pattern/usefulness/doc-hidden-non-exhaustive.rs # same
+rm tests/ui/suggestions/derive-trait-for-method-call.rs # same
+rm tests/ui/typeck/issue-46112.rs # same
+
+rm tests/ui/proc-macro/crt-static.rs # extra warning about -Cpanic=abort for proc macros
+rm tests/ui/proc-macro/proc-macro-deprecated-attr.rs # same
+rm tests/ui/proc-macro/quote-debug.rs # same
+rm tests/ui/proc-macro/no-missing-docs.rs # same
+rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs # same
+
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
 # ============================================================
@@ -98,12 +112,14 @@ rm tests/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered
 rm tests/ui/simd/intrinsic/generic-as.rs # crash when accessing vector type filed (#1318)
 rm tests/ui/simd/simd-bitmask.rs # crash
 
+rm tests/ui/dyn-star/dyn-star-to-dyn.rs
+rm tests/ui/dyn-star/dispatch-on-pin-mut.rs
+
 # bugs in the test suite
 # ======================
 rm tests/ui/backtrace.rs # TODO warning
 rm tests/ui/simple_global_asm.rs # TODO add needs-asm-support
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
-rm tests/ui/dyn-star/dispatch-on-pin-mut.rs # TODO failed assertion in vtable::get_ptr_and_method_ref
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
