@@ -12,6 +12,12 @@ use super::{parse_by_kind, PResult, ParseCtxt};
 impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     pub fn parse_statement(&self, expr_id: ExprId) -> PResult<StatementKind<'tcx>> {
         parse_by_kind!(self, expr_id, _, "statement",
+            @call("mir_storage_live", args) => {
+                Ok(StatementKind::StorageLive(self.parse_local(args[0])?))
+            },
+            @call("mir_storage_dead", args) => {
+                Ok(StatementKind::StorageDead(self.parse_local(args[0])?))
+            },
             @call("mir_retag", args) => {
                 Ok(StatementKind::Retag(RetagKind::Default, Box::new(self.parse_place(args[0])?)))
             },
