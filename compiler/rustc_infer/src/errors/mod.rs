@@ -927,6 +927,8 @@ pub struct ButNeedsToSatisfy {
     #[subdiagnostic]
     pub req_introduces_loc: Option<ReqIntroducedLocations>,
 
+    pub has_param_name: bool,
+    pub param_name: String,
     pub spans_empty: bool,
     pub has_lifetime: bool,
     pub lifetime: String,
