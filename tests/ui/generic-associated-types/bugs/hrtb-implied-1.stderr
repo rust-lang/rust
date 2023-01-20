@@ -3,7 +3,7 @@ error[E0716]: temporary value dropped while borrowed
    |
 LL |     let slice = &mut ();
    |                      ^^ creates a temporary value which is freed while still in use
-...
+LL |     let windows = WindowsMut { slice };
 LL |     print_items::<WindowsMut<'_>>(windows);
    |     -------------------------------------- argument requires that borrow lasts for `'static`
 LL | }
