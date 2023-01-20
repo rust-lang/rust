@@ -1053,8 +1053,8 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
             // All field types must be well-formed.
             for field in &variant.fields {
                 let field_id = field.did.expect_local();
-                let hir::Node::Field(hir::FieldDef { ty: hir_ty, .. }) = tcx.hir().get_by_def_id(field_id)
-                else { bug!() };
+                let hir::FieldDef { ty: hir_ty, .. } =
+                    tcx.hir().get_by_def_id(field_id).expect_field();
                 let ty = wfcx.normalize(hir_ty.span, None, tcx.type_of(field.did));
                 wfcx.register_wf_obligation(
                     hir_ty.span,
@@ -1087,8 +1087,8 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
             {
                 let last = idx == variant.fields.len() - 1;
                 let field_id = field.did.expect_local();
-                let hir::Node::Field(hir::FieldDef { ty: hir_ty, .. }) = tcx.hir().get_by_def_id(field_id)
-                else { bug!() };
+                let hir::FieldDef { ty: hir_ty, .. } =
+                    tcx.hir().get_by_def_id(field_id).expect_field();
                 let ty = wfcx.normalize(hir_ty.span, None, tcx.type_of(field.did));
                 wfcx.register_bound(
                     traits::ObligationCause::new(
