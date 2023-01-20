@@ -840,6 +840,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.bcx.seal_block(next);
                 fx.bcx.switch_to_block(next);
 
+                fx.bcx.ins().nop();
+
                 ret.place_lane(fx, lane_idx)
                     .write_cvalue(fx, CValue::by_val(res_lane, ret_lane_layout));
             }

@@ -305,6 +305,9 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         let source_info = bb_data.terminator().source_info;
         fx.set_debug_loc(source_info);
 
+        let _print_guard =
+            crate::PrintOnPanic(|| format!("terminator {:?}", bb_data.terminator().kind));
+
         match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
                 if let TerminatorKind::Return = fx.mir[*target].terminator().kind {
