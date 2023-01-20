@@ -1,10 +1,12 @@
 use crate::ty;
 
-use rustc_hir::{def::Res};
+use rustc_hir::def::Res;
 use rustc_macros::HashStable;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_hir::def_id::DefId;
+
+
 
 /// This structure is supposed to keep enough data to re-create `NameBinding`s for other crates
 /// during name resolution. Right now the bindings are not recreated entirely precisely so we may

@@ -2,6 +2,7 @@
 #![allow(non_upper_case_globals)]
 
 use rustc_codegen_ssa::coverageinfo::map as coverage_map;
+use rustc_middle::metadata::DiffActivity;
 
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
@@ -1003,9 +1004,12 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     logic_ref: EnzymeLogicRef,
     type_analysis: EnzymeTypeAnalysisRef,
     fnc: &Value,
-    input_activity: Vec<CDIFFE_TYPE>,
-    ret_activity: CDIFFE_TYPE,
+    input_activity: Vec<DiffActivity>,
+    ret_activity: DiffActivity,
     ret_primary_ret: bool) -> &Value{
+
+    let ret_activity = cdiffe_from(ret_activity);
+    let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
 
     let tree_tmp =  TypeTree::new();
     let mut args_tree = vec![tree_tmp.inner; input_activity.len()];
@@ -1049,11 +1053,14 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     logic_ref: EnzymeLogicRef,
     type_analysis: EnzymeTypeAnalysisRef,
     fnc: &Value,
-    input_activity: Vec<CDIFFE_TYPE>,
-    ret_activity: CDIFFE_TYPE,
+    input_activity: Vec<DiffActivity>,
+    ret_activity: DiffActivity,
     ret_primary_ret: bool,
     diff_primary_ret: bool
     ) -> &Value{
+
+    let ret_activity = cdiffe_from(ret_activity);
+    let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
 
     let tree_tmp =  TypeTree::new();
     let mut args_tree = vec![tree_tmp.inner; input_activity.len()];
@@ -2731,6 +2738,17 @@ pub enum CDIFFE_TYPE {
     DFT_CONSTANT = 2,
     DFT_DUP_NONEED = 3,
 }
+
+fn cdiffe_from(act: DiffActivity) -> CDIFFE_TYPE {
+    return match act {
+        DiffActivity::None => CDIFFE_TYPE::DFT_CONSTANT,
+        DiffActivity::Active => CDIFFE_TYPE::DFT_OUT_DIFF,
+        DiffActivity::Const => CDIFFE_TYPE::DFT_CONSTANT,
+        DiffActivity::Duplicated => CDIFFE_TYPE::DFT_DUP_ARG,
+        DiffActivity::DuplicatedNoNeed => CDIFFE_TYPE::DFT_DUP_NONEED,
+    };
+}
+
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum CDerivativeMode {
