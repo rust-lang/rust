@@ -32,7 +32,7 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     let (expr_type, expr) = get_replacement_node(ctx)?;
 
     acc.add(
-        AssistId("wrap_with_braces", AssistKind::RefactorRewrite),
+        AssistId("add_braces", AssistKind::RefactorRewrite),
         match expr_type {
             ParentType::ClosureExpr => "Add braces to lambda expression",
             ParentType::MatchArmExpr => "Add braces to arm expression",
