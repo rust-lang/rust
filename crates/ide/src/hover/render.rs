@@ -29,7 +29,7 @@ use crate::{
     HoverAction, HoverConfig, HoverResult, Markup,
 };
 
-pub(super) fn type_info(
+pub(super) fn type_info_of(
     sema: &Semantics<'_, RootDatabase>,
     _config: &HoverConfig,
     expr_or_pat: &Either<ast::Expr, ast::Pat>,
@@ -38,34 +38,7 @@ pub(super) fn type_info(
         Either::Left(expr) => sema.type_of_expr(expr)?,
         Either::Right(pat) => sema.type_of_pat(pat)?,
     };
-
-    let mut res = HoverResult::default();
-    let mut targets: Vec<hir::ModuleDef> = Vec::new();
-    let mut push_new_def = |item: hir::ModuleDef| {
-        if !targets.contains(&item) {
-            targets.push(item);
-        }
-    };
-    walk_and_push_ty(sema.db, &original, &mut push_new_def);
-
-    res.markup = if let Some(adjusted_ty) = adjusted {
-        walk_and_push_ty(sema.db, &adjusted_ty, &mut push_new_def);
-        let original = original.display(sema.db).to_string();
-        let adjusted = adjusted_ty.display(sema.db).to_string();
-        let static_text_diff_len = "Coerced to: ".len() - "Type: ".len();
-        format!(
-            "```text\nType: {:>apad$}\nCoerced to: {:>opad$}\n```\n",
-            original,
-            adjusted,
-            apad = static_text_diff_len + adjusted.len().max(original.len()),
-            opad = original.len(),
-        )
-        .into()
-    } else {
-        Markup::fenced_block(&original.display(sema.db))
-    };
-    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
-    Some(res)
+    type_info(sema, _config, original, adjusted)
 }
 
 pub(super) fn try_expr(
@@ -215,6 +188,48 @@ pub(super) fn deref_expr(
     res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
 
     Some(res)
+}
+
+pub(super) fn underscore(
+    sema: &Semantics<'_, RootDatabase>,
+    config: &HoverConfig,
+    token: &SyntaxToken,
+) -> Option<HoverResult> {
+    if token.kind() != T![_] {
+        return None;
+    }
+    let parent = token.parent()?;
+    let _it = match_ast! {
+        match parent {
+            ast::InferType(it) => it,
+            ast::UnderscoreExpr(it) => return type_info_of(sema, config, &Either::Left(ast::Expr::UnderscoreExpr(it))),
+            ast::WildcardPat(it) => return type_info_of(sema, config, &Either::Right(ast::Pat::WildcardPat(it))),
+            _ => return None,
+        }
+    };
+    // let it = infer_type.syntax().parent()?;
+    // match_ast! {
+    //     match it {
+    //         ast::LetStmt(_it) => (),
+    //         ast::Param(_it) => (),
+    //         ast::RetType(_it) => (),
+    //         ast::TypeArg(_it) => (),
+
+    //         ast::CastExpr(_it) => (),
+    //         ast::ParenType(_it) => (),
+    //         ast::TupleType(_it) => (),
+    //         ast::PtrType(_it) => (),
+    //         ast::RefType(_it) => (),
+    //         ast::ArrayType(_it) => (),
+    //         ast::SliceType(_it) => (),
+    //         ast::ForType(_it) => (),
+    //         _ => return None,
+    //     }
+    // }
+
+    // FIXME: https://github.com/rust-lang/rust-analyzer/issues/11762, this currently always returns Unknown
+    // type_info(sema, config, sema.resolve_type(&ast::Type::InferType(it))?, None)
+    None
 }
 
 pub(super) fn keyword(
@@ -456,6 +471,41 @@ pub(super) fn definition(
         })
         .map(Into::into);
     markup(docs, label, mod_path)
+}
+
+fn type_info(
+    sema: &Semantics<'_, RootDatabase>,
+    _config: &HoverConfig,
+    original: hir::Type,
+    adjusted: Option<hir::Type>,
+) -> Option<HoverResult> {
+    let mut res = HoverResult::default();
+    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+    let mut push_new_def = |item: hir::ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
+        }
+    };
+    walk_and_push_ty(sema.db, &original, &mut push_new_def);
+
+    res.markup = if let Some(adjusted_ty) = adjusted {
+        walk_and_push_ty(sema.db, &adjusted_ty, &mut push_new_def);
+        let original = original.display(sema.db).to_string();
+        let adjusted = adjusted_ty.display(sema.db).to_string();
+        let static_text_diff_len = "Coerced to: ".len() - "Type: ".len();
+        format!(
+            "```text\nType: {:>apad$}\nCoerced to: {:>opad$}\n```\n",
+            original,
+            adjusted,
+            apad = static_text_diff_len + adjusted.len().max(original.len()),
+            opad = original.len(),
+        )
+        .into()
+    } else {
+        Markup::fenced_block(&original.display(sema.db))
+    };
+    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+    Some(res)
 }
 
 fn render_builtin_attr(db: &RootDatabase, attr: hir::BuiltinAttr) -> Option<Markup> {
