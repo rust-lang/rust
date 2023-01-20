@@ -11,7 +11,7 @@ enum Stack<T> {
 fn is_empty<T>(s: Stack<T>) -> bool {
     match s {
         Nil => true,
-//~^ WARN pattern binding `Nil` is named the same as one of the variants of the type `Stack`
+//~^ ERROR pattern binding `Nil` is named the same as one of the variants of the type `Stack`
         _ => false
 //~^ ERROR unreachable pattern
     }

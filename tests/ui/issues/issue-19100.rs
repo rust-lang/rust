@@ -1,4 +1,3 @@
-// run-pass
 // run-rustfix
 
 #![allow(non_snake_case)]
@@ -16,11 +15,11 @@ impl Foo {
         match self {
             &
 Bar if true
-//~^ WARN pattern binding `Bar` is named the same as one of the variants of the type `Foo`
+//~^ ERROR pattern binding `Bar` is named the same as one of the variants of the type `Foo`
 => println!("bar"),
             &
 Baz if false
-//~^ WARN pattern binding `Baz` is named the same as one of the variants of the type `Foo`
+//~^ ERROR pattern binding `Baz` is named the same as one of the variants of the type `Foo`
 => println!("baz"),
 _ => ()
         }
