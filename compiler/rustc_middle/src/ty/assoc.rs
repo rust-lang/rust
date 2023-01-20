@@ -37,6 +37,11 @@ impl AssocItem {
         Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
     }
 
+    /// Gets the defaultness of the associated item.
+    /// To get the default associated type, use the [`type_of`] query on the
+    /// [`DefId`] of the type.
+    ///
+    /// [`type_of`]: crate::ty::TyCtxt::type_of
     pub fn defaultness(&self, tcx: TyCtxt<'_>) -> hir::Defaultness {
         tcx.impl_defaultness(self.def_id)
     }
