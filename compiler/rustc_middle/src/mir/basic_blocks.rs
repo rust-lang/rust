@@ -35,7 +35,6 @@ impl<'tcx> BasicBlocks<'tcx> {
         self.is_cyclic.is_cyclic(self)
     }
 
-    #[inline]
     pub fn dominators(&self) -> Dominators<BasicBlock> {
         dominators(&self)
     }
