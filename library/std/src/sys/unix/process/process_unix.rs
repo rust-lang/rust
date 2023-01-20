@@ -746,6 +746,8 @@ fn signal_string(signal: i32) -> &'static str {
         libc::SIGWINCH => " (SIGWINCH)",
         #[cfg(not(target_os = "haiku"))]
         libc::SIGIO => " (SIGIO)",
+        #[cfg(target_os = "haiku")]
+        libc::SIGPOLL => " (SIGPOLL)",
         libc::SIGSYS => " (SIGSYS)",
         // For information on Linux signals, run `man 7 signal`
         #[cfg(all(
