@@ -168,7 +168,7 @@ impl<T> Channel<T> {
                         return true;
                     }
                     Err(_) => {
-                        backoff.spin();
+                        backoff.spin_light();
                         tail = self.tail.load(Ordering::Relaxed);
                     }
                 }
@@ -182,11 +182,11 @@ impl<T> Channel<T> {
                     return false;
                 }
 
-                backoff.spin();
+                backoff.spin_light();
                 tail = self.tail.load(Ordering::Relaxed);
             } else {
                 // Snooze because we need to wait for the stamp to get updated.
-                backoff.snooze();
+                backoff.spin_heavy();
                 tail = self.tail.load(Ordering::Relaxed);
             }
         }
@@ -251,7 +251,7 @@ impl<T> Channel<T> {
                         return true;
                     }
                     Err(_) => {
-                        backoff.spin();
+                        backoff.spin_light();
                         head = self.head.load(Ordering::Relaxed);
                     }
                 }
@@ -273,11 +273,11 @@ impl<T> Channel<T> {
                     }
                 }
 
-                backoff.spin();
+                backoff.spin_light();
                 head = self.head.load(Ordering::Relaxed);
             } else {
                 // Snooze because we need to wait for the stamp to get updated.
-                backoff.snooze();
+                backoff.spin_heavy();
                 head = self.head.load(Ordering::Relaxed);
             }
         }
@@ -330,7 +330,7 @@ impl<T> Channel<T> {
                 if backoff.is_completed() {
                     break;
                 } else {
-                    backoff.spin();
+                    backoff.spin_light();
                 }
             }
 

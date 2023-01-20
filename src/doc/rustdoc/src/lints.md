@@ -261,7 +261,7 @@ typo mistakes for some common attributes.
 
 ## `invalid_html_tags`
 
-This lint is **allowed by default** and is **nightly-only**. It detects unclosed
+This lint **warns by default**. It detects unclosed
 or invalid HTML tags. For example:
 
 ```rust
