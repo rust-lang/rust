@@ -7,7 +7,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{walk_item, Visitor};
 use rustc_hir::{Node, CRATE_HIR_ID};
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
@@ -74,7 +73,6 @@ pub(crate) struct RustdocVisitor<'a, 'tcx> {
     inside_public_path: bool,
     exact_paths: DefIdMap<Vec<Symbol>>,
     modules: Vec<Module<'tcx>>,
-    map: Map<'tcx>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -87,7 +85,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             CRATE_DEF_ID,
             cx.tcx.hir().root_module().spans.inner_span,
         );
-        let map = cx.tcx.hir();
 
         RustdocVisitor {
             cx,
@@ -96,13 +93,100 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             inside_public_path: true,
             exact_paths: Default::default(),
             modules: vec![om],
-            map,
         }
     }
 
     fn store_path(&mut self, did: DefId) {
         let tcx = self.cx.tcx;
         self.exact_paths.entry(did).or_insert_with(|| def_id_to_path(tcx, did));
+    }
+
+    pub(crate) fn visit(mut self) -> Module<'tcx> {
+        let root_module = self.cx.tcx.hir().root_module();
+        self.visit_mod_contents(CRATE_DEF_ID, root_module);
+
+        let mut top_level_module = self.modules.pop().unwrap();
+
+        // `#[macro_export] macro_rules!` items are reexported at the top level of the
+        // crate, regardless of where they're defined. We want to document the
+        // top level rexport of the macro, not its original definition, since
+        // the rexport defines the path that a user will actually see. Accordingly,
+        // we add the rexport as an item here, and then skip over the original
+        // definition in `visit_item()` below.
+        //
+        // We also skip `#[macro_export] macro_rules!` that have already been inserted,
+        // it can happen if within the same module a `#[macro_export] macro_rules!`
+        // is declared but also a reexport of itself producing two exports of the same
+        // macro in the same module.
+        let mut inserted = FxHashSet::default();
+        for export in self.cx.tcx.module_reexports(CRATE_DEF_ID).unwrap_or(&[]) {
+            if let Res::Def(DefKind::Macro(_), def_id) = export.res &&
+                let Some(local_def_id) = def_id.as_local() &&
+                self.cx.tcx.has_attr(def_id, sym::macro_export) &&
+                inserted.insert(def_id)
+            {
+                    let item = self.cx.tcx.hir().expect_item(local_def_id);
+                    top_level_module.items.push((item, None, None));
+            }
+        }
+
+        self.cx.cache.hidden_cfg = self
+            .cx
+            .tcx
+            .hir()
+            .attrs(CRATE_HIR_ID)
+            .iter()
+            .filter(|attr| attr.has_name(sym::doc))
+            .flat_map(|attr| attr.meta_item_list().into_iter().flatten())
+            .filter(|attr| attr.has_name(sym::cfg_hide))
+            .flat_map(|attr| {
+                attr.meta_item_list()
+                    .unwrap_or(&[])
+                    .iter()
+                    .filter_map(|attr| {
+                        Cfg::parse(attr.meta_item()?)
+                            .map_err(|e| self.cx.sess().diagnostic().span_err(e.span, e.msg))
+                            .ok()
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .chain(
+                [Cfg::Cfg(sym::test, None), Cfg::Cfg(sym::doc, None), Cfg::Cfg(sym::doctest, None)]
+                    .into_iter(),
+            )
+            .collect();
+
+        self.cx.cache.exact_paths = self.exact_paths;
+        top_level_module
+    }
+
+    /// This method will go through the given module items in two passes:
+    /// 1. The items which are not glob imports/reexports.
+    /// 2. The glob imports/reexports.
+    fn visit_mod_contents(&mut self, def_id: LocalDefId, m: &'tcx hir::Mod<'tcx>) {
+        debug!("Going through module {:?}", m);
+        // Keep track of if there were any private modules in the path.
+        let orig_inside_public_path = self.inside_public_path;
+        self.inside_public_path &= self.cx.tcx.local_visibility(def_id).is_public();
+
+        // Reimplementation of `walk_mod` because we need to do it in two passes (explanations in
+        // the second loop):
+        for &i in m.item_ids {
+            let item = self.cx.tcx.hir().item(i);
+            if !matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+                self.visit_item(item);
+            }
+        }
+        for &i in m.item_ids {
+            let item = self.cx.tcx.hir().item(i);
+            // To match the way import precedence works, visit glob imports last.
+            // Later passes in rustdoc will de-duplicate by name and kind, so if glob-
+            // imported items appear last, then they'll be the ones that get discarded.
+            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+                self.visit_item(item);
+            }
+        }
+        self.inside_public_path = orig_inside_public_path;
     }
 
     /// Tries to resolve the target of a `pub use` statement and inlines the
@@ -197,7 +281,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         &mut self,
         item: &'tcx hir::Item<'_>,
         renamed: Option<Symbol>,
-        parent_id: Option<hir::HirId>,
+        parent_id: Option<LocalDefId>,
     ) {
         self.modules.last_mut().unwrap().items.push((item, renamed, parent_id))
     }
@@ -330,65 +414,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn visit(mut self) -> Module<'tcx> {
-        let root_module = self.cx.tcx.hir().root_module();
-        self.visit_mod_contents(CRATE_DEF_ID, root_module);
-
-        let mut top_level_module = self.modules.pop().unwrap();
-
-        // `#[macro_export] macro_rules!` items are reexported at the top level of the
-        // crate, regardless of where they're defined. We want to document the
-        // top level rexport of the macro, not its original definition, since
-        // the rexport defines the path that a user will actually see. Accordingly,
-        // we add the rexport as an item here, and then skip over the original
-        // definition in `visit_item()` below.
-        //
-        // We also skip `#[macro_export] macro_rules!` that have already been inserted,
-        // it can happen if within the same module a `#[macro_export] macro_rules!`
-        // is declared but also a reexport of itself producing two exports of the same
-        // macro in the same module.
-        let mut inserted = FxHashSet::default();
-        for export in self.cx.tcx.module_reexports(CRATE_DEF_ID).unwrap_or(&[]) {
-            if let Res::Def(DefKind::Macro(_), def_id) = export.res &&
-                let Some(local_def_id) = def_id.as_local() &&
-                self.cx.tcx.has_attr(def_id, sym::macro_export) &&
-                inserted.insert(def_id)
-            {
-                    let item = self.cx.tcx.hir().expect_item(local_def_id);
-                    top_level_module.items.push((item, None, None));
-            }
-        }
-
-        self.cx.cache.hidden_cfg = self
-            .cx
-            .tcx
-            .hir()
-            .attrs(CRATE_HIR_ID)
-            .iter()
-            .filter(|attr| attr.has_name(sym::doc))
-            .flat_map(|attr| attr.meta_item_list().into_iter().flatten())
-            .filter(|attr| attr.has_name(sym::cfg_hide))
-            .flat_map(|attr| {
-                attr.meta_item_list()
-                    .unwrap_or(&[])
-                    .iter()
-                    .filter_map(|attr| {
-                        Cfg::parse(attr.meta_item()?)
-                            .map_err(|e| self.cx.sess().diagnostic().span_err(e.span, e.msg))
-                            .ok()
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .chain(
-                [Cfg::Cfg(sym::test, None), Cfg::Cfg(sym::doc, None), Cfg::Cfg(sym::doctest, None)]
-                    .into_iter(),
-            )
-            .collect();
-
-        self.cx.cache.exact_paths = self.exact_paths;
-        top_level_module
-    }
-
     /// This method will create a new module and push it onto the "modules stack" then call
     /// `visit_mod_contents`. Once done, it'll remove it from the "modules stack" and instead
     /// add into the list of modules of the current module.
@@ -400,34 +425,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let last = self.modules.pop().unwrap();
         self.modules.last_mut().unwrap().mods.push(last);
     }
-
-    /// This method will go through the given module items in two passes:
-    /// 1. The items which are not glob imports/reexports.
-    /// 2. The glob imports/reexports.
-    fn visit_mod_contents(&mut self, def_id: LocalDefId, m: &'tcx hir::Mod<'tcx>) {
-        debug!("Going through module {:?}", m);
-        // Keep track of if there were any private modules in the path.
-        let orig_inside_public_path = self.inside_public_path;
-        self.inside_public_path &= self.cx.tcx.local_visibility(def_id).is_public();
-
-        // Reimplementation of `walk_mod`:
-        for &i in m.item_ids {
-            let item = self.cx.tcx.hir().item(i);
-            if !matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
-                self.visit_item(item);
-            }
-        }
-        for &i in m.item_ids {
-            let item = self.cx.tcx.hir().item(i);
-            // To match the way import precedence works, visit glob imports last.
-            // Later passes in rustdoc will de-duplicate by name and kind, so if glob-
-            // imported items appear last, then they'll be the ones that get discarded.
-            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
-                self.visit_item(item);
-            }
-        }
-        self.inside_public_path = orig_inside_public_path;
-    }
 }
 
 // We need to implement this visitor so it'll go everywhere and retrieve items we're interested in
@@ -436,7 +433,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn nested_visit_map(&mut self) -> Self::Map {
-        self.map
+        self.cx.tcx.hir()
     }
 
     fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
