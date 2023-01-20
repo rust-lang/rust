@@ -10,7 +10,8 @@ use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};
-use rustc_trait_selection::traits::{self, TraitEngine, TraitEngineExt as _};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, PredicateObligation, TraitEngine, TraitEngineExt as _};
 
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -140,11 +141,7 @@ impl<'tcx> Inherited<'tcx> {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }
 
-        super::relationships::update(
-            &self.infcx,
-            &mut self.relationships.borrow_mut(),
-            &obligation,
-        );
+        self.update_infer_var_info(&obligation);
 
         self.fulfillment_cx.borrow_mut().register_predicate_obligation(self, obligation);
     }
@@ -161,5 +158,44 @@ impl<'tcx> Inherited<'tcx> {
     pub(super) fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
         self.register_predicates(infer_ok.obligations);
         infer_ok.value
+    }
+
+    pub fn update_infer_var_info(&self, obligation: &PredicateObligation<'tcx>) {
+        let relationships = &mut self.relationships.borrow_mut();
+
+        // (*) binder skipped
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(tpred)) = obligation.predicate.kind().skip_binder()
+            && let Some(ty) = self.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| self.root_var(t))
+            && self.tcx.lang_items().sized_trait().map_or(false, |st| st != tpred.trait_ref.def_id)
+        {
+            let new_self_ty = self.tcx.types.unit;
+
+            // Then construct a new obligation with Self = () added
+            // to the ParamEnv, and see if it holds.
+            let o = obligation.with(self.tcx,
+                obligation
+                    .predicate
+                    .kind()
+                    .rebind(
+                        // (*) binder moved here
+                        ty::PredicateKind::Clause(ty::Clause::Trait(tpred.with_self_ty(self.tcx, new_self_ty)))
+                    ),
+            );
+            // Don't report overflow errors. Otherwise equivalent to may_hold.
+            if let Ok(result) = self.probe(|_| self.evaluate_obligation(&o)) && result.may_apply() {
+                relationships.entry(ty).or_default().self_in_trait = true;
+            }
+        }
+
+        if let ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) =
+            obligation.predicate.kind().skip_binder()
+        {
+            // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,
+            // we need to make it into one.
+            if let Some(vid) = predicate.term.ty().and_then(|ty| ty.ty_vid()) {
+                debug!("relationships: {:?}.output = true", vid);
+                relationships.entry(vid).or_default().output = true;
+            }
+        }
     }
 }
