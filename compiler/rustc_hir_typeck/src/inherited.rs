@@ -65,7 +65,7 @@ pub struct Inherited<'tcx> {
     /// fallback. See the `fallback` module for details.
     pub(super) diverging_type_vars: RefCell<FxHashSet<Ty<'tcx>>>,
 
-    pub(super) relationships: RefCell<FxHashMap<ty::TyVid, ty::FoundRelationships>>,
+    pub(super) infer_var_info: RefCell<FxHashMap<ty::TyVid, ty::InferVarInfo>>,
 }
 
 impl<'tcx> Deref for Inherited<'tcx> {
@@ -131,7 +131,7 @@ impl<'tcx> Inherited<'tcx> {
             deferred_generator_interiors: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             body_id,
-            relationships: RefCell::new(Default::default()),
+            infer_var_info: RefCell::new(Default::default()),
         }
     }
 
@@ -161,7 +161,7 @@ impl<'tcx> Inherited<'tcx> {
     }
 
     pub fn update_infer_var_info(&self, obligation: &PredicateObligation<'tcx>) {
-        let relationships = &mut self.relationships.borrow_mut();
+        let infer_var_info = &mut self.infer_var_info.borrow_mut();
 
         // (*) binder skipped
         if let ty::PredicateKind::Clause(ty::Clause::Trait(tpred)) = obligation.predicate.kind().skip_binder()
@@ -183,7 +183,7 @@ impl<'tcx> Inherited<'tcx> {
             );
             // Don't report overflow errors. Otherwise equivalent to may_hold.
             if let Ok(result) = self.probe(|_| self.evaluate_obligation(&o)) && result.may_apply() {
-                relationships.entry(ty).or_default().self_in_trait = true;
+                infer_var_info.entry(ty).or_default().self_in_trait = true;
             }
         }
 
@@ -193,8 +193,8 @@ impl<'tcx> Inherited<'tcx> {
             // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,
             // we need to make it into one.
             if let Some(vid) = predicate.term.ty().and_then(|ty| ty.ty_vid()) {
-                debug!("relationships: {:?}.output = true", vid);
-                relationships.entry(vid).or_default().output = true;
+                debug!("infer_var_info: {:?}.output = true", vid);
+                infer_var_info.entry(vid).or_default().output = true;
             }
         }
     }
