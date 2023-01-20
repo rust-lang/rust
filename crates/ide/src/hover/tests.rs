@@ -5592,3 +5592,93 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn hover_underscore_pat() {
+    check(
+        r#"
+fn main() {
+    let _$0 = 0;
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    let (_$0,) = (0,);
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_underscore_expr() {
+    check(
+        r#"
+fn main() {
+    _$0 = 0;
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    (_$0,) = (0,);
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_underscore_type() {
+    check(
+        r#"
+fn main() {
+    let x: _$0 = 0;
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            {unknown}
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    let x: (_$0,) = (0,);
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            {unknown}
+            ```
+        "#]],
+    );
+}
