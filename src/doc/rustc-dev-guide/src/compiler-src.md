@@ -27,8 +27,10 @@ The repository consists of three main directories:
   `proc_macro`, `test`), as well as the Rust runtime (`backtrace`, `rtstartup`,
   `lang_start`).
   
+- `tests/` contains the compiler tests.
+  
 - `src/` contains the source code for rustdoc, clippy, cargo, the build system,
-  compiler tests, language docs, etc.
+  language docs, etc.
 
 ## Compiler
 
