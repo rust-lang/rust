@@ -175,27 +175,6 @@ By passing `--pass $mode`, you can reduce the testing time. For each
 mode, please see [Controlling pass/fail
 expectations](ui.md#controlling-passfail-expectations).
 
-## Using incremental compilation
-
-You can further enable the `--incremental` flag to save additional
-time in subsequent rebuilds:
-
-```bash
-./x.py test tests/ui --incremental --test-args issue-1234
-```
-
-If you don't want to include the flag with every command, you can
-enable it in the `config.toml`:
-
-```toml
-[rust]
-incremental = true
-```
-
-Note that incremental compilation will use more disk space than usual.
-If disk space is a concern for you, you might want to check the size
-of the `build` directory from time to time.
-
 ## Running tests with different "compare modes"
 
 UI tests may have different output depending on certain "modes" that

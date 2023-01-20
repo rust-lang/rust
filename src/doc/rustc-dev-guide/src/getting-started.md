@@ -114,6 +114,10 @@ serious development work. In particular, `./x.py build` and `./x.py test`
 provide many ways to compile or test a subset of the code, which can save a lot
 of time.
 
+Also, note that `x.py` supports all kinds of path suffixes for `compiler`, `library`,
+and `src/tools` directories. So, you can simply run `x.py test tidy` instead of
+`x.py test src/tools/tidy`. Or, `x.py build std` instead of `x.py build library/std`.
+
 [rust-analyzer]: ./building/suggested.html#configuring-rust-analyzer-for-rustc
 
 See the chapters on [building](./building/how-to-build-and-run.md),

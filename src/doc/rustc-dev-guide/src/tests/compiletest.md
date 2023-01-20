@@ -24,6 +24,11 @@ See the [Adding new tests](adding.md) chapter for a tutorial on creating a new
 test, and the [Running tests](running.md) chapter on how to run the test
 suite.
 
+Compiletest itself tries to avoid running tests when the artifacts
+that are involved (mainly the compiler) haven't changed. You can use
+`x test --test-args --force-rerun` to rerun a test even when none of the
+inputs have changed.
+
 ## Test suites
 
 All of the tests are in the [`tests`] directory.
