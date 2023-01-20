@@ -479,7 +479,7 @@ where
             }
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref substs, .. }) => {
-                // Skip lifetime paramters that are not captures.
+                // Skip lifetime parameters that are not captures.
                 let variances = self.tcx.variances_of(*def_id);
 
                 for (v, s) in std::iter::zip(variances, substs.iter()) {
@@ -492,7 +492,7 @@ where
             ty::Alias(ty::Projection, proj)
                 if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
             {
-                // Skip lifetime paramters that are not captures.
+                // Skip lifetime parameters that are not captures.
                 let variances = self.tcx.variances_of(proj.def_id);
 
                 for (v, s) in std::iter::zip(variances, proj.substs.iter()) {
