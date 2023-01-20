@@ -466,7 +466,10 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     *destination,
                 );
             }
-            TerminatorKind::Resume | TerminatorKind::Abort => {
+            TerminatorKind::Abort => {
+                codegen_panic_cannot_unwind(fx, source_info);
+            }
+            TerminatorKind::Resume => {
                 // FIXME implement unwinding
                 fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
             }
@@ -931,7 +934,28 @@ pub(crate) fn codegen_panic<'tcx>(
     codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, source_info.span);
 }
 
-pub(crate) fn codegen_panic_inner<'tcx>(
+pub(crate) fn codegen_panic_nounwind<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    msg_str: &str,
+    source_info: mir::SourceInfo,
+) {
+    let msg_ptr = fx.anonymous_str(msg_str);
+    let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
+    let args = [msg_ptr, msg_len];
+
+    codegen_panic_inner(fx, rustc_hir::LangItem::PanicNounwind, &args, source_info.span);
+}
+
+pub(crate) fn codegen_panic_cannot_unwind<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    source_info: mir::SourceInfo,
+) {
+    let args = [];
+
+    codegen_panic_inner(fx, rustc_hir::LangItem::PanicCannotUnwind, &args, source_info.span);
+}
+
+fn codegen_panic_inner<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     lang_item: rustc_hir::LangItem,
     args: &[Value],
@@ -948,11 +972,7 @@ pub(crate) fn codegen_panic_inner<'tcx>(
 
     fx.lib_call(
         &*symbol_name,
-        vec![
-            AbiParam::new(fx.pointer_type),
-            AbiParam::new(fx.pointer_type),
-            AbiParam::new(fx.pointer_type),
-        ],
+        args.iter().map(|&arg| AbiParam::new(fx.bcx.func.dfg.value_type(arg))).collect(),
         vec![],
         args,
     );
