@@ -475,17 +475,23 @@ pub(crate) fn get_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'_>,
     item_def_id: DefId,
 ) -> impl Iterator<Item = Item> {
-    let auto_impls = cx
-        .sess()
-        .prof
-        .generic_activity("get_auto_trait_impls")
-        .run(|| AutoTraitFinder::new(cx).get_auto_trait_impls(item_def_id));
-    let blanket_impls = cx
-        .sess()
-        .prof
-        .generic_activity("get_blanket_impls")
-        .run(|| BlanketImplFinder { cx }.get_blanket_impls(item_def_id));
-    auto_impls.into_iter().chain(blanket_impls)
+    // FIXME: To be removed once `parallel_compiler` bugs are fixed!
+    // More information in <https://github.com/rust-lang/rust/pull/106745>.
+    if !cfg!(parallel_compiler) {
+        let auto_impls = cx
+            .sess()
+            .prof
+            .generic_activity("get_auto_trait_impls")
+            .run(|| AutoTraitFinder::new(cx).get_auto_trait_impls(item_def_id));
+        let blanket_impls = cx
+            .sess()
+            .prof
+            .generic_activity("get_blanket_impls")
+            .run(|| BlanketImplFinder { cx }.get_blanket_impls(item_def_id));
+        auto_impls.into_iter().chain(blanket_impls)
+    } else {
+        vec![].into_iter().chain(vec![].into_iter())
+    }
 }
 
 /// If `res` has a documentation page associated, store it in the cache.
