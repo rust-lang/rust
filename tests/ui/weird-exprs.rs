@@ -19,7 +19,7 @@ use std::mem::swap;
 
 fn strange() -> bool { let _x: bool = return true; }
 
-fn hi() {
+fn hi() -> String {
     let string = "Hello, world!";
     let string: String = {{{
         {{{
@@ -29,13 +29,10 @@ fn hi() {
         }}}.collect()
     }}};
     {{{{{{{{{{
-        println!(
-            "{}",
-            {{{{{{{{{{{{{{{{{{{{
-                string
-            }}}}}}}}}}}}}}}}}}}}
-        )
-    }}}}}}}}}};
+        {{{{{{{{{{{{{{{{{{{{
+            string
+        }}}}}}}}}}}}}}}}}}}}
+    }}}}}}}}}}
 }
 
 fn funny() {
