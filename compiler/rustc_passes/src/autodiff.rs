@@ -213,24 +213,33 @@ impl<'tcx> ItemLikeVisitor<'tcx> for AutodiffContext<'tcx> {
             }
         };
 
-        if mode == DiffMode::Forward && ret_activity == DiffActivity::Active {
-            self.tcx
-                .sess
-                .struct_span_err(item.span, "Forward Mode is incompatible with Active ret")
-                .span_label(item.span, "invalid return activity")
-                .emit();
-            return;
-        }
-
-        if mode == DiffMode::Reverse {
-            if ret_activity != DiffActivity::Const && ret_activity != DiffActivity::Active {
+        if mode == DiffMode::Forward {
+            if ret_activity == DiffActivity::Active {
                 self.tcx
                     .sess
-                    .struct_span_err(item.span, "Reverse Mode is only compatible with Active or Const ret")
+                    .struct_span_err(item.span, "Forward Mode is incompatible with Active ret")
                     .span_label(item.span, "invalid return activity")
                     .emit();
                 return;
+            }
+            if input_activity.iter().filter(|&x| *x == DiffActivity::Active).count() > 0 {
+                self.tcx
+                    .sess
+                    .struct_span_err(item.span, "Forward Mode is incompatible with Active args")
+                    .span_label(item.span, "invalid input activity")
+                    .emit();
+                return;
+            }
+        }
 
+        if mode == DiffMode::Reverse {
+            if ret_activity == DiffActivity::Duplicated || ret_activity == DiffActivity::DuplicatedNoNeed {
+                self.tcx
+                    .sess
+                    .struct_span_err(item.span, "Reverse Mode is only compatible with Active, None, or Const ret")
+                    .span_label(item.span, "invalid return activity")
+                    .emit();
+                return;
             }
         }
 
