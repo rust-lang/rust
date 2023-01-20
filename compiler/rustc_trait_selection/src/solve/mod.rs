@@ -26,7 +26,9 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::Obligation;
 use rustc_middle::infer::canonical::Certainty as OldCertainty;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{RegionOutlivesPredicate, ToPredicate, TypeOutlivesPredicate};
+use rustc_middle::ty::{
+    RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TypeOutlivesPredicate,
+};
 use rustc_span::DUMMY_SP;
 
 use crate::traits::ObligationCause;
@@ -243,16 +245,34 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => {
                     self.compute_region_outlives_goal(Goal { param_env, predicate })
                 }
+                ty::PredicateKind::Subtype(predicate) => {
+                    self.compute_subtype_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::Coerce(predicate) => self.compute_subtype_goal(Goal {
+                    param_env,
+                    predicate: SubtypePredicate {
+                        a_is_expected: true,
+                        a: predicate.a,
+                        b: predicate.b,
+                    },
+                }),
+                ty::PredicateKind::ClosureKind(_, substs, kind) => self.compute_closure_kind_goal(
+                    substs.as_closure().kind_ty().to_opt_closure_kind(),
+                    kind,
+                ),
+                ty::PredicateKind::Ambiguous => {
+                    self.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity))
+                }
                 // FIXME: implement these predicates :)
                 ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::ObjectSafe(_)
-                | ty::PredicateKind::ClosureKind(_, _, _)
-                | ty::PredicateKind::Subtype(_)
-                | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::ConstEvaluatable(_)
-                | ty::PredicateKind::ConstEquate(_, _)
-                | ty::PredicateKind::TypeWellFormedFromEnv(_)
-                | ty::PredicateKind::Ambiguous => self.make_canonical_response(Certainty::Yes),
+                | ty::PredicateKind::ConstEquate(_, _) => {
+                    self.make_canonical_response(Certainty::Yes)
+                }
+                ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+                    bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
             }
         } else {
             let kind = self.infcx.replace_bound_vars_with_placeholders(kind);
@@ -274,6 +294,36 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         _goal: Goal<'tcx, RegionOutlivesPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         self.make_canonical_response(Certainty::Yes)
+    }
+
+    fn compute_subtype_goal(
+        &mut self,
+        goal: Goal<'tcx, SubtypePredicate<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        self.infcx.probe(|_| {
+            let InferOk { value: (), obligations } = self
+                .infcx
+                .at(&ObligationCause::dummy(), goal.param_env)
+                .sub(goal.predicate.a, goal.predicate.b)?;
+            self.evaluate_all_and_make_canonical_response(
+                obligations.into_iter().map(|pred| pred.into()).collect(),
+            )
+        })
+    }
+
+    fn compute_closure_kind_goal(
+        &mut self,
+        found_kind: Option<ty::ClosureKind>,
+        expected_kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx> {
+        let Some(found_kind) = found_kind else {
+            return self.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity));
+        };
+        if found_kind.extends(expected_kind) {
+            self.make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
     }
 }
 
