@@ -28,8 +28,8 @@ pub fn solve_constraints<'tcx>(
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
 
     let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];
-    for &(id, ref variances) in &terms_cx.lang_items {
-        let InferredIndex(start) = terms_cx.inferred_starts[&id];
+    for (id, variances) in &terms_cx.lang_items {
+        let InferredIndex(start) = terms_cx.inferred_starts[id];
         for (i, &variance) in variances.iter().enumerate() {
             solutions[start + i] = variance;
         }

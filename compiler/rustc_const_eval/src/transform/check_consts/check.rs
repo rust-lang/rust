@@ -442,7 +442,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
         self.super_rvalue(rvalue, location);
 
-        match *rvalue {
+        match rvalue {
             Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
 
             Rvalue::Use(_)
@@ -451,18 +451,15 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | Rvalue::Discriminant(..)
             | Rvalue::Len(_) => {}
 
-            Rvalue::Aggregate(ref kind, ..) => {
-                if let AggregateKind::Generator(def_id, ..) = kind.as_ref() {
-                    if let Some(generator_kind) = self.tcx.generator_kind(def_id.to_def_id()) {
-                        if matches!(generator_kind, hir::GeneratorKind::Async(..)) {
-                            self.check_op(ops::Generator(generator_kind));
-                        }
-                    }
+            Rvalue::Aggregate(kind, ..) => {
+                if let AggregateKind::Generator(def_id, ..) = kind.as_ref()
+                    && let Some(generator_kind @ hir::GeneratorKind::Async(..)) = self.tcx.generator_kind(def_id.to_def_id())
+                {
+                    self.check_op(ops::Generator(generator_kind));
                 }
             }
 
-            Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
-            | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place) => {
+            Rvalue::Ref(_, kind @ (BorrowKind::Mut { .. } | BorrowKind::Unique), place) => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let is_allowed = match ty.kind() {
                     // Inside a `static mut`, `&mut [...]` is allowed.
@@ -491,12 +488,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::AddressOf(Mutability::Mut, ref place) => {
+            Rvalue::AddressOf(Mutability::Mut, place) => {
                 self.check_mut_borrow(place.local, hir::BorrowKind::Raw)
             }
 
-            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, ref place)
-            | Rvalue::AddressOf(Mutability::Not, ref place) => {
+            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, place)
+            | Rvalue::AddressOf(Mutability::Not, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     &self.ccx,
                     &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
@@ -564,7 +561,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(_, ref operand) => {
+            Rvalue::UnaryOp(_, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
                 if is_int_bool_or_char(ty) {
                     // Int, bool, and char operations are fine.
@@ -575,8 +572,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, box (ref lhs, ref rhs))
-            | Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs))
+            | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -585,13 +582,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
                     assert_eq!(lhs_ty, rhs_ty);
                     assert!(
-                        op == BinOp::Eq
-                            || op == BinOp::Ne
-                            || op == BinOp::Le
-                            || op == BinOp::Lt
-                            || op == BinOp::Ge
-                            || op == BinOp::Gt
-                            || op == BinOp::Offset
+                        matches!(
+                            op,
+                            BinOp::Eq
+                            | BinOp::Ne
+                            | BinOp::Le
+                            | BinOp::Lt
+                            | BinOp::Ge
+                            | BinOp::Gt
+                            | BinOp::Offset
+                        )
                     );
 
                     self.check_op(ops::RawPtrComparison);

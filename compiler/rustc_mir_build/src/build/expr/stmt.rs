@@ -113,7 +113,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // it is usually better to focus on `the_value` rather
                 // than the entirety of block(s) surrounding it.
-                let adjusted_span = (|| {
+                let adjusted_span =
                     if let ExprKind::Block { block } = expr.kind
                         && let Some(tail_ex) = this.thir[block].expr
                     {
@@ -135,10 +135,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             tail_result_is_ignored: true,
                             span: expr.span,
                         });
-                        return Some(expr.span);
-                    }
-                    None
-                })();
+                        Some(expr.span)
+                    } else {
+                        None
+                    };
 
                 let temp =
                     unpack!(block = this.as_temp(block, statement_scope, expr, Mutability::Not));

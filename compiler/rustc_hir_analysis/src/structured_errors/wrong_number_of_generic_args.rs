@@ -727,8 +727,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         if let Some(parent_node) = self.tcx.hir().opt_parent_id(self.path_segment.hir_id)
         && let Some(parent_node) = self.tcx.hir().find(parent_node)
         && let hir::Node::Expr(expr) = parent_node {
-            match expr.kind {
-                hir::ExprKind::Path(ref qpath) => {
+            match &expr.kind {
+                hir::ExprKind::Path(qpath) => {
                     self.suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
                         err,
                         qpath,

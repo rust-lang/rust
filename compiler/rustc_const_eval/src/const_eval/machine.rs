@@ -533,7 +533,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         let eval_to_int =
             |op| ecx.read_immediate(&ecx.eval_operand(op, None)?).map(|x| x.to_const_int());
         let err = match msg {
-            BoundsCheck { ref len, ref index } => {
+            BoundsCheck { len, index } => {
                 let len = eval_to_int(len)?;
                 let index = eval_to_int(index)?;
                 BoundsCheck { len, index }

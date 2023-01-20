@@ -558,7 +558,7 @@ fn write_out_deps(
     }
     let deps_filename = outputs.path(OutputType::DepInfo);
 
-    let result = (|| -> io::Result<()> {
+    let result: io::Result<()> = try {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
         let mut files: Vec<String> = sess
@@ -645,9 +645,7 @@ fn write_out_deps(
                 writeln!(file)?;
             }
         }
-
-        Ok(())
-    })();
+    };
 
     match result {
         Ok(_) => {

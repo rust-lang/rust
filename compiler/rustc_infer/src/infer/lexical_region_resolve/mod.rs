@@ -251,7 +251,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     VarValue::Empty(a_universe) => {
                         let b_data = var_values.value_mut(b_vid);
 
-                        let changed = (|| match *b_data {
+                        let changed = match *b_data {
                             VarValue::Empty(b_universe) => {
                                 // Empty regions are ordered according to the universe
                                 // they are associated with.
@@ -280,20 +280,20 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                                 };
 
                                 if lub == cur_region {
-                                    return false;
+                                    false
+                                } else {
+                                    debug!(
+                                        "Expanding value of {:?} from {:?} to {:?}",
+                                        b_vid, cur_region, lub
+                                    );
+
+                                    *b_data = VarValue::Value(lub);
+                                    true
                                 }
-
-                                debug!(
-                                    "Expanding value of {:?} from {:?} to {:?}",
-                                    b_vid, cur_region, lub
-                                );
-
-                                *b_data = VarValue::Value(lub);
-                                true
                             }
 
                             VarValue::ErrorValue => false,
-                        })();
+                        };
 
                         if changed {
                             changes.push(b_vid);

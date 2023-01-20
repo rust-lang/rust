@@ -54,12 +54,9 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         _ => {}
     }
 
-    let sp = match tcx.hir().expect_item(impl_did).kind {
-        ItemKind::Impl(ref impl_) => impl_.self_ty.span,
-        _ => bug!("expected Drop impl item"),
-    };
+    let ItemKind::Impl(impl_) = tcx.hir().expect_item(impl_did).kind else { bug!("expected Drop impl item") };
 
-    tcx.sess.emit_err(DropImplOnWrongItem { span: sp });
+    tcx.sess.emit_err(DropImplOnWrongItem { span: impl_.self_ty.span });
 }
 
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
@@ -505,12 +502,11 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 return err_info;
             } else if diff_fields.len() > 1 {
                 let item = tcx.hir().expect_item(impl_did);
-                let span =
-                    if let ItemKind::Impl(hir::Impl { of_trait: Some(ref t), .. }) = item.kind {
-                        t.path.span
-                    } else {
-                        tcx.def_span(impl_did)
-                    };
+                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
+                    t.path.span
+                } else {
+                    tcx.def_span(impl_did)
+                };
 
                 struct_span_err!(
                     tcx.sess,

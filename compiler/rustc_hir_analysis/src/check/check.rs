@@ -531,9 +531,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl => {
             let it = tcx.hir().item(id);
-            let hir::ItemKind::Impl(ref impl_) = it.kind else {
-                return;
-            };
+            let hir::ItemKind::Impl(impl_) = it.kind else { return };
             debug!("ItemKind::Impl {} with id {:?}", it.ident, it.owner_id);
             if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.owner_id) {
                 check_impl_items_against_trait(
@@ -548,15 +546,15 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
         }
         DefKind::Trait => {
             let it = tcx.hir().item(id);
-            let hir::ItemKind::Trait(_, _, _, _, ref items) = it.kind else {
+            let hir::ItemKind::Trait(_, _, _, _, items) = it.kind else {
                 return;
             };
             check_on_unimplemented(tcx, it);
 
             for item in items.iter() {
                 let item = tcx.hir().trait_item(item.id);
-                match item.kind {
-                    hir::TraitItemKind::Fn(ref sig, _) => {
+                match &item.kind {
+                    hir::TraitItemKind::Fn(sig, _) => {
                         let abi = sig.header.abi;
                         fn_maybe_err(tcx, item.ident.span, abi);
                     }
@@ -652,8 +650,8 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                     }
 
                     let item = tcx.hir().foreign_item(item.id);
-                    match item.kind {
-                        hir::ForeignItemKind::Fn(ref fn_decl, _, _) => {
+                    match &item.kind {
+                        hir::ForeignItemKind::Fn(fn_decl, _, _) => {
                             require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
                         }
                         hir::ForeignItemKind::Static(..) => {

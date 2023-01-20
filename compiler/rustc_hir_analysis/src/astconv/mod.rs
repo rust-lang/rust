@@ -569,17 +569,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .bindings
             .iter()
             .map(|binding| {
-                let kind = match binding.kind {
-                    hir::TypeBindingKind::Equality { ref term } => match term {
-                        hir::Term::Ty(ref ty) => {
+                let kind = match &binding.kind {
+                    hir::TypeBindingKind::Equality { term } => match term {
+                        hir::Term::Ty(ty) => {
                             ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty).into())
                         }
-                        hir::Term::Const(ref c) => {
+                        hir::Term::Const(c) => {
                             let c = Const::from_anon_const(self.tcx(), c.def_id);
                             ConvertedBindingKind::Equality(c.into())
                         }
                     },
-                    hir::TypeBindingKind::Constraint { ref bounds } => {
+                    hir::TypeBindingKind::Constraint { bounds } => {
                         ConvertedBindingKind::Constraint(bounds)
                     }
                 };
@@ -1928,7 +1928,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> Result<(Ty<'tcx>, DefKind, DefId), ErrorGuaranteed> {
         let tcx = self.tcx();
         let assoc_ident = assoc_segment.ident;
-        let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.kind {
+        let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
             path.res
         } else {
             Res::Err
@@ -1971,8 +1971,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 return;
                             };
                             let (qself_sugg_span, is_self) = if let hir::TyKind::Path(
-                                hir::QPath::Resolved(_, ref path)
-                            ) = qself.kind {
+                                hir::QPath::Resolved(_, path)
+                            ) = &qself.kind {
                                 // If the path segment already has type params, we want to overwrite
                                 // them.
                                 match &path.segments[..] {
@@ -2760,7 +2760,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         "generic `Self` types are currently not permitted in anonymous constants",
                     );
                     if let Some(hir::Node::Item(&hir::Item {
-                        kind: hir::ItemKind::Impl(ref impl_),
+                        kind: hir::ItemKind::Impl(impl_),
                         ..
                     })) = tcx.hir().get_if_local(def_id)
                     {
@@ -2843,12 +2843,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn ast_ty_to_ty_inner(&self, ast_ty: &hir::Ty<'_>, borrowed: bool, in_path: bool) -> Ty<'tcx> {
         let tcx = self.tcx();
 
-        let result_ty = match ast_ty.kind {
-            hir::TyKind::Slice(ref ty) => tcx.mk_slice(self.ast_ty_to_ty(ty)),
-            hir::TyKind::Ptr(ref mt) => {
+        let result_ty = match &ast_ty.kind {
+            hir::TyKind::Slice(ty) => tcx.mk_slice(self.ast_ty_to_ty(ty)),
+            hir::TyKind::Ptr(mt) => {
                 tcx.mk_ptr(ty::TypeAndMut { ty: self.ast_ty_to_ty(mt.ty), mutbl: mt.mutbl })
             }
-            hir::TyKind::Ref(ref region, ref mt) => {
+            hir::TyKind::Ref(region, mt) => {
                 let r = self.ast_region_to_region(region, None);
                 debug!(?r);
                 let t = self.ast_ty_to_ty_inner(mt.ty, true, false);
@@ -2868,7 +2868,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     Some(ast_ty),
                 ))
             }
-            hir::TyKind::TraitObject(bounds, ref lifetime, repr) => {
+            hir::TyKind::TraitObject(bounds, lifetime, repr) => {
                 self.maybe_lint_bare_trait(ast_ty, in_path);
                 let repr = match repr {
                     TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
@@ -2876,12 +2876,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed, repr)
             }
-            hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
+            hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
                 self.res_to_ty(opt_self_ty, path, false)
             }
-            hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
+            &hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
                 let opaque_ty = tcx.hir().item(item_id);
                 let def_id = item_id.owner_id.to_def_id();
 
@@ -2892,14 +2892,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
             }
-            hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
+            hir::TyKind::Path(hir::QPath::TypeRelative(qself, segment)) => {
                 debug!(?qself, ?segment);
                 let ty = self.ast_ty_to_ty_inner(qself, false, true);
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, qself, segment, false)
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|_| tcx.ty_error())
             }
-            hir::TyKind::Path(hir::QPath::LangItem(lang_item, span, _)) => {
+            &hir::TyKind::Path(hir::QPath::LangItem(lang_item, span, _)) => {
                 let def_id = tcx.require_lang_item(lang_item, Some(span));
                 let (substs, _) = self.create_substs_for_ast_path(
                     span,
@@ -2913,7 +2913,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 );
                 EarlyBinder(tcx.at(span).type_of(def_id)).subst(tcx, substs)
             }
-            hir::TyKind::Array(ref ty, ref length) => {
+            hir::TyKind::Array(ty, length) => {
                 let length = match length {
                     &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types.usize, None, span),
                     hir::ArrayLen::Body(constant) => {
@@ -2923,7 +2923,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 tcx.mk_ty(ty::Array(self.ast_ty_to_ty(ty), length))
             }
-            hir::TyKind::Typeof(ref e) => {
+            hir::TyKind::Typeof(e) => {
                 let ty_erased = tcx.type_of(e.def_id);
                 let ty = tcx.fold_regions(ty_erased, |r, _| {
                     if r.is_erased() { tcx.lifetimes.re_static } else { r }

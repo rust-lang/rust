@@ -180,7 +180,7 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
 
     visitor.terminating_scopes.insert(arm.body.hir_id.local_id);
 
-    if let Some(hir::Guard::If(ref expr)) = arm.guard {
+    if let Some(hir::Guard::If(expr)) = arm.guard {
         visitor.terminating_scopes.insert(expr.hir_id.local_id);
     }
 
@@ -242,8 +242,8 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             // This ensures fixed size stacks.
             hir::ExprKind::Binary(
                 source_map::Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
-                ref l,
-                ref r,
+                l,
+                r,
             ) => {
                 // expr is a short circuiting operator (|| or &&). As its
                 // functionality can't be overridden by traits, it always
@@ -288,20 +288,20 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
                     terminating(r.hir_id.local_id);
                 }
             }
-            hir::ExprKind::If(_, ref then, Some(ref otherwise)) => {
+            hir::ExprKind::If(_, then, Some(otherwise)) => {
                 terminating(then.hir_id.local_id);
                 terminating(otherwise.hir_id.local_id);
             }
 
-            hir::ExprKind::If(_, ref then, None) => {
+            hir::ExprKind::If(_, then, None) => {
                 terminating(then.hir_id.local_id);
             }
 
-            hir::ExprKind::Loop(ref body, _, _, _) => {
+            hir::ExprKind::Loop(body, _, _, _) => {
                 terminating(body.hir_id.local_id);
             }
 
-            hir::ExprKind::DropTemps(ref expr) => {
+            hir::ExprKind::DropTemps(expr) => {
                 // `DropTemps(expr)` does not denote a conditional scope.
                 // Rather, we want to achieve the same behavior as `{ let _t = expr; _t }`.
                 terminating(expr.hir_id.local_id);
@@ -396,7 +396,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         }
-        hir::ExprKind::AssignOp(_, ref left_expr, ref right_expr) => {
+        hir::ExprKind::AssignOp(_, left_expr, right_expr) => {
             debug!(
                 "resolve_expr - enabling pessimistic_yield, was previously {}",
                 prev_pessimistic
@@ -447,7 +447,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             }
         }
 
-        hir::ExprKind::If(ref cond, ref then, Some(ref otherwise)) => {
+        hir::ExprKind::If(cond, then, Some(otherwise)) => {
             let expr_cx = visitor.cx;
             visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
             visitor.cx.var_parent = visitor.cx.parent;
@@ -457,7 +457,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             visitor.visit_expr(otherwise);
         }
 
-        hir::ExprKind::If(ref cond, ref then, None) => {
+        hir::ExprKind::If(cond, then, None) => {
             let expr_cx = visitor.cx;
             visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
             visitor.cx.var_parent = visitor.cx.parent;
@@ -641,21 +641,21 @@ fn resolve_local<'tcx>(
         match pat.kind {
             PatKind::Binding(hir::BindingAnnotation(hir::ByRef::Yes, _), ..) => true,
 
-            PatKind::Struct(_, ref field_pats, _) => {
+            PatKind::Struct(_, field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.pat))
             }
 
-            PatKind::Slice(ref pats1, ref pats2, ref pats3) => {
+            PatKind::Slice(pats1, pats2, pats3) => {
                 pats1.iter().any(|p| is_binding_pat(&p))
                     || pats2.iter().any(|p| is_binding_pat(&p))
                     || pats3.iter().any(|p| is_binding_pat(&p))
             }
 
-            PatKind::Or(ref subpats)
-            | PatKind::TupleStruct(_, ref subpats, _)
-            | PatKind::Tuple(ref subpats, _) => subpats.iter().any(|p| is_binding_pat(&p)),
+            PatKind::Or(subpats)
+            | PatKind::TupleStruct(_, subpats, _)
+            | PatKind::Tuple(subpats, _) => subpats.iter().any(|p| is_binding_pat(&p)),
 
-            PatKind::Box(ref subpat) => is_binding_pat(&subpat),
+            PatKind::Box(subpat) => is_binding_pat(&subpat),
 
             PatKind::Ref(_, _)
             | PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), ..)
@@ -704,11 +704,11 @@ fn resolve_local<'tcx>(
                     record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 }
             }
-            hir::ExprKind::Cast(ref subexpr, _) => {
+            hir::ExprKind::Cast(subexpr, _) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id)
             }
-            hir::ExprKind::Block(ref block, _) => {
-                if let Some(ref subexpr) = block.expr {
+            hir::ExprKind::Block(block, _) => {
+                if let Some(subexpr) = block.expr {
                     record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 }
             }

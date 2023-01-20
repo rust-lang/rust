@@ -561,7 +561,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     debug!("convert: item {} with id {}", it.ident, it.hir_id());
     let def_id = item_id.owner_id.def_id;
 
-    match it.kind {
+    match &it.kind {
         // These don't define types.
         hir::ItemKind::ExternCrate(_)
         | hir::ItemKind::Use(..)
@@ -569,7 +569,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         | hir::ItemKind::Mod(_)
         | hir::ItemKind::GlobalAsm(_) => {}
         hir::ItemKind::ForeignMod { items, .. } => {
-            for item in items {
+            for item in *items {
                 let item = tcx.hir().foreign_item(item.id);
                 tcx.ensure().generics_of(item.owner_id);
                 tcx.ensure().type_of(item.owner_id);
@@ -619,7 +619,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.at(it.span).super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
-        hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
+        hir::ItemKind::Struct(struct_def, _) | hir::ItemKind::Union(struct_def, _) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
@@ -854,14 +854,14 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtDef<'_> {
     };
 
     let repr = tcx.repr_options_of_def(def_id.to_def_id());
-    let (kind, variants) = match item.kind {
-        ItemKind::Enum(ref def, _) => {
+    let (kind, variants) = match &item.kind {
+        ItemKind::Enum(def, _) => {
             let mut distance_from_explicit = 0;
             let variants = def
                 .variants
                 .iter()
                 .map(|v| {
-                    let discr = if let Some(ref e) = v.disr_expr {
+                    let discr = if let Some(e) = &v.disr_expr {
                         distance_from_explicit = 0;
                         ty::VariantDiscr::Explicit(e.def_id.to_def_id())
                     } else {
@@ -883,7 +883,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtDef<'_> {
 
             (AdtKind::Enum, variants)
         }
-        ItemKind::Struct(ref def, _) | ItemKind::Union(ref def, _) => {
+        ItemKind::Struct(def, _) | ItemKind::Union(def, _) => {
             let adt_kind = match item.kind {
                 ItemKind::Struct(..) => AdtKind::Struct,
                 _ => AdtKind::Union,
@@ -1343,21 +1343,19 @@ fn suggest_impl_trait<'tcx>(
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir().expect_item(def_id.expect_local());
-    match item.kind {
-        hir::ItemKind::Impl(ref impl_) => impl_
-            .of_trait
-            .as_ref()
-            .map(|ast_trait_ref| {
-                let selfty = tcx.type_of(def_id);
-                icx.astconv().instantiate_mono_trait_ref(
-                    ast_trait_ref,
-                    selfty,
-                    check_impl_constness(tcx, impl_.constness, ast_trait_ref),
-                )
-            })
-            .map(ty::EarlyBinder),
-        _ => bug!(),
-    }
+    let hir::ItemKind::Impl(impl_) = item.kind else { bug!() };
+    impl_
+        .of_trait
+        .as_ref()
+        .map(|ast_trait_ref| {
+            let selfty = tcx.type_of(def_id);
+            icx.astconv().instantiate_mono_trait_ref(
+                ast_trait_ref,
+                selfty,
+                check_impl_constness(tcx, impl_.constness, ast_trait_ref),
+            )
+        })
+        .map(ty::EarlyBinder)
 }
 
 fn check_impl_constness(
@@ -1512,7 +1510,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
             check(input, *ty)
         }
-        if let hir::FnRetTy::Return(ref ty) = decl.output {
+        if let hir::FnRetTy::Return(ty) = decl.output {
             check(ty, fty.output().skip_binder())
         }
     }
