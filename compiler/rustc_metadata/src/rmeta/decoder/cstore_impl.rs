@@ -1,6 +1,7 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
+use crate::rmeta::AttrFlags;
 
 use rustc_ast as ast;
 use rustc_attr::Deprecation;
@@ -338,6 +339,7 @@ provide! { tcx, def_id, other, cdata,
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
     generator_diagnostic_data => { cdata.get_generator_diagnostic_data(tcx, def_id.index) }
+    is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -425,7 +427,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         return;
                     }
 
-                    if ty::util::is_doc_hidden(tcx, parent) {
+                    if tcx.is_doc_hidden(parent) {
                         fallback_map.push((def_id, parent));
                         return;
                     }
@@ -631,7 +633,9 @@ impl CStore {
     }
 
     pub fn may_have_doc_links_untracked(&self, def_id: DefId) -> bool {
-        self.get_crate_data(def_id.krate).get_may_have_doc_links(def_id.index)
+        self.get_crate_data(def_id.krate)
+            .get_attr_flags(def_id.index)
+            .contains(AttrFlags::MAY_HAVE_DOC_LINKS)
     }
 }
 

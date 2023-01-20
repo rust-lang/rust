@@ -4326,6 +4326,7 @@ dependencies = [
 name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "libloading",
  "odht",
  "rustc_ast",

@@ -1594,8 +1594,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             })
     }
 
-    fn get_may_have_doc_links(self, index: DefIndex) -> bool {
-        self.root.tables.may_have_doc_links.get(self, index).is_some()
+    fn get_attr_flags(self, index: DefIndex) -> AttrFlags {
+        self.root.tables.attr_flags.get(self, index).unwrap_or(AttrFlags::empty())
     }
 
     fn get_is_intrinsic(self, index: DefIndex) -> bool {

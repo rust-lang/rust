@@ -395,7 +395,7 @@ define_tables! {
     def_path_hashes: Table<DefIndex, DefPathHash>,
     proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
     generator_diagnostic_data: Table<DefIndex, LazyValue<GeneratorDiagnosticData<'static>>>,
-    may_have_doc_links: Table<DefIndex, ()>,
+    attr_flags: Table<DefIndex, AttrFlags>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
     // Slot is full when macro is macro_rules.
@@ -416,6 +416,13 @@ struct VariantData {
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     ctor: Option<(CtorKind, DefIndex)>,
     is_non_exhaustive: bool,
+}
+
+bitflags::bitflags! {
+    pub struct AttrFlags: u8 {
+        const MAY_HAVE_DOC_LINKS = 1 << 0;
+        const IS_DOC_HIDDEN      = 1 << 1;
+    }
 }
 
 // Tags used for encoding Spans:
@@ -440,4 +447,5 @@ trivially_parameterized_over_tcx! {
     IncoherentImpls,
     CrateRoot,
     CrateDep,
+    AttrFlags,
 }
