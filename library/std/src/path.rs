@@ -2531,6 +2531,8 @@ impl Path {
 
     /// Creates an owned [`PathBuf`] with `path` adjoined to `self`.
     ///
+    /// If `path` is absolute, it replaces the current path.
+    ///
     /// See [`PathBuf::push`] for more details on what it means to adjoin a path.
     ///
     /// # Examples
