@@ -1,8 +1,8 @@
 // MIR for `main` after built
 
 | User Type Annotations
-| 0: user_ty: Canonical { max_universe: U0, variables: [], value: TypeOf(DefId(0:3 ~ issue_99325[8f58]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: Value(Branch([Leaf(0x41), Leaf(0x41), Leaf(0x41), Leaf(0x41)])) }], user_self_ty: None }) }, span: $DIR/issue_99325.rs:10:16: 10:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
-| 1: user_ty: Canonical { max_universe: U0, variables: [], value: TypeOf(DefId(0:3 ~ issue_99325[8f58]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: Unevaluated(UnevaluatedConst { def: WithOptConstParam { did: DefId(0:8 ~ issue_99325[8f58]::main::{constant#1}), const_param_did: Some(DefId(0:4 ~ issue_99325[8f58]::function_with_bytes::BYTES)) }, substs: [] }) }], user_self_ty: None }) }, span: $DIR/issue_99325.rs:11:16: 11:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 0: user_ty: Canonical { max_universe: U0, variables: [], value: TypeOf(DefId(0:3 ~ issue_99325[8f58]::function_with_bytes), UserSubsts { substs: [Const { ty: Ref(ReStatic, Array(Uint(U8), Const { ty: Uint(Usize), kind: Value(Leaf(0x0000000000000004)) }), Not), kind: Value(Branch([Leaf(0x41), Leaf(0x41), Leaf(0x41), Leaf(0x41)])) }], user_self_ty: None }) }, span: $DIR/issue_99325.rs:11:16: 11:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 1: user_ty: Canonical { max_universe: U0, variables: [], value: TypeOf(DefId(0:3 ~ issue_99325[8f58]::function_with_bytes), UserSubsts { substs: [Const { ty: Ref(ReStatic, Array(Uint(U8), Const { ty: Uint(Usize), kind: Value(Leaf(0x0000000000000004)) }), Not), kind: Unevaluated(UnevaluatedConst { def: WithOptConstParam { did: DefId(0:8 ~ issue_99325[8f58]::main::{constant#1}), const_param_did: Some(DefId(0:4 ~ issue_99325[8f58]::function_with_bytes::BYTES)) }, substs: [] }) }], user_self_ty: None }) }, span: $DIR/issue_99325.rs:12:16: 12:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
 |
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/issue_99325.rs:+0:15: +0:15
@@ -71,7 +71,7 @@ fn main() -> () {
         StorageLive(_4);                 // scope 0 at $DIR/issue_99325.rs:+1:16: +1:48
         _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb19]; // scope 0 at $DIR/issue_99325.rs:+1:16: +1:48
                                          // mir::Constant
-                                         // + span: $DIR/issue_99325.rs:10:16: 10:46
+                                         // + span: $DIR/issue_99325.rs:11:16: 11:46
                                          // + user_ty: UserType(0)
                                          // + literal: Const { ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}, val: Value(<ZST>) }
     }
@@ -179,7 +179,7 @@ fn main() -> () {
         StorageLive(_26);                // scope 0 at $DIR/issue_99325.rs:+2:16: +2:70
         _26 = function_with_bytes::<&*b"AAAA">() -> [return: bb10, unwind: bb19]; // scope 0 at $DIR/issue_99325.rs:+2:16: +2:70
                                          // mir::Constant
-                                         // + span: $DIR/issue_99325.rs:11:16: 11:68
+                                         // + span: $DIR/issue_99325.rs:12:16: 12:68
                                          // + user_ty: UserType(1)
                                          // + literal: Const { ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}, val: Value(<ZST>) }
     }
@@ -190,7 +190,7 @@ fn main() -> () {
         StorageLive(_28);                // scope 0 at $DIR/issue_99325.rs:+2:72: +2:79
         _28 = const b"AAAA";             // scope 0 at $DIR/issue_99325.rs:+2:72: +2:79
                                          // mir::Constant
-                                         // + span: $DIR/issue_99325.rs:11:72: 11:79
+                                         // + span: $DIR/issue_99325.rs:12:72: 12:79
                                          // + literal: Const { ty: &[u8; 4], val: Value(Scalar(alloc4)) }
         _27 = &_28;                      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _24 = (move _25, move _27);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

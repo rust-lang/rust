@@ -703,7 +703,7 @@ impl<'tcx> CanonicalUserType<'tcx> {
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable)]
 #[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
@@ -711,4 +711,15 @@ pub enum UserType<'tcx> {
     /// The canonical type is the result of `type_of(def_id)` with the
     /// given substitutions applied.
     TypeOf(DefId, UserSubsts<'tcx>),
+}
+
+impl<'tcx> std::fmt::Debug for UserType<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ty(arg0) => {
+                ty::print::with_no_trimmed_paths!(f.write_fmt(format_args!("Ty({})", arg0)))
+            }
+            Self::TypeOf(arg0, arg1) => f.debug_tuple("TypeOf").field(arg0).field(arg1).finish(),
+        }
+    }
 }

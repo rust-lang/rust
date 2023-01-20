@@ -1,6 +1,7 @@
 // MIR for `main::{closure#0}` 0 generator_resume
 /* generator_layout = GeneratorLayout {
     field_tys: {
+<<<<<<< master
         _0: GeneratorSavedTy {
             ty: HasDrop,
             source_info: SourceInfo {
@@ -9,6 +10,12 @@
             },
             ignore_for_traits: false,
         },
+=======
+        _0: Adt(
+            HasDrop,
+            [],
+        ),
+>>>>>>> mir printing changes
     },
     variant_fields: {
         Unresumed(0): [],

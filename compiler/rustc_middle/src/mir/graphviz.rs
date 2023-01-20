@@ -103,7 +103,7 @@ fn write_graph_label<'tcx, W: std::fmt::Write>(
         write!(w, "{:?}: {}", Place::from(arg), escape(&body.local_decls[arg].ty))?;
     }
 
-    write!(w, ") -&gt; {}", escape(&body.return_ty()))?;
+    write!(w, ") -&gt; {}", dot::escape_html(&format!("{}", body.return_ty())))?;
     write!(w, r#"<br align="left"/>"#)?;
 
     for local in body.vars_and_temps_iter() {

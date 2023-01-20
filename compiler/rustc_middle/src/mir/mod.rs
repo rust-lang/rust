@@ -1061,7 +1061,7 @@ impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
             VarDebugInfoContents::Const(c) => write!(fmt, "{}", c),
             VarDebugInfoContents::Place(p) => write!(fmt, "{:?}", p),
             VarDebugInfoContents::Composite { ty, fragments } => {
-                write!(fmt, "{:?}{{ ", ty)?;
+                ty::print::with_no_trimmed_paths!(write!(fmt, "{}{{ ", ty))?;
                 for f in fragments.iter() {
                     write!(fmt, "{:?}, ", f)?;
                 }
@@ -1722,7 +1722,8 @@ impl Debug for Place<'_> {
                     write!(fmt, ")")?;
                 }
                 ProjectionElem::Field(field, ty) => {
-                    write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
+                    let ty = ty::print::with_no_trimmed_paths!(format!("{ty}"));
+                    write!(fmt, ".{:?}: {})", field.index(), ty)?;
                 }
                 ProjectionElem::Index(ref index) => {
                     write!(fmt, "[{:?}]", index)?;
@@ -2009,7 +2010,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
             Len(ref a) => write!(fmt, "Len({:?})", a),
             Cast(ref kind, ref place, ref ty) => {
-                write!(fmt, "{:?} as {:?} ({:?})", place, ty, kind)
+                let ty = ty::print::with_no_trimmed_paths!(format!("{ty}"));
+                write!(fmt, "{:?} as {} ({:?})", place, ty, kind)
             }
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
             CheckedBinaryOp(ref op, box (ref a, ref b)) => {
@@ -2017,7 +2019,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Discriminant(ref place) => write!(fmt, "discriminant({:?})", place),
-            NullaryOp(ref op, ref t) => write!(fmt, "{:?}({:?})", op, t),
+            NullaryOp(ref op, ref t) => {
+                let t = ty::print::with_no_trimmed_paths!(format!("{t}"));
+                write!(fmt, "{:?}({})", op, t)
+            }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -2144,7 +2149,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             ShallowInitBox(ref place, ref ty) => {
-                write!(fmt, "ShallowInitBox({:?}, {:?})", place, ty)
+                let ty = ty::print::with_no_trimmed_paths!(format!("{ty}"));
+                write!(fmt, "ShallowInitBox({:?}, {})", place, ty)
             }
         }
     }
