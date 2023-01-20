@@ -1100,16 +1100,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         replace_span: self.ending_semi_or_hi(item.span),
                         extern_block_suggestion: match sig.header.ext {
                             Extern::None => None,
-                            Extern::Implicit(start_span) => Some(ExternBlockSuggestion {
+                            Extern::Implicit(start_span) => Some(ExternBlockSuggestion::Implicit {
                                 start_span,
                                 end_span: item.span.shrink_to_hi(),
-                                abi: None,
                             }),
-                            Extern::Explicit(abi, start_span) => Some(ExternBlockSuggestion {
-                                start_span,
-                                end_span: item.span.shrink_to_hi(),
-                                abi: Some(abi.symbol_unescaped),
-                            }),
+                            Extern::Explicit(abi, start_span) => {
+                                Some(ExternBlockSuggestion::Explicit {
+                                    start_span,
+                                    end_span: item.span.shrink_to_hi(),
+                                    abi: abi.symbol_unescaped,
+                                })
+                            }
                         },
                     });
                 }
