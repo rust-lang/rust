@@ -899,27 +899,24 @@ impl<'a> DumpHandler<'a> {
 
     fn output_file(&self, ctx: &SaveContext<'_>) -> (BufWriter<File>, PathBuf) {
         let sess = &ctx.tcx.sess;
-        let file_name = match ctx.config.output_file {
-            Some(ref s) => PathBuf::from(s),
+        let mut root_path = match self.odir {
+            Some(val) => val.join("save-analysis"),
             None => {
-                let mut root_path = match self.odir {
-                    Some(val) => val.join("save-analysis"),
-                    None => PathBuf::from("save-analysis-temp"),
-                };
-
-                if let Err(e) = std::fs::create_dir_all(&root_path) {
-                    error!("Could not create directory {}: {}", root_path.display(), e);
-                }
-
-                let executable = sess.crate_types().iter().any(|ct| *ct == CrateType::Executable);
-                let mut out_name = if executable { String::new() } else { "lib".to_owned() };
-                out_name.push_str(&self.cratename);
-                out_name.push_str(&sess.opts.cg.extra_filename);
-                out_name.push_str(".json");
-                root_path.push(&out_name);
-
-                root_path
+                PathBuf::from(ctx.config.output_file.as_ref().unwrap()).join("save-analysis-temp")
             }
+        };
+        if let Err(e) = std::fs::create_dir_all(&root_path) {
+            error!("Could not create directory {}: {}", root_path.display(), e);
+        }
+        let file_name = {
+            let executable = sess.crate_types().iter().any(|ct| *ct == CrateType::Executable);
+            let mut out_name = if executable { String::new() } else { "lib".to_owned() };
+            out_name.push_str(&self.cratename);
+            out_name.push_str(&sess.opts.cg.extra_filename);
+            out_name.push_str(".json");
+            root_path.push(&out_name);
+
+            root_path
         };
 
         info!("Writing output to {}", file_name.display());
