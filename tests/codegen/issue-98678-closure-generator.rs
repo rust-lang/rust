@@ -5,14 +5,17 @@
 #![crate_type = "lib"]
 #![feature(generators, stmt_expr_attributes)]
 
-// CHECK: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-closure-generator.rs{{".*}})
+// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-closure-generator.rs{{".*}})
+// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\codegen\\issue-98678-closure-generator.rs{{".*}})
 
 pub fn foo() {
-    // CHECK: !DICompositeType({{.*"[{]}}closure_env#0{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+    // NONMSVC: !DICompositeType({{.*"}}{closure_env#0}{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
+    // MSVC-DAG: !DICompositeType({{.*"}}closure_env$0{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
     let closure = |x| x;
     closure(0);
 
-    // CHECK: !DICompositeType({{.*"[{]}}generator_env#1{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+    // NONMSVC: !DICompositeType({{.*"[{]}}generator_env#1{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
+    // MSVC-DAG: !DICompositeType({{.*".*foo::}}generator_env$1>{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
     let generator = #[coroutine]
     || yield 1;
 }

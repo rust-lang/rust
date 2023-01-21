@@ -4,7 +4,8 @@
 // compile-flags: -C debuginfo=2
 #![crate_type = "lib"]
 
-// CHECK: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-struct-union.rs{{".*}})
+// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-struct-union.rs{{".*}})
+// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\codegen\\issue-98678-struct-union.rs{{".*}})
 
 // CHECK: !DICompositeType({{.*"}}MyType{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
 pub struct MyType {

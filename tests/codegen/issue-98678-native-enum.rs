@@ -4,12 +4,16 @@
 // compile-flags: -C debuginfo=2
 #![crate_type = "lib"]
 
-// CHECK: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-native-enum.rs{{".*}})
+// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-native-enum.rs{{".*}})
+// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\codegen\\issue-98678-native-enum.rs{{".*}})
 
-// CHECK: !DICompositeType({{.*"}}MyNativeEnum{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
-// CHECK: !DICompositeType({{.*}}DW_TAG_variant_part{{.*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+// NONMSVC: !DICompositeType({{.*"}}MyNativeEnum{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 4]],
+// MSVC: !DICompositeType({{.*::}}MyNativeEnum>{{.*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 3]],
+// NONMSVC: !DICompositeType({{.*}}DW_TAG_variant_part{{.*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
+// COM: MSVC: currently no DW_TAG_variant_part from MSVC
 pub enum MyNativeEnum {
-    // CHECK: !DIDerivedType({{.*"}}One{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+    // NONMSVC: !DIDerivedType({{.*"}}One{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
+    // MSVC: !DICompositeType({{.*"}}One{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
     One,
 }
 
