@@ -1,5 +1,5 @@
 // Local js definitions:
-/* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
+/* global getSettingValue, getVirtualKey, updateLocalStorage, updateTheme */
 /* global addClass, removeClass, onEach, onEachLazy, blurHandler, elemIsInParent */
 /* global MAIN_ID, getVar, getSettingsButton */
 
@@ -19,7 +19,7 @@
             case "theme":
             case "preferred-dark-theme":
             case "preferred-light-theme":
-                updateSystemTheme();
+                updateTheme();
                 updateLightAndDark();
                 break;
             case "line-numbers":
