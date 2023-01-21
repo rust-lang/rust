@@ -1,3 +1,5 @@
+use core::alloc::GlobalCoAllocMeta;
+use core::mem;
 use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor, TrailingToken};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrTokenStream, AttributesData, ToAttrTokenStream};
@@ -469,6 +471,6 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(AttrWrapper, 16);
-    static_assert_size!(LazyAttrTokenStreamImpl, 144);
+    static_assert_size!(LazyAttrTokenStreamImpl, 144 + mem::size_of::<GlobalCoAllocMeta>());
     // tidy-alphabetical-end
 }

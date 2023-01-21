@@ -7,6 +7,7 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
+#![feature(global_co_alloc_meta)]
 #![feature(is_terminal)]
 #![feature(let_chains)]
 #![feature(test)]

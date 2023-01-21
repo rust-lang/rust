@@ -1,6 +1,8 @@
+use std::alloc::GlobalCoAllocMeta;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::io;
+use std::mem;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
@@ -75,7 +77,7 @@ pub(crate) struct Context<'tcx> {
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(all(not(windows), target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 160);
+rustc_data_structures::static_assert_size!(Context<'_>, 160 + 2 * mem::size_of::<GlobalCoAllocMeta>());
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 pub(crate) struct SharedContext<'tcx> {
