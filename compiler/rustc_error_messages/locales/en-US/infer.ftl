@@ -150,8 +150,6 @@ infer_region_explanation = {$pref_kind ->
     [lf_param_must_outlive] but lifetime parameter must outlive
     [lf_instantiated_with] lifetime instantiated with
     [lf_must_outlive] but lifetime must outlive
-    [type_valid_for] the type is valid for
-    [borrow_lasts_for] but the borrow lasts for
     [pointer_valid_for] the pointer is valid for
     [data_valid_for] but the referenced data is only valid for
     [empty] {""}

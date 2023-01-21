@@ -131,8 +131,6 @@ pub enum PrefixKind {
     LfParamMustOutlive,
     LfInstantiatedWith,
     LfMustOutlive,
-    TypeValidFor,
-    BorrowLastsFor,
     PointerValidFor,
     DataValidFor,
 }
@@ -157,8 +155,6 @@ impl IntoDiagnosticArg for PrefixKind {
             Self::LfParamMustOutlive => "lf_param_must_outlive",
             Self::LfInstantiatedWith => "lf_instantiated_with",
             Self::LfMustOutlive => "lf_must_outlive",
-            Self::TypeValidFor => "type_valid_for",
-            Self::BorrowLastsFor => "borrow_lasts_for",
             Self::PointerValidFor => "pointer_valid_for",
             Self::DataValidFor => "data_valid_for",
         }
