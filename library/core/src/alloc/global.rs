@@ -1,6 +1,15 @@
 use crate::alloc::Layout;
 use crate::cmp;
 use crate::ptr;
+use crate::alloc::GlobalCoAllocMeta;
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[allow(missing_debug_implementations)]
+/// Used for parameters and results (to/from `GlobalCoAllocator`'s functions, where applicable).
+pub struct PtrAndMeta {
+    pub ptr: *mut u8,
+    pub meta: GlobalCoAllocMeta,
+}
 
 /// A memory allocator that can be registered as the standard library’s default
 /// through the `#[global_allocator]` attribute.
@@ -156,6 +165,9 @@ pub unsafe trait GlobalAlloc {
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8;
 
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    unsafe fn co_alloc(&self, _layout: Layout, mut _result: &mut PtrAndMeta) {panic!("TODO")}
+
     /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
     ///
     /// # Safety
@@ -170,6 +182,9 @@ pub unsafe trait GlobalAlloc {
     ///   to allocate that block of memory.
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
+
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    unsafe fn co_dealloc(&self, _ptr_and_meta: PtrAndMeta, _layout: Layout) {panic!("TODO")}
 
     /// Behaves like `alloc`, but also ensures that the contents
     /// are set to zero before being returned.
@@ -198,9 +213,21 @@ pub unsafe trait GlobalAlloc {
         if !ptr.is_null() {
             // SAFETY: as allocation succeeded, the region from `ptr`
             // of size `size` is guaranteed to be valid for writes.
-            unsafe { ptr::write_bytes(ptr, 0, size) };
+            unsafe { ptr::write_bytes(ptr, 0u8, size) };
         }
         ptr
+    }
+
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    unsafe fn co_alloc_zeroed(&self, layout: Layout, mut result: &mut PtrAndMeta) {
+        let size = layout.size();
+        // SAFETY: the safety contract for `alloc` must be upheld by the caller.
+        unsafe { self.co_alloc(layout, &mut result) };
+        if !result.ptr.is_null() {
+            // SAFETY: as allocation succeeded, the region from `ptr_and_meta.ptr` of size `size` is
+            // guaranteed to be valid for writes.
+            unsafe { ptr::write_bytes(result.ptr, 0u8, size) };
+        }
     }
 
     /// Shrink or grow a block of memory to the given `new_size`.
@@ -273,5 +300,32 @@ pub unsafe trait GlobalAlloc {
             }
         }
         new_ptr
+    }
+
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    unsafe fn co_realloc(
+        &self,
+        ptr_and_meta: PtrAndMeta,
+        layout: Layout,
+        new_size: usize,
+        mut result: &mut PtrAndMeta
+    ) {
+        // SAFETY: the caller must ensure that the `new_size` does not overflow.
+        // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid.
+        let new_layout = unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
+        // SAFETY: the caller must ensure that `new_layout` is greater than zero.
+        unsafe { self.co_alloc(new_layout, &mut result) };
+        if !result.ptr.is_null() {
+            // SAFETY: the previously allocated block cannot overlap the newly allocated block.
+            // The safety contract for `dealloc` must be upheld by the caller.
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    ptr_and_meta.ptr,
+                    result.ptr,
+                    cmp::min(layout.size(), new_size),
+                );
+                self.co_dealloc(ptr_and_meta, layout);
+            }
+        }
     }
 }
