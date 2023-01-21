@@ -2215,18 +2215,18 @@ checksum = "06069a848f95fceae3e5e03c0ddc8cb78452b56654ee0c8e68f938cf790fb9e3"
 
 [[package]]
 name = "xflags"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbf19f5031a1a812e96fede16f8161218883079946cea87619d3613db1efd268"
+checksum = "c4554b580522d0ca238369c16b8f6ce34524d61dafe7244993754bbd05f2c2ea"
 dependencies = [
  "xflags-macros",
 ]
 
 [[package]]
 name = "xflags-macros"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2afbd7f2039bb6cad2dd45f0c5dff49c0d4e26118398768b7a605524d4251809"
+checksum = "f58e7b3ca8977093aae6b87b6a7730216fc4c53a6530bab5c43a783cd810c1a8"
 
 [[package]]
 name = "xshell"
