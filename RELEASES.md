@@ -71,6 +71,9 @@ These APIs are now stable in const contexts:
 Compatibility Notes
 -------------------
 
+- [0.5 now rounds to 0 when formatted to 0 decimal places.](https://github.com/rust-lang/rust/pull/102935/)
+  This makes it consistent with the rest of floating point formatting that
+  rounds ties toward even digits.
 - [Chains of `&&` and `||` will now drop temporaries from their sub-expressions in
   evaluation order, left-to-right.](https://github.com/rust-lang/rust/pull/103293/)
   Previously, it was "twisted" such that the _first_ expression dropped its
