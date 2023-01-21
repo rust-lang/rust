@@ -547,7 +547,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
-use crate::marker::Destruct;
+use crate::marker::{Destruct, Tuple};
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
@@ -1911,6 +1911,121 @@ impl<T, E> Option<Result<T, E>> {
             Some(Err(e)) => Err(e),
             None => Ok(None),
         }
+    }
+}
+
+/// Implements the various `Fn` traits to make the `transpose_fn` family of
+/// methods work over any functions.
+///
+/// This is not otherwise possible with a closure due to `|args: A|` being
+/// treated as `Fn<(A,)>` instead of `Fn<A>`.
+struct TransposeFn<F> {
+    f: Option<F>,
+}
+
+impl<F> Option<F> {
+    /// Transposes an `Option` of an [`Fn`] into an [`Fn`] that returns an
+    /// `Option`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(transpose_fn)]
+    ///
+    /// let x = Some(|| 42);
+    /// let y = x.transpose_fn();
+    ///
+    /// assert_eq!(y(), Some(42));
+    /// ```
+    #[inline]
+    #[unstable(feature = "transpose_fn", issue = "none")]
+    pub fn transpose_fn<A>(self) -> impl Fn<A, Output = Option<F::Output>>
+    where
+        F: Fn<A>,
+        A: Tuple,
+    {
+        impl<A, F> Fn<A> for TransposeFn<F>
+        where
+            F: Fn<A>,
+            A: Tuple,
+        {
+            #[inline]
+            extern "rust-call" fn call(&self, args: A) -> Self::Output {
+                self.f.as_ref().map(|f| f.call(args))
+            }
+        }
+
+        TransposeFn { f: self }
+    }
+
+    /// Transposes an `Option` of an [`FnMut`] into an [`FnMut`] that returns an
+    /// `Option`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(transpose_fn)]
+    ///
+    /// let x = Some(|| 42);
+    /// let mut y = x.transpose_fn_mut();
+    ///
+    /// assert_eq!(y(), Some(42));
+    /// ```
+    #[inline]
+    #[unstable(feature = "transpose_fn", issue = "none")]
+    pub fn transpose_fn_mut<A>(self) -> impl FnMut<A, Output = Option<F::Output>>
+    where
+        F: FnMut<A>,
+        A: Tuple,
+    {
+        impl<A, F> FnMut<A> for TransposeFn<F>
+        where
+            F: FnMut<A>,
+            A: Tuple,
+        {
+            #[inline]
+            extern "rust-call" fn call_mut(&mut self, args: A) -> Self::Output {
+                self.f.as_mut().map(|f| f.call_mut(args))
+            }
+        }
+
+        TransposeFn { f: self }
+    }
+
+    /// Transposes an `Option` of an [`FnOnce`] into an [`FnOnce`] that returns
+    /// an `Option`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(transpose_fn)]
+    ///
+    /// let x = Some(|| 42);
+    /// let y = x.transpose_fn_once();
+    ///
+    /// assert_eq!(y(), Some(42));
+    /// ```
+    #[inline]
+    #[unstable(feature = "transpose_fn", issue = "none")]
+    pub fn transpose_fn_once<A>(self) -> impl FnOnce<A, Output = Option<F::Output>>
+    where
+        F: FnOnce<A>,
+        A: Tuple,
+    {
+        impl<A, F> FnOnce<A> for TransposeFn<F>
+        where
+            F: FnOnce<A>,
+            A: Tuple,
+        {
+            type Output = Option<F::Output>;
+
+            #[inline]
+            extern "rust-call" fn call_once(self, args: A) -> Option<F::Output> {
+                self.f.map(|f| f.call_once(args))
+            }
+        }
+
+        TransposeFn { f: self }
     }
 }
 
