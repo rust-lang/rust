@@ -9,6 +9,5 @@ const EXPECTED = {
         { 'path': 'std', 'name': 'println' },
         { 'path': 'std', 'name': 'eprint' },
         { 'path': 'std', 'name': 'eprintln' },
-        { 'path': 'std::pin', 'name': 'pin' },
     ],
 };
