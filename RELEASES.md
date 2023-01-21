@@ -75,9 +75,6 @@ Compatibility Notes
   evaluation order, left-to-right.](https://github.com/rust-lang/rust/pull/103293/)
   Previously, it was "twisted" such that the _first_ expression dropped its
   temporaries _last_, after all of the other expressions dropped in order.
-- [Proc-macro derives using inaccessible names from parent modules is now a hard error.](https://github.com/rust-lang/rust/pull/84022/)
-  This has been a warning since 1.29.0, and denied by default since 1.58.0.
-  (**TODO**: revert proposed in <https://github.com/rust-lang/rust/pull/107133>)
 - [Underscore suffixes on string literals are now a hard error.](https://github.com/rust-lang/rust/pull/103914/)
   This has been a future-compatibility warning since 1.20.0.
 - [Stop passing `-export-dynamic` to `wasm-ld`.](https://github.com/rust-lang/rust/pull/105405/)
