@@ -732,7 +732,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
         // tends to copy the whole thing to stack rather than doing it one part
         // at a time, so instead treat them as one-element slices and piggy-back
         // the slice optimizations that will split up the swaps.
-        if size_of::<T>() / align_of::<T>() > 4 {
+        if T::IS_BIG_SWAP {
             // SAFETY: exclusive references always point to one non-overlapping
             // element and are non-null and properly aligned.
             return unsafe { ptr::swap_nonoverlapping(x, y, 1) };
@@ -1273,3 +1273,9 @@ pub trait SizedTypeProperties: Sized {
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
 impl<T> SizedTypeProperties for T {}
+
+trait InternalSizedTypeProperties: Sized {
+    const IS_BIG_SWAP: bool = size_of::<Self>() / align_of::<Self>() > 4;
+}
+
+impl<T> InternalSizedTypeProperties for T {}
