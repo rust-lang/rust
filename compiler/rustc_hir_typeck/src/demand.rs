@@ -61,7 +61,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected);
         if !suggested {
-            self.point_at_expr_source_of_inferred_type(err, expr, expr_ty, expected);
+            self.point_at_expr_source_of_inferred_type(err, expr, expr_ty, expected, expr.span);
         }
     }
 
@@ -222,6 +222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         found: Ty<'tcx>,
         expected: Ty<'tcx>,
+        mismatch_span: Span,
     ) -> bool {
         let map = self.tcx.hir();
 
@@ -281,7 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         };
         let mut prev = eraser.fold_ty(ty);
-        let mut prev_span = None;
+        let mut prev_span: Option<Span> = None;
 
         for binding in expr_finder.uses {
             // In every expression where the binding is referenced, we will look at that
@@ -334,13 +335,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let arg = &args[i];
                             let arg_ty = self.node_ty(arg.hir_id);
                             if !arg.span.overlaps(mismatch_span) {
-                            err.span_label(
-                                arg.span,
-                                &format!(
-                                    "this is of type `{arg_ty}`, which causes `{ident}` to be \
-                                     inferred as `{ty}`",
-                                ),
-                            );
+                                err.span_label(
+                                    arg.span,
+                                    &format!(
+                                        "this is of type `{arg_ty}`, which causes `{ident}` to be \
+                                        inferred as `{ty}`",
+                                    ),
+                                );
                             }
                             param_args.insert(param_ty, (arg, arg_ty));
                         }
@@ -384,12 +385,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self.can_eq(self.param_env, ty, found).is_ok()
                 {
                     // We only point at the first place where the found type was inferred.
+                    if !segment.ident.span.overlaps(mismatch_span) {
                     err.span_label(
                         segment.ident.span,
                         with_forced_trimmed_paths!(format!(
                             "here the type of `{ident}` is inferred to be `{ty}`",
                         )),
-                    );
+                    );}
                     break;
                 } else if !param_args.is_empty() {
                     break;
@@ -408,12 +410,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We use the *previous* span because if the type is known *here* it means
                     // it was *evaluated earlier*. We don't do this for method calls because we
                     // evaluate the method's self type eagerly, but not in any other case.
-                    err.span_label(
-                        span,
-                        with_forced_trimmed_paths!(format!(
-                            "here the type of `{ident}` is inferred to be `{ty}`",
-                        )),
-                    );
+                    if !span.overlaps(mismatch_span) {
+                        err.span_label(
+                            span,
+                            with_forced_trimmed_paths!(format!(
+                                "here the type of `{ident}` is inferred to be `{ty}`",
+                            )),
+                        );
+                    }
                     break;
                 }
                 prev = ty;

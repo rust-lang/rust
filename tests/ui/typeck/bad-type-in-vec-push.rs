@@ -12,3 +12,9 @@ fn main() {
     //~^ ERROR mismatched types
     // So it thinks that the type of `result` is constrained here.
 }
+
+fn example2() {
+    let mut x = vec![1];
+    x.push("");
+    //~^ ERROR mismatched types
+}

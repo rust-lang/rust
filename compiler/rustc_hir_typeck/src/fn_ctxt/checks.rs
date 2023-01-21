@@ -808,7 +808,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: full_call_span,
                 });
-                self.point_at_expr_source_of_inferred_type(&mut err, rcvr, expected, callee_ty);
+                self.point_at_expr_source_of_inferred_type(
+                    &mut err,
+                    rcvr,
+                    expected,
+                    callee_ty,
+                    provided_arg_span,
+                );
             }
             // Call out where the function is defined
             self.label_fn_like(
