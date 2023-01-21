@@ -5,7 +5,9 @@
 use std::fmt;
 use std::sync::Arc;
 
-use hir_def::{path::path, resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId, HasModule};
+use hir_def::lang_item::LangItem;
+use hir_def::{resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId, HasModule};
+use hir_def::{ItemContainerId, Lookup};
 use hir_expand::name;
 use itertools::Either;
 use itertools::Itertools;
@@ -245,26 +247,25 @@ struct FilterMapNextChecker {
 impl FilterMapNextChecker {
     fn new(resolver: &hir_def::resolver::Resolver, db: &dyn HirDatabase) -> Self {
         // Find and store the FunctionIds for Iterator::filter_map and Iterator::next
-        let iterator_path = path![core::iter::Iterator];
-        let mut filter_map_function_id = None;
-        let mut next_function_id = None;
-
-        if let Some(iterator_trait_id) = resolver.resolve_known_trait(db.upcast(), &iterator_path) {
-            let iterator_trait_items = &db.trait_data(iterator_trait_id).items;
-            for item in iterator_trait_items.iter() {
-                if let (name, AssocItemId::FunctionId(id)) = item {
-                    if *name == name![filter_map] {
-                        filter_map_function_id = Some(*id);
+        let (next_function_id, filter_map_function_id) = match db
+            .lang_item(resolver.krate(), LangItem::IteratorNext)
+            .and_then(|it| it.as_function())
+        {
+            Some(next_function_id) => (
+                Some(next_function_id),
+                match next_function_id.lookup(db.upcast()).container {
+                    ItemContainerId::TraitId(iterator_trait_id) => {
+                        let iterator_trait_items = &db.trait_data(iterator_trait_id).items;
+                        iterator_trait_items.iter().find_map(|(name, it)| match it {
+                            &AssocItemId::FunctionId(id) if *name == name![filter_map] => Some(id),
+                            _ => None,
+                        })
                     }
-                    if *name == name![next] {
-                        next_function_id = Some(*id);
-                    }
-                }
-                if filter_map_function_id.is_some() && next_function_id.is_some() {
-                    break;
-                }
-            }
-        }
+                    _ => None,
+                },
+            ),
+            None => (None, None),
+        };
         Self { filter_map_function_id, next_function_id, prev_filter_map_expr_id: None }
     }
 

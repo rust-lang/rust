@@ -634,6 +634,7 @@ pub trait Lookup {
 pub trait HasModule {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId;
 }
+
 impl HasModule for ItemContainerId {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match *self {

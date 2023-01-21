@@ -24,7 +24,7 @@ use hir_def::{
     expr::{BindingAnnotation, ExprId, ExprOrPatId, PatId},
     lang_item::{LangItem, LangItemTarget},
     layout::Integer,
-    path::{path, Path},
+    path::Path,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule,
@@ -923,26 +923,24 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
-        let path = path![core::iter::IntoIterator];
-        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
+        let ItemContainerId::TraitId(trait_) = self.resolve_lang_item(LangItem::IntoIterIntoIter)?
+            .as_function()?
+            .lookup(self.db.upcast()).container
+        else { return None };
         self.db.trait_data(trait_).associated_type_by_name(&name![IntoIter])
     }
 
     fn resolve_iterator_item(&self) -> Option<TypeAliasId> {
-        let path = path![core::iter::Iterator];
-        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
+        let ItemContainerId::TraitId(trait_) = self.resolve_lang_item(LangItem::IteratorNext)?
+            .as_function()?
+            .lookup(self.db.upcast()).container
+        else { return None };
         self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
-        // FIXME resolve via lang_item once try v2 is stable
-        let path = path![core::ops::Try];
-        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
-        let trait_data = self.db.trait_data(trait_);
-        trait_data
-            // FIXME remove once try v2 is stable
-            .associated_type_by_name(&name![Ok])
-            .or_else(|| trait_data.associated_type_by_name(&name![Output]))
+        let trait_ = self.resolve_lang_item(LangItem::Try)?.as_trait()?;
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
@@ -956,10 +954,12 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self
-            .resolver
-            .resolve_known_trait(self.db.upcast(), &path![core::future::IntoFuture])
-            .or_else(|| self.resolve_lang_item(LangItem::Future)?.as_trait())?;
+        let ItemContainerId::TraitId(trait_) = self
+            .resolve_lang_item(LangItem::IntoFutureIntoFuture)?
+            .as_function()?
+            .lookup(self.db.upcast())
+            .container
+        else { return None };
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
@@ -969,38 +969,32 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_range_full(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeFull];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeFull)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range(&self) -> Option<AdtId> {
-        let path = path![core::ops::Range];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::Range)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range_inclusive(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeInclusive];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeInclusiveStruct)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range_from(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeFrom];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeFrom)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range_to(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeTo];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeTo)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeToInclusive];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeToInclusive)?.as_struct()?;
         Some(struct_.into())
     }
 
