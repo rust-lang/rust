@@ -29,7 +29,7 @@ use crate::{
         const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
     },
     mapping::{from_chalk, ToChalk},
-    method_resolution::{self, lang_names_for_bin_op, VisibleFromModule},
+    method_resolution::{self, lang_items_for_bin_op, VisibleFromModule},
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     utils::{generics, Generics},
@@ -1008,7 +1008,7 @@ impl<'a> InferenceContext<'a> {
         let lhs_ty = self.infer_expr(lhs, &lhs_expectation);
         let rhs_ty = self.table.new_type_var();
 
-        let trait_func = lang_names_for_bin_op(op).and_then(|(name, lang_item)| {
+        let trait_func = lang_items_for_bin_op(op).and_then(|(name, lang_item)| {
             let trait_id = self.resolve_lang_item(lang_item)?.as_trait()?;
             let func = self.db.trait_data(trait_id).method_by_name(&name)?;
             Some((trait_id, func))

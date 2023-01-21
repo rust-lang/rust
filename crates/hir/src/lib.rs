@@ -44,7 +44,7 @@ use hir_def::{
     expr::{BindingAnnotation, ExprOrPatId, LabelId, Pat, PatId},
     generics::{TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
-    lang_item::LangItemTarget,
+    lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},
     nameres::{self, diagnostics::DefDiagnostic},
     per_ns::PerNs,
@@ -1836,7 +1836,7 @@ pub struct Trait {
 
 impl Trait {
     pub fn lang(db: &dyn HirDatabase, krate: Crate, name: &Name) -> Option<Trait> {
-        db.lang_item(krate.into(), name.to_smol_str())
+        db.lang_item(krate.into(), LangItem::from_name(name)?)
             .and_then(LangItemTarget::as_trait)
             .map(Into::into)
     }
@@ -3009,7 +3009,7 @@ impl Type {
     /// This function is used in `.await` syntax completion.
     pub fn impls_into_future(&self, db: &dyn HirDatabase) -> bool {
         let trait_ = db
-            .lang_item(self.env.krate, SmolStr::new_inline("into_future"))
+            .lang_item(self.env.krate, LangItem::IntoFutureIntoFuture)
             .and_then(|it| {
                 let into_future_fn = it.as_function()?;
                 let assoc_item = as_assoc_item(db, AssocItem::Function, into_future_fn)?;
@@ -3017,8 +3017,7 @@ impl Type {
                 Some(into_future_trait.id)
             })
             .or_else(|| {
-                let future_trait =
-                    db.lang_item(self.env.krate, SmolStr::new_inline("future_trait"))?;
+                let future_trait = db.lang_item(self.env.krate, LangItem::Future)?;
                 future_trait.as_trait()
             });
 
@@ -3111,9 +3110,9 @@ impl Type {
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {
-        let lang_item = db.lang_item(self.env.krate, SmolStr::new_inline("copy"));
+        let lang_item = db.lang_item(self.env.krate, LangItem::Copy);
         let copy_trait = match lang_item {
-            Some(LangItemTarget::TraitId(it)) => it,
+            Some(LangItemTarget::Trait(it)) => it,
             _ => return false,
         };
         self.impls_trait(db, copy_trait.into(), &[])

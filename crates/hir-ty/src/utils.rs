@@ -11,6 +11,7 @@ use hir_def::{
         GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
     },
+    lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
     ConstParamId, FunctionId, GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId,
@@ -21,7 +22,6 @@ use intern::Interned;
 use itertools::Either;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
-use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, WhereClause,
@@ -29,9 +29,9 @@ use crate::{
 
 pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: CrateId) -> impl Iterator<Item = TraitId> {
     [
-        db.lang_item(krate, SmolStr::new_inline("fn")),
-        db.lang_item(krate, SmolStr::new_inline("fn_mut")),
-        db.lang_item(krate, SmolStr::new_inline("fn_once")),
+        db.lang_item(krate, LangItem::Fn),
+        db.lang_item(krate, LangItem::FnMut),
+        db.lang_item(krate, LangItem::FnOnce),
     ]
     .into_iter()
     .flatten()

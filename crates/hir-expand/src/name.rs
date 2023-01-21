@@ -133,6 +133,14 @@ impl Name {
         }
     }
 
+    /// Returns the text this name represents if it isn't a tuple field.
+    pub fn as_str(&self) -> Option<&str> {
+        match &self.0 {
+            Repr::Text(it) => Some(it),
+            _ => None,
+        }
+    }
+
     /// Returns the textual representation of this name as a [`SmolStr`].
     /// Prefer using this over [`ToString::to_string`] if possible as this conversion is cheaper in
     /// the general case.

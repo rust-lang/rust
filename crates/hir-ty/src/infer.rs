@@ -22,7 +22,7 @@ use hir_def::{
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
     expr::{BindingAnnotation, ExprId, ExprOrPatId, PatId},
-    lang_item::LangItemTarget,
+    lang_item::{LangItem, LangItemTarget},
     layout::Integer,
     path::{path, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
@@ -30,7 +30,7 @@ use hir_def::{
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule,
     ItemContainerId, Lookup, TraitId, TypeAliasId, VariantId,
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::name;
 use itertools::Either;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
@@ -917,9 +917,9 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    fn resolve_lang_item(&self, name: Name) -> Option<LangItemTarget> {
+    fn resolve_lang_item(&self, item: LangItem) -> Option<LangItemTarget> {
         let krate = self.resolver.krate();
-        self.db.lang_item(krate, name.to_smol_str())
+        self.db.lang_item(krate, item)
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
@@ -946,12 +946,12 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item(name![neg])?.as_trait()?;
+        let trait_ = self.resolve_lang_item(LangItem::Neg)?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item(name![not])?.as_trait()?;
+        let trait_ = self.resolve_lang_item(LangItem::Not)?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
@@ -959,12 +959,12 @@ impl<'a> InferenceContext<'a> {
         let trait_ = self
             .resolver
             .resolve_known_trait(self.db.upcast(), &path![core::future::IntoFuture])
-            .or_else(|| self.resolve_lang_item(name![future_trait])?.as_trait())?;
+            .or_else(|| self.resolve_lang_item(LangItem::Future)?.as_trait())?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(name![owned_box])?.as_struct()?;
+        let struct_ = self.resolve_lang_item(LangItem::OwnedBox)?.as_struct()?;
         Some(struct_.into())
     }
 
@@ -1005,7 +1005,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_ops_index(&self) -> Option<TraitId> {
-        self.resolve_lang_item(name![index])?.as_trait()
+        self.resolve_lang_item(LangItem::Index)?.as_trait()
     }
 
     fn resolve_ops_index_output(&self) -> Option<TypeAliasId> {
@@ -1014,7 +1014,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_va_list(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(name![va_list])?.as_struct()?;
+        let struct_ = self.resolve_lang_item(LangItem::VaList)?.as_struct()?;
         Some(struct_.into())
     }
 }

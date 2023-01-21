@@ -4,10 +4,10 @@ use chalk_ir::{FloatTy, IntTy, Mutability, Scalar, TyVariableKind, UintTy};
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
     generics::TypeOrConstParamData,
+    lang_item::LangItem,
     type_ref::Rawness,
     FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
 };
-use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
@@ -214,9 +214,8 @@ impl TyExt for Ty {
                 match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
                     ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
                         let krate = def.module(db.upcast()).krate();
-                        if let Some(future_trait) = db
-                            .lang_item(krate, SmolStr::new_inline("future_trait"))
-                            .and_then(|item| item.as_trait())
+                        if let Some(future_trait) =
+                            db.lang_item(krate, LangItem::Future).and_then(|item| item.as_trait())
                         {
                             // This is only used by type walking.
                             // Parameters will be walked outside, and projection predicate is not used.

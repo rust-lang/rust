@@ -7,6 +7,7 @@
 use std::{env, fs, iter, ops, path::PathBuf, process::Command};
 
 use anyhow::{format_err, Result};
+use base_db::CrateName;
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
@@ -50,14 +51,16 @@ impl Sysroot {
         &self.src_root
     }
 
-    pub fn public_deps(&self) -> impl Iterator<Item = (&'static str, SysrootCrate, bool)> + '_ {
+    pub fn public_deps(&self) -> impl Iterator<Item = (CrateName, SysrootCrate, bool)> + '_ {
         // core is added as a dependency before std in order to
         // mimic rustcs dependency order
         ["core", "alloc", "std"]
             .into_iter()
             .zip(iter::repeat(true))
             .chain(iter::once(("test", false)))
-            .filter_map(move |(name, prelude)| Some((name, self.by_name(name)?, prelude)))
+            .filter_map(move |(name, prelude)| {
+                Some((CrateName::new(name).unwrap(), self.by_name(name)?, prelude))
+            })
     }
 
     pub fn proc_macro(&self) -> Option<SysrootCrate> {

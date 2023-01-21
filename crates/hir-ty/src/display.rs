@@ -12,6 +12,7 @@ use hir_def::{
     find_path,
     generics::{TypeOrConstParamData, TypeParamProvenance},
     item_scope::ItemInNs,
+    lang_item::LangItem,
     path::{Path, PathKind},
     type_ref::{ConstScalar, TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
@@ -21,7 +22,6 @@ use hir_expand::{hygiene::Hygiene, name::Name};
 use intern::{Internable, Interned};
 use itertools::Itertools;
 use smallvec::SmallVec;
-use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase,
@@ -925,7 +925,7 @@ impl SizedByDefault {
             Self::NotSized => false,
             Self::Sized { anchor } => {
                 let sized_trait = db
-                    .lang_item(anchor, SmolStr::new_inline("sized"))
+                    .lang_item(anchor, LangItem::Sized)
                     .and_then(|lang_item| lang_item.as_trait());
                 Some(trait_) == sized_trait
             }
@@ -1057,8 +1057,7 @@ fn write_bounds_like_dyn_trait(
     }
     if let SizedByDefault::Sized { anchor } = default_sized {
         let sized_trait =
-            f.db.lang_item(anchor, SmolStr::new_inline("sized"))
-                .and_then(|lang_item| lang_item.as_trait());
+            f.db.lang_item(anchor, LangItem::Sized).and_then(|lang_item| lang_item.as_trait());
         if !is_sized {
             if !first {
                 write!(f, " + ")?;
