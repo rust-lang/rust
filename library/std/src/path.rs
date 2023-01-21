@@ -70,6 +70,7 @@
 #[cfg(test)]
 mod tests;
 
+use crate::alloc::{Global, self};
 use crate::borrow::{Borrow, Cow};
 use crate::cmp;
 use crate::collections::TryReserveError;
@@ -3143,7 +3144,7 @@ impl AsRef<Path> for str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> AsRef<Path> for String<COOP_PREFERRED>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     #[inline]
     fn as_ref(&self) -> &Path {
