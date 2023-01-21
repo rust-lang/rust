@@ -28,6 +28,7 @@
 //!     generator: pin
 //!     hash:
 //!     index: sized
+//!     infallible:
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     non_zero:
@@ -40,7 +41,7 @@
 //!     sized:
 //!     slice:
 //!     sync: sized
-//!     try:
+//!     try: infallible
 //!     unsize: sized
 
 pub mod marker {
@@ -172,6 +173,9 @@ pub mod convert {
         fn as_ref(&self) -> &T;
     }
     // endregion:as_ref
+    // region:infallible
+    pub enum Infallibe {}
+    // endregion:infallible
 }
 
 pub mod ops {
@@ -352,7 +356,7 @@ pub mod ops {
             #[lang = "from_residual"]
             fn from_residual(residual: R) -> Self;
         }
-        #[lang = "try"]
+        #[lang = "Try"]
         pub trait Try: FromResidual<Self::Residual> {
             type Output;
             type Residual;

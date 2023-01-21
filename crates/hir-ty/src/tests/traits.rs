@@ -163,98 +163,22 @@ fn test() {
 }
 
 #[test]
-fn infer_try() {
+fn infer_try_trait() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: try, result
 fn test() {
     let r: Result<i32, u64> = Result::Ok(1);
     let v = r?;
     v;
 } //^ i32
 
-//- /core.rs crate:core
-pub mod ops {
-    pub trait Try {
-        type Ok;
-        type Error;
-    }
+impl<O, E> core::ops::Try for Result<O, E> {
+    type Output = O;
+    type Error = Result<core::convert::Infallible, E>;
 }
 
-pub mod result {
-    pub enum Result<O, E> {
-        Ok(O),
-        Err(E)
-    }
-
-    impl<O, E> crate::ops::Try for Result<O, E> {
-        type Ok = O;
-        type Error = E;
-    }
-}
-
-pub mod prelude {
-    pub mod rust_2018 {
-        pub use crate::{result::*, ops::*};
-    }
-}
-"#,
-    );
-}
-
-#[test]
-fn infer_try_trait_v2() {
-    check_types(
-        r#"
-//- /main.rs crate:main deps:core
-fn test() {
-    let r: Result<i32, u64> = Result::Ok(1);
-    let v = r?;
-    v;
-} //^ i32
-
-//- /core.rs crate:core
-mod ops {
-    mod try_trait {
-        pub trait Try: FromResidual {
-            type Output;
-            type Residual;
-        }
-        pub trait FromResidual<R = <Self as Try>::Residual> {}
-    }
-
-    pub use self::try_trait::FromResidual;
-    pub use self::try_trait::Try;
-}
-
-mod convert {
-    pub trait From<T> {}
-    impl<T> From<T> for T {}
-}
-
-pub mod result {
-    use crate::convert::From;
-    use crate::ops::{Try, FromResidual};
-
-    pub enum Infallible {}
-    pub enum Result<O, E> {
-        Ok(O),
-        Err(E)
-    }
-
-    impl<O, E> Try for Result<O, E> {
-        type Output = O;
-        type Error = Result<Infallible, E>;
-    }
-
-    impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {}
-}
-
-pub mod prelude {
-    pub mod rust_2018 {
-        pub use crate::result::*;
-    }
-}
+impl<T, E, F: From<E>> core::ops::FromResidual<Result<core::convert::Infallible, E>> for Result<T, F> {}
 "#,
     );
 }
@@ -263,7 +187,8 @@ pub mod prelude {
 fn infer_for_loop() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core,alloc
+//- minicore: iterator
+//- /main.rs crate:main deps:alloc
 #![no_std]
 use alloc::collections::Vec;
 
@@ -275,23 +200,7 @@ fn test() {
     } //^ &str
 }
 
-//- /core.rs crate:core
-pub mod iter {
-    pub trait IntoIterator {
-        type Item;
-        type IntoIter: Iterator<Item = Self::Item>;
-    }
-    pub trait Iterator {
-        type Item;
-    }
-}
-pub mod prelude {
-    pub mod rust_2018 {
-        pub use crate::iter::*;
-    }
-}
-
-//- /alloc.rs crate:alloc deps:core
+//- /alloc.rs crate:alloc
 #![no_std]
 pub mod collections {
     pub struct Vec<T> {}
@@ -2999,40 +2908,17 @@ fn test() {
 fn integer_range_iterate() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: range, iterator
+//- /main.rs crate:main
 fn test() {
     for x in 0..100 { x; }
 }                   //^ i32
-
-//- /core.rs crate:core
-pub mod ops {
-    pub struct Range<Idx> {
-        pub start: Idx,
-        pub end: Idx,
-    }
-}
-
-pub mod iter {
-    pub trait Iterator {
-        type Item;
-    }
-
-    pub trait IntoIterator {
-        type Item;
-        type IntoIter: Iterator<Item = Self::Item>;
-    }
-
-    impl<T> IntoIterator for T where T: Iterator {
-        type Item = <T as Iterator>::Item;
-        type IntoIter = Self;
-    }
-}
 
 trait Step {}
 impl Step for i32 {}
 impl Step for i64 {}
 
-impl<A: Step> iter::Iterator for ops::Range<A> {
+impl<A: Step> core::iter::Iterator for core::ops::Range<A> {
     type Item = A;
 }
 "#,

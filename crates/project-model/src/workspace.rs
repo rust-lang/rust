@@ -1162,9 +1162,7 @@ fn sysroot_to_crate_graph(
     let public_deps = SysrootPublicDeps {
         deps: sysroot
             .public_deps()
-            .map(|(name, idx, prelude)| {
-                (CrateName::new(name).unwrap(), sysroot_crates[&idx], prelude)
-            })
+            .map(|(name, idx, prelude)| (name, sysroot_crates[&idx], prelude))
             .collect::<Vec<_>>(),
     };
 

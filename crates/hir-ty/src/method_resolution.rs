@@ -7,8 +7,9 @@ use std::{ops::ControlFlow, sync::Arc};
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
-    data::ImplData, item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId, ConstId,
-    FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
+    data::ImplData, item_scope::ItemScope, lang_item::LangItem, nameres::DefMap, AssocItemId,
+    BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId,
+    ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -437,49 +438,49 @@ pub fn def_crates(
     }
 }
 
-pub fn lang_names_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, Name)> {
+pub fn lang_items_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, LangItem)> {
     use hir_expand::name;
     use syntax::ast::{ArithOp, BinaryOp, CmpOp, Ordering};
     Some(match op {
         BinaryOp::LogicOp(_) => return None,
         BinaryOp::ArithOp(aop) => match aop {
-            ArithOp::Add => (name!(add), name!(add)),
-            ArithOp::Mul => (name!(mul), name!(mul)),
-            ArithOp::Sub => (name!(sub), name!(sub)),
-            ArithOp::Div => (name!(div), name!(div)),
-            ArithOp::Rem => (name!(rem), name!(rem)),
-            ArithOp::Shl => (name!(shl), name!(shl)),
-            ArithOp::Shr => (name!(shr), name!(shr)),
-            ArithOp::BitXor => (name!(bitxor), name!(bitxor)),
-            ArithOp::BitOr => (name!(bitor), name!(bitor)),
-            ArithOp::BitAnd => (name!(bitand), name!(bitand)),
+            ArithOp::Add => (name![add], LangItem::Add),
+            ArithOp::Mul => (name![mul], LangItem::Mul),
+            ArithOp::Sub => (name![sub], LangItem::Sub),
+            ArithOp::Div => (name![div], LangItem::Div),
+            ArithOp::Rem => (name![rem], LangItem::Rem),
+            ArithOp::Shl => (name![shl], LangItem::Shl),
+            ArithOp::Shr => (name![shr], LangItem::Shr),
+            ArithOp::BitXor => (name![bitxor], LangItem::BitXor),
+            ArithOp::BitOr => (name![bitor], LangItem::BitOr),
+            ArithOp::BitAnd => (name![bitand], LangItem::BitAnd),
         },
         BinaryOp::Assignment { op: Some(aop) } => match aop {
-            ArithOp::Add => (name!(add_assign), name!(add_assign)),
-            ArithOp::Mul => (name!(mul_assign), name!(mul_assign)),
-            ArithOp::Sub => (name!(sub_assign), name!(sub_assign)),
-            ArithOp::Div => (name!(div_assign), name!(div_assign)),
-            ArithOp::Rem => (name!(rem_assign), name!(rem_assign)),
-            ArithOp::Shl => (name!(shl_assign), name!(shl_assign)),
-            ArithOp::Shr => (name!(shr_assign), name!(shr_assign)),
-            ArithOp::BitXor => (name!(bitxor_assign), name!(bitxor_assign)),
-            ArithOp::BitOr => (name!(bitor_assign), name!(bitor_assign)),
-            ArithOp::BitAnd => (name!(bitand_assign), name!(bitand_assign)),
+            ArithOp::Add => (name![add_assign], LangItem::AddAssign),
+            ArithOp::Mul => (name![mul_assign], LangItem::MulAssign),
+            ArithOp::Sub => (name![sub_assign], LangItem::SubAssign),
+            ArithOp::Div => (name![div_assign], LangItem::DivAssign),
+            ArithOp::Rem => (name![rem_assign], LangItem::RemAssign),
+            ArithOp::Shl => (name![shl_assign], LangItem::ShlAssign),
+            ArithOp::Shr => (name![shr_assign], LangItem::ShrAssign),
+            ArithOp::BitXor => (name![bitxor_assign], LangItem::BitXorAssign),
+            ArithOp::BitOr => (name![bitor_assign], LangItem::BitOrAssign),
+            ArithOp::BitAnd => (name![bitand_assign], LangItem::BitAndAssign),
         },
         BinaryOp::CmpOp(cop) => match cop {
-            CmpOp::Eq { negated: false } => (name!(eq), name!(eq)),
-            CmpOp::Eq { negated: true } => (name!(ne), name!(eq)),
+            CmpOp::Eq { negated: false } => (name![eq], LangItem::PartialEq),
+            CmpOp::Eq { negated: true } => (name![ne], LangItem::PartialEq),
             CmpOp::Ord { ordering: Ordering::Less, strict: false } => {
-                (name!(le), name!(partial_ord))
+                (name![le], LangItem::PartialOrd)
             }
             CmpOp::Ord { ordering: Ordering::Less, strict: true } => {
-                (name!(lt), name!(partial_ord))
+                (name![lt], LangItem::PartialOrd)
             }
             CmpOp::Ord { ordering: Ordering::Greater, strict: false } => {
-                (name!(ge), name!(partial_ord))
+                (name![ge], LangItem::PartialOrd)
             }
             CmpOp::Ord { ordering: Ordering::Greater, strict: true } => {
-                (name!(gt), name!(partial_ord))
+                (name![gt], LangItem::PartialOrd)
             }
         },
         BinaryOp::Assignment { op: None } => return None,
