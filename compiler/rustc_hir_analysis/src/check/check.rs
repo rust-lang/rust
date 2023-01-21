@@ -1391,11 +1391,15 @@ fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) -> ErrorGuaranteed
 ///
 /// If all the return expressions evaluate to `!`, then we explain that the error will go away
 /// after changing it. This can happen when a user uses `panic!()` or similar as a placeholder.
-fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> ErrorGuaranteed {
+fn opaque_type_cycle_error(
+    tcx: TyCtxt<'_>,
+    opaque_def_id: LocalDefId,
+    span: Span,
+) -> ErrorGuaranteed {
     let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
 
     let mut label = false;
-    if let Some((def_id, visitor)) = get_owner_return_paths(tcx, def_id) {
+    if let Some((def_id, visitor)) = get_owner_return_paths(tcx, opaque_def_id) {
         let typeck_results = tcx.typeck(def_id);
         if visitor
             .returns
@@ -1431,27 +1435,70 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> E
                 .filter_map(|e| typeck_results.node_type_opt(e.hir_id).map(|t| (e.span, t)))
                 .filter(|(_, ty)| !matches!(ty.kind(), ty::Never))
             {
-                struct OpaqueTypeCollector(Vec<DefId>);
+                #[derive(Default)]
+                struct OpaqueTypeCollector {
+                    opaques: Vec<DefId>,
+                    closures: Vec<DefId>,
+                }
                 impl<'tcx> ty::visit::TypeVisitor<'tcx> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         match *t.kind() {
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
-                                self.0.push(def);
+                                self.opaques.push(def);
                                 ControlFlow::Continue(())
+                            }
+                            ty::Closure(def_id, ..) | ty::Generator(def_id, ..) => {
+                                self.closures.push(def_id);
+                                t.super_visit_with(self)
                             }
                             _ => t.super_visit_with(self),
                         }
                     }
                 }
-                let mut visitor = OpaqueTypeCollector(vec![]);
+
+                let mut visitor = OpaqueTypeCollector::default();
                 ty.visit_with(&mut visitor);
-                for def_id in visitor.0 {
+                for def_id in visitor.opaques {
                     let ty_span = tcx.def_span(def_id);
                     if !seen.contains(&ty_span) {
                         err.span_label(ty_span, &format!("returning this opaque type `{ty}`"));
                         seen.insert(ty_span);
                     }
                     err.span_label(sp, &format!("returning here with type `{ty}`"));
+                }
+
+                for closure_def_id in visitor.closures {
+                    let Some(closure_local_did) = closure_def_id.as_local() else { continue; };
+                    let typeck_results = tcx.typeck(closure_local_did);
+
+                    let mut label_match = |ty: Ty<'_>, span| {
+                        for arg in ty.walk() {
+                            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                                && let ty::Alias(ty::Opaque, ty::AliasTy { def_id: captured_def_id, .. }) = *ty.kind()
+                                && captured_def_id == opaque_def_id.to_def_id()
+                            {
+                                err.span_label(
+                                    span,
+                                    format!(
+                                        "{} captures itself here",
+                                        tcx.def_kind(closure_def_id).descr(closure_def_id)
+                                    ),
+                                );
+                            }
+                        }
+                    };
+
+                    // Label any closure upvars that capture the opaque
+                    for capture in typeck_results.closure_min_captures_flattened(closure_local_did)
+                    {
+                        label_match(capture.place.ty(), capture.get_path_span(tcx));
+                    }
+                    // Label any generator locals that capture the opaque
+                    for interior_ty in
+                        typeck_results.generator_interior_types.as_ref().skip_binder()
+                    {
+                        label_match(interior_ty.ty, interior_ty.span);
+                    }
                 }
             }
         }
