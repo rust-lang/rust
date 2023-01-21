@@ -54,7 +54,10 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
 
         for id in cx.tcx.impls_in_crate(LOCAL_CRATE) {
             let id = ItemId { owner_id: OwnerId { def_id: id.expect_local() } };
+
             debug_assert!(matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl));
+            // impls_in_crate returns only items with DefKind::Impl, so this will always be true.
+
             let item = cx.tcx.hir().item(id);
             if let ItemKind::Impl(Impl {
                   items,
