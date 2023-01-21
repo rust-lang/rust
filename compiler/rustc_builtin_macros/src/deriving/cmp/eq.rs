@@ -36,7 +36,7 @@ pub fn expand_deriving_eq(
             nonself_args: vec![],
             ret_ty: Unit,
             attributes: attrs,
-            unify_fieldless_variants: true,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 cs_total_eq_assert(a, b, c)
             })),

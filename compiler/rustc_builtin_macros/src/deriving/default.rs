@@ -34,7 +34,7 @@ pub fn expand_deriving_default(
             nonself_args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
-            unify_fieldless_variants: false,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(Box::new(|cx, trait_span, substr| {
                 match substr.fields {
                     StaticStruct(_, fields) => {

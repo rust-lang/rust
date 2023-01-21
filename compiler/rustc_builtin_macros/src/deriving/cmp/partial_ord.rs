@@ -28,7 +28,7 @@ pub fn expand_deriving_partial_ord(
         nonself_args: vec![(self_ref(), sym::other)],
         ret_ty,
         attributes: attrs,
-        unify_fieldless_variants: true,
+        fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
         })),

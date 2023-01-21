@@ -76,7 +76,7 @@ pub fn expand_deriving_partial_eq(
         nonself_args: vec![(self_ref(), sym::other)],
         ret_ty: Path(path_local!(bool)),
         attributes: attrs,
-        unify_fieldless_variants: true,
+        fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(Box::new(|a, b, c| cs_eq(a, b, c))),
     }];
 
