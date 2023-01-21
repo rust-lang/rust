@@ -197,10 +197,13 @@ impl System {
     }
 }
 
+// @TODO
 // The Allocator impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
 // which is in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Allocator for System {
+    const IS_CO_ALLOCATOR: bool = false;
+
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.alloc_impl(layout, false)
