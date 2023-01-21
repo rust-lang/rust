@@ -2,6 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
+use core::alloc::GlobalCoAllocMeta;
 use crate::mir::interpret::{
     AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, LitToConstInput, Scalar,
 };
@@ -3057,7 +3058,7 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 144);
+    static_assert_size!(BasicBlockData<'_>, 144 + mem::size_of::<GlobalCoAllocMeta>());
     static_assert_size!(LocalDecl<'_>, 56);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);
