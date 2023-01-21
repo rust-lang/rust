@@ -1,7 +1,7 @@
-Version 1.67 (2023-01-26)
+Version 1.67.0 (2023-01-26)
 ==========================
 
-<a id="1.67-Language"></a>
+<a id="1.67.0-Language"></a>
 
 Language
 --------
@@ -12,7 +12,7 @@ Language
 - [Invalid literals are no longer an error under `cfg(FALSE)`.](https://github.com/rust-lang/rust/pull/102944/)
 - [Unreserve braced enum variants in value namespace.](https://github.com/rust-lang/rust/pull/103578/)
 
-<a id="1.67-Compiler"></a>
+<a id="1.67.0-Compiler"></a>
 
 Compiler
 --------
@@ -33,7 +33,7 @@ Added and removed targets:
 Refer to Rust's [platform support page][platform-support-doc]
 for more information on Rust's tiered platform support.
 
-<a id="1.67-Libraries"></a>
+<a id="1.67.0-Libraries"></a>
 
 Libraries
 ---------
@@ -43,7 +43,7 @@ Libraries
 - [Derive `Eq` and `Hash` for `ControlFlow`.](https://github.com/rust-lang/rust/pull/103084/)
 - [Don't build `compiler_builtins` with `-C panic=abort`.](https://github.com/rust-lang/rust/pull/103786/)
 
-<a id="1.67-Stabilized-APIs"></a>
+<a id="1.67.0-Stabilized-APIs"></a>
 
 Stabilized APIs
 ---------------
@@ -66,7 +66,7 @@ These APIs are now stable in const contexts:
 - [`core::char::from_u32`](https://doc.rust-lang.org/stable/core/char/fn.from_u32.html)
 - [`core::char::from_digit`](https://doc.rust-lang.org/stable/core/char/fn.from_digit.html)
 
-<a id="1.67-Compatibility-Notes"></a>
+<a id="1.67.0-Compatibility-Notes"></a>
 
 Compatibility Notes
 -------------------
@@ -85,7 +85,7 @@ Compatibility Notes
 - [Cargo now emits an error if there are multiple registries in the configuration
   with the same index URL.](https://github.com/rust-lang/cargo/pull/10592)
 
-<a id="1.67-Internal-Changes"></a>
+<a id="1.67.0-Internal-Changes"></a>
 
 Internal Changes
 ----------------
