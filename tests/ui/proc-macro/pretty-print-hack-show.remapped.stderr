@@ -1,5 +1,5 @@
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = note: `#[deny(proc_macro_back_compat)]` on by default
 
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
 
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
 
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
 
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,7 +50,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
 
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
 
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL | enum ProceduralMasqueradeDummyType {
    = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
 
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ error: aborting due to 8 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,7 +95,7 @@ LL | enum ProceduralMasqueradeDummyType {
 
 Future breakage diagnostic:
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,7 +107,7 @@ LL | enum ProceduralMasqueradeDummyType {
 
 Future breakage diagnostic:
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL | enum ProceduralMasqueradeDummyType {
 
 Future breakage diagnostic:
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -131,7 +131,7 @@ LL | enum ProceduralMasqueradeDummyType {
 
 Future breakage diagnostic:
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,7 +143,7 @@ LL | enum ProceduralMasqueradeDummyType {
 
 Future breakage diagnostic:
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -155,7 +155,7 @@ LL | enum ProceduralMasqueradeDummyType {
 
 Future breakage diagnostic:
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -167,7 +167,7 @@ LL | enum ProceduralMasqueradeDummyType {
 
 Future breakage diagnostic:
 error: using an old version of `rental`
-  --> remapped/proc-macro/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
+  --> $DIR/pretty-print-hack/rental-0.5.5/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
