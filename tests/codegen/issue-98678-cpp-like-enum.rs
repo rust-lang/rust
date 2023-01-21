@@ -4,6 +4,8 @@
 // compile-flags: -C debuginfo=2
 #![crate_type = "lib"]
 
+// ignore-tidy-linelength
+
 // NONMSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-cpp-like-enum.rs{{".*}})
 // MSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\codegen\\issue-98678-cpp-like-enum.rs{{".*}})
 

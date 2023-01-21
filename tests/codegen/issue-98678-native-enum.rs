@@ -4,6 +4,8 @@
 // compile-flags: -C debuginfo=2
 #![crate_type = "lib"]
 
+// ignore-tidy-linelength
+
 // NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-native-enum.rs{{".*}})
 // MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\codegen\\issue-98678-native-enum.rs{{".*}})
 
