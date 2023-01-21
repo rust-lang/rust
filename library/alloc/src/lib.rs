@@ -191,6 +191,7 @@
 // - cannot specialize on predicate `[(); _] well-formed`
 // - cannot specialize on predicate `the constant `core::alloc::co_alloc_metadata_num_slots::<A>()` can be evaluated`
 //#![feature(min_specialization)]
+#![feature(associated_type_defaults)]
 #![feature(specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]

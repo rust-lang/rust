@@ -2682,6 +2682,10 @@ pub trait ToString<const COOP_PREFERRED: bool = {DEFAULT_COOP_PREFERRED!()}>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
+    /// NOT for public use. Do not override. This exists to woraround (current) limitations of const generic defaults.
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    type RESULT = String<COOP_PREFERRED>;
+
     /// Converts the given value to a `String`.
     ///
     /// # Examples
@@ -2696,7 +2700,7 @@ where
     /// ```
     #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn to_string(&self) -> String<COOP_PREFERRED>;
+    fn to_string(&self) -> Self::RESULT;
 }
 
 /// # Panics
@@ -2728,18 +2732,24 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "char_to_string_specialization", since = "1.46.0")]
-impl ToString for char {
+impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for char
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     #[inline]
-    fn to_string(&self) -> String {
+    fn to_string(&self) -> String<COOP_PREFERRED> {
         String::from(self.encode_utf8(&mut [0; 4]))
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "bool_to_string_specialization", since = "CURRENT_RUSTC_VERSION")]
-impl ToString for bool {
+impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for bool
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     #[inline]
-    fn to_string(&self) -> String {
+    fn to_string(&self) -> String<COOP_PREFERRED> {
         String::from(if *self { "true" } else { "false" })
     }
 }
@@ -3291,7 +3301,7 @@ where
     /// assert_eq!("a", &s[..]);
     /// ```
     #[inline]
-    fn from(c: char) -> Self {
+    fn from(c: char) -> String<COOP_PREFERRED> {
         c.to_string()
     }
 }
