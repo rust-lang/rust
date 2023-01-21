@@ -2,6 +2,7 @@ use crate::traits::{specialization_graph, translate_substs};
 
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
+use super::trait_goals::structural_traits;
 use super::{Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
@@ -11,9 +12,9 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ProjectionPredicate, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{ToPredicate, TypeVisitable};
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::ControlFlow;
@@ -350,6 +351,46 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         bug!("`Copy`/`Clone` does not have an associated type: {:?}", goal);
+    }
+
+    fn consider_builtin_pointer_sized_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`PointerSized` does not have an associated type: {:?}", goal);
+    }
+
+    fn consider_builtin_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        goal_kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx> {
+        if let Some(tupled_inputs_and_output) =
+            structural_traits::extract_tupled_inputs_and_output_from_callable(
+                ecx.tcx(),
+                goal.predicate.self_ty(),
+                goal_kind,
+            )?
+        {
+            let pred = tupled_inputs_and_output
+                .map_bound(|(inputs, output)| ty::ProjectionPredicate {
+                    projection_ty: ecx
+                        .tcx()
+                        .mk_alias_ty(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs]),
+                    term: output.into(),
+                })
+                .to_predicate(ecx.tcx());
+            Self::consider_assumption(ecx, goal, pred)
+        } else {
+            ecx.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity))
+        }
+    }
+
+    fn consider_builtin_tuple_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`Tuple` does not have an associated type: {:?}", goal);
     }
 }
 

@@ -1,7 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::infcx_ext::InferCtxtExt;
-use super::{CanonicalResponse, EvalCtxt, Goal, QueryResult};
+use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
@@ -79,7 +79,7 @@ pub(super) enum CandidateSource {
     AliasBound(usize),
 }
 
-pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
+pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
     fn self_ty(self) -> Ty<'tcx>;
 
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self;
@@ -117,6 +117,22 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_pointer_sized_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_tuple_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -124,6 +140,20 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
+        debug_assert_eq!(goal, self.infcx.resolve_vars_if_possible(goal));
+
+        // HACK: `_: Trait` is ambiguous, because it may be satisfied via a builtin rule,
+        // object bound, alias bound, etc. We are unable to determine this until we can at
+        // least structually resolve the type one layer.
+        if goal.predicate.self_ty().is_ty_var() {
+            return vec![Candidate {
+                source: CandidateSource::BuiltinImpl,
+                result: self
+                    .make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity))
+                    .unwrap(),
+            }];
+        }
+
         let mut candidates = Vec::new();
 
         self.assemble_candidates_after_normalizing_self_ty(goal, &mut candidates);
@@ -169,6 +199,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 Ok((_, certainty)) => certainty,
                 Err(NoSolution) => return,
             };
+            let normalized_ty = self.infcx.resolve_vars_if_possible(normalized_ty);
 
             // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
             // This doesn't work as long as we use `CandidateSource` in winnowing.
@@ -224,6 +255,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             || lang_items.clone_trait() == Some(trait_def_id)
         {
             G::consider_builtin_copy_clone_candidate(self, goal)
+        } else if lang_items.pointer_sized() == Some(trait_def_id) {
+            G::consider_builtin_pointer_sized_candidate(self, goal)
+        } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
+            G::consider_builtin_fn_trait_candidates(self, goal, kind)
+        } else if lang_items.tuple_trait() == Some(trait_def_id) {
+            G::consider_builtin_tuple_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
