@@ -15,16 +15,19 @@ struct S;
 
 #[derive(generate_mod::CheckDerive)] //~ ERROR cannot find type `FromOutside` in this scope
                                      //~| ERROR cannot find type `OuterDerive` in this scope
+                                     //~| WARN this was previously accepted
+                                     //~| WARN this was previously accepted
 struct Z;
 
 fn inner_block() {
     #[derive(generate_mod::CheckDerive)] //~ ERROR cannot find type `FromOutside` in this scope
                                         //~| ERROR cannot find type `OuterDerive` in this scope
+                                        //~| WARN this was previously accepted
+                                        //~| WARN this was previously accepted
     struct InnerZ;
 }
 
-#[derive(generate_mod::CheckDeriveLint)] //~  ERROR cannot find type `OuterDeriveLint` in this scope
-                                         //~| ERROR cannot find type `FromOutside` in this scope
+#[derive(generate_mod::CheckDeriveLint)] // OK, lint is suppressed
 struct W;
 
 fn main() {}
