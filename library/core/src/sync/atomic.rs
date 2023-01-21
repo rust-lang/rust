@@ -238,7 +238,7 @@ pub enum Ordering {
     /// When coupled with a load, if the loaded value was written by a store operation with
     /// [`Release`] (or stronger) ordering, then all subsequent operations
     /// become ordered after that store. In particular, all subsequent loads will see data
-    /// written before the store.
+    /// written by the store.
     ///
     /// Notice that using this ordering for an operation that combines loads
     /// and stores leads to a [`Relaxed`] store operation!
