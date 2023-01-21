@@ -71,6 +71,11 @@ These APIs are now stable in const contexts:
 Compatibility Notes
 -------------------
 
+- [The layout of `repr(Rust)` types now groups m\*2^n-sized fields with
+  equivalently aligned ones.](https://github.com/rust-lang/rust/pull/102750/)
+  This is intended to be an optimization, but it is also known to increase type
+  sizes in a few cases for the placement of enum tags. As a reminder, the layout
+  of `repr(Rust)` types is an implementation detail, subject to change.
 - [0.5 now rounds to 0 when formatted to 0 decimal places.](https://github.com/rust-lang/rust/pull/102935/)
   This makes it consistent with the rest of floating point formatting that
   rounds ties toward even digits.
