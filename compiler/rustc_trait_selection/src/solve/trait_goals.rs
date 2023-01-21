@@ -4,7 +4,7 @@ use std::iter;
 
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
-use super::{Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+use super::{Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
@@ -133,7 +133,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         if goal.predicate.self_ty().has_non_region_infer() {
-            return ecx.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity));
+            return ecx.make_canonical_response(Certainty::AMBIGUOUS);
         }
 
         let tcx = ecx.tcx();
@@ -171,7 +171,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 .to_predicate(ecx.tcx());
             Self::consider_assumption(ecx, goal, pred)
         } else {
-            ecx.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity))
+            ecx.make_canonical_response(Certainty::AMBIGUOUS)
         }
     }
 

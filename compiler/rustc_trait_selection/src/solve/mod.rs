@@ -19,6 +19,7 @@
 
 use std::mem;
 
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarKind, CanonicalVarValues};
 use rustc_infer::infer::canonical::{OriginalQueryValues, QueryRegionConstraints, QueryResponse};
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
@@ -26,7 +27,9 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::Obligation;
 use rustc_middle::infer::canonical::Certainty as OldCertainty;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{RegionOutlivesPredicate, ToPredicate, TypeOutlivesPredicate};
+use rustc_middle::ty::{
+    CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TypeOutlivesPredicate,
+};
 use rustc_span::DUMMY_SP;
 
 use crate::traits::ObligationCause;
@@ -87,6 +90,8 @@ pub enum Certainty {
 }
 
 impl Certainty {
+    pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeCause::Ambiguity);
+
     /// When proving multiple goals using **AND**, e.g. nested obligations for an impl,
     /// use this function to unify the certainty of these goals
     pub fn unify_and(self, other: Certainty) -> Certainty {
@@ -243,16 +248,28 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => {
                     self.compute_region_outlives_goal(Goal { param_env, predicate })
                 }
+                ty::PredicateKind::Subtype(predicate) => {
+                    self.compute_subtype_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::Coerce(predicate) => {
+                    self.compute_coerce_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::ClosureKind(def_id, substs, kind) => self
+                    .compute_closure_kind_goal(Goal {
+                        param_env,
+                        predicate: (def_id, substs, kind),
+                    }),
+                ty::PredicateKind::Ambiguous => self.make_canonical_response(Certainty::AMBIGUOUS),
                 // FIXME: implement these predicates :)
                 ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::ObjectSafe(_)
-                | ty::PredicateKind::ClosureKind(_, _, _)
-                | ty::PredicateKind::Subtype(_)
-                | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::ConstEvaluatable(_)
-                | ty::PredicateKind::ConstEquate(_, _)
-                | ty::PredicateKind::TypeWellFormedFromEnv(_)
-                | ty::PredicateKind::Ambiguous => self.make_canonical_response(Certainty::Yes),
+                | ty::PredicateKind::ConstEquate(_, _) => {
+                    self.make_canonical_response(Certainty::Yes)
+                }
+                ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+                    bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
             }
         } else {
             let kind = self.infcx.replace_bound_vars_with_placeholders(kind);
@@ -274,6 +291,58 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         _goal: Goal<'tcx, RegionOutlivesPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         self.make_canonical_response(Certainty::Yes)
+    }
+
+    fn compute_coerce_goal(
+        &mut self,
+        goal: Goal<'tcx, CoercePredicate<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        self.compute_subtype_goal(Goal {
+            param_env: goal.param_env,
+            predicate: SubtypePredicate {
+                a_is_expected: false,
+                a: goal.predicate.a,
+                b: goal.predicate.b,
+            },
+        })
+    }
+
+    fn compute_subtype_goal(
+        &mut self,
+        goal: Goal<'tcx, SubtypePredicate<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        if goal.predicate.a.is_ty_var() && goal.predicate.b.is_ty_var() {
+            // FIXME: Do we want to register a subtype relation between these vars?
+            // That won't actually reflect in the query response, so it seems moot.
+            self.make_canonical_response(Certainty::AMBIGUOUS)
+        } else {
+            self.infcx.probe(|_| {
+                let InferOk { value: (), obligations } = self
+                    .infcx
+                    .at(&ObligationCause::dummy(), goal.param_env)
+                    .sub(goal.predicate.a, goal.predicate.b)?;
+                self.evaluate_all_and_make_canonical_response(
+                    obligations.into_iter().map(|pred| pred.into()).collect(),
+                )
+            })
+        }
+    }
+
+    fn compute_closure_kind_goal(
+        &mut self,
+        goal: Goal<'tcx, (DefId, ty::SubstsRef<'tcx>, ty::ClosureKind)>,
+    ) -> QueryResult<'tcx> {
+        let (_, substs, expected_kind) = goal.predicate;
+        let found_kind = substs.as_closure().kind_ty().to_opt_closure_kind();
+
+        let Some(found_kind) = found_kind else {
+            return self.make_canonical_response(Certainty::AMBIGUOUS);
+        };
+        if found_kind.extends(expected_kind) {
+            self.make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
     }
 }
 
