@@ -2,7 +2,7 @@
 //! (thus indicating there is a loop in the CFG), or whose terminator is a function call.
 use crate::MirPass;
 
-use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::graph::dominators::DominatorTree;
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Statement, StatementKind, TerminatorKind,
 };
@@ -13,7 +13,7 @@ pub struct CtfeLimit;
 impl<'tcx> MirPass<'tcx> for CtfeLimit {
     #[instrument(skip(self, _tcx, body))]
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let doms = body.basic_blocks.dominators();
+        let doms = body.basic_blocks.dominator_tree();
         let indices: Vec<BasicBlock> = body
             .basic_blocks
             .iter_enumerated()
@@ -39,7 +39,7 @@ impl<'tcx> MirPass<'tcx> for CtfeLimit {
 }
 
 fn has_back_edge(
-    doms: &Dominators<BasicBlock>,
+    doms: &DominatorTree<BasicBlock>,
     node: BasicBlock,
     node_data: &BasicBlockData<'_>,
 ) -> bool {

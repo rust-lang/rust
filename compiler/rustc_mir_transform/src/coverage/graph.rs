@@ -2,13 +2,14 @@ use super::Error;
 
 use itertools::Itertools;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::dominators::{self, Dominators};
+use rustc_data_structures::graph::dominators::{self, DominatorTree, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, BasicBlockData, Terminator, TerminatorKind};
 
+use std::cmp::Ordering;
 use std::ops::{Index, IndexMut};
 
 const ID_SEPARATOR: &str = ",";
@@ -24,6 +25,7 @@ pub(super) struct CoverageGraph {
     bb_to_bcb: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     pub successors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     pub predecessors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
+    dominator_tree: Option<DominatorTree<BasicCoverageBlock>>,
     dominators: Option<Dominators<BasicCoverageBlock>>,
 }
 
@@ -66,9 +68,17 @@ impl CoverageGraph {
             }
         }
 
-        let mut basic_coverage_blocks =
-            Self { bcbs, bb_to_bcb, successors, predecessors, dominators: None };
-        let dominators = dominators::dominators(&basic_coverage_blocks);
+        let mut basic_coverage_blocks = Self {
+            bcbs,
+            bb_to_bcb,
+            successors,
+            predecessors,
+            dominator_tree: None,
+            dominators: None,
+        };
+        let dominator_tree = dominators::dominator_tree(&basic_coverage_blocks);
+        let dominators = dominators::dominators(&dominator_tree);
+        basic_coverage_blocks.dominator_tree = Some(dominator_tree);
         basic_coverage_blocks.dominators = Some(dominators);
         basic_coverage_blocks
     }
@@ -212,8 +222,12 @@ impl CoverageGraph {
     }
 
     #[inline(always)]
-    pub fn dominators(&self) -> &Dominators<BasicCoverageBlock> {
-        self.dominators.as_ref().unwrap()
+    pub fn rank_partial_cmp(
+        &self,
+        a: BasicCoverageBlock,
+        b: BasicCoverageBlock,
+    ) -> Option<Ordering> {
+        self.dominator_tree.as_ref().unwrap().rank_partial_cmp(a, b)
     }
 }
 
@@ -650,26 +664,6 @@ pub(super) fn find_loop_backedges(
     let mut backedges = IndexVec::from_elem_n(Vec::<BasicCoverageBlock>::new(), num_bcbs);
 
     // Identify loops by their backedges.
-    //
-    // The computational complexity is bounded by: n(s) x d where `n` is the number of
-    // `BasicCoverageBlock` nodes (the simplified/reduced representation of the CFG derived from the
-    // MIR); `s` is the average number of successors per node (which is most likely less than 2, and
-    // independent of the size of the function, so it can be treated as a constant);
-    // and `d` is the average number of dominators per node.
-    //
-    // The average number of dominators depends on the size and complexity of the function, and
-    // nodes near the start of the function's control flow graph typically have less dominators
-    // than nodes near the end of the CFG. Without doing a detailed mathematical analysis, I
-    // think the resulting complexity has the characteristics of O(n log n).
-    //
-    // The overall complexity appears to be comparable to many other MIR transform algorithms, and I
-    // don't expect that this function is creating a performance hot spot, but if this becomes an
-    // issue, there may be ways to optimize the `dominates` algorithm (as indicated by an
-    // existing `FIXME` comment in that code), or possibly ways to optimize it's usage here, perhaps
-    // by keeping track of results for visited `BasicCoverageBlock`s if they can be used to short
-    // circuit downstream `dominates` checks.
-    //
-    // For now, that kind of optimization seems unnecessarily complicated.
     for (bcb, _) in basic_coverage_blocks.iter_enumerated() {
         for &successor in &basic_coverage_blocks.successors[bcb] {
             if basic_coverage_blocks.dominates(successor, bcb) {
