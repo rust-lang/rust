@@ -80,19 +80,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
                 }
             }
 
-            for assoc in provided.values() {
-                let source_map = cx.tcx.sess.source_map();
-                let definition_span = source_map.guess_head_span(cx.tcx.def_span(assoc.def_id));
+            cx.tcx.with_stable_hashing_context(|hcx| {
+                for assoc in provided.values_sorted(&hcx, true) {
+                    let source_map = cx.tcx.sess.source_map();
+                    let definition_span = source_map.guess_head_span(cx.tcx.def_span(assoc.def_id));
 
-                span_lint_and_help(
-                    cx,
-                    MISSING_TRAIT_METHODS,
-                    source_map.guess_head_span(item.span),
-                    &format!("missing trait method provided by default: `{}`", assoc.name),
-                    Some(definition_span),
-                    "implement the method",
-                );
-            }
+                    span_lint_and_help(
+                        cx,
+                        MISSING_TRAIT_METHODS,
+                        source_map.guess_head_span(item.span),
+                        &format!("missing trait method provided by default: `{}`", assoc.name),
+                        Some(definition_span),
+                        "implement the method",
+                    );
+                }
+            })
         }
     }
 }

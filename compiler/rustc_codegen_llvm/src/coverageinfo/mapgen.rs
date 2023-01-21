@@ -8,7 +8,7 @@ use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression};
 use rustc_codegen_ssa::traits::{ConstMethods, CoverageInfoMethods};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefIdSet;
+use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -291,7 +291,7 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 
     let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
 
-    let eligible_def_ids: DefIdSet = tcx
+    let eligible_def_ids: Vec<DefId> = tcx
         .mir_keys(())
         .iter()
         .filter_map(|local_def_id| {
@@ -317,7 +317,9 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 
     let codegenned_def_ids = tcx.codegened_and_inlined_items(());
 
-    for &non_codegenned_def_id in eligible_def_ids.difference(codegenned_def_ids) {
+    for non_codegenned_def_id in
+        eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id))
+    {
         let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
 
         // If a function is marked `#[no_coverage]`, then skip generating a

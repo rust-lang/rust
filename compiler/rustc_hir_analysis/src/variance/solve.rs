@@ -5,8 +5,7 @@
 //! optimal solution to the constraints. The final variance for each
 //! inferred is then written into the `variance_map` in the tcx.
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty;
 
 use super::constraints::*;
@@ -89,14 +88,12 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         }
     }
 
-    fn create_map(&self) -> FxHashMap<DefId, &'tcx [ty::Variance]> {
+    fn create_map(&self) -> DefIdMap<&'tcx [ty::Variance]> {
         let tcx = self.terms_cx.tcx;
 
         let solutions = &self.solutions;
-        self.terms_cx
-            .inferred_starts
-            .iter()
-            .map(|(&def_id, &InferredIndex(start))| {
+        DefIdMap::from(self.terms_cx.inferred_starts.items().map(
+            |(&def_id, &InferredIndex(start))| {
                 let generics = tcx.generics_of(def_id);
                 let count = generics.count();
 
@@ -115,8 +112,8 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 }
 
                 (def_id.to_def_id(), &*variances)
-            })
-            .collect()
+            },
+        ))
     }
 
     fn evaluate(&self, term: VarianceTermPtr<'a>) -> ty::Variance {
