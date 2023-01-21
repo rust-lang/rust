@@ -97,6 +97,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrape-example-help-color: #eee;
 	--scrape-example-help-hover-border-color: #fff;
 	--scrape-example-help-hover-color: #fff;
+	--scrape-example-code-wrapper-background-start: rgba(15, 20, 25, 1);
+	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
 }
 
 h1, h2, h3, h4 {
@@ -202,11 +204,4 @@ above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 #source-sidebar div.files > a:focus, details.dir-entry summary:focus,
 #source-sidebar div.files > a.selected {
 	color: #ffb44c;
-}
-
-.scraped-example:not(.expanded) .code-wrapper::before {
-	background: linear-gradient(to bottom, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
-}
-.scraped-example:not(.expanded) .code-wrapper::after {
-	background: linear-gradient(to top, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
 }
