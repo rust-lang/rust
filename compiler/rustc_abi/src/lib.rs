@@ -8,6 +8,7 @@ use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
+use rustc_data_structures::intern::Interned;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
 use rustc_index::vec::{Idx, IndexVec};
@@ -1257,9 +1258,9 @@ impl Abi {
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub enum Variants<V: Idx> {
+pub enum Variants {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
-    Single { index: V },
+    Single { index: VariantIdx },
 
     /// Enum-likes with more than one inhabited variant: each variant comes with
     /// a *discriminant* (usually the same as the variant index but the user can
@@ -1269,15 +1270,15 @@ pub enum Variants<V: Idx> {
     /// For enums, the tag is the sole field of the layout.
     Multiple {
         tag: Scalar,
-        tag_encoding: TagEncoding<V>,
+        tag_encoding: TagEncoding,
         tag_field: usize,
-        variants: IndexVec<V, LayoutS<V>>,
+        variants: IndexVec<VariantIdx, LayoutS>,
     },
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub enum TagEncoding<V: Idx> {
+pub enum TagEncoding {
     /// The tag directly stores the discriminant, but possibly with a smaller layout
     /// (so converting the tag to the discriminant can require sign extension).
     Direct,
@@ -1292,7 +1293,11 @@ pub enum TagEncoding<V: Idx> {
     /// For example, `Option<(usize, &T)>`  is represented such that
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
-    Niche { untagged_variant: V, niche_variants: RangeInclusive<V>, niche_start: u128 },
+    Niche {
+        untagged_variant: VariantIdx,
+        niche_variants: RangeInclusive<VariantIdx>,
+        niche_start: u128,
+    },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -1379,9 +1384,14 @@ impl Niche {
     }
 }
 
+rustc_index::newtype_index! {
+    #[derive(HashStable_Generic)]
+    pub struct VariantIdx {}
+}
+
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub struct LayoutS<V: Idx> {
+pub struct LayoutS {
     /// Says where the fields are located within the layout.
     pub fields: FieldsShape,
 
@@ -1392,7 +1402,7 @@ pub struct LayoutS<V: Idx> {
     ///
     /// To access all fields of this layout, both `fields` and the fields of the active variant
     /// must be taken into account.
-    pub variants: Variants<V>,
+    pub variants: Variants,
 
     /// The `abi` defines how this data is passed between functions, and it defines
     /// value restrictions via `valid_range`.
@@ -1411,13 +1421,13 @@ pub struct LayoutS<V: Idx> {
     pub size: Size,
 }
 
-impl<V: Idx> LayoutS<V> {
+impl LayoutS {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
         let align = scalar.align(cx);
         LayoutS {
-            variants: Variants::Single { index: V::new(0) },
+            variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Scalar(scalar),
             largest_niche,
@@ -1427,7 +1437,7 @@ impl<V: Idx> LayoutS<V> {
     }
 }
 
-impl<V: Idx> fmt::Debug for LayoutS<V> {
+impl fmt::Debug for LayoutS {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is how `Layout` used to print before it become
         // `Interned<LayoutS>`. We print it like this to avoid having to update
@@ -1441,6 +1451,43 @@ impl<V: Idx> fmt::Debug for LayoutS<V> {
             .field("largest_niche", largest_niche)
             .field("variants", variants)
             .finish()
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
+#[rustc_pass_by_value]
+pub struct Layout<'a>(pub Interned<'a, LayoutS>);
+
+impl<'a> fmt::Debug for Layout<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // See comment on `<LayoutS as Debug>::fmt` above.
+        self.0.0.fmt(f)
+    }
+}
+
+impl<'a> Layout<'a> {
+    pub fn fields(self) -> &'a FieldsShape {
+        &self.0.0.fields
+    }
+
+    pub fn variants(self) -> &'a Variants {
+        &self.0.0.variants
+    }
+
+    pub fn abi(self) -> Abi {
+        self.0.0.abi
+    }
+
+    pub fn largest_niche(self) -> Option<Niche> {
+        self.0.0.largest_niche
+    }
+
+    pub fn align(self) -> AbiAndPrefAlign {
+        self.0.0.align
+    }
+
+    pub fn size(self) -> Size {
+        self.0.0.size
     }
 }
 
@@ -1479,7 +1526,7 @@ pub enum InitKind {
     UninitMitigated0x01Fill,
 }
 
-impl<V: Idx> LayoutS<V> {
+impl LayoutS {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         self.abi.is_unsized()
