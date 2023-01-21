@@ -35,6 +35,7 @@
 use std::fmt::{Debug, Formatter};
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -589,7 +590,7 @@ impl Map {
     ) -> Self {
         let mut map = Self::new();
         let exclude = excluded_locals(body);
-        map.register_with_filter(tcx, body, filter, &exclude);
+        map.register_with_filter(tcx, body, filter, exclude);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
@@ -600,12 +601,12 @@ impl Map {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         mut filter: impl FnMut(Ty<'tcx>) -> bool,
-        exclude: &IndexVec<Local, bool>,
+        exclude: BitSet<Local>,
     ) {
         // We use this vector as stack, pushing and popping projections.
         let mut projection = Vec::new();
         for (local, decl) in body.local_decls.iter_enumerated() {
-            if !exclude[local] {
+            if !exclude.contains(local) {
                 self.register_with_filter_rec(tcx, local, &mut projection, decl.ty, &mut filter);
             }
         }
@@ -823,26 +824,27 @@ pub fn iter_fields<'tcx>(
 }
 
 /// Returns all locals with projections that have their reference or address taken.
-pub fn excluded_locals(body: &Body<'_>) -> IndexVec<Local, bool> {
+pub fn excluded_locals(body: &Body<'_>) -> BitSet<Local> {
     struct Collector {
-        result: IndexVec<Local, bool>,
+        result: BitSet<Local>,
     }
 
     impl<'tcx> Visitor<'tcx> for Collector {
         fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-            if context.is_borrow()
+            if (context.is_borrow()
                 || context.is_address_of()
                 || context.is_drop()
-                || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
+                || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput))
+                && !place.is_indirect()
             {
                 // A pointer to a place could be used to access other places with the same local,
                 // hence we have to exclude the local completely.
-                self.result[place.local] = true;
+                self.result.insert(place.local);
             }
         }
     }
 
-    let mut collector = Collector { result: IndexVec::from_elem(false, &body.local_decls) };
+    let mut collector = Collector { result: BitSet::new_empty(body.local_decls.len()) };
     collector.visit_body(body);
     collector.result
 }
