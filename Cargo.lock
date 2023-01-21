@@ -40,9 +40,9 @@ checksum = "8f1f8f5a6f3d50d89e3797d7593a50f96bb2aaa20ca0cc7be1fb673232c91d72"
 
 [[package]]
 name = "arbitrary"
-version = "1.1.7"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d86fd10d912cab78764cc44307d9cd5f164e09abbeb87fb19fb6d95937e8da5f"
+checksum = "b0224938f92e7aef515fac2ff2d18bd1115c1394ddf4a092e0c87e8be9499ee5"
 
 [[package]]
 name = "arrayvec"
@@ -313,9 +313,9 @@ dependencies = [
 
 [[package]]
 name = "derive_arbitrary"
-version = "1.1.6"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "226ad66541d865d7a7173ad6a9e691c33fdb910ac723f4bc734b3e5294a1f931"
+checksum = "cf460bbff5f571bfc762da5102729f59f338be7db17a21fade44c5c4f5005350"
 dependencies = [
  "proc-macro2",
  "quote",
