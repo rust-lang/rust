@@ -1,6 +1,6 @@
 use crate::errors::{
     note_and_explain, BorrowedTooLong, FullfillReqLifetime, LfBoundNotSatisfied, OutlivesBound,
-    OutlivesContent, RegionOriginNote,
+    OutlivesContent, RefLongerThanData, RegionOriginNote,
 };
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
@@ -223,30 +223,26 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0491,
-                    "in type `{}`, reference has a longer lifetime than the data it references",
-                    self.ty_to_string(ty)
-                );
-                note_and_explain_region(
+                let pointer_valid = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "the pointer is valid for ",
                     sub,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::PointerValidFor,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                note_and_explain_region(
+                let data_valid = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "but the referenced data is only valid for ",
                     sup,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::DataValidFor,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                err
+                RefLongerThanData {
+                    span,
+                    ty: self.resolve_vars_if_possible(ty),
+                    notes: pointer_valid.into_iter().chain(data_valid).collect(),
+                }
+                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
             infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => {
                 let mut err = self.report_extra_impl_obligation(

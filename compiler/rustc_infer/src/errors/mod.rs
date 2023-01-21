@@ -980,3 +980,13 @@ pub struct BorrowedTooLong<'a> {
     #[subdiagnostic]
     pub notes: Vec<note_and_explain::RegionExplanation<'a>>,
 }
+
+#[derive(Diagnostic)]
+#[diag(infer_ref_longer_than_data, code = "E0491")]
+pub struct RefLongerThanData<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
+    #[subdiagnostic]
+    pub notes: Vec<note_and_explain::RegionExplanation<'a>>,
+}

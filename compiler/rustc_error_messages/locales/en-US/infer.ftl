@@ -150,6 +150,8 @@ infer_region_explanation = {$pref_kind ->
     [lf_must_outlive] but lifetime parameter must outlive
     [type_valid_for] the type is valid for
     [borrow_lasts_for] but the borrow lasts for
+    [pointer_valid_for] the pointer is valid for
+    [data_valid_for] but the referenced data is only valid for
     [empty] {""}
 }{$pref_kind ->
     [empty] {""}
@@ -175,6 +177,7 @@ infer_outlives_bound = lifetime of the source pointer does not outlive lifetime 
 infer_fullfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
 infer_lf_bound_not_satisfied = lifetime bound not satisfied
 infer_borrowed_too_long = a value of type `{$ty}` is borrowed for too long
+infer_ref_longer_than_data = in type `{$ty}`, reference has a longer lifetime than the data it references
 
 infer_mismatched_static_lifetime = incompatible lifetime on type
 infer_does_not_outlive_static_from_impl = ...does not necessarily outlive the static lifetime introduced by the compatible `impl`

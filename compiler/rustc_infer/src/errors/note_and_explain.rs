@@ -131,6 +131,8 @@ pub enum PrefixKind {
     LfMustOutlive,
     TypeValidFor,
     BorrowLastsFor,
+    PointerValidFor,
+    DataValidFor,
 }
 
 pub enum SuffixKind {
@@ -153,6 +155,8 @@ impl IntoDiagnosticArg for PrefixKind {
             Self::LfMustOutlive => "lf_must_outlive",
             Self::TypeValidFor => "type_valid_for",
             Self::BorrowLastsFor => "borrow_lasts_for",
+            Self::PointerValidFor => "pointer_valid_for",
+            Self::DataValidFor => "data_valid_for",
         }
         .into();
         rustc_errors::DiagnosticArgValue::Str(kind)
