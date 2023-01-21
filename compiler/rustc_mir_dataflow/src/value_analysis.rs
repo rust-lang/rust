@@ -65,10 +65,8 @@ pub trait ValueAnalysis<'tcx> {
             StatementKind::Assign(box (place, rvalue)) => {
                 self.handle_assign(*place, rvalue, state);
             }
-            StatementKind::SetDiscriminant { .. } => {
-                // Could treat this as writing a constant to a pseudo-place.
-                // But discriminants are currently not tracked, so we do nothing.
-                // Related: https://github.com/rust-lang/unsafe-code-guidelines/issues/84
+            StatementKind::SetDiscriminant { box ref place, .. } => {
+                state.flood_discr(place.as_ref(), self.map());
             }
             StatementKind::Intrinsic(box intrinsic) => {
                 self.handle_intrinsic(intrinsic, state);
@@ -447,26 +445,29 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     }
 
     pub fn flood_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
-        if let Some(root) = map.find(place) {
-            self.flood_idx_with(root, map, value);
-        }
-    }
-
-    pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map) {
-        self.flood_with(place, map, V::top())
-    }
-
-    pub fn flood_idx_with(&mut self, place: PlaceIndex, map: &Map, value: V) {
         let StateData::Reachable(values) = &mut self.0 else { return };
-        map.preorder_invoke(place, &mut |place| {
+        map.for_each_aliasing_place(place, None, &mut |place| {
             if let Some(vi) = map.places[place].value_index {
                 values[vi] = value.clone();
             }
         });
     }
 
-    pub fn flood_idx(&mut self, place: PlaceIndex, map: &Map) {
-        self.flood_idx_with(place, map, V::top())
+    pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map) {
+        self.flood_with(place, map, V::top())
+    }
+
+    pub fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
+        let StateData::Reachable(values) = &mut self.0 else { return };
+        map.for_each_aliasing_place(place, Some(TrackElem::Discriminant), &mut |place| {
+            if let Some(vi) = map.places[place].value_index {
+                values[vi] = value.clone();
+            }
+        });
+    }
+
+    pub fn flood_discr(&mut self, place: PlaceRef<'_>, map: &Map) {
+        self.flood_discr_with(place, map, V::top())
     }
 
     /// Copies `source` to `target`, including all tracked places beneath.
@@ -474,7 +475,9 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     /// If `target` contains a place that is not contained in `source`, it will be overwritten with
     /// Top. Also, because this will copy all entries one after another, it may only be used for
     /// places that are non-overlapping or identical.
-    pub fn assign_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
+    ///
+    /// The target place must have been flooded before calling this method.
+    fn assign_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
         let StateData::Reachable(values) = &mut self.0 else { return };
 
         // If both places are tracked, we copy the value to the target. If the target is tracked,
@@ -492,26 +495,28 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
             let projection = map.places[target_child].proj_elem.unwrap();
             if let Some(source_child) = map.projections.get(&(source, projection)) {
                 self.assign_place_idx(target_child, *source_child, map);
-            } else {
-                self.flood_idx(target_child, map);
             }
         }
     }
 
     pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map) {
+        self.flood(target, map);
         if let Some(target) = map.find(target) {
             self.assign_idx(target, result, map);
-        } else {
-            // We don't track this place nor any projections, assignment can be ignored.
         }
     }
 
+    pub fn assign_discr(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map) {
+        self.flood_discr(target, map);
+        if let Some(target) = map.find_discr(target) {
+            self.assign_idx(target, result, map);
+        }
+    }
+
+    /// The target place must have been flooded before calling this method.
     pub fn assign_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map) {
         match result {
             ValueOrPlace::Value(value) => {
-                // First flood the target place in case we also track any projections (although
-                // this scenario is currently not well-supported by the API).
-                self.flood_idx(target, map);
                 let StateData::Reachable(values) = &mut self.0 else { return };
                 if let Some(value_index) = map.places[target].value_index {
                     values[value_index] = value;
@@ -524,6 +529,14 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     pub fn get(&self, place: PlaceRef<'_>, map: &Map) -> V {
         map.find(place).map(|place| self.get_idx(place, map)).unwrap_or(V::top())
+    }
+
+    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    pub fn get_discr(&self, place: PlaceRef<'_>, map: &Map) -> V {
+        match map.find_discr(place) {
+            Some(place) => self.get_idx(place, map),
+            None => V::top(),
+        }
     }
 
     /// Retrieve the value stored for a place index, or ⊤ if it is not tracked.
@@ -582,7 +595,6 @@ impl Map {
     /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
     /// chosen is an implementation detail and may not be relied upon (other than that their type
     /// passes the filter).
-    #[instrument(skip_all, level = "debug")]
     pub fn from_filter<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
@@ -614,7 +626,7 @@ impl Map {
 
     /// Potentially register the (local, projection) place and its fields, recursively.
     ///
-    /// Invariant: The projection must only contain fields.
+    /// Invariant: The projection must only contain trackable elements.
     fn register_with_filter_rec<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -623,21 +635,46 @@ impl Map {
         ty: Ty<'tcx>,
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
     ) {
-        if filter(ty) {
-            // We know that the projection only contains trackable elements.
-            let place = self.make_place(local, projection).unwrap();
+        // We know that the projection only contains trackable elements.
+        let place = self.make_place(local, projection).unwrap();
 
-            // Allocate a value slot if it doesn't have one.
-            if self.places[place].value_index.is_none() {
-                self.places[place].value_index = Some(self.value_count.into());
-                self.value_count += 1;
+        // Allocate a value slot if it doesn't have one, and the user requested one.
+        if self.places[place].value_index.is_none() && filter(ty) {
+            self.places[place].value_index = Some(self.value_count.into());
+            self.value_count += 1;
+        }
+
+        if ty.is_enum() {
+            let discr_ty = ty.discriminant_ty(tcx);
+            if filter(discr_ty) {
+                let discr = *self
+                    .projections
+                    .entry((place, TrackElem::Discriminant))
+                    .or_insert_with(|| {
+                        // Prepend new child to the linked list.
+                        let next = self.places.push(PlaceInfo::new(Some(TrackElem::Discriminant)));
+                        self.places[next].next_sibling = self.places[place].first_child;
+                        self.places[place].first_child = Some(next);
+                        next
+                    });
+
+                // Allocate a value slot if it doesn't have one.
+                if self.places[discr].value_index.is_none() {
+                    self.places[discr].value_index = Some(self.value_count.into());
+                    self.value_count += 1;
+                }
             }
         }
 
         // Recurse with all fields of this place.
         iter_fields(ty, tcx, |variant, field, ty| {
-            if variant.is_some() {
-                // Downcasts are currently not supported.
+            if let Some(variant) = variant {
+                projection.push(PlaceElem::Downcast(None, variant));
+                let _ = self.make_place(local, projection);
+                projection.push(PlaceElem::Field(field, ty));
+                self.register_with_filter_rec(tcx, local, projection, ty, filter);
+                projection.pop();
+                projection.pop();
                 return;
             }
             projection.push(PlaceElem::Field(field, ty));
@@ -694,13 +731,77 @@ impl Map {
         Some(index)
     }
 
+    /// Locates the given place, if it exists in the tree.
+    pub fn find_discr(&self, place: PlaceRef<'_>) -> Option<PlaceIndex> {
+        let index = self.find(place)?;
+        self.apply(index, TrackElem::Discriminant)
+    }
+
     /// Iterate over all direct children.
     pub fn children(&self, parent: PlaceIndex) -> impl Iterator<Item = PlaceIndex> + '_ {
         Children::new(self, parent)
     }
 
+    /// Invoke a function on the given place and all places that may alias it.
+    ///
+    /// In particular, when the given place has a variant downcast, we invoke the function on all
+    /// the other variants.
+    ///
+    /// `tail_elem` allows to support discriminants that are not a place in MIR, but that we track
+    /// as such.
+    fn for_each_aliasing_place(
+        &self,
+        place: PlaceRef<'_>,
+        tail_elem: Option<TrackElem>,
+        f: &mut impl FnMut(PlaceIndex),
+    ) {
+        let Some(&Some(mut index)) = self.locals.get(place.local) else {
+            // The local is not tracked at all, nothing to invalidate.
+            return;
+        };
+        let elems = place
+            .projection
+            .iter()
+            .map(|&elem| elem.try_into())
+            .chain(tail_elem.map(Ok).into_iter());
+        for elem in elems {
+            let Ok(elem) = elem else { return };
+            let sub = self.apply(index, elem);
+            if let TrackElem::Variant(..) | TrackElem::Discriminant = elem {
+                // Writing to an enum variant field invalidates the other variants and the discriminant.
+                self.for_each_variant_sibling(index, sub, f);
+            }
+            if let Some(sub) = sub {
+                index = sub
+            } else {
+                return;
+            }
+        }
+        self.preorder_invoke(index, f);
+    }
+
+    /// Invoke the given function on all the descendants of the given place, except one branch.
+    pub fn for_each_variant_sibling(
+        &self,
+        parent: PlaceIndex,
+        preserved_child: Option<PlaceIndex>,
+        f: &mut impl FnMut(PlaceIndex),
+    ) {
+        for sibling in self.children(parent) {
+            let elem = self.places[sibling].proj_elem;
+            // Only invalidate variants and discriminant. Fields (for generators) are not
+            // invalidated by assignment to a variant.
+            if let Some(TrackElem::Variant(..) | TrackElem::Discriminant) = elem
+                // Only invalidate the other variants, the current one is fine.
+                && Some(sibling) != preserved_child
+            {
+                self.preorder_invoke(sibling, f);
+            }
+        }
+    }
+
     /// Invoke a function on the given place and all descendants.
-    pub fn preorder_invoke(&self, root: PlaceIndex, f: &mut impl FnMut(PlaceIndex)) {
+    fn preorder_invoke(&self, root: PlaceIndex, f: &mut impl FnMut(PlaceIndex)) {
         f(root);
         for child in self.children(root) {
             self.preorder_invoke(child, f);
@@ -759,6 +860,7 @@ impl<'a> Iterator for Children<'a> {
 }
 
 /// Used as the result of an operand or r-value.
+#[derive(Debug)]
 pub enum ValueOrPlace<V> {
     Value(V),
     Place(PlaceIndex),
@@ -776,6 +878,8 @@ impl<V: HasTop> ValueOrPlace<V> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TrackElem {
     Field(Field),
+    Variant(VariantIdx),
+    Discriminant,
 }
 
 impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
@@ -784,6 +888,7 @@ impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
     fn try_from(value: ProjectionElem<V, T>) -> Result<Self, Self::Error> {
         match value {
             ProjectionElem::Field(field, _) => Ok(TrackElem::Field(field)),
+            ProjectionElem::Downcast(_, idx) => Ok(TrackElem::Variant(idx)),
             _ => Err(()),
         }
     }
@@ -900,6 +1005,12 @@ fn debug_with_context_rec<V: Debug + Eq>(
     for child in map.children(place) {
         let info_elem = map.places[child].proj_elem.unwrap();
         let child_place_str = match info_elem {
+            TrackElem::Discriminant => {
+                format!("discriminant({})", place_str)
+            }
+            TrackElem::Variant(idx) => {
+                format!("({} as {:?})", place_str, idx)
+            }
             TrackElem::Field(field) => {
                 if place_str.starts_with('*') {
                     format!("({}).{}", place_str, field.index())

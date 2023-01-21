@@ -1,6 +1,7 @@
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(exact_size_is_empty)]
+#![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(once_cell)]
 #![feature(stmt_expr_attributes)]

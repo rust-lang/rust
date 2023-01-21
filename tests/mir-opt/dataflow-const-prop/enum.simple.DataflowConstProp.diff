@@ -1,8 +1,8 @@
-- // MIR for `main` before DataflowConstProp
-+ // MIR for `main` after DataflowConstProp
+- // MIR for `simple` before DataflowConstProp
++ // MIR for `simple` after DataflowConstProp
   
-  fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/enum.rs:+0:11: +0:11
+  fn simple() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/enum.rs:+0:13: +0:13
       let _1: E;                           // in scope 0 at $DIR/enum.rs:+1:9: +1:10
       let mut _3: isize;                   // in scope 0 at $DIR/enum.rs:+2:23: +2:31
       scope 1 {
@@ -25,8 +25,10 @@
           StorageLive(_1);                 // scope 0 at $DIR/enum.rs:+1:9: +1:10
           _1 = E::V1(const 0_i32);         // scope 0 at $DIR/enum.rs:+1:13: +1:21
           StorageLive(_2);                 // scope 1 at $DIR/enum.rs:+2:9: +2:10
-          _3 = discriminant(_1);           // scope 1 at $DIR/enum.rs:+2:19: +2:20
-          switchInt(move _3) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 1 at $DIR/enum.rs:+2:13: +2:20
+-         _3 = discriminant(_1);           // scope 1 at $DIR/enum.rs:+2:19: +2:20
+-         switchInt(move _3) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 1 at $DIR/enum.rs:+2:13: +2:20
++         _3 = const 0_isize;              // scope 1 at $DIR/enum.rs:+2:19: +2:20
++         switchInt(const 0_isize) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 1 at $DIR/enum.rs:+2:13: +2:20
       }
   
       bb1: {
@@ -50,7 +52,7 @@
       }
   
       bb4: {
-          _0 = const ();                   // scope 0 at $DIR/enum.rs:+0:11: +3:2
+          _0 = const ();                   // scope 0 at $DIR/enum.rs:+0:13: +3:2
           StorageDead(_2);                 // scope 1 at $DIR/enum.rs:+3:1: +3:2
           StorageDead(_1);                 // scope 0 at $DIR/enum.rs:+3:1: +3:2
           return;                          // scope 0 at $DIR/enum.rs:+3:2: +3:2
