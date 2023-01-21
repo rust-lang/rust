@@ -483,7 +483,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()))
     }
 
-    fn encode_source_map(&mut self) -> LazyTable<u32, LazyValue<rustc_span::SourceFile>> {
+    fn encode_source_map(&mut self) -> LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 
@@ -1130,7 +1130,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             attr_flags |= AttrFlags::IS_DOC_HIDDEN;
         }
         if !attr_flags.is_empty() {
-            self.tables.attr_flags.set(def_id.local_def_index, attr_flags);
+            self.tables.attr_flags.set_nullable(def_id.local_def_index, attr_flags);
         }
     }
 
@@ -1387,7 +1387,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             if tcx.is_intrinsic(def_id) {
-                self.tables.is_intrinsic.set(def_id.index, ());
+                self.tables.is_intrinsic.set_nullable(def_id.index, true);
             }
         }
     }
@@ -1519,7 +1519,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
                 if macro_def.macro_rules {
-                    self.tables.macro_rules.set(def_id.index, ());
+                    self.tables.is_macro_rules.set_nullable(def_id.index, true);
                 }
                 record!(self.tables.macro_definition[def_id] <- &*macro_def.body);
             }
@@ -1529,7 +1529,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::OpaqueTy(ref opaque) => {
                 self.encode_explicit_item_bounds(def_id);
                 if matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias) {
-                    self.tables.is_type_alias_impl_trait.set(def_id.index, ());
+                    self.tables.is_type_alias_impl_trait.set_nullable(def_id.index, true);
                 }
             }
             hir::ItemKind::Enum(..) => {
@@ -1636,7 +1636,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if let hir::ItemKind::Fn(..) = item.kind {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             if tcx.is_intrinsic(def_id) {
-                self.tables.is_intrinsic.set(def_id.index, ());
+                self.tables.is_intrinsic.set_nullable(def_id.index, true);
             }
         }
         if let hir::ItemKind::Impl { .. } = item.kind {
@@ -2038,7 +2038,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
             if tcx.is_intrinsic(def_id) {
-                self.tables.is_intrinsic.set(def_id.index, ());
+                self.tables.is_intrinsic.set_nullable(def_id.index, true);
             }
         }
     }
