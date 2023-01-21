@@ -879,7 +879,7 @@ fn sanitize_witness<'tcx>(
 
     let mut mismatches = Vec::new();
     for fty in &layout.field_tys {
-        if fty.is_static_ptr {
+        if fty.ignore_for_traits {
             continue;
         }
         let decl_ty = tcx.normalize_erasing_regions(param_env, fty.ty);
@@ -904,6 +904,7 @@ fn sanitize_witness<'tcx>(
 }
 
 fn compute_layout<'tcx>(
+    tcx: TyCtxt<'tcx>,
     liveness: LivenessInfo,
     body: &Body<'tcx>,
 ) -> (
@@ -923,15 +924,33 @@ fn compute_layout<'tcx>(
     let mut locals = IndexVec::<GeneratorSavedLocal, _>::new();
     let mut tys = IndexVec::<GeneratorSavedLocal, _>::new();
     for (saved_local, local) in saved_locals.iter_enumerated() {
+        debug!("generator saved local {:?} => {:?}", saved_local, local);
+
         locals.push(local);
         let decl = &body.local_decls[local];
-        let decl = GeneratorSavedTy {
-            ty: decl.ty,
-            source_info: decl.source_info,
-            is_static_ptr: decl.internal,
+        debug!(?decl);
+
+        let ignore_for_traits = if tcx.sess.opts.unstable_opts.drop_tracking_mir {
+            match decl.local_info {
+                // Do not include raw pointers created from accessing `static` items, as those could
+                // well be re-created by another access to the same static.
+                Some(box LocalInfo::StaticRef { is_thread_local, .. }) => !is_thread_local,
+                // Fake borrows are only read by fake reads, so do not have any reality in
+                // post-analysis MIR.
+                Some(box LocalInfo::FakeBorrow) => true,
+                _ => false,
+            }
+        } else {
+            // FIXME(#105084) HIR-based drop tracking does not account for all the temporaries that
+            // MIR building may introduce. This leads to wrongly ignored types, but this is
+            // necessary for internal consistency and to avoid ICEs.
+            decl.internal
         };
+        let decl =
+            GeneratorSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
+        debug!(?decl);
+
         tys.push(decl);
-        debug!("generator saved local {:?} => {:?}", saved_local, local);
     }
 
     // Leave empty variants for the UNRESUMED, RETURNED, and POISONED states.
@@ -1401,7 +1420,7 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
     // Extract locals which are live across suspension point into `layout`
     // `remap` gives a mapping from local indices onto generator struct indices
     // `storage_liveness` tells us which locals have live storage at suspension points
-    let (_, generator_layout, _) = compute_layout(liveness_info, body);
+    let (_, generator_layout, _) = compute_layout(tcx, liveness_info, body);
 
     if tcx.sess.opts.unstable_opts.drop_tracking_mir {
         check_suspend_tys(tcx, &generator_layout, &body);
@@ -1503,7 +1522,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
-        let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
+        let (remap, layout, storage_liveness) = compute_layout(tcx, liveness_info, body);
 
         let can_return = can_return(tcx, body, tcx.param_env(body.source.def_id()));
 
@@ -1700,7 +1719,7 @@ fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &GeneratorLayout<'tcx>, bo
             let decl = &layout.field_tys[local];
             debug!(?decl);
 
-            if !decl.is_static_ptr && linted_tys.insert(decl.ty) {
+            if !decl.ignore_for_traits && linted_tys.insert(decl.ty) {
                 let Some(hir_id) = decl.source_info.scope.lint_root(&body.source_scopes) else { continue };
 
                 check_must_not_suspend_ty(

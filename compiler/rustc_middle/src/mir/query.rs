@@ -140,8 +140,8 @@ pub struct GeneratorSavedTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Source info corresponding to the local in the original MIR body.
     pub source_info: SourceInfo,
-    /// Whether the local was introduced as a raw pointer to a static.
-    pub is_static_ptr: bool,
+    /// Whether the local should be ignored for trait bound computations.
+    pub ignore_for_traits: bool,
 }
 
 /// The layout of generator state.

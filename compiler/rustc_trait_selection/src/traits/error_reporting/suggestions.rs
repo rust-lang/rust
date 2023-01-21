@@ -2389,7 +2389,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 for &local in variant {
                     let decl = &generator_info.field_tys[local];
                     debug!(?decl);
-                    if ty_matches(ty::Binder::dummy(decl.ty)) && !decl.is_static_ptr {
+                    if ty_matches(ty::Binder::dummy(decl.ty)) && !decl.ignore_for_traits {
                         interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(
                             decl.source_info.span,
                             Some((None, source_info.span, None, from_awaited_ty)),

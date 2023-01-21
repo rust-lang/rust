@@ -625,7 +625,7 @@ impl<'tcx> TyCtxt<'tcx> {
         generator_layout
             .field_tys
             .iter()
-            .filter(|decl| !decl.is_static_ptr)
+            .filter(|decl| !decl.ignore_for_traits)
             .map(|decl| ty::EarlyBinder(decl.ty))
     }
 
