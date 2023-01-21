@@ -98,6 +98,7 @@
 #![cfg_attr(not(bootstrap), warn(multiple_supertrait_upcastable))]
 //
 // Library features:
+#![feature(associated_type_defaults)]
 #![feature(const_align_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
