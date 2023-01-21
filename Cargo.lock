@@ -78,7 +78,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide 0.6.2",
- "object 0.30.2",
+ "object",
  "rustc-demangle",
 ]
 
@@ -1089,15 +1089,6 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
-dependencies = [
- "memchr",
-]
-
-[[package]]
-name = "object"
 version = "0.30.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b8c786513eb403643f2a88c244c2aaa270ef2153f55094587d0c48a3cf22a83"
@@ -1238,7 +1229,7 @@ name = "proc-macro-api"
 version = "0.0.0"
 dependencies = [
  "memmap2",
- "object 0.29.0",
+ "object",
  "paths",
  "profile",
  "serde",
@@ -1257,7 +1248,7 @@ dependencies = [
  "libloading",
  "mbe",
  "memmap2",
- "object 0.29.0",
+ "object",
  "paths",
  "proc-macro-api",
  "proc-macro-test",
