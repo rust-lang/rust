@@ -23,7 +23,7 @@ serde = { version = "1.0.137", features = ["derive"] }
 serde_json = { version = "1.0.81", features = ["unbounded_depth"] }
 tracing = "0.1.37"
 memmap2 = "0.5.4"
-snap = "1.0.5"
+snap = "1.1.0"
 
 # local deps
 paths.workspace = true
