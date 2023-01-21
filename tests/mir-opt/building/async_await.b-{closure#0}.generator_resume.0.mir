@@ -1,8 +1,22 @@
 // MIR for `b::{closure#0}` 0 generator_resume
 /* generator_layout = GeneratorLayout {
     field_tys: {
-        _0: impl std::future::Future<Output = ()>,
-        _1: impl std::future::Future<Output = ()>,
+        _0: GeneratorSavedTy {
+            ty: impl std::future::Future<Output = ()>,
+            source_info: SourceInfo {
+                span: $DIR/async_await.rs:15:8: 15:14 (#9),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+        },
+        _1: GeneratorSavedTy {
+            ty: impl std::future::Future<Output = ()>,
+            source_info: SourceInfo {
+                span: $DIR/async_await.rs:16:8: 16:14 (#12),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+        },
     },
     variant_fields: {
         Unresumed(0): [],

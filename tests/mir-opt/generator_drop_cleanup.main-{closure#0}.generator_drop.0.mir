@@ -7,7 +7,7 @@
                 span: $DIR/generator_drop_cleanup.rs:11:13: 11:15 (#0),
                 scope: scope[0],
             },
-            is_static_ptr: false,
+            ignore_for_traits: false,
         },
     },
     variant_fields: {
