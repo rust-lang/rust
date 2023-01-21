@@ -622,8 +622,7 @@ impl Map {
         ty: Ty<'tcx>,
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
     ) {
-        // Note: The framework supports only scalars for now.
-        if filter(ty) && ty.is_scalar() {
+        if filter(ty) {
             // We know that the projection only contains trackable elements.
             let place = self.make_place(local, projection).unwrap();
 
