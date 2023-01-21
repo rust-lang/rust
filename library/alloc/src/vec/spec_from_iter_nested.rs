@@ -1,8 +1,11 @@
+use core::alloc;
 use core::cmp;
 use core::iter::TrustedLen;
 use core::ptr;
 
+use crate::alloc::Global;
 use crate::raw_vec::RawVec;
+use crate::DEFAULT_COOP_PREFERRED;
 
 use super::{SpecExtend, Vec};
 
@@ -13,9 +16,11 @@ pub(super) trait SpecFromIterNested<T, I> {
     fn from_iter(iter: I) -> Self;
 }
 
-impl<T, I> SpecFromIterNested<T, I> for Vec<T>
+#[allow(unused_braces)]
+impl<T, I, const COOP_PREFERRED: bool> SpecFromIterNested<T, I> for Vec<T, Global, COOP_PREFERRED>
 where
     I: Iterator<Item = T>,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be
@@ -24,7 +29,7 @@ where
         // vector being full in the few subsequent loop iterations.
         // So we get better branch prediction.
         let mut vector = match iterator.next() {
-            None => return Vec::new(),
+            None => return Vec::new_co(),
             Some(element) => {
                 let (lower, _) = iterator.size_hint();
                 let initial_capacity =
@@ -40,12 +45,13 @@ where
         };
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
-        <Vec<T> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
+        <Vec<T, Global, COOP_PREFERRED> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
         vector
     }
 }
 
-impl<T, I> SpecFromIterNested<T, I> for Vec<T>
+#[allow(unused_braces)]
+impl<T, I> SpecFromIterNested<T, I> for Vec<T, Global, { DEFAULT_COOP_PREFERRED!() }>
 where
     I: TrustedLen<Item = T>,
 {

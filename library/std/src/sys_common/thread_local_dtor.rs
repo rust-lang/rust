@@ -15,6 +15,7 @@
 
 use crate::ptr;
 use crate::sys_common::thread_local_key::StaticKey;
+use alloc::vec::PlVec;
 
 pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     // The fallback implementation uses a vanilla OS-based TLS key to track
@@ -28,7 +29,7 @@ pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut
     // flagged for destruction.
 
     static DTORS: StaticKey = StaticKey::new(Some(run_dtors));
-    type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
+    type List = PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
     if DTORS.get().is_null() {
         let v: Box<List> = Box::new(Vec::new());
         DTORS.set(Box::into_raw(v) as *mut u8);

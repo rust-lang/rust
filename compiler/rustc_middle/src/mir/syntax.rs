@@ -3,9 +3,9 @@
 //! This is in a dedicated file so that changes to this file can be reviewed more carefully.
 //! The intention is that this file only contains datatype declarations, no code.
 
+use super::{BasicBlock, Constant, Field, Local, SwitchTargets, UserTypeProjection};
 use core::alloc::GlobalCoAllocMeta;
 use core::mem;
-use super::{BasicBlock, Constant, Field, Local, SwitchTargets, UserTypeProjection};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
 use crate::traits::Reveal;

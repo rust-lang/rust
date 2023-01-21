@@ -1,3 +1,4 @@
+use crate::alloc::Global;
 use core::ptr::{self};
 use core::slice::{self};
 
@@ -34,6 +35,7 @@ pub(super) struct InPlaceDstBufDrop<T> {
 impl<T> Drop for InPlaceDstBufDrop<T> {
     #[inline]
     fn drop(&mut self) {
-        unsafe { super::Vec::from_raw_parts(self.ptr, self.len, self.cap) };
+        // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+        unsafe { super::Vec::<T, Global, false>::from_raw_parts(self.ptr, self.len, self.cap) };
     }
 }

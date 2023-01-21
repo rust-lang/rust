@@ -1,5 +1,5 @@
 use core::iter::{FusedIterator, TrustedLen};
-use core::{array, fmt, mem::MaybeUninit, ops::Try, ptr};
+use core::{alloc, array, fmt, mem::MaybeUninit, ops::Try, ptr};
 
 use crate::alloc::{Allocator, Global};
 
@@ -17,29 +17,42 @@ use super::VecDeque;
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-> {
-    inner: VecDeque<T, A>,
+    const COOP_PREFERRED: bool = true,
+> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
+    inner: VecDeque<T, A, COOP_PREFERRED>,
 }
 
-impl<T, A: Allocator> IntoIter<T, A> {
-    pub(super) fn new(inner: VecDeque<T, A>) -> Self {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> IntoIter<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
+    pub(super) fn new(inner: VecDeque<T, A, COOP_PREFERRED>) -> Self {
         IntoIter { inner }
     }
 
-    pub(super) fn into_vecdeque(self) -> VecDeque<T, A> {
+    pub(super) fn into_vecdeque(self) -> VecDeque<T, A, COOP_PREFERRED> {
         self.inner
     }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
+impl<T: fmt::Debug, A: Allocator, const COOP_PREFERRED: bool> fmt::Debug
+    for IntoIter<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter").field(&self.inner).finish()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Iterator for IntoIter<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> Iterator for IntoIter<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Item = T;
 
     #[inline]
@@ -175,7 +188,11 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator
+    for IntoIter<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.inner.pop_back()
@@ -245,7 +262,11 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator
+    for IntoIter<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
@@ -253,7 +274,15 @@ impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
+impl<T, A: Allocator, const COOP_PREFERRED: bool> FusedIterator for IntoIter<T, A, COOP_PREFERRED> where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
+{
+}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
+unsafe impl<T, A: Allocator, const COOP_PREFERRED: bool> TrustedLen
+    for IntoIter<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
+}

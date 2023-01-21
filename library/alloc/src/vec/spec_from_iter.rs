@@ -1,3 +1,5 @@
+use crate::alloc::Global;
+use core::alloc;
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
 
@@ -25,16 +27,22 @@ pub(super) trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
 }
 
-impl<T, I> SpecFromIter<T, I> for Vec<T>
+#[allow(unused_braces)]
+impl<T, I, const COOP_PREFERRED: bool> SpecFromIter<T, I> for Vec<T, Global, COOP_PREFERRED>
 where
     I: Iterator<Item = T>,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     default fn from_iter(iterator: I) -> Self {
         SpecFromIterNested::from_iter(iterator)
     }
 }
 
-impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
+#[allow(unused_braces)]
+impl<T, const COOP_PREFERRED: bool> SpecFromIter<T, IntoIter<T>> for Vec<T, Global, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately
         // re-collects into a vector. We can short circuit this if the IntoIter
@@ -55,7 +63,7 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
             }
         }
 
-        let mut vec = Vec::new();
+        let mut vec = Vec::<T, Global, COOP_PREFERRED>::new_co();
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
         vec.spec_extend(iterator);

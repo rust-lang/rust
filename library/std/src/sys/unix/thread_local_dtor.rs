@@ -58,11 +58,20 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     static REGISTERED: Cell<bool> = Cell::new(false);
 
     #[thread_local]
-    static mut DTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
+    static mut DTORS: PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))> = PlVec::new();
 
     if !REGISTERED.get() {
         _tlv_atexit(run_dtors, ptr::null_mut());
         REGISTERED.set(true);
+    }
+
+    type List = alloc::vec::PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
+
+    #[thread_local]
+    static DTORS: Cell<*mut List> = Cell::new(ptr::null_mut());
+    if DTORS.get().is_null() {
+        let v: Box<List> = box Vec::new();
+        DTORS.set(Box::into_raw(v));
     }
 
     extern "C" {

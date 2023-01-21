@@ -86,6 +86,7 @@
 #![warn(deprecated_in_future)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
+#![allow(incomplete_features)]
 #![allow(explicit_outlives_requirements)]
 #![cfg_attr(not(bootstrap), warn(multiple_supertrait_upcastable))]
 //
@@ -123,6 +124,7 @@
 #![feature(extend_one)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
+#![feature(generic_const_exprs)]
 #![feature(global_co_alloc_meta)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inline_const)]
@@ -180,9 +182,17 @@
 #![feature(fundamental)]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![feature(global_co_alloc)]
+#![feature(global_co_alloc_short_term_pref)]
 #![feature(hashmap_internals)]
 #![feature(lang_items)]
-#![feature(min_specialization)]
+#![feature(global_co_alloc_def)]
+// When we used min_specialization instead of specialization, library/alloc/src/vec/mod.rs was failing with:
+// - cannot specialize on predicate `the constant `core::alloc::co_alloc_metadata_num_slots::<A>()` can be evaluated`
+// - cannot specialize on predicate `[(); _] well-formed`
+// - cannot specialize on predicate `the constant `core::alloc::co_alloc_metadata_num_slots::<A>()` can be evaluated`
+//#![feature(min_specialization)]
+#![feature(associated_type_defaults)]
+#![feature(specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_allow_const_fn_unstable)]

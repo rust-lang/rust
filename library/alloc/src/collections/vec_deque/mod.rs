@@ -5,8 +5,10 @@
 //! are not required to be copyable, and the queue will be sendable if the
 //! contained type is sendable.
 
+#![feature(global_co_alloc)]
 #![stable(feature = "rust1", since = "1.0.0")]
-
+use crate::DEFAULT_COOP_PREFERRED;
+use core::alloc;
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -91,10 +93,14 @@ mod tests;
 #[cfg_attr(not(test), rustc_diagnostic_item = "VecDeque")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
+#[allow(unused_braces)]
 pub struct VecDeque<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-> {
+    const COOP_PREFERRED: bool = { DEFAULT_COOP_PREFERRED!() },
+> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     // `self[0]`, if it exists, is `buf[head]`.
     // `head < buf.capacity()`, unless `buf.capacity() == 0` when `head == 0`.
     head: usize,
@@ -102,11 +108,15 @@ pub struct VecDeque<
     // if `len == 0`, the exact value of `head` is unimportant.
     // if `T` is zero-Sized, then `self.len <= usize::MAX`, otherwise `self.len <= isize::MAX as usize`.
     len: usize,
-    buf: RawVec<T, A>,
+    buf: RawVec<T, A, COOP_PREFERRED>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
+impl<T: Clone, A: Allocator + Clone, const COOP_PREFERRED: bool> Clone
+    for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn clone(&self) -> Self {
         let mut deq = Self::with_capacity_in(self.len(), self.allocator().clone());
         deq.extend(self.iter().cloned());
@@ -120,7 +130,11 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
+unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREFERRED: bool> Drop
+    for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn drop(&mut self) {
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
         /// during unwinding).
@@ -145,15 +159,21 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for VecDeque<T> {
+impl<T, const COOP_PREFERRED: bool> Default for VecDeque<T, Global, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Creates an empty deque.
     #[inline]
-    fn default() -> VecDeque<T> {
-        VecDeque::new()
+    fn default() -> VecDeque<T, Global, COOP_PREFERRED> {
+        VecDeque::<T, Global, COOP_PREFERRED>::new()
     }
 }
 
-impl<T, A: Allocator> VecDeque<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// Marginally more convenient
     #[inline]
     fn ptr(&self) -> *mut T {
@@ -442,12 +462,18 @@ impl<T, A: Allocator> VecDeque<T, A> {
         mut iter: impl Iterator<Item = T>,
         len: usize,
     ) -> usize {
-        struct Guard<'a, T, A: Allocator> {
-            deque: &'a mut VecDeque<T, A>,
+        struct Guard<'a, T, A: Allocator, const COOP_PREFERRED: bool>
+        where
+            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        {
+            deque: &'a mut VecDeque<T, A, COOP_PREFERRED>,
             written: usize,
         }
 
-        impl<'a, T, A: Allocator> Drop for Guard<'a, T, A> {
+        impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> Drop for Guard<'a, T, A, COOP_PREFERRED>
+        where
+            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        {
             fn drop(&mut self) {
                 self.deque.len += self.written;
             }
@@ -525,7 +551,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 }
 
-impl<T> VecDeque<T> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Creates an empty deque.
     ///
     /// # Examples
@@ -539,7 +569,10 @@ impl<T> VecDeque<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_vec_deque_new", since = "1.68.0")]
     #[must_use]
-    pub const fn new() -> VecDeque<T> {
+    pub const fn new() -> VecDeque<T, Global, COOP_PREFERRED>
+    where
+        [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    {
         // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
         VecDeque { head: 0, len: 0, buf: RawVec::NEW }
     }
@@ -556,12 +589,15 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> VecDeque<T> {
-        Self::with_capacity_in(capacity, Global)
+    pub fn with_capacity(capacity: usize) -> VecDeque<T, Global, COOP_PREFERRED> {
+        VecDeque::<T, Global, COOP_PREFERRED>::with_capacity_in(capacity, Global)
     }
 }
 
-impl<T, A: Allocator> VecDeque<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// Creates an empty deque.
     ///
     /// # Examples
@@ -573,7 +609,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn new_in(alloc: A) -> VecDeque<T, A> {
+    pub const fn new_in(alloc: A) -> VecDeque<T, A, COOP_PREFERRED> {
         VecDeque { head: 0, len: 0, buf: RawVec::new_in(alloc) }
     }
 
@@ -587,7 +623,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A, COOP_PREFERRED> {
         VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
     }
 
@@ -1368,7 +1404,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A, COOP_PREFERRED>
     where
         R: RangeBounds<usize>,
     {
@@ -2596,7 +2632,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 }
 
-impl<T: Clone, A: Allocator> VecDeque<T, A> {
+impl<T: Clone, A: Allocator, const COOP_PREFERRED: bool> VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// Modifies the deque in-place so that `len()` is equal to new_len,
     /// either by removing excess elements from the back or by appending clones of `value`
     /// to the back.
@@ -2641,7 +2680,11 @@ fn wrap_index(logical_index: usize, capacity: usize) -> usize {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialEq, A: Allocator> PartialEq for VecDeque<T, A> {
+impl<T: PartialEq, A: Allocator, const COOP_PREFERRED: bool> PartialEq
+    for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn eq(&self, other: &Self) -> bool {
         if self.len != other.len() {
             return false;
@@ -2680,24 +2723,34 @@ impl<T: PartialEq, A: Allocator> PartialEq for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Eq, A: Allocator> Eq for VecDeque<T, A> {}
+impl<T: Eq, A: Allocator, const COOP_PREFERRED: bool> Eq for VecDeque<T, A, COOP_PREFERRED> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
+{
+}
 
-__impl_slice_eq1! { [] VecDeque<T, A>, Vec<U, A>, }
-__impl_slice_eq1! { [] VecDeque<T, A>, &[U], }
-__impl_slice_eq1! { [] VecDeque<T, A>, &mut [U], }
-__impl_slice_eq1! { [const N: usize] VecDeque<T, A>, [U; N], }
-__impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &[U; N], }
-__impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &mut [U; N], }
+__impl_slice_eq1! { [] VecDeque<T, A, COOP_PREFERRED>, Vec<U, A, COOP_PREFERRED>, }
+__impl_slice_eq1! { [] VecDeque<T, A, COOP_PREFERRED>, &[U], }
+__impl_slice_eq1! { [] VecDeque<T, A, COOP_PREFERRED>, &mut [U], }
+__impl_slice_eq1! { [const N: usize] VecDeque<T, A, COOP_PREFERRED>, [U; N], }
+__impl_slice_eq1! { [const N: usize] VecDeque<T, A, COOP_PREFERRED>, &[U; N], }
+__impl_slice_eq1! { [const N: usize] VecDeque<T, A, COOP_PREFERRED>, &mut [U; N], }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialOrd, A: Allocator> PartialOrd for VecDeque<T, A> {
+impl<T: PartialOrd, A: Allocator, const COOP_PREFERRED: bool> PartialOrd
+    for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord, A: Allocator> Ord for VecDeque<T, A> {
+impl<T: Ord, A: Allocator, const COOP_PREFERRED: bool> Ord for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         self.iter().cmp(other.iter())
@@ -2705,7 +2758,10 @@ impl<T: Ord, A: Allocator> Ord for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Hash, A: Allocator> Hash for VecDeque<T, A> {
+impl<T: Hash, A: Allocator, const COOP_PREFERRED: bool> Hash for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_length_prefix(self.len);
         // It's not possible to use Hash::hash_slice on slices
@@ -2719,7 +2775,10 @@ impl<T: Hash, A: Allocator> Hash for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> Index<usize> for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Output = T;
 
     #[inline]
@@ -2729,7 +2788,10 @@ impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> IndexMut<usize> for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
         self.get_mut(index).expect("Out of bounds access")
@@ -2737,26 +2799,36 @@ impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> FromIterator<T> for VecDeque<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
+impl<T, const COOP_PREFERRED: bool> FromIterator<T> for VecDeque<T, Global, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T, Global, COOP_PREFERRED> {
         SpecFromIter::spec_from_iter(iter.into_iter())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> IntoIterator for VecDeque<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> IntoIterator for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Item = T;
-    type IntoIter = IntoIter<T, A>;
+    type IntoIter = IntoIter<T, A, COOP_PREFERRED>;
 
     /// Consumes the deque into a front-to-back iterator yielding elements by
     /// value.
-    fn into_iter(self) -> IntoIter<T, A> {
+    fn into_iter(self) -> IntoIter<T, A, COOP_PREFERRED> {
         IntoIter::new(self)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, A: Allocator> IntoIterator for &'a VecDeque<T, A> {
+impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> IntoIterator
+    for &'a VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -2766,7 +2838,11 @@ impl<'a, T, A: Allocator> IntoIterator for &'a VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
+impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> IntoIterator
+    for &'a mut VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
@@ -2776,7 +2852,10 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> Extend<T> for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter());
     }
@@ -2793,7 +2872,11 @@ impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
+impl<'a, T: 'a + Copy, A: Allocator, const COOP_PREFERRED: bool> Extend<&'a T>
+    for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter());
     }
@@ -2810,14 +2893,23 @@ impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug, A: Allocator> fmt::Debug for VecDeque<T, A> {
+impl<T: fmt::Debug, A: Allocator, const COOP_PREFERRED: bool> fmt::Debug
+    for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
-impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool, const OTHER_COOP_PREFERRED: bool>
+    From<Vec<T, A, OTHER_COOP_PREFERRED>> for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(OTHER_COOP_PREFERRED)]:,
+{
     /// Turn a [`Vec<T>`] into a [`VecDeque<T>`].
     ///
     /// [`Vec<T>`]: crate::vec::Vec
@@ -2827,14 +2919,23 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// and to not re-allocate the `Vec`'s buffer or allocate
     /// any additional memory.
     #[inline]
-    fn from(other: Vec<T, A>) -> Self {
+    fn from(other: Vec<T, A, OTHER_COOP_PREFERRED>) -> Self {
         let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
-        Self { head: 0, len, buf: unsafe { RawVec::from_raw_parts_in(ptr, cap, alloc) } }
+        Self {
+            head: 0,
+            len,
+            buf: unsafe { RawVec::<T, A, COOP_PREFERRED>::from_raw_parts_in(ptr, cap, alloc) },
+        }
     }
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
-impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool, const VECDEQUE_COOP_PREFERRED: bool>
+    From<VecDeque<T, A, VECDEQUE_COOP_PREFERRED>> for Vec<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(VECDEQUE_COOP_PREFERRED)]:,
+{
     /// Turn a [`VecDeque<T>`] into a [`Vec<T>`].
     ///
     /// [`Vec<T>`]: crate::vec::Vec
@@ -2864,7 +2965,10 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
     /// assert_eq!(vec, [8, 9, 1, 2, 3, 4]);
     /// assert_eq!(vec.as_ptr(), ptr);
     /// ```
-    fn from(mut other: VecDeque<T, A>) -> Self {
+    fn from(mut other: VecDeque<T, A, VECDEQUE_COOP_PREFERRED>) -> Self
+    where
+        [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(VECDEQUE_COOP_PREFERRED)]:,
+    {
         other.make_contiguous();
 
         unsafe {
@@ -2877,13 +2981,18 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
             if other.head != 0 {
                 ptr::copy(buf.add(other.head), buf, len);
             }
-            Vec::from_raw_parts_in(buf, len, cap, alloc)
+            // @FIXME: COOP
+            Vec::<T, A, COOP_PREFERRED>::from_raw_parts_in(buf, len, cap, alloc)
         }
     }
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
-impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
+impl<T, const N: usize, const COOP_PREFERRED: bool> From<[T; N]>
+    for VecDeque<T, Global, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     /// Converts a `[T; N]` into a `VecDeque<T>`.
     ///
     /// ```
@@ -2894,11 +3003,12 @@ impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
     /// assert_eq!(deq1, deq2);
     /// ```
     fn from(arr: [T; N]) -> Self {
-        let mut deq = VecDeque::with_capacity(N);
+        let mut deq = VecDeque::<T, Global, COOP_PREFERRED>::with_capacity(N);
         let arr = ManuallyDrop::new(arr);
         if !<T>::IS_ZST {
             // SAFETY: VecDeque::with_capacity ensures that there is enough capacity.
             unsafe {
+                // @FIXME for COOP_PREFERRED:
                 ptr::copy_nonoverlapping(arr.as_ptr(), deq.ptr(), N);
             }
         }

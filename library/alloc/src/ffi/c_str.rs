@@ -17,6 +17,8 @@ use core::ptr;
 use core::slice;
 use core::slice::memchr;
 use core::str::{self, Utf8Error};
+use crate::alloc::Global;
+use crate::DEFAULT_COOP_PREFERRED;
 
 #[cfg(target_has_atomic = "ptr")]
 use crate::sync::Arc;
@@ -723,7 +725,8 @@ impl fmt::Debug for CString {
 }
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
-impl From<CString> for Vec<u8> {
+#[allow(unused_braces)]
+impl From<CString> for Vec<u8, Global, {DEFAULT_COOP_PREFERRED!()}> {
     /// Converts a [`CString`] into a <code>[Vec]<[u8]></code>.
     ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.

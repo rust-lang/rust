@@ -14,6 +14,8 @@ use core::ptr;
 use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use core::unicode::conversions;
 
+use crate::alloc;
+use crate::alloc::Global;
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::slice::{Concat, Join, SliceIndex};
@@ -126,11 +128,15 @@ macro_rules! copy_slice_and_advance {
 // [T] and str both impl AsRef<[T]> for some T
 // => s.borrow().as_ref() and we always have slices
 #[cfg(not(no_global_oom_handling))]
-fn join_generic_copy<B, T, S>(slice: &[S], sep: &[T]) -> Vec<T>
+fn join_generic_copy<B, T, S, const COOP_PREFERRED: bool>(
+    slice: &[S],
+    sep: &[T],
+) -> Vec<T, Global, COOP_PREFERRED>
 where
     T: Copy,
     B: AsRef<[T]> + ?Sized,
     S: Borrow<B>,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     let sep_len = sep.len();
     let mut iter = slice.iter();

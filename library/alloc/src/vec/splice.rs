@@ -1,4 +1,5 @@
 use crate::alloc::{Allocator, Global};
+use core::alloc;
 use core::ptr::{self};
 use core::slice::{self};
 
@@ -22,13 +23,20 @@ pub struct Splice<
     'a,
     I: Iterator + 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
-> {
-    pub(super) drain: Drain<'a, I::Item, A>,
+    const COOP_PREFERRED: bool = false,
+> where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
+    pub(super) drain: Drain<'a, I::Item, A, COOP_PREFERRED>,
     pub(super) replace_with: I,
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> Iterator
+    for Splice<'_, I, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -41,17 +49,30 @@ impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator
+    for Splice<'_, I, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn next_back(&mut self) -> Option<Self::Item> {
         self.drain.next_back()
     }
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator
+    for Splice<'_, I, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
+}
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> Drop
+    for Splice<'_, I, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn drop(&mut self) {
         self.drain.by_ref().for_each(drop);
         // At this point draining is done and the only remaining tasks are splicing
@@ -98,7 +119,10 @@ impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
 }
 
 /// Private helper methods for `Splice::drop`
-impl<T, A: Allocator> Drain<'_, T, A> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> Drain<'_, T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// The range from `self.vec.len` to `self.tail_start` contains elements
     /// that have been moved out.
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
