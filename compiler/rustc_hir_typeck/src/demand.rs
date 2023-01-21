@@ -270,7 +270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lt_op: |_| self.tcx.lifetimes.re_erased,
             ct_op: |c| c,
             ty_op: |t| match *t.kind() {
-                ty::Infer(ty::TyVar(vid)) => self.tcx.mk_ty_infer(ty::TyVar(self.root_var(vid))),
+                ty::Infer(ty::TyVar(_)) => self.tcx.mk_ty_var(ty::TyVid::from_u32(0)),
                 ty::Infer(ty::IntVar(_)) => {
                     self.tcx.mk_ty_infer(ty::IntVar(ty::IntVid { index: 0 }))
                 }
@@ -333,6 +333,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // inferred in this method call.
                             let arg = &args[i];
                             let arg_ty = self.node_ty(arg.hir_id);
+                            if !arg.span.overlaps(mismatch_span) {
                             err.span_label(
                                 arg.span,
                                 &format!(
@@ -340,6 +341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                      inferred as `{ty}`",
                                 ),
                             );
+                            }
                             param_args.insert(param_ty, (arg, arg_ty));
                         }
                     }
