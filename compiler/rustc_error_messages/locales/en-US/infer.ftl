@@ -146,8 +146,10 @@ infer_region_explanation = {$pref_kind ->
     [source_pointer_valid_for] source pointer is only valid for
     [type_satisfy] type must satisfy
     [type_outlive] type must outlive
-    [lf_instantiated_with] lifetime parameter instantiated with
-    [lf_must_outlive] but lifetime parameter must outlive
+    [lf_param_instantiated_with] lifetime parameter instantiated with
+    [lf_param_must_outlive] but lifetime parameter must outlive
+    [lf_instantiated_with] lifetime instantiated with
+    [lf_must_outlive] but lifetime must outlive
     [type_valid_for] the type is valid for
     [borrow_lasts_for] but the borrow lasts for
     [pointer_valid_for] the pointer is valid for

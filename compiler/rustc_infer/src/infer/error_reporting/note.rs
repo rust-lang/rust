@@ -5,8 +5,8 @@ use crate::errors::{
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
 use rustc_errors::{
-    fluent, struct_span_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, IntoDiagnostic,
+    fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    IntoDiagnostic,
 };
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
@@ -184,14 +184,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     self.tcx,
                     sup,
                     None,
-                    note_and_explain::PrefixKind::LfInstantiatedWith,
+                    note_and_explain::PrefixKind::LfParamInstantiatedWith,
                     note_and_explain::SuffixKind::Empty,
                 );
                 let param_must_outlive = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     sub,
                     None,
-                    note_and_explain::PrefixKind::LfMustOutlive,
+                    note_and_explain::PrefixKind::LfParamMustOutlive,
                     note_and_explain::SuffixKind::Empty,
                 );
                 LfBoundNotSatisfied {
@@ -279,25 +279,25 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 err
             }
             infer::AscribeUserTypeProvePredicate(span) => {
-                let mut err =
-                    struct_span_err!(self.tcx.sess, span, E0478, "lifetime bound not satisfied");
-                note_and_explain_region(
+                let instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "lifetime instantiated with ",
                     sup,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::LfInstantiatedWith,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                note_and_explain_region(
+                let must_outlive = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "but lifetime must outlive ",
                     sub,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::LfMustOutlive,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                err
+                LfBoundNotSatisfied {
+                    span,
+                    notes: instantiated.into_iter().chain(must_outlive).collect(),
+                }
+                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
         };
         if sub.is_error() || sup.is_error() {
