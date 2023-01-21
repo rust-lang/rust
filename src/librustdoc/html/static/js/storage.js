@@ -153,22 +153,6 @@ function switchTheme(styleElem, mainStyleElem, newThemeName, saveTheme) {
     }
 }
 
-// This function is called from "main.js".
-// eslint-disable-next-line no-unused-vars
-function useSystemTheme(value) {
-    if (value === undefined) {
-        value = true;
-    }
-
-    updateLocalStorage("use-system-theme", value);
-
-    // update the toggle if we're on the settings page
-    const toggle = document.getElementById("use-system-theme");
-    if (toggle && toggle instanceof HTMLInputElement) {
-        toggle.checked = value;
-    }
-}
-
 const updateSystemTheme = (function() {
     if (!window.matchMedia) {
         // fallback to the CSS computed value
