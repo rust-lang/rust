@@ -5,7 +5,9 @@ use crate::mir::traversal::PostorderCache;
 use crate::mir::{BasicBlock, BasicBlockData, Successors, START_BLOCK};
 
 use rustc_data_structures::graph;
-use rustc_data_structures::graph::dominators::{dominators, Dominators};
+use rustc_data_structures::graph::dominators::{
+    dominator_tree, dominators, DominatorTree, Dominators,
+};
 use rustc_index::vec::IndexVec;
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
@@ -33,6 +35,10 @@ impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn is_cfg_cyclic(&self) -> bool {
         self.is_cyclic.is_cyclic(self)
+    }
+
+    pub fn dominator_tree(&self) -> DominatorTree<BasicBlock> {
+        dominator_tree(&self)
     }
 
     #[inline]

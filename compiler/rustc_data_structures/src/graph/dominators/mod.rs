@@ -25,7 +25,7 @@ rustc_index::newtype_index! {
     struct PreorderIndex {}
 }
 
-pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
+pub fn dominator_tree<G: ControlFlowGraph>(graph: G) -> DominatorTree<G::Node> {
     // compute the post order index (rank) for each node
     let mut post_order_rank = IndexVec::from_elem_n(0, graph.num_nodes());
 
@@ -201,7 +201,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         immediate_dominators[*node] = Some(pre_order_to_real[idom[idx]]);
     }
 
-    Dominators { post_order_rank, immediate_dominators }
+    DominatorTree { post_order_rank, immediate_dominators }
 }
 
 /// Evaluate the link-eval virtual forest, providing the currently minimum semi
@@ -265,13 +265,14 @@ fn compress(
 }
 
 #[derive(Clone, Debug)]
-pub struct Dominators<N: Idx> {
+pub struct DominatorTree<N: Idx> {
     post_order_rank: IndexVec<N, usize>,
+    // Note: immediate_dominators[root] is Some(root)!
     immediate_dominators: IndexVec<N, Option<N>>,
 }
 
-impl<Node: Idx> Dominators<Node> {
-    pub fn is_reachable(&self, node: Node) -> bool {
+impl<Node: Idx> DominatorTree<Node> {
+    fn is_reachable(&self, node: Node) -> bool {
         self.immediate_dominators[node].is_some()
     }
 
@@ -282,12 +283,62 @@ impl<Node: Idx> Dominators<Node> {
 
     pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
         assert!(self.is_reachable(node), "node {node:?} is not reachable");
-        Iter { dominators: self, node: Some(node) }
+        Iter { dom_tree: self, node: Some(node) }
+    }
+}
+
+pub struct Iter<'dom, Node: Idx> {
+    dom_tree: &'dom DominatorTree<Node>,
+    node: Option<Node>,
+}
+
+impl<'dom, Node: Idx> Iterator for Iter<'dom, Node> {
+    type Item = Node;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.node {
+            let dom = self.dom_tree.immediate_dominator(node);
+            if dom == node {
+                self.node = None; // reached the root
+            } else {
+                self.node = Some(dom);
+            }
+            Some(node)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Dominators<Node: Idx> {
+    time: IndexVec<Node, Time>,
+    post_order_rank: IndexVec<Node, usize>,
+}
+
+/// Describes the number of vertices discovered at the time when processing of a particular vertex
+/// started and when it finished. Both values are zero for unreachable vertices.
+#[derive(Copy, Clone, Default, Debug)]
+struct Time {
+    start: u32,
+    finish: u32,
+}
+
+impl<Node: Idx> Dominators<Node> {
+    pub fn dummy() -> Self {
+        Self { time: Default::default(), post_order_rank: Default::default() }
     }
 
-    pub fn dominates(&self, dom: Node, node: Node) -> bool {
-        // FIXME -- could be optimized by using post-order-rank
-        self.dominators(node).any(|n| n == dom)
+    /// Returns true if `a` dominates `b`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `b` is unreachable.
+    pub fn dominates(&self, a: Node, b: Node) -> bool {
+        let a = self.time[a];
+        let b = self.time[b];
+        assert!(b.start != 0, "node {b:?} is not reachable");
+        a.start <= b.start && b.finish <= a.finish
     }
 
     /// Provide deterministic ordering of nodes such that, if any two nodes have a dominator
@@ -299,25 +350,60 @@ impl<Node: Idx> Dominators<Node> {
     }
 }
 
-pub struct Iter<'dom, Node: Idx> {
-    dominators: &'dom Dominators<Node>,
-    node: Option<Node>,
-}
+pub fn dominators<G: Copy + ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
+    let DominatorTree { mut immediate_dominators, post_order_rank } = dominator_tree(graph);
 
-impl<'dom, Node: Idx> Iterator for Iter<'dom, Node> {
-    type Item = Node;
+    immediate_dominators[graph.start_node()] = None;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(node) = self.node {
-            let dom = self.dominators.immediate_dominator(node);
-            if dom == node {
-                self.node = None; // reached the root
-            } else {
-                self.node = Some(dom);
-            }
-            Some(node)
-        } else {
-            None
+    // Transpose the dominator tree edges, so that child nodes of vertex v are stored in
+    // node[edges[v].start..edges[y].end].
+    let mut edges: IndexVec<G::Node, std::ops::Range<u32>> =
+        IndexVec::from_elem_n(0..0, graph.num_nodes());
+    for &idom in immediate_dominators.iter() {
+        if let Some(idom) = idom {
+            edges[idom].end += 1;
         }
     }
+    let mut m = 0;
+    for e in edges.iter_mut() {
+        m += e.end;
+        e.start = m;
+        e.end = m;
+    }
+    let mut node = IndexVec::from_elem_n(Idx::new(0), m.try_into().unwrap());
+    for (i, &idom) in immediate_dominators.iter_enumerated() {
+        if let Some(idom) = idom {
+            edges[idom].start -= 1;
+            node[edges[idom].start] = i;
+        }
+    }
+
+    // Perform a depth-first search of the dominator tree. Record the number of vertices discovered
+    // when vertex v is discovered first as time[v].start, and when its processing is finished as
+    // time[v].finish.
+    let mut time: IndexVec<G::Node, Time> =
+        IndexVec::from_elem_n(Time::default(), graph.num_nodes());
+    let mut stack = Vec::new();
+
+    let mut discovered = 1;
+    stack.push(graph.start_node());
+    time[graph.start_node()].start = discovered;
+
+    while let Some(&i) = stack.last() {
+        let e = &mut edges[i];
+        if e.start == e.end {
+            // Finish processing vertex i.
+            time[i].finish = discovered;
+            stack.pop();
+        } else {
+            let j = node[e.start];
+            e.start += 1;
+            // Start processing vertex j.
+            discovered += 1;
+            time[j].start = discovered;
+            stack.push(j);
+        }
+    }
+
+    Dominators { time, post_order_rank }
 }
