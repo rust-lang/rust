@@ -2011,6 +2011,17 @@ impl<'test> TestCx<'test> {
 
         match output_file {
             TargetLocation::ThisFile(path) => {
+                // The idea here is to use the env variable to pass the build_base directory to rustc_save_analysis to be used in cases where there is no output directory
+                // Use of double backslash in `base` below is to cater for paths in Windows OS
+                env::set_var(
+                    "RUST_SAVE_ANALYSIS_CONFIG",
+                    format!(
+                        "{{\"output_file\": \"{base}\",\"full_docs\": false,\
+                      \"pub_only\": true,\"reachable_only\": false,\
+                      \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}}",
+                        base = self.config.build_base.display().to_string().replace("\\", "\\\\"),
+                    ),
+                );
                 rustc.arg("-o").arg(path);
             }
             TargetLocation::ThisDirectory(path) => {
