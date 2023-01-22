@@ -1078,7 +1078,9 @@ macro_rules! from_str_radix_int_impl {
         }
     )*}
 }
-from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
+from_str_radix_int_impl! { isize i8 i16 i32 i64 usize u8 u16 u32 u64 }
+#[cfg(not(no_128_bit))]
+from_str_radix_int_impl! { i128 u128 }
 
 macro_rules! impl_helper_for {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
@@ -1099,7 +1101,9 @@ macro_rules! impl_helper_for {
         }
     })*)
 }
-impl_helper_for! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
+impl_helper_for! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
+#[cfg(not(no_128_bit))]
+impl_helper_for! { i128 u128 }
 
 /// Determines if a string of text of that length of that radix could be guaranteed to be
 /// stored in the given type T.
