@@ -1,7 +1,7 @@
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 
@@ -33,7 +33,7 @@ pub(crate) struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    pub(crate) impls: FxHashMap<DefId, Vec<Impl>>,
+    pub(crate) impls: DefIdMap<Vec<Impl>>,
 
     /// Maintains a mapping of local crate `DefId`s to the fully qualified name
     /// and "short type description" of that node. This is used when generating
@@ -56,7 +56,7 @@ pub(crate) struct Cache {
     /// to the path used if the corresponding type is inlined. By
     /// doing this, we can detect duplicate impls on a trait page, and only display
     /// the impl for the inlined type.
-    pub(crate) exact_paths: FxHashMap<DefId, Vec<Symbol>>,
+    pub(crate) exact_paths: DefIdMap<Vec<Symbol>>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -127,7 +127,7 @@ pub(crate) struct Cache {
 struct CacheBuilder<'a, 'tcx> {
     cache: &'a mut Cache,
     /// This field is used to prevent duplicated impl blocks.
-    impl_ids: FxHashMap<DefId, FxHashSet<DefId>>,
+    impl_ids: DefIdMap<DefIdSet>,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -173,7 +173,7 @@ impl Cache {
 
         let (krate, mut impl_ids) = {
             let mut cache_builder =
-                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: FxHashMap::default() };
+                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: Default::default() };
             krate = cache_builder.fold_crate(krate);
             (krate, cache_builder.impl_ids)
         };

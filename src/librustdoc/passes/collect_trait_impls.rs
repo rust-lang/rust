@@ -7,8 +7,8 @@ use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_middle::ty::{self, DefIdTree};
 use rustc_span::symbol::sym;
 
@@ -126,14 +126,14 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     });
 
     let mut cleaner = BadImplStripper { prims, items: crate_items, cache: &cx.cache };
-    let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
+    let mut type_did_to_deref_target: DefIdMap<&Type> = DefIdMap::default();
 
     // Follow all `Deref` targets of included items and recursively add them as valid
     fn add_deref_target(
         cx: &DocContext<'_>,
-        map: &FxHashMap<DefId, &Type>,
+        map: &DefIdMap<&Type>,
         cleaner: &mut BadImplStripper<'_>,
-        targets: &mut FxHashSet<DefId>,
+        targets: &mut DefIdSet,
         type_did: DefId,
     ) {
         if let Some(target) = map.get(&type_did) {
@@ -177,7 +177,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                         // `Deref` target type and the impl for type positions, this map of types is keyed by
                         // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
                         if cleaner.keep_impl_with_def_id(for_did.into()) {
-                            let mut targets = FxHashSet::default();
+                            let mut targets = DefIdSet::default();
                             targets.insert(for_did);
                             add_deref_target(
                                 cx,

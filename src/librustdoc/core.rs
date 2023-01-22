@@ -6,7 +6,7 @@ use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::{Namespace, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path, TraitCandidate};
 use rustc_interface::interface;
@@ -60,11 +60,11 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
-    pub(crate) active_extern_traits: FxHashSet<DefId>,
+    pub(crate) active_extern_traits: DefIdSet,
     // The current set of parameter substitutions,
     // for expanding type aliases at the HIR level:
     /// Table `DefId` of type, lifetime, or const parameter -> substituted type, lifetime, or const
-    pub(crate) substs: FxHashMap<DefId, clean::SubstParam>,
+    pub(crate) substs: DefIdMap<clean::SubstParam>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
@@ -108,11 +108,7 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Call the closure with the given parameters set as
     /// the substitutions for a type alias' RHS.
-    pub(crate) fn enter_alias<F, R>(
-        &mut self,
-        substs: FxHashMap<DefId, clean::SubstParam>,
-        f: F,
-    ) -> R
+    pub(crate) fn enter_alias<F, R>(&mut self, substs: DefIdMap<clean::SubstParam>, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
