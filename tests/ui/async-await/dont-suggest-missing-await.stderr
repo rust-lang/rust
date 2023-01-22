@@ -6,11 +6,6 @@ LL |         take_u32(x)
    |         |
    |         arguments to this function are incorrect
    |
-note: while checking the return type of the `async fn`
-  --> $DIR/dont-suggest-missing-await.rs:7:24
-   |
-LL | async fn make_u32() -> u32 {
-   |                        ^^^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected type `u32`
            found opaque type `impl Future<Output = u32>`
 note: function defined here

@@ -8,11 +8,6 @@ LL |     std::mem::size_of_val(foo());
    |     |                     help: consider borrowing here: `&foo()`
    |     arguments to this function are incorrect
    |
-note: while checking the return type of the `async fn`
-  --> $DIR/issue-102206.rs:3:16
-   |
-LL | async fn foo() {}
-   |                ^ checked the `Output` of this `async fn`, found opaque type
    = note: expected reference `&_`
             found opaque type `impl Future<Output = ()>`
 note: function defined here
