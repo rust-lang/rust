@@ -175,7 +175,7 @@ exclude_labels = [
     "T-*",
 ]
 
-[autolabel."A-bootstrap"]
+[autolabel."T-bootstrap"]
 trigger_files = [
     "x.py",
     "x",
@@ -493,6 +493,8 @@ libs = [
 ]
 bootstrap = [
     "@Mark-Simulacrum",
+    "@albertlarsan68",
+    "@ozkanonur",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
