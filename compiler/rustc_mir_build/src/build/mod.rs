@@ -47,8 +47,6 @@ pub(crate) fn mir_built(
 
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
-    let body_owner_kind = tcx.hir().body_owner_kind(def.did);
-
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.
     // We can't use `ensure()` for `thir_abstract_const` as it doesn't compute the query
     // if inputs are green. This can cause ICEs when calling `thir_abstract_const` after
@@ -65,16 +63,15 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     }
 
     let body = match tcx.thir_body(def) {
-        Err(error_reported) => construct_error(tcx, def.did, body_owner_kind, error_reported),
+        Err(error_reported) => construct_error(tcx, def.did, error_reported),
         Ok((thir, expr)) => {
             // We ran all queries that depended on THIR at the beginning
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
 
-            if body_owner_kind.is_fn_or_closure() {
-                construct_fn(tcx, def, &thir, expr)
-            } else {
-                construct_const(tcx, def, &thir, expr)
+            match thir.body_type {
+                thir::BodyTy::Fn(fn_sig) => construct_fn(tcx, def, &thir, expr, fn_sig),
+                thir::BodyTy::Const(ty) => construct_const(tcx, def, &thir, expr, ty),
             }
         }
     };
@@ -434,6 +431,7 @@ fn construct_fn<'tcx>(
     fn_def: ty::WithOptConstParam<LocalDefId>,
     thir: &Thir<'tcx>,
     expr: ExprId,
+    fn_sig: ty::FnSig<'tcx>,
 ) -> Body<'tcx> {
     let span = tcx.def_span(fn_def.did);
     let fn_id = tcx.hir().local_def_id_to_hir_id(fn_def.did);
@@ -452,11 +450,6 @@ fn construct_fn<'tcx>(
         .unwrap_or_else(|| span_bug!(span, "can't build MIR for {:?}", fn_def.did))
         .output
         .span();
-
-    // fetch the fully liberated fn signature (that is, all bound
-    // types/lifetimes replaced)
-    let typeck_results = tcx.typeck_opt_const_arg(fn_def);
-    let fn_sig = typeck_results.liberated_fn_sigs()[fn_id];
 
     let safety = match fn_sig.unsafety {
         hir::Unsafety::Normal => Safety::Safe,
@@ -563,6 +556,7 @@ fn construct_const<'a, 'tcx>(
     def: ty::WithOptConstParam<LocalDefId>,
     thir: &'a Thir<'tcx>,
     expr: ExprId,
+    const_ty: Ty<'tcx>,
 ) -> Body<'tcx> {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
 
@@ -585,20 +579,6 @@ fn construct_const<'a, 'tcx>(
         }
         _ => span_bug!(tcx.def_span(def.did), "can't build MIR for {:?}", def.did),
     };
-
-    // Get the revealed type of this const. This is *not* the adjusted
-    // type of its body, which may be a subtype of this type. For
-    // example:
-    //
-    // fn foo(_: &()) {}
-    // static X: fn(&'static ()) = foo;
-    //
-    // The adjusted type of the body of X is `for<'a> fn(&'a ())` which
-    // is not the same as the type of X. We need the type of the return
-    // place to be the type of the constant because NLL typeck will
-    // equate them.
-    let typeck_results = tcx.typeck_opt_const_arg(def);
-    let const_ty = typeck_results.node_type(hir_id);
 
     let infcx = tcx.infer_ctxt().build();
     let mut builder = Builder::new(
@@ -629,15 +609,11 @@ fn construct_const<'a, 'tcx>(
 ///
 /// This is required because we may still want to run MIR passes on an item
 /// with type errors, but normal MIR construction can't handle that in general.
-fn construct_error(
-    tcx: TyCtxt<'_>,
-    def: LocalDefId,
-    body_owner_kind: hir::BodyOwnerKind,
-    err: ErrorGuaranteed,
-) -> Body<'_> {
+fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Body<'_> {
     let span = tcx.def_span(def);
     let hir_id = tcx.hir().local_def_id_to_hir_id(def);
     let generator_kind = tcx.generator_kind(def);
+    let body_owner_kind = tcx.hir().body_owner_kind(def);
 
     let ty = tcx.ty_error(err);
     let num_params = match body_owner_kind {
