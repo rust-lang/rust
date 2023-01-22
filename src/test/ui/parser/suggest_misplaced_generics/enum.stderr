@@ -7,7 +7,7 @@ LL | enum<T> Foo { Variant(T) }
 help: place the generic parameter name after the enum name
    |
 LL | enum Foo<T> { Variant(T) }
-   |         ~~~
+   |      ~~~~~~
 
 error: aborting due to previous error
 

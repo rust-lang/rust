@@ -7,7 +7,7 @@ LL | fn<'a, B: 'a + std::ops::Add<Output = u32>> f(_x: B) { }
 help: place the generic parameter name after the fn name
    |
 LL | fn f<'a, B: 'a + std::ops::Add<Output = u32>>(_x: B) { }
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

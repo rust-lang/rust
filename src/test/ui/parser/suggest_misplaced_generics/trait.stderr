@@ -7,7 +7,7 @@ LL | trait<T> Foo {
 help: place the generic parameter name after the trait name
    |
 LL | trait Foo<T> {
-   |          ~~~
+   |       ~~~~~~
 
 error: aborting due to previous error
 
