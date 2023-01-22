@@ -52,6 +52,8 @@ LL |     bfnr(x);
    = note: multiple `impl`s satisfying `_: Fn<()>` found in the following crates: `alloc`, `core`:
            - impl<A, F> Fn<A> for &F
              where A: Tuple, F: Fn<A>, F: ?Sized;
+           - impl<A, F> Fn<A> for option::TransposeFn<F>
+             where F: Fn<A>, A: Tuple;
            - impl<Args, F, A> Fn<Args> for Box<F, A>
              where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
 note: required by a bound in `bfnr`
