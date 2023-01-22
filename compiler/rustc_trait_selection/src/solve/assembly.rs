@@ -1,7 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::infcx_ext::InferCtxtExt;
-use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
@@ -148,9 +148,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         if goal.predicate.self_ty().is_ty_var() {
             return vec![Candidate {
                 source: CandidateSource::BuiltinImpl,
-                result: self
-                    .make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity))
-                    .unwrap(),
+                result: self.make_canonical_response(Certainty::AMBIGUOUS).unwrap(),
             }];
         }
 
