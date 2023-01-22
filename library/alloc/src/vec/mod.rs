@@ -439,7 +439,10 @@ pub type WeVec<T, const weight: u8> = Vec<T, Global, { weight > 127 }>;
 // Inherent methods
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<T> Vec<T> {
+impl<T, const COOP_PREFERRED: bool> Vec<T, Global, COOP_PREFERRED>
+where
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+{
     /// Constructs a new, empty `Vec<T>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
@@ -3193,11 +3196,14 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl<T> const Default for Vec<T> {
+impl<T, const COOP_PREFERRED: bool> const Default for Vec<T, Global, COOP_PREFERRED>
+where
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+{
     /// Creates an empty `Vec<T>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
-    fn default() -> Vec<T> {
+    fn default() -> Vec<T, Global, COOP_PREFERRED> {
         Vec::new()
     }
 }
