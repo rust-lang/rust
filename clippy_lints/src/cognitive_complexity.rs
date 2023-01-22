@@ -8,9 +8,10 @@ use clippy_utils::{get_async_fn_body, is_async_fn, LimitStack};
 use core::ops::ControlFlow;
 use rustc_ast::ast::Attribute;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId};
+use rustc_hir::{Body, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::{sym, BytePos};
 
@@ -140,9 +141,8 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        hir_id: HirId,
+        def_id: LocalDefId,
     ) {
-        let def_id = cx.tcx.hir().local_def_id(hir_id);
         if !cx.tcx.has_attr(def_id.to_def_id(), sym::test) {
             let expr = if is_async_fn(kind) {
                 match get_async_fn_body(cx.tcx, body) {

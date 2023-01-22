@@ -4,12 +4,13 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    self as hir, def, BinOpKind, BindingAnnotation, Body, ByRef, Expr, ExprKind, FnDecl, HirId, Mutability, PatKind,
-    Stmt, StmtKind, TyKind,
+    self as hir, def, BinOpKind, BindingAnnotation, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, Stmt,
+    StmtKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{ExpnKind, Span};
 
@@ -151,7 +152,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        _: HirId,
+        _: LocalDefId,
     ) {
         if let FnKind::Closure = k {
             // Does not apply to closures

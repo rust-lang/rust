@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                     }
                     if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
                         let name = impl_item.ident.name;
-                        let id = impl_item.hir_id();
+                        let id = impl_item.owner_id;
                         if sig.header.constness == hir::Constness::Const {
                             // can't be implemented by default
                             return;
@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             if sig.decl.inputs.is_empty();
                             if name == sym::new;
                             if cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id);
-                            let self_def_id = cx.tcx.hir().get_parent_item(id);
+                            let self_def_id = cx.tcx.hir().get_parent_item(id.into());
                             let self_ty = cx.tcx.type_of(self_def_id);
                             if self_ty == return_ty(cx, id);
                             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                 span_lint_hir_and_then(
                                     cx,
                                     NEW_WITHOUT_DEFAULT,
-                                    id,
+                                    id.into(),
                                     impl_item.span,
                                     &format!(
                                         "you should consider adding a `Default` implementation for `{self_type_snip}`"
