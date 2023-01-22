@@ -19,7 +19,7 @@ pub struct IntoIter<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
     const COOP_PREFERRED: bool = true,
 > where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     inner: VecDeque<T, A, COOP_PREFERRED>,
 }
