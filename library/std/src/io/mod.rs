@@ -1385,17 +1385,18 @@ pub trait Write {
     ///
     /// This function will attempt to write the entire contents of `buf`, but
     /// the entire write might not succeed, or the write may also generate an
-    /// error. A call to `write` represents *at most one* attempt to write to
+    /// error. Typically, a call to `write` represents one attempt to write to
     /// any wrapped object.
     ///
     /// Calls to `write` are not guaranteed to block waiting for data to be
     /// written, and a write which would otherwise block can be indicated through
     /// an [`Err`] variant.
     ///
-    /// If the return value is [`Ok(n)`] then it must be guaranteed that
-    /// `n <= buf.len()`. A return value of `0` typically means that the
-    /// underlying object is no longer able to accept bytes and will likely not
-    /// be able to in the future as well, or that the buffer provided is empty.
+    /// If the return value is [`Ok(n)`] then it must be guaranteed that `n <=
+    /// buf.len()`. Unless `input` is empty, this function shouldn’t return `0`
+    /// since caller may interpret that as an error (the default implementation
+    /// of [`Write::write_all`] does exactly that).  To indicate lack of space
+    /// function should return [`ErrorKind::StorageFull`] error instead.
     ///
     /// # Errors
     ///
