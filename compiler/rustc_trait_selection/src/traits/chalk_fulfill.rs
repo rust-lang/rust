@@ -7,24 +7,18 @@ use crate::traits::{
     ChalkEnvironmentAndGoal, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
     SelectionError, TraitEngine,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_middle::ty::{self, TypeVisitable};
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_middle::ty::TypeVisitable;
 
 pub struct FulfillmentContext<'tcx> {
     obligations: FxIndexSet<PredicateObligation<'tcx>>,
-
-    relationships: FxHashMap<ty::TyVid, ty::FoundRelationships>,
 
     usable_in_snapshot: bool,
 }
 
 impl FulfillmentContext<'_> {
     pub(super) fn new() -> Self {
-        FulfillmentContext {
-            obligations: FxIndexSet::default(),
-            relationships: FxHashMap::default(),
-            usable_in_snapshot: false,
-        }
+        FulfillmentContext { obligations: FxIndexSet::default(), usable_in_snapshot: false }
     }
 
     pub(crate) fn new_in_snapshot() -> Self {
@@ -42,8 +36,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             assert!(!infcx.is_in_snapshot());
         }
         let obligation = infcx.resolve_vars_if_possible(obligation);
-
-        super::relationships::update(self, infcx, &obligation);
 
         self.obligations.insert(obligation);
     }
@@ -153,9 +145,5 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
         self.obligations.iter().cloned().collect()
-    }
-
-    fn relationships(&mut self) -> &mut FxHashMap<ty::TyVid, ty::FoundRelationships> {
-        &mut self.relationships
     }
 }

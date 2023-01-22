@@ -1,6 +1,6 @@
 use super::callee::DeferredCallResolution;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
@@ -10,7 +10,8 @@ use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};
-use rustc_trait_selection::traits::{self, TraitEngine, TraitEngineExt as _};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, PredicateObligation, TraitEngine, TraitEngineExt as _};
 
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -63,6 +64,8 @@ pub struct Inherited<'tcx> {
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
     pub(super) diverging_type_vars: RefCell<FxHashSet<Ty<'tcx>>>,
+
+    pub(super) infer_var_info: RefCell<FxHashMap<ty::TyVid, ty::InferVarInfo>>,
 }
 
 impl<'tcx> Deref for Inherited<'tcx> {
@@ -128,6 +131,7 @@ impl<'tcx> Inherited<'tcx> {
             deferred_generator_interiors: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             body_id,
+            infer_var_info: RefCell::new(Default::default()),
         }
     }
 
@@ -136,6 +140,9 @@ impl<'tcx> Inherited<'tcx> {
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }
+
+        self.update_infer_var_info(&obligation);
+
         self.fulfillment_cx.borrow_mut().register_predicate_obligation(self, obligation);
     }
 
@@ -151,5 +158,44 @@ impl<'tcx> Inherited<'tcx> {
     pub(super) fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
         self.register_predicates(infer_ok.obligations);
         infer_ok.value
+    }
+
+    pub fn update_infer_var_info(&self, obligation: &PredicateObligation<'tcx>) {
+        let infer_var_info = &mut self.infer_var_info.borrow_mut();
+
+        // (*) binder skipped
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(tpred)) = obligation.predicate.kind().skip_binder()
+            && let Some(ty) = self.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| self.root_var(t))
+            && self.tcx.lang_items().sized_trait().map_or(false, |st| st != tpred.trait_ref.def_id)
+        {
+            let new_self_ty = self.tcx.types.unit;
+
+            // Then construct a new obligation with Self = () added
+            // to the ParamEnv, and see if it holds.
+            let o = obligation.with(self.tcx,
+                obligation
+                    .predicate
+                    .kind()
+                    .rebind(
+                        // (*) binder moved here
+                        ty::PredicateKind::Clause(ty::Clause::Trait(tpred.with_self_ty(self.tcx, new_self_ty)))
+                    ),
+            );
+            // Don't report overflow errors. Otherwise equivalent to may_hold.
+            if let Ok(result) = self.probe(|_| self.evaluate_obligation(&o)) && result.may_apply() {
+                infer_var_info.entry(ty).or_default().self_in_trait = true;
+            }
+        }
+
+        if let ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) =
+            obligation.predicate.kind().skip_binder()
+        {
+            // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,
+            // we need to make it into one.
+            if let Some(vid) = predicate.term.ty().and_then(|ty| ty.ty_vid()) {
+                debug!("infer_var_info: {:?}.output = true", vid);
+                infer_var_info.entry(vid).or_default().output = true;
+            }
+        }
     }
 }
