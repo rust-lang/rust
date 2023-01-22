@@ -82,6 +82,7 @@ pub fn provide(providers: &mut Providers) {
         asm_target_features,
         collect_mod_item_types,
         should_inherit_track_caller,
+        is_type_alias_impl_trait,
         ..*providers
     };
 }
@@ -2248,5 +2249,15 @@ fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span:
                 .span_label(tcx.def_span(id), "not an `unsafe` function")
                 .emit();
         }
+    }
+}
+
+fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    match tcx.hir().get_if_local(def_id) {
+        Some(Node::Item(hir::Item { kind: hir::ItemKind::OpaqueTy(opaque), .. })) => {
+            matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias)
+        }
+        Some(_) => bug!("tried getting opaque_ty_origin for non-opaque: {:?}", def_id),
+        _ => bug!("tried getting opaque_ty_origin for non-local def-id {:?}", def_id),
     }
 }
