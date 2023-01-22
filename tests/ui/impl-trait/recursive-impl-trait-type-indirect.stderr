@@ -53,6 +53,7 @@ LL |   fn closure_capture() -> impl Sized {
 ...
 LL | /     move || {
 LL | |         x;
+   | |         - closure captures itself here
 LL | |     }
    | |_____- returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:35:5: 35:12]`
 
@@ -64,6 +65,7 @@ LL |   fn closure_ref_capture() -> impl Sized {
 ...
 LL | /     move || {
 LL | |         &x;
+   | |          - closure captures itself here
 LL | |     }
    | |_____- returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:43:5: 43:12]`
 
@@ -94,6 +96,7 @@ LL |   fn generator_capture() -> impl Sized {
 LL | /     move || {
 LL | |         yield;
 LL | |         x;
+   | |         - generator captures itself here
 LL | |     }
    | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:61:5: 61:12]`
 
@@ -114,6 +117,7 @@ LL |   fn generator_hold() -> impl Sized {
 LL |
 LL | /     move || {
 LL | |         let x = generator_hold();
+   | |             - generator captures itself here
 LL | |         yield;
 LL | |         x;
 LL | |     }
