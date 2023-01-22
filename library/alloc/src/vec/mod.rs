@@ -148,6 +148,14 @@ use self::spec_extend::SpecExtend;
 #[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
+/// Default `Vec`, `DefVec`, `DecVeque`, `DefDecVeq` "cooperation" (`COOP_PREFERRED`) generic parameter.
+#[unstable(feature = "global_co_alloc_def", issue = "none")]
+// pub const DEFAULT_COOP_PREFERRED: bool = true;
+#[macro_export]
+macro_rules! DEFAULT_COOP_PREFERRED {
+    () => {true}
+}
+
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 ///
 /// # Examples
@@ -397,21 +405,18 @@ mod spec_extend;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Vec")]
 #[rustc_insignificant_dtor]
+#[allow(unused_braces)]
 pub struct Vec<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
     //@FIXME: #[unstable(feature ="global_co_alloc_vec", issue="none")]
-    const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED,
+    const COOP_PREFERRED: bool = {DEFAULT_COOP_PREFERRED!()},
 > where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     buf: RawVec<T, A, COOP_PREFERRED>,
     len: usize,
 }
-
-/// Default `Vec`, `DefVec`, `DecVeque`, `DefDecVeq` "cooperation" (`COOP_PREFERRED`) generic parameter.
-#[unstable(feature = "global_co_alloc_def", issue = "none")]
-pub const DEFAULT_COOP_PREFERRED: bool = true;
 
 #[unstable(feature = "global_co_alloc_covec", issue = "none")]
 pub type CoVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
@@ -426,8 +431,9 @@ pub type PlVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: All
 /// difference to `Vec` (used without specifying `COOP_PREFERRED`): `DefVec` indicates that the
 /// author considered using `CoVec` or `PlVec`, but left it to default instead.
 #[unstable(feature = "global_co_alloc_defvec", issue = "none")]
+#[allow(unused_braces)]
 pub type DefVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
-    Vec<T, A, DEFAULT_COOP_PREFERRED>;
+    Vec<T, A, {DEFAULT_COOP_PREFERRED!()}>;
 
 /// "Weighted cooperative" Vec. Weight means how much it wants to cooperate (with the allocator). 0
 /// = always pack; u8::MAX = always cooperate (if `Global` supports it).
@@ -2845,7 +2851,8 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> FromIterator<T> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
+#[allow(unused_braces)]
+impl<T> FromIterator<T> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
         <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
@@ -3263,7 +3270,8 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone> From<&[T]> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
+#[allow(unused_braces)]
+impl<T: Clone> From<&[T]> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
     /// # Examples
@@ -3283,7 +3291,8 @@ impl<T: Clone> From<&[T]> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
-impl<T: Clone> From<&mut [T]> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
+#[allow(unused_braces)]
+impl<T: Clone> From<&mut [T]> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
     /// # Examples
@@ -3303,7 +3312,8 @@ impl<T: Clone> From<&mut [T]> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array", since = "1.44.0")]
-impl<T, const N: usize> From<[T; N]> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
+#[allow(unused_braces)]
+impl<T, const N: usize> From<[T; N]> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
     /// Allocate a `Vec<T>` and move `s`'s items into it.
     ///
     /// # Examples
@@ -3326,7 +3336,8 @@ impl<T, const N: usize> From<[T; N]> for Vec<T, Global, DEFAULT_COOP_PREFERRED> 
 }
 
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
-impl<'a, T> From<Cow<'a, [T]>> for Vec<T, Global, DEFAULT_COOP_PREFERRED>
+#[allow(unused_braces)]
+impl<'a, T> From<Cow<'a, [T]>> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
@@ -3403,7 +3414,8 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl From<&str> for Vec<u8, Global, DEFAULT_COOP_PREFERRED> {
+#[allow(unused_braces)]
+impl From<&str> for Vec<u8, Global, {DEFAULT_COOP_PREFERRED!()}> {
     /// Allocate a `Vec<u8>` and fill it with a UTF-8 string.
     ///
     /// # Examples

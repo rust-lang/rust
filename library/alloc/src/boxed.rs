@@ -146,7 +146,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::alloc;
 use core::any::Any;
 use core::async_iter::AsyncIterator;
 use core::borrow;
@@ -776,9 +775,10 @@ where
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
+    #[allow(unused_braces)]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         unsafe {
-            RawVec::<T, A, { alloc::SHORT_TERM_VEC_PREFERS_COOP }>::with_capacity_in(len, alloc)
+            RawVec::<T, A, { SHORT_TERM_VEC_PREFERS_COOP!() }>::with_capacity_in(len, alloc)
                 .into_box(len)
         }
     }
@@ -807,9 +807,10 @@ where
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
+    #[allow(unused_braces)]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         unsafe {
-            RawVec::<T, A, { alloc::SHORT_TERM_VEC_PREFERS_COOP }>::with_capacity_zeroed_in(
+            RawVec::<T, A, { SHORT_TERM_VEC_PREFERS_COOP!() }>::with_capacity_zeroed_in(
                 len, alloc,
             )
             .into_box(len)

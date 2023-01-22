@@ -1,5 +1,7 @@
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
+use crate::Global;
+use crate::DEFAULT_COOP_PREFERRED;
 
 use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 
@@ -25,7 +27,8 @@ pub(super) trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
 }
 
-impl<T, I> SpecFromIter<T, I> for Vec<T, Global, DEFAULT_COOP_PREFERRED>
+#[allow(unused_braces)]
+impl<T, I> SpecFromIter<T, I> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}>
 where
     I: Iterator<Item = T>,
 {
@@ -34,7 +37,8 @@ where
     }
 }
 
-impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T,  Global, DEFAULT_COOP_PREFERRED> {
+#[allow(unused_braces)]
+impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T,  Global, {DEFAULT_COOP_PREFERRED!()}> {
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately
         // re-collects into a vector. We can short circuit this if the IntoIter

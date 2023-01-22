@@ -14,7 +14,7 @@ use crate::alloc::{Allocator, Global, Layout};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind::*;
-use crate::vec::DEFAULT_COOP_PREFERRED;
+use crate::DEFAULT_COOP_PREFERRED;
 
 #[cfg(test)]
 mod tests;
@@ -50,10 +50,11 @@ enum AllocInit {
 /// `usize::MAX`. This means that you need to be careful when round-tripping this type with a
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
+#[allow(unused_braces)]
 pub(crate) struct RawVec<
     T,
     A: Allocator = Global,
-    const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED,
+    const COOP_PREFERRED: bool = {DEFAULT_COOP_PREFERRED!()},
 > where
     [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {

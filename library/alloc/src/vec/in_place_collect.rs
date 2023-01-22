@@ -141,6 +141,9 @@ use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self};
 
+use crate::Global;
+use crate::DEFAULT_COOP_PREFERRED;
+
 use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
@@ -150,7 +153,8 @@ pub(super) trait InPlaceIterableMarker {}
 
 impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
 
-impl<T, I> SpecFromIter<T, I> for Vec<T, Global, DEFAULT_COOP_PREFERRED>
+#[allow(unused_braces)]
+impl<T, I> SpecFromIter<T, I> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}>
 where
     I: Iterator<Item = T> + SourceIter<Source: AsVecIntoIter> + InPlaceIterableMarker,
 {
