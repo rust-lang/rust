@@ -190,5 +190,5 @@ fn test_std_io_error_downcast() {
     let io_error = io_error.downcast::<E>().unwrap_err();
 
     assert_eq!(SIMPLE_MESSAGE.kind, io_error.kind());
-    assert_eq!(SIMPLE_MESSAGE.message, &*format!("{io_error}"));
+    assert_eq!(SIMPLE_MESSAGE.message, format!("{io_error}"));
 }
