@@ -1907,9 +1907,15 @@ in storage.js
 }
 .scraped-example:not(.expanded) .code-wrapper:before {
 	top: 0;
+	background: linear-gradient(to bottom,
+		var(--scrape-example-code-wrapper-background-start),
+		var(--scrape-example-code-wrapper-background-end));
 }
 .scraped-example:not(.expanded) .code-wrapper:after {
 	bottom: 0;
+	background: linear-gradient(to top,
+		var(--scrape-example-code-wrapper-background-start),
+		var(--scrape-example-code-wrapper-background-end));
 }
 
 .scraped-example .code-wrapper .example-wrap {
