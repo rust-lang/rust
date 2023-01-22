@@ -1,12 +1,11 @@
 use crate::errors::{
     note_and_explain, FullfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
-    RefLongerThanData, RegionOriginNote,
+    RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
 };
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
 use rustc_errors::{
-    fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    IntoDiagnostic,
+    fluent, AddToDiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
 };
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
@@ -325,22 +324,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id) else { return; };
 
-        if trait_predicates.is_empty() {
-            err.span_suggestion_verbose(
-                generics.where_clause_span,
-                "remove the `where` clause",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
+        let suggestion = if trait_predicates.is_empty() {
+            WhereClauseSuggestions::Remove { span: generics.where_clause_span }
         } else {
             let space = if generics.where_clause_span.is_empty() { " " } else { "" };
-            err.span_suggestion_verbose(
-                generics.where_clause_span,
-                "copy the `where` clause predicates from the trait",
-                format!("{space}where {}", trait_predicates.join(", ")),
-                Applicability::MachineApplicable,
-            );
-        }
+            WhereClauseSuggestions::CopyPredicates {
+                span: generics.where_clause_span,
+                space,
+                trait_predicates: trait_predicates.join(", "),
+            }
+        };
+        err.subdiagnostic(suggestion);
     }
 
     pub(super) fn report_placeholder_failure(

@@ -327,3 +327,6 @@ infer_ril_introduced_here = `'static` requirement introduced here
 infer_ril_introduced_by = requirement introduced by this return type
 infer_ril_because_of = because of this returned expression
 infer_ril_static_introduced_by = "`'static` lifetime requirement introduced by the return type
+
+infer_where_remove = remove the `where` clause
+infer_where_copy_predicates = copy the `where` clause predicates from the trait

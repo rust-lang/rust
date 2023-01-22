@@ -980,3 +980,29 @@ pub struct RefLongerThanData<'a> {
     #[subdiagnostic]
     pub notes: Vec<note_and_explain::RegionExplanation<'a>>,
 }
+
+#[derive(Subdiagnostic)]
+pub enum WhereClauseSuggestions {
+    #[suggestion(
+        infer_where_remove,
+        code = "",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    Remove {
+        #[primary_span]
+        span: Span,
+    },
+    #[suggestion(
+        infer_where_copy_predicates,
+        code = "{space}where {}",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    CopyPredicates {
+        #[primary_span]
+        span: Span,
+        space: &'static str,
+        trait_predicates: String,
+    },
+}
