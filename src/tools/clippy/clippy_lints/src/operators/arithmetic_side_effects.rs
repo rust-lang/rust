@@ -209,7 +209,8 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &hir::Body<'_>) {
         let body_owner = cx.tcx.hir().body_owner(body.id());
-        let body_owner_def_id = cx.tcx.hir().local_def_id(body_owner);
+        let body_owner_def_id = cx.tcx.hir().body_owner_def_id(body.id());
+
         let body_owner_kind = cx.tcx.hir().body_owner_kind(body_owner_def_id);
         if let hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) = body_owner_kind {
             let body_span = cx.tcx.hir().span_with_body(body_owner);

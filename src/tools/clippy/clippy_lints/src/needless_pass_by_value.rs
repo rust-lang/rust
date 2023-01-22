@@ -20,6 +20,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, TypeVisitable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
@@ -82,11 +83,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        hir_id: HirId,
+        fn_def_id: LocalDefId,
     ) {
         if span.from_expansion() {
             return;
         }
+
+        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
 
         match kind {
             FnKind::ItemFn(.., header) => {
@@ -118,8 +121,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         ];
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
-
-        let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 
         let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds().iter())
             .filter(|p| !p.is_global())

@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
+use rustc_hir::{BindingAnnotation, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCast};
 use rustc_middle::ty::layout::LayoutOf;
@@ -272,12 +272,13 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         decl: &'tcx FnDecl<'_>,
         _body: &'tcx Body<'_>,
         span: Span,
-        hir_id: HirId,
+        def_id: LocalDefId,
     ) {
         if span.from_expansion() {
             return;
         }
 
+        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
         match kind {
             FnKind::ItemFn(.., header) => {
                 if header.abi != Abi::Rust {
@@ -308,6 +309,6 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
             }
         }
 
-        self.check_poly_fn(cx, cx.tcx.hir().local_def_id(hir_id), decl, Some(span));
+        self.check_poly_fn(cx, def_id, decl, Some(span));
     }
 }

@@ -180,7 +180,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         decl: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
         span: Span,
-        id: hir::HirId,
+        id: LocalDefId,
     ) {
         // Wrap in typeck results here, not just in visit_nested_body,
         // in order for `check_fn` to be able to use them.

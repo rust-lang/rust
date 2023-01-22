@@ -12,6 +12,7 @@ use rustc_hir::HirId;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::common::to_readable_str;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -363,7 +364,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         fd: &'v hir::FnDecl<'v>,
         b: hir::BodyId,
         _: Span,
-        id: hir::HirId,
+        id: LocalDefId,
     ) {
         self.record("FnDecl", Id::None, fd);
         hir_visit::walk_fn(self, fk, fd, b, id)

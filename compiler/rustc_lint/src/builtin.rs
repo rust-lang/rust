@@ -583,12 +583,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
-        if method_context(cx, impl_item.hir_id()) == MethodLateContext::TraitImpl {
+        let context = method_context(cx, impl_item.owner_id.def_id);
+        if context == MethodLateContext::TraitImpl {
             return;
         }
 
         // If the method is an impl for an item with docs_hidden, don't doc.
-        if method_context(cx, impl_item.hir_id()) == MethodLateContext::PlainImpl {
+        if context == MethodLateContext::PlainImpl {
             let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
             let impl_ty = cx.tcx.type_of(parent);
             let outerdef = match impl_ty.kind() {
@@ -1296,19 +1297,18 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         _: &'tcx FnDecl<'_>,
         _: &'tcx Body<'_>,
         span: Span,
-        hir_id: HirId,
+        def_id: LocalDefId,
     ) {
         if fn_kind.asyncness() == IsAsync::Async
             && !cx.tcx.features().closure_track_caller
-            && let attrs = cx.tcx.hir().attrs(hir_id)
             // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr) = attrs.iter().find(|attr| attr.has_name(sym::track_caller))
-            {
-                cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
-                    label: span,
-                    parse_sess: &cx.tcx.sess.parse_sess,
-                });
-            }
+            && let Some(attr) = cx.tcx.get_attr(def_id.to_def_id(), sym::track_caller)
+        {
+            cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
+                label: span,
+                parse_sess: &cx.tcx.sess.parse_sess,
+            });
+        }
     }
 }
 

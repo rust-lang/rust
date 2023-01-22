@@ -6,6 +6,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{Adt, Array, Ref, Slice, Tuple, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
 use std::iter;
@@ -102,21 +103,21 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Fn(ref sig, ..) = item.kind {
-            self.check_sig(cx, item.hir_id(), sig.decl);
+            self.check_sig(cx, item.owner_id.def_id, sig.decl);
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'tcx>) {
         if let hir::ImplItemKind::Fn(ref sig, ..) = item.kind {
             if trait_ref_of_method(cx, item.owner_id.def_id).is_none() {
-                self.check_sig(cx, item.hir_id(), sig.decl);
+                self.check_sig(cx, item.owner_id.def_id, sig.decl);
             }
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'tcx>) {
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
-            self.check_sig(cx, item.hir_id(), sig.decl);
+            self.check_sig(cx, item.owner_id.def_id, sig.decl);
         }
     }
 
@@ -136,8 +137,7 @@ impl MutableKeyType {
         }
     }
 
-    fn check_sig(&self, cx: &LateContext<'_>, item_hir_id: hir::HirId, decl: &hir::FnDecl<'_>) {
-        let fn_def_id = cx.tcx.hir().local_def_id(item_hir_id);
+    fn check_sig(&self, cx: &LateContext<'_>, fn_def_id: LocalDefId, decl: &hir::FnDecl<'_>) {
         let fn_sig = cx.tcx.fn_sig(fn_def_id).subst_identity();
         for (hir_ty, ty) in iter::zip(decl.inputs, fn_sig.inputs().skip_binder()) {
             self.check_ty_(cx, hir_ty.span, *ty);
