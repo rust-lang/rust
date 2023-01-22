@@ -13,111 +13,174 @@ use crate::cmp;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::ptr;
 
-/// When dropped, copies from `src` into `dest`.
-struct CopyOnDrop<T> {
+// When dropped, copies from `src` into `dest`.
+struct InsertionHole<T> {
     src: *const T,
     dest: *mut T,
 }
 
-impl<T> Drop for CopyOnDrop<T> {
+impl<T> Drop for InsertionHole<T> {
     fn drop(&mut self) {
-        // SAFETY: This is a helper class.
-        //         Please refer to its usage for correctness.
-        //         Namely, one must be sure that `src` and `dst` does not overlap as required by `ptr::copy_nonoverlapping`.
         unsafe {
             ptr::copy_nonoverlapping(self.src, self.dest, 1);
         }
     }
 }
 
-/// Shifts the first element to the right until it encounters a greater or equal element.
-fn shift_head<T, F>(v: &mut [T], is_less: &mut F)
+/// Inserts `v[v.len() - 1]` into pre-sorted sequence `v[..v.len() - 1]` so that whole `v[..]`
+/// becomes sorted.
+unsafe fn insert_tail<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    let len = v.len();
-    // SAFETY: The unsafe operations below involves indexing without a bounds check (by offsetting a
-    // pointer) and copying memory (`ptr::copy_nonoverlapping`).
-    //
-    // a. Indexing:
-    //  1. We checked the size of the array to >=2.
-    //  2. All the indexing that we will do is always between {0 <= index < len} at most.
-    //
-    // b. Memory copying
-    //  1. We are obtaining pointers to references which are guaranteed to be valid.
-    //  2. They cannot overlap because we obtain pointers to difference indices of the slice.
-    //     Namely, `i` and `i-1`.
-    //  3. If the slice is properly aligned, the elements are properly aligned.
-    //     It is the caller's responsibility to make sure the slice is properly aligned.
-    //
-    // See comments below for further detail.
-    unsafe {
-        // If the first two elements are out-of-order...
-        if len >= 2 && is_less(v.get_unchecked(1), v.get_unchecked(0)) {
-            // Read the first element into a stack-allocated variable. If a following comparison
-            // operation panics, `hole` will get dropped and automatically write the element back
-            // into the slice.
-            let tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(0)));
-            let v = v.as_mut_ptr();
-            let mut hole = CopyOnDrop { src: &*tmp, dest: v.add(1) };
-            ptr::copy_nonoverlapping(v.add(1), v.add(0), 1);
+    debug_assert!(v.len() >= 2);
 
-            for i in 2..len {
-                if !is_less(&*v.add(i), &*tmp) {
+    let arr_ptr = v.as_mut_ptr();
+    let i = v.len() - 1;
+
+    // SAFETY: caller must ensure v is at least len 2.
+    unsafe {
+        // See insert_head which talks about why this approach is beneficial.
+        let i_ptr = arr_ptr.add(i);
+
+        // It's important that we use i_ptr here. If this check is positive and we continue,
+        // We want to make sure that no other copy of the value was seen by is_less.
+        // Otherwise we would have to copy it back.
+        if is_less(&*i_ptr, &*i_ptr.sub(1)) {
+            // It's important, that we use tmp for comparison from now on. As it is the value that
+            // will be copied back. And notionally we could have created a divergence if we copy
+            // back the wrong value.
+            let tmp = mem::ManuallyDrop::new(ptr::read(i_ptr));
+            // Intermediate state of the insertion process is always tracked by `hole`, which
+            // serves two purposes:
+            // 1. Protects integrity of `v` from panics in `is_less`.
+            // 2. Fills the remaining hole in `v` in the end.
+            //
+            // Panic safety:
+            //
+            // If `is_less` panics at any point during the process, `hole` will get dropped and
+            // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object it
+            // initially held exactly once.
+            let mut hole = InsertionHole { src: &*tmp, dest: i_ptr.sub(1) };
+            ptr::copy_nonoverlapping(hole.dest, i_ptr, 1);
+
+            // SAFETY: We know i is at least 1.
+            for j in (0..(i - 1)).rev() {
+                let j_ptr = arr_ptr.add(j);
+                if !is_less(&*tmp, &*j_ptr) {
                     break;
                 }
 
-                // Move `i`-th element one place to the left, thus shifting the hole to the right.
-                ptr::copy_nonoverlapping(v.add(i), v.add(i - 1), 1);
-                hole.dest = v.add(i);
+                ptr::copy_nonoverlapping(j_ptr, hole.dest, 1);
+                hole.dest = j_ptr;
             }
             // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
         }
     }
 }
 
-/// Shifts the last element to the left until it encounters a smaller or equal element.
-fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
+/// Inserts `v[0]` into pre-sorted sequence `v[1..]` so that whole `v[..]` becomes sorted.
+///
+/// This is the integral subroutine of insertion sort.
+unsafe fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    debug_assert!(v.len() >= 2);
+
+    unsafe {
+        if is_less(v.get_unchecked(1), v.get_unchecked(0)) {
+            let arr_ptr = v.as_mut_ptr();
+
+            // There are three ways to implement insertion here:
+            //
+            // 1. Swap adjacent elements until the first one gets to its final destination.
+            //    However, this way we copy data around more than is necessary. If elements are big
+            //    structures (costly to copy), this method will be slow.
+            //
+            // 2. Iterate until the right place for the first element is found. Then shift the
+            //    elements succeeding it to make room for it and finally place it into the
+            //    remaining hole. This is a good method.
+            //
+            // 3. Copy the first element into a temporary variable. Iterate until the right place
+            //    for it is found. As we go along, copy every traversed element into the slot
+            //    preceding it. Finally, copy data from the temporary variable into the remaining
+            //    hole. This method is very good. Benchmarks demonstrated slightly better
+            //    performance than with the 2nd method.
+            //
+            // All methods were benchmarked, and the 3rd showed best results. So we chose that one.
+            let tmp = mem::ManuallyDrop::new(ptr::read(arr_ptr));
+
+            // Intermediate state of the insertion process is always tracked by `hole`, which
+            // serves two purposes:
+            // 1. Protects integrity of `v` from panics in `is_less`.
+            // 2. Fills the remaining hole in `v` in the end.
+            //
+            // Panic safety:
+            //
+            // If `is_less` panics at any point during the process, `hole` will get dropped and
+            // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object it
+            // initially held exactly once.
+            let mut hole = InsertionHole { src: &*tmp, dest: arr_ptr.add(1) };
+            ptr::copy_nonoverlapping(arr_ptr.add(1), arr_ptr.add(0), 1);
+
+            for i in 2..v.len() {
+                if !is_less(&v.get_unchecked(i), &*tmp) {
+                    break;
+                }
+                ptr::copy_nonoverlapping(arr_ptr.add(i), arr_ptr.add(i - 1), 1);
+                hole.dest = arr_ptr.add(i);
+            }
+            // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
+        }
+    }
+}
+
+/// Sort `v` assuming `v[..offset]` is already sorted.
+///
+/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
+/// performance impact. Even improving performance in some cases.
+#[inline(never)]
+fn insertion_sort_shift_left<T, F>(v: &mut [T], offset: usize, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
-    // SAFETY: The unsafe operations below involves indexing without a bound check (by offsetting a
-    // pointer) and copying memory (`ptr::copy_nonoverlapping`).
-    //
-    // a. Indexing:
-    //  1. We checked the size of the array to >= 2.
-    //  2. All the indexing that we will do is always between `0 <= index < len-1` at most.
-    //
-    // b. Memory copying
-    //  1. We are obtaining pointers to references which are guaranteed to be valid.
-    //  2. They cannot overlap because we obtain pointers to difference indices of the slice.
-    //     Namely, `i` and `i+1`.
-    //  3. If the slice is properly aligned, the elements are properly aligned.
-    //     It is the caller's responsibility to make sure the slice is properly aligned.
-    //
-    // See comments below for further detail.
-    unsafe {
-        // If the last two elements are out-of-order...
-        if len >= 2 && is_less(v.get_unchecked(len - 1), v.get_unchecked(len - 2)) {
-            // Read the last element into a stack-allocated variable. If a following comparison
-            // operation panics, `hole` will get dropped and automatically write the element back
-            // into the slice.
-            let tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(len - 1)));
-            let v = v.as_mut_ptr();
-            let mut hole = CopyOnDrop { src: &*tmp, dest: v.add(len - 2) };
-            ptr::copy_nonoverlapping(v.add(len - 2), v.add(len - 1), 1);
 
-            for i in (0..len - 2).rev() {
-                if !is_less(&*tmp, &*v.add(i)) {
-                    break;
-                }
+    // Using assert here improves performance.
+    assert!(offset != 0 && offset <= len);
 
-                // Move `i`-th element one place to the right, thus shifting the hole to the left.
-                ptr::copy_nonoverlapping(v.add(i), v.add(i + 1), 1);
-                hole.dest = v.add(i);
-            }
-            // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
+    // Shift each element of the unsorted region v[i..] as far left as is needed to make v sorted.
+    for i in offset..len {
+        // SAFETY: we tested that `offset` must be at least 1, so this loop is only entered if len
+        // >= 2.
+        unsafe {
+            insert_tail(&mut v[..=i], is_less);
+        }
+    }
+}
+
+/// Sort `v` assuming `v[offset..]` is already sorted.
+///
+/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
+/// performance impact. Even improving performance in some cases.
+#[inline(never)]
+fn insertion_sort_shift_right<T, F>(v: &mut [T], offset: usize, is_less: &mut F)
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    let len = v.len();
+
+    // Using assert here improves performance.
+    assert!(offset != 0 && offset <= len && len >= 2);
+
+    // Shift each element of the unsorted region v[..i] as far left as is needed to make v sorted.
+    for i in (0..offset).rev() {
+        // We ensured that the slice length is always at least 2 long.
+        // We know that start_found will be at least one less than end,
+        // and the range is exclusive. Which gives us i always <= (end - 2).
+        unsafe {
+            insert_head(&mut v[i..len], is_less);
         }
     }
 }
@@ -161,24 +224,17 @@ where
         // Swap the found pair of elements. This puts them in correct order.
         v.swap(i - 1, i);
 
-        // Shift the smaller element to the left.
-        shift_tail(&mut v[..i], is_less);
-        // Shift the greater element to the right.
-        shift_head(&mut v[i..], is_less);
+        if i >= 2 {
+            // Shift the smaller element to the left.
+            insertion_sort_shift_left(&mut v[..i], i - 1, is_less);
+
+            // Shift the greater element to the right.
+            insertion_sort_shift_right(&mut v[..i], 1, is_less);
+        }
     }
 
     // Didn't manage to sort the slice in the limited number of steps.
     false
-}
-
-/// Sorts a slice using insertion sort, which is *O*(*n*^2) worst-case.
-fn insertion_sort<T, F>(v: &mut [T], is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    for i in 1..v.len() {
-        shift_tail(&mut v[..i + 1], is_less);
-    }
 }
 
 /// Sorts `v` using heapsort, which guarantees *O*(*n* \* log(*n*)) worst-case.
@@ -507,7 +563,7 @@ where
 
         // SAFETY: `pivot` is a reference to the first element of `v`, so `ptr::read` is safe.
         let tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
-        let _pivot_guard = CopyOnDrop { src: &*tmp, dest: pivot };
+        let _pivot_guard = InsertionHole { src: &*tmp, dest: pivot };
         let pivot = &*tmp;
 
         // Find the first pair of out-of-order elements.
@@ -560,7 +616,7 @@ where
     // operation panics, the pivot will be automatically written back into the slice.
     // SAFETY: The pointer here is valid because it is obtained from a reference to a slice.
     let tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
-    let _pivot_guard = CopyOnDrop { src: &*tmp, dest: pivot };
+    let _pivot_guard = InsertionHole { src: &*tmp, dest: pivot };
     let pivot = &*tmp;
 
     // Now partition the slice.
@@ -742,7 +798,9 @@ where
 
         // Very short slices get sorted using insertion sort.
         if len <= MAX_INSERTION {
-            insertion_sort(v, is_less);
+            if len >= 2 {
+                insertion_sort_shift_left(v, 1, is_less);
+            }
             return;
         }
 
@@ -844,10 +902,14 @@ fn partition_at_index_loop<'a, T, F>(
     let mut was_balanced = true;
 
     loop {
+        let len = v.len();
+
         // For slices of up to this length it's probably faster to simply sort them.
         const MAX_INSERTION: usize = 10;
-        if v.len() <= MAX_INSERTION {
-            insertion_sort(v, is_less);
+        if len <= MAX_INSERTION {
+            if len >= 2 {
+                insertion_sort_shift_left(v, 1, is_less);
+            }
             return;
         }
 
@@ -887,7 +949,7 @@ fn partition_at_index_loop<'a, T, F>(
         }
 
         let (mid, _) = partition(v, pivot, is_less);
-        was_balanced = cmp::min(mid, v.len() - mid) >= v.len() / 8;
+        was_balanced = cmp::min(mid, len - mid) >= len / 8;
 
         // Split the slice into `left`, `pivot`, and `right`.
         let (left, right) = v.split_at_mut(mid);
@@ -952,75 +1014,6 @@ where
     let (pivot, right) = right.split_at_mut(1);
     let pivot = &mut pivot[0];
     (left, pivot, right)
-}
-
-/// Inserts `v[0]` into pre-sorted sequence `v[1..]` so that whole `v[..]` becomes sorted.
-///
-/// This is the integral subroutine of insertion sort.
-fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    if v.len() >= 2 && is_less(&v[1], &v[0]) {
-        // SAFETY: Copy tmp back even if panic, and ensure unique observation.
-        unsafe {
-            // There are three ways to implement insertion here:
-            //
-            // 1. Swap adjacent elements until the first one gets to its final destination.
-            //    However, this way we copy data around more than is necessary. If elements are big
-            //    structures (costly to copy), this method will be slow.
-            //
-            // 2. Iterate until the right place for the first element is found. Then shift the
-            //    elements succeeding it to make room for it and finally place it into the
-            //    remaining hole. This is a good method.
-            //
-            // 3. Copy the first element into a temporary variable. Iterate until the right place
-            //    for it is found. As we go along, copy every traversed element into the slot
-            //    preceding it. Finally, copy data from the temporary variable into the remaining
-            //    hole. This method is very good. Benchmarks demonstrated slightly better
-            //    performance than with the 2nd method.
-            //
-            // All methods were benchmarked, and the 3rd showed best results. So we chose that one.
-            let tmp = mem::ManuallyDrop::new(ptr::read(&v[0]));
-
-            // Intermediate state of the insertion process is always tracked by `hole`, which
-            // serves two purposes:
-            // 1. Protects integrity of `v` from panics in `is_less`.
-            // 2. Fills the remaining hole in `v` in the end.
-            //
-            // Panic safety:
-            //
-            // If `is_less` panics at any point during the process, `hole` will get dropped and
-            // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object it
-            // initially held exactly once.
-            let mut hole = InsertionHole { src: &*tmp, dest: &mut v[1] };
-            ptr::copy_nonoverlapping(&v[1], &mut v[0], 1);
-
-            for i in 2..v.len() {
-                if !is_less(&v[i], &*tmp) {
-                    break;
-                }
-                ptr::copy_nonoverlapping(&v[i], &mut v[i - 1], 1);
-                hole.dest = &mut v[i];
-            }
-            // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
-        }
-    }
-
-    // When dropped, copies from `src` into `dest`.
-    struct InsertionHole<T> {
-        src: *const T,
-        dest: *mut T,
-    }
-
-    impl<T> Drop for InsertionHole<T> {
-        fn drop(&mut self) {
-            // SAFETY: The caller must ensure that src and dest are correctly set.
-            unsafe {
-                ptr::copy_nonoverlapping(self.src, self.dest, 1);
-            }
-        }
-    }
 }
 
 /// Merges non-decreasing runs `v[..mid]` and `v[mid..]` using `buf` as temporary storage, and
@@ -1180,8 +1173,6 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
 {
     // Slices of up to this length get sorted using insertion sort.
     const MAX_INSERTION: usize = 20;
-    // Very short runs are extended using insertion sort to span at least this many elements.
-    const MIN_RUN: usize = 10;
 
     // The caller should have already checked that.
     debug_assert!(!T::IS_ZST);
@@ -1191,9 +1182,7 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
     // Short arrays get sorted in-place via insertion sort to avoid allocations.
     if len <= MAX_INSERTION {
         if len >= 2 {
-            for i in (0..len - 1).rev() {
-                insert_head(&mut v[i..], is_less);
-            }
+            insertion_sort_shift_left(v, 1, is_less);
         }
         return;
     }
@@ -1236,10 +1225,7 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
 
         // Insert some more elements into the run if it's too short. Insertion sort is faster than
         // merge sort on short sequences, so this significantly improves performance.
-        while start > 0 && end - start < MIN_RUN {
-            start -= 1;
-            insert_head(&mut v[start..end], is_less);
-        }
+        start = provide_sorted_batch(v, start, end, is_less);
 
         // Push this run onto the stack.
         runs.push(TimSortRun { start, len: end - start });
@@ -1466,4 +1452,35 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
 pub struct TimSortRun {
     len: usize,
     start: usize,
+}
+
+/// Takes a range as denoted by start and end, that is already sorted and extends it to the left if
+/// necessary with sorts optimized for smaller ranges such as insertion sort.
+#[cfg(not(no_global_oom_handling))]
+fn provide_sorted_batch<T, F>(v: &mut [T], mut start: usize, end: usize, is_less: &mut F) -> usize
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    debug_assert!(end > start);
+
+    // This value is a balance between least comparisons and best performance, as
+    // influenced by for example cache locality.
+    const MIN_INSERTION_RUN: usize = 10;
+
+    // Insert some more elements into the run if it's too short. Insertion sort is faster than
+    // merge sort on short sequences, so this significantly improves performance.
+    let start_found = start;
+    let start_end_diff = end - start;
+
+    if start_end_diff < MIN_INSERTION_RUN && start != 0 {
+        // v[start_found..end] are elements that are already sorted in the input. We want to extend
+        // the sorted region to the left, so we push up MIN_INSERTION_RUN - 1 to the right. Which is
+        // more efficient that trying to push those already sorted elements to the left.
+
+        start = if end >= MIN_INSERTION_RUN { end - MIN_INSERTION_RUN } else { 0 };
+
+        insertion_sort_shift_right(&mut v[start..end], start_found - start, is_less);
+    }
+
+    start
 }
