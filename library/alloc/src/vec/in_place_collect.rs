@@ -150,7 +150,7 @@ pub(super) trait InPlaceIterableMarker {}
 
 impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
 
-impl<T, I> SpecFromIter<T, I> for Vec<T>
+impl<T, I> SpecFromIter<T, I> for Vec<T, Global, DEFAULT_COOP_PREFERRED>
 where
     I: Iterator<Item = T> + SourceIter<Source: AsVecIntoIter> + InPlaceIterableMarker,
 {

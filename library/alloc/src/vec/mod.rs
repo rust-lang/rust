@@ -2868,7 +2868,7 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> FromIterator<T> for Vec<T> {
+impl<T> FromIterator<T> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
         <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
@@ -3286,7 +3286,7 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone> From<&[T]> for Vec<T> {
+impl<T: Clone> From<&[T]> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
     /// # Examples
@@ -3306,7 +3306,7 @@ impl<T: Clone> From<&[T]> for Vec<T> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
-impl<T: Clone> From<&mut [T]> for Vec<T> {
+impl<T: Clone> From<&mut [T]> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
     /// # Examples
@@ -3326,7 +3326,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array", since = "1.44.0")]
-impl<T, const N: usize> From<[T; N]> for Vec<T> {
+impl<T, const N: usize> From<[T; N]> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
     /// Allocate a `Vec<T>` and move `s`'s items into it.
     ///
     /// # Examples
@@ -3349,7 +3349,7 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
 }
 
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
-impl<'a, T> From<Cow<'a, [T]>> for Vec<T>
+impl<'a, T> From<Cow<'a, [T]>> for Vec<T, Global, DEFAULT_COOP_PREFERRED>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
@@ -3426,7 +3426,7 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl From<&str> for Vec<u8> {
+impl From<&str> for Vec<u8, Global, DEFAULT_COOP_PREFERRED> {
     /// Allocate a `Vec<u8>` and fill it with a UTF-8 string.
     ///
     /// # Examples
