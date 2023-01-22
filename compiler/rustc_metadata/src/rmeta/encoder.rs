@@ -1183,13 +1183,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 self.tables.asyncness.set(def_id.index, tcx.asyncness(def_id));
+                self.tables.constness.set(def_id.index, tcx.constness(def_id));
                 record_array!(self.tables.fn_arg_names[def_id] <- tcx.fn_arg_names(def_id));
-                let constness = if self.tcx.is_const_fn_raw(def_id) {
-                    hir::Constness::Const
-                } else {
-                    hir::Constness::NotConst
-                };
-                self.tables.constness.set(def_id.index, constness);
 
                 record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
                 if tcx.is_intrinsic(def_id) {
