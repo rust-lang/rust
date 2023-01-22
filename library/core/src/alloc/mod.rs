@@ -98,7 +98,7 @@ pub const fn co_alloc_metadata_num_slots<A: Allocator>() -> usize {
 #[unstable(feature = "global_co_alloc", issue = "none")]
 /// Param `coop_preferred` - if false, then this returns `0`, regardless of
 /// whether allocator `A` is cooperative.
-pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
+pub const fn co_alloc_metadata_num_slots_with_preference_specific<A: Allocator>(
     coop_preferred: bool,
 ) -> usize {
     if A::IS_CO_ALLOCATOR && coop_preferred { 1 } else { 0 }
