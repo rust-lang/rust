@@ -11,8 +11,8 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedBrace;
-use core::alloc::GlobalCoAllocMeta;
 pub use attr_wrapper::AttrWrapper;
+use core::alloc::GlobalCoAllocMeta;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
