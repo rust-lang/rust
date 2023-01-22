@@ -995,7 +995,7 @@ pub enum WhereClauseSuggestions {
     },
     #[suggestion(
         infer_where_copy_predicates,
-        code = "{space}where {}",
+        code = "{space}where {trait_predicates}",
         applicability = "machine-applicable",
         style = "verbose"
     )]
