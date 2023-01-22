@@ -324,6 +324,10 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         let ty = if !ty.has_escaping_bound_vars() { self.normalize(span, ty) } else { ty };
         self.write_ty(hir_id, ty)
     }
+
+    fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {
+        Some(&self.infcx)
+    }
 }
 
 /// Represents a user-provided type in the raw form (never normalized).
