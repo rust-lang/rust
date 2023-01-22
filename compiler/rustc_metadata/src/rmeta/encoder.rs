@@ -1216,12 +1216,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             ));
+        } else {
+            // For non-enum, there is only one variant, and its def_id is the adt's.
+            debug_assert_eq!(adt_def.variants().len(), 1);
+            debug_assert_eq!(adt_def.non_enum_variant().def_id, def_id);
+            // Therefore, the loop over variants will encode its fields as the adt's children.
         }
 
-        // In some cases, along with the item itself, we also
-        // encode some sub-items. Usually we want some info from the item
-        // so it's easier to do that here then to wait until we would encounter
-        // normally in the visitor walk.
         for variant in adt_def.variants().iter() {
             let data = VariantData {
                 discr: variant.discr,
