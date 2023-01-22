@@ -710,6 +710,7 @@ impl Config {
             match self.compare_mode {
                 Some(CompareMode::Polonius) => name == "compare-mode-polonius",
                 Some(CompareMode::Chalk) => name == "compare-mode-chalk",
+                Some(CompareMode::NextSolver) => name == "compare-mode-next-solver",
                 Some(CompareMode::SplitDwarf) => name == "compare-mode-split-dwarf",
                 Some(CompareMode::SplitDwarfSingle) => name == "compare-mode-split-dwarf-single",
                 None => false,
