@@ -432,7 +432,7 @@ pub type DefVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Al
 /// = always pack; u8::MAX = always cooperate (if `Global` supports it).
 /// @FIXME A `pub const` threshold.
 #[unstable(feature = "global_co_alloc_vec", issue = "none")]
-pub type WeVec<T, const weight: u8> = Vec<T, Global, { weight > 1 }>;
+pub type WeVec<T, const weight: u8> = Vec<T, Global, { weight > 127 }>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inherent methods
