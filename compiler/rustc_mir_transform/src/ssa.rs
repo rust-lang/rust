@@ -162,7 +162,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
                     Set1::Empty | Set1::Many => false,
                     Set1::One(LocationExtended::Arg) => true,
                     Set1::One(LocationExtended::Plain(assign)) => {
-                        assign.dominates(loc, &self.dominators)
+                        assign.successor_within_block().dominates(loc, &self.dominators)
                     }
                 };
                 // We are visiting a use that is not dominated by an assignment.
