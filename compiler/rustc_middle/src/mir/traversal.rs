@@ -1,7 +1,4 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::OnceCell;
 use rustc_index::bit_set::BitSet;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use super::*;
 
@@ -338,51 +335,4 @@ pub fn reverse_postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> ReversePostorderIter
     let blocks = body.basic_blocks.postorder();
     let len = blocks.len();
     ReversePostorderIter { body, blocks, idx: len }
-}
-
-#[derive(Clone, Debug)]
-pub(super) struct PostorderCache {
-    cache: OnceCell<Vec<BasicBlock>>,
-}
-
-impl PostorderCache {
-    #[inline]
-    pub(super) fn new() -> Self {
-        PostorderCache { cache: OnceCell::new() }
-    }
-
-    /// Invalidates the postorder cache.
-    #[inline]
-    pub(super) fn invalidate(&mut self) {
-        self.cache = OnceCell::new();
-    }
-
-    /// Returns the `&[BasicBlocks]` represents the postorder graph for this MIR.
-    #[inline]
-    pub(super) fn compute(&self, body: &IndexVec<BasicBlock, BasicBlockData<'_>>) -> &[BasicBlock] {
-        self.cache.get_or_init(|| Postorder::new(body, START_BLOCK).map(|(bb, _)| bb).collect())
-    }
-}
-
-impl<S: Encoder> Encodable<S> for PostorderCache {
-    #[inline]
-    fn encode(&self, _s: &mut S) {}
-}
-
-impl<D: Decoder> Decodable<D> for PostorderCache {
-    #[inline]
-    fn decode(_: &mut D) -> Self {
-        Self::new()
-    }
-}
-
-impl<CTX> HashStable<CTX> for PostorderCache {
-    #[inline]
-    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {
-        // do nothing
-    }
-}
-
-TrivialTypeTraversalAndLiftImpls! {
-    PostorderCache,
 }
