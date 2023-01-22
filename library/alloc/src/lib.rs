@@ -285,4 +285,11 @@ pub(crate) mod test_helpers {
         let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
         rand::SeedableRng::from_seed(seed)
     }
+
+use crate::alloc::Global;
+
+/// See also `core::alloc::co_alloc_metadata_num_slots_with_preference`.
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub const fn co_alloc_metadata_num_slots_with_preference_global(coop_preferred: bool) -> usize {
+    if Global::IS_CO_ALLOCATOR && coop_preferred { 1 } else { 0 }
 }

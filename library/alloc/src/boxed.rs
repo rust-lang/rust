@@ -1686,7 +1686,7 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
 impl<T, const N: usize, const COOP_PREFERRED: bool> TryFrom<Vec<T, Global, COOP_PREFERRED>>
     for Box<[T; N]>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Error = Vec<T, Global, COOP_PREFERRED>;
 

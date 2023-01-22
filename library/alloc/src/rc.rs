@@ -247,7 +247,6 @@ use crate::boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
-use crate::alloc;
 use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
@@ -1990,7 +1989,7 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T, const COOP_PREFERRED: bool> From<Vec<T, Global, COOP_PREFERRED>> for Rc<[T]>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Allocate a reference-counted slice and move `v`'s items into it.
     ///
@@ -2005,7 +2004,7 @@ where
     #[inline]
     fn from(mut v: Vec<T, Global, COOP_PREFERRED>) -> Rc<[T]>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+        [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
     {
         unsafe {
             let rc = Rc::copy_from_slice(&v);
