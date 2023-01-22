@@ -10,6 +10,7 @@ use core::{
     cmp::{self, Ordering},
     convert::Infallible,
     fmt, hash, iter,
+    mem::transmute,
     ops::Deref,
     str::FromStr,
 };
@@ -19,8 +20,8 @@ use core::{
 /// * `size_of::<SmolStr>() == size_of::<String>()`
 /// * `Clone` is `O(1)`
 /// * Strings are stack-allocated if they are:
-///     * Up to 22 bytes long
-///     * Longer than 22 bytes, but substrings of `WS` (see below). Such strings consist
+///     * Up to 23 bytes long
+///     * Longer than 23 bytes, but substrings of `WS` (see below). Such strings consist
 ///     solely of consecutive newlines, followed by consecutive spaces
 /// * If a string does not satisfy the aforementioned conditions, it is heap-allocated
 ///
@@ -51,16 +52,16 @@ impl SmolStr {
                 buf[$idx] = byte
             });
         }
-        s!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21);
+        s!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22);
         SmolStr(Repr::Inline {
-            len: len as u8,
+            len: unsafe { transmute(len as u8) },
             buf,
         })
     }
 
     /// Constructs inline variant of `SmolStr`.
     ///
-    /// Panics if `text.len() > 22`.
+    /// Panics if `text.len() > 23`.
     #[inline]
     pub const fn new_inline(text: &str) -> SmolStr {
         let mut buf = [0; INLINE_CAP];
@@ -70,7 +71,7 @@ impl SmolStr {
             i += 1
         }
         SmolStr(Repr::Inline {
-            len: text.len() as u8,
+            len: unsafe { transmute(text.len() as u8) },
             buf,
         })
     }
@@ -132,7 +133,7 @@ impl SmolStr {
             len += size;
         }
         SmolStr(Repr::Inline {
-            len: len as u8,
+            len: unsafe { transmute(len as u8) },
             buf,
         })
     }
@@ -266,7 +267,7 @@ where
         len += size;
     }
     SmolStr(Repr::Inline {
-        len: len as u8,
+        len: unsafe { transmute(len as u8) },
         buf,
     })
 }
@@ -327,17 +328,52 @@ impl<'a> arbitrary::Arbitrary<'a> for SmolStr {
     }
 }
 
-const INLINE_CAP: usize = 22;
+const INLINE_CAP: usize = 23;
 const N_NEWLINES: usize = 32;
 const N_SPACES: usize = 128;
 const WS: &str =
     "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                                                                                ";
 
+#[derive(Clone, Copy, Debug)]
+#[repr(u8)]
+enum InlineSize {
+    _V0 = 0,
+    _V1 = 1,
+    _V2 = 2,
+    _V3 = 3,
+    _V4 = 4,
+    _V5 = 5,
+    _V6 = 6,
+    _V7 = 7,
+    _V8 = 8,
+    _V9 = 9,
+    _V10 = 10,
+    _V11 = 11,
+    _V12 = 12,
+    _V13 = 13,
+    _V14 = 14,
+    _V15 = 15,
+    _V16 = 16,
+    _V17 = 17,
+    _V18 = 18,
+    _V19 = 19,
+    _V20 = 20,
+    _V21 = 21,
+    _V22 = 22,
+    _V23 = 23,
+}
+
 #[derive(Clone, Debug)]
 enum Repr {
     Heap(Arc<str>),
-    Inline { len: u8, buf: [u8; INLINE_CAP] },
-    Substring { newlines: usize, spaces: usize },
+    Inline {
+        len: InlineSize,
+        buf: [u8; INLINE_CAP],
+    },
+    Substring {
+        newlines: usize,
+        spaces: usize,
+    },
 }
 
 impl Repr {
@@ -353,7 +389,7 @@ impl Repr {
                 let mut buf = [0; INLINE_CAP];
                 buf[..len].copy_from_slice(text.as_bytes());
                 return Repr::Inline {
-                    len: len as u8,
+                    len: unsafe { transmute(len as u8) },
                     buf,
                 };
             }
@@ -390,7 +426,7 @@ impl Repr {
     fn is_empty(&self) -> bool {
         match self {
             Repr::Heap(data) => data.is_empty(),
-            Repr::Inline { len, .. } => *len == 0,
+            Repr::Inline { len, .. } => *len as u8 == 0,
             // A substring isn't created for an empty string.
             Repr::Substring { .. } => false,
         }
