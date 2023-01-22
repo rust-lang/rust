@@ -1355,11 +1355,11 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{}", Foo::new(2)), "2");
-    /// assert_eq!(&format!("{}", Foo::new(-1)), "-1");
-    /// assert_eq!(&format!("{}", Foo::new(0)), "0");
-    /// assert_eq!(&format!("{:#}", Foo::new(-1)), "-Foo 1");
-    /// assert_eq!(&format!("{:0>#8}", Foo::new(-1)), "00-Foo 1");
+    /// assert_eq!(format!("{}", Foo::new(2)), "2");
+    /// assert_eq!(format!("{}", Foo::new(-1)), "-1");
+    /// assert_eq!(format!("{}", Foo::new(0)), "0");
+    /// assert_eq!(format!("{:#}", Foo::new(-1)), "-Foo 1");
+    /// assert_eq!(format!("{:0>#8}", Foo::new(-1)), "00-Foo 1");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad_integral(&mut self, is_nonnegative: bool, prefix: &str, buf: &str) -> Result {
@@ -1452,8 +1452,8 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{Foo:<4}"), "Foo ");
-    /// assert_eq!(&format!("{Foo:0>4}"), "0Foo");
+    /// assert_eq!(format!("{Foo:<4}"), "Foo ");
+    /// assert_eq!(format!("{Foo:0>4}"), "0Foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad(&mut self, s: &str) -> Result {
@@ -1636,8 +1636,8 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{Foo}"), "Foo");
-    /// assert_eq!(&format!("{Foo:0>8}"), "Foo");
+    /// assert_eq!(format!("{Foo}"), "Foo");
+    /// assert_eq!(format!("{Foo:0>8}"), "Foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_str(&mut self, data: &str) -> Result {
@@ -1659,8 +1659,8 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{}", Foo(-1)), "Foo -1");
-    /// assert_eq!(&format!("{:0>8}", Foo(2)), "Foo 2");
+    /// assert_eq!(format!("{}", Foo(-1)), "Foo -1");
+    /// assert_eq!(format!("{:0>8}", Foo(2)), "Foo 2");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
@@ -1703,8 +1703,8 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// // We set alignment to the right with ">".
-    /// assert_eq!(&format!("{Foo:G>3}"), "GGG");
-    /// assert_eq!(&format!("{Foo:t>6}"), "tttttt");
+    /// assert_eq!(format!("{Foo:G>3}"), "GGG");
+    /// assert_eq!(format!("{Foo:t>6}"), "tttttt");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
@@ -1738,10 +1738,10 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{Foo:<}"), "left");
-    /// assert_eq!(&format!("{Foo:>}"), "right");
-    /// assert_eq!(&format!("{Foo:^}"), "center");
-    /// assert_eq!(&format!("{Foo}"), "into the void");
+    /// assert_eq!(format!("{Foo:<}"), "left");
+    /// assert_eq!(format!("{Foo:>}"), "right");
+    /// assert_eq!(format!("{Foo:^}"), "center");
+    /// assert_eq!(format!("{Foo}"), "into the void");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
@@ -1767,7 +1767,7 @@ impl<'a> Formatter<'a> {
     ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
     ///         if let Some(width) = formatter.width() {
     ///             // If we received a width, we use it
-    ///             write!(formatter, "{:width$}", &format!("Foo({})", self.0), width = width)
+    ///             write!(formatter, "{:width$}", format!("Foo({})", self.0), width = width)
     ///         } else {
     ///             // Otherwise we do nothing special
     ///             write!(formatter, "Foo({})", self.0)
@@ -1775,8 +1775,8 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{:10}", Foo(23)), "Foo(23)   ");
-    /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
+    /// assert_eq!(format!("{:10}", Foo(23)), "Foo(23)   ");
+    /// assert_eq!(format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
@@ -1806,8 +1806,8 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{:.4}", Foo(23.2)), "Foo(23.2000)");
-    /// assert_eq!(&format!("{}", Foo(23.2)), "Foo(23.20)");
+    /// assert_eq!(format!("{:.4}", Foo(23.2)), "Foo(23.2000)");
+    /// assert_eq!(format!("{}", Foo(23.2)), "Foo(23.20)");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
@@ -1837,9 +1837,9 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{:+}", Foo(23)), "Foo(+23)");
-    /// assert_eq!(&format!("{:+}", Foo(-23)), "Foo(-23)");
-    /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
+    /// assert_eq!(format!("{:+}", Foo(23)), "Foo(+23)");
+    /// assert_eq!(format!("{:+}", Foo(-23)), "Foo(-23)");
+    /// assert_eq!(format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
@@ -1867,8 +1867,8 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{:-}", Foo(23)), "-Foo(23)");
-    /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
+    /// assert_eq!(format!("{:-}", Foo(23)), "-Foo(23)");
+    /// assert_eq!(format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
@@ -1895,8 +1895,8 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{:#}", Foo(23)), "Foo(23)");
-    /// assert_eq!(&format!("{}", Foo(23)), "23");
+    /// assert_eq!(format!("{:#}", Foo(23)), "Foo(23)");
+    /// assert_eq!(format!("{}", Foo(23)), "23");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
@@ -1922,7 +1922,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{:04}", Foo(23)), "23");
+    /// assert_eq!(format!("{:04}", Foo(23)), "23");
     /// ```
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]

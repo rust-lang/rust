@@ -64,11 +64,11 @@ fn ipv4_socket_addr_to_string() {
 
     // Test padding.
     assert_eq!(
-        &format!("{:16}", SocketAddrV4::new(Ipv4Addr::new(1, 1, 1, 1), 53)),
+        format!("{:16}", SocketAddrV4::new(Ipv4Addr::new(1, 1, 1, 1), 53)),
         "1.1.1.1:53      "
     );
     assert_eq!(
-        &format!("{:>16}", SocketAddrV4::new(Ipv4Addr::new(1, 1, 1, 1), 53)),
+        format!("{:>16}", SocketAddrV4::new(Ipv4Addr::new(1, 1, 1, 1), 53)),
         "      1.1.1.1:53"
     );
 }
@@ -111,11 +111,11 @@ fn ipv6_socket_addr_to_string() {
 
     // Test padding.
     assert_eq!(
-        &format!("{:22}", SocketAddrV6::new(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 9, 0, 0)),
+        format!("{:22}", SocketAddrV6::new(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 9, 0, 0)),
         "[1:2:3:4:5:6:7:8]:9   "
     );
     assert_eq!(
-        &format!("{:>22}", SocketAddrV6::new(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 9, 0, 0)),
+        format!("{:>22}", SocketAddrV6::new(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 9, 0, 0)),
         "   [1:2:3:4:5:6:7:8]:9"
     );
 }
