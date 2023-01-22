@@ -25,7 +25,7 @@ pub(super) trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
 }
 
-impl<T, I> SpecFromIter<T, I> for Vec<T>
+impl<T, I> SpecFromIter<T, I> for Vec<T, Global, DEFAULT_COOP_PREFERRED>
 where
     I: Iterator<Item = T>,
 {
@@ -34,7 +34,7 @@ where
     }
 }
 
-impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
+impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T,  Global, DEFAULT_COOP_PREFERRED> {
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately
         // re-collects into a vector. We can short circuit this if the IntoIter

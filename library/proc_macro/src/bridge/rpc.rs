@@ -224,7 +224,7 @@ impl<S> DecodeMut<'_, '_, S> for String {
     }
 }
 
-impl<S, T: Encode<S>> Encode<S> for Vec<T> {
+impl<S, T: Encode<S>> Encode<S> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
     fn encode(self, w: &mut Writer, s: &mut S) {
         self.len().encode(w, s);
         for x in self {
@@ -233,7 +233,7 @@ impl<S, T: Encode<S>> Encode<S> for Vec<T> {
     }
 }
 
-impl<'a, S, T: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S> for Vec<T> {
+impl<'a, S, T: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
     fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
         let len = usize::decode(r, s);
         let mut vec = Vec::with_capacity(len);
