@@ -14,14 +14,14 @@ use core::intrinsics;
 /// performed on counts/indices to normalize this difference. `BITMASK_MASK` is
 /// similarly a mask of all the actually-used bits.
 #[derive(Copy, Clone)]
-pub struct BitMask(pub BitMaskWord);
+pub(crate) struct BitMask(pub(crate) BitMaskWord);
 
 #[allow(clippy::use_self)]
 impl BitMask {
     /// Returns a new `BitMask` with all bits inverted.
     #[inline]
     #[must_use]
-    pub fn invert(self) -> Self {
+    pub(crate) fn invert(self) -> Self {
         BitMask(self.0 ^ BITMASK_MASK)
     }
 
@@ -31,7 +31,7 @@ impl BitMask {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     #[cfg(feature = "raw")]
-    pub unsafe fn flip(&mut self, index: usize) -> bool {
+    pub(crate) unsafe fn flip(&mut self, index: usize) -> bool {
         // NOTE: The + BITMASK_STRIDE - 1 is to set the high bit.
         let mask = 1 << (index * BITMASK_STRIDE + BITMASK_STRIDE - 1);
         self.0 ^= mask;
@@ -42,18 +42,18 @@ impl BitMask {
     /// Returns a new `BitMask` with the lowest bit removed.
     #[inline]
     #[must_use]
-    pub fn remove_lowest_bit(self) -> Self {
+    pub(crate) fn remove_lowest_bit(self) -> Self {
         BitMask(self.0 & (self.0 - 1))
     }
     /// Returns whether the `BitMask` has at least one set bit.
     #[inline]
-    pub fn any_bit_set(self) -> bool {
+    pub(crate) fn any_bit_set(self) -> bool {
         self.0 != 0
     }
 
     /// Returns the first set bit in the `BitMask`, if there is one.
     #[inline]
-    pub fn lowest_set_bit(self) -> Option<usize> {
+    pub(crate) fn lowest_set_bit(self) -> Option<usize> {
         if self.0 == 0 {
             None
         } else {
@@ -65,18 +65,18 @@ impl BitMask {
     /// bitmask must not be empty.
     #[inline]
     #[cfg(feature = "nightly")]
-    pub unsafe fn lowest_set_bit_nonzero(self) -> usize {
+    pub(crate) unsafe fn lowest_set_bit_nonzero(self) -> usize {
         intrinsics::cttz_nonzero(self.0) as usize / BITMASK_STRIDE
     }
     #[inline]
     #[cfg(not(feature = "nightly"))]
-    pub unsafe fn lowest_set_bit_nonzero(self) -> usize {
+    pub(crate) unsafe fn lowest_set_bit_nonzero(self) -> usize {
         self.trailing_zeros()
     }
 
     /// Returns the number of trailing zeroes in the `BitMask`.
     #[inline]
-    pub fn trailing_zeros(self) -> usize {
+    pub(crate) fn trailing_zeros(self) -> usize {
         // ARM doesn't have a trailing_zeroes instruction, and instead uses
         // reverse_bits (RBIT) + leading_zeroes (CLZ). However older ARM
         // versions (pre-ARMv7) don't have RBIT and need to emulate it
@@ -91,7 +91,7 @@ impl BitMask {
 
     /// Returns the number of leading zeroes in the `BitMask`.
     #[inline]
-    pub fn leading_zeros(self) -> usize {
+    pub(crate) fn leading_zeros(self) -> usize {
         self.0.leading_zeros() as usize / BITMASK_STRIDE
     }
 }
@@ -108,7 +108,7 @@ impl IntoIterator for BitMask {
 
 /// Iterator over the contents of a `BitMask`, returning the indices of set
 /// bits.
-pub struct BitMaskIter(BitMask);
+pub(crate) struct BitMaskIter(BitMask);
 
 impl Iterator for BitMaskIter {
     type Item = usize;
