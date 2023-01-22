@@ -33,7 +33,7 @@ pub struct IntoIter<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
     const COOP_PREFERRED: bool = { alloc::SHORT_TERM_VEC_PREFERS_COOP },
 > where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     pub(super) buf: NonNull<T>,
     pub(super) phantom: PhantomData<T>,
@@ -51,7 +51,7 @@ pub struct IntoIter<
 impl<T: fmt::Debug, A: Allocator, const COOP_PREFERRED: bool> fmt::Debug
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter").field(&self.as_slice()).finish()
@@ -60,7 +60,7 @@ where
 
 impl<T, A: Allocator, const COOP_PREFERRED: bool> IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     /// Returns the remaining items of this iterator as a slice.
     ///
@@ -179,7 +179,7 @@ where
 #[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> AsRef<[T]> for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     fn as_ref(&self) -> &[T] {
         self.as_slice()
@@ -190,21 +190,21 @@ where
 unsafe impl<T: Send, A: Allocator + Send, const COOP_PREFERRED: bool> Send
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Sync, A: Allocator + Sync, const COOP_PREFERRED: bool> Sync
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> Iterator for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     type Item = T;
 
@@ -322,7 +322,7 @@ where
 impl<T, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -367,7 +367,7 @@ where
 impl<T, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     fn is_empty(&self) -> bool {
         self.ptr == self.end
@@ -376,7 +376,7 @@ where
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> FusedIterator for IntoIter<T, A, COOP_PREFERRED> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:
 {
 }
 
@@ -384,7 +384,7 @@ impl<T, A: Allocator, const COOP_PREFERRED: bool> FusedIterator for IntoIter<T, 
 unsafe impl<T, A: Allocator, const COOP_PREFERRED: bool> TrustedLen
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
 }
 
@@ -406,7 +406,7 @@ unsafe impl<T, A: Allocator, const COOP_PREFERRED: bool> TrustedRandomAccessNoCo
     for IntoIter<T, A, COOP_PREFERRED>
 where
     T: NonDrop,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
@@ -416,7 +416,7 @@ where
 impl<T: Clone, A: Allocator + Clone, const COOP_PREFERRED: bool> Clone
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
@@ -432,18 +432,18 @@ where
 unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREFERRED: bool> Drop
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     fn drop(&mut self) {
         struct DropGuard<'a, T, A: Allocator, const COOP_PREFERRED: bool>(
             &'a mut IntoIter<T, A, COOP_PREFERRED>,
         )
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:;
+            [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:;
 
         impl<T, A: Allocator, const COOP_PREFERRED: bool> Drop for DropGuard<'_, T, A, COOP_PREFERRED>
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
         {
             fn drop(&mut self) {
                 unsafe {
@@ -475,7 +475,7 @@ where
 unsafe impl<T, A: Allocator, const COOP_PREFERRED: bool> InPlaceIterable
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
 }
 
@@ -484,7 +484,7 @@ where
 unsafe impl<T, A: Allocator, const COOP_PREFERRED: bool> SourceIter
     for IntoIter<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     type Source = Self;
 
