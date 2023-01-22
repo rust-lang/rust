@@ -1525,7 +1525,7 @@ unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
 #[derive(Debug)]
 pub struct Drain<'a, T: 'a, const COOP_PREFERRED: bool>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     iter: vec::Drain<'a, T, Global, COOP_PREFERRED>,
 }
@@ -1533,7 +1533,7 @@ where
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, const COOP_PREFERRED: bool> Iterator for Drain<'_, T, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Item = T;
 
