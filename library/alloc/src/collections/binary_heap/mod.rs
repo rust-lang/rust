@@ -143,12 +143,14 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::fmt;
+use core::{alloc, fmt};
 use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
 use core::ptr;
+
+use crate::alloc::Global;
 
 use crate::collections::TryReserveError;
 use crate::slice;
@@ -1241,7 +1243,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<'_, T> {
+    pub fn drain(&mut self) -> Drain<'_, T, {alloc::SHORT_TERM_VEC_PREFERS_COOP}> {
         Drain { iter: self.data.drain(..) }
     }
 
@@ -1521,12 +1523,14 @@ unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
 /// [`drain`]: BinaryHeap::drain
 #[stable(feature = "drain", since = "1.6.0")]
 #[derive(Debug)]
-pub struct Drain<'a, T: 'a> {
-    iter: vec::Drain<'a, T>,
+pub struct Drain<'a, T: 'a, const COOP_PREFERRED: bool>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]: {
+    iter: vec::Drain<'a, T, Global, COOP_PREFERRED>,
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> Iterator for Drain<'_, T> {
+impl<T, const COOP_PREFERRED: bool> Iterator for Drain<'_, T, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]: {
     type Item = T;
 
     #[inline]
@@ -1541,7 +1545,7 @@ impl<T> Iterator for Drain<'_, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> DoubleEndedIterator for Drain<'_, T> {
+impl<T, const COOP_PREFERRED: bool> DoubleEndedIterator for Drain<'_, T, COOP_PREFERRED> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back()
@@ -1549,14 +1553,14 @@ impl<T> DoubleEndedIterator for Drain<'_, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> ExactSizeIterator for Drain<'_, T> {
+impl<T, const COOP_PREFERRED: bool> ExactSizeIterator for Drain<'_, T, COOP_PREFERRED> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T> FusedIterator for Drain<'_, T> {}
+impl<T, const COOP_PREFERRED: bool> FusedIterator for Drain<'_, T, COOP_PREFERRED> {}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
 ///
