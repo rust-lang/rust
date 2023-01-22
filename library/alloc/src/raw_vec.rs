@@ -1,6 +1,6 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
-use core::alloc::{self, LayoutError, GlobalCoAllocMeta};
+use core::alloc::{self, LayoutError, GlobalCoAllocMeta, PtrAndMeta};
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
@@ -49,11 +49,9 @@ enum AllocInit {
 /// `usize::MAX`. This means that you need to be careful when round-tripping this type with a
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
-// @TODO
-// 1. make const generic _coop come from the target specification
-// 2. apply `_coop` with logical && to `A::IsCoAllocator`
-pub(crate) struct RawVec<T, A: Allocator = Global, const _coop: bool = true>
-where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+// @TODO apply `_coop` with logical && to `A::IsCoAllocator`
+pub(crate) struct RawVec<T, A: Allocator = Global, const COOP_PREFERRED: bool = true>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
 {
     ptr: Unique<T>,
     cap: usize,
@@ -61,7 +59,7 @@ where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
     // As of v1.67.0, `cmp` for `TypeId` is not `const`, unfortunately:
     //pub(crate) meta: [GlobalCoAllocMeta; {if core::any::TypeId::of::<A>()==core::any::TypeId::of::<Global>() {1} else {0}}],
     //pub(crate) meta: [GlobalCoAllocMeta; mem::size_of::<A::IsCoAllocator>()],
-    pub(crate) meta: [GlobalCoAllocMeta; alloc::co_alloc_metadata_num_slots::<A>()],
+    pub(crate) metas: [GlobalCoAllocMeta; alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)],
 }
 
 impl<T> RawVec<T, Global> {
@@ -111,8 +109,8 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: Allocator> RawVec<T, A>
-where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+impl<T, A: Allocator, const COOP_PREFERRED: bool> RawVec<T, A, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
 {
     // Tiny Vecs are dumb. Skip to:
     // - 8 if the element size is 1, because any heap allocators is likely
@@ -131,7 +129,8 @@ where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
     /// the returned `RawVec`.
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
-        Self { ptr: Unique::dangling(), cap: 0, alloc, meta: GlobalCoAllocMeta {/*one: 1*/ /* , two: 2, three: 3, four: 4*/} }
+        Self { ptr: Unique::dangling(), cap: 0, alloc,
+            metas: [GlobalCoAllocMeta {/*one: 1*/ /* , two: 2, three: 3, four: 4*/}; alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)] }
     }
 
     /// Like `with_capacity`, but parameterized over the choice of
@@ -208,7 +207,7 @@ where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
                 ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
                 cap: capacity,
                 alloc,
-                meta: GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/}
+                metas: [GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/}; alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]
             }
         }
     }
@@ -225,7 +224,7 @@ where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
     /// guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
-        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc, meta: GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/} }
+        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc, metas: [GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/}; alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)] }
     }
 
     /// Gets a raw pointer to the start of the allocation. Note that this is
@@ -289,12 +288,12 @@ where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
         // handle_reserve behind a call, while making sure that this function is likely to be
         // inlined as just a comparison and a call if the comparison fails.
         #[cold]
-        fn do_reserve_and_handle<T, A: Allocator>(
-            slf: &mut RawVec<T, A>,
+        fn do_reserve_and_handle<T, A: Allocator, const COOP_PREFERRED: bool>(
+            slf: &mut RawVec<T, A, COOP_PREFERRED>,
             len: usize,
             additional: usize,
         )
-        where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+        where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
         {
             handle_reserve(slf.grow_amortized(len, additional));
         }
@@ -368,8 +367,8 @@ where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
     }
 }
 
-impl<T, A: Allocator> RawVec<T, A>
-where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+impl<T, A: Allocator, const COOP_PREFERRED: bool> RawVec<T, A, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
 {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
@@ -490,19 +489,25 @@ where
     memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
 }
 
-unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A>
-where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREFERRED: bool> Drop for RawVec<T, A, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
 {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     default fn drop(&mut self) {
         if let Some((ptr, layout)) = self.current_memory() {
-            unsafe { self.alloc.co_deallocate(ptr, layout) }
+            if A::IS_CO_ALLOCATOR && COOP_PREFERRED {
+                let meta = self.metas[0];
+                unsafe { self.alloc.co_deallocate(PtrAndMeta {ptr, meta}, layout) }
+            } else {
+                unsafe { self.alloc.deallocate(ptr, layout) }
+            }
         }
     }
 }
 
 // @TODO Custom
-/*unsafe impl<#[may_dangle] T> Drop for RawVec<T, Global> {
+unsafe impl<#[may_dangle] T, const COOP_PREFERRED: bool> Drop for RawVec<T, Global, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]: {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     fn drop(&mut self) {
         // @TODO
@@ -510,7 +515,7 @@ where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
             unsafe { self.alloc.deallocate(ptr, layout) }
         }
     }
-}*/
+}
 
 // Central function for reserve error handling.
 #[cfg(not(no_global_oom_handling))]
