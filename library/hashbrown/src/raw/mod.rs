@@ -2217,9 +2217,8 @@ impl<T> Iterator for RawIter<T> {
             self.iter.next_impl::<false>()
         };
 
-        if nxt.is_some() {
-            self.items -= 1;
-        }
+        debug_assert!(nxt.is_some());
+        self.items -= 1;
 
         nxt
     }
