@@ -1,5 +1,8 @@
 #![cfg(target_thread_local)]
 #![unstable(feature = "thread_local_internals", issue = "none")]
+#![feature(global_co_alloc_plvec)]
+
+use core::alloc::PlVec;
 
 //! Provides thread-local destructors without an associated "key", which
 //! can be more efficient.
@@ -64,7 +67,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     static REGISTERED: Cell<bool> = Cell::new(false);
 
     #[thread_local]
-    static mut DTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
+    static mut DTORS: PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))> = PlVec::new();
 
     if !REGISTERED.get() {
         _tlv_atexit(run_dtors, ptr::null_mut());
