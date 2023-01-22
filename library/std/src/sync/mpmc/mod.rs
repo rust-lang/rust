@@ -49,9 +49,9 @@ pub use error::*;
 ///
 /// This channel has a growable buffer that can hold any number of messages at a time.
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
-    let (s, r) = counter::new(list::Channel::new());
-    let s = Sender { flavor: SenderFlavor::List(s) };
-    let r = Receiver { flavor: ReceiverFlavor::List(r) };
+    let (s, r) = counter::new(ChannelFlavor::List(list::Channel::new()));
+    let s = Sender { flavor: s };
+    let r = Receiver { flavor: r };
     (s, r)
 }
 
@@ -63,33 +63,32 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// receive operations must appear at the same time in order to pair up and pass the message over.
 pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
     if cap == 0 {
-        let (s, r) = counter::new(zero::Channel::new());
-        let s = Sender { flavor: SenderFlavor::Zero(s) };
-        let r = Receiver { flavor: ReceiverFlavor::Zero(r) };
+        let (s, r) = counter::new(ChannelFlavor::Zero(zero::Channel::new()));
+        let s = Sender { flavor: s };
+        let r = Receiver { flavor: r };
         (s, r)
     } else {
-        let (s, r) = counter::new(array::Channel::with_capacity(cap));
-        let s = Sender { flavor: SenderFlavor::Array(s) };
-        let r = Receiver { flavor: ReceiverFlavor::Array(r) };
+        let (s, r) = counter::new(ChannelFlavor::Array(array::Channel::with_capacity(cap)));
+        let s = Sender { flavor: s };
+        let r = Receiver { flavor: r };
         (s, r)
     }
 }
 
-/// The sending side of a channel.
-pub struct Sender<T> {
-    flavor: SenderFlavor<T>,
-}
-
-/// Sender flavors.
-enum SenderFlavor<T> {
+enum ChannelFlavor<T> {
     /// Bounded channel based on a preallocated array.
-    Array(counter::Sender<array::Channel<T>>),
+    Array(array::Channel<T>),
 
     /// Unbounded channel implemented as a linked list.
-    List(counter::Sender<list::Channel<T>>),
+    List(list::Channel<T>),
 
     /// Zero-capacity channel.
-    Zero(counter::Sender<zero::Channel<T>>),
+    Zero(zero::Channel<T>),
+}
+
+/// The sending side of a channel.
+pub struct Sender<T> {
+    flavor: counter::Sender<ChannelFlavor<T>>,
 }
 
 unsafe impl<T: Send> Send for Sender<T> {}
@@ -107,10 +106,10 @@ impl<T> Sender<T> {
     /// If called on a zero-capacity channel, this method will send the message only if there
     /// happens to be a receive operation on the other side of the channel at the same time.
     pub fn try_send(&self, msg: T) -> Result<(), TrySendError<T>> {
-        match &self.flavor {
-            SenderFlavor::Array(chan) => chan.try_send(msg),
-            SenderFlavor::List(chan) => chan.try_send(msg),
-            SenderFlavor::Zero(chan) => chan.try_send(msg),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.try_send(msg),
+            ChannelFlavor::List(chan) => chan.try_send(msg),
+            ChannelFlavor::Zero(chan) => chan.try_send(msg),
         }
     }
 
@@ -123,10 +122,10 @@ impl<T> Sender<T> {
     /// If called on a zero-capacity channel, this method will wait for a receive operation to
     /// appear on the other side of the channel.
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
-        match &self.flavor {
-            SenderFlavor::Array(chan) => chan.send(msg, None),
-            SenderFlavor::List(chan) => chan.send(msg, None),
-            SenderFlavor::Zero(chan) => chan.send(msg, None),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.send(msg, None),
+            ChannelFlavor::List(chan) => chan.send(msg, None),
+            ChannelFlavor::Zero(chan) => chan.send(msg, None),
         }
         .map_err(|err| match err {
             SendTimeoutError::Disconnected(msg) => SendError(msg),
@@ -165,10 +164,10 @@ impl<T> Sender<T> {
     /// If called on a zero-capacity channel, this method will wait for a receive operation to
     /// appear on the other side of the channel.
     pub fn send_deadline(&self, msg: T, deadline: Instant) -> Result<(), SendTimeoutError<T>> {
-        match &self.flavor {
-            SenderFlavor::Array(chan) => chan.send(msg, Some(deadline)),
-            SenderFlavor::List(chan) => chan.send(msg, Some(deadline)),
-            SenderFlavor::Zero(chan) => chan.send(msg, Some(deadline)),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.send(msg, Some(deadline)),
+            ChannelFlavor::List(chan) => chan.send(msg, Some(deadline)),
+            ChannelFlavor::Zero(chan) => chan.send(msg, Some(deadline)),
         }
     }
 
@@ -176,10 +175,10 @@ impl<T> Sender<T> {
     ///
     /// Note: Zero-capacity channels are always empty.
     pub fn is_empty(&self) -> bool {
-        match &self.flavor {
-            SenderFlavor::Array(chan) => chan.is_empty(),
-            SenderFlavor::List(chan) => chan.is_empty(),
-            SenderFlavor::Zero(chan) => chan.is_empty(),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.is_empty(),
+            ChannelFlavor::List(chan) => chan.is_empty(),
+            ChannelFlavor::Zero(chan) => chan.is_empty(),
         }
     }
 
@@ -187,63 +186,52 @@ impl<T> Sender<T> {
     ///
     /// Note: Zero-capacity channels are always full.
     pub fn is_full(&self) -> bool {
-        match &self.flavor {
-            SenderFlavor::Array(chan) => chan.is_full(),
-            SenderFlavor::List(chan) => chan.is_full(),
-            SenderFlavor::Zero(chan) => chan.is_full(),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.is_full(),
+            ChannelFlavor::List(chan) => chan.is_full(),
+            ChannelFlavor::Zero(chan) => chan.is_full(),
         }
     }
 
     /// Returns the number of messages in the channel.
     pub fn len(&self) -> usize {
-        match &self.flavor {
-            SenderFlavor::Array(chan) => chan.len(),
-            SenderFlavor::List(chan) => chan.len(),
-            SenderFlavor::Zero(chan) => chan.len(),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.len(),
+            ChannelFlavor::List(chan) => chan.len(),
+            ChannelFlavor::Zero(chan) => chan.len(),
         }
     }
 
     /// If the channel is bounded, returns its capacity.
     pub fn capacity(&self) -> Option<usize> {
-        match &self.flavor {
-            SenderFlavor::Array(chan) => chan.capacity(),
-            SenderFlavor::List(chan) => chan.capacity(),
-            SenderFlavor::Zero(chan) => chan.capacity(),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.capacity(),
+            ChannelFlavor::List(chan) => chan.capacity(),
+            ChannelFlavor::Zero(chan) => chan.capacity(),
         }
     }
 
     /// Returns `true` if senders belong to the same channel.
     pub fn same_channel(&self, other: &Sender<T>) -> bool {
-        match (&self.flavor, &other.flavor) {
-            (SenderFlavor::Array(ref a), SenderFlavor::Array(ref b)) => a == b,
-            (SenderFlavor::List(ref a), SenderFlavor::List(ref b)) => a == b,
-            (SenderFlavor::Zero(ref a), SenderFlavor::Zero(ref b)) => a == b,
-            _ => false,
-        }
+        self.flavor == other.flavor
     }
 }
 
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
         unsafe {
-            match &self.flavor {
-                SenderFlavor::Array(chan) => chan.release(|c| c.disconnect()),
-                SenderFlavor::List(chan) => chan.release(|c| c.disconnect_senders()),
-                SenderFlavor::Zero(chan) => chan.release(|c| c.disconnect()),
-            }
+            self.flavor.release(|chan| match chan {
+                ChannelFlavor::Array(c) => c.disconnect(),
+                ChannelFlavor::List(c) => c.disconnect_senders(),
+                ChannelFlavor::Zero(c) => c.disconnect(),
+            });
         }
     }
 }
 
 impl<T> Clone for Sender<T> {
     fn clone(&self) -> Self {
-        let flavor = match &self.flavor {
-            SenderFlavor::Array(chan) => SenderFlavor::Array(chan.acquire()),
-            SenderFlavor::List(chan) => SenderFlavor::List(chan.acquire()),
-            SenderFlavor::Zero(chan) => SenderFlavor::Zero(chan.acquire()),
-        };
-
-        Sender { flavor }
+        Sender { flavor: self.flavor.acquire() }
     }
 }
 
@@ -255,19 +243,7 @@ impl<T> fmt::Debug for Sender<T> {
 
 /// The receiving side of a channel.
 pub struct Receiver<T> {
-    flavor: ReceiverFlavor<T>,
-}
-
-/// Receiver flavors.
-enum ReceiverFlavor<T> {
-    /// Bounded channel based on a preallocated array.
-    Array(counter::Receiver<array::Channel<T>>),
-
-    /// Unbounded channel implemented as a linked list.
-    List(counter::Receiver<list::Channel<T>>),
-
-    /// Zero-capacity channel.
-    Zero(counter::Receiver<zero::Channel<T>>),
+    flavor: counter::Receiver<ChannelFlavor<T>>,
 }
 
 unsafe impl<T: Send> Send for Receiver<T> {}
@@ -285,10 +261,10 @@ impl<T> Receiver<T> {
     /// If called on a zero-capacity channel, this method will receive a message only if there
     /// happens to be a send operation on the other side of the channel at the same time.
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
-        match &self.flavor {
-            ReceiverFlavor::Array(chan) => chan.try_recv(),
-            ReceiverFlavor::List(chan) => chan.try_recv(),
-            ReceiverFlavor::Zero(chan) => chan.try_recv(),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.try_recv(),
+            ChannelFlavor::List(chan) => chan.try_recv(),
+            ChannelFlavor::Zero(chan) => chan.try_recv(),
         }
     }
 
@@ -302,10 +278,10 @@ impl<T> Receiver<T> {
     /// If called on a zero-capacity channel, this method will wait for a send operation to appear
     /// on the other side of the channel.
     pub fn recv(&self) -> Result<T, RecvError> {
-        match &self.flavor {
-            ReceiverFlavor::Array(chan) => chan.recv(None),
-            ReceiverFlavor::List(chan) => chan.recv(None),
-            ReceiverFlavor::Zero(chan) => chan.recv(None),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.recv(None),
+            ChannelFlavor::List(chan) => chan.recv(None),
+            ChannelFlavor::Zero(chan) => chan.recv(None),
         }
         .map_err(|_| RecvError)
     }
@@ -335,10 +311,10 @@ impl<T> Receiver<T> {
     /// If called on a zero-capacity channel, this method will wait for a send operation to appear
     /// on the other side of the channel.
     pub fn recv_deadline(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
-        match &self.flavor {
-            ReceiverFlavor::Array(chan) => chan.recv(Some(deadline)),
-            ReceiverFlavor::List(chan) => chan.recv(Some(deadline)),
-            ReceiverFlavor::Zero(chan) => chan.recv(Some(deadline)),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.recv(Some(deadline)),
+            ChannelFlavor::List(chan) => chan.recv(Some(deadline)),
+            ChannelFlavor::Zero(chan) => chan.recv(Some(deadline)),
         }
     }
 }
@@ -352,10 +328,10 @@ impl<T> Receiver<T> {
     ///
     /// Note: Zero-capacity channels are always empty.
     pub fn is_empty(&self) -> bool {
-        match &self.flavor {
-            ReceiverFlavor::Array(chan) => chan.is_empty(),
-            ReceiverFlavor::List(chan) => chan.is_empty(),
-            ReceiverFlavor::Zero(chan) => chan.is_empty(),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.is_empty(),
+            ChannelFlavor::List(chan) => chan.is_empty(),
+            ChannelFlavor::Zero(chan) => chan.is_empty(),
         }
     }
 
@@ -363,63 +339,52 @@ impl<T> Receiver<T> {
     ///
     /// Note: Zero-capacity channels are always full.
     pub fn is_full(&self) -> bool {
-        match &self.flavor {
-            ReceiverFlavor::Array(chan) => chan.is_full(),
-            ReceiverFlavor::List(chan) => chan.is_full(),
-            ReceiverFlavor::Zero(chan) => chan.is_full(),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.is_full(),
+            ChannelFlavor::List(chan) => chan.is_full(),
+            ChannelFlavor::Zero(chan) => chan.is_full(),
         }
     }
 
     /// Returns the number of messages in the channel.
     pub fn len(&self) -> usize {
-        match &self.flavor {
-            ReceiverFlavor::Array(chan) => chan.len(),
-            ReceiverFlavor::List(chan) => chan.len(),
-            ReceiverFlavor::Zero(chan) => chan.len(),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.len(),
+            ChannelFlavor::List(chan) => chan.len(),
+            ChannelFlavor::Zero(chan) => chan.len(),
         }
     }
 
     /// If the channel is bounded, returns its capacity.
     pub fn capacity(&self) -> Option<usize> {
-        match &self.flavor {
-            ReceiverFlavor::Array(chan) => chan.capacity(),
-            ReceiverFlavor::List(chan) => chan.capacity(),
-            ReceiverFlavor::Zero(chan) => chan.capacity(),
+        match &*self.flavor {
+            ChannelFlavor::Array(chan) => chan.capacity(),
+            ChannelFlavor::List(chan) => chan.capacity(),
+            ChannelFlavor::Zero(chan) => chan.capacity(),
         }
     }
 
     /// Returns `true` if receivers belong to the same channel.
     pub fn same_channel(&self, other: &Receiver<T>) -> bool {
-        match (&self.flavor, &other.flavor) {
-            (ReceiverFlavor::Array(a), ReceiverFlavor::Array(b)) => a == b,
-            (ReceiverFlavor::List(a), ReceiverFlavor::List(b)) => a == b,
-            (ReceiverFlavor::Zero(a), ReceiverFlavor::Zero(b)) => a == b,
-            _ => false,
-        }
+        self.flavor == other.flavor
     }
 }
 
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         unsafe {
-            match &self.flavor {
-                ReceiverFlavor::Array(chan) => chan.release(|c| c.disconnect()),
-                ReceiverFlavor::List(chan) => chan.release(|c| c.disconnect_receivers()),
-                ReceiverFlavor::Zero(chan) => chan.release(|c| c.disconnect()),
-            }
+            self.flavor.release(|chan| match chan {
+                ChannelFlavor::Array(c) => c.disconnect(),
+                ChannelFlavor::List(c) => c.disconnect_receivers(),
+                ChannelFlavor::Zero(c) => c.disconnect(),
+            });
         }
     }
 }
 
 impl<T> Clone for Receiver<T> {
     fn clone(&self) -> Self {
-        let flavor = match &self.flavor {
-            ReceiverFlavor::Array(chan) => ReceiverFlavor::Array(chan.acquire()),
-            ReceiverFlavor::List(chan) => ReceiverFlavor::List(chan.acquire()),
-            ReceiverFlavor::Zero(chan) => ReceiverFlavor::Zero(chan.acquire()),
-        };
-
-        Receiver { flavor }
+        Receiver { flavor: self.flavor.acquire() }
     }
 }
 
