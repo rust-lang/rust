@@ -82,6 +82,7 @@ pub struct DebugStruct<'a, 'b: 'a> {
     has_fields: bool,
 }
 
+#[inline]
 pub(super) fn debug_struct_new<'a, 'b>(
     fmt: &'a mut fmt::Formatter<'b>,
     name: &str,
@@ -435,6 +436,7 @@ pub struct DebugSet<'a, 'b: 'a> {
     inner: DebugInner<'a, 'b>,
 }
 
+#[inline]
 pub(super) fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b> {
     let result = fmt.write_str("{");
     DebugSet { inner: DebugInner { fmt, result, has_fields: false } }
@@ -565,6 +567,7 @@ pub struct DebugList<'a, 'b: 'a> {
     inner: DebugInner<'a, 'b>,
 }
 
+#[inline]
 pub(super) fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 'b> {
     let result = fmt.write_str("[");
     DebugList { inner: DebugInner { fmt, result, has_fields: false } }
@@ -700,6 +703,7 @@ pub struct DebugMap<'a, 'b: 'a> {
     state: PadAdapterState,
 }
 
+#[inline]
 pub(super) fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
     let result = fmt.write_str("{");
     DebugMap { fmt, result, has_fields: false, has_key: false, state: Default::default() }
