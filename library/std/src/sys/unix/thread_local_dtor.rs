@@ -2,10 +2,10 @@
 #![unstable(feature = "thread_local_internals", issue = "none")]
 #![feature(global_co_alloc_plvec)]
 
-use core::alloc::PlVec;
-
 //! Provides thread-local destructors without an associated "key", which
 //! can be more efficient.
+
+use core::alloc::PlVec;
 
 // Since what appears to be glibc 2.18 this symbol has been shipped which
 // GCC and clang both use to invoke destructors in thread_local globals, so
