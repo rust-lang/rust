@@ -153,10 +153,10 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for VecDeque<T> {
+impl<T, const COOP_PREFERRED: bool = true> Default for VecDeque<T, Global, COOP_PREFERRED> {
     /// Creates an empty deque.
     #[inline]
-    fn default() -> VecDeque<T> {
+    fn default() -> VecDeque<T, Global, COOP_PREFERRED> {
         VecDeque::new()
     }
 }
@@ -536,7 +536,8 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
     }
 }
 
-impl<T> VecDeque<T> {
+impl<T,  Global, const COOP_PREFERRED: bool> VecDeque<T, Global, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
     /// Creates an empty deque.
     ///
     /// # Examples
@@ -550,7 +551,7 @@ impl<T> VecDeque<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_vec_deque_new", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
-    pub const fn new() -> VecDeque<T> {
+    pub const fn new() -> VecDeque<T, Global, COOP_PREFERRED> {
         // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
         VecDeque { head: 0, len: 0, buf: RawVec::NEW }
     }
@@ -567,7 +568,7 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> VecDeque<T> {
+    pub fn with_capacity(capacity: usize) -> VecDeque<T, Global, COOP_PREFERRED> {
         Self::with_capacity_in(capacity, Global)
     }
 }
@@ -585,7 +586,7 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn new_in(alloc: A) -> VecDeque<T, A> {
+    pub const fn new_in(alloc: A) -> VecDeque<T, A, COOP_PREFERRED> {
         VecDeque { head: 0, len: 0, buf: RawVec::new_in(alloc) }
     }
 
@@ -599,7 +600,7 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
     /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A, COOP_PREFERRED> {
         VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
     }
 
@@ -2892,7 +2893,7 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
     /// assert_eq!(vec, [8, 9, 1, 2, 3, 4]);
     /// assert_eq!(vec.as_ptr(), ptr);
     /// ```
-    fn from(mut other: VecDeque<T, A>) -> Self {
+    fn from<const _VECDEQUE_COOP_PREFERRED: bool>(mut other: VecDeque<T, A, _VECDEQUE_COOP_PREFERRED>) -> Self {
         other.make_contiguous();
 
         unsafe {
@@ -2905,6 +2906,7 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
             if other.head != 0 {
                 ptr::copy(buf.add(other.head), buf, len);
             }
+            // @TODO:
             Vec::from_raw_parts_in(buf, len, cap, alloc)
         }
     }

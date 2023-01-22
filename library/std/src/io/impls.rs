@@ -414,7 +414,8 @@ impl<A: Allocator> Write for Vec<u8, A> {
 
 /// Read is implemented for `VecDeque<u8>` by consuming bytes from the front of the `VecDeque`.
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
-impl<A: Allocator> Read for VecDeque<u8, A> {
+impl<A: Allocator, const _COOP_PREFERRED: bool> Read for VecDeque<u8, A, _COOP_PREFERRED>
+where [(); co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREFERRED)]: {
     /// Fill `buf` with the contents of the "front" slice as returned by
     /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are
     /// discontiguous, multiple calls to `read` will be needed to read the entire content.
@@ -438,7 +439,8 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
 
 /// Write is implemented for `VecDeque<u8>` by appending to the `VecDeque`, growing it as needed.
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
-impl<A: Allocator> Write for VecDeque<u8, A> {
+impl<A: Allocator, const _COOP_PREFERRED: bool> Write for VecDeque<u8, A, _COOP_PREFERRED>
+where [(); co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREFERRED)]: {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.extend(buf);
