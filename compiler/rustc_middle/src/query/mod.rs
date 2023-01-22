@@ -640,13 +640,11 @@ rustc_queries! {
     /// `is_const_fn` function. Consider using `is_const_fn` or `is_const_fn_raw` instead.
     query constness(key: DefId) -> hir::Constness {
         desc { |tcx| "checking if item is const: `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
     query asyncness(key: DefId) -> hir::IsAsync {
         desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
@@ -1186,9 +1184,9 @@ rustc_queries! {
 
     query fn_arg_names(def_id: DefId) -> &'tcx [rustc_span::symbol::Ident] {
         desc { |tcx| "looking up function parameter names for `{}`", tcx.def_path_str(def_id) }
-        cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
+
     /// Gets the rendered value of the specified constant or associated constant.
     /// Used by rustdoc.
     query rendered_const(def_id: DefId) -> String {
