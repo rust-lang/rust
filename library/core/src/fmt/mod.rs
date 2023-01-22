@@ -1658,6 +1658,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{Foo}"), "Foo");
     /// assert_eq!(format!("{Foo:0>8}"), "Foo");
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_str(&mut self, data: &str) -> Result {
         self.buf.write_str(data)
@@ -1681,6 +1682,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{}", Foo(-1)), "Foo -1");
     /// assert_eq!(format!("{:0>8}", Foo(2)), "Foo 2");
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
         write(self.buf, fmt)
@@ -1688,6 +1690,7 @@ impl<'a> Formatter<'a> {
 
     /// Flags for formatting
     #[must_use]
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[deprecated(
         since = "1.24.0",
@@ -1726,6 +1729,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{Foo:t>6}"), "tttttt");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn fill(&self) -> char {
         self.fill
@@ -1763,6 +1767,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{Foo}"), "into the void");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
         match self.align {
@@ -1798,6 +1803,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn width(&self) -> Option<usize> {
         self.width
@@ -1829,6 +1835,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{}", Foo(23.2)), "Foo(23.20)");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn precision(&self) -> Option<usize> {
         self.precision
@@ -1861,6 +1868,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_plus(&self) -> bool {
         self.flags & (1 << FlagV1::SignPlus as u32) != 0
@@ -1890,6 +1898,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_minus(&self) -> bool {
         self.flags & (1 << FlagV1::SignMinus as u32) != 0
@@ -1918,6 +1927,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{}", Foo(23)), "23");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn alternate(&self) -> bool {
         self.flags & (1 << FlagV1::Alternate as u32) != 0
@@ -1944,6 +1954,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{:04}", Foo(23)), "23");
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
@@ -1995,6 +2006,7 @@ impl<'a> Formatter<'a> {
     ///     })
     /// );
     /// ```
+    #[inline]
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_struct<'b>(&'b mut self, name: &str) -> DebugStruct<'b, 'a> {
         builders::debug_struct_new(self, name)
@@ -2274,6 +2286,7 @@ impl<'a> Formatter<'a> {
     ///
     /// assert_eq!(format!("{:?}", Foo(vec![10, 11])), "[10, 11]");
     /// ```
+    #[inline]
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_list<'b>(&'b mut self) -> DebugList<'b, 'a> {
         builders::debug_list_new(self)
@@ -2332,6 +2345,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_set<'b>(&'b mut self) -> DebugSet<'b, 'a> {
         builders::debug_set_new(self)
@@ -2358,6 +2372,7 @@ impl<'a> Formatter<'a> {
     ///     r#"{"A": 10, "B": 11}"#
     ///  );
     /// ```
+    #[inline]
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {
         builders::debug_map_new(self)
@@ -2366,14 +2381,17 @@ impl<'a> Formatter<'a> {
 
 #[stable(since = "1.2.0", feature = "formatter_write")]
 impl Write for Formatter<'_> {
+    #[inline]
     fn write_str(&mut self, s: &str) -> Result {
         self.buf.write_str(s)
     }
 
+    #[inline]
     fn write_char(&mut self, c: char) -> Result {
         self.buf.write_char(c)
     }
 
+    #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
         write(self.buf, args)
     }
