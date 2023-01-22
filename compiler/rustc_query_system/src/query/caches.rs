@@ -265,7 +265,7 @@ impl<K: Eq + Idx, V: Clone + Debug> QueryStorage for VecCache<K, V> {
 impl<K, V> QueryCache for VecCache<K, V>
 where
     K: Eq + Idx + Clone + Debug,
-    V: Clone + Debug,
+    V: Copy + Debug,
 {
     type Key = K;
 
@@ -278,7 +278,9 @@ where
         let lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
         #[cfg(not(parallel_compiler))]
         let lock = self.cache.lock();
-        if let Some(Some(value)) = lock.get(*key) {
+        if let Some(&Some(value)) = lock.get(*key) {
+            // Drop the lock before calling user-provided code.
+            drop(lock);
             let hit_result = on_hit(&value.0, value.1);
             Ok(hit_result)
         } else {
@@ -365,7 +367,9 @@ where
         let lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
         #[cfg(not(parallel_compiler))]
         let lock = self.cache.lock();
-        if let Some(Some(value)) = lock.get(*key) {
+        if let Some(&Some(value)) = lock.get(*key) {
+            // Drop the lock before calling user-provided code.
+            drop(lock);
             let hit_result = on_hit(&&value.0, value.1);
             Ok(hit_result)
         } else {

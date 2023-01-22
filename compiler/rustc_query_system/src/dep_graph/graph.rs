@@ -440,14 +440,14 @@ impl<K: DepKind> DepGraph<K> {
     pub fn read_index(&self, dep_node_index: DepNodeIndex) {
         if let Some(ref data) = self.data {
             K::read_deps(|task_deps| {
-                let mut task_deps = match task_deps {
+                let mut task_deps_lock = match task_deps {
                     TaskDepsRef::Allow(deps) => deps.lock(),
                     TaskDepsRef::Ignore => return,
                     TaskDepsRef::Forbid => {
                         panic!("Illegal read of: {dep_node_index:?}")
                     }
                 };
-                let task_deps = &mut *task_deps;
+                let task_deps = &mut *task_deps_lock;
 
                 if cfg!(debug_assertions) {
                     data.current.total_read_count.fetch_add(1, Relaxed);
@@ -471,6 +471,8 @@ impl<K: DepKind> DepGraph<K> {
                     #[cfg(debug_assertions)]
                     {
                         if let Some(target) = task_deps.node {
+                            // Debug formatting will invoke queries, which will need this lock.
+                            drop(task_deps_lock);
                             if let Some(ref forbidden_edge) = data.current.forbidden_edge {
                                 let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
                                 if forbidden_edge.test(&src, &target) {
