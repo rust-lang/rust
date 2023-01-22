@@ -148,13 +148,14 @@ use core::mem::{self, swap, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
 use core::ptr;
-use core::{alloc, fmt};
+use core::fmt;
 
 use crate::alloc::Global;
 
 use crate::collections::TryReserveError;
 use crate::slice;
 use crate::vec::{self, AsVecIntoIter, Vec};
+use crate::DEFAULT_COOP_PREFERRED;
 
 use super::SpecExtend;
 
@@ -1243,7 +1244,8 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<'_, T, { alloc::SHORT_TERM_VEC_PREFERS_COOP }> {
+    #[allow(unused_braces)]
+    pub fn drain(&mut self) -> Drain<'_, T, { SHORT_TERM_VEC_PREFERS_COOP!() }> {
         Drain { iter: self.data.drain(..) }
     }
 
@@ -1652,7 +1654,8 @@ impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
 }
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
-impl<T> From<BinaryHeap<T>> for Vec<T, Global, DEFAULT_COOP_PREFERRED> {
+#[allow(unused_braces)]
+impl<T> From<BinaryHeap<T>> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
     /// Converts a `BinaryHeap<T>` into a `Vec<T>`.
     ///
     /// This conversion requires no data movement or allocation, and has
