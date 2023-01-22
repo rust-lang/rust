@@ -503,7 +503,7 @@ pub enum BuiltinLintDiagnostics {
         param_span: Span,
         /// Span of the code that should be removed when eliding this lifetime.
         /// This span should include leading or trailing comma.
-        deletion_span: Span,
+        deletion_span: Option<Span>,
         /// Span of the single use, or None if the lifetime is never used.
         /// If true, the lifetime will be fully elided.
         use_span: Option<(Span, bool)>,
