@@ -10,6 +10,7 @@ mod converts;
 mod count;
 mod error;
 mod iter;
+mod raw;
 mod traits;
 mod validations;
 
@@ -71,6 +72,9 @@ pub use iter::SplitInclusive;
 
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::{next_code_point, utf8_char_width};
+
+#[unstable(feature = "str_from_raw_parts", issue = "none")]
+pub use raw::{from_raw_parts, from_raw_parts_mut};
 
 use iter::MatchIndicesInternal;
 use iter::SplitInternal;
@@ -2065,7 +2069,7 @@ impl str {
         if let Some((a, b)) = matcher.next_reject() {
             i = a;
             j = b; // Remember earliest known match, correct it below if
-            // last match is different
+                   // last match is different
         }
         if let Some((_, b)) = matcher.next_reject_back() {
             j = b;
