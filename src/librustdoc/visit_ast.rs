@@ -1,12 +1,11 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::Node;
-use rustc_hir::CRATE_HIR_ID;
+use rustc_hir::def_id::{DefId, DefIdMap};
+use rustc_hir::{HirIdSet, Node, CRATE_HIR_ID};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -62,24 +61,24 @@ pub(crate) fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: hir::HirId) -> bool
 
 pub(crate) struct RustdocVisitor<'a, 'tcx> {
     cx: &'a mut core::DocContext<'tcx>,
-    view_item_stack: FxHashSet<hir::HirId>,
+    view_item_stack: HirIdSet,
     inlining: bool,
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
-    exact_paths: FxHashMap<DefId, Vec<Symbol>>,
+    exact_paths: DefIdMap<Vec<Symbol>>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub(crate) fn new(cx: &'a mut core::DocContext<'tcx>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is re-exported, terminate all recursion.
-        let mut stack = FxHashSet::default();
+        let mut stack = HirIdSet::default();
         stack.insert(hir::CRATE_HIR_ID);
         RustdocVisitor {
             cx,
             view_item_stack: stack,
             inlining: false,
             inside_public_path: true,
-            exact_paths: FxHashMap::default(),
+            exact_paths: Default::default(),
         }
     }
 
