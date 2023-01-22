@@ -36,16 +36,16 @@ impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
 impl fmt::Display for ConstEvalErrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::ConstEvalErrKind::*;
-        match *self {
+        match self {
             ConstAccessesStatic => write!(f, "constant accesses static"),
             ModifiedGlobal => {
                 write!(f, "modifying a static's initial value from another static's initializer")
             }
-            AssertFailure(ref msg) => write!(f, "{:?}", msg),
+            AssertFailure(msg) => write!(f, "{:?}", msg),
             Panic { msg, line, col, file } => {
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
             }
-            Abort(ref msg) => write!(f, "{}", msg),
+            Abort(msg) => write!(f, "{}", msg),
         }
     }
 }

@@ -481,12 +481,12 @@ macro_rules! make_value_visitor {
                 };
 
                 // Visit the fields of this value.
-                match v.layout().fields {
+                match &v.layout().fields {
                     FieldsShape::Primitive => {}
-                    FieldsShape::Union(fields) => {
+                    &FieldsShape::Union(fields) => {
                         self.visit_union(v, fields)?;
                     }
-                    FieldsShape::Arbitrary { ref offsets, .. } => {
+                    FieldsShape::Arbitrary { offsets, .. } => {
                         // FIXME: We collect in a vec because otherwise there are lifetime
                         // errors: Projecting to a field needs access to `ecx`.
                         let fields: Vec<InterpResult<'tcx, Self::V>> =

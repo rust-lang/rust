@@ -2,6 +2,7 @@
 //! flow graph when needed for debugging.
 
 use rustc_graphviz as dot;
+use rustc_hir::{Expr, ExprKind, Node};
 use rustc_middle::ty::TyCtxt;
 
 use super::{DropRangesBuilder, PostOrderId};
@@ -80,10 +81,14 @@ impl<'a> dot::Labeller<'a> for DropRangesGraph<'_, '_> {
                     .post_order_map
                     .iter()
                     .find(|(_hir_id, &post_order_id)| post_order_id == *n)
-                    .map_or("<unknown>".into(), |(hir_id, _)| self
-                        .tcx
-                        .hir()
-                        .node_to_string(*hir_id))
+                    .map_or("<unknown>".into(), |(hir_id, _)| format!(
+                        "{}{}",
+                        self.tcx.hir().node_to_string(*hir_id),
+                        match self.tcx.hir().find(*hir_id) {
+                            Some(Node::Expr(Expr { kind: ExprKind::Yield(..), .. })) => " (yield)",
+                            _ => "",
+                        }
+                    ))
             )
             .into(),
         )

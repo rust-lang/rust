@@ -144,12 +144,12 @@ macro_rules! ast_fragments {
             }
 
             pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
-                match *self {
-                    AstFragment::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
+                match self {
+                    AstFragment::OptExpr(Some(expr)) => visitor.visit_expr(expr),
                     AstFragment::OptExpr(None) => {}
-                    AstFragment::MethodReceiverExpr(ref expr) => visitor.visit_method_receiver_expr(expr),
-                    $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)?)*
-                    $($(AstFragment::$Kind(ref ast) => for ast_elt in &ast[..] {
+                    AstFragment::MethodReceiverExpr(expr) => visitor.visit_method_receiver_expr(expr),
+                    $($(AstFragment::$Kind(ast) => visitor.$visit_ast(ast),)?)*
+                    $($(AstFragment::$Kind(ast) => for ast_elt in &ast[..] {
                         visitor.$visit_ast_elt(ast_elt, $($args)*);
                     })?)*
                 }
@@ -592,7 +592,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let expn_id = invoc.expansion_data.id;
                     let parent_def = self.cx.resolver.invocation_parent(expn_id);
                     let span = match &mut invoc.kind {
-                        InvocationKind::Bang { ref mut span, .. } => span,
+                        InvocationKind::Bang { span, .. } => span,
                         InvocationKind::Attr { attr, .. } => &mut attr.span,
                         InvocationKind::Derive { path, .. } => &mut path.span,
                     };
@@ -945,8 +945,8 @@ pub fn ensure_complete_parse<'a>(
         let def_site_span = parser.token.span.with_ctxt(SyntaxContext::root());
 
         let semi_span = parser.sess.source_map().next_point(span);
-        let add_semicolon = match parser.sess.source_map().span_to_snippet(semi_span) {
-            Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
+        let add_semicolon = match &parser.sess.source_map().span_to_snippet(semi_span) {
+            Ok(snippet) if &snippet[..] != ";" && kind_name == "expression" => {
                 Some(span.shrink_to_hi())
             }
             _ => None,

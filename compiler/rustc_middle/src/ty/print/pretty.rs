@@ -393,7 +393,7 @@ pub trait PrettyPrinter<'tcx>:
         match self.tcx().trimmed_def_paths(()).get(&def_id) {
             None => Ok((self, false)),
             Some(symbol) => {
-                self.write_str(symbol.as_str())?;
+                write!(self, "{}", Ident::with_dummy_span(*symbol))?;
                 Ok((self, true))
             }
         }
@@ -2468,7 +2468,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 if not_previously_inserted {
                     ty.super_visit_with(self)
                 } else {
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 }
             }
         }

@@ -4,13 +4,16 @@ use std::iter;
 
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
-use super::{Certainty, EvalCtxt, Goal, QueryResult};
+use super::{Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::TraitPredicate;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{TraitPredicate, TypeVisitable};
 use rustc_span::DUMMY_SP;
+
+pub mod structural_traits;
 
 impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     fn self_ty(self) -> Ty<'tcx> {
@@ -29,7 +32,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) -> Result<Certainty, NoSolution> {
+    ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
 
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -53,24 +56,131 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
             nested_goals.extend(where_clause_bounds);
-            ecx.evaluate_all(nested_goals)
+            ecx.evaluate_all_and_make_canonical_response(nested_goals)
+        })
+    }
+
+    fn consider_assumption(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+    ) -> QueryResult<'tcx> {
+        if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred() {
+            // FIXME: Constness and polarity
+            ecx.infcx.probe(|_| {
+                let assumption_trait_pred =
+                    ecx.infcx.instantiate_bound_vars_with_infer(poly_trait_pred);
+                let nested_goals = ecx.infcx.eq(
+                    goal.param_env,
+                    goal.predicate.trait_ref,
+                    assumption_trait_pred.trait_ref,
+                )?;
+                ecx.evaluate_all_and_make_canonical_response(nested_goals)
+            })
+        } else {
+            Err(NoSolution)
+        }
+    }
+
+    fn consider_auto_trait_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.probe_and_evaluate_goal_for_constituent_tys(
+            goal,
+            structural_traits::instantiate_constituent_tys_for_auto_trait,
+        )
+    }
+
+    fn consider_trait_alias_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+
+        ecx.infcx.probe(|_| {
+            let nested_obligations = tcx
+                .predicates_of(goal.predicate.def_id())
+                .instantiate(tcx, goal.predicate.trait_ref.substs);
+            ecx.evaluate_all_and_make_canonical_response(
+                nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)).collect(),
+            )
         })
     }
 
     fn consider_builtin_sized_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
-    ) -> Result<Certainty, NoSolution> {
-        unimplemented!();
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.probe_and_evaluate_goal_for_constituent_tys(
+            goal,
+            structural_traits::instantiate_constituent_tys_for_sized_trait,
+        )
     }
 
-    fn consider_assumption(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
-    ) -> Result<Certainty, NoSolution> {
-        if let Some(_poly_trait_pred) = assumption.to_opt_poly_trait_pred() {
-            unimplemented!()
+    fn consider_builtin_copy_clone_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.probe_and_evaluate_goal_for_constituent_tys(
+            goal,
+            structural_traits::instantiate_constituent_tys_for_copy_clone_trait,
+        )
+    }
+
+    fn consider_builtin_pointer_sized_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if goal.predicate.self_ty().has_non_region_infer() {
+            return ecx.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity));
+        }
+
+        let tcx = ecx.tcx();
+        let self_ty = tcx.erase_regions(goal.predicate.self_ty());
+
+        if let Ok(layout) = tcx.layout_of(goal.param_env.and(self_ty))
+            &&  let usize_layout = tcx.layout_of(ty::ParamEnv::empty().and(tcx.types.usize)).unwrap().layout
+            && layout.layout.size() == usize_layout.size()
+            && layout.layout.align().abi == usize_layout.align().abi
+        {
+            // FIXME: We could make this faster by making a no-constraints response
+            ecx.make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
+    }
+
+    fn consider_builtin_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        goal_kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx> {
+        if let Some(tupled_inputs_and_output) =
+            structural_traits::extract_tupled_inputs_and_output_from_callable(
+                ecx.tcx(),
+                goal.predicate.self_ty(),
+                goal_kind,
+            )?
+        {
+            let pred = tupled_inputs_and_output
+                .map_bound(|(inputs, _)| {
+                    ecx.tcx()
+                        .mk_trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+                })
+                .to_predicate(ecx.tcx());
+            Self::consider_assumption(ecx, goal, pred)
+        } else {
+            ecx.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity))
+        }
+    }
+
+    fn consider_builtin_tuple_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if let ty::Tuple(..) = goal.predicate.self_ty().kind() {
+            ecx.make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
         }
@@ -78,6 +188,30 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
+    /// Convenience function for traits that are structural, i.e. that only
+    /// have nested subgoals that only change the self type. Unlike other
+    /// evaluate-like helpers, this does a probe, so it doesn't need to be
+    /// wrapped in one.
+    fn probe_and_evaluate_goal_for_constituent_tys(
+        &mut self,
+        goal: Goal<'tcx, TraitPredicate<'tcx>>,
+        constituent_tys: impl Fn(&InferCtxt<'tcx>, Ty<'tcx>) -> Result<Vec<Ty<'tcx>>, NoSolution>,
+    ) -> QueryResult<'tcx> {
+        self.infcx.probe(|_| {
+            self.evaluate_all_and_make_canonical_response(
+                constituent_tys(self.infcx, goal.predicate.self_ty())?
+                    .into_iter()
+                    .map(|ty| {
+                        goal.with(
+                            self.tcx(),
+                            ty::Binder::dummy(goal.predicate.with_self_ty(self.tcx(), ty)),
+                        )
+                    })
+                    .collect(),
+            )
+        })
+    }
+
     pub(super) fn compute_trait_goal(
         &mut self,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,

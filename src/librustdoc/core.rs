@@ -225,7 +225,6 @@ pub(crate) fn create_config(
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
 
-    let cpath = Some(input.clone());
     let input = Input::File(input);
 
     // By default, rustdoc ignores all lints.
@@ -277,7 +276,6 @@ pub(crate) fn create_config(
         crate_cfg: interface::parse_cfgspecs(cfgs),
         crate_check_cfg: interface::parse_check_cfg(check_cfgs),
         input,
-        input_path: cpath,
         output_file: None,
         output_dir: None,
         file_loader: None,

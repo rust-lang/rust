@@ -271,10 +271,6 @@ pub struct Dominators<N: Idx> {
 }
 
 impl<Node: Idx> Dominators<Node> {
-    pub fn dummy() -> Self {
-        Self { post_order_rank: IndexVec::new(), immediate_dominators: IndexVec::new() }
-    }
-
     pub fn is_reachable(&self, node: Node) -> bool {
         self.immediate_dominators[node].is_some()
     }
@@ -299,7 +295,7 @@ impl<Node: Idx> Dominators<Node> {
     /// of two unrelated nodes will also be consistent, but otherwise the order has no
     /// meaning.) This method cannot be used to determine if either Node dominates the other.
     pub fn rank_partial_cmp(&self, lhs: Node, rhs: Node) -> Option<Ordering> {
-        self.post_order_rank[lhs].partial_cmp(&self.post_order_rank[rhs])
+        self.post_order_rank[rhs].partial_cmp(&self.post_order_rank[lhs])
     }
 }
 

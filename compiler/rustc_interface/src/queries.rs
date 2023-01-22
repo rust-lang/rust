@@ -13,7 +13,7 @@ use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::{GlobalCtxt, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, TyCtxt};
 use rustc_query_impl::Queries as TcxQueries;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::{output::find_crate_name, Session};
@@ -90,7 +90,6 @@ pub struct Queries<'tcx> {
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
     expansion: Query<(Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
 }
@@ -109,7 +108,6 @@ impl<'tcx> Queries<'tcx> {
             register_plugins: Default::default(),
             expansion: Default::default(),
             dep_graph: Default::default(),
-            prepare_outputs: Default::default(),
             global_ctxt: Default::default(),
             ongoing_codegen: Default::default(),
         }
@@ -130,10 +128,8 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
-        self.parse.compute(|| {
-            passes::parse(self.session(), &self.compiler.input)
-                .map_err(|mut parse_error| parse_error.emit())
-        })
+        self.parse
+            .compute(|| passes::parse(self.session()).map_err(|mut parse_error| parse_error.emit()))
     }
 
     pub fn register_plugins(&self) -> Result<QueryResult<'_, (ast::Crate, Lrc<LintStore>)>> {
@@ -161,13 +157,13 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn crate_name(&self) -> Result<QueryResult<'_, Symbol>> {
+    fn crate_name(&self) -> Result<QueryResult<'_, Symbol>> {
         self.crate_name.compute(|| {
             Ok({
                 let parse_result = self.parse()?;
                 let krate = parse_result.borrow();
                 // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
-                find_crate_name(self.session(), &krate.attrs, &self.compiler.input)
+                find_crate_name(self.session(), &krate.attrs)
             })
         })
     }
@@ -211,40 +207,42 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn prepare_outputs(&self) -> Result<QueryResult<'_, OutputFilenames>> {
-        self.prepare_outputs.compute(|| {
-            let expansion = self.expansion()?;
-            let (krate, boxed_resolver, _) = &*expansion.borrow();
-            let crate_name = *self.crate_name()?.borrow();
-            passes::prepare_outputs(
-                self.session(),
-                self.compiler,
-                krate,
-                &*boxed_resolver,
-                crate_name,
-            )
-        })
-    }
-
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, QueryContext<'tcx>>> {
         self.global_ctxt.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
-            let outputs = self.prepare_outputs()?.steal();
-            let dep_graph = self.dep_graph()?.borrow().clone();
             let (krate, resolver, lint_store) = self.expansion()?.steal();
-            Ok(passes::create_global_ctxt(
+
+            let outputs = passes::prepare_outputs(self.session(), &krate, &resolver, crate_name)?;
+
+            let ty::ResolverOutputs {
+                untracked,
+                global_ctxt: untracked_resolutions,
+                ast_lowering: untracked_resolver_for_lowering,
+            } = BoxedResolver::to_resolver_outputs(resolver);
+
+            let mut qcx = passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
-                krate,
-                dep_graph,
-                resolver,
-                outputs,
-                crate_name,
+                self.dep_graph()?.steal(),
+                untracked,
                 &self.queries,
                 &self.gcx,
                 &self.arena,
                 &self.hir_arena,
-            ))
+            );
+
+            qcx.enter(|tcx| {
+                let feed = tcx.feed_unit_query();
+                feed.resolver_for_lowering(
+                    tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
+                );
+                feed.resolutions(tcx.arena.alloc(untracked_resolutions));
+                feed.output_filenames(tcx.arena.alloc(std::sync::Arc::new(outputs)));
+                feed.features_query(tcx.sess.features_untracked());
+                let feed = tcx.feed_local_crate();
+                feed.crate_name(crate_name);
+            });
+            Ok(qcx)
         })
     }
 

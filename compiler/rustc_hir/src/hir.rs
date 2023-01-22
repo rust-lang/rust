@@ -1787,6 +1787,14 @@ impl Expr<'_> {
         expr
     }
 
+    pub fn peel_borrows(&self) -> &Self {
+        let mut expr = self;
+        while let ExprKind::AddrOf(.., inner) = &expr.kind {
+            expr = inner;
+        }
+        expr
+    }
+
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
             ExprKind::Path(_) | ExprKind::Lit(_) => false,

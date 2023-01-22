@@ -86,10 +86,10 @@ pub(super) fn build_custom_mir<'tcx>(
         block_map: FxHashMap::default(),
     };
 
-    let res = (|| {
+    let res: PResult<_> = try {
         pctxt.parse_args(&params)?;
-        pctxt.parse_body(expr)
-    })();
+        pctxt.parse_body(expr)?;
+    };
     if let Err(err) = res {
         tcx.sess.diagnostic().span_fatal(
             err.span,

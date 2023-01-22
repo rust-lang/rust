@@ -1,11 +1,6 @@
 .setting-line {
-	margin: 0.6em 0 0.6em 0.3em;
+	margin: 1.2em 0.6em;
 	position: relative;
-}
-
-.setting-line .choices {
-	display: flex;
-	flex-wrap: wrap;
 }
 
 .setting-line .radio-line input,
@@ -38,7 +33,7 @@
 	margin-bottom: 0.1em;
 	min-width: 3.8em;
 	padding: 0.3em;
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	cursor: pointer;
 }
@@ -53,10 +48,6 @@
 	display: flex;
 	align-items: center;
 	cursor: pointer;
-}
-
-#settings .setting-line {
-	margin: 1.2em 0.6em;
 }
 
 .setting-line .radio-line input:checked {

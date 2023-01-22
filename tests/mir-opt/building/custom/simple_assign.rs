@@ -11,12 +11,14 @@ pub fn simple(x: i32) -> i32 {
         let temp2: _;
 
         {
+            StorageLive(temp1);
             temp1 = x;
             Goto(exit)
         }
 
         exit = {
             temp2 = Move(temp1);
+            StorageDead(temp1);
             RET = temp2;
             Return()
         }

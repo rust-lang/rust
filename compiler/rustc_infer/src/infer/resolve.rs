@@ -147,7 +147,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeOrConstFinder<'a, 'tcx> {
         } else if !t.has_non_region_infer() {
             // All const/type variables in inference types must already be resolved,
             // no need to visit the contents.
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         } else {
             // Otherwise, keep visiting.
             t.super_visit_with(self)
@@ -178,7 +178,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeOrConstFinder<'a, 'tcx> {
         } else if !ct.has_non_region_infer() {
             // All const/type variables in inference types must already be resolved,
             // no need to visit the contents.
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         } else {
             // Otherwise, keep visiting.
             ct.super_visit_with(self)

@@ -162,6 +162,9 @@ pub struct TestProps {
     pub stderr_per_bitwidth: bool,
     // The MIR opt to unit test, if any
     pub mir_unit_test: Option<String>,
+    // Whether to tell `rustc` to remap the "src base" directory to a fake
+    // directory.
+    pub remap_src_base: bool,
 }
 
 mod directives {
@@ -196,6 +199,7 @@ mod directives {
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
     pub const MIR_UNIT_TEST: &'static str = "unit-test";
+    pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -241,6 +245,7 @@ impl TestProps {
             should_ice: false,
             stderr_per_bitwidth: false,
             mir_unit_test: None,
+            remap_src_base: false,
         }
     }
 
@@ -273,6 +278,9 @@ impl TestProps {
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
     fn load_from(&mut self, testfile: &Path, cfg: Option<&str>, config: &Config) {
+        // Mode-dependent defaults.
+        self.remap_src_base = config.mode == Mode::Ui && !config.suite.contains("rustdoc");
+
         let mut has_edition = false;
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
@@ -426,13 +434,19 @@ impl TestProps {
                         self.known_bug = true;
                     } else {
                         panic!(
-                            "Invalid known-bug value: {known_bug}\nIt requires comma-separated issue references (`#000` or `chalk#000`) or `unknown`."
+                            "Invalid known-bug value: {known_bug}\nIt requires comma-separated issue references (`#000` or `chalk#000`) or `known-bug: unknown`."
                         );
                     }
+                } else if config.parse_name_directive(ln, KNOWN_BUG) {
+                    panic!(
+                        "Invalid known-bug attribute, requires comma-separated issue references (`#000` or `chalk#000`) or `known-bug: unknown`."
+                    );
                 }
+
                 config.set_name_value_directive(ln, MIR_UNIT_TEST, &mut self.mir_unit_test, |s| {
                     s.trim().to_string()
                 });
+                config.set_name_directive(ln, REMAP_SRC_BASE, &mut self.remap_src_base);
             });
         }
 
@@ -725,6 +739,10 @@ impl Config {
             && matches!(line.as_bytes().get(directive.len()), None | Some(&b' ') | Some(&b':'))
     }
 
+    fn parse_negative_name_directive(&self, line: &str, directive: &str) -> bool {
+        line.starts_with("no-") && self.parse_name_directive(&line[3..], directive)
+    }
+
     pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
         let colon = directive.len();
         if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
@@ -754,8 +772,17 @@ impl Config {
     }
 
     fn set_name_directive(&self, line: &str, directive: &str, value: &mut bool) {
-        if !*value {
-            *value = self.parse_name_directive(line, directive)
+        match value {
+            true => {
+                if self.parse_negative_name_directive(line, directive) {
+                    *value = false;
+                }
+            }
+            false => {
+                if self.parse_name_directive(line, directive) {
+                    *value = true;
+                }
+            }
         }
     }
 

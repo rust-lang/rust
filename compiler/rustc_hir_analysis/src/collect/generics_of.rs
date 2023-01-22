@@ -110,12 +110,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                     // expressions' count (i.e. `N` in `[x; N]`), and explicit
                     // `enum` discriminants (i.e. `D` in `enum Foo { Bar = D }`),
                     // as they shouldn't be able to cause query cycle errors.
-                    Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
+                    Node::Expr(Expr { kind: ExprKind::Repeat(_, constant), .. })
                         if constant.hir_id() == hir_id =>
                     {
                         Some(parent_def_id.to_def_id())
                     }
-                    Node::Variant(Variant { disr_expr: Some(ref constant), .. })
+                    Node::Variant(Variant { disr_expr: Some(constant), .. })
                         if constant.hir_id == hir_id =>
                     {
                         Some(parent_def_id.to_def_id())
@@ -259,7 +259,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
 
     params.extend(ast_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamKind::Lifetime { .. } => None,
-        GenericParamKind::Type { ref default, synthetic, .. } => {
+        GenericParamKind::Type { default, synthetic, .. } => {
             if default.is_some() {
                 match allow_defaults {
                     Defaults::Allowed => {}
@@ -426,26 +426,22 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     }
 
     match node {
-        Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, &item.generics, sig.decl)
-            }
+        Node::TraitItem(item) => match &item.kind {
+            hir::TraitItemKind::Fn(sig, _) => has_late_bound_regions(tcx, &item.generics, sig.decl),
             _ => None,
         },
-        Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, &item.generics, sig.decl)
-            }
+        Node::ImplItem(item) => match &item.kind {
+            hir::ImplItemKind::Fn(sig, _) => has_late_bound_regions(tcx, &item.generics, sig.decl),
             _ => None,
         },
         Node::ForeignItem(item) => match item.kind {
-            hir::ForeignItemKind::Fn(fn_decl, _, ref generics) => {
+            hir::ForeignItemKind::Fn(fn_decl, _, generics) => {
                 has_late_bound_regions(tcx, generics, fn_decl)
             }
             _ => None,
         },
-        Node::Item(item) => match item.kind {
-            hir::ItemKind::Fn(ref sig, .., ref generics, _) => {
+        Node::Item(item) => match &item.kind {
+            hir::ItemKind::Fn(sig, .., generics, _) => {
                 has_late_bound_regions(tcx, generics, sig.decl)
             }
             _ => None,

@@ -448,8 +448,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        for (id, origin) in fcx_typeck_results.closure_kind_origins().iter() {
-            let hir_id = hir::HirId { owner: common_hir_owner, local_id: *id };
+        let fcx_closure_kind_origins =
+            fcx_typeck_results.closure_kind_origins().items_in_stable_order();
+
+        for (local_id, origin) in fcx_closure_kind_origins {
+            let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let place_span = origin.0;
             let place = self.resolve(origin.1.clone(), &place_span);
             self.typeck_results.closure_kind_origins_mut().insert(hir_id, (place_span, place));
@@ -458,11 +461,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_coercion_casts(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
-        let fcx_coercion_casts = fcx_typeck_results.coercion_casts();
+
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
+        let fcx_coercion_casts = fcx_typeck_results.coercion_casts().to_sorted_stable_ord();
         for local_id in fcx_coercion_casts {
-            self.typeck_results.set_coercion_cast(*local_id);
+            self.typeck_results.set_coercion_cast(local_id);
         }
     }
 
@@ -471,22 +475,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        let mut errors_buffer = Vec::new();
-        for (&local_id, c_ty) in fcx_typeck_results.user_provided_types().iter() {
-            let hir_id = hir::HirId { owner: common_hir_owner, local_id };
+        if self.rustc_dump_user_substs {
+            let sorted_user_provided_types =
+                fcx_typeck_results.user_provided_types().items_in_stable_order();
 
-            if cfg!(debug_assertions) && c_ty.needs_infer() {
-                span_bug!(
-                    hir_id.to_span(self.fcx.tcx),
-                    "writeback: `{:?}` has inference variables",
-                    c_ty
-                );
-            };
+            let mut errors_buffer = Vec::new();
+            for (local_id, c_ty) in sorted_user_provided_types {
+                let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
-            self.typeck_results.user_provided_types_mut().insert(hir_id, *c_ty);
-
-            if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
-                if self.rustc_dump_user_substs {
+                if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
                     // This is a unit-testing mechanism.
                     let span = self.tcx().hir().span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
@@ -498,31 +495,49 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     err.buffer(&mut errors_buffer);
                 }
             }
-        }
 
-        if !errors_buffer.is_empty() {
-            errors_buffer.sort_by_key(|diag| diag.span.primary_span());
-            for mut diag in errors_buffer {
-                self.tcx().sess.diagnostic().emit_diagnostic(&mut diag);
+            if !errors_buffer.is_empty() {
+                errors_buffer.sort_by_key(|diag| diag.span.primary_span());
+                for mut diag in errors_buffer {
+                    self.tcx().sess.diagnostic().emit_diagnostic(&mut diag);
+                }
             }
         }
+
+        self.typeck_results.user_provided_types_mut().extend(
+            fcx_typeck_results.user_provided_types().items().map(|(local_id, c_ty)| {
+                let hir_id = hir::HirId { owner: common_hir_owner, local_id };
+
+                if cfg!(debug_assertions) && c_ty.needs_infer() {
+                    span_bug!(
+                        hir_id.to_span(self.fcx.tcx),
+                        "writeback: `{:?}` has inference variables",
+                        c_ty
+                    );
+                };
+
+                (hir_id, *c_ty)
+            }),
+        );
     }
 
     fn visit_user_provided_sigs(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
-        for (&def_id, c_sig) in fcx_typeck_results.user_provided_sigs.iter() {
-            if cfg!(debug_assertions) && c_sig.needs_infer() {
-                span_bug!(
-                    self.fcx.tcx.def_span(def_id),
-                    "writeback: `{:?}` has inference variables",
-                    c_sig
-                );
-            };
+        self.typeck_results.user_provided_sigs.extend(
+            fcx_typeck_results.user_provided_sigs.items().map(|(&def_id, c_sig)| {
+                if cfg!(debug_assertions) && c_sig.needs_infer() {
+                    span_bug!(
+                        self.fcx.tcx.def_span(def_id),
+                        "writeback: `{:?}` has inference variables",
+                        c_sig
+                    );
+                };
 
-            self.typeck_results.user_provided_sigs.insert(def_id, *c_sig);
-        }
+                (def_id, *c_sig)
+            }),
+        );
     }
 
     fn visit_generator_interior_types(&mut self) {
@@ -641,7 +656,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        for (&local_id, &fn_sig) in fcx_typeck_results.liberated_fn_sigs().iter() {
+        let fcx_liberated_fn_sigs = fcx_typeck_results.liberated_fn_sigs().items_in_stable_order();
+
+        for (local_id, &fn_sig) in fcx_liberated_fn_sigs {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let fn_sig = self.resolve(fn_sig, &hir_id);
             self.typeck_results.liberated_fn_sigs_mut().insert(hir_id, fn_sig);
@@ -653,7 +670,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        for (&local_id, ftys) in fcx_typeck_results.fru_field_types().iter() {
+        let fcx_fru_field_types = fcx_typeck_results.fru_field_types().items_in_stable_order();
+
+        for (local_id, ftys) in fcx_fru_field_types {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let ftys = self.resolve(ftys.clone(), &hir_id);
             self.typeck_results.fru_field_types_mut().insert(hir_id, ftys);

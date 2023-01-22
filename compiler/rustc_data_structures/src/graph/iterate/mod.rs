@@ -317,12 +317,12 @@ where
         _node: G::Node,
         _prior_status: Option<NodeStatus>,
     ) -> ControlFlow<Self::BreakVal> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     /// Called after all nodes reachable from this one have been examined.
     fn node_settled(&mut self, _node: G::Node) -> ControlFlow<Self::BreakVal> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     /// Behave as if no edges exist from `source` to `target`.
@@ -346,8 +346,8 @@ where
         prior_status: Option<NodeStatus>,
     ) -> ControlFlow<Self::BreakVal> {
         match prior_status {
-            Some(NodeStatus::Visited) => ControlFlow::BREAK,
-            _ => ControlFlow::CONTINUE,
+            Some(NodeStatus::Visited) => ControlFlow::Break(()),
+            _ => ControlFlow::Continue(()),
         }
     }
 }

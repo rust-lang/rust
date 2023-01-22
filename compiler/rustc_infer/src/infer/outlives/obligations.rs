@@ -67,7 +67,6 @@ use crate::infer::{
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_hir::def_id::DefId;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitable};
@@ -266,10 +265,8 @@ where
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);
                 }
-                Component::Alias(kind, data) => {
-                    self.alias_must_outlive(*kind, *data, origin, region)
-                }
-                Component::EscapingProjection(subcomponents) => {
+                Component::Alias(alias_ty) => self.alias_ty_must_outlive(origin, region, *alias_ty),
+                Component::EscapingAlias(subcomponents) => {
                     self.components_must_outlive(origin, &subcomponents, region, category);
                 }
                 Component::UnresolvedInferenceVariable(v) => {
@@ -285,61 +282,26 @@ where
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn param_ty_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         param_ty: ty::ParamTy,
     ) {
-        debug!(
-            "param_ty_must_outlive(region={:?}, param_ty={:?}, origin={:?})",
-            region, param_ty, origin
-        );
-
-        let generic = GenericKind::Param(param_ty);
         let verify_bound = self.verify_bound.param_bound(param_ty);
-        self.delegate.push_verify(origin, generic, region, verify_bound);
+        self.delegate.push_verify(origin, GenericKind::Param(param_ty), region, verify_bound);
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn alias_must_outlive(
-        &mut self,
-        kind: ty::AliasKind,
-        data: ty::AliasTy<'tcx>,
-        origin: infer::SubregionOrigin<'tcx>,
-        region: ty::Region<'tcx>,
-    ) {
-        self.generic_must_outlive(
-            origin,
-            region,
-            GenericKind::Alias(kind, data),
-            data.def_id,
-            data.substs,
-            kind == ty::Opaque,
-            |ty| match *ty.kind() {
-                ty::Alias(filter_kind, ty::AliasTy { def_id, substs, .. })
-                    if kind == filter_kind =>
-                {
-                    (def_id, substs)
-                }
-                _ => bug!("expected only projection types from env, not {:?}", ty),
-            },
-        );
-    }
-
-    #[instrument(level = "debug", skip(self, filter))]
-    fn generic_must_outlive(
+    fn alias_ty_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
-        generic: GenericKind<'tcx>,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
-        is_opaque: bool,
-        filter: impl Fn(Ty<'tcx>) -> (DefId, SubstsRef<'tcx>),
+        alias_ty: ty::AliasTy<'tcx>,
     ) {
         // An optimization for a common case with opaque types.
-        if substs.is_empty() {
+        if alias_ty.substs.is_empty() {
             return;
         }
 
@@ -361,14 +323,14 @@ where
         // These are guaranteed to apply, no matter the inference
         // results.
         let trait_bounds: Vec<_> =
-            self.verify_bound.declared_region_bounds(def_id, substs).collect();
+            self.verify_bound.declared_bounds_from_definition(alias_ty).collect();
 
         debug!(?trait_bounds);
 
         // Compute the bounds we can derive from the environment. This
         // is an "approximate" match -- in some cases, these bounds
         // may not apply.
-        let mut approx_env_bounds = self.verify_bound.approx_declared_bounds_from_env(generic);
+        let mut approx_env_bounds = self.verify_bound.approx_declared_bounds_from_env(alias_ty);
         debug!(?approx_env_bounds);
 
         // Remove outlives bounds that we get from the environment but
@@ -383,8 +345,8 @@ where
             // If the declaration is `trait Trait<'b> { type Item: 'b; }`, then `projection_declared_bounds_from_trait`
             // will be invoked with `['b => ^1]` and so we will get `^1` returned.
             let bound = bound_outlives.skip_binder();
-            let (def_id, substs) = filter(bound.0);
-            self.verify_bound.declared_region_bounds(def_id, substs).all(|r| r != bound.1)
+            let ty::Alias(_, alias_ty) = bound.0.kind() else { bug!("expected AliasTy") };
+            self.verify_bound.declared_bounds_from_definition(*alias_ty).all(|r| r != bound.1)
         });
 
         // If declared bounds list is empty, the only applicable rule is
@@ -401,12 +363,12 @@ where
         // the problem is to add `T: 'r`, which isn't true. So, if there are no
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
-        let needs_infer = substs.needs_infer();
-        if approx_env_bounds.is_empty() && trait_bounds.is_empty() && (needs_infer || is_opaque) {
+        if approx_env_bounds.is_empty()
+            && trait_bounds.is_empty()
+            && (alias_ty.needs_infer() || alias_ty.kind(self.tcx) == ty::Opaque)
+        {
             debug!("no declared bounds");
-
-            self.substs_must_outlive(substs, origin, region);
-
+            self.substs_must_outlive(alias_ty.substs, origin, region);
             return;
         }
 
@@ -447,14 +409,9 @@ where
         // projection outlive; in some cases, this may add insufficient
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
-        let verify_bound = self.verify_bound.projection_opaque_bounds(
-            generic,
-            def_id,
-            substs,
-            &mut Default::default(),
-        );
-        debug!("projection_must_outlive: pushing {:?}", verify_bound);
-        self.delegate.push_verify(origin, generic, region, verify_bound);
+        let verify_bound = self.verify_bound.alias_bound(alias_ty, &mut Default::default());
+        debug!("alias_must_outlive: pushing {:?}", verify_bound);
+        self.delegate.push_verify(origin, GenericKind::Alias(alias_ty), region, verify_bound);
     }
 
     fn substs_must_outlive(

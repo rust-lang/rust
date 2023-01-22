@@ -133,7 +133,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
                 .escaping
                 .max(t.outer_exclusive_binder().as_usize() - self.outer_index.as_usize());
         }
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     #[inline]
@@ -145,7 +145,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
             }
             _ => {}
         }
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -153,7 +153,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 self.escaping =
                     self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
             _ => ct.super_visit_with(self),
         }
@@ -201,7 +201,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         // wait to fold the substs.
 
         // Wrap this in a closure so we don't accidentally return from the outer function
-        let res = (|| match *ty.kind() {
+        let res = match *ty.kind() {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
@@ -210,7 +210,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.try_super_fold_with(self),
+                    Reveal::UserFacing => ty.try_super_fold_with(self)?,
 
                     Reveal::All => {
                         let substs = substs.try_fold_with(self)?;
@@ -239,7 +239,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         }
                         let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
                         self.anon_depth -= 1;
-                        folded_ty
+                        folded_ty?
                     }
                 }
             }
@@ -287,9 +287,9 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // `tcx.normalize_projection_ty` may normalize to a type that still has
                 // unevaluated consts, so keep normalizing here if that's the case.
                 if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
-                    Ok(res.try_super_fold_with(self)?)
+                    res.try_super_fold_with(self)?
                 } else {
-                    Ok(res)
+                    res
                 }
             }
 
@@ -344,14 +344,14 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // `tcx.normalize_projection_ty` may normalize to a type that still has
                 // unevaluated consts, so keep normalizing here if that's the case.
                 if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
-                    Ok(res.try_super_fold_with(self)?)
+                    res.try_super_fold_with(self)?
                 } else {
-                    Ok(res)
+                    res
                 }
             }
 
-            _ => ty.try_super_fold_with(self),
-        })()?;
+            _ => ty.try_super_fold_with(self)?,
+        };
 
         self.cache.insert(ty, res);
         Ok(res)

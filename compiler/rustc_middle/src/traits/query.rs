@@ -213,5 +213,5 @@ pub struct NormalizationResult<'tcx> {
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
-    RegionSubAlias(ty::Region<'tcx>, ty::AliasKind, ty::AliasTy<'tcx>),
+    RegionSubAlias(ty::Region<'tcx>, ty::AliasTy<'tcx>),
 }

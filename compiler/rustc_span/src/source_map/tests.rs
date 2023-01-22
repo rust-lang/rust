@@ -391,7 +391,7 @@ fn path_prefix_remapping_expand_to_absolute() {
     let working_directory = path("/foo");
     let working_directory = RealFileName::Remapped {
         local_path: Some(working_directory.clone()),
-        virtual_name: mapping.map_prefix(working_directory).0,
+        virtual_name: mapping.map_prefix(working_directory).0.into_owned(),
     };
 
     assert_eq!(working_directory.remapped_path_if_available(), path("FOO"));
