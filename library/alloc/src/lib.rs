@@ -291,5 +291,6 @@ use crate::alloc::Global;
 /// See also `core::alloc::co_alloc_metadata_num_slots_with_preference`.
 #[unstable(feature = "global_co_alloc", issue = "none")]
 pub const fn co_alloc_metadata_num_slots_with_preference_global(coop_preferred: bool) -> usize {
-    if Global::IS_CO_ALLOCATOR && coop_preferred { 1 } else { 0 }
+    // FIXME or replace any calls with core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<Global>(COOP_PREFERRED). Then rename co_alloc_metadata_num_slots_with_preference_specific to co_alloc_metadata_num_slots_with_preference. See raw_vec.rs.
+    if /*Global::IS_CO_ALLOCATOR*/ true && coop_preferred { 1 } else { 0 }
 }

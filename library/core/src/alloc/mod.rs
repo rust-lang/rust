@@ -93,8 +93,9 @@ pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
 
 #[unstable(feature = "global_co_alloc", issue = "none")]
 pub const fn co_alloc_metadata_num_slots<A: Allocator>() -> usize {
-    if true {
-        panic!("FIXME - consider removing co_alloc_metadata_num_slots()");
+    // @FIXME later
+    if false {
+        panic!("FIXME - consider replacing co_alloc_metadata_num_slots() with co_alloc_metadata_num_slots_with_preference_specific(bool), and adding const flags as appropriate.");
     }
     if A::IS_CO_ALLOCATOR { 1 } else { 0 }
 }
