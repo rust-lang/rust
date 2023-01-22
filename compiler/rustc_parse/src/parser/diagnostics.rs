@@ -2353,6 +2353,28 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
+    /// Try to recover from an unbraced const argument whose first token [could begin a type][ty].
+    ///
+    /// [ty]: token::Token::can_begin_type
+    pub(crate) fn recover_unbraced_const_arg_that_can_begin_ty(
+        &mut self,
+        mut snapshot: SnapshotParser<'a>,
+    ) -> Option<P<ast::Expr>> {
+        match snapshot.parse_expr_res(Restrictions::CONST_EXPR, None) {
+            // Since we don't know the exact reason why we failed to parse the type or the
+            // expression, employ a simple heuristic to weed out some pathological cases.
+            Ok(expr) if let token::Comma | token::Gt = snapshot.token.kind => {
+                self.restore_snapshot(snapshot);
+                Some(expr)
+            }
+            Ok(_) => None,
+            Err(err) => {
+                err.cancel();
+                None
+            }
+        }
+    }
+
     /// Creates a dummy const argument, and reports that the expression must be enclosed in braces
     pub fn dummy_const_arg_needs_braces(
         &self,
