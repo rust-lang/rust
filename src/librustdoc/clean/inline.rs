@@ -9,7 +9,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId};
 use rustc_hir::Mutability;
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt};
@@ -45,7 +45,7 @@ pub(crate) fn try_inline(
     res: Res,
     name: Symbol,
     attrs: Option<&[ast::Attribute]>,
-    visited: &mut FxHashSet<DefId>,
+    visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
     if did.is_local() {
@@ -163,7 +163,7 @@ pub(crate) fn try_inline_glob(
     cx: &mut DocContext<'_>,
     res: Res,
     current_mod: LocalDefId,
-    visited: &mut FxHashSet<DefId>,
+    visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
@@ -568,11 +568,7 @@ pub(crate) fn build_impl(
     ));
 }
 
-fn build_module(
-    cx: &mut DocContext<'_>,
-    did: DefId,
-    visited: &mut FxHashSet<DefId>,
-) -> clean::Module {
+fn build_module(cx: &mut DocContext<'_>, did: DefId, visited: &mut DefIdSet) -> clean::Module {
     let items = build_module_items(cx, did, visited, &mut FxHashSet::default(), None);
 
     let span = clean::Span::new(cx.tcx.def_span(did));
@@ -582,9 +578,9 @@ fn build_module(
 fn build_module_items(
     cx: &mut DocContext<'_>,
     did: DefId,
-    visited: &mut FxHashSet<DefId>,
+    visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
-    allowed_def_ids: Option<&FxHashSet<DefId>>,
+    allowed_def_ids: Option<&DefIdSet>,
 ) -> Vec<clean::Item> {
     let mut items = Vec::new();
 

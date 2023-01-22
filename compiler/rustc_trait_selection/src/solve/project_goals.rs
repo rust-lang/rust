@@ -3,7 +3,7 @@ use crate::traits::{specialization_graph, translate_substs};
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
 use super::trait_goals::structural_traits;
-use super::{Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+use super::{Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -229,8 +229,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 goal.predicate.def_id(),
                 impl_def_id
             )? else {
-                let certainty = Certainty::Maybe(MaybeCause::Ambiguity);
-                return ecx.make_canonical_response(trait_ref_certainty.unify_and(certainty));
+                return ecx.make_canonical_response(trait_ref_certainty.unify_and(Certainty::AMBIGUOUS));
             };
 
             if !assoc_def.item.defaultness(tcx).has_value() {
@@ -382,7 +381,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 .to_predicate(ecx.tcx());
             Self::consider_assumption(ecx, goal, pred)
         } else {
-            ecx.make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity))
+            ecx.make_canonical_response(Certainty::AMBIGUOUS)
         }
     }
 

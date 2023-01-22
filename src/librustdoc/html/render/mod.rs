@@ -50,7 +50,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
@@ -1115,7 +1115,7 @@ fn render_assoc_items(
     it: DefId,
     what: AssocItemRender<'_>,
 ) {
-    let mut derefs = FxHashSet::default();
+    let mut derefs = DefIdSet::default();
     derefs.insert(it);
     render_assoc_items_inner(w, cx, containing_item, it, what, &mut derefs)
 }
@@ -1126,7 +1126,7 @@ fn render_assoc_items_inner(
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
-    derefs: &mut FxHashSet<DefId>,
+    derefs: &mut DefIdSet,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
@@ -1215,7 +1215,7 @@ fn render_deref_methods(
     impl_: &Impl,
     container_item: &clean::Item,
     deref_mut: bool,
-    derefs: &mut FxHashSet<DefId>,
+    derefs: &mut DefIdSet,
 ) {
     let cache = cx.cache();
     let deref_type = impl_.inner_impl().trait_.as_ref().unwrap();
@@ -2175,7 +2175,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             if let Some(impl_) =
                 v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
             {
-                let mut derefs = FxHashSet::default();
+                let mut derefs = DefIdSet::default();
                 derefs.insert(did);
                 sidebar_deref_methods(cx, out, impl_, v, &mut derefs, &mut used_links);
             }
@@ -2195,7 +2195,7 @@ fn sidebar_deref_methods(
     out: &mut Buffer,
     impl_: &Impl,
     v: &[Impl],
-    derefs: &mut FxHashSet<DefId>,
+    derefs: &mut DefIdSet,
     used_links: &mut FxHashSet<String>,
 ) {
     let c = cx.cache();

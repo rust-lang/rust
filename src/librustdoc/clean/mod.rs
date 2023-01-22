@@ -15,7 +15,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
@@ -1528,7 +1528,7 @@ fn maybe_expand_private_type_alias<'tcx>(
     let hir::ItemKind::TyAlias(ty, generics) = alias else { return None };
 
     let provided_params = &path.segments.last().expect("segments were empty");
-    let mut substs = FxHashMap::default();
+    let mut substs = DefIdMap::default();
     let generic_args = provided_params.args();
 
     let mut indices: hir::GenericParamCount = Default::default();
@@ -2321,7 +2321,7 @@ fn clean_extern_crate<'tcx>(
 
     let krate_owner_def_id = krate.owner_id.to_def_id();
     if please_inline {
-        let mut visited = FxHashSet::default();
+        let mut visited = DefIdSet::default();
 
         let res = Res::Def(DefKind::Mod, crate_def_id);
 
@@ -2440,7 +2440,7 @@ fn clean_use_statement_inner<'tcx>(
     let path = clean_path(path, cx);
     let inner = if kind == hir::UseKind::Glob {
         if !denied {
-            let mut visited = FxHashSet::default();
+            let mut visited = DefIdSet::default();
             if let Some(items) =
                 inline::try_inline_glob(cx, path.res, current_mod, &mut visited, inlined_names)
             {
@@ -2459,7 +2459,7 @@ fn clean_use_statement_inner<'tcx>(
             }
         }
         if !denied {
-            let mut visited = FxHashSet::default();
+            let mut visited = DefIdSet::default();
             let import_def_id = import.owner_id.to_def_id();
 
             if let Some(mut items) = inline::try_inline(

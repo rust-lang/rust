@@ -13,8 +13,8 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::DefId;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -40,7 +40,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     /// The directory where the blob will be written to.
     out_path: PathBuf,
     cache: Rc<Cache>,
-    imported_items: FxHashSet<DefId>,
+    imported_items: DefIdSet,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
