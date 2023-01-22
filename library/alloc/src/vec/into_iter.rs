@@ -28,10 +28,11 @@ use core::{alloc, array, fmt};
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
+#[allow(unused_braces)]
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-    const COOP_PREFERRED: bool = { alloc::SHORT_TERM_VEC_PREFERS_COOP },
+    const COOP_PREFERRED: bool = { SHORT_TERM_VEC_PREFERS_COOP!() },
 > where
     [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {

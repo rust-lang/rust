@@ -81,7 +81,11 @@ pub struct SliceAndMeta {
 }
 
 #[unstable(feature = "global_co_alloc_short_term_pref", issue = "none")]
-pub const SHORT_TERM_VEC_PREFERS_COOP: bool = true;
+//pub const SHORT_TERM_VEC_PREFERS_COOP: bool = true;
+#[macro_export]
+macro_rules! SHORT_TERM_VEC_PREFERS_COOP {
+    () => {true}
+}
 
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
