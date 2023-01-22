@@ -2069,7 +2069,7 @@ impl str {
         if let Some((a, b)) = matcher.next_reject() {
             i = a;
             j = b; // Remember earliest known match, correct it below if
-                   // last match is different
+            // last match is different
         }
         if let Some((_, b)) = matcher.next_reject_back() {
             j = b;
