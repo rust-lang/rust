@@ -1,5 +1,8 @@
+#![feature(min_specialization)]
+
 use crate::alloc::Allocator;
 use crate::vec;
+use core::alloc;
 use core::iter::TrustedLen;
 use core::slice;
 
@@ -13,6 +16,7 @@ pub(super) trait SpecExtend<T, I> {
 impl<T, I, A: Allocator> SpecExtend<T, I> for VecDeque<T, A>
 where
     I: Iterator<Item = T>,
+    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
 {
     default fn spec_extend(&mut self, mut iter: I) {
         // This function should be the moral equivalent of:
@@ -22,7 +26,8 @@ where
         // }
 
         // May only be called if `deque.len() < deque.capacity()`
-        unsafe fn push_unchecked<T, A: Allocator>(deque: &mut VecDeque<T, A>, element: T) {
+        unsafe fn push_unchecked<T, A: Allocator>(deque: &mut VecDeque<T, A>, element: T)
+        where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
             // SAFETY: Because of the precondition, it's guaranteed that there is space
             // in the logical array after the last element.
             unsafe { deque.buffer_write(deque.to_physical_idx(deque.len), element) };
@@ -52,6 +57,7 @@ where
 impl<T, I, A: Allocator> SpecExtend<T, I> for VecDeque<T, A>
 where
     I: TrustedLen<Item = T>,
+    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
 {
     default fn spec_extend(&mut self, iter: I) {
         // This is the case for a TrustedLen iterator.
@@ -84,7 +90,8 @@ where
     }
 }
 
-impl<T, A: Allocator> SpecExtend<T, vec::IntoIter<T>> for VecDeque<T, A> {
+impl<T, A: Allocator> SpecExtend<T, vec::IntoIter<T>> for VecDeque<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn spec_extend(&mut self, mut iterator: vec::IntoIter<T>) {
         let slice = iterator.as_slice();
         self.reserve(slice.len());
@@ -101,6 +108,7 @@ impl<'a, T: 'a, I, A: Allocator> SpecExtend<&'a T, I> for VecDeque<T, A>
 where
     I: Iterator<Item = &'a T>,
     T: Copy,
+    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
 {
     default fn spec_extend(&mut self, iterator: I) {
         self.spec_extend(iterator.copied())
@@ -110,6 +118,7 @@ where
 impl<'a, T: 'a, A: Allocator> SpecExtend<&'a T, slice::Iter<'a, T>> for VecDeque<T, A>
 where
     T: Copy,
+    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
 {
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();
