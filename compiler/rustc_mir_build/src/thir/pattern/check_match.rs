@@ -456,7 +456,8 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         };
 
         let witnesses: Vec<_> = witnesses.into_iter().map(|w| w.to_pat(&cx)).collect();
-        let uncovered = Uncovered { span: pat.span, count: witnesses.len(), witnesses };
+        let uncovered =
+            Uncovered { span: pat.span, count: witnesses.len(), witnesses: witnesses.into() };
 
         self.tcx.sess.emit_err(PatternNotCovered {
             span: pat.span,

@@ -265,11 +265,21 @@ impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
 /// "a, b and c"
 /// "a, b, c and d"
 /// "a, b, c and 2 more"
-impl<T: IntoDiagnosticArg> IntoDiagnosticArg for Vec<T> {
+pub struct TruncatedDiagnosticList<const LEN: usize, T> {
+    inner: Vec<T>,
+}
+
+impl<const LEN: usize, T: IntoDiagnosticArg> From<Vec<T>> for TruncatedDiagnosticList<LEN, T> {
+    fn from(inner: Vec<T>) -> Self {
+        Self { inner }
+    }
+}
+
+impl<const LEN: usize, T: IntoDiagnosticArg> IntoDiagnosticArg for TruncatedDiagnosticList<LEN, T> {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         let mut args: Vec<Cow<'static, str>> = Vec::new();
 
-        for arg in self {
+        for arg in self.inner {
             match arg.into_diagnostic_arg() {
                 DiagnosticArgValue::Str(s) => args.push(format!("`{s}`").into()),
                 DiagnosticArgValue::Number(i) => args.push(format!("`{i}`").into()),
@@ -282,11 +292,11 @@ impl<T: IntoDiagnosticArg> IntoDiagnosticArg for Vec<T> {
         }
 
         // Avoid saying "and 1 more"
-        if args.len() > 4 {
-            args.truncate(3);
+        if args.len() > LEN {
+            args.truncate(LEN - 1);
 
             // FIXME(mejrs) This needs some form of translation
-            let more = format!("{} more", args.len() - 3).into();
+            let more = format!("{} more", args.len() - LEN - 1).into();
             args.push(more);
         }
 

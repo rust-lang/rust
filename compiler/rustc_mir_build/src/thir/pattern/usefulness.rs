@@ -900,7 +900,11 @@ fn is_useful<'p, 'tcx>(
                         uncovered: {
                             let witnesses: Vec<_> =
                                 patterns.into_iter().map(|w| w.to_pat(&pcx.cx)).collect();
-                            Uncovered { span: pcx.span, count: witnesses.len(), witnesses }
+                            Uncovered {
+                                span: pcx.span,
+                                count: witnesses.len(),
+                                witnesses: witnesses.into(),
+                            }
                         },
                     },
                 );

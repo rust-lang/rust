@@ -2,7 +2,7 @@ use crate::thir::pattern::MatchCheckCtxt;
 use rustc_errors::Handler;
 use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
+    IntoDiagnostic, MultiSpan, SubdiagnosticMessage, TruncatedDiagnosticList,
 };
 use rustc_hir::def::Res;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -724,7 +724,7 @@ pub(crate) struct Uncovered<'tcx> {
     #[primary_span]
     pub span: Span,
     pub count: usize,
-    pub witnesses: Vec<Pat<'tcx>>,
+    pub witnesses: TruncatedDiagnosticList<4, Pat<'tcx>>,
 }
 
 #[derive(Diagnostic)]
