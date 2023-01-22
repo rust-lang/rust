@@ -158,10 +158,13 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> Default for VecDeque<T, A, COOP_PREFERRED> {
+impl<T, const COOP_PREFERRED: bool> Default for VecDeque<T, Global, COOP_PREFERRED>
+where
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+{
     /// Creates an empty deque.
     #[inline]
-    fn default() -> VecDeque<T, A, COOP_PREFERRED> {
+    fn default() -> VecDeque<T, Global, COOP_PREFERRED> {
         VecDeque::new()
     }
 }
@@ -2978,10 +2981,10 @@ where
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
-impl<T, const N: usize, A: Allocator, const COOP_PREFERRED: bool> From<[T; N]>
-    for VecDeque<T, A, COOP_PREFERRED>
+impl<T, const N: usize, const COOP_PREFERRED: bool> From<[T; N]>
+    for VecDeque<T, Global, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts a `[T; N]` into a `VecDeque<T>`.
     ///
