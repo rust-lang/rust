@@ -13,7 +13,7 @@ pub(super) trait SpecFromIterNested<T, I> {
     fn from_iter(iter: I) -> Self;
 }
 
-impl<T, I> SpecFromIterNested<T, I> for Vec<T>
+impl<T, I> SpecFromIterNested<T, I> for Vec<T, Global, DEFAULT_COOP_PREFERRED>
 where
     I: Iterator<Item = T>,
 {
@@ -45,7 +45,7 @@ where
     }
 }
 
-impl<T, I> SpecFromIterNested<T, I> for Vec<T>
+impl<T, I> SpecFromIterNested<T, I> for Vec<T, Global, DEFAULT_COOP_PREFERRED>
 where
     I: TrustedLen<Item = T>,
 {
