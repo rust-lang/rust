@@ -115,9 +115,9 @@ where
 }
 
 /// Private helper methods for `Splice::drop`
-impl<T, A: Allocator> Drain<'_, T, A>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> Drain<'_, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(true)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     /// The range from `self.vec.len` to `self.tail_start` contains elements
     /// that have been moved out.
