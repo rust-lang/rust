@@ -172,12 +172,10 @@ export async function createClient(
                     )
                     .then(
                         (result) => {
+                            if (!result) return null;
                             const hover = client.protocol2CodeConverter.asHover(result);
-                            if (hover) {
-                                const actions = (<any>result).actions;
-                                if (actions) {
-                                    hover.contents.push(renderHoverActions(actions));
-                                }
+                            if (!!result.actions) {
+                                hover.contents.push(renderHoverActions(result.actions));
                             }
                             return hover;
                         },
@@ -310,26 +308,27 @@ class ExperimentalFeatures implements lc.StaticFeature {
         return { kind: "static" };
     }
     fillClientCapabilities(capabilities: lc.ClientCapabilities): void {
-        const caps: any = capabilities.experimental ?? {};
-        caps.snippetTextEdit = true;
-        caps.codeActionGroup = true;
-        caps.hoverActions = true;
-        caps.serverStatusNotification = true;
-        caps.colorDiagnosticOutput = true;
-        caps.openServerLogs = true;
-        caps.commands = {
-            commands: [
-                "rust-analyzer.runSingle",
-                "rust-analyzer.debugSingle",
-                "rust-analyzer.showReferences",
-                "rust-analyzer.gotoLocation",
-                "editor.action.triggerParameterHints",
-            ],
+        capabilities.experimental = {
+            snippetTextEdit: true,
+            codeActionGroup: true,
+            hoverActions: true,
+            serverStatusNotification: true,
+            colorDiagnosticOutput: true,
+            openServerLogs: true,
+            commands: {
+                commands: [
+                    "rust-analyzer.runSingle",
+                    "rust-analyzer.debugSingle",
+                    "rust-analyzer.showReferences",
+                    "rust-analyzer.gotoLocation",
+                    "editor.action.triggerParameterHints",
+                ],
+            },
+            ...capabilities.experimental,
         };
-        capabilities.experimental = caps;
     }
     initialize(
-        _capabilities: lc.ServerCapabilities<any>,
+        _capabilities: lc.ServerCapabilities,
         _documentSelector: lc.DocumentSelector | undefined
     ): void {}
     dispose(): void {}
