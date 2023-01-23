@@ -7,7 +7,7 @@ use rustc_middle::ty::TyCtxt;
 
 #[derive(Default)]
 pub(crate) struct RustdocEffectiveVisibilities {
-    extern_public: DefIdSet,
+    pub extern_public: DefIdSet,
 }
 
 macro_rules! define_method {

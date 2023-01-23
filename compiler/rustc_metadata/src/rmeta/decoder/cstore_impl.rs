@@ -624,6 +624,10 @@ impl CStore {
         self.get_crate_data(cnum).get_all_incoherent_impls()
     }
 
+    pub fn rustdoc_reachable_untracked(&self, cnum: CrateNum) -> impl Iterator<Item = DefId> + '_ {
+        self.get_crate_data(cnum).get_rustdoc_reachable()
+    }
+
     pub fn associated_item_def_ids_untracked<'a>(
         &'a self,
         def_id: DefId,

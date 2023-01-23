@@ -14,6 +14,7 @@ use rustc_ast::tokenstream::TokenTree;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_metadata::creader::CStore;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
@@ -29,9 +30,12 @@ mod tests;
 pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
 
+    let cstore = CStore::from_tcx(cx.tcx);
     for &cnum in cx.tcx.crates(()) {
-        // Analyze doc-reachability for extern items
-        crate::visit_lib::lib_embargo_visit_item(cx, cnum.as_def_id());
+        Extend::extend(
+            &mut cx.cache.effective_visibilities.extern_public,
+            cstore.rustdoc_reachable_untracked(cnum),
+        );
     }
 
     // Clean the crate, translating the entire librustc_ast AST to one that is

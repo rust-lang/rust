@@ -239,6 +239,7 @@ pub(crate) struct CrateRoot {
     traits: LazyArray<DefIndex>,
     impls: LazyArray<TraitImpls>,
     incoherent_impls: LazyArray<IncoherentImpls>,
+    rustdoc_reachable: LazyArray<DefId>,
     interpret_alloc_index: LazyArray<u32>,
     proc_macro_data: Option<ProcMacroData>,
 

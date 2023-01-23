@@ -5,7 +5,7 @@ use crate::rmeta::*;
 
 use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
@@ -598,6 +598,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let incoherent_impls = stat!("incoherent-impls", || self.encode_incoherent_impls());
 
+        let rustdoc_reachable = stat!("rustdoc-reachable", || self.encode_rustdoc_reachable());
+
         _ = stat!("mir", || self.encode_mir());
 
         _ = stat!("items", || {
@@ -698,6 +700,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 traits,
                 impls,
                 incoherent_impls,
+                rustdoc_reachable,
                 exported_symbols,
                 interpret_alloc_index,
                 tables,
@@ -1256,7 +1259,40 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_info_for_mod(&mut self, local_def_id: LocalDefId, md: &hir::Mod<'_>) {
+    fn module_children(
+        tcx: TyCtxt<'tcx>,
+        md: &'tcx hir::Mod<'tcx>,
+    ) -> impl Iterator<Item = DefIndex> + 'tcx {
+        iter::from_generator(move || {
+            for item_id in md.item_ids {
+                match tcx.hir().item(*item_id).kind {
+                    // Foreign items are planted into their parent modules
+                    // from name resolution point of view.
+                    hir::ItemKind::ForeignMod { items, .. } => {
+                        for foreign_item in items {
+                            yield foreign_item.id.owner_id.def_id.local_def_index;
+                        }
+                    }
+                    // Only encode named non-reexport children, reexports are encoded
+                    // separately and unnamed items are not used by name resolution.
+                    hir::ItemKind::ExternCrate(..) => continue,
+                    hir::ItemKind::Struct(ref vdata, _) => {
+                        yield item_id.owner_id.def_id.local_def_index;
+                        // Encode constructors which take a separate slot in value namespace.
+                        if let Some(ctor_hir_id) = vdata.ctor_hir_id() {
+                            yield tcx.hir().local_def_id(ctor_hir_id).local_def_index;
+                        }
+                    }
+                    _ if tcx.def_key(item_id.owner_id.to_def_id()).get_opt_name().is_some() => {
+                        yield item_id.owner_id.def_id.local_def_index;
+                    }
+                    _ => continue,
+                }
+            }
+        })
+    }
+
+    fn encode_info_for_mod(&mut self, local_def_id: LocalDefId, md: &'tcx hir::Mod<'tcx>) {
         let tcx = self.tcx;
         let def_id = local_def_id.to_def_id();
         debug!("EncodeContext::encode_info_for_mod({:?})", def_id);
@@ -1270,33 +1306,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {
-            record_array!(self.tables.children[def_id] <- iter::from_generator(|| {
-                for item_id in md.item_ids {
-                    match tcx.hir().item(*item_id).kind {
-                        // Foreign items are planted into their parent modules
-                        // from name resolution point of view.
-                        hir::ItemKind::ForeignMod { items, .. } => {
-                            for foreign_item in items {
-                                yield foreign_item.id.owner_id.def_id.local_def_index;
-                            }
-                        }
-                        // Only encode named non-reexport children, reexports are encoded
-                        // separately and unnamed items are not used by name resolution.
-                        hir::ItemKind::ExternCrate(..) => continue,
-                        hir::ItemKind::Struct(ref vdata, _) => {
-                            yield item_id.owner_id.def_id.local_def_index;
-                            // Encode constructors which take a separate slot in value namespace.
-                            if let Some(ctor_hir_id) = vdata.ctor_hir_id() {
-                                yield tcx.hir().local_def_id(ctor_hir_id).local_def_index;
-                            }
-                        }
-                        _ if tcx.def_key(item_id.owner_id.to_def_id()).get_opt_name().is_some() => {
-                            yield item_id.owner_id.def_id.local_def_index;
-                        }
-                        _ => continue,
-                    }
-                }
-            }));
+            record_array!(self.tables.children[def_id] <- Self::module_children(tcx, md));
 
             if let Some(reexports) = tcx.module_reexports(local_def_id) {
                 assert!(!reexports.is_empty());
@@ -1972,6 +1982,74 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .collect();
 
         self.lazy_array(&all_impls)
+    }
+
+    fn encode_rustdoc_reachable(&mut self) -> LazyArray<DefId> {
+        struct LibEmbargoVisitor<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            extern_public: FxHashSet<DefId>,
+            visited_mods: FxHashSet<DefId>,
+        }
+
+        impl LibEmbargoVisitor<'_> {
+            fn visit_mod(&mut self, def_id: DefId) {
+                if !self.visited_mods.insert(def_id) {
+                    return;
+                }
+
+                let tcx = self.tcx;
+                match def_id.as_local() {
+                    Some(def_id) => {
+                        let (md, ..) = tcx.hir().get_module(def_id);
+                        for local_def_index in EncodeContext::module_children(tcx, md) {
+                            let def_id = LocalDefId { local_def_index }.to_def_id();
+                            if tcx.visibility(def_id).is_public() {
+                                self.visit_item(def_id);
+                            }
+                        }
+                        if let Some(reexports) = tcx.module_reexports(def_id) {
+                            for item in reexports {
+                                if let Some(def_id) = item.res.opt_def_id() {
+                                    if item.vis.is_public() {
+                                        self.visit_item(def_id);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    None => {
+                        for item in tcx.module_children(def_id).iter() {
+                            if let Some(def_id) = item.res.opt_def_id() {
+                                if item.vis.is_public() {
+                                    self.visit_item(def_id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            fn visit_item(&mut self, def_id: DefId) {
+                if !self.tcx.is_doc_hidden(def_id) {
+                    self.extern_public.insert(def_id);
+                    if self.tcx.def_kind(def_id) == DefKind::Mod {
+                        self.visit_mod(def_id);
+                    }
+                }
+            }
+        }
+
+        let mut visitor = LibEmbargoVisitor {
+            tcx: self.tcx,
+            extern_public: Default::default(),
+            visited_mods: Default::default(),
+        };
+        visitor.visit_item(CRATE_DEF_ID.to_def_id());
+
+        let mut rustdoc_reachable: Vec<_> = visitor.extern_public.into_iter().collect();
+        rustdoc_reachable.sort_by_cached_key(|&def_id| self.tcx.def_path_hash(def_id));
+
+        self.lazy_array(rustdoc_reachable)
     }
 
     // Encodes all symbols exported from this crate into the metadata.

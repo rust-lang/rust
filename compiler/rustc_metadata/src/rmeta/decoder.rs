@@ -1240,6 +1240,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
+    fn get_rustdoc_reachable(self) -> impl Iterator<Item = DefId> + 'a {
+        self.root.rustdoc_reachable.decode(self)
+    }
+
     fn get_native_libraries(self, sess: &'a Session) -> impl Iterator<Item = NativeLib> + 'a {
         self.root.native_libraries.decode((self, sess))
     }
