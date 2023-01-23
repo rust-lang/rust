@@ -31,3 +31,10 @@ src/test/ui/numbers-arithmetic/next-power-of-two-overflow-debug.rs
 src/test/ui/panic-while-printing.rs
 src/test/ui/privacy/reachable-unnameable-items.rs
 src/test/ui/rfc-1937-termination-trait/termination-trait-in-test.rs
+src/test/ui/async-await/async-fn-size-moved-locals.rs
+src/test/ui/async-await/async-fn-size-uninit-locals.rs
+src/test/ui/cfg/cfg-panic.rs
+src/test/ui/generator/size-moved-locals.rs
+src/test/ui/macros/rfc-2011-nicer-assert-messages/all-not-available-cases.rs
+src/test/ui/runtime/rt-explody-panic-payloads.rs
+src/test/ui/simd/issue-17170.rs
