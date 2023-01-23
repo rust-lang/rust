@@ -134,7 +134,7 @@ fn layout_of_uncached<'tcx>(
             ty::FloatTy::F64 => F64,
         }),
         ty::FnPtr(_) => {
-            let mut ptr = scalar_unit(Pointer);
+            let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
             tcx.intern_layout(LayoutS::scalar(cx, ptr))
         }
@@ -144,7 +144,7 @@ fn layout_of_uncached<'tcx>(
 
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-            let mut data_ptr = scalar_unit(Pointer);
+            let mut data_ptr = scalar_unit(Pointer(AddressSpace::DATA));
             if !ty.is_unsafe_ptr() {
                 data_ptr.valid_range_mut().start = 1;
             }
@@ -178,7 +178,7 @@ fn layout_of_uncached<'tcx>(
                     }
                     ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
                     ty::Dynamic(..) => {
-                        let mut vtable = scalar_unit(Pointer);
+                        let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
                         vtable.valid_range_mut().start = 1;
                         vtable
                     }
@@ -195,7 +195,7 @@ fn layout_of_uncached<'tcx>(
         ty::Dynamic(_, _, ty::DynStar) => {
             let mut data = scalar_unit(Int(dl.ptr_sized_integer(), false));
             data.valid_range_mut().start = 0;
-            let mut vtable = scalar_unit(Pointer);
+            let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
             vtable.valid_range_mut().start = 1;
             tcx.intern_layout(cx.scalar_pair(data, vtable))
         }

@@ -83,7 +83,7 @@ where
         (abi::F32, _) => offset += Reg::f32().size,
         (_, abi::F64) => offset += Reg::f64().size,
         (abi::Int(i, _signed), _) => offset += i.size(),
-        (abi::Pointer, _) => offset += Reg::i64().size,
+        (abi::Pointer(_), _) => offset += Reg::i64().size,
         _ => {}
     }
 

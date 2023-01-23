@@ -267,6 +267,9 @@ impl TargetDataLayout {
                 ["a", ref a @ ..] => dl.aggregate_align = align(a, "a")?,
                 ["f32", ref a @ ..] => dl.f32_align = align(a, "f32")?,
                 ["f64", ref a @ ..] => dl.f64_align = align(a, "f64")?,
+                // FIXME(erikdesjardins): we should be parsing nonzero address spaces
+                // this will require replacing TargetDataLayout::{pointer_size,pointer_align}
+                // with e.g. `fn pointer_size_in(AddressSpace)`
                 [p @ "p", s, ref a @ ..] | [p @ "p0", s, ref a @ ..] => {
                     dl.pointer_size = size(s, p)?;
                     dl.pointer_align = align(a, p)?;
@@ -861,7 +864,7 @@ pub enum Primitive {
     Int(Integer, bool),
     F32,
     F64,
-    Pointer,
+    Pointer(AddressSpace),
 }
 
 impl Primitive {
@@ -872,7 +875,10 @@ impl Primitive {
             Int(i, _) => i.size(),
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
-            Pointer => dl.pointer_size,
+            // FIXME(erikdesjardins): ignoring address space is technically wrong, pointers in
+            // different address spaces can have different sizes
+            // (but TargetDataLayout doesn't currently parse that part of the DL string)
+            Pointer(_) => dl.pointer_size,
         }
     }
 
@@ -883,13 +889,11 @@ impl Primitive {
             Int(i, _) => i.align(dl),
             F32 => dl.f32_align,
             F64 => dl.f64_align,
-            Pointer => dl.pointer_align,
+            // FIXME(erikdesjardins): ignoring address space is technically wrong, pointers in
+            // different address spaces can have different alignments
+            // (but TargetDataLayout doesn't currently parse that part of the DL string)
+            Pointer(_) => dl.pointer_align,
         }
-    }
-
-    #[inline]
-    pub fn is_ptr(self) -> bool {
-        matches!(self, Pointer)
     }
 }
 
@@ -1176,7 +1180,8 @@ impl FieldsShape {
 /// An identifier that specifies the address space that some operation
 /// should operate on. Special address spaces have an effect on code generation,
 /// depending on the target and the address spaces it implements.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub struct AddressSpace(pub u32);
 
 impl AddressSpace {
@@ -1456,7 +1461,6 @@ pub struct PointeeInfo {
     pub size: Size,
     pub align: Align,
     pub safe: Option<PointerKind>,
-    pub address_space: AddressSpace,
 }
 
 /// Used in `might_permit_raw_init` to indicate the kind of initialisation

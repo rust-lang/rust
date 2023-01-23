@@ -109,3 +109,28 @@ pub unsafe fn transmute_fn_ptr_to_data(x: fn()) -> *const () {
     // as long as it doesn't cause a verifier error by using `bitcast`.
     transmute(x)
 }
+
+pub enum Either<T, U> { A(T), B(U) }
+
+// Previously, we would codegen this as passing/returning a scalar pair of `{ i8, ptr }`,
+// with the `ptr` field representing both `&i32` and `fn()` depending on the variant.
+// This is incorrect, because `fn()` should be `ptr addrspace(1)`, not `ptr`.
+
+// CHECK: define{{.+}}void @should_not_combine_addrspace({{.+\*|ptr}}{{.+}}sret{{.+}}%0, {{.+\*|ptr}}{{.+}}%x)
+#[no_mangle]
+#[inline(never)]
+pub fn should_not_combine_addrspace(x: Either<&i32, fn()>) -> Either<&i32, fn()> {
+    x
+}
+
+// The incorrectness described above would result in us producing (after optimizations)
+// a `ptrtoint`/`inttoptr` roundtrip to convert from `ptr` to `ptr addrspace(1)`.
+
+// CHECK-LABEL: @call_with_fn_ptr
+#[no_mangle]
+pub fn call_with_fn_ptr<'a>(f: fn()) -> Either<&'a i32, fn()> {
+    // CHECK-NOT: ptrtoint
+    // CHECK-NOT: inttoptr
+    // CHECK: call addrspace(1) void @should_not_combine_addrspace
+    should_not_combine_addrspace(Either::B(f))
+}

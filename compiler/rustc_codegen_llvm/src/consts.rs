@@ -111,7 +111,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
                 &cx.tcx,
             ),
             Scalar::Initialized {
-                value: Primitive::Pointer,
+                value: Primitive::Pointer(address_space),
                 valid_range: WrappingRange::full(dl.pointer_size),
             },
             cx.type_i8p_ext(address_space),
