@@ -84,7 +84,9 @@ pub struct SliceAndMeta {
 //pub const SHORT_TERM_VEC_PREFERS_COOP: bool = true;
 #[macro_export]
 macro_rules! SHORT_TERM_VEC_PREFERS_COOP {
-    () => {true}
+    () => {
+        true
+    };
 }
 
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
@@ -95,7 +97,9 @@ pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
 pub const fn co_alloc_metadata_num_slots<A: Allocator>() -> usize {
     // @FIXME later
     if false {
-        panic!("FIXME - consider replacing co_alloc_metadata_num_slots() with co_alloc_metadata_num_slots_with_preference(bool), and adding const flags as appropriate.");
+        panic!(
+            "FIXME - consider replacing co_alloc_metadata_num_slots() with co_alloc_metadata_num_slots_with_preference(bool), and adding const flags as appropriate."
+        );
     }
     if A::IS_CO_ALLOCATOR { 1 } else { 0 }
 }
