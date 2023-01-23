@@ -839,9 +839,7 @@ impl Rewrite for ast::Ty {
                 })
             }
             ast::TyKind::CVarArgs => Some("...".to_owned()),
-            ast::TyKind::AnonEnum(_) | ast::TyKind::Err => {
-                Some(context.snippet(self.span).to_owned())
-            }
+            ast::TyKind::Err => Some(context.snippet(self.span).to_owned()),
             ast::TyKind::Typeof(ref anon_const) => rewrite_call(
                 context,
                 "typeof",
