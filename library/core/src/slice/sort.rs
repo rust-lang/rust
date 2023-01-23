@@ -21,6 +21,9 @@ struct InsertionHole<T> {
 
 impl<T> Drop for InsertionHole<T> {
     fn drop(&mut self) {
+        // SAFETY: This is a helper class. Please refer to its usage for correctness. Namely, one
+        // must be sure that `src` and `dst` does not overlap as required by
+        // `ptr::copy_nonoverlapping` and are both valid for writes.
         unsafe {
             ptr::copy_nonoverlapping(self.src, self.dest, 1);
         }
@@ -88,6 +91,7 @@ where
 {
     debug_assert!(v.len() >= 2);
 
+    // SAFETY: caller must ensure v is at least len 2.
     unsafe {
         if is_less(v.get_unchecked(1), v.get_unchecked(0)) {
             let arr_ptr = v.as_mut_ptr();
@@ -153,7 +157,8 @@ where
     // Shift each element of the unsorted region v[i..] as far left as is needed to make v sorted.
     for i in offset..len {
         // SAFETY: we tested that `offset` must be at least 1, so this loop is only entered if len
-        // >= 2.
+        // >= 2. The range is exclusive and we know `i` must be at least 1 so this slice has at
+        // >least len 2.
         unsafe {
             insert_tail(&mut v[..=i], is_less);
         }
@@ -176,9 +181,10 @@ where
 
     // Shift each element of the unsorted region v[..i] as far left as is needed to make v sorted.
     for i in (0..offset).rev() {
-        // We ensured that the slice length is always at least 2 long.
-        // We know that start_found will be at least one less than end,
-        // and the range is exclusive. Which gives us i always <= (end - 2).
+        // SAFETY: we tested that `offset` must be at least 1, so this loop is only entered if len
+        // >= 2.We ensured that the slice length is always at least 2 long. We know that start_found
+        // will be at least one less than end, and the range is exclusive. Which gives us i always
+        // <= (end - 2).
         unsafe {
             insert_head(&mut v[i..len], is_less);
         }
@@ -1222,6 +1228,8 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
             let left = runs[r];
             let right = runs[r + 1];
             let merge_slice = &mut v[left.start..right.start + right.len];
+            // SAFETY: `buf_ptr` must hold enough capacity for the shorter of the two sides, and
+            // neither side may be on length 0.
             unsafe {
                 merge(merge_slice, left.len, buf_ptr, is_less);
             }
