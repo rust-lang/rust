@@ -2,6 +2,7 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
+        make,
     },
     AstNode, SyntaxKind, TextRange, T,
 };
@@ -37,61 +38,89 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         parent = parent.ancestors().find(|it| ast::MatchExpr::can_cast(it.kind()))?
     }
 
-    if matches!(parent.kind(), SyntaxKind::STMT_LIST | SyntaxKind::EXPR_STMT | SyntaxKind::LET_STMT)
-    {
-        return acc.add(assist_id, assist_label, target, |builder| {
+    let kind = parent.kind();
+    if matches!(kind, SyntaxKind::STMT_LIST | SyntaxKind::EXPR_STMT) {
+        acc.add(assist_id, assist_label, target, |builder| {
             builder.replace(block.syntax().text_range(), update_expr_string(block.to_string()));
-        });
-    }
+        })
+    } else if matches!(kind, SyntaxKind::LET_STMT) {
+        let parent = ast::LetStmt::cast(parent)?;
+        let pattern = ast::Pat::cast(parent.syntax().first_child()?)?;
+        let ty = parent.ty();
+        let list = block.stmt_list()?;
+        let replaced = match list.syntax().last_child() {
+            Some(last) => {
+                let stmts: Vec<ast::Stmt> = list.statements().collect();
+                let initializer = ast::Expr::cast(last.clone())?;
+                let let_stmt = make::let_stmt(pattern, ty, Some(initializer));
+                if stmts.len() > 0 {
+                    let block = make::block_expr(stmts, None);
+                    format!(
+                        "{}\n    {}",
+                        update_expr_string(block.to_string()),
+                        let_stmt.to_string()
+                    )
+                } else {
+                    let_stmt.to_string()
+                }
+            }
+            None => {
+                let empty_tuple = make::expr_tuple([]);
+                make::let_stmt(pattern, ty, Some(empty_tuple)).to_string()
+            }
+        };
+        acc.add(assist_id, assist_label, target, |builder| {
+            builder.replace(parent.syntax().text_range(), replaced);
+        })
+    } else {
+        let parent = ast::Expr::cast(parent)?;
+        match parent.clone() {
+            ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::LoopExpr(_) => (),
+            ast::Expr::MatchExpr(_) => block = block.dedent(IndentLevel(1)),
+            ast::Expr::IfExpr(if_expr) => {
+                let then_branch = if_expr.then_branch()?;
+                if then_branch == block {
+                    if let Some(ancestor) = if_expr.syntax().parent().and_then(ast::IfExpr::cast) {
+                        // For `else if` blocks
+                        let ancestor_then_branch = ancestor.then_branch()?;
 
-    let parent = ast::Expr::cast(parent)?;
+                        return acc.add(assist_id, assist_label, target, |edit| {
+                            let range_to_del_else_if = TextRange::new(
+                                ancestor_then_branch.syntax().text_range().end(),
+                                l_curly_token.text_range().start(),
+                            );
+                            let range_to_del_rest = TextRange::new(
+                                then_branch.syntax().text_range().end(),
+                                if_expr.syntax().text_range().end(),
+                            );
 
-    match parent.clone() {
-        ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::LoopExpr(_) => (),
-        ast::Expr::MatchExpr(_) => block = block.dedent(IndentLevel(1)),
-        ast::Expr::IfExpr(if_expr) => {
-            let then_branch = if_expr.then_branch()?;
-            if then_branch == block {
-                if let Some(ancestor) = if_expr.syntax().parent().and_then(ast::IfExpr::cast) {
-                    // For `else if` blocks
-                    let ancestor_then_branch = ancestor.then_branch()?;
-
+                            edit.delete(range_to_del_rest);
+                            edit.delete(range_to_del_else_if);
+                            edit.replace(
+                                target,
+                                update_expr_string_without_newline(then_branch.to_string()),
+                            );
+                        });
+                    }
+                } else {
                     return acc.add(assist_id, assist_label, target, |edit| {
-                        let range_to_del_else_if = TextRange::new(
-                            ancestor_then_branch.syntax().text_range().end(),
+                        let range_to_del = TextRange::new(
+                            then_branch.syntax().text_range().end(),
                             l_curly_token.text_range().start(),
                         );
-                        let range_to_del_rest = TextRange::new(
-                            then_branch.syntax().text_range().end(),
-                            if_expr.syntax().text_range().end(),
-                        );
 
-                        edit.delete(range_to_del_rest);
-                        edit.delete(range_to_del_else_if);
-                        edit.replace(
-                            target,
-                            update_expr_string_without_newline(then_branch.to_string()),
-                        );
+                        edit.delete(range_to_del);
+                        edit.replace(target, update_expr_string_without_newline(block.to_string()));
                     });
                 }
-            } else {
-                return acc.add(assist_id, assist_label, target, |edit| {
-                    let range_to_del = TextRange::new(
-                        then_branch.syntax().text_range().end(),
-                        l_curly_token.text_range().start(),
-                    );
-
-                    edit.delete(range_to_del);
-                    edit.replace(target, update_expr_string_without_newline(block.to_string()));
-                });
             }
-        }
-        _ => return None,
-    };
+            _ => return None,
+        };
 
-    acc.add(assist_id, assist_label, target, |builder| {
-        builder.replace(parent.syntax().text_range(), update_expr_string(block.to_string()));
-    })
+        acc.add(assist_id, assist_label, target, |builder| {
+            builder.replace(parent.syntax().text_range(), update_expr_string(block.to_string()));
+        })
+    }
 }
 
 fn update_expr_string(expr_string: String) -> String {
@@ -725,6 +754,19 @@ fn main() -> i32 {
             unwrap_block,
             r#"
 fn main() {
+    let x = {$0};
+}
+"#,
+            r#"
+fn main() {
+    let x = ();
+}
+"#,
+        );
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
     let x = {$0
         bar
     };
@@ -733,6 +775,34 @@ fn main() {
             r#"
 fn main() {
     let x = bar;
+}
+"#,
+        );
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() -> i32 {
+    let _ = {$01; 2};
+}
+"#,
+            r#"
+fn main() -> i32 {
+    1;
+    let _ = 2;
+}
+"#,
+        );
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() -> i32 {
+    let mut a = {$01; 2};
+}
+"#,
+            r#"
+fn main() -> i32 {
+    1;
+    let mut a = 2;
 }
 "#,
         );
