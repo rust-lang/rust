@@ -380,7 +380,6 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<OpaqueTyOrigin> {
-        let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
             DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
             DefiningAnchor::Bind(bind) => bind,
@@ -402,7 +401,7 @@ impl<'tcx> InferCtxt<'tcx> {
             hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
             // Named `type Foo = impl Bar;`
             hir::OpaqueTyOrigin::TyAlias => {
-                may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id, def_id, param_env)
+                may_define_opaque_type(self.tcx, parent_def_id, def_id, param_env)
             }
         };
         trace!(?origin);
@@ -650,10 +649,10 @@ impl<'tcx> InferCtxt<'tcx> {
 fn may_define_opaque_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    opaque_hir_id: hir::HirId,
     opaque_def_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
+    let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(opaque_def_id);
     let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     // Named opaque types can be defined by any siblings or children of siblings.
