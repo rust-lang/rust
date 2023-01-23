@@ -735,7 +735,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .must_apply_modulo_regions()
         {
             err.multipart_suggestion(
-                "you can rely on the implicit conversion that `?` does to transform the error type",
+                "use `?` to coerce and return an appropriate `Err`, and wrap the resulting value \
+                 in `Ok` so the expression remains of type `Result`",
                 vec![
                     (expr.span.shrink_to_lo(), "Ok(".to_string()),
                     (expr.span.shrink_to_hi(), "?)".to_string()),

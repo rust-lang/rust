@@ -9,7 +9,7 @@ LL |         true => x,
    |
    = note: expected enum `Result<_, B>`
               found enum `Result<_, A>`
-help: you can rely on the implicit conversion that `?` does to transform the error type
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
    |
 LL |         true => Ok(x?),
    |                 +++ ++
@@ -25,7 +25,7 @@ LL |         true => return x,
    |
    = note: expected enum `Result<_, B>`
               found enum `Result<_, A>`
-help: you can rely on the implicit conversion that `?` does to transform the error type
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
    |
 LL |         true => return Ok(x?),
    |                        +++ ++
