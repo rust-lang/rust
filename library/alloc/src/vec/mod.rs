@@ -444,14 +444,7 @@ pub type DefVec<T, A = Global> =
 #[unstable(feature = "global_co_alloc_vec", issue = "none")]
 pub type WeVec<T, const WEIGHT: u8> = Vec<T, Global, { WEIGHT > 127 }>;
 
-////////////////////////////////////////////////////////////////////////////////
-// Inherent methods
-////////////////////////////////////////////////////////////////////////////////
-
-impl<T, const COOP_PREFERRED: bool> Vec<T, Global, COOP_PREFERRED>
-where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
-{
+impl<T> Vec<T> {
     /// Constructs a new, empty `Vec<T>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
@@ -467,6 +460,25 @@ where
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
+        #[allow(unused_braces)]
+        Vec::<T, Global, {DEFAULT_COOP_PREFERRED!()}>::new_co()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Inherent methods
+////////////////////////////////////////////////////////////////////////////////
+
+impl<T, const COOP_PREFERRED: bool> Vec<T, Global, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
+    /// Like new(), but it respects COOP_PREFERRED.
+    #[inline]
+    #[rustc_const_stable(feature = "const_vec_new_co", since = "1.60.0")] //@FIXME This is `rustc_const_stable`, so that String::new() can be const and can call this.
+    #[unstable(feature = "vec_new_co", reason = "confirm_or_fix_the_function_name", issue = "none")]
+    #[must_use]
+    pub const fn new_co() -> Self {
         Vec { buf: RawVec::NEW, len: 0 }
     }
 
@@ -3207,7 +3219,7 @@ where
     ///
     /// The vector will not allocate until elements are pushed onto it.
     fn default() -> Vec<T, Global, COOP_PREFERRED> {
-        Vec::new()
+        Vec::new_co()
     }
 }
 
