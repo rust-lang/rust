@@ -1,10 +1,12 @@
 use crate::ty;
 
-use rustc_hir::{def::Res};
+use rustc_hir::def::Res;
 use rustc_macros::HashStable;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_hir::def_id::DefId;
+
+
 
 /// This structure is supposed to keep enough data to re-create `NameBinding`s for other crates
 /// during name resolution. Right now the bindings are not recreated entirely precisely so we may
@@ -27,18 +29,20 @@ pub struct ModChild {
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Copy, Debug, HashStable)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, HashStable)]
 pub enum DiffMode {
     Forward,
     Reverse,
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Debug, Copy, HashStable)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, HashStable)]
 pub enum DiffActivity {
+    None,
     Active,
     Const,
-    OnlyGrad,
+    Duplicated,
+    DuplicatedNoNeed,
 }
 
 #[allow(dead_code)]
@@ -47,7 +51,8 @@ pub struct DiffItem {
     pub source: DefId,
     pub target: String,
     pub mode: DiffMode,
-    pub respect_to: Vec<DiffActivity>,
+    pub ret_activity: DiffActivity,
+    pub input_activity: Vec<DiffActivity>,
 }
 
 //impl Default for DiffItem {

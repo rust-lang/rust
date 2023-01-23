@@ -6,13 +6,13 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::consts;
-use crate::llvm::{ParamInfos, Value, LLVMVerifyFunction, LLVMReplaceAllUsesWith};
+use crate::llvm::{Value, LLVMVerifyFunction, LLVMReplaceAllUsesWith};
 use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, CDIFFE_TYPE, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff};
+use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -645,18 +645,8 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
     let rust_name = src_name;
     let rust_name2 = &tasks.target;
 
-    let param = ParamInfos {
-        input_activity: vec![CDIFFE_TYPE::DFT_OUT_DIFF],
-        ret_info: CDIFFE_TYPE::DFT_CONSTANT
-    };
-    let param_info : Vec<ParamInfos> = vec![param];
-
-    assert!(param_info.len() == 1);
-    let infos = param_info[0].clone();
-    let mut args_activity = infos.input_activity;
-    let mut fwd_args_activity: Vec<CDIFFE_TYPE> = vec![CDIFFE_TYPE::DFT_DUP_ARG];
-    let ret_activity = CDIFFE_TYPE::DFT_OUT_DIFF;
-
+    let args_activity = tasks.input_activity.clone();
+    let ret_activity: rustc_middle::metadata::DiffActivity = tasks.ret_activity;
 
     let name = CString::new(rust_name.to_owned()).unwrap();
     let name2 = CString::new(rust_name2.clone()).unwrap();
@@ -671,7 +661,7 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
 
     dbg!("before-ad");
     dbg!(&fnc_todiff);
-    dbg!(target_fnc);
+    dbg!(&target_fnc);
     dbg!(&args_activity);
     let opt  = 1;
     let ret_primary_ret = false;
@@ -685,11 +675,12 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
     dbg!(res);
     let f_type = LLVMTypeOf(res);
     let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
-    let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
-
-    if num_elem_in_ret_struct == 1 {
-        let u_type = LLVMTypeOf(target_fnc);
-        res = extract_return_type(module, res, u_type, rust_name2.clone());// TODO: check if name or name2
+    if tasks.mode == DiffMode::Reverse {
+        let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
+        if num_elem_in_ret_struct == 1 {
+            let u_type = LLVMTypeOf(target_fnc);
+            res = extract_return_type(module, res, u_type, rust_name2.clone());// TODO: check if name or name2
+        }
     }
     dbg!(target_fnc);
     dbg!(res);
