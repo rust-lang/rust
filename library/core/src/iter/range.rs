@@ -14,7 +14,7 @@ macro_rules! unsafe_impl_trusted_step {
         unsafe impl TrustedStep for $type {}
     )*};
 }
-unsafe_impl_trusted_step![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
+unsafe_impl_trusted_step![bool char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
 
 /// Objects that have a notion of *successor* and *predecessor* operations.
 ///
@@ -481,6 +481,50 @@ impl Step for char {
         // SAFETY: because of the previous contract, this is guaranteed
         // by the caller to be a valid char.
         unsafe { char::from_u32_unchecked(res) }
+    }
+}
+
+#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+impl Step for bool {
+    #[inline]
+    fn steps_between(&start: &bool, &end: &bool) -> Option<usize> {
+        match (start, end) {
+            (true, true) | (false, false) => Some(0),
+            (true, false) => None,
+            (false, true) => Some(1),
+        }
+    }
+
+    #[inline]
+    fn forward_checked(start: bool, count: usize) -> Option<bool> {
+        if count == 1 {
+            if start { None } else { Some(true) }
+        } else if count == 0 {
+            Some(start)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn backward_checked(start: bool, count: usize) -> Option<bool> {
+        if count == 1 {
+            if start { Some(false) } else { None }
+        } else if count == 0 {
+            Some(start)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    unsafe fn forward_unchecked(start: bool, count: usize) -> bool {
+        if count % 2 == 0 { start } else { !start }
+    }
+
+    #[inline]
+    unsafe fn backward_unchecked(start: bool, count: usize) -> bool {
+        if count % 2 == 0 { start } else { !start }
     }
 }
 

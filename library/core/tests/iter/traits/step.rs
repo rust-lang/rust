@@ -2,6 +2,10 @@ use core::iter::*;
 
 #[test]
 fn test_steps_between() {
+    assert_eq!(Step::steps_between(&false, &true), Some(1));
+    assert_eq!(Step::steps_between(&true, &true), Some(0));
+    assert_eq!(Step::steps_between(&false, &false), Some(0));
+    assert_eq!(Step::steps_between(&true, &false), None);
     assert_eq!(Step::steps_between(&20_u8, &200_u8), Some(180_usize));
     assert_eq!(Step::steps_between(&-20_i8, &80_i8), Some(100_usize));
     assert_eq!(Step::steps_between(&-120_i8, &80_i8), Some(200_usize));
@@ -26,6 +30,12 @@ fn test_steps_between() {
 
 #[test]
 fn test_step_forward() {
+    assert_eq!(Step::forward_checked(false, 1), Some(true));
+    assert_eq!(Step::forward_checked(true, 1), None);
+    assert_eq!(Step::forward_checked(false, 2), None);
+    assert_eq!(Step::forward_checked(true, 2), None);
+    assert_eq!(Step::forward_checked(false, 0), Some(false));
+    assert_eq!(Step::forward_checked(true, 0), Some(true));
     assert_eq!(Step::forward_checked(55_u8, 200_usize), Some(255_u8));
     assert_eq!(Step::forward_checked(252_u8, 200_usize), None);
     assert_eq!(Step::forward_checked(0_u8, 256_usize), None);
@@ -63,6 +73,12 @@ fn test_step_forward() {
 
 #[test]
 fn test_step_backward() {
+    assert_eq!(Step::backward_checked(false, 1), None);
+    assert_eq!(Step::backward_checked(true, 1), Some(false));
+    assert_eq!(Step::backward_checked(false, 2), None);
+    assert_eq!(Step::backward_checked(true, 2), None);
+    assert_eq!(Step::backward_checked(false, 0), Some(false));
+    assert_eq!(Step::backward_checked(true, 0), Some(true));
     assert_eq!(Step::backward_checked(255_u8, 200_usize), Some(55_u8));
     assert_eq!(Step::backward_checked(100_u8, 200_usize), None);
     assert_eq!(Step::backward_checked(255_u8, 256_usize), None);
