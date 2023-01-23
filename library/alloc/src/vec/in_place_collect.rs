@@ -137,12 +137,10 @@
 //! }
 //! vec.truncate(write_idx);
 //! ```
+use core::alloc::{self, Allocator};
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self};
-
-use crate::Global;
-use crate::DEFAULT_COOP_PREFERRED;
 
 use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
@@ -154,9 +152,11 @@ pub(super) trait InPlaceIterableMarker {}
 impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
 
 #[allow(unused_braces)]
-impl<T, I> SpecFromIter<T, I> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}>
+impl<T, I, A: Allocator,  const COOP_PREFERRED: bool> SpecFromIter<T, I> for Vec<T, A, COOP_PREFERRED>
 where
     I: Iterator<Item = T> + SourceIter<Source: AsVecIntoIter> + InPlaceIterableMarker,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+
 {
     default fn from_iter(mut iterator: I) -> Self {
         // See "Layout constraints" section in the module documentation. We rely on const
