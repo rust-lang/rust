@@ -778,7 +778,10 @@ where
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     #[allow(unused_braces)]
-    pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
+    pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A>
+    where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(SHORT_TERM_VEC_PREFERS_COOP!())]:,
+    {
         unsafe {
             RawVec::<T, A, { SHORT_TERM_VEC_PREFERS_COOP!() }>::with_capacity_in(len, alloc)
                 .into_box(len)
@@ -810,7 +813,10 @@ where
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     #[allow(unused_braces)]
-    pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
+    pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A>
+    where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(SHORT_TERM_VEC_PREFERS_COOP!())]:,
+    {
         unsafe {
             RawVec::<T, A, { SHORT_TERM_VEC_PREFERS_COOP!() }>::with_capacity_zeroed_in(
                 len, alloc,
@@ -1521,7 +1527,8 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     /// ```
     fn from(slice: &[T]) -> Box<[T]> {
         let len = slice.len();
-        let buf = RawVec::with_capacity(len);
+        // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+        let buf = RawVec::<T, Global, false>::with_capacity(len);
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
             buf.into_box(slice.len()).assume_init()
@@ -2050,11 +2057,12 @@ impl<I> FromIterator<I> for Box<[I]> {
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(false)]:,
 {
     fn clone(&self) -> Self {
         let alloc = Box::allocator(self).clone();
-        self.to_vec_in(alloc).into_boxed_slice()
+        // false = no need for co-alloc metadata, since it would get lost once converted to the boxed slice.
+        self.to_vec_in::<A, false>(alloc).into_boxed_slice()
     }
 
     fn clone_from(&mut self, other: &Self) {
