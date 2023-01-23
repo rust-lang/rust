@@ -193,6 +193,11 @@ mod local;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
 
+#[unstable(feature = "thread_scheduling", issue = "none")]
+mod schedule;
+#[unstable(feature = "thread_scheduling", issue = "none")]
+pub use schedule::*;
+
 // Provide the type used by the thread_local! macro to access TLS keys. This
 // needs to be kept in sync with the macro itself (in `local.rs`).
 // There are three types: "static", "fast", "OS". The "OS" thread local key
@@ -239,6 +244,14 @@ pub use realstd::thread::__OsLocalKeyInner;
 #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
 #[doc(hidden)]
 pub use self::local::statik::Key as __StaticLocalKeyInner;
+
+#[derive(Debug, Default)]
+pub(crate) struct NativeOptions {
+    /// The spawned thread's priority value
+    pub priority: Option<imp::Priority>,
+    /// The processor(s) to run the spawned thread on
+    pub affinity: Option<imp::Affinity>,
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
@@ -294,6 +307,8 @@ pub struct Builder {
     name: Option<String>,
     // The size of the stack for the spawned thread in bytes
     stack_size: Option<usize>,
+    // Other OS-specific fields. These can be set with helpers found in std::os.
+    native_options: NativeOptions,
 }
 
 impl Builder {
@@ -317,7 +332,7 @@ impl Builder {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
-        Builder { name: None, stack_size: None }
+        Builder { name: None, stack_size: None, native_options: NativeOptions::default() }
     }
 
     /// Names the thread-to-be. Currently the name is used for identification
@@ -370,6 +385,24 @@ impl Builder {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
+        self
+    }
+
+    /// Sets the priority of the new thread in a platform-specific way.
+    ///
+    /// See [`Priority`] for more details.
+    #[unstable(feature = "thread_scheduling", issue = "none")]
+    pub fn priority(mut self, priority: Priority) -> Builder {
+        self.native_options.priority = Some(priority.into());
+        self
+    }
+
+    /// Sets the CPU affinity of the new thread in a platform-specific way.
+    ///
+    /// See [`Affinity`] for more details.
+    #[unstable(feature = "thread_scheduling", issue = "none")]
+    pub fn affinity(mut self, affinity: Affinity) -> Builder {
+        self.native_options.affinity = Some(affinity.into());
         self
     }
 
@@ -497,11 +530,9 @@ impl Builder {
         T: Send + 'a,
         'scope: 'a,
     {
-        let Builder { name, stack_size } = self;
+        let stack_size = self.stack_size.unwrap_or_else(thread::min_stack);
 
-        let stack_size = stack_size.unwrap_or_else(thread::min_stack);
-
-        let my_thread = Thread::new(name.map(|name| {
+        let my_thread = Thread::new(self.name.map(|name| {
             CString::new(name).expect("thread name may not contain interior null bytes")
         }));
         let their_thread = my_thread.clone();
@@ -594,6 +625,7 @@ impl Builder {
                     mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(
                         Box::new(main),
                     ),
+                    self.native_options,
                 )?
             },
             thread: my_thread,

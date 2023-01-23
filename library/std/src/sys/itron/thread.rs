@@ -14,6 +14,7 @@ use crate::{
     ptr::NonNull,
     sync::atomic::{AtomicUsize, Ordering},
     sys::thread_local_dtor::run_dtors,
+    thread::NativeOptions,
     time::Duration,
 };
 
@@ -90,7 +91,11 @@ impl Thread {
     /// # Safety
     ///
     /// See `thread::Builder::spawn_unchecked` for safety requirements.
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        p: Box<dyn FnOnce()>,
+        _native_options: NativeOptions,
+    ) -> io::Result<Thread> {
         let inner = Box::new(ThreadInner {
             start: UnsafeCell::new(ManuallyDrop::new(p)),
             lifecycle: AtomicUsize::new(LIFECYCLE_INIT),
@@ -306,6 +311,9 @@ impl Drop for Thread {
         }
     }
 }
+
+pub type Priority = ();
+pub type Affinity = ();
 
 pub mod guard {
     pub type Guard = !;

@@ -8,6 +8,7 @@ use crate::num::NonZeroUsize;
 use crate::ptr;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::thread_local_dtor::run_dtors;
+use crate::thread::NativeOptions;
 use crate::time::Duration;
 
 pub type Tid = abi::Tid;
@@ -56,7 +57,11 @@ impl Thread {
         }
     }
 
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        p: Box<dyn FnOnce()>,
+        _native_options: NativeOptions,
+    ) -> io::Result<Thread> {
         Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
     }
 
@@ -97,6 +102,9 @@ impl Thread {
         id
     }
 }
+
+pub type Priority = ();
+pub type Affinity = ();
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     unsupported()
