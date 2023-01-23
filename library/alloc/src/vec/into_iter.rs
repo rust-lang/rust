@@ -131,7 +131,17 @@ where
         // struct and then overwriting &mut self.
         // this creates less assembly
         self.cap = 0;
-        self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
+        self.buf = unsafe {
+            // @FIXME The below if COOP_PREFERRED {..} else {..}
+            // branching exists, because the following fails. Otherwise we'd have a snowball effect of wide spread of where...Global...
+            //
+            // NonNull::new_unchecked(RawVec::<T, Global, COOP_PREFERRED>::NEW.ptr())
+            if COOP_PREFERRED {
+                NonNull::new_unchecked(RawVec::<T, Global, true>::NEW.ptr())
+            } else {
+                NonNull::new_unchecked(RawVec::<T, Global, false>::NEW.ptr())
+            }
+        };
         self.ptr = self.buf.as_ptr();
         self.end = self.buf.as_ptr();
 
