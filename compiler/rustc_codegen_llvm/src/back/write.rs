@@ -661,7 +661,7 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
 
     dbg!("before-ad");
     dbg!(&fnc_todiff);
-    dbg!(target_fnc);
+    dbg!(&target_fnc);
     dbg!(&args_activity);
     let opt  = 1;
     let ret_primary_ret = false;
@@ -675,11 +675,12 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
     dbg!(res);
     let f_type = LLVMTypeOf(res);
     let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
-    let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
-
-    if num_elem_in_ret_struct == 1 {
-        let u_type = LLVMTypeOf(target_fnc);
-        res = extract_return_type(module, res, u_type, rust_name2.clone());// TODO: check if name or name2
+    if tasks.mode == DiffMode::Reverse {
+        let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
+        if num_elem_in_ret_struct == 1 {
+            let u_type = LLVMTypeOf(target_fnc);
+            res = extract_return_type(module, res, u_type, rust_name2.clone());// TODO: check if name or name2
+        }
     }
     dbg!(target_fnc);
     dbg!(res);
