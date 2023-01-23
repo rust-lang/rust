@@ -39,7 +39,7 @@ where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     #[inline]
-    fn spec_from_iter(iterator: IntoIter<T>) -> Self {
+    fn spec_from_iter(iterator: IntoIter<T, A, COOP_PREFERRED>) -> Self {
         iterator.into_vecdeque()
     }
 }
