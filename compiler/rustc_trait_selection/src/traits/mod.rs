@@ -14,7 +14,6 @@ mod object_safety;
 pub mod outlives_bounds;
 mod project;
 pub mod query;
-pub(crate) mod relationships;
 mod select;
 mod specialize;
 mod structural_match;
