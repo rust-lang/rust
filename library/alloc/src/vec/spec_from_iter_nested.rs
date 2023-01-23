@@ -4,7 +4,7 @@ use core::iter::TrustedLen;
 use core::ptr;
 
 use crate::raw_vec::RawVec;
-use crate::Global;
+use crate::alloc::Global;
 use crate::DEFAULT_COOP_PREFERRED;
 
 use super::{SpecExtend, Vec};
