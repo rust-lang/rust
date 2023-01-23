@@ -7,8 +7,7 @@ pub(super) trait SpecFromIter<T, I> {
     fn spec_from_iter(iter: I) -> Self;
 }
 
-impl<T, I, const COOP_PREFERRED: bool> SpecFromIter<T, I>
-    for VecDeque<T, Global, COOP_PREFERRED>
+impl<T, I, const COOP_PREFERRED: bool> SpecFromIter<T, I> for VecDeque<T, Global, COOP_PREFERRED>
 where
     I: Iterator<Item = T>,
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,

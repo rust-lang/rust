@@ -38,7 +38,8 @@ where
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug, A: Allocator, const COOP_PREFERRED: bool> fmt::Debug for IntoIter<T, A, COOP_PREFERRED>
+impl<T: fmt::Debug, A: Allocator, const COOP_PREFERRED: bool> fmt::Debug
+    for IntoIter<T, A, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -187,7 +188,8 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator for IntoIter<T, A, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator
+    for IntoIter<T, A, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -260,7 +262,8 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator for IntoIter<T, A, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator
+    for IntoIter<T, A, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -271,14 +274,14 @@ where
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> FusedIterator for IntoIter<T, A, COOP_PREFERRED>
-where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+impl<T, A: Allocator, const COOP_PREFERRED: bool> FusedIterator for IntoIter<T, A, COOP_PREFERRED> where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
 {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, A: Allocator, const COOP_PREFERRED : bool> TrustedLen for IntoIter<T, A, COOP_PREFERRED>
+unsafe impl<T, A: Allocator, const COOP_PREFERRED: bool> TrustedLen
+    for IntoIter<T, A, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
