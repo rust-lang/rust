@@ -333,6 +333,8 @@ fn run_compiler(
                 return early_exit();
             }
 
+            queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
+
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {

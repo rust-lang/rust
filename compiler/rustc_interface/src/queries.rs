@@ -235,14 +235,6 @@ impl<'tcx> Queries<'tcx> {
                     tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
                 );
                 feed.resolutions(tcx.arena.alloc(untracked_resolutions));
-
-                let outputs = passes::prepare_outputs(
-                    self.session(),
-                    &krate,
-                    &*untracked.cstore,
-                    crate_name,
-                )?;
-                feed.output_filenames(tcx.arena.alloc(std::sync::Arc::new(outputs)));
                 feed.features_query(tcx.sess.features_untracked());
                 let feed = tcx.feed_local_crate();
                 feed.crate_name(crate_name);
