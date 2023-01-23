@@ -27,10 +27,10 @@ impl Thread {
         p: Box<dyn FnOnce()>,
         core_id: isize,
     ) -> io::Result<Thread> {
-        let p = Box::into_raw(box p);
+        let p = Box::into_raw(Box::new(p));
         let tid = abi::spawn2(
             thread_start,
-            p as usize,
+            p.expose_addr(),
             abi::Priority::into(abi::NORMAL_PRIO),
             stack,
             core_id,
