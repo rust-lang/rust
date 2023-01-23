@@ -33,7 +33,7 @@ pub fn expand_deriving_hash(
             nonself_args: vec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
             ret_ty: Unit,
             attributes: AttrVec::new(),
-            unify_fieldless_variants: true,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 hash_substructure(a, b, c)
             })),

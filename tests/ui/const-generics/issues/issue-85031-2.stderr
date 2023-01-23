@@ -3,7 +3,6 @@ warning: function cannot return without recursing
    |
 LL |     pub fn foo<const A: usize>() -> [(); A - 0] {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
-LL |
 LL |         Self::foo()
    |         ----------- recursive call site
    |

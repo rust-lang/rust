@@ -374,10 +374,10 @@ static_assert!((TAG_MASK + 1).is_power_of_two());
 static_assert!(align_of::<SimpleMessage>() >= TAG_MASK + 1);
 static_assert!(align_of::<Custom>() >= TAG_MASK + 1);
 
-static_assert!(@usize_eq: (TAG_MASK & TAG_SIMPLE_MESSAGE), TAG_SIMPLE_MESSAGE);
-static_assert!(@usize_eq: (TAG_MASK & TAG_CUSTOM), TAG_CUSTOM);
-static_assert!(@usize_eq: (TAG_MASK & TAG_OS), TAG_OS);
-static_assert!(@usize_eq: (TAG_MASK & TAG_SIMPLE), TAG_SIMPLE);
+static_assert!(@usize_eq: TAG_MASK & TAG_SIMPLE_MESSAGE, TAG_SIMPLE_MESSAGE);
+static_assert!(@usize_eq: TAG_MASK & TAG_CUSTOM, TAG_CUSTOM);
+static_assert!(@usize_eq: TAG_MASK & TAG_OS, TAG_OS);
+static_assert!(@usize_eq: TAG_MASK & TAG_SIMPLE, TAG_SIMPLE);
 
 // This is obviously true (`TAG_CUSTOM` is `0b01`), but in `Repr::new_custom` we
 // offset a pointer by this value, and expect it to both be within the same

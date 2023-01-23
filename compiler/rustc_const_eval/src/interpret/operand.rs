@@ -533,11 +533,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::Operand::*;
-        let op = match *mir_op {
+        let op = match mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
-            Copy(place) | Move(place) => self.eval_place_to_op(place, layout)?,
+            &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => {
+            Constant(constant) => {
                 let c =
                     self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal)?;
 

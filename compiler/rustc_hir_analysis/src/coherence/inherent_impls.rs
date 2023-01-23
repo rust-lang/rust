@@ -182,7 +182,7 @@ impl<'tcx> InherentCollect<'tcx> {
         }
 
         let item = self.tcx.hir().item(id);
-        let hir::ItemKind::Impl(hir::Impl { of_trait: None, self_ty: ty, ref items, .. }) = item.kind else {
+        let hir::ItemKind::Impl(hir::Impl { of_trait: None, self_ty: ty, items, .. }) = item.kind else {
             return;
         };
 

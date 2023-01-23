@@ -1,7 +1,8 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
@@ -18,7 +19,7 @@ use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, VariantIdx};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
     Unwind,
     Normal,
@@ -57,18 +58,20 @@ impl<'tcx> MirPass<'tcx> for Validator {
             .iterate_to_fixpoint()
             .into_results_cursor(body);
 
-        TypeChecker {
+        let mut checker = TypeChecker {
             when: &self.when,
             body,
             tcx,
             param_env,
             mir_phase,
+            unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
             storage_liveness,
             place_cache: Vec::new(),
             value_cache: Vec::new(),
-        }
-        .visit_body(body);
+        };
+        checker.visit_body(body);
+        checker.check_cleanup_control_flow();
     }
 }
 
@@ -78,6 +81,7 @@ struct TypeChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
+    unwind_edge_count: usize,
     reachable_blocks: BitSet<BasicBlock>,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive<'static>>,
     place_cache: Vec<PlaceRef<'tcx>>,
@@ -102,7 +106,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
-    fn check_edge(&self, location: Location, bb: BasicBlock, edge_kind: EdgeKind) {
+    fn check_edge(&mut self, location: Location, bb: BasicBlock, edge_kind: EdgeKind) {
         if bb == START_BLOCK {
             self.fail(location, "start block must not have predecessors")
         }
@@ -111,10 +115,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             match (src.is_cleanup, bb.is_cleanup, edge_kind) {
                 // Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
                 (false, false, EdgeKind::Normal)
-                // Non-cleanup blocks can jump to cleanup blocks along unwind edges
-                | (false, true, EdgeKind::Unwind)
                 // Cleanup blocks can jump to cleanup blocks along non-unwind edges
                 | (true, true, EdgeKind::Normal) => {}
+                // Non-cleanup blocks can jump to cleanup blocks along unwind edges
+                (false, true, EdgeKind::Unwind) => {
+                    self.unwind_edge_count += 1;
+                }
                 // All other jumps are invalid
                 _ => {
                     self.fail(
@@ -131,6 +137,88 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         } else {
             self.fail(location, format!("encountered jump to invalid basic block {:?}", bb))
+        }
+    }
+
+    fn check_cleanup_control_flow(&self) {
+        if self.unwind_edge_count <= 1 {
+            return;
+        }
+        let doms = self.body.basic_blocks.dominators();
+        let mut post_contract_node = FxHashMap::default();
+        // Reusing the allocation across invocations of the closure
+        let mut dom_path = vec![];
+        let mut get_post_contract_node = |mut bb| {
+            let root = loop {
+                if let Some(root) = post_contract_node.get(&bb) {
+                    break *root;
+                }
+                let parent = doms.immediate_dominator(bb);
+                dom_path.push(bb);
+                if !self.body.basic_blocks[parent].is_cleanup {
+                    break bb;
+                }
+                bb = parent;
+            };
+            for bb in dom_path.drain(..) {
+                post_contract_node.insert(bb, root);
+            }
+            root
+        };
+
+        let mut parent = IndexVec::from_elem(None, &self.body.basic_blocks);
+        for (bb, bb_data) in self.body.basic_blocks.iter_enumerated() {
+            if !bb_data.is_cleanup || !self.reachable_blocks.contains(bb) {
+                continue;
+            }
+            let bb = get_post_contract_node(bb);
+            for s in bb_data.terminator().successors() {
+                let s = get_post_contract_node(s);
+                if s == bb {
+                    continue;
+                }
+                let parent = &mut parent[bb];
+                match parent {
+                    None => {
+                        *parent = Some(s);
+                    }
+                    Some(e) if *e == s => (),
+                    Some(e) => self.fail(
+                        Location { block: bb, statement_index: 0 },
+                        format!(
+                            "Cleanup control flow violation: The blocks dominated by {:?} have edges to both {:?} and {:?}",
+                            bb,
+                            s,
+                            *e
+                        )
+                    ),
+                }
+            }
+        }
+
+        // Check for cycles
+        let mut stack = FxHashSet::default();
+        for i in 0..parent.len() {
+            let mut bb = BasicBlock::from_usize(i);
+            stack.clear();
+            stack.insert(bb);
+            loop {
+                let Some(parent)= parent[bb].take() else {
+                    break
+                };
+                let no_cycle = stack.insert(parent);
+                if !no_cycle {
+                    self.fail(
+                        Location { block: bb, statement_index: 0 },
+                        format!(
+                            "Cleanup control flow violation: Cycle involving edge {:?} -> {:?}",
+                            bb, parent,
+                        ),
+                    );
+                    break;
+                }
+                bb = parent;
+            }
         }
     }
 

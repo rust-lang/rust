@@ -68,5 +68,17 @@ LL -     consume({ 7 });
 LL +     consume(7);
    |
 
-warning: 5 warnings emitted
+warning: unnecessary braces around `return` value
+  --> $DIR/unused_braces.rs:55:12
+   |
+LL |     return { println!("!") };
+   |            ^^             ^^
+   |
+help: remove these braces
+   |
+LL -     return { println!("!") };
+LL +     return println!("!");
+   |
+
+warning: 6 warnings emitted
 

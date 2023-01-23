@@ -512,6 +512,16 @@ pub struct CopyNonOverlapping<'tcx> {
 ///     must also be `cleanup`. This is a part of the type system and checked statically, so it is
 ///     still an error to have such an edge in the CFG even if it's known that it won't be taken at
 ///     runtime.
+///  4. The control flow between cleanup blocks must look like an upside down tree. Roughly
+///     speaking, this means that control flow that looks like a V is allowed, while control flow
+///     that looks like a W is not. This is necessary to ensure that landing pad information can be
+///     correctly codegened on MSVC. More precisely:
+///
+///     Begin with the standard control flow graph `G`. Modify `G` as follows: for any two cleanup
+///     vertices `u` and `v` such that `u` dominates `v`, contract `u` and `v` into a single vertex,
+///     deleting self edges and duplicate edges in the process. Now remove all vertices from `G`
+///     that are not cleanup vertices or are not reachable. The resulting graph must be an inverted
+///     tree, that is each vertex may have at most one successor and there may be no cycles.
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum TerminatorKind<'tcx> {
     /// Block has one successor; we continue execution there.

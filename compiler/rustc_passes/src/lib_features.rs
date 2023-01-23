@@ -137,6 +137,12 @@ impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
 }
 
 fn lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
+    // If `staged_api` is not enabled then we aren't allowed to define lib
+    // features; there is no point collecting them.
+    if !tcx.features().staged_api {
+        return new_lib_features();
+    }
+
     let mut collector = LibFeatureCollector::new(tcx);
     tcx.hir().walk_attributes(&mut collector);
     collector.lib_features

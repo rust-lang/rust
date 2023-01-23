@@ -486,11 +486,11 @@ pub fn compile_declarative_macro(
     let mut valid = true;
 
     // Extract the arguments:
-    let lhses = match argument_map[&MacroRulesNormalizedIdent::new(lhs_nm)] {
-        MatchedSeq(ref s) => s
+    let lhses = match &argument_map[&MacroRulesNormalizedIdent::new(lhs_nm)] {
+        MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(ref tt) = *m {
+                if let MatchedTokenTree(tt) = m {
                     let tt = mbe::quoted::parse(
                         TokenStream::new(vec![tt.clone()]),
                         true,
@@ -510,11 +510,11 @@ pub fn compile_declarative_macro(
         _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
     };
 
-    let rhses = match argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
-        MatchedSeq(ref s) => s
+    let rhses = match &argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
+        MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(ref tt) = *m {
+                if let MatchedTokenTree(tt) = m {
                     return mbe::quoted::parse(
                         TokenStream::new(vec![tt.clone()]),
                         false,
@@ -624,21 +624,21 @@ fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree)
 fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
     use mbe::TokenTree;
     for tt in tts {
-        match *tt {
+        match tt {
             TokenTree::Token(..)
             | TokenTree::MetaVar(..)
             | TokenTree::MetaVarDecl(..)
             | TokenTree::MetaVarExpr(..) => (),
-            TokenTree::Delimited(_, ref del) => {
+            TokenTree::Delimited(_, del) => {
                 if !check_lhs_no_empty_seq(sess, &del.tts) {
                     return false;
                 }
             }
-            TokenTree::Sequence(span, ref seq) => {
+            TokenTree::Sequence(span, seq) => {
                 if seq.separator.is_none()
-                    && seq.tts.iter().all(|seq_tt| match *seq_tt {
+                    && seq.tts.iter().all(|seq_tt| match seq_tt {
                         TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)) => true,
-                        TokenTree::Sequence(_, ref sub_seq) => {
+                        TokenTree::Sequence(_, sub_seq) => {
                             sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
                                 || sub_seq.kleene.op == mbe::KleeneOp::ZeroOrOne
                         }
@@ -736,21 +736,21 @@ impl<'tt> FirstSets<'tt> {
         fn build_recur<'tt>(sets: &mut FirstSets<'tt>, tts: &'tt [TokenTree]) -> TokenSet<'tt> {
             let mut first = TokenSet::empty();
             for tt in tts.iter().rev() {
-                match *tt {
+                match tt {
                     TokenTree::Token(..)
                     | TokenTree::MetaVar(..)
                     | TokenTree::MetaVarDecl(..)
                     | TokenTree::MetaVarExpr(..) => {
                         first.replace_with(TtHandle::TtRef(tt));
                     }
-                    TokenTree::Delimited(span, ref delimited) => {
+                    TokenTree::Delimited(span, delimited) => {
                         build_recur(sets, &delimited.tts);
                         first.replace_with(TtHandle::from_token_kind(
                             token::OpenDelim(delimited.delim),
                             span.open,
                         ));
                     }
-                    TokenTree::Sequence(sp, ref seq_rep) => {
+                    TokenTree::Sequence(sp, seq_rep) => {
                         let subfirst = build_recur(sets, &seq_rep.tts);
 
                         match sets.first.entry(sp.entire()) {
@@ -804,7 +804,7 @@ impl<'tt> FirstSets<'tt> {
         let mut first = TokenSet::empty();
         for tt in tts.iter() {
             assert!(first.maybe_empty);
-            match *tt {
+            match tt {
                 TokenTree::Token(..)
                 | TokenTree::MetaVar(..)
                 | TokenTree::MetaVarDecl(..)
@@ -812,14 +812,14 @@ impl<'tt> FirstSets<'tt> {
                     first.add_one(TtHandle::TtRef(tt));
                     return first;
                 }
-                TokenTree::Delimited(span, ref delimited) => {
+                TokenTree::Delimited(span, delimited) => {
                     first.add_one(TtHandle::from_token_kind(
                         token::OpenDelim(delimited.delim),
                         span.open,
                     ));
                     return first;
                 }
-                TokenTree::Sequence(sp, ref seq_rep) => {
+                TokenTree::Sequence(sp, seq_rep) => {
                     let subfirst_owned;
                     let subfirst = match self.first.get(&sp.entire()) {
                         Some(Some(subfirst)) => subfirst,
@@ -1041,7 +1041,7 @@ fn check_matcher_core<'tt>(
 
         // First, update `last` so that it corresponds to the set
         // of NT tokens that might end the sequence `... token`.
-        match *token {
+        match token {
             TokenTree::Token(..)
             | TokenTree::MetaVar(..)
             | TokenTree::MetaVarDecl(..)
@@ -1057,7 +1057,7 @@ fn check_matcher_core<'tt>(
                     suffix_first = build_suffix_first();
                 }
             }
-            TokenTree::Delimited(span, ref d) => {
+            TokenTree::Delimited(span, d) => {
                 let my_suffix = TokenSet::singleton(TtHandle::from_token_kind(
                     token::CloseDelim(d.delim),
                     span.close,
@@ -1070,7 +1070,7 @@ fn check_matcher_core<'tt>(
                 // against SUFFIX
                 continue 'each_token;
             }
-            TokenTree::Sequence(_, ref seq_rep) => {
+            TokenTree::Sequence(_, seq_rep) => {
                 suffix_first = build_suffix_first();
                 // The trick here: when we check the interior, we want
                 // to include the separator (if any) as a potential
@@ -1372,8 +1372,8 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
 }
 
 fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
-    match *tt {
-        mbe::TokenTree::Token(ref token) => pprust::token_to_string(&token).into(),
+    match tt {
+        mbe::TokenTree::Token(token) => pprust::token_to_string(&token).into(),
         mbe::TokenTree::MetaVar(_, name) => format!("${}", name),
         mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${}:{}", name, kind),
         mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${}:", name),

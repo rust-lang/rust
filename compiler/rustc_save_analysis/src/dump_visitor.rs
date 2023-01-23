@@ -112,9 +112,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     }
 
     pub fn dump_crate_info(&mut self, name: Symbol) {
-        let source_file = self.tcx.sess.local_crate_source_file.as_ref();
-        let crate_root = source_file.map(|source_file| {
-            let source_file = Path::new(source_file);
+        let crate_root = self.tcx.sess.local_crate_source_file().map(|source_file| {
             match source_file.file_name() {
                 Some(_) => source_file.parent().unwrap().display(),
                 None => source_file.display(),
@@ -157,10 +155,14 @@ impl<'tcx> DumpVisitor<'tcx> {
                 .enumerate()
                 .filter(|(i, _)| !remap_arg_indices.contains(i))
                 .map(|(_, arg)| match input {
-                    Input::File(ref path) if path == Path::new(&arg) => {
-                        let mapped = &self.tcx.sess.local_crate_source_file;
-                        mapped.as_ref().unwrap().to_string_lossy().into()
-                    }
+                    Input::File(ref path) if path == Path::new(&arg) => self
+                        .tcx
+                        .sess
+                        .local_crate_source_file()
+                        .as_ref()
+                        .unwrap()
+                        .to_string_lossy()
+                        .into(),
                     _ => arg,
                 });
 

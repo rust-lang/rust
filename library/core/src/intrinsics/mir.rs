@@ -259,6 +259,8 @@ define!("mir_unreachable", fn Unreachable() -> BasicBlock);
 define!("mir_drop", fn Drop<T>(place: T, goto: BasicBlock));
 define!("mir_drop_and_replace", fn DropAndReplace<T>(place: T, value: T, goto: BasicBlock));
 define!("mir_call", fn Call<T>(place: T, goto: BasicBlock, call: T));
+define!("mir_storage_live", fn StorageLive<T>(local: T));
+define!("mir_storage_dead", fn StorageDead<T>(local: T));
 define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);

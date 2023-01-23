@@ -88,4 +88,5 @@ ast_passes_ty_alias_without_body =
 ast_passes_fn_without_body =
     free function without a body
     .suggestion = provide a definition for the function
-    .extern_block_suggestion = if you meant to declare an externally defined function, use an `extern` block
+
+ast_passes_extern_block_suggestion = if you meant to declare an externally defined function, use an `extern` block

@@ -1,4 +1,4 @@
-// compile-flags: -Cno-prepopulate-passes
+// compile-flags: -Cno-prepopulate-passes -Copt-level=0
 
 // revisions:x86_64 i686 aarch64-apple aarch64-windows aarch64-linux arm riscv
 

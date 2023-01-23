@@ -304,8 +304,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
         let mut reinit = None;
         match expr.kind {
             ExprKind::Assign(lhs, rhs, _) => {
-                self.visit_expr(lhs);
                 self.visit_expr(rhs);
+                self.visit_expr(lhs);
 
                 reinit = Some(lhs);
             }
@@ -433,7 +433,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                     self.drop_ranges.add_control_edge(self.expr_index, *target)
                 }),
 
-            ExprKind::Break(destination, ..) => {
+            ExprKind::Break(destination, value) => {
                 // destination either points to an expression or to a block. We use
                 // find_target_expression_from_destination to use the last expression of the block
                 // if destination points to a block.
@@ -443,7 +443,11 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                 // will refer to the end of the block due to the post order traversal.
                 self.find_target_expression_from_destination(destination).map_or((), |target| {
                     self.drop_ranges.add_control_edge_hir_id(self.expr_index, target)
-                })
+                });
+
+                if let Some(value) = value {
+                    self.visit_expr(value);
+                }
             }
 
             ExprKind::Call(f, args) => {
@@ -465,6 +469,12 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
 
             ExprKind::AddrOf(..)
             | ExprKind::Array(..)
+            // FIXME(eholk): We probably need special handling for AssignOps. The ScopeTree builder
+            // in region.rs runs both lhs then rhs and rhs then lhs and then sets all yields to be
+            // the latest they show up in either traversal. With the older scope-based
+            // approximation, this was fine, but it's probably not right now. What we probably want
+            // to do instead is still run both orders, but consider anything that showed up as a
+            // yield in either order.
             | ExprKind::AssignOp(..)
             | ExprKind::Binary(..)
             | ExprKind::Block(..)
@@ -502,6 +512,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
 
         // Increment expr_count here to match what InteriorVisitor expects.
         self.expr_index = self.expr_index + 1;
+
+        // Save a node mapping to get better CFG visualization
+        self.drop_ranges.add_node_mapping(pat.hir_id, self.expr_index);
     }
 }
 
@@ -521,7 +534,7 @@ impl DropRangesBuilder {
                 }
             });
         }
-        debug!("hir_id_map: {:?}", tracked_value_map);
+        debug!("hir_id_map: {:#?}", tracked_value_map);
         let num_values = tracked_value_map.len();
         Self {
             tracked_value_map,

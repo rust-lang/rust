@@ -63,21 +63,21 @@ pub enum Annotatable {
 
 impl Annotatable {
     pub fn span(&self) -> Span {
-        match *self {
-            Annotatable::Item(ref item) => item.span,
-            Annotatable::TraitItem(ref trait_item) => trait_item.span,
-            Annotatable::ImplItem(ref impl_item) => impl_item.span,
-            Annotatable::ForeignItem(ref foreign_item) => foreign_item.span,
-            Annotatable::Stmt(ref stmt) => stmt.span,
-            Annotatable::Expr(ref expr) => expr.span,
-            Annotatable::Arm(ref arm) => arm.span,
-            Annotatable::ExprField(ref field) => field.span,
-            Annotatable::PatField(ref fp) => fp.pat.span,
-            Annotatable::GenericParam(ref gp) => gp.ident.span,
-            Annotatable::Param(ref p) => p.span,
-            Annotatable::FieldDef(ref sf) => sf.span,
-            Annotatable::Variant(ref v) => v.span,
-            Annotatable::Crate(ref c) => c.spans.inner_span,
+        match self {
+            Annotatable::Item(item) => item.span,
+            Annotatable::TraitItem(trait_item) => trait_item.span,
+            Annotatable::ImplItem(impl_item) => impl_item.span,
+            Annotatable::ForeignItem(foreign_item) => foreign_item.span,
+            Annotatable::Stmt(stmt) => stmt.span,
+            Annotatable::Expr(expr) => expr.span,
+            Annotatable::Arm(arm) => arm.span,
+            Annotatable::ExprField(field) => field.span,
+            Annotatable::PatField(fp) => fp.pat.span,
+            Annotatable::GenericParam(gp) => gp.ident.span,
+            Annotatable::Param(p) => p.span,
+            Annotatable::FieldDef(sf) => sf.span,
+            Annotatable::Variant(v) => v.span,
+            Annotatable::Crate(c) => c.spans.inner_span,
         }
     }
 

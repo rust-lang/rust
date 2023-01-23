@@ -1,4 +1,4 @@
-// This test is for *-windows-msvc only.
+ // This test is for *-windows-msvc only.
 // only-windows
 // ignore-gnu
 
@@ -15,10 +15,10 @@ extern crate wrapper;
 // CHECK: @static_global1 = external local_unnamed_addr global i32
 // CHECK: @static_global2 = external local_unnamed_addr global i32
 
-// CHECK: declare dllimport i32 @dylib_func1(i32)
-// CHECK: declare dllimport i32 @dylib_func2(i32)
-// CHECK: declare i32 @static_func1(i32)
-// CHECK: declare i32 @static_func2(i32)
+// CHECK: declare dllimport noundef i32 @dylib_func1(i32 noundef)
+// CHECK: declare dllimport noundef i32 @dylib_func2(i32 noundef)
+// CHECK: declare noundef i32 @static_func1(i32 noundef)
+// CHECK: declare noundef i32 @static_func2(i32 noundef)
 
 #[link(name = "dummy", kind="dylib")]
 extern "C" {

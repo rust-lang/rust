@@ -15,7 +15,7 @@ macro_rules! test_literal {
         for input in inputs {
             assert_eq!(input.parse(), Ok(x64));
             assert_eq!(input.parse(), Ok(x32));
-            let neg_input = &format!("-{input}");
+            let neg_input = format!("-{input}");
             assert_eq!(neg_input.parse(), Ok(-x64));
             assert_eq!(neg_input.parse(), Ok(-x32));
         }

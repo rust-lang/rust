@@ -198,7 +198,7 @@ fn satisfied_from_param_env<'tcx>(
                 // If we start allowing directly writing `ConstKind::Expr` without an intermediate anon const
                 // this will be incorrect. It might be worth investigating making `predicates_of` elaborate
                 // all of the `ConstEvaluatable` bounds rather than having a visitor here.
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
         }
     }

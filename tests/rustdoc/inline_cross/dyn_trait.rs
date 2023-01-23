@@ -22,10 +22,10 @@ pub use dyn_trait::Ty2;
 pub use dyn_trait::Ty3;
 
 // @has user/fn.func0.html
-// @has - '//pre[@class="rust fn"]' "func0(_: &dyn Fn())"
+// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "func0(_: &dyn Fn())"
 // FIXME(fmease): Show placeholder-lifetime bound, render "func0(_: &(dyn Fn() + '_))"
 pub use dyn_trait::func0;
 
 // @has user/fn.func1.html
-// @has - '//pre[@class="rust fn"]' "func1<'func>(_: &(dyn Fn() + 'func))"
+// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "func1<'func>(_: &(dyn Fn() + 'func))"
 pub use dyn_trait::func1;

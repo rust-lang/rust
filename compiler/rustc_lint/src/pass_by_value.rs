@@ -32,7 +32,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
                     cx.emit_spanned_lint(
                         PASS_BY_VALUE,
                         ty.span,
-                        PassByValueDiag { ty: t.clone(), suggestion: ty.span },
+                        PassByValueDiag { ty: t, suggestion: ty.span },
                     );
                 }
             }

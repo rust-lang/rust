@@ -13,7 +13,7 @@ use std::cmp::Ordering;
 pub struct Foo(u16);
 
 // CHECK-LABEL: @check_lt
-// CHECK-SAME: (i16 %[[A:.+]], i16 %[[B:.+]])
+// CHECK-SAME: (i16 noundef %[[A:.+]], i16 noundef %[[B:.+]])
 #[no_mangle]
 pub fn check_lt(a: Foo, b: Foo) -> bool {
     // CHECK: %[[R:.+]] = icmp ult i16 %[[A]], %[[B]]
@@ -22,7 +22,7 @@ pub fn check_lt(a: Foo, b: Foo) -> bool {
 }
 
 // CHECK-LABEL: @check_le
-// CHECK-SAME: (i16 %[[A:.+]], i16 %[[B:.+]])
+// CHECK-SAME: (i16 noundef %[[A:.+]], i16 noundef %[[B:.+]])
 #[no_mangle]
 pub fn check_le(a: Foo, b: Foo) -> bool {
     // CHECK: %[[R:.+]] = icmp ule i16 %[[A]], %[[B]]
@@ -31,7 +31,7 @@ pub fn check_le(a: Foo, b: Foo) -> bool {
 }
 
 // CHECK-LABEL: @check_gt
-// CHECK-SAME: (i16 %[[A:.+]], i16 %[[B:.+]])
+// CHECK-SAME: (i16 noundef %[[A:.+]], i16 noundef %[[B:.+]])
 #[no_mangle]
 pub fn check_gt(a: Foo, b: Foo) -> bool {
     // CHECK: %[[R:.+]] = icmp ugt i16 %[[A]], %[[B]]
@@ -40,7 +40,7 @@ pub fn check_gt(a: Foo, b: Foo) -> bool {
 }
 
 // CHECK-LABEL: @check_ge
-// CHECK-SAME: (i16 %[[A:.+]], i16 %[[B:.+]])
+// CHECK-SAME: (i16 noundef %[[A:.+]], i16 noundef %[[B:.+]])
 #[no_mangle]
 pub fn check_ge(a: Foo, b: Foo) -> bool {
     // CHECK: %[[R:.+]] = icmp uge i16 %[[A]], %[[B]]

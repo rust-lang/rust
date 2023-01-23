@@ -1130,12 +1130,6 @@ impl Step for RustAnalyzer {
         let compiler = self.compiler;
         let target = self.target;
 
-        if target.contains("riscv64") {
-            // riscv64 currently has an LLVM bug that makes rust-analyzer unable
-            // to build. See #74813 for details.
-            return None;
-        }
-
         let rust_analyzer = builder
             .ensure(tool::RustAnalyzer { compiler, target })
             .expect("rust-analyzer always builds");

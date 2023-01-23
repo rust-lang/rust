@@ -32,7 +32,6 @@ use rustc_trait_selection::traits::{
 };
 
 use std::cell::LazyCell;
-use std::iter;
 use std::ops::{ControlFlow, Deref};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
@@ -179,7 +178,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         //
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
-        hir::ItemKind::Impl(ref impl_) => {
+        hir::ItemKind::Impl(impl_) => {
             let is_auto = tcx
                 .impl_trait_ref(def_id)
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.skip_binder().def_id));
@@ -225,15 +224,15 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         hir::ItemKind::Const(ty, ..) => {
             check_item_type(tcx, def_id, ty.span, false);
         }
-        hir::ItemKind::Struct(_, ref ast_generics) => {
+        hir::ItemKind::Struct(_, ast_generics) => {
             check_type_defn(tcx, item, false);
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
-        hir::ItemKind::Union(_, ref ast_generics) => {
+        hir::ItemKind::Union(_, ast_generics) => {
             check_type_defn(tcx, item, true);
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
-        hir::ItemKind::Enum(_, ref ast_generics) => {
+        hir::ItemKind::Enum(_, ast_generics) => {
             check_type_defn(tcx, item, true);
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
@@ -1248,8 +1247,8 @@ fn check_impl<'tcx>(
     constness: hir::Constness,
 ) {
     enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
-        match *ast_trait_ref {
-            Some(ref ast_trait_ref) => {
+        match ast_trait_ref {
+            Some(ast_trait_ref) => {
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
@@ -1310,7 +1309,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
 
-    let predicates = tcx.bound_predicates_of(def_id.to_def_id());
+    let predicates = tcx.predicates_of(def_id.to_def_id());
     let generics = tcx.generics_of(def_id);
 
     let is_our_default = |def: &ty::GenericParamDef| match def.kind {
@@ -1411,7 +1410,6 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     // Now we build the substituted predicates.
     let default_obligations = predicates
-        .0
         .predicates
         .iter()
         .flat_map(|&(pred, sp)| {
@@ -1430,7 +1428,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 }
 
                 fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-                    ControlFlow::BREAK
+                    ControlFlow::Break(())
                 }
 
                 fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1442,13 +1440,13 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
-            let substituted_pred = predicates.rebind(pred).subst(tcx, substs);
+            let substituted_pred = ty::EarlyBinder(pred).subst(tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
             if substituted_pred.has_non_region_param() || param_count.params.len() > 1 || has_region
             {
                 None
-            } else if predicates.0.predicates.iter().any(|&(p, _)| p == substituted_pred) {
+            } else if predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
                 // Avoid duplication of predicates that contain no parameters, for example.
                 None
             } else {
@@ -1474,22 +1472,21 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             traits::Obligation::new(tcx, cause, wfcx.param_env, pred)
         });
 
-    let predicates = predicates.0.instantiate_identity(tcx);
+    let predicates = predicates.instantiate_identity(tcx);
 
     let predicates = wfcx.normalize(span, None, predicates);
 
     debug!(?predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
-    let wf_obligations =
-        iter::zip(&predicates.predicates, &predicates.spans).flat_map(|(&p, &sp)| {
-            traits::wf::predicate_obligations(
-                infcx,
-                wfcx.param_env.without_const(),
-                wfcx.body_id,
-                p,
-                sp,
-            )
-        });
+    let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
+        traits::wf::predicate_obligations(
+            infcx,
+            wfcx.param_env.without_const(),
+            wfcx.body_id,
+            p,
+            sp,
+        )
+    });
 
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
     wfcx.register_obligations(obligations);

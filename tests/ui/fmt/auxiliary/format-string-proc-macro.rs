@@ -28,9 +28,21 @@ pub fn err_with_input_span(input: TokenStream) -> TokenStream {
     TokenStream::from(TokenTree::Literal(lit))
 }
 
+
 #[proc_macro]
 pub fn respan_to_invalid_format_literal(input: TokenStream) -> TokenStream {
     let mut s = Literal::string("{");
+    s.set_span(input.into_iter().next().unwrap().span());
+    TokenStream::from_iter([
+        TokenTree::from(Ident::new("format", Span::call_site())),
+        TokenTree::from(Punct::new('!', Spacing::Alone)),
+        TokenTree::from(Group::new(Delimiter::Parenthesis, TokenTree::from(s).into())),
+    ])
+}
+
+#[proc_macro]
+pub fn capture_a_with_prepended_space_preserve_span(input: TokenStream) -> TokenStream {
+    let mut s = Literal::string(" {a}");
     s.set_span(input.into_iter().next().unwrap().span());
     TokenStream::from_iter([
         TokenTree::from(Ident::new("format", Span::call_site())),

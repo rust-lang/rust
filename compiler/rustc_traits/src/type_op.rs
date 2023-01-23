@@ -17,7 +17,6 @@ use rustc_trait_selection::traits::query::type_op::subtype::Subtype;
 use rustc_trait_selection::traits::query::{Fallible, NoSolution};
 use rustc_trait_selection::traits::{Normalized, Obligation, ObligationCause, ObligationCtxt};
 use std::fmt;
-use std::iter::zip;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
@@ -108,9 +107,7 @@ fn relate_mir_and_user_substs<'tcx>(
     let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
 
     debug!(?instantiated_predicates);
-    for (instantiated_predicate, predicate_span) in
-        zip(instantiated_predicates.predicates, instantiated_predicates.spans)
-    {
+    for (instantiated_predicate, predicate_span) in instantiated_predicates {
         let span = if span == DUMMY_SP { predicate_span } else { span };
         let cause = ObligationCause::new(
             span,

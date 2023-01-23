@@ -60,7 +60,7 @@ fn main() {
 
                 let handle = s.spawn(|| {
                     let mut flag = false;
-                    $p::check($($args),* , &mut flag);
+                    $p::check($($args, )* &mut flag);
                     if (flag) {
                         bad.store(true, Ordering::Relaxed);
                     }
@@ -80,6 +80,7 @@ fn main() {
         check!(debug_artifacts, &tests_path);
         check!(ui_tests, &tests_path);
         check!(mir_opt_tests, &tests_path, bless);
+        check!(rustdoc_gui_tests, &tests_path);
 
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);
@@ -112,6 +113,8 @@ fn main() {
         check!(alphabetical, &tests_path);
         check!(alphabetical, &compiler_path);
         check!(alphabetical, &library_path);
+
+        check!(x_version, &root_path, &cargo);
 
         let collected = {
             drain_handles(&mut handles);

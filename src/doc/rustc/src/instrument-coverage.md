@@ -201,6 +201,8 @@ $ RUSTFLAGS="-C instrument-coverage" \
     cargo test --tests
 ```
 
+> **Note**: The default for `LLVM_PROFILE_FILE` is `default_%m_%p.profraw`. Versions prior to 1.65 had a default of `default.profraw`, so if using those earlier versions, it is recommended to explicitly set `LLVM_PROFILE_FILE="default_%m_%p.profraw"` to avoid having multiple tests overwrite the `.profraw` files.
+
 Make note of the test binary file paths, displayed after the word "`Running`" in the test output:
 
 ```text

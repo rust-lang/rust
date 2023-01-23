@@ -195,7 +195,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
 
     // There is no main function.
     let mut has_filename = true;
-    let filename = tcx.sess.local_crate_source_file.clone().unwrap_or_else(|| {
+    let filename = tcx.sess.local_crate_source_file().unwrap_or_else(|| {
         has_filename = false;
         Default::default()
     });

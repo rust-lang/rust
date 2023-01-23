@@ -85,30 +85,30 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         Node::ImplItem(item) => item.generics,
 
         Node::Item(item) => match item.kind {
-            ItemKind::Impl(ref impl_) => {
+            ItemKind::Impl(impl_) => {
                 if impl_.defaultness.is_default() {
                     is_default_impl_trait =
                         tcx.impl_trait_ref(def_id).map(|t| ty::Binder::dummy(t.subst_identity()));
                 }
-                &impl_.generics
+                impl_.generics
             }
-            ItemKind::Fn(.., ref generics, _)
-            | ItemKind::TyAlias(_, ref generics)
-            | ItemKind::Enum(_, ref generics)
-            | ItemKind::Struct(_, ref generics)
-            | ItemKind::Union(_, ref generics) => *generics,
+            ItemKind::Fn(.., generics, _)
+            | ItemKind::TyAlias(_, generics)
+            | ItemKind::Enum(_, generics)
+            | ItemKind::Struct(_, generics)
+            | ItemKind::Union(_, generics) => generics,
 
-            ItemKind::Trait(_, _, ref generics, ..) | ItemKind::TraitAlias(ref generics, _) => {
+            ItemKind::Trait(_, _, generics, ..) | ItemKind::TraitAlias(generics, _) => {
                 is_trait = Some(ty::TraitRef::identity(tcx, def_id));
-                *generics
+                generics
             }
-            ItemKind::OpaqueTy(OpaqueTy { ref generics, .. }) => generics,
+            ItemKind::OpaqueTy(OpaqueTy { generics, .. }) => generics,
             _ => NO_GENERICS,
         },
 
         Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Static(..) => NO_GENERICS,
-            ForeignItemKind::Fn(_, _, ref generics) => *generics,
+            ForeignItemKind::Fn(_, _, generics) => generics,
             ForeignItemKind::Type => NO_GENERICS,
         },
 
@@ -350,7 +350,7 @@ fn const_evaluatable_predicates_of(
     let node = tcx.hir().get(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
-    if let hir::Node::Item(item) = node && let hir::ItemKind::Impl(ref impl_) = item.kind {
+    if let hir::Node::Item(item) = node && let hir::ItemKind::Impl(impl_) = item.kind {
         if let Some(of_trait) = &impl_.of_trait {
             debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
             collector.visit_trait_ref(of_trait);
@@ -511,8 +511,8 @@ pub(super) fn super_predicates_that_define_assoc_type(
         };
 
         let (generics, bounds) = match item.kind {
-            hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => (generics, supertraits),
-            hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
+            hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
+            hir::ItemKind::TraitAlias(generics, supertraits) => (generics, supertraits),
             _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
         };
 
@@ -612,18 +612,18 @@ pub(super) fn type_param_predicates(
 
         Node::Item(item) => {
             match item.kind {
-                ItemKind::Fn(.., ref generics, _)
-                | ItemKind::Impl(hir::Impl { ref generics, .. })
-                | ItemKind::TyAlias(_, ref generics)
+                ItemKind::Fn(.., generics, _)
+                | ItemKind::Impl(&hir::Impl { generics, .. })
+                | ItemKind::TyAlias(_, generics)
                 | ItemKind::OpaqueTy(OpaqueTy {
-                    ref generics,
+                    generics,
                     origin: hir::OpaqueTyOrigin::TyAlias,
                     ..
                 })
-                | ItemKind::Enum(_, ref generics)
-                | ItemKind::Struct(_, ref generics)
-                | ItemKind::Union(_, ref generics) => generics,
-                ItemKind::Trait(_, _, ref generics, ..) => {
+                | ItemKind::Enum(_, generics)
+                | ItemKind::Struct(_, generics)
+                | ItemKind::Union(_, generics) => generics,
+                ItemKind::Trait(_, _, generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
@@ -637,7 +637,7 @@ pub(super) fn type_param_predicates(
         }
 
         Node::ForeignItem(item) => match item.kind {
-            ForeignItemKind::Fn(_, _, ref generics) => generics,
+            ForeignItemKind::Fn(_, _, generics) => generics,
             _ => return result,
         },
 
@@ -681,8 +681,8 @@ impl<'tcx> ItemCtxt<'tcx> {
         ast_generics
             .predicates
             .iter()
-            .filter_map(|wp| match *wp {
-                hir::WherePredicate::BoundPredicate(ref bp) => Some(bp),
+            .filter_map(|wp| match wp {
+                hir::WherePredicate::BoundPredicate(bp) => Some(bp),
                 _ => None,
             })
             .flat_map(|bp| {

@@ -50,8 +50,8 @@ pub fn load_scalar_pair<'a>(x: &(&'a i32, &'a Align16)) -> (&'a i32, &'a Align16
 // CHECK-LABEL: @load_raw_pointer
 #[no_mangle]
 pub fn load_raw_pointer<'a>(x: &*const i32) -> *const i32 {
-    // loaded raw pointer should not have !nonnull, !align, or !noundef metadata
-    // CHECK: load {{i32\*|ptr}}, {{i32\*\*|ptr}} %x, align [[PTR_ALIGNMENT]]{{$}}
+    // loaded raw pointer should not have !nonnull or !align metadata
+    // CHECK: load {{i32\*|ptr}}, {{i32\*\*|ptr}} %x, align [[PTR_ALIGNMENT]], !noundef ![[NOUNDEF:[0-9]+]]{{$}}
     *x
 }
 
@@ -93,7 +93,7 @@ pub fn load_maybeuninit_enum_bool(x: &MaybeUninit<MyBool>) -> MaybeUninit<MyBool
 // CHECK-LABEL: @load_int
 #[no_mangle]
 pub fn load_int(x: &u16) -> u16 {
-    // CHECK: load i16, {{i16\*|ptr}} %x, align 2{{$}}
+    // CHECK: load i16, {{i16\*|ptr}} %x, align 2, !noundef ![[NOUNDEF]]{{$}}
     *x
 }
 
@@ -107,7 +107,7 @@ pub fn load_nonzero_int(x: &NonZeroU16) -> NonZeroU16 {
 // CHECK-LABEL: @load_option_nonzero_int
 #[no_mangle]
 pub fn load_option_nonzero_int(x: &Option<NonZeroU16>) -> Option<NonZeroU16> {
-    // CHECK: load i16, {{i16\*|ptr}} %x, align 2{{$}}
+    // CHECK: load i16, {{i16\*|ptr}} %x, align 2, !noundef ![[NOUNDEF]]{{$}}
     *x
 }
 

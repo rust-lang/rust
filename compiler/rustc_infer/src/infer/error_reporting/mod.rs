@@ -2272,10 +2272,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let labeled_user_string = match bound_kind {
             GenericKind::Param(ref p) => format!("the parameter type `{}`", p),
-            GenericKind::Projection(ref p) => format!("the associated type `{}`", p),
-            GenericKind::Opaque(def_id, substs) => {
-                format!("the opaque type `{}`", self.tcx.def_path_str_with_substs(def_id, substs))
-            }
+            GenericKind::Alias(ref p) => match p.kind(self.tcx) {
+                ty::AliasKind::Projection => format!("the associated type `{}`", p),
+                ty::AliasKind::Opaque => format!("the opaque type `{}`", p),
+            },
         };
 
         if let Some(SubregionOrigin::CompareImplItemObligation {

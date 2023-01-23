@@ -379,7 +379,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             ForeignItemKind::Type => tcx.mk_foreign(def_id.to_def_id()),
         },
 
-        Node::Ctor(&ref def) | Node::Variant(Variant { data: ref def, .. }) => match *def {
+        Node::Ctor(def) | Node::Variant(Variant { data: def, .. }) => match def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
                 tcx.type_of(tcx.hir().get_parent_item(hir_id))
             }
@@ -404,17 +404,17 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::AnonConst(_) => {
             let parent_node = tcx.hir().get_parent(hir_id);
             match parent_node {
-                Node::Ty(&Ty { kind: TyKind::Array(_, ref constant), .. })
-                | Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
+                Node::Ty(Ty { kind: TyKind::Array(_, constant), .. })
+                | Node::Expr(Expr { kind: ExprKind::Repeat(_, constant), .. })
                     if constant.hir_id() == hir_id =>
                 {
                     tcx.types.usize
                 }
-                Node::Ty(&Ty { kind: TyKind::Typeof(ref e), .. }) if e.hir_id == hir_id => {
+                Node::Ty(Ty { kind: TyKind::Typeof(e), .. }) if e.hir_id == hir_id => {
                     tcx.typeck(def_id).node_type(e.hir_id)
                 }
 
-                Node::Expr(&Expr { kind: ExprKind::ConstBlock(ref anon_const), .. })
+                Node::Expr(Expr { kind: ExprKind::ConstBlock(anon_const), .. })
                     if anon_const.hir_id == hir_id =>
                 {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -434,18 +434,19 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     tcx.typeck(def_id).node_type(hir_id)
                 }
 
-                Node::Variant(Variant { disr_expr: Some(ref e), .. }) if e.hir_id == hir_id => {
+                Node::Variant(Variant { disr_expr: Some(e), .. }) if e.hir_id == hir_id => {
                     tcx.adt_def(tcx.hir().get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
                 }
 
                 Node::TypeBinding(
-                    binding @ &TypeBinding {
+                    TypeBinding {
                         hir_id: binding_id,
-                        kind: TypeBindingKind::Equality { term: Term::Const(ref e) },
+                        kind: TypeBindingKind::Equality { term: Term::Const(e) },
+                        ident,
                         ..
                     },
                 ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get_parent(binding_id)
+                    tcx.hir().get_parent(*binding_id)
                     && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
@@ -454,7 +455,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     let assoc_items = tcx.associated_items(trait_def_id);
                     let assoc_item = assoc_items.find_by_name_and_kind(
                         tcx,
-                        binding.ident,
+                        *ident,
                         ty::AssocKind::Const,
                         def_id.to_def_id(),
                     );
@@ -470,9 +471,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 }
 
                 Node::TypeBinding(
-                    binding @ &TypeBinding { hir_id: binding_id, gen_args, ref kind, .. },
+                    TypeBinding { hir_id: binding_id, gen_args, kind, ident, .. },
                 ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get_parent(binding_id)
+                    tcx.hir().get_parent(*binding_id)
                     && let Some((idx, _)) =
                         gen_args.args.iter().enumerate().find(|(_, arg)| {
                             if let GenericArg::Const(ct) = arg {
@@ -488,7 +489,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     let assoc_items = tcx.associated_items(trait_def_id);
                     let assoc_item = assoc_items.find_by_name_and_kind(
                         tcx,
-                        binding.ident,
+                        *ident,
                         match kind {
                             // I think `<A: T>` type bindings requires that `A` is a type
                             TypeBindingKind::Constraint { .. }

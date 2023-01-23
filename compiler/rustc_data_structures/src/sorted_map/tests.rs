@@ -6,7 +6,7 @@ fn test_sorted_index_multi_map() {
     let set: SortedIndexMultiMap<usize, _, _> = entries.iter().copied().collect();
 
     // Insertion order is preserved.
-    assert!(entries.iter().map(|(ref k, ref v)| (k, v)).eq(set.iter()));
+    assert!(entries.iter().map(|(k, v)| (k, v)).eq(set.iter()));
 
     // Indexing
     for (i, expect) in entries.iter().enumerate() {

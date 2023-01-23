@@ -17,7 +17,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{AtomicU32, Lrc, MappedReadGuard, ReadGuard, RwLock};
 use std::cmp;
 use std::hash::Hash;
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 use std::sync::atomic::Ordering;
 
 use std::fs;
@@ -1071,12 +1071,24 @@ impl SourceMap {
 
     pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
         source_file.add_external_src(|| {
-            match source_file.name {
-                FileName::Real(ref name) if let Some(local_path) = name.local_path() => {
-                    self.file_loader.read_file(local_path).ok()
+            let FileName::Real(ref name) = source_file.name else {
+                return None;
+            };
+
+            let local_path: Cow<'_, Path> = match name {
+                RealFileName::LocalPath(local_path) => local_path.into(),
+                RealFileName::Remapped { local_path: Some(local_path), .. } => local_path.into(),
+                RealFileName::Remapped { local_path: None, virtual_name } => {
+                    // The compiler produces better error messages if the sources of dependencies
+                    // are available. Attempt to undo any path mapping so we can find remapped
+                    // dependencies.
+                    // We can only use the heuristic because `add_external_src` checks the file
+                    // content hash.
+                    self.path_mapping.reverse_map_prefix_heuristically(virtual_name)?.into()
                 }
-                _ => None,
-            }
+            };
+
+            self.file_loader.read_file(&local_path).ok()
         })
     }
 
@@ -1138,7 +1150,8 @@ impl FilePathMapping {
     /// Applies any path prefix substitution as defined by the mapping.
     /// The return value is the remapped path and a boolean indicating whether
     /// the path was affected by the mapping.
-    pub fn map_prefix(&self, path: PathBuf) -> (PathBuf, bool) {
+    pub fn map_prefix<'a>(&'a self, path: impl Into<Cow<'a, Path>>) -> (Cow<'a, Path>, bool) {
+        let path = path.into();
         if path.as_os_str().is_empty() {
             // Exit early if the path is empty and therefore there's nothing to remap.
             // This is mostly to reduce spam for `RUSTC_LOG=[remap_path_prefix]`.
@@ -1148,7 +1161,10 @@ impl FilePathMapping {
         return remap_path_prefix(&self.mapping, path);
 
         #[instrument(level = "debug", skip(mapping), ret)]
-        fn remap_path_prefix(mapping: &[(PathBuf, PathBuf)], path: PathBuf) -> (PathBuf, bool) {
+        fn remap_path_prefix<'a>(
+            mapping: &'a [(PathBuf, PathBuf)],
+            path: Cow<'a, Path>,
+        ) -> (Cow<'a, Path>, bool) {
             // NOTE: We are iterating over the mapping entries from last to first
             //       because entries specified later on the command line should
             //       take precedence.
@@ -1163,9 +1179,9 @@ impl FilePathMapping {
                         // in remapped paths down the line.
                         // So, if we have an exact match, we just return that without a call
                         // to `Path::join()`.
-                        to.clone()
+                        to.into()
                     } else {
-                        to.join(rest)
+                        to.join(rest).into()
                     };
                     debug!("Match - remapped");
 
@@ -1183,11 +1199,11 @@ impl FilePathMapping {
     fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
         match file {
             FileName::Real(realfile) if let RealFileName::LocalPath(local_path) = realfile => {
-                let (mapped_path, mapped) = self.map_prefix(local_path.to_path_buf());
+                let (mapped_path, mapped) = self.map_prefix(local_path);
                 let realfile = if mapped {
                     RealFileName::Remapped {
                         local_path: Some(local_path.clone()),
-                        virtual_name: mapped_path,
+                        virtual_name: mapped_path.into_owned(),
                     }
                 } else {
                     realfile.clone()
@@ -1228,14 +1244,17 @@ impl FilePathMapping {
                 let (new_path, was_remapped) = self.map_prefix(unmapped_file_path);
                 if was_remapped {
                     // It was remapped, so don't modify further
-                    return RealFileName::Remapped { local_path: None, virtual_name: new_path };
+                    return RealFileName::Remapped {
+                        local_path: None,
+                        virtual_name: new_path.into_owned(),
+                    };
                 }
 
                 if new_path.is_absolute() {
                     // No remapping has applied to this path and it is absolute,
                     // so the working directory cannot influence it either, so
                     // we are done.
-                    return RealFileName::LocalPath(new_path);
+                    return RealFileName::LocalPath(new_path.into_owned());
                 }
 
                 debug_assert!(new_path.is_relative());
@@ -1253,12 +1272,12 @@ impl FilePathMapping {
                             RealFileName::Remapped {
                                 // Erase the actual path
                                 local_path: None,
-                                virtual_name: file_path_abs,
+                                virtual_name: file_path_abs.into_owned(),
                             }
                         } else {
                             // No kind of remapping applied to this path, so
                             // we leave it as it is.
-                            RealFileName::LocalPath(file_path_abs)
+                            RealFileName::LocalPath(file_path_abs.into_owned())
                         }
                     }
                     RealFileName::Remapped {
@@ -1276,5 +1295,44 @@ impl FilePathMapping {
                 }
             }
         }
+    }
+
+    /// Attempts to (heuristically) reverse a prefix mapping.
+    ///
+    /// Returns [`Some`] if there is exactly one mapping where the "to" part is
+    /// a prefix of `path` and has at least one non-empty
+    /// [`Normal`](path::Component::Normal) component. The component
+    /// restriction exists to avoid reverse mapping overly generic paths like
+    /// `/` or `.`).
+    ///
+    /// This is a heuristic and not guaranteed to return the actual original
+    /// path! Do not rely on the result unless you have other means to verify
+    /// that the mapping is correct (e.g. by checking the file content hash).
+    #[instrument(level = "debug", skip(self), ret)]
+    fn reverse_map_prefix_heuristically(&self, path: &Path) -> Option<PathBuf> {
+        let mut found = None;
+
+        for (from, to) in self.mapping.iter() {
+            let has_normal_component = to.components().any(|c| match c {
+                path::Component::Normal(s) => !s.is_empty(),
+                _ => false,
+            });
+
+            if !has_normal_component {
+                continue;
+            }
+
+            let Ok(rest) = path.strip_prefix(to) else {
+                continue;
+            };
+
+            if found.is_some() {
+                return None;
+            }
+
+            found = Some(from.join(rest));
+        }
+
+        found
     }
 }

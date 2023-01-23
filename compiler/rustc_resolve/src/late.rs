@@ -3373,7 +3373,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         sugg.to_string(),
                         Applicability::MaybeIncorrect,
                     ))
-                } else if res.is_none() {
+                } else if res.is_none() && matches!(source, PathSource::Type) {
                     this.report_missing_type_error(path)
                 } else {
                     None

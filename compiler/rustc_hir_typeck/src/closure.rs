@@ -236,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         if t == self.expected_ty {
-                            ControlFlow::BREAK
+                            ControlFlow::Break(())
                         } else {
                             t.super_visit_with(self)
                         }

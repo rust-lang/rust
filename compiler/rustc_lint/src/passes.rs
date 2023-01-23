@@ -171,6 +171,9 @@ macro_rules! early_lint_methods {
 
             /// Counterpart to `enter_lint_attrs`.
             fn exit_lint_attrs(a: &[ast::Attribute]);
+
+            fn enter_where_predicate(a: &ast::WherePredicate);
+            fn exit_where_predicate(a: &ast::WherePredicate);
         ]);
     )
 }

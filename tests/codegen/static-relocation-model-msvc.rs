@@ -15,8 +15,8 @@ extern crate extern_decl;
 // it to be marked `dso_local` as well, given the static relocation model.
 //
 // CHECK: @extern_static = external dso_local local_unnamed_addr global i8
-// CHECK: define dso_local i8 @access_extern() {{.*}}
-// CHECK: declare dso_local i8 @extern_fn() {{.*}}
+// CHECK: define dso_local noundef i8 @access_extern() {{.*}}
+// CHECK: declare dso_local noundef i8 @extern_fn() {{.*}}
 
 #[no_mangle]
 pub fn access_extern() -> u8 {

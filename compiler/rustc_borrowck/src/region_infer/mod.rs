@@ -527,6 +527,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_values.region_value_str(scc)
     }
 
+    pub(crate) fn placeholders_contained_in<'a>(
+        &'a self,
+        r: RegionVid,
+    ) -> impl Iterator<Item = ty::PlaceholderRegion> + 'a {
+        let scc = self.constraint_sccs.scc(r.to_region_vid());
+        self.scc_values.placeholders_contained_in(scc)
+    }
+
     /// Returns access to the value of `r` for debugging purposes.
     pub(crate) fn region_universe(&self, r: RegionVid) -> ty::UniverseIndex {
         let scc = self.constraint_sccs.scc(r.to_region_vid());

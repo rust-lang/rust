@@ -5,7 +5,6 @@
 #![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(min_specialization)]

@@ -731,11 +731,12 @@ impl ::core::marker::Copy for Fieldless { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match self {
-            Fieldless::A => ::core::fmt::Formatter::write_str(f, "A"),
-            Fieldless::B => ::core::fmt::Formatter::write_str(f, "B"),
-            Fieldless::C => ::core::fmt::Formatter::write_str(f, "C"),
-        }
+        ::core::fmt::Formatter::write_str(f,
+            match self {
+                Fieldless::A => "A",
+                Fieldless::B => "B",
+                Fieldless::C => "C",
+            })
     }
 }
 #[automatically_derived]

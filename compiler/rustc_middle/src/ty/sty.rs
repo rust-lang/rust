@@ -100,6 +100,13 @@ impl BoundRegionKind {
 
         None
     }
+
+    pub fn get_id(&self) -> Option<DefId> {
+        match *self {
+            BoundRegionKind::BrNamed(id, _) => return Some(id),
+            _ => None,
+        }
+    }
 }
 
 pub trait Article {
@@ -1106,17 +1113,6 @@ impl<'tcx, T> Binder<'tcx, T> {
         if self.0.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
 
-    pub fn no_bound_vars_ignoring_escaping(self, tcx: TyCtxt<'tcx>) -> Option<T>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        if !self.0.has_escaping_bound_vars() {
-            Some(self.skip_binder())
-        } else {
-            self.0.try_fold_with(&mut SkipBindersAt { index: ty::INNERMOST, tcx }).ok()
-        }
-    }
-
     /// Splits the contents into two things that share the same binder
     /// level as the original, returning two distinct binders.
     ///
@@ -1226,7 +1222,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
 /// For a projection, this would be `<Ty as Trait<...>>::N`.
 ///
 /// For an opaque type, there is no explicit syntax.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct AliasTy<'tcx> {
     /// The parameters of the associated or opaque item.
@@ -1249,11 +1245,26 @@ pub struct AliasTy<'tcx> {
     /// aka. `tcx.parent(def_id)`.
     pub def_id: DefId,
 
-    /// This field exists to prevent the creation of `ProjectionTy` without using
+    /// This field exists to prevent the creation of `AliasTy` without using
     /// [TyCtxt::mk_alias_ty].
     pub(super) _use_mk_alias_ty_instead: (),
 }
 
+impl<'tcx> AliasTy<'tcx> {
+    pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
+        match tcx.def_kind(self.def_id) {
+            DefKind::AssocTy | DefKind::ImplTraitPlaceholder => ty::Projection,
+            DefKind::OpaqueTy => ty::Opaque,
+            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
+        }
+    }
+
+    pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        tcx.mk_ty(ty::Alias(self.kind(tcx), self))
+    }
+}
+
+/// The following methods work only with associated type projections.
 impl<'tcx> AliasTy<'tcx> {
     pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.def_id) {
@@ -1261,7 +1272,7 @@ impl<'tcx> AliasTy<'tcx> {
             DefKind::ImplTraitPlaceholder => {
                 tcx.parent(tcx.impl_trait_in_trait_parent(self.def_id))
             }
-            kind => bug!("unexpected DefKind in ProjectionTy: {kind:?}"),
+            kind => bug!("expected a projection AliasTy; found {kind:?}"),
         }
     }
 
@@ -2015,7 +2026,7 @@ impl<'tcx> Ty<'tcx> {
             type BreakTy = ();
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if self.0 == t { ControlFlow::BREAK } else { t.super_visit_with(self) }
+                if self.0 == t { ControlFlow::Break(()) } else { t.super_visit_with(self) }
             }
         }
 

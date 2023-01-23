@@ -1,4 +1,4 @@
-error: def-path(<[u8; _] as Foo>::baz)
+error: def-path(<[u8; 1 + 2] as Foo>::baz)
   --> $DIR/impl2.rs:11:5
    |
 LL |     #[rustc_def_path]

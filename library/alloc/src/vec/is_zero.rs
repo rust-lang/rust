@@ -4,7 +4,8 @@ use crate::boxed::Box;
 
 #[rustc_specialization_trait]
 pub(super) unsafe trait IsZero {
-    /// Whether this value's representation is all zeros
+    /// Whether this value's representation is all zeros,
+    /// or can be represented with all zeroes.
     fn is_zero(&self) -> bool;
 }
 
@@ -146,6 +147,23 @@ impl_is_zero_option_of_nonzero!(
     NonZeroUsize,
     NonZeroIsize,
 );
+
+macro_rules! impl_is_zero_option_of_num {
+    ($($t:ty,)+) => {$(
+        unsafe impl IsZero for Option<$t> {
+            #[inline]
+            fn is_zero(&self) -> bool {
+                const {
+                    let none: Self = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
+                    assert!(none.is_none());
+                }
+                self.is_none()
+            }
+        }
+    )+};
+}
+
+impl_is_zero_option_of_num!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, usize, isize,);
 
 unsafe impl<T: IsZero> IsZero for Wrapping<T> {
     #[inline]

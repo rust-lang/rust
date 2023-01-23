@@ -160,8 +160,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
         };
 
-        let candidate_predicate =
-            tcx.bound_item_bounds(def_id).map_bound(|i| i[idx]).subst(tcx, substs);
+        let candidate_predicate = tcx.item_bounds(def_id).map_bound(|i| i[idx]).subst(tcx, substs);
         let candidate = candidate_predicate
             .to_opt_poly_trait_pred()
             .expect("projection candidate is not a trait predicate")
@@ -185,9 +184,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })?);
 
         if let ty::Alias(ty::Projection, ..) = placeholder_self_ty.kind() {
-            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs).predicates;
-            debug!(?predicates, "projection predicates");
-            for predicate in predicates {
+            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
+            for (predicate, _) in predicates {
                 let normalized = normalize_with_depth_to(
                     self,
                     obligation.param_env,
@@ -511,7 +509,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // This maybe belongs in wf, but that can't (doesn't) handle
             // higher-ranked things.
             // Prevent, e.g., `dyn Iterator<Item = str>`.
-            for bound in self.tcx().bound_item_bounds(assoc_type).transpose_iter() {
+            for bound in self.tcx().item_bounds(assoc_type).transpose_iter() {
                 let subst_bound =
                     if defs.count() == 0 {
                         bound.subst(tcx, trait_predicate.trait_ref.substs)

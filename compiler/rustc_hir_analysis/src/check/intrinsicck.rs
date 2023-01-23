@@ -351,7 +351,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             }
 
             match *op {
-                hir::InlineAsmOperand::In { reg, ref expr } => {
+                hir::InlineAsmOperand::In { reg, expr } => {
                     self.check_asm_operand_type(
                         idx,
                         reg,
@@ -362,7 +362,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         &target_features,
                     );
                 }
-                hir::InlineAsmOperand::Out { reg, late: _, ref expr } => {
+                hir::InlineAsmOperand::Out { reg, late: _, expr } => {
                     if let Some(expr) = expr {
                         self.check_asm_operand_type(
                             idx,
@@ -375,7 +375,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                hir::InlineAsmOperand::InOut { reg, late: _, ref expr } => {
+                hir::InlineAsmOperand::InOut { reg, late: _, expr } => {
                     self.check_asm_operand_type(
                         idx,
                         reg,
@@ -386,7 +386,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         &target_features,
                     );
                 }
-                hir::InlineAsmOperand::SplitInOut { reg, late: _, ref in_expr, ref out_expr } => {
+                hir::InlineAsmOperand::SplitInOut { reg, late: _, in_expr, out_expr } => {
                     let in_ty = self.check_asm_operand_type(
                         idx,
                         reg,

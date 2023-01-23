@@ -115,14 +115,12 @@ pub fn predicates_for_generics<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    std::iter::zip(generic_bounds.predicates, generic_bounds.spans).enumerate().map(
-        move |(idx, (predicate, span))| Obligation {
-            cause: cause(idx, span),
-            recursion_depth: 0,
-            param_env,
-            predicate,
-        },
-    )
+    generic_bounds.into_iter().enumerate().map(move |(idx, (predicate, span))| Obligation {
+        cause: cause(idx, span),
+        recursion_depth: 0,
+        param_env,
+        predicate,
+    })
 }
 
 /// Determines whether the type `ty` is known to meet `bound` and
@@ -495,7 +493,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 && let param_def_id = self.generics.type_param(param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(());
             }
             t.super_visit_with(self)
         }
@@ -504,7 +502,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(());
             }
             r.super_visit_with(self)
         }
@@ -513,7 +511,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 && let param_def_id = self.generics.const_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(());
             }
             ct.super_visit_with(self)
         }
