@@ -421,7 +421,7 @@ where
 {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
-        self.as_slice().to_vec_in(self.alloc.deref().clone()).into_iter()
+        self.as_slice().to_vec_in::<A, COOP_PREFERRED>(self.alloc.deref().clone()).into_iter()
     }
     #[cfg(test)]
     fn clone(&self) -> Self {
