@@ -14,7 +14,7 @@ pub(super) trait SpecFromElem: Sized {
         alloc: A,
     ) -> Vec<Self, A, COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots::<A>(COOP_PREFERRED)]:;
+        [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:;
 }
 
 impl<T: Clone> SpecFromElem for T {

@@ -26,7 +26,7 @@ pub struct Drain<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
     const COOP_PREFERRED: bool = { SHORT_TERM_VEC_PREFERS_COOP!() },
 > where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     /// Index of tail to preserve
     pub(super) tail_start: usize,

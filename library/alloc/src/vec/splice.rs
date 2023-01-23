@@ -23,17 +23,19 @@ pub struct Splice<
     'a,
     I: Iterator + 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
+    const COOP_PREFERRED: bool = false
 > where
-    [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    //FIXME: If using SHORT_TERM_VEC_PREFERS_COOP!() instead of true, and the same for `drain` below, then this failed with: `derive` cannot be used on item swith type macros
 {
-    pub(super) drain: Drain<'a, I::Item, A>,
+    pub(super) drain: Drain<'a, I::Item, A, COOP_PREFERRED>,
     pub(super) replace_with: I,
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A>
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> Iterator for Splice<'_, I, A, COOP_PREFERRED>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     type Item = I::Item;
 
@@ -47,9 +49,9 @@ where
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A>
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator for Splice<'_, I, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots::<A>()]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.drain.next_back()
@@ -57,15 +59,15 @@ where
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> where
-    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator for Splice<'_, I, A, COOP_PREFERRED> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
 {
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A>
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> Drop for Splice<'_, I, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots::<A>()]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     fn drop(&mut self) {
         self.drain.by_ref().for_each(drop);
@@ -115,7 +117,7 @@ where
 /// Private helper methods for `Splice::drop`
 impl<T, A: Allocator> Drain<'_, T, A>
 where
-    [(); alloc::co_alloc_metadata_num_slots::<A>()]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(true)]:,
 {
     /// The range from `self.vec.len` to `self.tail_start` contains elements
     /// that have been moved out.
