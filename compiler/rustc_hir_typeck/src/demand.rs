@@ -880,6 +880,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
     ) -> bool {
+        if in_external_macro(self.tcx.sess, expr.span) {
+            return false;
+        }
         if let ty::Adt(expected_adt, args) = expected.kind() {
             if let hir::ExprKind::Field(base, ident) = expr.kind {
                 let base_ty = self.typeck_results.borrow().expr_ty(base);
