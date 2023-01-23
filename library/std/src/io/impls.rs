@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use crate::alloc::{Allocator, self};
+use crate::alloc::{self, Allocator};
 use crate::cmp;
 use crate::collections::VecDeque;
 use crate::fmt;
