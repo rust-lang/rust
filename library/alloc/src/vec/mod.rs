@@ -54,6 +54,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[cfg(not(no_global_oom_handling))]
+use core::alloc;
 use core::cmp;
 use core::cmp::Ordering;
 use core::convert::TryFrom;
@@ -2842,9 +2843,12 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T> FromIterator<T> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> FromIterator<T> for Vec<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+ {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T, A, COOP_PREFERRED> {
         <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
 }
