@@ -12,7 +12,6 @@
 
 #![unstable(feature = "thread_local_internals", issue = "none")]
 #![allow(dead_code)]
-#![feature(global_co_alloc_plvec)]
 
 use crate::ptr;
 use crate::sys_common::thread_local_key::StaticKey;
