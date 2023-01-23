@@ -1111,15 +1111,26 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let mut is_public: Option<bool> = None;
 
-        let mut attrs = tcx
-            .hir()
-            .attrs(tcx.hir().local_def_id_to_hir_id(def_id))
+        let hir_attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
+        let mut attrs = hir_attrs
             .iter()
             .filter(move |attr| should_encode_attr(tcx, attr, def_id, &mut is_public));
 
         record_array!(self.tables.attributes[def_id.to_def_id()] <- attrs.clone());
+        let mut attr_flags = AttrFlags::empty();
         if attrs.any(|attr| attr.may_have_doc_links()) {
-            self.tables.may_have_doc_links.set(def_id.local_def_index, ());
+            attr_flags |= AttrFlags::MAY_HAVE_DOC_LINKS;
+        }
+        if hir_attrs
+            .iter()
+            .filter(|attr| attr.has_name(sym::doc))
+            .filter_map(|attr| attr.meta_item_list())
+            .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
+        {
+            attr_flags |= AttrFlags::IS_DOC_HIDDEN;
+        }
+        if !attr_flags.is_empty() {
+            self.tables.attr_flags.set(def_id.local_def_index, attr_flags);
         }
     }
 

@@ -1310,7 +1310,8 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
 }
 
 /// Determines whether an item is annotated with `doc(hidden)`.
-pub fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    assert!(def_id.is_local());
     tcx.get_attrs(def_id, sym::doc)
         .filter_map(|attr| attr.meta_item_list())
         .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))

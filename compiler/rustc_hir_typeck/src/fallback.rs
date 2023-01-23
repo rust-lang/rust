@@ -196,8 +196,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     ) -> FxHashMap<Ty<'tcx>, Ty<'tcx>> {
         debug!("calculate_diverging_fallback({:?})", unsolved_variables);
 
-        let relationships = self.fulfillment_cx.borrow_mut().relationships().clone();
-
         // Construct a coercion graph where an edge `A -> B` indicates
         // a type variable is that is coerced
         let coercion_graph = self.create_coercion_graph();
@@ -281,9 +279,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             roots_reachable_from_non_diverging,
         );
 
-        debug!("inherited: {:#?}", self.inh.fulfillment_cx.borrow_mut().pending_obligations());
         debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
-        debug!("relationships: {:#?}", relationships);
 
         // For each diverging variable, figure out whether it can
         // reach a member of N. If so, it falls back to `()`. Else
@@ -297,16 +293,16 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .depth_first_search(root_vid)
                 .any(|n| roots_reachable_from_non_diverging.visited(n));
 
-            let mut relationship = ty::FoundRelationships { self_in_trait: false, output: false };
+            let mut found_infer_var_info = ty::InferVarInfo { self_in_trait: false, output: false };
 
-            for (vid, rel) in relationships.iter() {
-                if self.root_var(*vid) == root_vid {
-                    relationship.self_in_trait |= rel.self_in_trait;
-                    relationship.output |= rel.output;
+            for (vid, info) in self.inh.infer_var_info.borrow().iter() {
+                if self.infcx.root_var(*vid) == root_vid {
+                    found_infer_var_info.self_in_trait |= info.self_in_trait;
+                    found_infer_var_info.output |= info.output;
                 }
             }
 
-            if relationship.self_in_trait && relationship.output {
+            if found_infer_var_info.self_in_trait && found_infer_var_info.output {
                 // This case falls back to () to ensure that the code pattern in
                 // tests/ui/never_type/fallback-closure-ret.rs continues to
                 // compile when never_type_fallback is enabled.

@@ -22,7 +22,7 @@ pub struct Thread {
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        let p = Box::into_raw(box p);
+        let p = Box::into_raw(Box::new(p));
 
         // FIXME On UNIX, we guard against stack sizes that are too small but
         // that's because pthreads enforces that stacks are at least

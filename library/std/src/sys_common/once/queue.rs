@@ -60,6 +60,7 @@ use crate::fmt;
 use crate::ptr;
 use crate::sync as public;
 use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
+use crate::sync::once::ExclusiveState;
 use crate::thread::{self, Thread};
 
 type Masked = ();
@@ -119,6 +120,16 @@ impl Once {
         // ordering helps with performance. This `Acquire` synchronizes with
         // `Release` operations on the slow path.
         self.state_and_queue.load(Ordering::Acquire).addr() == COMPLETE
+    }
+
+    #[inline]
+    pub(crate) fn state(&mut self) -> ExclusiveState {
+        match self.state_and_queue.get_mut().addr() {
+            INCOMPLETE => ExclusiveState::Incomplete,
+            POISONED => ExclusiveState::Poisoned,
+            COMPLETE => ExclusiveState::Complete,
+            _ => unreachable!("invalid Once state"),
+        }
     }
 
     // This is a non-generic function to reduce the monomorphization cost of

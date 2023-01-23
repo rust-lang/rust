@@ -654,6 +654,20 @@ impl<T> Arc<T> {
     ///
     /// This will succeed even if there are outstanding weak references.
     ///
+    // FIXME: when `Arc::into_inner` is stabilized, add this paragraph:
+    /*
+    /// It is strongly recommended to use [`Arc::into_inner`] instead if you don't
+    /// want to keep the `Arc` in the [`Err`] case.
+    /// Immediately dropping the [`Err`] payload, like in the expression
+    /// `Arc::try_unwrap(this).ok()`, can still cause the strong count to
+    /// drop to zero and the inner value of the `Arc` to be dropped:
+    /// For instance if two threads execute this expression in parallel, then
+    /// there is a race condition. The threads could first both check whether they
+    /// have the last clone of their `Arc` via `Arc::try_unwrap`, and then
+    /// both drop their `Arc` in the call to [`ok`][`Result::ok`],
+    /// taking the strong count from two down to zero.
+    ///
+     */
     /// # Examples
     ///
     /// ```
@@ -684,6 +698,137 @@ impl<T> Arc<T> {
 
             Ok(elem)
         }
+    }
+
+    /// Returns the inner value, if the `Arc` has exactly one strong reference.
+    ///
+    /// Otherwise, [`None`] is returned and the `Arc` is dropped.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    ///
+    /// If `Arc::into_inner` is called on every clone of this `Arc`,
+    /// it is guaranteed that exactly one of the calls returns the inner value.
+    /// This means in particular that the inner value is not dropped.
+    ///
+    /// The similar expression `Arc::try_unwrap(this).ok()` does not
+    /// offer such a guarantee. See the last example below.
+    //
+    // FIXME: when `Arc::into_inner` is stabilized, add this to end
+    // of the previous sentence:
+    /*
+    /// and the documentation of [`Arc::try_unwrap`].
+     */
+    ///
+    /// # Examples
+    ///
+    /// Minimal example demonstrating the guarantee that `Arc::into_inner` gives.
+    /// ```
+    /// #![feature(arc_into_inner)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new(3);
+    /// let y = Arc::clone(&x);
+    ///
+    /// // Two threads calling `Arc::into_inner` on both clones of an `Arc`:
+    /// let x_thread = std::thread::spawn(|| Arc::into_inner(x));
+    /// let y_thread = std::thread::spawn(|| Arc::into_inner(y));
+    ///
+    /// let x_inner_value = x_thread.join().unwrap();
+    /// let y_inner_value = y_thread.join().unwrap();
+    ///
+    /// // One of the threads is guaranteed to receive the inner value:
+    /// assert!(matches!(
+    ///     (x_inner_value, y_inner_value),
+    ///     (None, Some(3)) | (Some(3), None)
+    /// ));
+    /// // The result could also be `(None, None)` if the threads called
+    /// // `Arc::try_unwrap(x).ok()` and `Arc::try_unwrap(y).ok()` instead.
+    /// ```
+    ///
+    /// A more practical example demonstrating the need for `Arc::into_inner`:
+    /// ```
+    /// #![feature(arc_into_inner)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// // Definition of a simple singly linked list using `Arc`:
+    /// #[derive(Clone)]
+    /// struct LinkedList<T>(Option<Arc<Node<T>>>);
+    /// struct Node<T>(T, Option<Arc<Node<T>>>);
+    ///
+    /// // Dropping a long `LinkedList<T>` relying on the destructor of `Arc`
+    /// // can cause a stack overflow. To prevent this, we can provide a
+    /// // manual `Drop` implementation that does the destruction in a loop:
+    /// impl<T> Drop for LinkedList<T> {
+    ///     fn drop(&mut self) {
+    ///         let mut link = self.0.take();
+    ///         while let Some(arc_node) = link.take() {
+    ///             if let Some(Node(_value, next)) = Arc::into_inner(arc_node) {
+    ///                 link = next;
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// // Implementation of `new` and `push` omitted
+    /// impl<T> LinkedList<T> {
+    ///     /* ... */
+    /// #   fn new() -> Self {
+    /// #       LinkedList(None)
+    /// #   }
+    /// #   fn push(&mut self, x: T) {
+    /// #       self.0 = Some(Arc::new(Node(x, self.0.take())));
+    /// #   }
+    /// }
+    ///
+    /// // The following code could have still caused a stack overflow
+    /// // despite the manual `Drop` impl if that `Drop` impl had used
+    /// // `Arc::try_unwrap(arc).ok()` instead of `Arc::into_inner(arc)`.
+    ///
+    /// // Create a long list and clone it
+    /// let mut x = LinkedList::new();
+    /// for i in 0..100000 {
+    ///     x.push(i); // Adds i to the front of x
+    /// }
+    /// let y = x.clone();
+    ///
+    /// // Drop the clones in parallel
+    /// let x_thread = std::thread::spawn(|| drop(x));
+    /// let y_thread = std::thread::spawn(|| drop(y));
+    /// x_thread.join().unwrap();
+    /// y_thread.join().unwrap();
+    /// ```
+
+    // FIXME: when `Arc::into_inner` is stabilized, adjust above documentation
+    // and the documentation of `Arc::try_unwrap` according to the `FIXME`s. Also
+    // open an issue on rust-lang/rust-clippy, asking for a lint against
+    // `Arc::try_unwrap(...).ok()`.
+    #[inline]
+    #[unstable(feature = "arc_into_inner", issue = "106894")]
+    pub fn into_inner(this: Self) -> Option<T> {
+        // Make sure that the ordinary `Drop` implementation isn’t called as well
+        let mut this = mem::ManuallyDrop::new(this);
+
+        // Following the implementation of `drop` and `drop_slow`
+        if this.inner().strong.fetch_sub(1, Release) != 1 {
+            return None;
+        }
+
+        acquire!(this.inner().strong);
+
+        // SAFETY: This mirrors the line
+        //
+        //     unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
+        //
+        // in `drop_slow`. Instead of dropping the value behind the pointer,
+        // it is read and eventually returned; `ptr::read` has the same
+        // safety conditions as `ptr::drop_in_place`.
+        let inner = unsafe { ptr::read(Self::get_mut_unchecked(&mut this)) };
+
+        drop(Weak { ptr: this.ptr });
+
+        Some(inner)
     }
 }
 
