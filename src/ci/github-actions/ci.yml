@@ -450,6 +450,16 @@ jobs:
           - name: x86_64-gnu-distcheck
             <<: *job-linux-xl
 
+          - name: x86_64-gnu-llvm-15
+            env:
+              RUST_BACKTRACE: 1
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-llvm-14
+            env:
+              RUST_BACKTRACE: 1
+            <<: *job-linux-xl
+
           - name: x86_64-gnu-llvm-13
             env:
               RUST_BACKTRACE: 1
