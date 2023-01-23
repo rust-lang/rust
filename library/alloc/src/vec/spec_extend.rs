@@ -13,7 +13,7 @@ pub(super) trait SpecExtend<T, I> {
 impl<T, I, A: Allocator, const COOP_PREFERRED: bool> SpecExtend<T, I> for Vec<T, A, COOP_PREFERRED>
 where
     I: Iterator<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter)
@@ -23,7 +23,7 @@ where
 impl<T, I, A: Allocator, const COOP_PREFERRED: bool> SpecExtend<T, I> for Vec<T, A, COOP_PREFERRED>
 where
     I: TrustedLen<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     default fn spec_extend(&mut self, iterator: I) {
         self.extend_trusted(iterator)
@@ -33,7 +33,7 @@ where
 impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecExtend<T, IntoIter<T>>
     for Vec<T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
         unsafe {
@@ -48,7 +48,7 @@ impl<'a, T: 'a, I, A: Allocator + 'a, const COOP_PREFERRED: bool> SpecExtend<&'a
 where
     I: Iterator<Item = &'a T>,
     T: Clone,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     default fn spec_extend(&mut self, iterator: I) {
         self.spec_extend(iterator.cloned())
@@ -59,7 +59,7 @@ impl<'a, T: 'a, A: Allocator + 'a, const COOP_PREFERRED: bool> SpecExtend<&'a T,
     for Vec<T, A, COOP_PREFERRED>
 where
     T: Copy,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();
