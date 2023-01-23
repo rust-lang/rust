@@ -431,7 +431,13 @@ where
 {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
-        self.as_slice().to_vec_in::<A, COOP_PREFERRED>(self.alloc.deref().clone()).into_iter()
+        // @FIXME Remove the following extras - used for type checks only
+        let slice = self.as_slice();
+        let vec: crate::vec::Vec<T, A, COOP_PREFERRED> = slice.to_vec_in::<A, COOP_PREFERRED>(self.alloc.deref().clone());
+        let _iter: IntoIter<T, A, COOP_PREFERRED> = vec.into_iter();
+
+        //self.as_slice().to_vec_in::<A, COOP_PREFERRED>(self.alloc.deref().clone()).into_iter()
+        loop {}
     }
     #[cfg(test)]
     fn clone(&self) -> Self {

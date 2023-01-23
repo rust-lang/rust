@@ -2065,8 +2065,6 @@ where
     pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A, COOP_PREFERRED>
     where
         R: RangeBounds<usize>,
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(SHORT_TERM_VEC_PREFERS_COOP!())]:,
-
     {
         // Memory safety
         //
@@ -2858,8 +2856,6 @@ where
 impl<T, A: Allocator, const COOP_PREFERRED: bool> IntoIterator for Vec<T, A, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(SHORT_TERM_VEC_PREFERS_COOP!())]:,
-
 {
     type Item = T;
     type IntoIter = IntoIter<T, A, COOP_PREFERRED>;

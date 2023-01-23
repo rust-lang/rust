@@ -780,10 +780,11 @@ where
     #[allow(unused_braces)]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A>
     where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(SHORT_TERM_VEC_PREFERS_COOP!())]:,
+    // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(false)]:,
     {
         unsafe {
-            RawVec::<T, A, { SHORT_TERM_VEC_PREFERS_COOP!() }>::with_capacity_in(len, alloc)
+            RawVec::<T, A, false>::with_capacity_in(len, alloc)
                 .into_box(len)
         }
     }
@@ -815,10 +816,11 @@ where
     #[allow(unused_braces)]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A>
     where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(SHORT_TERM_VEC_PREFERS_COOP!())]:,
+    // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(false)]:,
     {
         unsafe {
-            RawVec::<T, A, { SHORT_TERM_VEC_PREFERS_COOP!() }>::with_capacity_zeroed_in(
+            RawVec::<T, A, false>::with_capacity_zeroed_in(
                 len, alloc,
             )
             .into_box(len)
