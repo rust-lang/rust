@@ -104,7 +104,8 @@ jobs:
 
     - name: Run tests
       run: |
-        ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests # --test-libcore # FIXME(antoyo): libcore tests fail.
+        ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
+        # TODO(antoyo): also run the rustc's test suite.
 
     - name: Run stdarch tests
       run: |
