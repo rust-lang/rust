@@ -63,7 +63,7 @@ impl CoverageStatement {
 /// Note: A `CoverageStatement` merged into another CoverageSpan may come from a `BasicBlock` that
 /// is not part of the `CoverageSpan` bcb if the statement was included because it's `Span` matches
 /// or is subsumed by the `Span` associated with this `CoverageSpan`, and it's `BasicBlock`
-/// `is_dominated_by()` the `BasicBlock`s in this `CoverageSpan`.
+/// `dominates()` the `BasicBlock`s in this `CoverageSpan`.
 #[derive(Debug, Clone)]
 pub(super) struct CoverageSpan {
     pub span: Span,
@@ -705,12 +705,12 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     fn hold_pending_dups_unless_dominated(&mut self) {
         // Equal coverage spans are ordered by dominators before dominated (if any), so it should be
         // impossible for `curr` to dominate any previous `CoverageSpan`.
-        debug_assert!(!self.span_bcb_is_dominated_by(self.prev(), self.curr()));
+        debug_assert!(!self.span_bcb_dominates(self.curr(), self.prev()));
 
         let initial_pending_count = self.pending_dups.len();
         if initial_pending_count > 0 {
             let mut pending_dups = self.pending_dups.split_off(0);
-            pending_dups.retain(|dup| !self.span_bcb_is_dominated_by(self.curr(), dup));
+            pending_dups.retain(|dup| !self.span_bcb_dominates(dup, self.curr()));
             self.pending_dups.append(&mut pending_dups);
             if self.pending_dups.len() < initial_pending_count {
                 debug!(
@@ -721,7 +721,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             }
         }
 
-        if self.span_bcb_is_dominated_by(self.curr(), self.prev()) {
+        if self.span_bcb_dominates(self.prev(), self.curr()) {
             debug!(
                 "  different bcbs but SAME spans, and prev dominates curr. Discard prev={:?}",
                 self.prev()
@@ -787,8 +787,8 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
         }
     }
 
-    fn span_bcb_is_dominated_by(&self, covspan: &CoverageSpan, dom_covspan: &CoverageSpan) -> bool {
-        self.basic_coverage_blocks.is_dominated_by(covspan.bcb, dom_covspan.bcb)
+    fn span_bcb_dominates(&self, dom_covspan: &CoverageSpan, covspan: &CoverageSpan) -> bool {
+        self.basic_coverage_blocks.dominates(dom_covspan.bcb, covspan.bcb)
     }
 }
 
