@@ -5,7 +5,6 @@
 
 
 struct ConstString<const T: &'static str>;
-//[min]~^ ERROR
 struct ConstBytes<const T: &'static [u8]>;
 //[min]~^ ERROR
 

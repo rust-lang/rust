@@ -1,5 +1,3 @@
-#![allow(incomplete_features)]
-#![feature(adt_const_params)]
 #![crate_name = "foo"]
 
 #[derive(PartialEq, Eq)]

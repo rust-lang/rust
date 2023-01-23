@@ -945,6 +945,11 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
 
                 let err = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
+                    ty::Ref(r, ty, ast::Mutability::Not)
+                        if *ty.kind() == ty::Str && r.is_static() =>
+                    {
+                        None
+                    }
                     ty::FnPtr(_) => Some("function pointers"),
                     ty::RawPtr(_) => Some("raw pointers"),
                     _ => {
