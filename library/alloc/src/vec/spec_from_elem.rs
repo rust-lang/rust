@@ -24,7 +24,7 @@ impl<T: Clone> SpecFromElem for T {
         alloc: A,
     ) -> Vec<Self, A, COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+        [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         let mut v = Vec::with_capacity_in(n, alloc);
         v.extend_with(n, ExtendElement(elem));
@@ -40,7 +40,7 @@ impl<T: Clone + IsZero> SpecFromElem for T {
         alloc: A,
     ) -> Vec<T, A, COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+        [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         if elem.is_zero() {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
@@ -59,7 +59,7 @@ impl SpecFromElem for i8 {
         alloc: A,
     ) -> Vec<i8, A, COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+        [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         if elem == 0 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
@@ -81,7 +81,7 @@ impl SpecFromElem for u8 {
         alloc: A,
     ) -> Vec<u8, A, COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+        [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         if elem == 0 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
