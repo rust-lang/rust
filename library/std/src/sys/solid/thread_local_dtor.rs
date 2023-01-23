@@ -1,5 +1,6 @@
 #![cfg(target_thread_local)]
-#![unstable(feature = "thread_local_internals", issue = "none")]#![feature(global_co_alloc_plvec)]
+#![unstable(feature = "thread_local_internals", issue = "none")]
+#![feature(global_co_alloc_plvec)]
 #![feature(global_co_alloc_plvec)]
 
 // Simplify dtor registration by using a list of destructors.
