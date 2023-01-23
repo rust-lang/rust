@@ -14,6 +14,8 @@ use super::debuginfo::{
 use libc::{c_char, c_int, c_uint, size_t};
 use libc::{c_ulonglong, c_void};
 
+use core::fmt;
+use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 
 use super::RustString;
@@ -1004,12 +1006,31 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     logic_ref: EnzymeLogicRef,
     type_analysis: EnzymeTypeAnalysisRef,
     fnc: &Value,
-    input_activity: Vec<DiffActivity>,
-    ret_activity: DiffActivity,
-    ret_primary_ret: bool) -> &Value{
+    input_diffactivity: Vec<DiffActivity>,
+    ret_diffactivity: DiffActivity,
+    mut ret_primary_ret: bool
+    ) -> &Value{
 
-    let ret_activity = cdiffe_from(ret_activity);
-    let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
+    let ret_activity = cdiffe_from(ret_diffactivity);
+    assert!(ret_activity != CDIFFE_TYPE::DFT_OUT_DIFF);
+    let mut input_activity: Vec<CDIFFE_TYPE> = vec![];
+    for input in input_diffactivity {
+        let act = cdiffe_from(input);
+        assert!(act == CDIFFE_TYPE::DFT_CONSTANT || act == CDIFFE_TYPE::DFT_DUP_ARG);
+        input_activity.push(act);
+    }
+
+    if ret_activity == CDIFFE_TYPE::DFT_DUP_ARG {
+        if ret_primary_ret != true {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = true;
+    } else if ret_activity == CDIFFE_TYPE::DFT_DUP_NONEED {
+        if ret_primary_ret != false {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = false;
+    }
 
     let tree_tmp =  TypeTree::new();
     let mut args_tree = vec![tree_tmp.inner; input_activity.len()];
@@ -1060,6 +1081,7 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     ) -> &Value{
 
     let ret_activity = cdiffe_from(ret_activity);
+    assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
 
     let tree_tmp =  TypeTree::new();
@@ -1106,6 +1128,7 @@ extern "C" {
     // Enzyme
     //pub fn LLVMReplaceAllUsesWith(old: &Value, new: &Value);
     pub fn GibtsNicht(M: &Module) -> bool;
+    pub fn LLVMIsStructTy(ty: &Type) -> bool;
     pub fn LLVMGetReturnType(T: &Type) -> &Type;
     pub fn LLVMDumpModule(M: &Module);
     pub fn LLVMCountStructElementTypes(T: &Type) -> c_uint;
@@ -2709,10 +2732,10 @@ pub struct EnzymeTypeTree {
 }
 pub type CTypeTreeRef = *mut EnzymeTypeTree;
 extern "C" {
-    pub fn EnzymeNewTypeTree() -> CTypeTreeRef;
+    fn EnzymeNewTypeTree() -> CTypeTreeRef;
 }
 extern "C" {
-    pub fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
+    fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
 }
 extern "C" {
     pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
@@ -2835,6 +2858,17 @@ extern "C" {
     pub fn FreeEnzymeLogic(arg1: EnzymeLogicRef);
 }
 
+extern "C" {
+    pub fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
+    pub fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef);
+    pub fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64);
+    pub fn EnzymeTypeTreeShiftIndiciesEq(arg1: CTypeTreeRef, data_layout: *const c_char,
+                                         offset: i64, max_size: i64, add_offset: u64);
+
+    pub fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
+    pub fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
+}
+
 pub struct TypeTree {
     pub inner: CTypeTreeRef,
 }
@@ -2845,7 +2879,65 @@ impl TypeTree {
 
         TypeTree { inner }
     }
+
+
+    pub fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTreeCT(t, ctx) };
+
+        TypeTree { inner }
+    }
+
+    pub fn prepend(self, idx: isize) -> Self {
+        unsafe {
+            EnzymeTypeTreeOnlyEq(self.inner, idx as i64)
+        }
+
+        self
+    }
+
+    pub fn merge_with(self, other: Self) -> Self {
+        unsafe {
+            EnzymeMergeTypeTree(self.inner, other.inner);
+        }
+
+        drop(other);
+        self
+    }
+
+    pub fn shift_indices(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
+        let layout = CString::new(layout).unwrap();
+
+        unsafe {
+            EnzymeTypeTreeShiftIndiciesEq(self.inner, layout.as_ptr(), offset as i64, max_size as i64, add_offset as u64)
+        }
+
+        self
+    }
 }
+
+impl fmt::Display for TypeTree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ptr = unsafe {
+            EnzymeTypeTreeToString(self.inner)
+        };
+        let cstr = unsafe {
+            CStr::from_ptr(ptr)
+        };
+        match cstr.to_str() {
+            Ok(x) => write!(f, "{}", x)?,
+            Err(err) => write!(f, "could not parse: {}", err)?
+        }
+
+        // delete C string pointer
+        unsafe {
+            EnzymeTypeTreeToStringFree(ptr)
+        }
+
+        Ok(())
+    }
+}
+
+
 
 impl Drop for TypeTree {
     fn drop(&mut self) {
@@ -2856,6 +2948,10 @@ impl Drop for TypeTree {
 #[derive(Clone)]
 pub struct ParamInfos {
     pub input_activity: Vec<CDIFFE_TYPE>, // How should it's arguments be treated?
+
+    //pub input_tts: Vec<TypeTree>,
     pub ret_info: CDIFFE_TYPE,
+    //pub ret_tt: TypeTree,
+
 }
 
