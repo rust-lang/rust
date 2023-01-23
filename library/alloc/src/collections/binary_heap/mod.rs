@@ -143,12 +143,12 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::fmt;
 use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
 use core::ptr;
-use core::fmt;
 
 use crate::alloc::Global;
 
@@ -1572,10 +1572,10 @@ where
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, const COOP_PREFERRED: bool> FusedIterator for Drain<'_, T, COOP_PREFERRED>
-where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
-{}
+impl<T, const COOP_PREFERRED: bool> FusedIterator for Drain<'_, T, COOP_PREFERRED> where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:
+{
+}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
 ///
@@ -1664,7 +1664,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 #[allow(unused_braces)]
-impl<T> From<BinaryHeap<T>> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
+impl<T> From<BinaryHeap<T>> for Vec<T, Global, { DEFAULT_COOP_PREFERRED!() }> {
     /// Converts a `BinaryHeap<T>` into a `Vec<T>`.
     ///
     /// This conversion requires no data movement or allocation, and has
