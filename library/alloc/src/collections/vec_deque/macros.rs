@@ -4,7 +4,7 @@ macro_rules! __impl_slice_eq1 {
         impl<T, U, A: Allocator, const COOP_PREFERRED: bool, $($vars)*> PartialEq<$rhs> for $lhs
         where
             T: PartialEq<U>,
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
             $($constraints)*
         {
             fn eq(&self, other: &$rhs) -> bool {
