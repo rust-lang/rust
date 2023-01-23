@@ -531,7 +531,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         f.decl.output.as_return().and_then(|output| notable_traits_button(output, cx));
 
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "fn", |w| {
+        wrap_item(w, |w| {
             render_attributes_in_pre(w, it, "");
             w.reserve(header_len);
             write!(
@@ -570,7 +570,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
     // Output the trait definition
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "trait", |w| {
+        wrap_item(w, |w| {
             render_attributes_in_pre(w, it, "");
             write!(
                 w,
@@ -1051,7 +1051,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
 fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TraitAlias) {
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "trait-alias", |w| {
+        wrap_item(w, |w| {
             render_attributes_in_pre(w, it, "");
             write!(
                 w,
@@ -1075,7 +1075,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &
 
 fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "opaque", |w| {
+        wrap_item(w, |w| {
             render_attributes_in_pre(w, it, "");
             write!(
                 w,
@@ -1099,7 +1099,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &cl
 
 fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Typedef) {
     fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
-        wrap_item(w, "typedef", |w| {
+        wrap_item(w, |w| {
             render_attributes_in_pre(w, it, "");
             write!(w, "{}", visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx));
             write!(
@@ -1128,7 +1128,7 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
 
 fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "union", |w| {
+        wrap_item(w, |w| {
             render_attributes_in_pre(w, it, "");
             render_union(w, it, Some(&s.generics), &s.fields, "", cx);
         });
@@ -1193,7 +1193,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     let tcx = cx.tcx();
     let count_variants = e.variants().count();
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "enum", |w| {
+        wrap_item(w, |w| {
             render_attributes_in_pre(w, it, "");
             write!(
                 w,
@@ -1357,17 +1357,17 @@ fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &c
         let name = it.name.expect("proc-macros always have names");
         match m.kind {
             MacroKind::Bang => {
-                wrap_item(w, "macro", |w| {
+                wrap_item(w, |w| {
                     write!(w, "{}!() {{ /* proc-macro */ }}", name);
                 });
             }
             MacroKind::Attr => {
-                wrap_item(w, "attr", |w| {
+                wrap_item(w, |w| {
                     write!(w, "#[{}]", name);
                 });
             }
             MacroKind::Derive => {
-                wrap_item(w, "derive", |w| {
+                wrap_item(w, |w| {
                     write!(w, "#[derive({})]", name);
                     if !m.helpers.is_empty() {
                         w.push_str("\n{\n");
@@ -1401,7 +1401,7 @@ fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
 
 fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "const", |w| {
+        wrap_item(w, |w| {
             let tcx = cx.tcx();
             render_attributes_in_code(w, it);
 
@@ -1451,7 +1451,7 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
 
 fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "struct", |w| {
+        wrap_item(w, |w| {
             render_attributes_in_code(w, it);
             render_struct(w, it, Some(&s.generics), s.ctor_kind, &s.fields, "", true, cx);
         });
@@ -1504,7 +1504,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
 
 fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "static", |w| {
+        wrap_item(w, |w| {
             render_attributes_in_code(w, it);
             write!(
                 w,
@@ -1521,7 +1521,7 @@ fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
 
 fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
     wrap_into_item_decl(w, |w| {
-        wrap_item(w, "foreigntype", |w| {
+        wrap_item(w, |w| {
             w.write_str("extern {\n");
             render_attributes_in_code(w, it);
             write!(
@@ -1618,11 +1618,11 @@ where
     w.write_str("</div>")
 }
 
-fn wrap_item<F>(w: &mut Buffer, item_name: &str, f: F)
+fn wrap_item<F>(w: &mut Buffer, f: F)
 where
     F: FnOnce(&mut Buffer),
 {
-    w.write_fmt(format_args!("<pre class=\"rust {}\"><code>", item_name));
+    w.write_str(r#"<pre class="rust"><code>"#);
     f(w);
     w.write_str("</code></pre>");
 }

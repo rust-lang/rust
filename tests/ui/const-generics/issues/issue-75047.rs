@@ -12,6 +12,6 @@ impl<T> Bar<T> {
 }
 
 struct Foo<const N: [u8; Bar::<u32>::value()]>;
-//[min]~^ ERROR `[u8; _]` is forbidden as the type of a const generic parameter
+//[min]~^ ERROR `[u8; Bar::<u32>::value()]` is forbidden as the type of a const generic parameter
 
 fn main() {}

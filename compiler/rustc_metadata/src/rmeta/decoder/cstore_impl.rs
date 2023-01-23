@@ -223,6 +223,15 @@ provide! { tcx, def_id, other, cdata,
     generator_kind => { table }
     trait_def => { table }
     deduced_param_attrs => { table }
+    is_type_alias_impl_trait => {
+        debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
+        cdata
+            .root
+            .tables
+            .is_type_alias_impl_trait
+            .get(cdata, def_id.index)
+            .is_some()
+    }
     collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
             .root
@@ -382,7 +391,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // keys from the former.
             // This is a rudimentary check that does not catch all cases,
             // just the easiest.
-            let mut fallback_map: DefIdMap<DefId> = Default::default();
+            let mut fallback_map: Vec<(DefId, DefId)> = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
             // paths when reporting the path to an item. Therefore we
@@ -412,12 +421,12 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
 
                 if let Some(def_id) = child.res.opt_def_id() {
                     if child.ident.name == kw::Underscore {
-                        fallback_map.insert(def_id, parent);
+                        fallback_map.push((def_id, parent));
                         return;
                     }
 
                     if ty::util::is_doc_hidden(tcx, parent) {
-                        fallback_map.insert(def_id, parent);
+                        fallback_map.push((def_id, parent));
                         return;
                     }
 
@@ -451,6 +460,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // Fill in any missing entries with the less preferable path.
             // If this path re-exports the child as `_`, we still use this
             // path in a diagnostic that suggests importing `::*`.
+
             for (child, parent) in fallback_map {
                 visible_parent_map.entry(child).or_insert(parent);
             }

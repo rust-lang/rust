@@ -15,27 +15,27 @@ trait Sized {}
 trait Copy {}
 
 pub mod tests {
-    // CHECK: @f1(i32 inreg %_1, i32 inreg %_2, i32 %_3)
+    // CHECK: @f1(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 noundef %_3)
     #[no_mangle]
     pub extern "fastcall" fn f1(_: i32, _: i32, _: i32) {}
 
-    // CHECK: @f2({{i32\*|ptr}} inreg %_1, {{i32\*|ptr}} inreg %_2, {{i32\*|ptr}} %_3)
+    // CHECK: @f2({{i32\*|ptr}} inreg noundef %_1, {{i32\*|ptr}} inreg noundef %_2, {{i32\*|ptr}} noundef %_3)
     #[no_mangle]
     pub extern "fastcall" fn f2(_: *const i32, _: *const i32, _: *const i32) {}
 
-    // CHECK: @f3(float %_1, i32 inreg %_2, i32 inreg %_3, i32 %_4)
+    // CHECK: @f3(float noundef %_1, i32 inreg noundef %_2, i32 inreg noundef %_3, i32 noundef %_4)
     #[no_mangle]
     pub extern "fastcall" fn f3(_: f32, _: i32, _: i32, _: i32) {}
 
-    // CHECK: @f4(i32 inreg %_1, float %_2, i32 inreg %_3, i32 %_4)
+    // CHECK: @f4(i32 inreg noundef %_1, float noundef %_2, i32 inreg noundef %_3, i32 noundef %_4)
     #[no_mangle]
     pub extern "fastcall" fn f4(_: i32, _: f32, _: i32, _: i32) {}
 
-    // CHECK: @f5(i64 %_1, i32 %_2)
+    // CHECK: @f5(i64 noundef %_1, i32 noundef %_2)
     #[no_mangle]
     pub extern "fastcall" fn f5(_: i64, _: i32) {}
 
-    // CHECK: @f6(i1 inreg noundef zeroext %_1, i32 inreg %_2, i32 %_3)
+    // CHECK: @f6(i1 inreg noundef zeroext %_1, i32 inreg noundef %_2, i32 noundef %_3)
     #[no_mangle]
     pub extern "fastcall" fn f6(_: bool, _: i32, _: i32) {}
 }

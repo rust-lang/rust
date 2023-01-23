@@ -1349,18 +1349,16 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMBFloatTypeKind;
   case Type::X86_AMXTyID:
     return LLVMX86_AMXTypeKind;
-#if LLVM_VERSION_GE(15, 0) && LLVM_VERSION_LT(16, 0)
-  case Type::DXILPointerTyID:
-    report_fatal_error("Rust does not support DirectX typed pointers.");
-    break;
-#endif
-#if LLVM_VERSION_GE(16, 0)
-  case Type::TypedPointerTyID:
-    report_fatal_error("Rust does not support typed pointers.");
-    break;
-#endif
+  default:
+    {
+      std::string error;
+      llvm::raw_string_ostream stream(error);
+      stream << "Rust does not support the TypeID: " << unwrap(Ty)->getTypeID()
+             << " for the type: " << *unwrap(Ty);
+      stream.flush();
+      report_fatal_error(error.c_str());
+    }
   }
-  report_fatal_error("Unhandled TypeID.");
 }
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)

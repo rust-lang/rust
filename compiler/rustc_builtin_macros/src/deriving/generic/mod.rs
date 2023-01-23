@@ -222,12 +222,25 @@ pub struct MethodDef<'a> {
 
     pub attributes: ast::AttrVec,
 
-    /// Can we combine fieldless variants for enums into a single match arm?
-    /// If true, indicates that the trait operation uses the enum tag in some
-    /// way.
-    pub unify_fieldless_variants: bool,
+    pub fieldless_variants_strategy: FieldlessVariantsStrategy,
 
     pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
+}
+
+/// How to handle fieldless enum variants.
+#[derive(PartialEq)]
+pub enum FieldlessVariantsStrategy {
+    /// Combine fieldless variants into a single match arm.
+    /// This assumes that relevant information has been handled
+    /// by looking at the enum's discriminant.
+    Unify,
+    /// Don't do anything special about fieldless variants. They are
+    /// handled like any other variant.
+    Default,
+    /// If all variants of the enum are fieldless, expand the special
+    /// `AllFieldLessEnum` substructure, so that the entire enum can be handled
+    /// at once.
+    SpecializeIfAllVariantsFieldless,
 }
 
 /// All the data about the data structure/method being derived upon.
@@ -264,8 +277,13 @@ pub enum StaticFields {
 
 /// A summary of the possible sets of fields.
 pub enum SubstructureFields<'a> {
-    /// A non-static method with `Self` is a struct.
+    /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
+
+    /// A non-static method handling the entire enum at once
+    /// (after it has been determined that none of the enum
+    /// variants has any fields).
+    AllFieldlessEnum(&'a ast::EnumDef),
 
     /// Matching variants of the enum: variant index, variant count, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
@@ -1086,8 +1104,8 @@ impl<'a> MethodDef<'a> {
     /// ```
     /// Creates a tag check combined with a match for a tuple of all
     /// `selflike_args`, with an arm for each variant with fields, possibly an
-    /// arm for each fieldless variant (if `!unify_fieldless_variants` is not
-    /// true), and possibly a default arm.
+    /// arm for each fieldless variant (if `unify_fieldless_variants` is not
+    /// `Unify`), and possibly a default arm.
     fn expand_enum_method_body<'b>(
         &self,
         cx: &mut ExtCtxt<'_>,
@@ -1101,7 +1119,8 @@ impl<'a> MethodDef<'a> {
         let variants = &enum_def.variants;
 
         // Traits that unify fieldless variants always use the tag(s).
-        let uses_tags = self.unify_fieldless_variants;
+        let unify_fieldless_variants =
+            self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
 
         // There is no sensible code to be generated for *any* deriving on a
         // zero-variant enum. So we just generate a failing expression.
@@ -1161,23 +1180,35 @@ impl<'a> MethodDef<'a> {
         // match is necessary.
         let all_fieldless = variants.iter().all(|v| v.data.fields().is_empty());
         if all_fieldless {
-            if uses_tags && variants.len() > 1 {
-                // If the type is fieldless and the trait uses the tag and
-                // there are multiple variants, we need just an operation on
-                // the tag(s).
-                let (tag_field, mut tag_let_stmts) = get_tag_pieces(cx);
-                let mut tag_check = self.call_substructure_method(
-                    cx,
-                    trait_,
-                    type_ident,
-                    nonselflike_args,
-                    &EnumTag(tag_field, None),
-                );
-                tag_let_stmts.append(&mut tag_check.0);
-                return BlockOrExpr(tag_let_stmts, tag_check.1);
-            }
-
-            if variants.len() == 1 {
+            if variants.len() > 1 {
+                match self.fieldless_variants_strategy {
+                    FieldlessVariantsStrategy::Unify => {
+                        // If the type is fieldless and the trait uses the tag and
+                        // there are multiple variants, we need just an operation on
+                        // the tag(s).
+                        let (tag_field, mut tag_let_stmts) = get_tag_pieces(cx);
+                        let mut tag_check = self.call_substructure_method(
+                            cx,
+                            trait_,
+                            type_ident,
+                            nonselflike_args,
+                            &EnumTag(tag_field, None),
+                        );
+                        tag_let_stmts.append(&mut tag_check.0);
+                        return BlockOrExpr(tag_let_stmts, tag_check.1);
+                    }
+                    FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless => {
+                        return self.call_substructure_method(
+                            cx,
+                            trait_,
+                            type_ident,
+                            nonselflike_args,
+                            &AllFieldlessEnum(enum_def),
+                        );
+                    }
+                    FieldlessVariantsStrategy::Default => (),
+                }
+            } else if variants.len() == 1 {
                 // If there is a single variant, we don't need an operation on
                 // the tag(s). Just use the most degenerate result.
                 return self.call_substructure_method(
@@ -1187,7 +1218,7 @@ impl<'a> MethodDef<'a> {
                     nonselflike_args,
                     &EnumMatching(0, 1, &variants[0], Vec::new()),
                 );
-            };
+            }
         }
 
         // These arms are of the form:
@@ -1198,7 +1229,7 @@ impl<'a> MethodDef<'a> {
         let mut match_arms: Vec<ast::Arm> = variants
             .iter()
             .enumerate()
-            .filter(|&(_, v)| !(self.unify_fieldless_variants && v.data.fields().is_empty()))
+            .filter(|&(_, v)| !(unify_fieldless_variants && v.data.fields().is_empty()))
             .map(|(index, variant)| {
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
@@ -1249,7 +1280,7 @@ impl<'a> MethodDef<'a> {
         // Add a default arm to the match, if necessary.
         let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
         let default = match first_fieldless {
-            Some(v) if self.unify_fieldless_variants => {
+            Some(v) if unify_fieldless_variants => {
                 // We need a default case that handles all the fieldless
                 // variants. The index and actual variant aren't meaningful in
                 // this case, so just use dummy values.
@@ -1296,7 +1327,7 @@ impl<'a> MethodDef<'a> {
         // If the trait uses the tag and there are multiple variants, we need
         // to add a tag check operation before the match. Otherwise, the match
         // is enough.
-        if uses_tags && variants.len() > 1 {
+        if unify_fieldless_variants && variants.len() > 1 {
             let (tag_field, mut tag_let_stmts) = get_tag_pieces(cx);
 
             // Combine a tag check with the match.
@@ -1580,5 +1611,6 @@ where
             }
         }
         StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span, "static function in `derive`"),
+        AllFieldlessEnum(..) => cx.span_bug(trait_span, "fieldless enum in `derive`"),
     }
 }

@@ -1,5 +1,5 @@
 // assembly-output: emit-asm
-// min-llvm-version: 14.0
+// min-llvm-version: 15.0
 // only-x86_64
 // revisions: opt-speed opt-size
 // [opt-speed] compile-flags: -Copt-level=1

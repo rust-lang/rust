@@ -24,16 +24,7 @@ error[E0425]: cannot find value `F` in this scope
   --> $DIR/constrain-suggest-ice.rs:6:9
    |
 LL |         F
-   |         ^
-   |
-help: a local variable with a similar name exists
-   |
-LL |         x
-   |         ~
-help: you might be missing a type parameter
-   |
-LL | struct Bug<S, F>{
-   |             +++
+   |         ^ help: a local variable with a similar name exists: `x`
 
 error: generic `Self` types are currently not permitted in anonymous constants
   --> $DIR/constrain-suggest-ice.rs:3:21

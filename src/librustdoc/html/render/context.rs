@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -56,7 +56,7 @@ pub(crate) struct Context<'tcx> {
     pub(super) render_redirect_pages: bool,
     /// Tracks section IDs for `Deref` targets so they match in both the main
     /// body and the sidebar.
-    pub(super) deref_id_map: FxHashMap<DefId, String>,
+    pub(super) deref_id_map: DefIdMap<String>,
     /// The map used to ensure all generated 'id=' attributes are unique.
     pub(super) id_map: IdMap,
     /// Shared mutable state.
@@ -544,7 +544,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             dst,
             render_redirect_pages: false,
             id_map,
-            deref_id_map: FxHashMap::default(),
+            deref_id_map: Default::default(),
             shared: Rc::new(scx),
             include_sources,
             types_with_notable_traits: FxHashSet::default(),
@@ -572,7 +572,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: self.current.clone(),
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
-            deref_id_map: FxHashMap::default(),
+            deref_id_map: Default::default(),
             id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,

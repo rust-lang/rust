@@ -1,5 +1,5 @@
 pub trait Foo {
-    // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
+    // @has assoc_consts/trait.Foo.html '//div[@class="item-decl"]/pre[@class="rust"]' \
     //      'const FOO: usize = 13usize;'
     // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO: usize'
     const FOO: usize = 12 + 1;

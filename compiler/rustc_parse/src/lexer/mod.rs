@@ -52,8 +52,15 @@ pub(crate) fn parse_token_trees<'a>(
     }
 
     let cursor = Cursor::new(src);
-    let string_reader =
-        StringReader { sess, start_pos, pos: start_pos, src, cursor, override_span };
+    let string_reader = StringReader {
+        sess,
+        start_pos,
+        pos: start_pos,
+        src,
+        cursor,
+        override_span,
+        nbsp_is_whitespace: false,
+    };
     tokentrees::TokenTreesReader::parse_all_token_trees(string_reader)
 }
 
@@ -68,6 +75,10 @@ struct StringReader<'a> {
     /// Cursor for getting lexer tokens.
     cursor: Cursor<'a>,
     override_span: Option<Span>,
+    /// When a "unknown start of token: \u{a0}" has already been emitted earlier
+    /// in this file, it's safe to treat further occurrences of the non-breaking
+    /// space character as whitespace.
+    nbsp_is_whitespace: bool,
 }
 
 impl<'a> StringReader<'a> {
@@ -239,6 +250,16 @@ impl<'a> StringReader<'a> {
                     }
                     let mut it = self.str_from_to_end(start).chars();
                     let c = it.next().unwrap();
+                    if c == '\u{00a0}' {
+                        // If an error has already been reported on non-breaking
+                        // space characters earlier in the file, treat all
+                        // subsequent occurrences as whitespace.
+                        if self.nbsp_is_whitespace {
+                            preceded_by_whitespace = true;
+                            continue;
+                        }
+                        self.nbsp_is_whitespace = true;
+                    }
                     let repeats = it.take_while(|c1| *c1 == c).count();
                     let mut err =
                         self.struct_err_span_char(start, self.pos + Pos::from_usize(repeats * c.len_utf8()), "unknown start of token", c);
@@ -486,7 +507,7 @@ impl<'a> StringReader<'a> {
 
     /// Slice of the source text from `start` up to but excluding `self.pos`,
     /// meaning the slice does not include the character `self.ch`.
-    fn str_from(&self, start: BytePos) -> &str {
+    fn str_from(&self, start: BytePos) -> &'a str {
         self.str_from_to(start, self.pos)
     }
 
@@ -497,12 +518,12 @@ impl<'a> StringReader<'a> {
     }
 
     /// Slice of the source text spanning from `start` up to but excluding `end`.
-    fn str_from_to(&self, start: BytePos, end: BytePos) -> &str {
+    fn str_from_to(&self, start: BytePos, end: BytePos) -> &'a str {
         &self.src[self.src_index(start)..self.src_index(end)]
     }
 
     /// Slice of the source text spanning from `start` until the end
-    fn str_from_to_end(&self, start: BytePos) -> &str {
+    fn str_from_to_end(&self, start: BytePos) -> &'a str {
         &self.src[self.src_index(start)..]
     }
 

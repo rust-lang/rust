@@ -863,7 +863,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
 
             write!(fmt, "{id:?}")?;
             match self.ecx.memory.alloc_map.get(id) {
-                Some(&(kind, ref alloc)) => {
+                Some((kind, alloc)) => {
                     // normal alloc
                     write!(fmt, " ({}, ", kind)?;
                     write_allocation_track_relocs(

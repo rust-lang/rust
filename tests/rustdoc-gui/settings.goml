@@ -8,6 +8,10 @@ assert-false: "#settings"
 click: "#settings-menu"
 wait-for: "#settings"
 assert-css: ("#settings", {"display": "block"})
+
+// Store the line margin to compare with the settings.html later.
+store-css: (setting_line_margin, ".setting-line", "margin")
+
 // Let's close it by clicking on the same button.
 click: "#settings-menu"
 wait-for-css: ("#settings", {"display": "none"})
@@ -105,6 +109,33 @@ assert-css: (
         "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
     },
 )
+// Now we check the setting-name for radio buttons is on a different line than the label.
+compare-elements-position-near: (
+    "#theme .setting-name",
+    "#theme .choices",
+    {"x": 1}
+)
+compare-elements-position-near-false: (
+    "#theme .setting-name",
+    "#theme .choices",
+    {"y": 1}
+)
+// Now we check that the label positions are all on the same line.
+compare-elements-position-near: (
+    "#theme .choices #theme-light",
+    "#theme .choices #theme-dark",
+    {"y": 1}
+)
+compare-elements-position-near: (
+    "#theme .choices #theme-dark",
+    "#theme .choices #theme-ayu",
+    {"y": 1}
+)
+compare-elements-position-near: (
+    "#theme .choices #theme-ayu",
+    "#theme .choices #theme-system-preference",
+    {"y": 1}
+)
 
 // First we check the "default" display for toggles.
 assert-css: (
@@ -176,6 +207,25 @@ press-key: "?"
 wait-for-css: ("#help-button .popover", {"display": "block"})
 assert-css: ("#settings-menu .popover", {"display": "none"})
 
+// Now switch back to the settings popover, and make sure the keyboard
+// shortcut works when a check box is selected.
+click: "#settings-menu > a"
+wait-for-css: ("#settings-menu .popover", {"display": "block"})
+focus: "#auto-hide-large-items"
+press-key: "?"
+wait-for-css: ("#settings-menu .popover", {"display": "none"})
+wait-for-css: ("#help-button .popover", {"display": "block"})
+
+// Now switch back to the settings popover, and make sure the keyboard
+// shortcut works when a check box is selected.
+click: "#settings-menu > a"
+wait-for-css: ("#settings-menu .popover", {"display": "block"})
+wait-for-css: ("#help-button .popover", {"display": "none"})
+focus: "#theme-system-preference"
+press-key: "?"
+wait-for-css: ("#settings-menu .popover", {"display": "none"})
+wait-for-css: ("#help-button .popover", {"display": "block"})
+
 // Now we go to the settings page to check that the CSS is loaded as expected.
 goto: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
@@ -183,6 +233,9 @@ assert-css: (".setting-line", {"position": "relative"})
 
 assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
 compare-elements-position: (".sub form", "#settings", ("x"))
+
+// Check that setting-line has the same margin in this mode as in the popover.
+assert-css: (".setting-line", {"margin": |setting_line_margin|})
 
 // We now check the display with JS disabled.
 assert-false: "noscript section"

@@ -49,7 +49,7 @@ pub fn expand_deriving_rustc_decodable(
                 PathKind::Std,
             )),
             attributes: ast::AttrVec::new(),
-            unify_fieldless_variants: false,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 decodable_substructure(a, b, c, krate)
             })),

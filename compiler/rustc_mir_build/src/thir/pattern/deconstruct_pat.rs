@@ -141,27 +141,22 @@ impl IntRange {
     ) -> Option<IntRange> {
         let ty = value.ty();
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
-            let val = (|| {
-                match value {
-                    mir::ConstantKind::Val(ConstValue::Scalar(scalar), _) => {
-                        // For this specific pattern we can skip a lot of effort and go
-                        // straight to the result, after doing a bit of checking. (We
-                        // could remove this branch and just fall through, which
-                        // is more general but much slower.)
-                        return scalar.to_bits_or_ptr_internal(target_size).unwrap().left();
-                    }
-                    mir::ConstantKind::Ty(c) => match c.kind() {
-                        ty::ConstKind::Value(_) => bug!(
-                            "encountered ConstValue in mir::ConstantKind::Ty, whereas this is expected to be in ConstantKind::Val"
-                        ),
-                        _ => {}
-                    },
-                    _ => {}
+            let val = if let mir::ConstantKind::Val(ConstValue::Scalar(scalar), _) = value {
+                // For this specific pattern we can skip a lot of effort and go
+                // straight to the result, after doing a bit of checking. (We
+                // could remove this branch and just fall through, which
+                // is more general but much slower.)
+                scalar.to_bits_or_ptr_internal(target_size).unwrap().left()?
+            } else {
+                if let mir::ConstantKind::Ty(c) = value
+                    && let ty::ConstKind::Value(_) = c.kind()
+                {
+                    bug!("encountered ConstValue in mir::ConstantKind::Ty, whereas this is expected to be in ConstantKind::Val");
                 }
 
                 // This is a more general form of the previous case.
-                value.try_eval_bits(tcx, param_env, ty)
-            })()?;
+                value.try_eval_bits(tcx, param_env, ty)?
+            };
             let val = val ^ bias;
             Some(IntRange { range: val..=val, bias })
         } else {

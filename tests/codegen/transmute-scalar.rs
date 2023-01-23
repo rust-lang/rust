@@ -5,7 +5,7 @@
 // FIXME(eddyb) all of these tests show memory stores and loads, even after a
 // scalar `bitcast`, more special-casing is required to remove `alloca` usage.
 
-// CHECK-LABEL: define{{.*}}i32 @f32_to_bits(float %x)
+// CHECK-LABEL: define{{.*}}i32 @f32_to_bits(float noundef %x)
 // CHECK: store i32 %{{.*}}, {{.*}} %0
 // CHECK-NEXT: %[[RES:.*]] = load i32, {{.*}} %0
 // CHECK: ret i32 %[[RES]]
@@ -24,7 +24,7 @@ pub fn bool_to_byte(b: bool) -> u8 {
     unsafe { std::mem::transmute(b) }
 }
 
-// CHECK-LABEL: define{{.*}}noundef zeroext i1 @byte_to_bool(i8 %byte)
+// CHECK-LABEL: define{{.*}}noundef zeroext i1 @byte_to_bool(i8 noundef %byte)
 // CHECK: %1 = trunc i8 %byte to i1
 // CHECK-NEXT: %2 = zext i1 %1 to i8
 // CHECK-NEXT: store i8 %2, {{.*}} %0
@@ -36,7 +36,7 @@ pub unsafe fn byte_to_bool(byte: u8) -> bool {
     std::mem::transmute(byte)
 }
 
-// CHECK-LABEL: define{{.*}}{{i8\*|ptr}} @ptr_to_ptr({{i16\*|ptr}} %p)
+// CHECK-LABEL: define{{.*}}{{i8\*|ptr}} @ptr_to_ptr({{i16\*|ptr}} noundef %p)
 // CHECK: store {{i8\*|ptr}} %{{.*}}, {{.*}} %0
 // CHECK-NEXT: %[[RES:.*]] = load {{i8\*|ptr}}, {{.*}} %0
 // CHECK: ret {{i8\*|ptr}} %[[RES]]
@@ -52,7 +52,7 @@ pub fn ptr_to_ptr(p: *mut u16) -> *mut u8 {
 // Tests below show the non-special-cased behavior (with the possible
 // future special-cased instructions in the "NOTE(eddyb)" comments).
 
-// CHECK: define{{.*}}[[USIZE:i[0-9]+]] @ptr_to_int({{i16\*|ptr}} %p)
+// CHECK: define{{.*}}[[USIZE:i[0-9]+]] @ptr_to_int({{i16\*|ptr}} noundef %p)
 
 // NOTE(eddyb) see above, the following two CHECK lines should ideally be this:
 //        %2 = ptrtoint i16* %p to [[USIZE]]
@@ -66,7 +66,7 @@ pub fn ptr_to_int(p: *mut u16) -> usize {
     unsafe { std::mem::transmute(p) }
 }
 
-// CHECK: define{{.*}}{{i16\*|ptr}} @int_to_ptr([[USIZE]] %i)
+// CHECK: define{{.*}}{{i16\*|ptr}} @int_to_ptr([[USIZE]] noundef %i)
 
 // NOTE(eddyb) see above, the following two CHECK lines should ideally be this:
 //        %2 = inttoptr [[USIZE]] %i to i16*

@@ -404,6 +404,8 @@ define_tables! {
     proc_macro: Table<DefIndex, MacroKind>,
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
     deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
+    // Slot is full when opaque is TAIT.
+    is_type_alias_impl_trait: Table<DefIndex, ()>,
 
     trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, Ty<'static>>>>,
 }

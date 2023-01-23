@@ -8,7 +8,7 @@ mod hey {
 
 #[derive(Bla)]
 //~^ ERROR cannot find derive macro `Bla`
-//~| NOTE consider importing this derive macro
+//~| HELP consider importing this derive macro
 struct A;
 
 #[derive(println)]
@@ -19,5 +19,5 @@ struct B;
 fn main() {
     bla!();
     //~^ ERROR cannot find macro `bla`
-    //~| NOTE consider importing this macro
+    //~| HELP consider importing this macro
 }

@@ -26,7 +26,7 @@ pub fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
                 __visitor: &mut __V
             ) -> ::std::ops::ControlFlow<__V::BreakTy> {
                 match *self { #body_visit }
-                ::std::ops::ControlFlow::CONTINUE
+                ::std::ops::ControlFlow::Continue(())
             }
         },
     )

@@ -825,21 +825,24 @@ pub trait LintContext: Sized {
                     debug!(?param_span, ?use_span, ?deletion_span);
                     db.span_label(param_span, "this lifetime...");
                     db.span_label(use_span, "...is used only here");
-                    let msg = "elide the single-use lifetime";
-                    let (use_span, replace_lt) = if elide {
-                        let use_span = sess.source_map().span_extend_while(
-                            use_span,
-                            char::is_whitespace,
-                        ).unwrap_or(use_span);
-                        (use_span, String::new())
-                    } else {
-                        (use_span, "'_".to_owned())
-                    };
-                    db.multipart_suggestion(
-                        msg,
-                        vec![(deletion_span, String::new()), (use_span, replace_lt)],
-                        Applicability::MachineApplicable,
-                    );
+                    if let Some(deletion_span) = deletion_span {
+                        let msg = "elide the single-use lifetime";
+                        let (use_span, replace_lt) = if elide {
+                            let use_span = sess.source_map().span_extend_while(
+                                use_span,
+                                char::is_whitespace,
+                            ).unwrap_or(use_span);
+                            (use_span, String::new())
+                        } else {
+                            (use_span, "'_".to_owned())
+                        };
+                        debug!(?deletion_span, ?use_span);
+                        db.multipart_suggestion(
+                            msg,
+                            vec![(deletion_span, String::new()), (use_span, replace_lt)],
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 },
                 BuiltinLintDiagnostics::SingleUseLifetime {
                     param_span: _,
@@ -847,12 +850,14 @@ pub trait LintContext: Sized {
                     deletion_span,
                 } => {
                     debug!(?deletion_span);
-                    db.span_suggestion(
-                        deletion_span,
-                        "elide the unused lifetime",
-                        "",
-                        Applicability::MachineApplicable,
-                    );
+                    if let Some(deletion_span) = deletion_span {
+                        db.span_suggestion(
+                            deletion_span,
+                            "elide the unused lifetime",
+                            "",
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 },
                 BuiltinLintDiagnostics::NamedArgumentUsedPositionally{ position_sp_to_replace, position_sp_for_msg, named_arg_sp, named_arg_name, is_formatting_arg} => {
                     db.span_label(named_arg_sp, "this named argument is referred to by position in formatting string");

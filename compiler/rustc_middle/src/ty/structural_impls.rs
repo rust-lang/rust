@@ -7,7 +7,7 @@ use crate::mir::{Field, ProjectionKind};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
@@ -180,6 +180,15 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for AliasTy<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AliasTy")
+            .field("substs", &self.substs)
+            .field("def_id", &self.def_id)
+            .finish()
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
 //
@@ -227,6 +236,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
+    crate::ty::AliasKind,
     crate::ty::Placeholder<crate::ty::BoundRegionKind>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
@@ -357,7 +367,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::AdtDef<'tcx> {
 
 impl<'tcx> TypeVisitable<'tcx> for ty::AdtDef<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 
@@ -704,7 +714,7 @@ impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
             | ty::Placeholder(..)
             | ty::Param(..)
             | ty::Never
-            | ty::Foreign(..) => ControlFlow::CONTINUE,
+            | ty::Foreign(..) => ControlFlow::Continue(()),
         }
     }
 }
@@ -732,7 +742,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> TypeSuperVisitable<'tcx> for ty::Region<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 
@@ -834,7 +844,7 @@ impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
 
 impl<'tcx> TypeVisitable<'tcx> for InferConst<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 

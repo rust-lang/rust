@@ -1,5 +1,8 @@
+// check-pass
+
 fn f() -> impl Sized {
-    enum E { //~ ERROR
+    // rustdoc doesn't care that this is infinitely sized
+    enum E {
         V(E),
     }
     unimplemented!()

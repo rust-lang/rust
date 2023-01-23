@@ -7,7 +7,7 @@
 //! `crate::chalk::lowering` (to lower rustc types into Chalk types).
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
-use rustc_middle::ty::{self, AssocKind, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::{self, AssocKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_target::abi::{Integer, IntegerType};
 
@@ -38,13 +38,12 @@ impl<'tcx> RustIrDatabase<'tcx> {
         def_id: DefId,
         bound_vars: SubstsRef<'tcx>,
     ) -> Vec<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>> {
-        let predicates = self.interner.tcx.predicates_defined_on(def_id).predicates;
-        predicates
-            .iter()
-            .map(|(wc, _)| EarlyBinder(*wc).subst(self.interner.tcx, bound_vars))
-            .filter_map(|wc| LowerInto::<
-                    Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>
-                    >::lower_into(wc, self.interner)).collect()
+        self.interner
+            .tcx
+            .predicates_defined_on(def_id)
+            .instantiate_own(self.interner.tcx, bound_vars)
+            .filter_map(|(wc, _)| LowerInto::lower_into(wc, self.interner))
+            .collect()
     }
 
     fn bounds_for<T>(&self, def_id: DefId, bound_vars: SubstsRef<'tcx>) -> Vec<T>

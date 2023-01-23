@@ -72,7 +72,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::{Abi, VariantIdx};
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
-use rustc_trait_selection::traits::{self, misc::can_type_implement_copy, EvaluationResult};
+use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -709,12 +709,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
 
         // We shouldn't recommend implementing `Copy` on stateful things,
         // such as iterators.
-        if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator) {
-            if cx.tcx.infer_ctxt().build().type_implements_trait(iter_trait, [ty], param_env)
-                == EvaluationResult::EvaluatedToOk
-            {
-                return;
-            }
+        if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
+            && cx.tcx
+                .infer_ctxt()
+                .build()
+                .type_implements_trait(iter_trait, [ty], param_env)
+                .must_apply_modulo_regions()
+        {
+            return;
         }
 
         // Default value of clippy::trivially_copy_pass_by_ref
@@ -726,7 +728,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             }
         }
 
-        if can_type_implement_copy(
+        if type_allowed_to_implement_copy(
             cx.tcx,
             param_env,
             ty,

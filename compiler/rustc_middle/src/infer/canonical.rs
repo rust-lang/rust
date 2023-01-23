@@ -68,6 +68,22 @@ pub struct CanonicalVarValues<'tcx> {
     pub var_values: IndexVec<BoundVar, GenericArg<'tcx>>,
 }
 
+impl CanonicalVarValues<'_> {
+    pub fn is_identity(&self) -> bool {
+        self.var_values.iter_enumerated().all(|(bv, arg)| match arg.unpack() {
+            ty::GenericArgKind::Lifetime(r) => {
+                matches!(*r, ty::ReLateBound(ty::INNERMOST, br) if br.var == bv)
+            }
+            ty::GenericArgKind::Type(ty) => {
+                matches!(*ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var == bv)
+            }
+            ty::GenericArgKind::Const(ct) => {
+                matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc == bv)
+            }
+        })
+    }
+}
+
 /// When we canonicalize a value to form a query, we wind up replacing
 /// various parts of it with canonical variables. This struct stores
 /// those replaced bits to remember for when we process the query
@@ -323,6 +339,12 @@ TrivialTypeTraversalAndLiftImpls! {
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {
+    /// Creates dummy var values which should not be used in a
+    /// canonical response.
+    pub fn dummy() -> CanonicalVarValues<'tcx> {
+        CanonicalVarValues { var_values: Default::default() }
+    }
+
     #[inline]
     pub fn len(&self) -> usize {
         self.var_values.len()

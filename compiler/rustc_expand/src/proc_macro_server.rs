@@ -597,8 +597,8 @@ impl server::SourceFile for Rustc<'_, '_> {
     }
 
     fn path(&mut self, file: &Self::SourceFile) -> String {
-        match file.name {
-            FileName::Real(ref name) => name
+        match &file.name {
+            FileName::Real(name) => name
                 .local_path()
                 .expect("attempting to get a file path in an imported file in `proc_macro::SourceFile::path`")
                 .to_str()

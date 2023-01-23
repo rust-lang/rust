@@ -6,8 +6,9 @@
 extern crate rustc_macros;
 
 pub use self::Level::*;
-use rustc_ast::node_id::{NodeId, NodeMap};
+use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
@@ -502,7 +503,7 @@ pub enum BuiltinLintDiagnostics {
         param_span: Span,
         /// Span of the code that should be removed when eliding this lifetime.
         /// This span should include leading or trailing comma.
-        deletion_span: Span,
+        deletion_span: Option<Span>,
         /// Span of the single use, or None if the lifetime is never used.
         /// If true, the lifetime will be fully elided.
         use_span: Option<(Span, bool)>,
@@ -544,7 +545,7 @@ pub struct BufferedEarlyLint {
 
 #[derive(Default)]
 pub struct LintBuffer {
-    pub map: NodeMap<Vec<BufferedEarlyLint>>,
+    pub map: FxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
 }
 
 impl LintBuffer {

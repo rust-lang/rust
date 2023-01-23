@@ -82,7 +82,7 @@ pub fn expand_deriving_clone(
             nonself_args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
-            unify_fieldless_variants: false,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: substructure,
         }],
         associated_types: Vec::new(),
@@ -177,7 +177,9 @@ fn cs_clone(
             all_fields = af;
             vdata = &variant.data;
         }
-        EnumTag(..) => cx.span_bug(trait_span, &format!("enum tags in `derive({})`", name,)),
+        EnumTag(..) | AllFieldlessEnum(..) => {
+            cx.span_bug(trait_span, &format!("enum tags in `derive({})`", name,))
+        }
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, &format!("associated function in `derive({})`", name))
         }

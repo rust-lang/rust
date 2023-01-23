@@ -31,7 +31,7 @@ pub(self) use reexports::BarSelf;
 // @!has 'foo/enum.BarLocal.html'
 use reexports::BarLocal;
 
-// @has 'foo/fn.foo.html' '//*[@class="rust fn"]' 'pub fn foo()'
+// @has 'foo/fn.foo.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn foo()'
 pub use reexports::foo;
 // @!has 'foo/fn.foo_crate.html'
 pub(crate) use reexports::foo_crate;
@@ -40,7 +40,7 @@ pub(self) use reexports::foo_self;
 // @!has 'foo/fn.foo_local.html'
 use reexports::foo_local;
 
-// @has 'foo/type.Type.html' '//*[@class="rust typedef"]' 'pub type Type ='
+// @has 'foo/type.Type.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub type Type ='
 pub use reexports::Type;
 // @!has 'foo/type.TypeCrate.html'
 pub(crate) use reexports::TypeCrate;
@@ -93,7 +93,7 @@ pub mod outer {
         // @!has 'foo/outer/inner/enum.BarLocal.html'
         use reexports::BarLocal;
 
-        // @has 'foo/outer/inner/fn.foo.html' '//*[@class="rust fn"]' 'pub fn foo()'
+        // @has 'foo/outer/inner/fn.foo.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn foo()'
         pub use reexports::foo;
         // @!has 'foo/outer/inner/fn.foo_crate.html'
         pub(crate) use reexports::foo_crate;
@@ -104,7 +104,7 @@ pub mod outer {
         // @!has 'foo/outer/inner/fn.foo_local.html'
         use reexports::foo_local;
 
-        // @has 'foo/outer/inner/type.Type.html' '//*[@class="rust typedef"]' 'pub type Type ='
+        // @has 'foo/outer/inner/type.Type.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub type Type ='
         pub use reexports::Type;
         // @!has 'foo/outer/inner/type.TypeCrate.html'
         pub(crate) use reexports::TypeCrate;

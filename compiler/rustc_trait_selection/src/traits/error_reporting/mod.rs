@@ -1350,6 +1350,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         expected_trait_ref,
                         obligation.cause.code(),
                         found_node,
+                        obligation.param_env,
                     )
                 } else {
                     let (closure_span, closure_arg_span, found) = found_did
@@ -2932,7 +2933,7 @@ impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
         if matches!(ty.kind(), ty::Infer(ty::FloatVar(_) | ty::IntVar(_))) {
             ControlFlow::Break(())
         } else {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         }
     }
 }

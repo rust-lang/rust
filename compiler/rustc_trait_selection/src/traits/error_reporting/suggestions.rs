@@ -283,6 +283,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         expected: ty::PolyTraitRef<'tcx>,
         cause: &ObligationCauseCode<'tcx>,
         found_node: Option<Node<'_>>,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn note_conflicting_closure_bounds(
@@ -1123,7 +1124,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
                 }
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                    self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
+                    self.tcx.item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                         if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be substs[1]
@@ -1978,6 +1979,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         expected: ty::PolyTraitRef<'tcx>,
         cause: &ObligationCauseCode<'tcx>,
         found_node: Option<Node<'_>>,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
             infcx: &InferCtxt<'tcx>,
@@ -2040,7 +2042,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self.note_conflicting_closure_bounds(cause, &mut err);
 
         if let Some(found_node) = found_node {
-            hint_missing_borrow(span, found, expected, found_node, &mut err);
+            hint_missing_borrow(self, param_env, span, found, expected, found_node, &mut err);
         }
 
         err
@@ -2070,7 +2072,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             // Find another predicate whose self-type is equal to the expected self type,
             // but whose substs don't match.
-            let other_pred = std::iter::zip(&predicates.predicates, &predicates.spans)
+            let other_pred = predicates.into_iter()
                 .enumerate()
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
@@ -2095,7 +2097,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // If we found one, then it's very likely the cause of the error.
             if let Some((_, (_, other_pred_span))) = other_pred {
                 err.span_note(
-                    *other_pred_span,
+                    other_pred_span,
                     "closure inferred to have a different signature due to this bound",
                 );
             }
@@ -3747,6 +3749,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
 /// Add a hint to add a missing borrow or remove an unnecessary one.
 fn hint_missing_borrow<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     span: Span,
     found: Ty<'tcx>,
     expected: Ty<'tcx>,
@@ -3769,7 +3773,7 @@ fn hint_missing_borrow<'tcx>(
     // This could be a variant constructor, for example.
     let Some(fn_decl) = found_node.fn_decl() else { return; };
 
-    let arg_spans = fn_decl.inputs.iter().map(|ty| ty.span);
+    let args = fn_decl.inputs.iter().map(|ty| ty);
 
     fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
         let mut refs = 0;
@@ -3785,21 +3789,34 @@ fn hint_missing_borrow<'tcx>(
     let mut to_borrow = Vec::new();
     let mut remove_borrow = Vec::new();
 
-    for ((found_arg, expected_arg), arg_span) in found_args.zip(expected_args).zip(arg_spans) {
+    for ((found_arg, expected_arg), arg) in found_args.zip(expected_args).zip(args) {
         let (found_ty, found_refs) = get_deref_type_and_refs(*found_arg);
         let (expected_ty, expected_refs) = get_deref_type_and_refs(*expected_arg);
 
-        if found_ty == expected_ty {
+        if infcx.can_eq(param_env, found_ty, expected_ty).is_ok() {
             if found_refs < expected_refs {
-                to_borrow.push((arg_span, expected_arg.to_string()));
+                to_borrow.push((arg.span.shrink_to_lo(), "&".repeat(expected_refs - found_refs)));
             } else if found_refs > expected_refs {
-                remove_borrow.push((arg_span, expected_arg.to_string()));
+                let mut span = arg.span.shrink_to_lo();
+                let mut left = found_refs - expected_refs;
+                let mut ty = arg;
+                while let hir::TyKind::Ref(_, mut_ty) = &ty.kind && left > 0 {
+                    span = span.with_hi(mut_ty.ty.span.lo());
+                    ty = mut_ty.ty;
+                    left -= 1;
+                }
+                let sugg = if left == 0 {
+                    (span, String::new())
+                } else {
+                    (arg.span, expected_arg.to_string())
+                };
+                remove_borrow.push(sugg);
             }
         }
     }
 
     if !to_borrow.is_empty() {
-        err.multipart_suggestion(
+        err.multipart_suggestion_verbose(
             "consider borrowing the argument",
             to_borrow,
             Applicability::MaybeIncorrect,
@@ -3807,7 +3824,7 @@ fn hint_missing_borrow<'tcx>(
     }
 
     if !remove_borrow.is_empty() {
-        err.multipart_suggestion(
+        err.multipart_suggestion_verbose(
             "do not borrow the argument",
             remove_borrow,
             Applicability::MaybeIncorrect,

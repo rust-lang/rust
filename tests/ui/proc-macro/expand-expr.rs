@@ -1,4 +1,6 @@
 // aux-build:expand-expr.rs
+// no-remap-src-base: check_expand_expr_file!() fails when enabled.
+
 #![feature(concat_bytes)]
 extern crate expand_expr;
 
@@ -8,7 +10,7 @@ use expand_expr::{
 
 // Check builtin macros can be expanded.
 
-expand_expr_is!(11u32, line!());
+expand_expr_is!(13u32, line!());
 expand_expr_is!(24u32, column!());
 
 expand_expr_is!("Hello, World!", concat!("Hello, ", "World", "!"));
