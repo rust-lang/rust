@@ -400,7 +400,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             walk_list!(visitor, visit_lifetime, opt_lifetime, LifetimeCtxt::Ref);
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyKind::AnonEnum(tys) | TyKind::Tup(tys) => {
+        TyKind::Tup(tys) => {
             walk_list!(visitor, visit_ty, tys);
         }
         TyKind::BareFn(function_declaration) => {

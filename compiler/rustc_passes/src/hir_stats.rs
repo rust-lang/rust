@@ -579,7 +579,6 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             [
                 Slice,
                 Array,
-                AnonEnum,
                 Ptr,
                 Ref,
                 BareFn,

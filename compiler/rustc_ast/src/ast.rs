@@ -2096,9 +2096,6 @@ pub enum TyKind {
     Err,
     /// Placeholder for a `va_list`.
     CVarArgs,
-    /// Placeholder for "anonymous enums", which don't exist, but keeping their
-    /// information around lets us produce better diagnostics.
-    AnonEnum(Vec<P<Ty>>),
 }
 
 impl TyKind {

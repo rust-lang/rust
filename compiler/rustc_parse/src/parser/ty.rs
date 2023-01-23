@@ -390,7 +390,7 @@ impl<'a> Parser<'a> {
                     .join("\n"),
             ));
             err.emit();
-            return Ok(self.mk_ty(lo.to(self.prev_token.span), TyKind::AnonEnum(types)));
+            return Ok(self.mk_ty(lo.to(self.prev_token.span), TyKind::Err));
         }
         if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
     }

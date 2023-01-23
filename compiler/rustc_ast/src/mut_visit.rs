@@ -470,7 +470,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             vis.visit_fn_decl(decl);
             vis.visit_span(decl_span);
         }
-        TyKind::AnonEnum(tys) | TyKind::Tup(tys) => visit_vec(tys, |ty| vis.visit_ty(ty)),
+        TyKind::Tup(tys) => visit_vec(tys, |ty| vis.visit_ty(ty)),
         TyKind::Paren(ty) => vis.visit_ty(ty),
         TyKind::Path(qself, path) => {
             vis.visit_qself(qself);
