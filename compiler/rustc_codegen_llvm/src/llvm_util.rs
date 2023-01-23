@@ -147,6 +147,9 @@ pub fn time_trace_profiler_finish(file_name: &Path) {
 // Though note that Rust can also be build with an external precompiled version of LLVM
 // which might lead to failures if the oldest tested / supported LLVM version
 // doesn't yet support the relevant intrinsics
+//
+// Note: The first feature in the list that is returned is the mapping to the feature that is
+// provided from the `s` parameter.
 pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]> {
     let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
     match (arch, s) {
@@ -179,6 +182,23 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]
         ("aarch64", "sve2-sha3") => smallvec!["sve2-sha3", "neon"],
         ("aarch64", "sve2-bitperm") => smallvec!["sve2-bitperm", "neon"],
         (_, s) => smallvec![s],
+    }
+}
+
+pub enum TargetFeatureFoldStrength {
+    // The feature is only tied when enabling the feature, disabling
+    // this feature shouldn't disable the tied feature.
+    EnableOnly,
+    // The feature is tied for both enabling and disabling this feature.
+    Both,
+}
+
+// Determines how the features are folded together, some features are
+// linked a lot more than some others.
+pub fn feature_fold_strength<'a>(feats: &SmallVec<[&'a str; 2]>) -> TargetFeatureFoldStrength {
+    match (feats.get(0), feats.get(1)) {
+        (Some(&"neon"), Some(&"fp-armv8")) => TargetFeatureFoldStrength::Both,
+        _ => TargetFeatureFoldStrength::EnableOnly,
     }
 }
 
@@ -471,11 +491,17 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             // passing requests down to LLVM. This means that all in-language
             // features also work on the command line instead of having two
             // different names when the LLVM name and the Rust name differ.
-            Some(
-                to_llvm_features(sess, feature)
-                    .into_iter()
-                    .map(move |f| format!("{}{}", enable_disable, f)),
-            )
+            let llvm_features = to_llvm_features(sess, feature);
+            Some(to_llvm_features(sess, feature).into_iter().enumerate().filter_map(
+                move |(idx, f)| match (enable_disable, feature_fold_strength(&llvm_features)) {
+                    ('-' | '+', TargetFeatureFoldStrength::Both)
+                    | ('+', TargetFeatureFoldStrength::EnableOnly) => {
+                        Some(format!("{}{}", enable_disable, f))
+                    }
+                    _ if idx == 0 => Some(format!("{}{}", enable_disable, f)),
+                    _ => None,
+                },
+            ))
         })
         .flatten();
     features.extend(feats);
