@@ -3,8 +3,7 @@
 	position: relative;
 }
 
-.setting-line .radio-line input,
-.setting-line .settings-toggle input {
+.setting-radio input, .setting-check input {
 	margin-right: 0.3em;
 	height: 1.2rem;
 	width: 1.2rem;
@@ -14,21 +13,20 @@
 	-webkit-appearance: none;
 	cursor: pointer;
 }
-.setting-line .radio-line input {
+.setting-radio input {
 	border-radius: 50%;
 }
-.setting-line .settings-toggle input:checked {
+.setting-check input:checked {
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">\
 		<path d="M7,25L17,32L33,12" fill="none" stroke="black" stroke-width="5"/>\
 		<path d="M7,23L17,30L33,10" fill="none" stroke="white" stroke-width="5"/></svg>');
 }
 
-.setting-line .radio-line input + span,
-.setting-line .settings-toggle span {
+.setting-radio span, .setting-check span {
 	padding-bottom: 1px;
 }
 
-.radio-line .choice {
+.setting-radio {
 	margin-top: 0.1em;
 	margin-bottom: 0.1em;
 	min-width: 3.8em;
@@ -37,11 +35,11 @@
 	align-items: center;
 	cursor: pointer;
 }
-.radio-line .choice + .choice {
+.setting-radio + .setting-radio {
 	margin-left: 0.5em;
 }
 
-.settings-toggle {
+.setting-check {
 	position: relative;
 	width: 100%;
 	margin-right: 20px;
@@ -50,23 +48,21 @@
 	cursor: pointer;
 }
 
-.setting-line .radio-line input:checked {
+.setting-radio input:checked {
 	box-shadow: inset 0 0 0 3px var(--main-background-color);
 	background-color: var(--settings-input-color);
 }
-.setting-line .settings-toggle input:checked {
+.setting-check input:checked {
 	background-color: var(--settings-input-color);
 }
-.setting-line .radio-line input:focus,
-.setting-line .settings-toggle input:focus {
+.setting-radio input:focus, .setting-check input:focus {
 	box-shadow: 0 0 1px 1px var(--settings-input-color);
 }
 /* In here we combine both `:focus` and `:checked` properties. */
-.setting-line .radio-line input:checked:focus {
+.setting-radio input:checked:focus {
 	box-shadow: inset 0 0 0 3px var(--main-background-color),
 		0 0 2px 2px var(--settings-input-color);
 }
-.setting-line .radio-line input:hover,
-.setting-line .settings-toggle input:hover {
+.setting-radio input:hover, .setting-check input:hover {
 	border-color: var(--settings-input-color) !important;
 }
