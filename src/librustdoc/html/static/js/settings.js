@@ -80,17 +80,6 @@
             toggle.onkeyup = handleKey;
             toggle.onkeyrelease = handleKey;
         });
-        onEachLazy(settingsElement.getElementsByClassName("select-wrapper"), elem => {
-            const select = elem.getElementsByTagName("select")[0];
-            const settingId = select.id;
-            const settingValue = getSettingValue(settingId);
-            if (settingValue !== null) {
-                select.value = settingValue;
-            }
-            select.onchange = function() {
-                changeSetting(this.id, this.value);
-            };
-        });
         onEachLazy(settingsElement.querySelectorAll("input[type=\"radio\"]"), elem => {
             const settingId = elem.name;
             let settingValue = getSettingValue(settingId);
