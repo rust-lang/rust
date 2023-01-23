@@ -1245,7 +1245,7 @@ fn format_unit_struct(
 ) -> Option<String> {
     let header_str = format_header(context, p.prefix, p.ident, p.vis, offset);
     let generics_str = if let Some(generics) = p.generics {
-        let hi = context.snippet_provider.span_before(p.span, ";");
+        let hi = context.snippet_provider.span_before_last(p.span, ";");
         format_generics(
             context,
             generics,
