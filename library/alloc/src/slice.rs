@@ -911,12 +911,48 @@ where
         }
     };
 
+//<<<<<<< HEAD
     let run_alloc_fn = |len: usize| -> *mut sort::TimSortRun {
         // SAFETY: Creating the layout is safe as long as merge_sort never calls this with an
         // obscene length or 0.
         unsafe {
             alloc::alloc(alloc::Layout::array::<sort::TimSortRun>(len).unwrap_unchecked())
                 as *mut sort::TimSortRun
+/*=======
+    // Allocate a buffer to use as scratch memory. We keep the length 0 so we can keep in it
+    // shallow copies of the contents of `v` without risking the dtors running on copies if
+    // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
+    // which will always have length at most `len / 2`.
+    // `buf` is temporary = not passed around too much => using COOP_PREFERRED=true.
+    // @FIXME move definitions of `buf` and `runs` down, after while end > 0 {...}, just before they are used. Then benchmark if it makes (cache-related) difference.
+    let mut buf = Vec::<T, Global, true>::with_capacity(len / 2);
+
+    // In order to identify natural runs in `v`, we traverse it backwards. That might seem like a
+    // strange decision, but consider the fact that merges more often go in the opposite direction
+    // (forwards). According to benchmarks, merging forwards is slightly faster than merging
+    // backwards. To conclude, identifying runs by traversing backwards improves performance.
+    // `runs` is temporary = not passed around too much => using COOP_PREFERRED=true.
+    let mut runs: Vec<_, Global, true> = vec![];
+    let mut end = len;
+    while end > 0 {
+        // Find the next natural run, and reverse it if it's strictly descending.
+        let mut start = end - 1;
+        if start > 0 {
+            start -= 1;
+            unsafe {
+                if is_less(v.get_unchecked(start + 1), v.get_unchecked(start)) {
+                    while start > 0 && is_less(v.get_unchecked(start), v.get_unchecked(start - 1)) {
+                        start -= 1;
+                    }
+                    v[start..end].reverse();
+                } else {
+                    while start > 0 && !is_less(v.get_unchecked(start), v.get_unchecked(start - 1))
+                    {
+                        start -= 1;
+                    }
+                }
+            }
+>>>>>>> 6bd68177557 (CoAlloc: Slice: Fixing COOP_PREFERRED)*/
         }
     };
 
