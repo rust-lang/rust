@@ -1,5 +1,6 @@
 use std::mem;
 
+use super::{Certainty, InferCtxtEvalExt};
 use rustc_infer::{
     infer::InferCtxt,
     traits::{
@@ -7,8 +8,6 @@ use rustc_infer::{
         SelectionError, TraitEngine,
     },
 };
-
-use super::{search_graph, Certainty, EvalCtxt};
 
 /// A trait engine using the new trait solver.
 ///
@@ -66,9 +65,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             let mut has_changed = false;
             for obligation in mem::take(&mut self.obligations) {
                 let goal = obligation.clone().into();
-                let search_graph = &mut search_graph::SearchGraph::new(infcx.tcx);
-                let mut ecx = EvalCtxt::new_outside_solver(infcx, search_graph);
-                let (changed, certainty) = match ecx.evaluate_goal(goal) {
+                let (changed, certainty) = match infcx.evaluate_root_goal(goal) {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(FulfillmentError {

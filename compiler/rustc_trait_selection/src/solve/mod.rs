@@ -152,6 +152,36 @@ impl<'tcx> TyCtxtExt<'tcx> for TyCtxt<'tcx> {
     }
 }
 
+pub trait InferCtxtEvalExt<'tcx> {
+    /// Evaluates a goal from **outside** of the trait solver.
+    ///
+    /// Using this while inside of the solver is wrong as it uses a new
+    /// search graph which would break cycle detection.
+    fn evaluate_root_goal(
+        &self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    ) -> Result<(bool, Certainty), NoSolution>;
+}
+
+impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
+    fn evaluate_root_goal(
+        &self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    ) -> Result<(bool, Certainty), NoSolution> {
+        let mut search_graph = search_graph::SearchGraph::new(self.tcx);
+
+        let result = EvalCtxt {
+            search_graph: &mut search_graph,
+            infcx: self,
+            var_values: CanonicalVarValues::dummy(),
+        }
+        .evaluate_goal(goal);
+
+        assert!(search_graph.is_empty());
+        result
+    }
+}
+
 struct EvalCtxt<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     var_values: CanonicalVarValues<'tcx>,
@@ -162,18 +192,6 @@ struct EvalCtxt<'a, 'tcx> {
 impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
-    }
-
-    /// Creates a new evaluation context outside of the trait solver.
-    ///
-    /// With this solver making a canonical response doesn't make much sense.
-    /// The `search_graph` for this solver has to be completely empty.
-    fn new_outside_solver(
-        infcx: &'a InferCtxt<'tcx>,
-        search_graph: &'a mut search_graph::SearchGraph<'tcx>,
-    ) -> EvalCtxt<'a, 'tcx> {
-        assert!(search_graph.is_empty());
-        EvalCtxt { infcx, var_values: CanonicalVarValues::dummy(), search_graph }
     }
 
     #[instrument(level = "debug", skip(tcx, search_graph), ret)]
