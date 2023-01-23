@@ -1897,21 +1897,21 @@ in storage.js
 	right: 0.25em;
 }
 
-.scraped-example:not(.expanded) .code-wrapper:before,
-.scraped-example:not(.expanded) .code-wrapper:after {
+.scraped-example:not(.expanded) .code-wrapper::before,
+.scraped-example:not(.expanded) .code-wrapper::after {
 	content: " ";
 	width: 100%;
 	height: 5px;
 	position: absolute;
 	z-index: 1;
 }
-.scraped-example:not(.expanded) .code-wrapper:before {
+.scraped-example:not(.expanded) .code-wrapper::before {
 	top: 0;
 	background: linear-gradient(to bottom,
 		var(--scrape-example-code-wrapper-background-start),
 		var(--scrape-example-code-wrapper-background-end));
 }
-.scraped-example:not(.expanded) .code-wrapper:after {
+.scraped-example:not(.expanded) .code-wrapper::after {
 	bottom: 0;
 	background: linear-gradient(to top,
 		var(--scrape-example-code-wrapper-background-start),

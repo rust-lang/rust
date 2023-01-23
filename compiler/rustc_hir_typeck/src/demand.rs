@@ -1233,6 +1233,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sugg_sp = receiver.span;
                         }
                     }
+
+                    if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner) = expr.kind
+                        && let Some(1) = self.deref_steps(expected, checked_ty) {
+                        // We have `*&T`, check if what was expected was `&T`.
+                        // If so, we may want to suggest removing a `*`.
+                        sugg_sp = sugg_sp.with_hi(inner.span.lo());
+                        return Some((
+                            sugg_sp,
+                            "consider removing deref here".to_string(),
+                            "".to_string(),
+                            Applicability::MachineApplicable,
+                            true,
+                            false,
+                        ));
+                    }
+
                     if let Ok(src) = sm.span_to_snippet(sugg_sp) {
                         let needs_parens = match expr.kind {
                             // parenthesize if needed (Issue #46756)
