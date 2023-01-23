@@ -425,6 +425,7 @@ symbols! {
         black_box,
         block,
         bool,
+        borrow,
         borrowck_graphviz_format,
         borrowck_graphviz_postflow,
         box_free,

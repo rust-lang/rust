@@ -540,7 +540,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     gated!(fundamental, Normal, template!(Word), WarnFollowing, experimental!(fundamental)),
     gated!(
-        may_dangle, Normal, template!(Word), WarnFollowing, dropck_eyepatch,
+        may_dangle, Normal, template!(Word, List: "borrow"), WarnFollowing, dropck_eyepatch,
         "`may_dangle` has unstable semantics and may be removed in the future",
     ),
 
