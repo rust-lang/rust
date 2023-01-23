@@ -12,12 +12,10 @@
           let _3: [E; 1];                  // in scope 1 at $DIR/invalid_constant.rs:+13:9: +13:21
           scope 3 {
               debug _invalid_tag => _3;    // in scope 3 at $DIR/invalid_constant.rs:+13:9: +13:21
-              let _6: [Empty; 1];          // in scope 3 at $DIR/invalid_constant.rs:+20:9: +20:31
               scope 5 {
-                  debug _enum_without_variants => _6; // in scope 5 at $DIR/invalid_constant.rs:+20:9: +20:31
-                  let _7: main::Str<"���">; // in scope 5 at $DIR/invalid_constant.rs:+24:9: +24:22
+                  debug _enum_without_variants => const [ZeroSized: Empty]; // in scope 5 at $DIR/invalid_constant.rs:+20:9: +20:31
                   scope 7 {
-                      debug _non_utf8_str => _7; // in scope 7 at $DIR/invalid_constant.rs:+24:9: +24:22
+                      debug _non_utf8_str => const Str::<"���">; // in scope 7 at $DIR/invalid_constant.rs:+24:9: +24:22
                   }
               }
               scope 6 {
@@ -52,10 +50,6 @@
 +                                          // + literal: Const { ty: E, val: Value(Scalar(0x00000004)) }
           StorageDead(_4);                 // scope 1 at $DIR/invalid_constant.rs:+13:59: +13:60
           StorageDead(_5);                 // scope 1 at $DIR/invalid_constant.rs:+13:60: +13:61
-          StorageLive(_6);                 // scope 3 at $DIR/invalid_constant.rs:+20:9: +20:31
-          StorageLive(_7);                 // scope 5 at $DIR/invalid_constant.rs:+24:9: +24:22
-          StorageDead(_7);                 // scope 5 at $DIR/invalid_constant.rs:+27:1: +27:2
-          StorageDead(_6);                 // scope 3 at $DIR/invalid_constant.rs:+27:1: +27:2
           StorageDead(_3);                 // scope 1 at $DIR/invalid_constant.rs:+27:1: +27:2
           StorageDead(_1);                 // scope 0 at $DIR/invalid_constant.rs:+27:1: +27:2
           return;                          // scope 0 at $DIR/invalid_constant.rs:+27:2: +27:2
