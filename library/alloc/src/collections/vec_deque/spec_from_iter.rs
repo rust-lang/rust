@@ -18,7 +18,7 @@ where
         // anything where we can't do something extra-special for `VecDeque`,
         // especially as that could save us some monomorphiziation work
         // if one uses the same iterators (like slice ones) with both.
-        crate::vec::Vec::from_iter(iterator).into()
+        crate::vec::Vec::<T, A, COOP_PREFERRED>::from_iter(iterator).into()
     }
 }
 
