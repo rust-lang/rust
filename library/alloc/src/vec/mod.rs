@@ -154,7 +154,9 @@ mod spec_extend;
 // pub const DEFAULT_COOP_PREFERRED: bool = true;
 #[macro_export]
 macro_rules! DEFAULT_COOP_PREFERRED {
-    () => {true}
+    () => {
+        true
+    };
 }
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
@@ -411,7 +413,7 @@ pub struct Vec<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
     //@FIXME: #[unstable(feature ="global_co_alloc_vec", issue="none")]
-    const COOP_PREFERRED: bool = {DEFAULT_COOP_PREFERRED!()},
+    const COOP_PREFERRED: bool = { DEFAULT_COOP_PREFERRED!() },
 > where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -421,22 +423,19 @@ pub struct Vec<
 
 /// "Cooperative" Vector. Preferring co-alloc API (if Global alloc supports it).
 #[unstable(feature = "global_co_alloc_covec", issue = "none")]
-pub type CoVec<T, A = Global> =
-    Vec<T, A, true>;
+pub type CoVec<T, A = Global> = Vec<T, A, true>;
 
 /// "Plain" Vec. Not "cooperative" - not carrying extra data to assist the allocator.
 /// FIXME after cleanup, see if we still use this in core:: and/or alloc::
 #[unstable(feature = "global_co_alloc_plvec", issue = "none")]
-pub type PlVec<T, A = Global> =
-    Vec<T, A, false>;
+pub type PlVec<T, A = Global> = Vec<T, A, false>;
 
 /// "Default" Vec. Either "cooperative" or not - as specified by `DEFAULT_COOP_PREFERRED`. The
 /// difference to `Vec` (used without specifying `COOP_PREFERRED`): `DefVec` indicates that the
 /// author considered using `CoVec` or `PlVec`, but left it to default instead.
 #[unstable(feature = "global_co_alloc_defvec", issue = "none")]
 #[allow(unused_braces)]
-pub type DefVec<T, A = Global> =
-    Vec<T, A, {DEFAULT_COOP_PREFERRED!()}>;
+pub type DefVec<T, A = Global> = Vec<T, A, { DEFAULT_COOP_PREFERRED!() }>;
 
 /// "Weighted cooperative" Vec. Weight means how much it wants to cooperate (with the allocator). 0
 /// = always pack; u8::MAX = always cooperate (if `Global` supports it).
@@ -461,7 +460,7 @@ impl<T> Vec<T> {
     #[must_use]
     pub const fn new() -> Self {
         #[allow(unused_braces)]
-        Vec::<T, Global, {DEFAULT_COOP_PREFERRED!()}>::new_co()
+        Vec::<T, Global, { DEFAULT_COOP_PREFERRED!() }>::new_co()
     }
 }
 
@@ -1668,9 +1667,7 @@ where
         // In cases when predicate and `drop` never panick, it will be optimized out.
         struct BackshiftOnDrop<'a, T, A: Allocator, const VEC_IS_COOP: bool = true>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                VEC_IS_COOP,
-            )]:,
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(VEC_IS_COOP)]:,
         {
             v: &'a mut Vec<T, A, VEC_IS_COOP>,
             processed_len: usize,
@@ -1680,9 +1677,7 @@ where
 
         impl<T, A: Allocator, const VEC_IS_COOP: bool> Drop for BackshiftOnDrop<'_, T, A, VEC_IS_COOP>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                VEC_IS_COOP,
-            )]:,
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(VEC_IS_COOP)]:,
         {
             fn drop(&mut self) {
                 if self.deleted_cnt > 0 {
@@ -1715,9 +1710,7 @@ where
             g: &mut BackshiftOnDrop<'_, T, A, VEC_IS_COOP>,
         ) where
             F: FnMut(&mut T) -> bool,
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                VEC_IS_COOP,
-            )]:,
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(VEC_IS_COOP)]:,
         {
             while g.processed_len != original_len {
                 // SAFETY: Unchecked element must be valid.
@@ -1812,9 +1805,7 @@ where
         /* INVARIANT: vec.len() > read >= write > write-1 >= 0 */
         struct FillGapOnDrop<'a, T, A: core::alloc::Allocator, const COOP_PREFERRED: bool>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                COOP_PREFERRED,
-            )]:,
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
         {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
@@ -1830,9 +1821,7 @@ where
         impl<'a, T, A: core::alloc::Allocator, const COOP_PREFERRED: bool> Drop
             for FillGapOnDrop<'a, T, A, COOP_PREFERRED>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                COOP_PREFERRED,
-            )]:,
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
         {
             fn drop(&mut self) {
                 /* This code gets executed when `same_bucket` panics */
@@ -2572,7 +2561,9 @@ where
         // - `new_cap` refers to the same sized allocation as `cap` because
         // `new_cap * size_of::<T>()` == `cap * size_of::<[T; N]>()`
         // - `len` <= `cap`, so `len * N` <= `cap * N`.
-        unsafe { Vec::<T, A, COOP_PREFERRED>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc) }
+        unsafe {
+            Vec::<T, A, COOP_PREFERRED>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc)
+        }
     }
 }
 
@@ -2893,7 +2884,7 @@ where
 impl<T, const COOP_PREFERRED: bool> FromIterator<T> for Vec<T, Global, COOP_PREFERRED>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
- {
+{
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T, Global, COOP_PREFERRED> {
         <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
@@ -3098,7 +3089,11 @@ where
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "vec_splice", since = "1.21.0")]
-    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter, A, COOP_PREFERRED>
+    pub fn splice<R, I>(
+        &mut self,
+        range: R,
+        replace_with: I,
+    ) -> Splice<'_, I::IntoIter, A, COOP_PREFERRED>
     where
         R: RangeBounds<usize>,
         I: IntoIterator<Item = T>,
@@ -3314,7 +3309,7 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T: Clone> From<&[T]> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
+impl<T: Clone> From<&[T]> for Vec<T, Global, { DEFAULT_COOP_PREFERRED!() }> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
     /// # Examples
@@ -3335,7 +3330,7 @@ impl<T: Clone> From<&[T]> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
 #[allow(unused_braces)]
-impl<T: Clone> From<&mut [T]> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
+impl<T: Clone> From<&mut [T]> for Vec<T, Global, { DEFAULT_COOP_PREFERRED!() }> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
     /// # Examples
@@ -3356,7 +3351,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array", since = "1.44.0")]
 #[allow(unused_braces)]
-impl<T, const N: usize> From<[T; N]> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
+impl<T, const N: usize> From<[T; N]> for Vec<T, Global, { DEFAULT_COOP_PREFERRED!() }> {
     /// Allocate a `Vec<T>` and move `s`'s items into it.
     ///
     /// # Examples
@@ -3380,7 +3375,7 @@ impl<T, const N: usize> From<[T; N]> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!
 
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
 #[allow(unused_braces)]
-impl<'a, T> From<Cow<'a, [T]>> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}>
+impl<'a, T> From<Cow<'a, [T]>> for Vec<T, Global, { DEFAULT_COOP_PREFERRED!() }>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
@@ -3458,7 +3453,7 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl From<&str> for Vec<u8, Global, {DEFAULT_COOP_PREFERRED!()}> {
+impl From<&str> for Vec<u8, Global, { DEFAULT_COOP_PREFERRED!() }> {
     /// Allocate a `Vec<u8>` and fill it with a UTF-8 string.
     ///
     /// # Examples

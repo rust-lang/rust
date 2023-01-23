@@ -1,5 +1,5 @@
-use core::alloc;
 use crate::alloc::Global;
+use core::alloc;
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
 
@@ -41,7 +41,7 @@ where
 #[allow(unused_braces)]
 impl<T, const COOP_PREFERRED: bool> SpecFromIter<T, IntoIter<T>> for Vec<T, Global, COOP_PREFERRED>
 where
-[(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately

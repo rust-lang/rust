@@ -780,13 +780,10 @@ where
     #[allow(unused_braces)]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A>
     where
-    // false = no need for co-alloc metadata, since it would get lost once converted to Box.
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(false)]:,
+        // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(false)]:,
     {
-        unsafe {
-            RawVec::<T, A, false>::with_capacity_in(len, alloc)
-                .into_box(len)
-        }
+        unsafe { RawVec::<T, A, false>::with_capacity_in(len, alloc).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator,
@@ -816,15 +813,10 @@ where
     #[allow(unused_braces)]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A>
     where
-    // false = no need for co-alloc metadata, since it would get lost once converted to Box.
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(false)]:,
+        // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(false)]:,
     {
-        unsafe {
-            RawVec::<T, A, false>::with_capacity_zeroed_in(
-                len, alloc,
-            )
-            .into_box(len)
-        }
+        unsafe { RawVec::<T, A, false>::with_capacity_zeroed_in(len, alloc).into_box(len) }
     }
 }
 
