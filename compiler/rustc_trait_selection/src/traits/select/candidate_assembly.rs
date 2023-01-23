@@ -174,8 +174,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter_map(|p| p.to_opt_poly_trait_pred())
-            .filter(|p| !p.references_error());
+            .filter(|p| !p.references_error())
+            .filter_map(|p| p.to_opt_poly_trait_pred());
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =

@@ -3046,7 +3046,7 @@ impl Location {
         if self.block == other.block {
             self.statement_index <= other.statement_index
         } else {
-            dominators.is_dominated_by(other.block, self.block)
+            dominators.dominates(self.block, other.block)
         }
     }
 }
