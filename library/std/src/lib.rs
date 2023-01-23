@@ -214,6 +214,10 @@
 #![needs_panic_runtime]
 //
 // Lints:
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+#![feature(global_co_alloc)]
+#![feature(global_co_alloc_plvec)]
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
