@@ -1,11 +1,8 @@
 #![cfg(target_thread_local)]
 #![unstable(feature = "thread_local_internals", issue = "none")]
-#![feature(global_co_alloc_plvec)]
 
 //! Provides thread-local destructors without an associated "key", which
 //! can be more efficient.
-
-use core::alloc::PlVec;
 
 // Since what appears to be glibc 2.18 this symbol has been shipped which
 // GCC and clang both use to invoke destructors in thread_local globals, so
@@ -66,6 +63,15 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     if !REGISTERED.get() {
         _tlv_atexit(run_dtors, ptr::null_mut());
         REGISTERED.set(true);
+    }
+
+    type List = alloc::vec::PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
+
+    #[thread_local]
+    static DTORS: Cell<*mut List> = Cell::new(ptr::null_mut());
+    if DTORS.get().is_null() {
+        let v: Box<List> = box Vec::new();
+        DTORS.set(Box::into_raw(v));
     }
 
     extern "C" {
