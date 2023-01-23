@@ -63,7 +63,7 @@ where
             }
         }
 
-        let mut vec = Vec::<T, Global, COOP_PREFERRED>::new();
+        let mut vec = Vec::<T, Global, COOP_PREFERRED>::new_co();
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
         vec.spec_extend(iterator);

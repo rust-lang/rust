@@ -29,7 +29,7 @@ where
         // vector being full in the few subsequent loop iterations.
         // So we get better branch prediction.
         let mut vector = match iterator.next() {
-            None => return Vec::new(),
+            None => return Vec::new_co(),
             Some(element) => {
                 let (lower, _) = iterator.size_hint();
                 let initial_capacity =
