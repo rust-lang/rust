@@ -458,10 +458,16 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
     pub mode: PassMode,
+}
+
+impl<'a, Ty: fmt::Debug + fmt::Display> fmt::Debug for ArgAbi<'a, Ty> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ArgAbi").field("layout", &self.layout).field("mode", &self.mode).finish()
+    }
 }
 
 impl<'a, Ty> ArgAbi<'a, Ty> {
@@ -605,7 +611,7 @@ pub enum Conv {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
     pub args: Box<[ArgAbi<'a, Ty>]>,
@@ -624,6 +630,19 @@ pub struct FnAbi<'a, Ty> {
     pub conv: Conv,
 
     pub can_unwind: bool,
+}
+
+impl<'a, Ty: fmt::Debug + fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FnAbi")
+            .field("args", &self.args)
+            .field("ret", &self.ret)
+            .field("c_variadic", &self.c_variadic)
+            .field("fixed_count", &self.fixed_count)
+            .field("conv", &self.conv)
+            .field("can_unwind", &self.can_unwind)
+            .finish()
+    }
 }
 
 /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.

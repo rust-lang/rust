@@ -68,10 +68,19 @@ impl<'a> Layout<'a> {
 /// to that obtained from `layout_of(ty)`, as we need to produce
 /// layouts for which Rust types do not exist, such as enum variants
 /// or synthetic fields of enums (i.e., discriminants) and fat pointers.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct TyAndLayout<'a, Ty> {
     pub ty: Ty,
     pub layout: Layout<'a>,
+}
+
+impl<'a, Ty: fmt::Debug + fmt::Display> fmt::Debug for TyAndLayout<'a, Ty> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TyAndLayout")
+            .field("ty", &format_args!("{}", &self.ty))
+            .field("layout", &self.layout)
+            .finish()
+    }
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
