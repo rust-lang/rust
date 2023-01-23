@@ -887,18 +887,6 @@ impl Primitive {
         }
     }
 
-    // FIXME(eddyb) remove, it's trivial thanks to `matches!`.
-    #[inline]
-    pub fn is_float(self) -> bool {
-        matches!(self, F32 | F64)
-    }
-
-    // FIXME(eddyb) remove, it's completely unused.
-    #[inline]
-    pub fn is_int(self) -> bool {
-        matches!(self, Int(..))
-    }
-
     #[inline]
     pub fn is_ptr(self) -> bool {
         matches!(self, Pointer)
