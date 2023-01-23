@@ -6,8 +6,8 @@
 // The this solution works like the implementation of macOS and
 // doesn't additional OS support
 
-use core::alloc::PlVec;
 use crate::mem;
+use core::alloc::PlVec;
 
 #[thread_local]
 static mut DTORS: PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))> = PlVec::new();
