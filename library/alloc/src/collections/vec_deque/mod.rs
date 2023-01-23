@@ -2799,11 +2799,11 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> FromIterator<T> for VecDeque<T, A, COOP_PREFERRED>
+impl<T, const COOP_PREFERRED: bool> FromIterator<T> for VecDeque<T, Global, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T, A, COOP_PREFERRED> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T, Global, COOP_PREFERRED> {
         SpecFromIter::spec_from_iter(iter.into_iter())
     }
 }
