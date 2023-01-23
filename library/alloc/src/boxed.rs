@@ -641,7 +641,8 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        unsafe { RawVec::with_capacity(len).into_box(len) }
+        // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+        unsafe { RawVec::<T, Global, false>::with_capacity(len).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents, with the memory
@@ -666,7 +667,8 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
+        // false = no need for co-alloc metadata, since it would get lost once converted to Box.
+        unsafe { RawVec::<T, Global, false>::with_capacity_zeroed(len).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents. Returns an error if
@@ -1687,7 +1689,7 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
 impl<T, const N: usize, const COOP_PREFERRED: bool> TryFrom<Vec<T, Global, COOP_PREFERRED>>
     for Box<[T; N]>
 where
-    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     type Error = Vec<T, Global, COOP_PREFERRED>;
 
