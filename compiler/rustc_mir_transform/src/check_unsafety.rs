@@ -126,6 +126,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     }
                 }
                 &AggregateKind::Closure(def_id, _) | &AggregateKind::Generator(def_id, _, _) => {
+                    let def_id = def_id.expect_local();
                     let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
                         self.tcx.unsafety_check_result(def_id);
                     self.register_violations(violations, used_unsafe_blocks.iter().copied());
