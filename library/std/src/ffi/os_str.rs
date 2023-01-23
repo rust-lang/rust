@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 
+use crate::alloc::Global;
 use crate::borrow::{Borrow, Cow};
 use crate::cmp;
 use crate::collections::TryReserveError;
