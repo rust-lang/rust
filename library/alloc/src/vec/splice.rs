@@ -23,7 +23,7 @@ pub struct Splice<
     'a,
     I: Iterator + 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
-    const COOP_PREFERRED: bool = false
+    const COOP_PREFERRED: bool = false,
 > where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -32,7 +32,8 @@ pub struct Splice<
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> Iterator for Splice<'_, I, A, COOP_PREFERRED>
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> Iterator
+    for Splice<'_, I, A, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -48,7 +49,8 @@ where
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator for Splice<'_, I, A, COOP_PREFERRED>
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator
+    for Splice<'_, I, A, COOP_PREFERRED>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -58,13 +60,16 @@ where
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator for Splice<'_, I, A, COOP_PREFERRED> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator
+    for Splice<'_, I, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> Drop for Splice<'_, I, A, COOP_PREFERRED>
+impl<I: Iterator, A: Allocator, const COOP_PREFERRED: bool> Drop
+    for Splice<'_, I, A, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {

@@ -3,8 +3,8 @@ use core::cmp;
 use core::iter::TrustedLen;
 use core::ptr;
 
-use crate::raw_vec::RawVec;
 use crate::alloc::Global;
+use crate::raw_vec::RawVec;
 use crate::DEFAULT_COOP_PREFERRED;
 
 use super::{SpecExtend, Vec};
@@ -51,7 +51,7 @@ where
 }
 
 #[allow(unused_braces)]
-impl<T, I> SpecFromIterNested<T, I> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}>
+impl<T, I> SpecFromIterNested<T, I> for Vec<T, Global, { DEFAULT_COOP_PREFERRED!() }>
 where
     I: TrustedLen<Item = T>,
 {
