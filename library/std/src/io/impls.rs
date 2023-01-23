@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use crate::alloc::Allocator;
+use crate::alloc::{Allocator, self};
 use crate::cmp;
 use crate::collections::VecDeque;
 use crate::fmt;
@@ -419,7 +419,7 @@ where
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
 impl<A: Allocator, const _COOP_PREFERRED: bool> Read for VecDeque<u8, A, _COOP_PREFERRED>
 where
-    [(); co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREFERRED)]:,
 {
     /// Fill `buf` with the contents of the "front" slice as returned by
     /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are
@@ -446,7 +446,7 @@ where
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
 impl<A: Allocator, const _COOP_PREFERRED: bool> Write for VecDeque<u8, A, _COOP_PREFERRED>
 where
-    [(); co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREFERRED)]:,
 {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
