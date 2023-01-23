@@ -774,15 +774,6 @@ where
         variant_index: VariantIdx,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        // This must be an enum or generator.
-        match dest.layout.ty.kind() {
-            ty::Adt(adt, _) => assert!(adt.is_enum()),
-            ty::Generator(..) => {}
-            _ => span_bug!(
-                self.cur_span(),
-                "write_discriminant called on non-variant-type (neither enum nor generator)"
-            ),
-        }
         // Layout computation excludes uninhabited variants from consideration
         // therefore there's no way to represent those variants in the given layout.
         // Essentially, uninhabited variants do not have a tag that corresponds to their

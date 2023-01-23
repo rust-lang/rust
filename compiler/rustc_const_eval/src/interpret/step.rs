@@ -7,6 +7,7 @@ use either::Either;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_target::abi::VariantIdx;
 
 use super::{ImmTy, InterpCx, Machine};
 
@@ -199,13 +200,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Aggregate(box ref kind, ref operands) => {
-                assert!(matches!(kind, mir::AggregateKind::Array(..)));
-
+                self.write_uninit(&dest)?;
+                let (variant_index, variant_dest, active_field_index) = match *kind {
+                    mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
+                        let variant_dest = self.place_downcast(&dest, variant_index)?;
+                        (variant_index, variant_dest, active_field_index)
+                    }
+                    _ => (VariantIdx::from_u32(0), dest.clone(), None),
+                };
+                if active_field_index.is_some() {
+                    assert_eq!(operands.len(), 1);
+                }
                 for (field_index, operand) in operands.iter().enumerate() {
-                    let op = self.eval_operand(operand, None)?;
-                    let field_dest = self.place_field(&dest, field_index)?;
+                    let field_index = active_field_index.unwrap_or(field_index);
+                    let field_dest = self.place_field(&variant_dest, field_index)?;
+                    let op = self.eval_operand(operand, Some(field_dest.layout))?;
                     self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
                 }
+                self.write_discriminant(variant_index, &dest)?;
             }
 
             Repeat(ref operand, _) => {

@@ -13,6 +13,7 @@ use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_target::abi::VariantIdx;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
@@ -114,6 +115,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         } else {
                             (dest, active_field_index)
                         }
+                    }
+                    mir::AggregateKind::Generator(..) => {
+                        dest.codegen_set_discr(bx, VariantIdx::from_u32(0));
+                        (dest, None)
                     }
                     _ => (dest, None),
                 };
