@@ -1,6 +1,6 @@
+use crate::alloc::Global;
 use core::ptr::{self};
 use core::slice::{self};
-use crate::alloc::Global;
 
 // A helper struct for in-place iteration that drops the destination slice of iteration,
 // i.e. the head. The source slice (the tail) is dropped by IntoIter.

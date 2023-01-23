@@ -54,7 +54,7 @@ enum AllocInit {
 pub(crate) struct RawVec<
     T,
     A: Allocator = Global,
-    const COOP_PREFERRED: bool = {DEFAULT_COOP_PREFERRED!()},
+    const COOP_PREFERRED: bool = { DEFAULT_COOP_PREFERRED!() },
 > where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -223,9 +223,7 @@ where
                 cap: capacity,
                 alloc,
                 metas: [GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/};
-                    alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                        COOP_PREFERRED,
-                    )],
+                    alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)],
             }
         }
     }

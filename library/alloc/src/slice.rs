@@ -101,9 +101,7 @@ pub(crate) mod hack {
         b: Box<[T], A>,
     ) -> Vec<T, A, COOP_PREFERRED>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-            COOP_PREFERRED,
-        )]:,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         unsafe {
             let len = b.len();
@@ -119,9 +117,7 @@ pub(crate) mod hack {
         alloc: A,
     ) -> Vec<T, A, COOP_PREFERRED>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-            COOP_PREFERRED,
-        )]:,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         T::to_vec(s, alloc)
     }
@@ -134,9 +130,7 @@ pub(crate) mod hack {
         ) -> Vec<Self, A, COOP_PREFERRED>
         where
             Self: Sized,
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                COOP_PREFERRED,
-            )]:;
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:;
     }
 
     #[cfg(not(no_global_oom_handling))]
@@ -147,24 +141,18 @@ pub(crate) mod hack {
             alloc: A,
         ) -> Vec<Self, A, COOP_PREFERRED>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                COOP_PREFERRED,
-            )]:,
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
         {
             struct DropGuard<'a, T, A: Allocator, const COOP_PREFERRED: bool>
             where
-                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                    COOP_PREFERRED,
-                )]:,
+                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
             {
                 vec: &'a mut Vec<T, A, COOP_PREFERRED>,
                 num_init: usize,
             }
             impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> Drop for DropGuard<'a, T, A, COOP_PREFERRED>
             where
-                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                    COOP_PREFERRED,
-                )]:,
+                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
             {
                 #[inline]
                 fn drop(&mut self) {
@@ -202,9 +190,7 @@ pub(crate) mod hack {
             alloc: A,
         ) -> Vec<Self, A, COOP_PREFERRED>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-                COOP_PREFERRED,
-            )]:,
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
         {
             let mut v = Vec::with_capacity_in(s.len(), alloc);
             // SAFETY:
@@ -459,9 +445,7 @@ impl<T> [T] {
     pub fn to_vec<const COOP_PREFERRED: bool>(&self) -> Vec<T, Global, COOP_PREFERRED>
     where
         T: Clone,
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(
-            COOP_PREFERRED,
-        )]:,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
     {
         self.to_vec_in::<Global, COOP_PREFERRED>(Global)
     }
@@ -489,9 +473,7 @@ impl<T> [T] {
     ) -> Vec<T, A, COOP_PREFERRED>
     where
         T: Clone,
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-            COOP_PREFERRED,
-        )]:,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self, alloc)
@@ -518,9 +500,7 @@ impl<T> [T] {
         self: Box<Self, A>,
     ) -> Vec<T, A, COOP_PREFERRED>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
-            COOP_PREFERRED,
-        )]:,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
@@ -936,48 +916,48 @@ where
         }
     };
 
-//<<<<<<< HEAD
+    //<<<<<<< HEAD
     let run_alloc_fn = |len: usize| -> *mut sort::TimSortRun {
         // SAFETY: Creating the layout is safe as long as merge_sort never calls this with an
         // obscene length or 0.
         unsafe {
             alloc::alloc(alloc::Layout::array::<sort::TimSortRun>(len).unwrap_unchecked())
                 as *mut sort::TimSortRun
-/*=======
-    // Allocate a buffer to use as scratch memory. We keep the length 0 so we can keep in it
-    // shallow copies of the contents of `v` without risking the dtors running on copies if
-    // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
-    // which will always have length at most `len / 2`.
-    // `buf` is temporary = not passed around too much => using COOP_PREFERRED=true.
-    // @FIXME move definitions of `buf` and `runs` down, after while end > 0 {...}, just before they are used. Then benchmark if it makes (cache-related) difference.
-    let mut buf = Vec::<T, Global, true>::with_capacity(len / 2);
+            /*=======
+                // Allocate a buffer to use as scratch memory. We keep the length 0 so we can keep in it
+                // shallow copies of the contents of `v` without risking the dtors running on copies if
+                // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
+                // which will always have length at most `len / 2`.
+                // `buf` is temporary = not passed around too much => using COOP_PREFERRED=true.
+                // @FIXME move definitions of `buf` and `runs` down, after while end > 0 {...}, just before they are used. Then benchmark if it makes (cache-related) difference.
+                let mut buf = Vec::<T, Global, true>::with_capacity(len / 2);
 
-    // In order to identify natural runs in `v`, we traverse it backwards. That might seem like a
-    // strange decision, but consider the fact that merges more often go in the opposite direction
-    // (forwards). According to benchmarks, merging forwards is slightly faster than merging
-    // backwards. To conclude, identifying runs by traversing backwards improves performance.
-    // `runs` is temporary = not passed around too much => using COOP_PREFERRED=true.
-    let mut runs: Vec<_, Global, true> = vec![];
-    let mut end = len;
-    while end > 0 {
-        // Find the next natural run, and reverse it if it's strictly descending.
-        let mut start = end - 1;
-        if start > 0 {
-            start -= 1;
-            unsafe {
-                if is_less(v.get_unchecked(start + 1), v.get_unchecked(start)) {
-                    while start > 0 && is_less(v.get_unchecked(start), v.get_unchecked(start - 1)) {
+                // In order to identify natural runs in `v`, we traverse it backwards. That might seem like a
+                // strange decision, but consider the fact that merges more often go in the opposite direction
+                // (forwards). According to benchmarks, merging forwards is slightly faster than merging
+                // backwards. To conclude, identifying runs by traversing backwards improves performance.
+                // `runs` is temporary = not passed around too much => using COOP_PREFERRED=true.
+                let mut runs: Vec<_, Global, true> = vec![];
+                let mut end = len;
+                while end > 0 {
+                    // Find the next natural run, and reverse it if it's strictly descending.
+                    let mut start = end - 1;
+                    if start > 0 {
                         start -= 1;
-                    }
-                    v[start..end].reverse();
-                } else {
-                    while start > 0 && !is_less(v.get_unchecked(start), v.get_unchecked(start - 1))
-                    {
-                        start -= 1;
-                    }
-                }
-            }
->>>>>>> 6bd68177557 (CoAlloc: Slice: Fixing COOP_PREFERRED)*/
+                        unsafe {
+                            if is_less(v.get_unchecked(start + 1), v.get_unchecked(start)) {
+                                while start > 0 && is_less(v.get_unchecked(start), v.get_unchecked(start - 1)) {
+                                    start -= 1;
+                                }
+                                v[start..end].reverse();
+                            } else {
+                                while start > 0 && !is_less(v.get_unchecked(start), v.get_unchecked(start - 1))
+                                {
+                                    start -= 1;
+                                }
+                            }
+                        }
+            >>>>>>> 6bd68177557 (CoAlloc: Slice: Fixing COOP_PREFERRED)*/
         }
     };
 
