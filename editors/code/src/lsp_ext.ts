@@ -21,6 +21,7 @@ export interface ServerStatusParams {
 export const serverStatus = new lc.NotificationType<ServerStatusParams>(
     "experimental/serverStatus"
 );
+export const openServerLogs = new lc.NotificationType0("rust-analyzer/openServerLogs");
 
 export const reloadWorkspace = new lc.RequestType0<null, void>("rust-analyzer/reloadWorkspace");
 
