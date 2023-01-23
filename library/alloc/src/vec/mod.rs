@@ -424,6 +424,7 @@ pub type CoVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: All
     Vec<T, A, true>;
 
 /// "Plain" Vec. Not "cooperative" - not carrying extra data to assist the allocator.
+/// FIXME after cleanup, see if we still use this in core:: and/or alloc::
 #[unstable(feature = "global_co_alloc_plvec", issue = "none")]
 pub type PlVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
     Vec<T, A, false>;
