@@ -456,11 +456,14 @@ impl<T> [T] {
     #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn to_vec(&self) -> Vec<T>
+    pub fn to_vec<const COOP_PREFERRED: bool>(&self) -> Vec<T, Global, COOP_PREFERRED>
     where
         T: Clone,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(
+            COOP_PREFERRED,
+        )]:,
     {
-        self.to_vec_in(Global)
+        self.to_vec_in::<Global, COOP_PREFERRED>(Global)
     }
 
     /// Copies `self` into a new `Vec` with an allocator.
