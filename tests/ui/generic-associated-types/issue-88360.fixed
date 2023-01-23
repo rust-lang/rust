@@ -12,7 +12,7 @@ where
     for<'a> Self: GatTrait<Gat<'a> = &'a T>,
 {
     fn copy(&self) -> Self::Gat<'_> where T: Copy {
-        *self.test()
+        self.test()
         //~^ mismatched types
     }
 }

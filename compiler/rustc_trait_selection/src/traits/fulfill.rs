@@ -1,5 +1,4 @@
 use crate::infer::{InferCtxt, TyOrConstInferVar};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
@@ -54,8 +53,6 @@ pub struct FulfillmentContext<'tcx> {
     // fulfillment context.
     predicates: ObligationForest<PendingPredicateObligation<'tcx>>,
 
-    relationships: FxHashMap<ty::TyVid, ty::FoundRelationships>,
-
     // Is it OK to register obligations into this infcx inside
     // an infcx snapshot?
     //
@@ -85,19 +82,11 @@ static_assert_size!(PendingPredicateObligation<'_>, 72);
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub(super) fn new() -> FulfillmentContext<'tcx> {
-        FulfillmentContext {
-            predicates: ObligationForest::new(),
-            relationships: FxHashMap::default(),
-            usable_in_snapshot: false,
-        }
+        FulfillmentContext { predicates: ObligationForest::new(), usable_in_snapshot: false }
     }
 
     pub(super) fn new_in_snapshot() -> FulfillmentContext<'tcx> {
-        FulfillmentContext {
-            predicates: ObligationForest::new(),
-            relationships: FxHashMap::default(),
-            usable_in_snapshot: true,
-        }
+        FulfillmentContext { predicates: ObligationForest::new(), usable_in_snapshot: true }
     }
 
     /// Attempts to select obligations using `selcx`.
@@ -139,8 +128,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
         assert!(!infcx.is_in_snapshot() || self.usable_in_snapshot);
 
-        super::relationships::update(self, infcx, &obligation);
-
         self.predicates
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
@@ -163,10 +150,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
         self.predicates.map_pending_obligations(|o| o.obligation.clone())
-    }
-
-    fn relationships(&mut self) -> &mut FxHashMap<ty::TyVid, ty::FoundRelationships> {
-        &mut self.relationships
     }
 }
 

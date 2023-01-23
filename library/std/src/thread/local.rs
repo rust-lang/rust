@@ -1110,8 +1110,7 @@ pub mod os {
             let ptr = if ptr.is_null() {
                 // If the lookup returned null, we haven't initialized our own
                 // local copy, so do that now.
-                let ptr: Box<Value<T>> = box Value { inner: LazyKeyInner::new(), key: self };
-                let ptr = Box::into_raw(ptr);
+                let ptr = Box::into_raw(Box::new(Value { inner: LazyKeyInner::new(), key: self }));
                 // SAFETY: At this point we are sure there is no value inside
                 // ptr so setting it will not affect anyone else.
                 unsafe {

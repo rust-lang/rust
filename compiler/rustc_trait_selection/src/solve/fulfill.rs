@@ -1,6 +1,5 @@
 use std::mem;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_infer::{
     infer::InferCtxt,
     traits::{
@@ -8,7 +7,6 @@ use rustc_infer::{
         SelectionError, TraitEngine,
     },
 };
-use rustc_middle::ty;
 
 use super::{search_graph, Certainty, EvalCtxt};
 
@@ -101,9 +99,5 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
         self.obligations.clone()
-    }
-
-    fn relationships(&mut self) -> &mut FxHashMap<ty::TyVid, ty::FoundRelationships> {
-        unimplemented!("Should be moved out of `TraitEngine`")
     }
 }

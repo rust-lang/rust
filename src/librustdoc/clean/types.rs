@@ -2498,14 +2498,7 @@ impl Import {
     }
 
     pub(crate) fn imported_item_is_doc_hidden(&self, tcx: TyCtxt<'_>) -> bool {
-        match self.source.did {
-            Some(did) => tcx
-                .get_attrs(did, sym::doc)
-                .filter_map(ast::Attribute::meta_item_list)
-                .flatten()
-                .has_word(sym::hidden),
-            None => false,
-        }
+        self.source.did.map_or(false, |did| tcx.is_doc_hidden(did))
     }
 }
 
