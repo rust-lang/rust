@@ -137,7 +137,8 @@
 //! }
 //! vec.truncate(write_idx);
 //! ```
-use core::alloc::{self, Allocator};
+use core::alloc;
+use crate::alloc::Global;
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self};
@@ -152,10 +153,10 @@ pub(super) trait InPlaceIterableMarker {}
 impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
 
 #[allow(unused_braces)]
-impl<T, I, A: Allocator,  const COOP_PREFERRED: bool> SpecFromIter<T, I> for Vec<T, A, COOP_PREFERRED>
+impl<T, I, const COOP_PREFERRED: bool> SpecFromIter<T, I> for Vec<T, Global, COOP_PREFERRED>
 where
     I: Iterator<Item = T> + SourceIter<Source: AsVecIntoIter> + InPlaceIterableMarker,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 
 {
     default fn from_iter(mut iterator: I) -> Self {

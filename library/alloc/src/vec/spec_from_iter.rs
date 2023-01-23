@@ -1,4 +1,4 @@
-use core::alloc::{self, Allocator};
+use core::alloc;
 use crate::alloc::Global;
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
@@ -28,10 +28,10 @@ pub(super) trait SpecFromIter<T, I> {
 }
 
 #[allow(unused_braces)]
-impl<T, I, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, I> for Vec<T, A, COOP_PREFERRED>
+impl<T, I, const COOP_PREFERRED: bool> SpecFromIter<T, I> for Vec<T, Global, COOP_PREFERRED>
 where
     I: Iterator<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     default fn from_iter(iterator: I) -> Self {
         SpecFromIterNested::from_iter(iterator)
