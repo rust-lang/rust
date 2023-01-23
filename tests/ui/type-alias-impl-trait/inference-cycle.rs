@@ -3,7 +3,6 @@
 
 mod m {
     type Foo = impl std::fmt::Debug;
-    //~^ ERROR cycle detected
 
     // Cycle: error today, but it'd be nice if it eventually worked
 
@@ -17,6 +16,7 @@ mod m {
 
     fn baz() -> Foo {
         let f: Foo = 22_u32;
+        //~^ ERROR concrete type differs
         f
     }
 

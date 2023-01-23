@@ -4,6 +4,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, Node};
+use rustc_infer::infer::opaque_types::may_define_opaque_type;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
@@ -589,6 +590,12 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                 debug!("no constraint: no typeck results");
                 return;
             }
+
+            if !may_define_opaque_type(self.tcx, item_def_id, self.def_id) {
+                debug!("no constraint: does not have TAIT in signature");
+                return;
+            }
+
             // Calling `mir_borrowck` can lead to cycle errors through
             // const-checking, avoid calling it if we don't have to.
             // ```rust

@@ -7,6 +7,8 @@ type DropType<T> = ();
 //~^ ERROR type parameter `T` is unused
 
 type Foo = impl std::fmt::Debug;
+//~^ ERROR unconstrained opaque type
+
 // Check that, even though `Foo` is not part
 // of the actual type, we do allow this to be a defining scope
 fn g() -> DropType<Foo> {

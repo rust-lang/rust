@@ -1,11 +1,10 @@
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]
 
-// FIXME This should compile, but it currently doesn't
+// check-pass
 
 mod m {
     type Foo = impl std::fmt::Debug;
-    //~^ ERROR: cycle detected when computing type of `m::Foo::{opaque#0}` [E0391]
 
     pub fn foo() -> Foo {
         22_u32

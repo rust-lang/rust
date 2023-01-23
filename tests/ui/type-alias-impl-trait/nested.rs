@@ -1,6 +1,7 @@
 #![feature(type_alias_impl_trait)]
 
 type Foo = impl std::fmt::Debug;
+//~^ ERROR: unconstrained opaque type
 type Bar = impl Trait<Foo>;
 
 trait Trait<T> {}

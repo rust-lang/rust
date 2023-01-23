@@ -638,11 +638,19 @@ impl<'tcx> InferCtxt<'tcx> {
 /// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
 #[instrument(skip(tcx), level = "trace", ret)]
-fn may_define_opaque_type<'tcx>(
+pub fn may_define_opaque_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     opaque_def_id: LocalDefId,
 ) -> bool {
+    if tcx.is_closure(def_id.to_def_id()) {
+        return may_define_opaque_type(
+            tcx,
+            tcx.parent(def_id.to_def_id()).expect_local(),
+            opaque_def_id,
+        );
+    }
+
     let param_env = tcx.param_env(def_id);
     let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(opaque_def_id);
     let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
