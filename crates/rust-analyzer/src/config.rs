@@ -989,6 +989,10 @@ impl Config {
         self.experimental("codeActionGroup")
     }
 
+    pub fn open_server_logs(&self) -> bool {
+        self.experimental("openServerLogs")
+    }
+
     pub fn server_status_notification(&self) -> bool {
         self.experimental("serverStatusNotification")
     }

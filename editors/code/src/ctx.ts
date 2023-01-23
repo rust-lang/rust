@@ -187,6 +187,11 @@ export class Ctx {
                     this.setServerStatus(params)
                 )
             );
+            this.pushClientCleanup(
+                this._client.onNotification(ra.openServerLogs, () => {
+                    this.outputChannel!.show();
+                })
+            );
         }
         return this._client;
     }

@@ -151,6 +151,13 @@ impl Notification for ClearFlycheck {
     const METHOD: &'static str = "rust-analyzer/clearFlycheck";
 }
 
+pub enum OpenServerLogs {}
+
+impl Notification for OpenServerLogs {
+    type Params = ();
+    const METHOD: &'static str = "rust-analyzer/openServerLogs";
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RunFlycheckParams {
