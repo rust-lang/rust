@@ -7,7 +7,7 @@
 +     scope 1 (inlined foo) {              // at $DIR/asm_unwind.rs:21:5: 21:10
 +         let _2: D;                       // in scope 1 at $DIR/asm_unwind.rs:15:9: 15:11
 +         scope 2 {
-+             debug _d => _2;              // in scope 2 at $DIR/asm_unwind.rs:15:9: 15:11
++             debug _d => const D;         // in scope 2 at $DIR/asm_unwind.rs:15:9: 15:11
 +             scope 3 {
 +             }
 +         }
