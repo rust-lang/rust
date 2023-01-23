@@ -60,7 +60,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let replace_opaque_type = |def_id: DefId| {
             def_id
                 .as_local()
-                .map_or(false, |def_id| self.opaque_type_origin(def_id, span, param_env).is_some())
+                .map_or(false, |def_id| self.opaque_type_origin(def_id, span).is_some())
         };
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
@@ -145,7 +145,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         //     let x = || foo(); // returns the Opaque assoc with `foo`
                         // }
                         // ```
-                        self.opaque_type_origin(def_id, cause.span, param_env)?
+                        self.opaque_type_origin(def_id, cause.span)?
                     }
                     DefiningAnchor::Bubble => self.opaque_ty_origin_unchecked(def_id, cause.span),
                     DefiningAnchor::Error => return None,
@@ -156,10 +156,9 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if let Some(OpaqueTyOrigin::TyAlias) =
-                        b_def_id.as_local().and_then(|b_def_id| {
-                            self.opaque_type_origin(b_def_id, cause.span, param_env)
-                        })
+                    if let Some(OpaqueTyOrigin::TyAlias) = b_def_id
+                        .as_local()
+                        .and_then(|b_def_id| self.opaque_type_origin(b_def_id, cause.span))
                     {
                         self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
@@ -374,12 +373,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     #[instrument(skip(self), level = "trace", ret)]
-    pub fn opaque_type_origin(
-        &self,
-        def_id: LocalDefId,
-        span: Span,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Option<OpaqueTyOrigin> {
+    pub fn opaque_type_origin(&self, def_id: LocalDefId, span: Span) -> Option<OpaqueTyOrigin> {
         let parent_def_id = match self.defining_use_anchor {
             DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
             DefiningAnchor::Bind(bind) => bind,
@@ -400,9 +394,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // Anonymous `impl Trait`
             hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
             // Named `type Foo = impl Bar;`
-            hir::OpaqueTyOrigin::TyAlias => {
-                may_define_opaque_type(self.tcx, parent_def_id, def_id, param_env)
-            }
+            hir::OpaqueTyOrigin::TyAlias => may_define_opaque_type(self.tcx, parent_def_id, def_id),
         };
         trace!(?origin);
         in_definition_scope.then_some(*origin)
@@ -650,8 +642,8 @@ fn may_define_opaque_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     opaque_def_id: LocalDefId,
-    param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
+    let param_env = tcx.param_env(def_id);
     let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(opaque_def_id);
     let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
