@@ -717,6 +717,13 @@ where
 
 /// Gets a handle to the thread that invokes it.
 ///
+/// # Panics
+///
+/// Panics if called beyond the end of `main`, when the Rust standard library's
+/// thread state has been torn down. For example, use of `libc::atexit` on some
+/// platforms can hit this. In general much of the standard library is not okay
+/// to use before or after `main`.
+///
 /// # Examples
 ///
 /// Getting a handle to the current thread with `thread::current()`:
