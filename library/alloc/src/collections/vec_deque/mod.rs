@@ -166,7 +166,7 @@ where
     /// Creates an empty deque.
     #[inline]
     fn default() -> VecDeque<T, Global, COOP_PREFERRED> {
-        VecDeque::new()
+        VecDeque::<T, Global, COOP_PREFERRED>::new()
     }
 }
 
@@ -554,6 +554,7 @@ where
 impl<T, A: Allocator, const COOP_PREFERRED: bool> VecDeque<T, A, COOP_PREFERRED>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     /// Creates an empty deque.
     ///
@@ -587,8 +588,8 @@ where
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> VecDeque<T, A, COOP_PREFERRED> {
-        Self::with_capacity_in(capacity, Global)
+    pub fn with_capacity(capacity: usize) -> VecDeque<T, Global, COOP_PREFERRED> {
+        VecDeque::<T, Global, COOP_PREFERRED>::with_capacity_in(capacity, Global)
     }
 }
 
@@ -1402,7 +1403,7 @@ where
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A, COOP_PREFERRED>
     where
         R: RangeBounds<usize>,
         [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(SHORT_TERM_VEC_PREFERS_COOP!())]:,
@@ -2923,7 +2924,7 @@ where
     fn from(other: Vec<T, A, OTHER_COOP_PREFERRED>) -> Self
     {
         let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
-        Self { head: 0, len, buf: unsafe { RawVec::from_raw_parts_in(ptr, cap, alloc) } }
+        Self { head: 0, len, buf: unsafe { RawVec::<T, A, COOP_PREFERRED>::from_raw_parts_in(ptr, cap, alloc) } }
     }
 }
 
@@ -2982,7 +2983,7 @@ where
                 ptr::copy(buf.add(other.head), buf, len);
             }
             // @FIXME: COOP
-            Vec::from_raw_parts_in(buf, len, cap, alloc)
+            Vec::<T, A, COOP_PREFERRED>::from_raw_parts_in(buf, len, cap, alloc)
         }
     }
 }
@@ -3003,7 +3004,7 @@ where
     /// assert_eq!(deq1, deq2);
     /// ```
     fn from(arr: [T; N]) -> Self {
-        let mut deq = VecDeque::with_capacity(N);
+        let mut deq = VecDeque::<T, Global, COOP_PREFERRED>::with_capacity(N);
         let arr = ManuallyDrop::new(arr);
         if !<T>::IS_ZST {
             // SAFETY: VecDeque::with_capacity ensures that there is enough capacity.
