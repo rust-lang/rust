@@ -451,7 +451,8 @@ where
                     // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
                     let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
-                    let _ = RawVec::<T, A, true>::from_raw_parts_in(
+                    // @FIXME pass true instead of COOP_PREFERRED - use e.g.: if COOP_PREFERRED {let _ = RawVec::<T, A, COOP_PREFERRED>::from_raw_parts_in(..) } else { let _ = from_raw_parts_in_coop(...)} }
+                    let _ = RawVec::<T, A, COOP_PREFERRED>::from_raw_parts_in(
                         self.0.buf.as_ptr(),
                         self.0.cap,
                         alloc,
