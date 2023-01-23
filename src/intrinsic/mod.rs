@@ -1158,8 +1158,6 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(bx: &'b mut Builder<'a, 'gcc, 'tcx>, try_fu
 // the right personality function.
 #[cfg(feature="master")]
 fn codegen_gnu_try<'gcc>(bx: &mut Builder<'_, 'gcc, '_>, try_func: RValue<'gcc>, data: RValue<'gcc>, catch_func: RValue<'gcc>, dest: RValue<'gcc>) {
-    //use std::ops::Deref;
-    //let cx: &CodegenCx<'gcc, '_> = bx.deref();
     let cx: &CodegenCx<'gcc, '_> = bx.cx;
     let (llty, func) = get_rust_try_fn(cx, &mut |mut bx| {
         // Codegens the shims described above:
@@ -1204,7 +1202,7 @@ fn codegen_gnu_try<'gcc>(bx: &mut Builder<'_, 'gcc, '_>, try_func: RValue<'gcc>,
 
         // NOTE: the blocks must be filled before adding the try/catch, otherwise gcc will not
         // generate a try/catch.
-        // FIXME: add a check in the libgccjit API to prevent this.
+        // FIXME(antoyo): add a check in the libgccjit API to prevent this.
         bx.switch_to_block(current_block);
         bx.invoke(try_func_ty, try_func, &[data], then, catch, None);
     });

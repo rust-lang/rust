@@ -13,7 +13,6 @@ src/test/ui/debuginfo/debuginfo-emit-llvm-ir-and-split-debuginfo.rs
 src/test/ui/functions-closures/parallel-codegen-closures.rs
 src/test/ui/linkage-attr/linkage1.rs
 src/test/ui/lto/dylib-works.rs
-src/test/ui/macros/rfc-2011-nicer-assert-messages/assert-without-captures-does-not-create-unnecessary-code.rs
 src/test/ui/numbers-arithmetic/saturating-float-casts.rs
 src/test/ui/polymorphization/promoted-function.rs
 src/test/ui/process/nofile-limit.rs
@@ -47,6 +46,18 @@ src/test/ui/oom_unwind.rs
 src/test/ui/panic-runtime/abort-link-to-unwinding-crates.rs
 src/test/ui/panic-runtime/abort.rs
 src/test/ui/panic-runtime/link-to-abort.rs
+src/test/ui/unwind-no-uwtable.rs
+src/test/ui/issues/issue-14875.rs
+src/test/ui/issues/issue-29948.rs
+src/test/ui/issues/issue-40883.rs
+src/test/ui/issues/issue-43853.rs
+src/test/ui/issues/issue-47364.rs
+src/test/ui/simd/issue-17170.rs
+src/test/ui/simd/issue-39720.rs
+src/test/ui/simd/issue-85915-simd-ptrs.rs
+src/test/ui/simd/issue-89193.rs
+src/test/ui/statics/issue-91050-1.rs
+src/test/ui/statics/issue-91050-2.rs
+src/test/ui/macros/rfc-2011-nicer-assert-messages/assert-without-captures-does-not-create-unnecessary-code.rs
 src/test/ui/rfc-2091-track-caller/std-panic-locations.rs
 src/test/ui/rfcs/rfc1857-drop-order.rs
-src/test/ui/unwind-no-uwtable.rs

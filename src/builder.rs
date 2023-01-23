@@ -375,8 +375,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
 impl<'a, 'gcc, 'tcx> Deref for Builder<'a, 'gcc, 'tcx> {
     type Target = CodegenCx<'gcc, 'tcx>;
 
-    fn deref<'b>(&'b self) -> &'a Self::Target
-    {
+    fn deref<'b>(&'b self) -> &'a Self::Target {
         self.cx
     }
 }
@@ -1216,7 +1215,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let value = self.current_func().new_local(None, struct_type.as_type(), "landing_pad");
         let ptr = self.cx.context.new_cast(None, ptr, field1_type);
         self.block.add_assignment(None, value.access_field(None, field1), ptr);
-        self.block.add_assignment(None, value.access_field(None, field2), zero); // TODO: set the proper value here (the type of exception?).
+        self.block.add_assignment(None, value.access_field(None, field2), zero); // TODO(antoyo): set the proper value here (the type of exception?).
 
         value.to_rvalue()
     }
@@ -1232,7 +1231,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     #[cfg(feature="master")]
     fn resume(&mut self, exn: RValue<'gcc>) {
-        // TODO: check if this is normal that we need to dereference the value.
+        // TODO(antoyo): check if this is normal that we need to dereference the value.
         // NOTE: the type is wrong, so in order to get a pointer for parameter, cast it to a
         // pointer of pointer that is later dereferenced.
         let exn_type = exn.get_type().make_pointer();

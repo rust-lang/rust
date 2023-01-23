@@ -258,7 +258,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {
         let function: Function<'gcc> = unsafe { std::mem::transmute(value) };
-        // FIXME: seems like self.functions get overwritten for rust_eh_personality.
         debug_assert!(self.functions.borrow().values().find(|value| **value == function).is_some(),
             "{:?} is not a function", function);
         function
@@ -334,6 +333,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn get_fn(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
         let func = get_fn(self, instance);
         *self.current_func.borrow_mut() = Some(func);
+        // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
         unsafe { std::mem::transmute(func) }
     }
 

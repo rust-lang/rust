@@ -30,7 +30,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
 
     let func =
         if let Some(_func) = cx.get_declared_value(&sym) {
-            // FIXME: we never reach this because get_declared_value only returns global variables
+            // FIXME(antoyo): we never reach this because get_declared_value only returns global variables
             // and here we try to get a function.
             unreachable!();
             /*
