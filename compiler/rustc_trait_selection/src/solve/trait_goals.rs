@@ -4,7 +4,7 @@ use std::iter;
 
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
-use super::{Certainty, EvalCtxt, Goal, QueryResult};
+use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
@@ -253,57 +253,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.infcx.probe(|_| {
             match (a_ty.kind(), b_ty.kind()) {
                 // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`
-                (
-                    &ty::Dynamic(a_data, a_region, ty::Dyn),
-                    &ty::Dynamic(b_data, b_region, ty::Dyn),
-                ) => {
-                    // All of a's auto traits need to be in b's auto traits.
-                    let auto_traits_compatible = b_data
-                        .auto_traits()
-                        .all(|b| a_data.auto_traits().any(|a| a == b));
-                    if !auto_traits_compatible {
-                        return Err(NoSolution);
-                    }
-
-                    // If the principal def ids match (or are both none), then we're not doing
-                    // trait upcasting. We're just removing auto traits (or shortening the lifetime).
-                    if a_data.principal_def_id() == b_data.principal_def_id() {
-                        // Require that all of the trait predicates from A match B, except for
-                        // the auto traits. We do this by constructing a new A type with B's
-                        // auto traits, and equating these types.
-                        let new_a_data = a_data
-                            .iter()
-                            .filter(|a| {
-                                matches!(
-                                    a.skip_binder(),
-                                    ty::ExistentialPredicate::Trait(_) | ty::ExistentialPredicate::Projection(_)
-                                )
-                            })
-                            .chain(
-                                b_data
-                                    .auto_traits()
-                                    .map(ty::ExistentialPredicate::AutoTrait)
-                                    .map(ty::Binder::dummy),
-                            );
-                        let new_a_data = tcx.mk_poly_existential_predicates(new_a_data);
-                        let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
-
-                        // We also require that A's lifetime outlives B's lifetime.
-                        let mut nested_obligations = ecx.infcx.eq(goal.param_env, new_a_ty, b_ty)?;
-                        nested_obligations.push(goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region))));
-
-                        ecx.evaluate_all_and_make_canonical_response(nested_obligations)
-                    } else if let Some(a_principal) = a_data.principal()
-                        && let Some(b_principal) = b_data.principal()
-                        && supertraits(tcx, a_principal.with_self_ty(tcx, a_ty))
-                            .any(|trait_ref| trait_ref.def_id() == b_principal.def_id())
-                    {
-                        // FIXME: Intentionally ignoring `need_migrate_deref_output_trait_object` here for now.
-                        // Confirm upcasting candidate
-                        todo!()
-                    } else {
-                        Err(NoSolution)
-                    }
+                (&ty::Dynamic(_, _, ty::Dyn), &ty::Dynamic(_, _, ty::Dyn)) => {
+                    // Dyn upcasting is handled separately, since due to upcasting,
+                    // when there are two supertraits that differ by substs, we
+                    // may return more than one query response.
+                    return Err(NoSolution);
                 }
                 // `T` -> `dyn Trait` unsizing
                 (_, &ty::Dynamic(data, region, ty::Dyn)) => {
@@ -332,10 +286,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                                 ty::Binder::dummy(tcx.mk_trait_ref(sized_def_id, [a_ty])),
                             ),
                             // The type must outlive the lifetime of the `dyn` we're unsizing into.
-                            goal.with(
-                                tcx,
-                                ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region)),
-                            ),
+                            goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region))),
                         ])
                         .collect();
 
@@ -412,6 +363,81 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 _ => Err(NoSolution),
             }
         })
+    }
+
+    fn consider_builtin_dyn_unsize_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> Vec<CanonicalResponse<'tcx>> {
+        let tcx = ecx.tcx();
+
+        let a_ty = goal.predicate.self_ty();
+        let b_ty = goal.predicate.trait_ref.substs.type_at(1);
+        let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else {
+            return vec![];
+        };
+        let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else {
+            return vec![];
+        };
+
+        // All of a's auto traits need to be in b's auto traits.
+        let auto_traits_compatible =
+            b_data.auto_traits().all(|b| a_data.auto_traits().any(|a| a == b));
+        if !auto_traits_compatible {
+            return vec![];
+        }
+
+        let mut responses = vec![];
+        let mut unsize_dyn_to_principal = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
+            let _ = ecx.infcx.probe(|_| -> Result<(), NoSolution> {
+                // Require that all of the trait predicates from A match B, except for
+                // the auto traits. We do this by constructing a new A type with B's
+                // auto traits, and equating these types.
+                let new_a_data = principal
+                    .into_iter()
+                    .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait))
+                    .chain(a_data.iter().filter(|a| {
+                        matches!(a.skip_binder(), ty::ExistentialPredicate::Projection(_))
+                    }))
+                    .chain(
+                        b_data
+                            .auto_traits()
+                            .map(ty::ExistentialPredicate::AutoTrait)
+                            .map(ty::Binder::dummy),
+                    );
+                let new_a_data = tcx.mk_poly_existential_predicates(new_a_data);
+                let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
+
+                // We also require that A's lifetime outlives B's lifetime.
+                let mut nested_obligations = ecx.infcx.eq(goal.param_env, new_a_ty, b_ty)?;
+                nested_obligations.push(
+                    goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region))),
+                );
+
+                responses.push(ecx.evaluate_all_and_make_canonical_response(nested_obligations)?);
+
+                Ok(())
+            });
+        };
+
+        // If the principal def ids match (or are both none), then we're not doing
+        // trait upcasting. We're just removing auto traits (or shortening the lifetime).
+        if a_data.principal_def_id() == b_data.principal_def_id() {
+            unsize_dyn_to_principal(a_data.principal());
+        } else if let Some(a_principal) = a_data.principal()
+            && let Some(b_principal) = b_data.principal()
+        {
+            for super_trait_ref in supertraits(tcx, a_principal.with_self_ty(tcx, a_ty)) {
+                if super_trait_ref.def_id() != b_principal.def_id() {
+                    continue;
+                }
+                let erased_trait_ref = super_trait_ref
+                    .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+                unsize_dyn_to_principal(Some(erased_trait_ref));
+            }
+        }
+
+        responses
     }
 }
 
