@@ -84,6 +84,20 @@ fn aarch64_linux() {
 }
 
 #[test]
+#[cfg(all(target_arch = "aarch64", target_os = "windows"))]
+fn aarch64_windows() {
+    println!("asimd: {:?}", is_aarch64_feature_detected!("asimd"));
+    println!("crc: {:?}", is_aarch64_feature_detected!("crc"));
+    println!("lse: {:?}", is_aarch64_feature_detected!("lse"));
+    println!("dotprod: {:?}", is_aarch64_feature_detected!("dotprod"));
+    println!("jsconv: {:?}", is_aarch64_feature_detected!("jsconv"));
+    println!("rcpc: {:?}", is_aarch64_feature_detected!("rcpc"));
+    println!("aes: {:?}", is_aarch64_feature_detected!("aes"));
+    println!("pmull: {:?}", is_aarch64_feature_detected!("pmull"));
+    println!("sha2: {:?}", is_aarch64_feature_detected!("sha2"));
+}
+
+#[test]
 #[cfg(all(target_arch = "powerpc", target_os = "linux"))]
 fn powerpc_linux() {
     println!("altivec: {}", is_powerpc_feature_detected!("altivec"));
