@@ -40,6 +40,7 @@ fn test1() {
     require_send(send_gen);
     //~^ ERROR generator cannot be sent between threads
     //~| NOTE not `Send`
+    //~| NOTE use `std::sync::RwLock` instead
 }
 
 pub fn make_gen2<T>(t: T) -> impl Generator<Return = T> {
@@ -66,6 +67,7 @@ fn test2() {
     //~| NOTE required for
     //~| NOTE required by a bound introduced by this call
     //~| NOTE captures the following types
+    //~| NOTE use `std::sync::RwLock` instead
 }
 
 fn main() {}

@@ -5,6 +5,7 @@ LL |     require_send(send_fut);
    |                  ^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
 note: future is not `Send` as it awaits another future which is not `Send`
   --> $DIR/issue-68112.rs:34:17
    |
@@ -23,6 +24,7 @@ LL |     require_send(send_fut);
    |                  ^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
 note: future is not `Send` as it awaits another future which is not `Send`
   --> $DIR/issue-68112.rs:43:17
    |
@@ -43,6 +45,7 @@ LL |     require_send(send_fut);
    |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
    = note: required for `Arc<RefCell<i32>>` to implement `Send`
 note: required because it's used within this `async fn` body
   --> $DIR/issue-68112.rs:50:31
