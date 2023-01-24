@@ -660,7 +660,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.push_rewrite(ai.span, rewrite);
                 }
             }
-            (ast::AssocItemKind::TyAlias(ref ty_alias), _) => {
+            (ast::AssocItemKind::Type(ref ty_alias), _) => {
                 self.visit_ty_alias_kind(ty_alias, visitor_kind, ai.span);
             }
             (ast::AssocItemKind::MacCall(ref mac), _) => {
@@ -820,8 +820,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 );
             } else {
                 match &attr.kind {
-                    ast::AttrKind::Normal(ref attribute_item, _)
-                        if self.is_unknown_rustfmt_attr(&attribute_item.path.segments) =>
+                    ast::AttrKind::Normal(ref normal)
+                        if self.is_unknown_rustfmt_attr(&normal.item.path.segments) =>
                     {
                         let file_name = self.parse_sess.span_to_filename(attr.span);
                         self.report.append(

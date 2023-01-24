@@ -1,4 +1,6 @@
-use rustc_ast::ast::{self, BindingMode, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::ast::{
+    self, BindingAnnotation, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax,
+};
 use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
 
@@ -99,10 +101,10 @@ impl Rewrite for Pat {
                 write_list(&items, &fmt)
             }
             PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
-            PatKind::Ident(binding_mode, ident, ref sub_pat) => {
-                let (prefix, mutability) = match binding_mode {
-                    BindingMode::ByRef(mutability) => ("ref", mutability),
-                    BindingMode::ByValue(mutability) => ("", mutability),
+            PatKind::Ident(BindingAnnotation(by_ref, mutability), ident, ref sub_pat) => {
+                let prefix = match by_ref {
+                    ByRef::Yes => "ref",
+                    ByRef::No => "",
                 };
                 let mut_infix = format_mutability(mutability).trim();
                 let id_str = rewrite_ident(context, ident);
@@ -225,11 +227,10 @@ impl Rewrite for Pat {
             }
             PatKind::Tuple(ref items) => rewrite_tuple_pat(items, None, self.span, context, shape),
             PatKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)
+                rewrite_path(context, PathContext::Expr, q_self, path, shape)
             }
             PatKind::TupleStruct(ref q_self, ref path, ref pat_vec) => {
-                let path_str =
-                    rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)?;
+                let path_str = rewrite_path(context, PathContext::Expr, q_self, path, shape)?;
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
@@ -269,7 +270,7 @@ impl Rewrite for Pat {
 }
 
 fn rewrite_struct_pat(
-    qself: &Option<ast::QSelf>,
+    qself: &Option<ptr::P<ast::QSelf>>,
     path: &ast::Path,
     fields: &[ast::PatField],
     ellipsis: bool,
@@ -279,7 +280,7 @@ fn rewrite_struct_pat(
 ) -> Option<String> {
     // 2 =  ` {`
     let path_shape = shape.sub_width(2)?;
-    let path_str = rewrite_path(context, PathContext::Expr, qself.as_ref(), path, path_shape)?;
+    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
 
     if fields.is_empty() && !ellipsis {
         return Some(format!("{} {{}}", path_str));

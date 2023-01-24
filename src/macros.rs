@@ -209,7 +209,7 @@ fn rewrite_macro_inner(
         original_style
     };
 
-    let ts = mac.args.inner_tokens();
+    let ts = mac.args.tokens.clone();
     let has_comment = contains_comment(context.snippet(mac.span()));
     if ts.is_empty() && !has_comment {
         return match style {
@@ -393,7 +393,7 @@ pub(crate) fn rewrite_macro_def(
         return snippet;
     }
 
-    let ts = def.body.inner_tokens();
+    let ts = def.body.tokens.clone();
     let mut parser = MacroParser::new(ts.into_trees());
     let parsed_def = match parser.parse() {
         Some(def) => def,
@@ -1088,7 +1088,7 @@ pub(crate) fn convert_try_mac(
 ) -> Option<ast::Expr> {
     let path = &pprust::path_to_string(&mac.path);
     if path == "try" || path == "r#try" {
-        let ts = mac.args.inner_tokens();
+        let ts = mac.args.tokens.clone();
 
         Some(ast::Expr {
             id: ast::NodeId::root(), // dummy value
