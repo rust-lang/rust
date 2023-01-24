@@ -1,5 +1,6 @@
-import * as path from "path";
+import * as Is from "vscode-languageclient/lib/common/utils/is";
 import * as os from "os";
+import * as path from "path";
 import * as vscode from "vscode";
 import { Env } from "./client";
 import { log } from "./util";
@@ -47,7 +48,7 @@ export class Config {
     }
 
     private refreshLogging() {
-        log.setEnabled(this.traceExtension);
+        log.setEnabled(this.traceExtension ?? false);
         log.info("Extension version:", this.package.version);
 
         const cfg = Object.entries(this.cfg).filter(([_, val]) => !(val instanceof Function));
@@ -163,18 +164,24 @@ export class Config {
      * ```
      * So this getter handles this quirk by not requiring the caller to use postfix `!`
      */
-    private get<T>(path: string): T {
-        return this.cfg.get<T>(path)!;
+    private get<T>(path: string): T | undefined {
+        return substituteVSCodeVariables(this.cfg.get<T>(path));
     }
 
     get serverPath() {
         return this.get<null | string>("server.path") ?? this.get<null | string>("serverPath");
     }
+
     get serverExtraEnv(): Env {
         const extraEnv =
             this.get<{ [key: string]: string | number } | null>("server.extraEnv") ?? {};
-        return Object.fromEntries(
-            Object.entries(extraEnv).map(([k, v]) => [k, typeof v !== "string" ? v.toString() : v])
+        return substituteVariablesInEnv(
+            Object.fromEntries(
+                Object.entries(extraEnv).map(([k, v]) => [
+                    k,
+                    typeof v !== "string" ? v.toString() : v,
+                ])
+            )
         );
     }
     get traceExtension() {
@@ -216,13 +223,13 @@ export class Config {
         if (sourceFileMap !== "auto") {
             // "/rustc/<id>" used by suggestions only.
             const { ["/rustc/<id>"]: _, ...trimmed } =
-                this.get<Record<string, string>>("debug.sourceFileMap");
+                this.get<Record<string, string>>("debug.sourceFileMap") ?? {};
             sourceFileMap = trimmed;
         }
 
         return {
             engine: this.get<string>("debug.engine"),
-            engineSettings: this.get<object>("debug.engineSettings"),
+            engineSettings: this.get<object>("debug.engineSettings") ?? {},
             openDebugPane: this.get<boolean>("debug.openDebugPane"),
             sourceFileMap: sourceFileMap,
         };
@@ -247,37 +254,27 @@ export class Config {
     }
 }
 
-const VarRegex = new RegExp(/\$\{(.+?)\}/g);
-
-export function substituteVSCodeVariableInString(val: string): string {
-    return val.replace(VarRegex, (substring: string, varName) => {
-        if (typeof varName === "string") {
-            return computeVscodeVar(varName) || substring;
-        } else {
-            return substring;
-        }
-    });
-}
-
-export function substituteVSCodeVariables(resp: any): any {
-    if (typeof resp === "string") {
-        return substituteVSCodeVariableInString(resp);
-    } else if (resp && Array.isArray(resp)) {
+export function substituteVSCodeVariables<T>(resp: T): T {
+    if (Is.string(resp)) {
+        return substituteVSCodeVariableInString(resp) as T;
+    } else if (resp && Is.array<any>(resp)) {
         return resp.map((val) => {
             return substituteVSCodeVariables(val);
-        });
+        }) as T;
     } else if (resp && typeof resp === "object") {
         const res: { [key: string]: any } = {};
         for (const key in resp) {
             const val = resp[key];
             res[key] = substituteVSCodeVariables(val);
         }
-        return res;
-    } else if (typeof resp === "function") {
-        return null;
+        return res as T;
+    } else if (Is.func(resp)) {
+        throw new Error("Unexpected function type in substitution");
     }
     return resp;
 }
+
+// FIXME: Merge this with `substituteVSCodeVariables` above
 export function substituteVariablesInEnv(env: Env): Env {
     const missingDeps = new Set<string>();
     // vscode uses `env:ENV_NAME` for env vars resolution, and it's easier
@@ -353,6 +350,17 @@ export function substituteVariablesInEnv(env: Env): Env {
         resolvedEnv[key] = envWithDeps[`env:${key}`].value;
     }
     return resolvedEnv;
+}
+
+const VarRegex = new RegExp(/\$\{(.+?)\}/g);
+function substituteVSCodeVariableInString(val: string): string {
+    return val.replace(VarRegex, (substring: string, varName) => {
+        if (Is.string(varName)) {
+            return computeVscodeVar(varName) || substring;
+        } else {
+            return substring;
+        }
+    });
 }
 
 function computeVscodeVar(varName: string): string | null {

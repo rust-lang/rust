@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 
-import { Config, substituteVariablesInEnv, substituteVSCodeVariables } from "./config";
+import { Config, substituteVSCodeVariables } from "./config";
 import { createClient } from "./client";
 import { isRustDocument, isRustEditor, log, RustEditor } from "./util";
 import { ServerStatusParams } from "./lsp_ext";
@@ -152,9 +152,7 @@ export class Ctx {
                     throw new Error(message);
                 }
             );
-            const newEnv = substituteVariablesInEnv(
-                Object.assign({}, process.env, this.config.serverExtraEnv)
-            );
+            const newEnv = Object.assign({}, process.env, this.config.serverExtraEnv);
             const run: lc.Executable = {
                 command: this._serverPath,
                 options: { env: newEnv },
