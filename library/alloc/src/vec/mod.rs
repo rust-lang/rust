@@ -150,6 +150,7 @@ use self::spec_extend::SpecExtend;
 mod spec_extend;
 
 /// Default `Vec`, `DefVec`, `DecVeque`, `DefDecVeq` "cooperation" (`COOP_PREFERRED`) generic parameter.
+/// NOT for public use. It's exported only so that library/proc_macro (and other internals) can use this. TODO FIXME.
 #[unstable(feature = "global_co_alloc_def", issue = "none")]
 // pub const DEFAULT_COOP_PREFERRED: bool = true;
 #[macro_export]
