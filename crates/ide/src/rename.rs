@@ -13,7 +13,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use stdx::{always, never};
-use syntax::{ast, AstNode, SyntaxNode};
+use syntax::{ast, AstNode, SyntaxNode, TextRange, TextSize};
 
 use text_edit::TextEdit;
 
@@ -48,7 +48,13 @@ pub(crate) fn prepare_rename(
                 frange.range.contains_inclusive(position.offset)
                     && frange.file_id == position.file_id
             );
-            Ok(frange.range)
+
+            Ok(match name_like {
+                ast::NameLike::Lifetime(_) => {
+                    TextRange::new(frange.range.start() + TextSize::from(1), frange.range.end())
+                }
+                _ => frange.range,
+            })
         })
         .reduce(|acc, cur| match (acc, cur) {
             // ensure all ranges are the same
@@ -407,7 +413,7 @@ mod tests {
     #[test]
     fn test_prepare_rename_namelikes() {
         check_prepare(r"fn name$0<'lifetime>() {}", expect![[r#"3..7: name"#]]);
-        check_prepare(r"fn name<'lifetime$0>() {}", expect![[r#"8..17: 'lifetime"#]]);
+        check_prepare(r"fn name<'lifetime$0>() {}", expect![[r#"9..17: lifetime"#]]);
         check_prepare(r"fn name<'lifetime>() { name$0(); }", expect![[r#"23..27: name"#]]);
     }
 
