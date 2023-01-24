@@ -537,7 +537,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_deque_new", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_vec_deque_new", since = "1.68.0")]
     #[must_use]
     pub const fn new() -> VecDeque<T> {
         // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
