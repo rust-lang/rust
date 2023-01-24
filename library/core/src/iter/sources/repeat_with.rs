@@ -78,7 +78,7 @@ pub struct RepeatWith<F> {
     repeater: F,
 }
 
-#[stable(feature = "iterator_repeat_with_debug", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iterator_repeat_with_debug", since = "1.68.0")]
 impl<F> fmt::Debug for RepeatWith<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RepeatWith").finish_non_exhaustive()

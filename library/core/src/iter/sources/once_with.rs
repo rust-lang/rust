@@ -73,7 +73,7 @@ pub struct OnceWith<F> {
     gen: Option<F>,
 }
 
-#[stable(feature = "iter_once_with_debug", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_once_with_debug", since = "1.68.0")]
 impl<F> fmt::Debug for OnceWith<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.gen.is_some() {
