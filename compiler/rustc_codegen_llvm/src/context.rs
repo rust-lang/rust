@@ -14,7 +14,6 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
@@ -444,28 +443,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self.statics_to_rauw
     }
 
-    pub fn get_enzyme_typtree(&self, id: DefId) -> llvm::TypeTree {
-        let tree = llvm::TypeTree::new();
-        let tcx: TyCtxt<'_> = self.tcx;
-        let fn_ty: Ty<'_> = tcx.type_of(id);
-        dbg!(fn_ty);
-        dbg!(fn_ty.is_fn());
-        if !fn_ty.is_fn() {
-            return tree;
-        }
-        let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
-        let tmp = fnc_binder.no_bound_vars();
-        dbg!(tmp.is_some());
-        if tmp.is_some() {
-            let x: ty::FnSig<'_> = tmp.unwrap();
-            dbg!(x);
-            for io in x.inputs_and_output {
-                dbg!(io);
-            }
-        }
-        return tree;
-    }
-
     #[inline]
     pub fn coverage_context(&self) -> Option<&coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
         self.coverage_cx.as_ref()
@@ -619,9 +596,11 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let instance = Instance::mono(self.tcx, item.source);
             dbg!(&self.instances.borrow().get(&instance));
         }
-
-        Vec::new()
+        return vec![];
     }
+
+    //fn create_autodiff(&self) -> Vec<<Self as rustc_codegen_ssa::traits::BackendTypes>::Function> { vec![] }
+
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
