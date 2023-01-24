@@ -18,6 +18,7 @@ use crate::alloc;
 use crate::alloc::Global;
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
+use crate::co_alloc::CoAllocPref;
 use crate::slice::{Concat, Join, SliceIndex};
 use crate::string::String;
 use crate::vec::Vec;
@@ -128,15 +129,16 @@ macro_rules! copy_slice_and_advance {
 // [T] and str both impl AsRef<[T]> for some T
 // => s.borrow().as_ref() and we always have slices
 #[cfg(not(no_global_oom_handling))]
-fn join_generic_copy<B, T, S, const COOP_PREFERRED: bool>(
+#[allow(unused_braces)]
+fn join_generic_copy<B, T, S, const CO_ALLOC_PREF: CoAllocPref>(
     slice: &[S],
     sep: &[T],
-) -> Vec<T, Global, COOP_PREFERRED>
+) -> Vec<T, Global, CO_ALLOC_PREF>
 where
     T: Copy,
     B: AsRef<[T]> + ?Sized,
     S: Borrow<B>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     let sep_len = sep.len();
     let mut iter = slice.iter();
@@ -144,7 +146,7 @@ where
     // the first slice is the only one without a separator preceding it
     let first = match iter.next() {
         Some(first) => first,
-        None => return vec![],
+        None => return Vec::new_co(),
     };
 
     // compute the exact total length of the joined Vec
@@ -159,7 +161,7 @@ where
         .expect("attempt to join into collection with len > usize::MAX");
 
     // prepare an uninitialized buffer
-    let mut result = Vec::with_capacity(reserved_len);
+    let mut result = Vec::with_capacity_co(reserved_len);
     debug_assert!(result.capacity() >= reserved_len);
 
     result.extend_from_slice(first.borrow().as_ref());

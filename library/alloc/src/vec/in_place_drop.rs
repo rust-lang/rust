@@ -36,6 +36,10 @@ impl<T> Drop for InPlaceDstBufDrop<T> {
     #[inline]
     fn drop(&mut self) {
         // false = no need for co-alloc metadata, since it would get lost once converted to Box.
-        unsafe { super::Vec::<T, Global, false>::from_raw_parts(self.ptr, self.len, self.cap) };
+        unsafe {
+            super::Vec::<T, Global, { CO_ALLOC_PREF_META_NO!() }>::from_raw_parts(
+                self.ptr, self.len, self.cap,
+            )
+        };
     }
 }

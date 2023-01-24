@@ -1,3 +1,5 @@
+use alloc::{CO_ALLOC_PREF_META_YES, CO_ALLOC_PREF_META_NO};
+
 fn require_sync<T: Sync>(_: T) {}
 fn require_send_sync<T: Send + Sync>(_: T) {}
 
@@ -192,7 +194,12 @@ fn test_binary_heap() {
     });
 
     require_send_sync(async {
-        let _v = None::<alloc::collections::binary_heap::Drain<'_, &u32>>;
+        let _v = None::<alloc::collections::binary_heap::Drain<'_, &u32, {CO_ALLOC_PREF_META_NO!()}>>;
+        async {}.await;
+    });
+
+    require_send_sync(async {
+        let _v = None::<alloc::collections::binary_heap::Drain<'_, &u32, {CO_ALLOC_PREF_META_YES!()}>>;
         async {}.await;
     });
 

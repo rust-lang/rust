@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 
 use std::mem;
+use std::SHORT_TERM_VEC_CO_ALLOC_PREF;
 
 #[cfg(test)]
 mod tests;
@@ -232,13 +233,13 @@ impl Stats for [f64] {
     }
 
     fn percentile(&self, pct: f64) -> f64 {
-        let mut tmp = self.to_vec();
+        let mut tmp = self.to_vec_co::<{ SHORT_TERM_VEC_CO_ALLOC_PREF!() }>();
         local_sort(&mut tmp);
         percentile_of_sorted(&tmp, pct)
     }
 
     fn quartiles(&self) -> (f64, f64, f64) {
-        let mut tmp = self.to_vec();
+        let mut tmp = self.to_vec_co::<{ SHORT_TERM_VEC_CO_ALLOC_PREF!() }>();
         local_sort(&mut tmp);
         let first = 25_f64;
         let a = percentile_of_sorted(&tmp, first);

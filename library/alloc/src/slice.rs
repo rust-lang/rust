@@ -28,6 +28,7 @@ use crate::alloc::{self, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
+use crate::co_alloc::CoAllocPref;
 use crate::vec::Vec;
 
 #[cfg(test)]
@@ -84,6 +85,9 @@ pub use hack::into_vec;
 #[cfg(test)]
 pub use hack::to_vec;
 
+#[cfg(test)]
+pub use hack::to_vec_co;
+
 // HACK(japaric): With cfg(test) `impl [T]` is not available, these three
 // functions are actually methods that are in `impl [T]` but not in
 // `core::slice::SliceExt` - we need to supply these functions for the
@@ -92,16 +96,28 @@ pub(crate) mod hack {
     use core::alloc::Allocator;
 
     use crate::boxed::Box;
+    use crate::co_alloc::CoAllocPref;
     use crate::vec::Vec;
 
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T, A: Allocator, const COOP_PREFERRED: bool>(
+    #[allow(unused_braces)]
+    pub fn into_vec<T, A: Allocator>(
         b: Box<[T], A>,
-    ) -> Vec<T, A, COOP_PREFERRED>
+    ) -> Vec<T, A>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        [(); { crate::meta_num_slots_default!(A) }]:,
+    {
+        into_vec_co::<T, A, {crate::CO_ALLOC_PREF_META_DEFAULT!()}>(b)
+    }
+
+    #[allow(unused_braces)]
+    pub fn into_vec_co<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+        b: Box<[T], A>,
+    ) -> Vec<T, A, CO_ALLOC_PREF>
+    where
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         unsafe {
             let len = b.len();
@@ -112,47 +128,67 @@ pub(crate) mod hack {
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn to_vec<T: ConvertVec, A: Allocator, const COOP_PREFERRED: bool>(
-        s: &[T],
-        alloc: A,
-    ) -> Vec<T, A, COOP_PREFERRED>
+    #[allow(unused_braces)]
+    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        [(); { crate::meta_num_slots_default!(A) }]:,
     {
         T::to_vec(s, alloc)
     }
 
     #[cfg(not(no_global_oom_handling))]
-    pub trait ConvertVec {
-        fn to_vec<A: Allocator, const COOP_PREFERRED: bool>(
-            s: &[Self],
-            alloc: A,
-        ) -> Vec<Self, A, COOP_PREFERRED>
-        where
-            Self: Sized,
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:;
+    #[inline]
+    #[allow(unused_braces)]
+    pub fn to_vec_co<T: ConvertVecCo, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+        s: &[T],
+        alloc: A,
+    ) -> Vec<T, A, CO_ALLOC_PREF>
+    where
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+    {
+        T::to_vec_co(s, alloc)
     }
 
     #[cfg(not(no_global_oom_handling))]
-    impl<T: Clone> ConvertVec for T {
-        #[inline]
-        default fn to_vec<A: Allocator, const COOP_PREFERRED: bool>(
+    #[allow(unused_braces)]
+    pub trait ConvertVec {
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+        where
+            Self: Sized,
+            [(); { crate::meta_num_slots_default!(A) }]:;
+    }
+
+    #[allow(unused_braces)]
+    pub trait ConvertVecCo {
+        fn to_vec_co<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
             s: &[Self],
             alloc: A,
-        ) -> Vec<Self, A, COOP_PREFERRED>
+        ) -> Vec<Self, A, CO_ALLOC_PREF>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            Self: Sized,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:;
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    #[allow(unused_braces)]
+    impl<T: Clone> ConvertVec for T {
+        #[inline]
+        #[allow(unused_braces)]
+        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+        where
+            [(); { crate::meta_num_slots_default!(A) }]:,
         {
-            struct DropGuard<'a, T, A: Allocator, const COOP_PREFERRED: bool>
+            #[allow(unused_braces)]
+            struct DropGuard<'a, T, A: Allocator>
             where
-                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+                [(); { crate::meta_num_slots_default!(A) }]:,
             {
-                vec: &'a mut Vec<T, A, COOP_PREFERRED>,
+                vec: &'a mut Vec<T, A>,
                 num_init: usize,
             }
-            impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> Drop for DropGuard<'a, T, A, COOP_PREFERRED>
+            impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A>
             where
-                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+                [(); { crate::meta_num_slots_default!(A) }]:,
             {
                 #[inline]
                 fn drop(&mut self) {
@@ -185,12 +221,86 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
-        fn to_vec<A: Allocator, const COOP_PREFERRED: bool>(
+        #[allow(unused_braces)]
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+        where
+            [(); { crate::meta_num_slots_default!(A) }]:,
+        {
+            let mut v = Vec::with_capacity_in(s.len(), alloc);
+            // SAFETY:
+            // allocated above with the capacity of `s`, and initialize to `s.len()` in
+            // ptr::copy_to_non_overlapping below.
+            unsafe {
+                s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
+                v.set_len(s.len());
+            }
+            v
+        }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    #[allow(unused_braces)]
+    impl<T: Clone> ConvertVecCo for T {
+        #[inline]
+        #[allow(unused_braces)]
+        default fn to_vec_co<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
             s: &[Self],
             alloc: A,
-        ) -> Vec<Self, A, COOP_PREFERRED>
+        ) -> Vec<Self, A, CO_ALLOC_PREF>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+        {
+            #[allow(unused_braces)]
+            struct DropGuard<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+            where
+                [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+            {
+                vec: &'a mut Vec<T, A, CO_ALLOC_PREF>,
+                num_init: usize,
+            }
+            impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+                for DropGuard<'a, T, A, CO_ALLOC_PREF>
+            where
+                [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+            {
+                #[inline]
+                fn drop(&mut self) {
+                    // SAFETY:
+                    // items were marked initialized in the loop below
+                    unsafe {
+                        self.vec.set_len(self.num_init);
+                    }
+                }
+            }
+            let mut vec = Vec::with_capacity_in(s.len(), alloc);
+            let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
+            let slots = guard.vec.spare_capacity_mut();
+            // .take(slots.len()) is necessary for LLVM to remove bounds checks
+            // and has better codegen than zip.
+            for (i, b) in s.iter().enumerate().take(slots.len()) {
+                guard.num_init = i;
+                slots[i].write(b.clone());
+            }
+            core::mem::forget(guard);
+            // SAFETY:
+            // the vec was allocated and initialized above to at least this length.
+            unsafe {
+                vec.set_len(s.len());
+            }
+            vec
+        }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    impl<T: Copy> ConvertVecCo for T {
+        #[inline]
+        #[allow(unused_braces)]
+        fn to_vec_co<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+            s: &[Self],
+            alloc: A,
+        ) -> Vec<Self, A, CO_ALLOC_PREF>
+        where
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             let mut v = Vec::with_capacity_in(s.len(), alloc);
             // SAFETY:
@@ -439,15 +549,30 @@ impl<T> [T] {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
+    #[allow(unused_braces)]
     #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn to_vec<const COOP_PREFERRED: bool>(&self) -> Vec<T, Global, COOP_PREFERRED>
+    pub fn to_vec(&self) -> Vec<T>
     where
         T: Clone,
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
     {
-        self.to_vec_in::<Global, COOP_PREFERRED>(Global)
+        self.to_vec_in::<Global>(Global)
+    }
+
+    /// Coallocation-aware alternative to `to_vec`.
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[allow(unused_braces)]
+    #[rustc_conversion_suggestion]
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    #[inline]
+    pub fn to_vec_co<const CO_ALLOC_PREF: CoAllocPref>(&self) -> Vec<T, Global, CO_ALLOC_PREF>
+    where
+        T: Clone,
+        [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+    {
+        self.to_vec_in_co::<Global, CO_ALLOC_PREF>(Global)
     }
 
     /// Copies `self` into a new `Vec` with an allocator.
@@ -467,16 +592,32 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn to_vec_in<A: Allocator, const COOP_PREFERRED: bool>(
-        &self,
-        alloc: A,
-    ) -> Vec<T, A, COOP_PREFERRED>
+    #[allow(unused_braces)]
+    pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
     where
         T: Clone,
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        [(); { crate::meta_num_slots_default!(A) }]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self, alloc)
+    }
+
+    /// Coallocation-aware version of `to_vec_in`.
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[inline]
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    #[allow(unused_braces)]
+    pub fn to_vec_in_co<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+        &self,
+        alloc: A,
+    ) -> Vec<T, A, CO_ALLOC_PREF>
+    where
+        T: Clone,
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+    {
+        // N.B., see the `hack` module in this file for more details.
+        hack::to_vec_co(self, alloc)
     }
 
     /// Converts `self` into a vector without clones or allocation.
@@ -496,14 +637,28 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec<A: Allocator, const COOP_PREFERRED: bool>(
-        self: Box<Self, A>,
-    ) -> Vec<T, A, COOP_PREFERRED>
+    #[allow(unused_braces)]
+    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        [(); { crate::meta_num_slots_default!(A) }]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
+    }
+
+    /// Coallocation-aware version of [into_vec].
+    #[rustc_allow_incoherent_impl]
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    #[inline]
+    #[allow(unused_braces)]
+    pub fn into_vec_co<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+        self: Box<Self, A>,
+    ) -> Vec<T, A, CO_ALLOC_PREF>
+    where
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+    {
+        // N.B., see the `hack` module in this file for more details.
+        hack::into_vec_co(self)
     }
 
     /// Creates a vector by copying a slice `n` times.
@@ -815,9 +970,10 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> Borrow<[T]> for Vec<T, A, COOP_PREFERRED>
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Borrow<[T]> for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn borrow(&self) -> &[T] {
         &self[..]
@@ -825,9 +981,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> BorrowMut<[T]> for Vec<T, A, COOP_PREFERRED>
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> BorrowMut<[T]> for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn borrow_mut(&mut self) -> &mut [T] {
         &mut self[..]
@@ -838,12 +995,20 @@ where
 // public in the crate and has the Allocator parameter so that
 // vec::clone_from use it too.
 #[cfg(not(no_global_oom_handling))]
-pub(crate) trait SpecCloneIntoVec<T, A: Allocator> {
+#[allow(unused_braces)]
+pub(crate) trait SpecCloneIntoVec<T, A: Allocator>
+where
+    [(); { crate::meta_num_slots_default!(A) }]:,
+{
     fn clone_into(&self, target: &mut Vec<T, A>);
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Clone, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
+#[allow(unused_braces)]
+impl<T: Clone, A: Allocator> SpecCloneIntoVec<T, A> for [T]
+where
+    [(); { crate::meta_num_slots_default!(A) }]:,
+{
     default fn clone_into(&self, target: &mut Vec<T, A>) {
         // drop anything in target that will not be overwritten
         target.truncate(self.len());
@@ -859,8 +1024,56 @@ impl<T: Clone, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
+#[allow(unused_braces)]
+impl<T: Copy, A: Allocator> SpecCloneIntoVec<T, A> for [T]
+where
+    [(); { crate::meta_num_slots_default!(A) }]:,
+{
     fn clone_into(&self, target: &mut Vec<T, A>) {
+        target.clear();
+        target.extend_from_slice(self);
+    }
+}
+
+/// Coallocation-aware version of `SpecCloneIntoVec`.
+#[cfg(not(no_global_oom_handling))]
+#[allow(unused_braces)]
+pub(crate) trait SpecCloneIntoVecCo<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+    fn clone_into_co(&self, target: &mut Vec<T, A, CO_ALLOC_PREF>);
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[allow(unused_braces)]
+impl<T: Clone, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+    SpecCloneIntoVecCo<T, A, CO_ALLOC_PREF> for [T]
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+    default fn clone_into_co(&self, target: &mut Vec<T, A, CO_ALLOC_PREF>) {
+        // drop anything in target that will not be overwritten
+        target.truncate(self.len());
+
+        // target.len <= self.len due to the truncate above, so the
+        // slices here are always in-bounds.
+        let (init, tail) = self.split_at(target.len());
+
+        // reuse the contained values' allocations/resources.
+        target.clone_from_slice(init);
+        target.extend_from_slice(tail);
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[allow(unused_braces)]
+impl<T: Copy, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+    SpecCloneIntoVecCo<T, A, CO_ALLOC_PREF> for [T]
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+    fn clone_into_co(&self, target: &mut Vec<T, A, CO_ALLOC_PREF>) {
         target.clear();
         target.extend_from_slice(self);
     }

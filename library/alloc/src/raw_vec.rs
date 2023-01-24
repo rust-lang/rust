@@ -1,6 +1,9 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
-use core::alloc::{self, GlobalCoAllocMeta, LayoutError, PtrAndMeta};
+use crate::co_alloc::CoAllocPref;
+use crate::meta_num_slots_default;
+use core::alloc::CoAllocMetaBase;
+use core::alloc::{LayoutError, PtrAndMeta};
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
@@ -14,7 +17,7 @@ use crate::alloc::{Allocator, Global, Layout};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind::*;
-use crate::DEFAULT_COOP_PREFERRED;
+use crate::CO_ALLOC_PREF_DEFAULT;
 
 #[cfg(test)]
 mod tests;
@@ -50,13 +53,13 @@ enum AllocInit {
 /// `usize::MAX`. This means that you need to be careful when round-tripping this type with a
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
-#[allow(unused_braces)]
+#[allow(unused_braces)] //@FIXME remove #[allow(unused_braces)] once that false positive warning fix is included on stable
 pub(crate) struct RawVec<
     T,
     A: Allocator = Global,
-    const COOP_PREFERRED: bool = { DEFAULT_COOP_PREFERRED!() },
+    const CO_ALLOC_PREF: CoAllocPref = { CO_ALLOC_PREF_DEFAULT!() },
 > where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     ptr: Unique<T>,
     cap: usize,
@@ -64,13 +67,13 @@ pub(crate) struct RawVec<
     // As of v1.67.0, `cmp` for `TypeId` is not `const`, unfortunately:
     //pub(crate) meta: [GlobalCoAllocMeta; {if core::any::TypeId::of::<A>()==core::any::TypeId::of::<Global>() {1} else {0}}],
     //pub(crate) meta: [GlobalCoAllocMeta; mem::size_of::<A::IsCoAllocator>()],
-    pub(crate) metas: [GlobalCoAllocMeta;
-        alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)],
+    pub(crate) metas: [A::CoAllocMeta; { crate::meta_num_slots!(A, CO_ALLOC_PREF) }],
 }
 
-impl<T, const COOP_PREFERRED: bool> RawVec<T, Global, COOP_PREFERRED>
+#[allow(unused_braces)]
+impl<T, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, Global, CO_ALLOC_PREF>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     /// HACK(Centril): This exists because stable `const fn` can only call stable `const fn`, so
     /// they cannot call `Self::new()`.
@@ -118,10 +121,16 @@ where
     }
 }
 
-impl<T, A: Allocator, const COOP_PREFERRED: bool> RawVec<T, A, COOP_PREFERRED>
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
+    #[allow(dead_code)]
+    const fn new_plain_metas() -> [A::CoAllocMeta; { meta_num_slots_default!(A) }] {
+        loop {}
+    }
+
     // Tiny Vecs are dumb. Skip to:
     // - 8 if the element size is 1, because any heap allocators is likely
     //   to round up a request of less than 8 bytes to at least 8 bytes.
@@ -143,8 +152,8 @@ where
             ptr: Unique::dangling(),
             cap: 0,
             alloc,
-            metas: [GlobalCoAllocMeta {/*one: 1*/ /* , two: 2, three: 3, four: 4*/};
-                alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)],
+            metas: [A::CoAllocMeta::new_plain(); // @FIXME CoAlloc
+                {crate::meta_num_slots!(A, CO_ALLOC_PREF)}],
         }
     }
 
@@ -218,12 +227,13 @@ where
             // Allocators currently return a `NonNull<[u8]>` whose length
             // matches the size requested. If that ever changes, the capacity
             // here should change to `ptr.len() / mem::size_of::<T>()`.
+            #[allow(unreachable_code)] // @FIXME CoAlloc
             Self {
                 ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
                 cap: capacity,
                 alloc,
-                metas: [GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/};
-                    alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)],
+                metas: [A::CoAllocMeta::new_plain(); // @FIXME CoAlloc
+                    {crate::meta_num_slots!(A, CO_ALLOC_PREF)}],
             }
         }
     }
@@ -240,12 +250,13 @@ where
     /// guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
+        #[allow(unreachable_code)] //@FIXME CoAlloc
         Self {
             ptr: unsafe { Unique::new_unchecked(ptr) },
             cap: capacity,
             alloc,
-            metas: [GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/};
-                alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)],
+            metas: [A::CoAllocMeta::new_plain(); //@FIXME CoAlloc
+                {crate::meta_num_slots!(A, CO_ALLOC_PREF)}],
         }
     }
 
@@ -270,6 +281,11 @@ where
         &self.alloc
     }
 
+    #[inline]
+    const fn assert_alignment() {
+        assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0);
+    }
+
     fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
         if T::IS_ZST || self.cap == 0 {
             None
@@ -278,7 +294,8 @@ where
             // and could hypothetically handle differences between stride and size, but this memory
             // has already been allocated so we know it can't overflow and currently rust does not
             // support such types. So we can do better by skipping some checks and avoid an unwrap.
-            let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
+            let _: () = Self::assert_alignment();
+            //let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
             unsafe {
                 let align = mem::align_of::<T>();
                 let size = mem::size_of::<T>().unchecked_mul(self.cap);
@@ -309,18 +326,19 @@ where
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[allow(unused_braces)]
     pub fn reserve(&mut self, len: usize, additional: usize) {
         // Callers expect this function to be very cheap when there is already sufficient capacity.
         // Therefore, we move all the resizing and error-handling logic from grow_amortized and
         // handle_reserve behind a call, while making sure that this function is likely to be
         // inlined as just a comparison and a call if the comparison fails.
         #[cold]
-        fn do_reserve_and_handle<T, A: Allocator, const COOP_PREFERRED: bool>(
-            slf: &mut RawVec<T, A, COOP_PREFERRED>,
+        fn do_reserve_and_handle<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+            slf: &mut RawVec<T, A, CO_ALLOC_PREF>,
             len: usize,
             additional: usize,
         ) where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             handle_reserve(slf.grow_amortized(len, additional));
         }
@@ -394,9 +412,10 @@ where
     }
 }
 
-impl<T, A: Allocator, const COOP_PREFERRED: bool> RawVec<T, A, COOP_PREFERRED>
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
@@ -470,7 +489,8 @@ where
 
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
         // See current_memory() why this assert is here
-        let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
+        let _: () = Self::assert_alignment();
+        //let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
         let ptr = unsafe {
             // `Layout::array` cannot overflow here because it would have
             // overflowed earlier when capacity was larger.
@@ -517,15 +537,22 @@ where
     memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
 }
 
-unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREFERRED: bool> Drop
-    for RawVec<T, A, COOP_PREFERRED>
+#[allow(unused_braces)]
+unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+    for RawVec<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     default fn drop(&mut self) {
         if let Some((ptr, layout)) = self.current_memory() {
-            if A::IS_CO_ALLOCATOR && COOP_PREFERRED {
+            let meta_num_slots = crate::meta_num_slots!(A, CO_ALLOC_PREF);
+            if meta_num_slots != 0 {
+                debug_assert!(
+                    meta_num_slots == 1,
+                    "Number of coallocation meta slots can be only 0 or 1, but it is {}!",
+                    meta_num_slots
+                );
                 let meta = self.metas[0];
                 unsafe { self.alloc.co_deallocate(PtrAndMeta { ptr, meta }, layout) }
             } else {

@@ -182,10 +182,9 @@
 #![feature(fundamental)]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![feature(global_co_alloc)]
-#![feature(global_co_alloc_short_term_pref)]
 #![feature(hashmap_internals)]
 #![feature(lang_items)]
-#![feature(global_co_alloc_def)]
+#![feature(global_co_alloc_default)]
 // When we used min_specialization instead of specialization, library/alloc/src/vec/mod.rs was failing with:
 // - cannot specialize on predicate `the constant `core::alloc::co_alloc_metadata_num_slots::<A>()` can be evaluated`
 // - cannot specialize on predicate `[(); _] well-formed`
@@ -249,6 +248,9 @@ mod boxed {
     pub use std::boxed::Box;
 }
 pub mod borrow;
+#[macro_use]
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub mod co_alloc;
 pub mod collections;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;

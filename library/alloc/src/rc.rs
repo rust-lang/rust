@@ -275,6 +275,7 @@ use crate::alloc::handle_alloc_error;
 use crate::alloc::{box_free, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
+use crate::co_alloc::CoAllocPref;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
@@ -1987,9 +1988,10 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<T, const COOP_PREFERRED: bool> From<Vec<T, Global, COOP_PREFERRED>> for Rc<[T]>
+#[allow(unused_braces)]
+impl<T, const CO_ALLOC_PREF: CoAllocPref> From<Vec<T, Global, CO_ALLOC_PREF>> for Rc<[T]>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     /// Allocate a reference-counted slice and move `v`'s items into it.
     ///
@@ -2002,9 +2004,10 @@ where
     /// assert_eq!(vec![1, 2, 3], *shared);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T, Global, COOP_PREFERRED>) -> Rc<[T]>
+    #[allow(unused_braces)]
+    fn from(mut v: Vec<T, Global, CO_ALLOC_PREF>) -> Rc<[T]>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+        [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
     {
         unsafe {
             let rc = Rc::copy_from_slice(&v);

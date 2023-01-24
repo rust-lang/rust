@@ -25,23 +25,6 @@ use crate::error::Error;
 use crate::fmt;
 use crate::ptr::{self, NonNull};
 
-// @FIXME Make this target-specific
-/// Metadata for `Vec/VecDeque/RawVec` to assist the allocator. Make sure its
-/// alignment is not bigger than alignment of `usize`. Otherwise, even if (a
-/// particular) `Vec/VecDeque/RawVec` generic instance doesn't use cooperation,
-/// it would increase size of that `Vec/VecDeque/RawVec` because of alignment
-/// rules! @FIXME compile time test that `GlobalCoAllocMeta` alignment <=
-/// `usize` alignment.
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[allow(missing_debug_implementations)]
-#[derive(Clone, Copy)]
-pub struct GlobalCoAllocMeta {
-    //pub one: usize,
-    /*pub two: usize,
-    pub three: usize,
-    pub four: usize,*/
-}
-
 /// The `AllocError` error indicates an allocation failure
 /// that may be due to resource exhaustion or to
 /// something wrong when combining the given input arguments with this
@@ -65,53 +48,76 @@ impl fmt::Display for AllocError {
     }
 }
 
+/// (Non-Null) Pointer and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[allow(missing_debug_implementations)]
-pub struct PtrAndMeta {
+#[derive(Clone, Copy, Debug)]
+pub struct PtrAndMeta<M: ~const CoAllocMetaBase> {
     pub ptr: NonNull<u8>,
-    pub meta: GlobalCoAllocMeta,
+    pub meta: M,
 }
 
+/// (NonNull) Slice and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[allow(missing_debug_implementations)]
+#[derive(Clone, Copy, Debug)]
 /// Used for results (from `CoAllocator`'s functions, where applicable).
-pub struct SliceAndMeta {
+pub struct SliceAndMeta<M: ~const CoAllocMetaBase> {
     pub slice: NonNull<[u8]>,
-    pub meta: GlobalCoAllocMeta,
+    pub meta: M,
 }
 
-#[unstable(feature = "global_co_alloc_short_term_pref", issue = "none")]
-//pub const SHORT_TERM_VEC_PREFERS_COOP: bool = true;
-#[macro_export]
-macro_rules! SHORT_TERM_VEC_PREFERS_COOP {
-    () => {
-        true
-    };
+/// `Result` of `SliceAndMeta` or `AllocError`.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub type SliceAndMetaResult<M> = Result<SliceAndMeta<M>, AllocError>;
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[const_trait]
+pub trait CoAllocMetaBase: Clone + Copy {
+    /// NOT for public use. This MAY BE REMOVED or CHANGED.
+    ///
+    /// For EXPERIMENTATION only.
+    const ZERO_METAS: [Self; 0];
+    const ONE_METAS: [Self; 1];
+
+    /// NOT for public use. This MAY BE REMOVED or CHANGED.
+    ///
+    /// For EXPERIMENTATION only.
+    fn new_plain() -> Self;
 }
 
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[allow(missing_debug_implementations)]
-pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
+#[derive(Clone, Copy, Debug)]
+pub struct CoAllocMetaPlain {}
 
-#[unstable(feature = "global_co_alloc", issue = "none")]
-pub const fn co_alloc_metadata_num_slots<A: Allocator>() -> usize {
-    // @FIXME later
-    if false {
-        panic!(
-            "FIXME - consider replacing co_alloc_metadata_num_slots() with co_alloc_metadata_num_slots_with_preference(bool), and adding const flags as appropriate."
-        );
+const CO_ALLOC_META_PLAIN: CoAllocMetaPlain = CoAllocMetaPlain {};
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+impl const CoAllocMetaBase for CoAllocMetaPlain {
+    const ZERO_METAS: [Self; 0] = [];
+    const ONE_METAS: [Self; 1] = [CO_ALLOC_META_PLAIN];
+
+    fn new_plain() -> Self {
+        CO_ALLOC_META_PLAIN
     }
-    if A::IS_CO_ALLOCATOR { 1 } else { 0 }
 }
 
-#[unstable(feature = "global_co_alloc", issue = "none")]
-/// Param `coop_preferred` - if false, then this returns `0`, regardless of
-/// whether allocator `A` is cooperative.
-pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
-    coop_preferred: bool,
-) -> usize {
-    if A::IS_CO_ALLOCATOR && coop_preferred { 1 } else { 0 }
-}
+/// Whether an `Allocator` implementation supports coallocation.
+///
+/// This type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
+/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence:
+/// - DO NOT mix this/cast this with/to `u8`, `u16`, (nor any other integer); and
+/// - DO NOT hard code any values, but use `CO_ALLOCATOR_SUPPORTS_META_YES` and `CO_ALLOCATOR_SUPPORTS_META_NO`.
+// @FIXME Once ICE is fixed: Change to `u32` (or any other unused unsinged integer type, and other
+// than `usize`, so we can't mix it up with `usize`).
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub type CoAllocatorMetaNumSlots = usize;
+
+/// Indicating that an Allocator supports coallocation (if a type of the allocated instances supports it, too).
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub const CO_ALLOCATOR_SUPPORTS_META_YES: CoAllocatorMetaNumSlots = 1;
+
+/// Indicating that an Allocator does not support coallocation.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub const CO_ALLOCATOR_SUPPORTS_META_NO: CoAllocatorMetaNumSlots = 0;
 
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
 /// data described via [`Layout`][].
@@ -172,13 +178,19 @@ pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[const_trait]
 pub unsafe trait Allocator {
-    //const fn is_co_allocator() -> bool {false}
-    // Can't have: const type Xyz;
-    /// If this is any type with non-zero size, then the actual `Allocator` implementation supports cooperative functions (`co_*`) as first class citizens.
-    //type IsCoAllocator = ();
-    // It applies to the global (default) allocator only. And/or System allocator?! @FIXME
-    // @FIXME make false by default
-    const IS_CO_ALLOCATOR: bool = true;
+    /// NOT for public use. MAY CHANGE.
+    const CO_ALLOC_META_NUM_SLOTS: CoAllocatorMetaNumSlots = CO_ALLOCATOR_SUPPORTS_META_NO;
+
+    /// Type to store coallocation metadata (if both the allocator and the heap-based type support
+    /// coallocation, and if coallocation is used).
+    ///
+    /// If this is any type with non-zero size, then the actual `Allocator` implementation supports
+    /// cooperative functions (`co_*`) as first class citizens. NOT for public use. The default
+    /// value MAY be REMOVED or CHANGED.
+    ///
+    /// @FIXME Validate (preferrable at compile time, otherwise as a test) that this type's
+    /// alignment <= `usize` alignment.
+    type CoAllocMeta: ~const CoAllocMetaBase = CoAllocMetaPlain;
 
     /// Attempts to allocate a block of memory.
     ///
@@ -202,7 +214,7 @@ pub unsafe trait Allocator {
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
-    fn co_allocate(&self, _layout: Layout, _result: &mut SliceAndMetaResult) {
+    fn co_allocate(&self, _layout: Layout, _result: &mut SliceAndMetaResult<Self::CoAllocMeta>) {
         panic!("FIXME")
     }
 
@@ -228,7 +240,11 @@ pub unsafe trait Allocator {
         Ok(ptr)
     }
 
-    fn co_allocate_zeroed(&self, layout: Layout, mut result: &mut SliceAndMetaResult) {
+    fn co_allocate_zeroed(
+        &self,
+        layout: Layout,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
+    ) {
         self.co_allocate(layout, &mut result);
         if let Ok(SliceAndMeta { slice, .. }) = result {
             // SAFETY: `alloc` returns a valid memory block
@@ -247,7 +263,7 @@ pub unsafe trait Allocator {
     /// [*fit*]: #memory-fitting
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
 
-    unsafe fn co_deallocate(&self, _ptr_and_meta: PtrAndMeta, _layout: Layout) {
+    unsafe fn co_deallocate(&self, _ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>, _layout: Layout) {
         panic!("FIXME")
     }
 
@@ -317,10 +333,10 @@ pub unsafe trait Allocator {
 
     unsafe fn co_grow(
         &self,
-        ptr_and_meta: PtrAndMeta,
+        ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>,
         old_layout: Layout,
         new_layout: Layout,
-        mut result: &mut SliceAndMetaResult,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
     ) {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
@@ -411,10 +427,10 @@ pub unsafe trait Allocator {
 
     unsafe fn co_grow_zeroed(
         &self,
-        ptr_and_meta: PtrAndMeta,
+        ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>,
         old_layout: Layout,
         new_layout: Layout,
-        mut result: &mut SliceAndMetaResult,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
     ) {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
@@ -506,10 +522,10 @@ pub unsafe trait Allocator {
 
     unsafe fn co_shrink(
         &self,
-        ptr_and_meta: PtrAndMeta,
+        ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>,
         old_layout: Layout,
         new_layout: Layout,
-        mut result: &mut SliceAndMetaResult,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
     ) {
         debug_assert!(
             new_layout.size() <= old_layout.size(),

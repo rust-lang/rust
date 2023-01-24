@@ -138,7 +138,7 @@
 //! vec.truncate(write_idx);
 //! ```
 use crate::alloc::Global;
-use core::alloc;
+use crate::co_alloc::CoAllocPref;
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self};
@@ -153,10 +153,10 @@ pub(super) trait InPlaceIterableMarker {}
 impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
 
 #[allow(unused_braces)]
-impl<T, I, const COOP_PREFERRED: bool> SpecFromIter<T, I> for Vec<T, Global, COOP_PREFERRED>
+impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, I> for Vec<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T> + SourceIter<Source: AsVecIntoIter> + InPlaceIterableMarker,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // See "Layout constraints" section in the module documentation. We rely on const
@@ -210,7 +210,7 @@ where
         src.forget_allocation_drop_remaining();
         mem::forget(dst_guard);
 
-        let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
+        let vec = unsafe { Vec::from_raw_parts_co(dst_buf, len, cap) };
 
         vec
     }

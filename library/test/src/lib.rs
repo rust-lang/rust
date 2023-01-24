@@ -16,6 +16,9 @@
 
 #![unstable(feature = "test", issue = "50297")]
 #![doc(test(attr(deny(warnings))))]
+#![feature(allocator_api)]
+#![feature(global_co_alloc)]
+#![feature(global_co_alloc_meta)]
 #![feature(internal_output_capture)]
 #![feature(is_terminal)]
 #![feature(staged_api)]
@@ -52,6 +55,7 @@ pub mod test {
 }
 
 use std::{
+    alloc::Global,
     collections::VecDeque,
     env, io,
     io::prelude::Write,
@@ -346,7 +350,8 @@ where
     };
 
     let mut running_tests: TestMap = HashMap::default();
-    let mut timeout_queue: VecDeque<TimeoutEntry> = VecDeque::new();
+    // @FIXME See if we can remove `Global` generic param:
+    let mut timeout_queue: VecDeque<TimeoutEntry, Global> = VecDeque::new();
 
     fn get_timed_out_tests(
         running_tests: &TestMap,

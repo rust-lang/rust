@@ -1,5 +1,5 @@
 use crate::alloc::Global;
-use core::alloc;
+use crate::co_alloc::CoAllocPref;
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
 
@@ -28,10 +28,10 @@ pub(super) trait SpecFromIter<T, I> {
 }
 
 #[allow(unused_braces)]
-impl<T, I, const COOP_PREFERRED: bool> SpecFromIter<T, I> for Vec<T, Global, COOP_PREFERRED>
+impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, I> for Vec<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     default fn from_iter(iterator: I) -> Self {
         SpecFromIterNested::from_iter(iterator)
@@ -39,9 +39,10 @@ where
 }
 
 #[allow(unused_braces)]
-impl<T, const COOP_PREFERRED: bool> SpecFromIter<T, IntoIter<T>> for Vec<T, Global, COOP_PREFERRED>
+impl<T, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, IntoIter<T>>
+    for Vec<T, Global, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately
@@ -59,11 +60,11 @@ where
                 if has_advanced {
                     ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
                 }
-                return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
+                return Vec::from_raw_parts_co(it.buf.as_ptr(), it.len(), it.cap);
             }
         }
 
-        let mut vec = Vec::<T, Global, COOP_PREFERRED>::new_co();
+        let mut vec = Vec::<T, Global, CO_ALLOC_PREF>::new_co();
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
         vec.spec_extend(iterator);
