@@ -117,7 +117,7 @@ export function isValidExecutable(path: string): boolean {
 
     const res = spawnSync(path, ["--version"], { encoding: "utf8" });
 
-    const printOutput = res.error && (res.error as any).code !== "ENOENT" ? log.warn : log.debug;
+    const printOutput = res.error ? log.warn : log.info;
     printOutput(path, "--version:", res);
 
     return res.status === 0;
