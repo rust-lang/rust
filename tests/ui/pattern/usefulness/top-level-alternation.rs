@@ -52,7 +52,7 @@ fn main() {
     match Some(0u8) {
         None | Some(_) => {}
         Some(_) => {}
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         None => {}
     }

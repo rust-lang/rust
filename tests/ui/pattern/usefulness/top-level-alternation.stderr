@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/top-level-alternation.rs:4:23
    |
-LL |     while let 0..=2 | 1 = 0 {} 
+LL |     while let 0..=2 | 1 = 0 {}
    |                       ^ this pattern is unreachable
    |
 note: the lint level is defined here
@@ -25,7 +25,7 @@ LL |             | 0 => {}
 error: unreachable pattern
   --> $DIR/top-level-alternation.rs:19:15
    |
-LL |             | Some(0) => {} 
+LL |             | Some(0) => {}
    |               ^^^^^^^ this pattern is unreachable
 
 error: unreachable pattern
@@ -40,7 +40,7 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^^^^^^^ this arm is never executed
 
-error: unreachable pattern
+error: multiple unreachable patterns
   --> $DIR/top-level-alternation.rs:54:9
    |
 LL |         Some(_) => {}

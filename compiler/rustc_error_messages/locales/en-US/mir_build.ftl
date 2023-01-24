@@ -192,7 +192,10 @@ mir_build_const_param_in_pattern = const parameters cannot be referenced in patt
 
 mir_build_non_const_path = runtime values cannot be referenced in patterns
 
-mir_build_unreachable_patterns = unreachable pattern
+mir_build_unreachable_patterns = {$count ->
+    [one] unreachable pattern
+    *[more] multiple unreachable patterns
+    }
     .catchall_label = this pattern is irrefutable; subsequent arms are never executed
 
 mir_build_never_executed = this arm is never executed

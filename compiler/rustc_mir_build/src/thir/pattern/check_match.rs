@@ -602,7 +602,7 @@ fn report_let_reachability<'p, 'tcx>(
             UNREACHABLE_PATTERNS,
             scrut,
             *span,
-            UnreachablePatterns { unreachable_arms, catchall: None },
+            UnreachablePatterns { count: unreachable_arms.len(), unreachable_arms, catchall: None },
         );
     }
 }
@@ -649,7 +649,7 @@ fn report_arm_reachability<'p, 'tcx>(
             UNREACHABLE_PATTERNS,
             scrut,
             *span,
-            UnreachablePatterns { unreachable_arms, catchall },
+            UnreachablePatterns { count: unreachable_arms.len(), unreachable_arms, catchall },
         );
     }
 }
@@ -673,7 +673,7 @@ fn report_empty_enum_arms<'p, 'tcx>(
             UNREACHABLE_PATTERNS,
             scrut,
             *span,
-            UnreachablePatterns { unreachable_arms, catchall: None },
+            UnreachablePatterns { count: unreachable_arms.len(), unreachable_arms, catchall: None },
         );
     }
 }

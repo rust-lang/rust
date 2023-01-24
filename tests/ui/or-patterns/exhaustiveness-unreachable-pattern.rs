@@ -27,7 +27,7 @@ fn main() {
     match (0u8, 0u8) {
         (1 | 2, 3 | 4) => {}
         (1, 3) => {}
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         (1, 4) => {}
         //~^ this arm is never executed
@@ -46,7 +46,7 @@ fn main() {
     match (Some(0u8),) {
         (None | Some(1 | 2),) => {}
         (Some(1),) => {}
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         (None,) => {}
         //~^ this arm is never executed
@@ -76,21 +76,21 @@ fn main() {
         // We get two errors because recursive or-pattern expansion means we don't notice the two
         // errors span a whole pattern. This could be better but doesn't matter much
         0 | (0 | 0) => {}
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this pattern is unreachable
         _ => {}
     }
     match None {
         // There is only one error that correctly points to the whole subpattern
         Some(0) | Some(0 | 0) => {}
-        //~^^ ERROR unreachable pattern
+        //~^ ERROR: unreachable pattern
         //~| this pattern is unreachable
         _ => {}
     }
     match [0; 2] {
         [0
             | 0
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this pattern is unreachable
         , 0
             | 0] => {}
@@ -172,8 +172,9 @@ fn main() {
     match (true, true) {
         (false, true) => {}
         (true, true) => {}
-        (false | true, false | true) => {} //~^ ERROR unreachable pattern
-                                           //~| this pattern is unreachable
+        (false | true, false | true) => {}
+        //~^ ERROR unreachable pattern
+        //~| this pattern is unreachable
     }
     match (true, true) {
         (true, false) => {}

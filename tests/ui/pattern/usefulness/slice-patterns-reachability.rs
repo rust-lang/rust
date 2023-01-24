@@ -6,7 +6,7 @@ fn main() {
     match s {
         [true, ..] => {}
         [true, ..] => {}
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         [true] => {}
         //~^ this arm is never executed
@@ -15,7 +15,7 @@ fn main() {
     match s {
         [.., true] => {}
         [.., true] => {}
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         [true] => {}
         //~^ this arm is never executed
@@ -24,7 +24,7 @@ fn main() {
     match s {
         [false, .., true] => {}
         [false, .., true] => {}
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         [false, true] => {}
         //~^ this arm is never executed

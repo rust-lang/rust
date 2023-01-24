@@ -217,7 +217,7 @@ LL |         _ => {},
 LL |         '\u{D7FF}'..='\u{E000}' => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this arm is never executed
 
-error: unreachable pattern
+error: multiple unreachable patterns
   --> $DIR/reachability.rs:120:9
    |
 LL |         &FOO => {}

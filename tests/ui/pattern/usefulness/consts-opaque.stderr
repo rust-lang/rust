@@ -50,7 +50,7 @@ error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated wit
 LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^
 
-error: unreachable pattern
+error: multiple unreachable patterns
   --> $DIR/consts-opaque.rs:54:9
    |
 LL |         Bar => {}
@@ -67,7 +67,7 @@ error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated wit
 LL |         BAR => {}
    |         ^^^
 
-error: unreachable pattern
+error: multiple unreachable patterns
   --> $DIR/consts-opaque.rs:64:9
    |
 LL |         BAR => {}
@@ -91,7 +91,7 @@ error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated wit
 LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^
 
-error: unreachable pattern
+error: multiple unreachable patterns
   --> $DIR/consts-opaque.rs:74:9
    |
 LL |         BAR => {}
@@ -109,7 +109,7 @@ error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated wit
 LL |         BAZ => {}
    |         ^^^
 
-error: unreachable pattern
+error: multiple unreachable patterns
   --> $DIR/consts-opaque.rs:84:9
    |
 LL |         BAZ => {}
@@ -142,7 +142,7 @@ error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated wit
 LL |         BAZ => {}
    |         ^^^
 
-error: unreachable pattern
+error: multiple unreachable patterns
   --> $DIR/consts-opaque.rs:103:9
    |
 LL |         BAZ => {}

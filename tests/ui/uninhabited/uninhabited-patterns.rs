@@ -30,7 +30,7 @@ fn main() {
     let x: Result<Box<NotSoSecretlyEmpty>, &[Result<!, !>]> = Err(&[]);
     match x {
         Ok(box _) => (),
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         Err(&[]) => (),
         Err(&[..]) => (),

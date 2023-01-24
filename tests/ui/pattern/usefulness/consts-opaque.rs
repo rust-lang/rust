@@ -53,7 +53,7 @@ fn main() {
         Bar => {}
         BAR => {} // should not be emitting unreachable warning
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| ERROR unreachable pattern
+        //~| ERROR multiple unreachable patterns
         _ => {}
         //~^ this arm is never executed
     }
@@ -62,7 +62,7 @@ fn main() {
         BAR => {}
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         Bar => {} // should not be emitting unreachable warning
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         _ => {}
         //~^ this arm is never executed
@@ -73,7 +73,7 @@ fn main() {
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         BAR => {} // should not be emitting unreachable warning
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| ERROR unreachable pattern
+        //~| ERROR multiple unreachable patterns
         _ => {} // should not be emitting unreachable warning
         //~^ this arm is never executed
     }
@@ -82,7 +82,7 @@ fn main() {
         BAZ => {}
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         Baz::Baz1 => {} // should not be emitting unreachable warning
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         _ => {}
         //~^ this arm is never executed
@@ -101,7 +101,7 @@ fn main() {
         BAZ => {}
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         Baz::Baz2 => {} // should not be emitting unreachable warning
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         _ => {} // should not be emitting unreachable warning
         //~^ this arm is never executed
     }

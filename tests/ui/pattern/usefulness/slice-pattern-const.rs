@@ -41,7 +41,7 @@ fn main() {
     match &[] {
         [] => (),
         BOO => (),
-        //~^ ERROR unreachable pattern
+        //~^ ERROR multiple unreachable patterns
         //~| this arm is never executed
         b"" => (),
         //~^ this arm is never executed

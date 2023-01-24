@@ -469,6 +469,7 @@ pub struct NonConstPath {
 pub struct UnreachablePatterns {
     #[subdiagnostic]
     pub unreachable_arms: Vec<UnreachableArm>,
+    pub count: usize,
     #[label(catchall_label)]
     pub catchall: Option<Span>,
 }

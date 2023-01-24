@@ -10,7 +10,7 @@ note: the lint level is defined here
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: unreachable pattern
+error: multiple unreachable patterns
   --> $DIR/uninhabited-patterns.rs:32:9
    |
 LL |         Ok(box _) => (),
