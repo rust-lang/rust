@@ -2,9 +2,9 @@ error: unreachable pattern
   --> $DIR/issue-31221.rs:18:9
    |
 LL |         Var3 => (),
-   |         ---- matches any value
+   |         ---- this pattern is irrefutable; subsequent arms are never executed
 LL |         Var2 => (),
-   |         ^^^^ unreachable pattern
+   |         ^^^^^^^^^^ this arm is never executed
    |
 note: the lint level is defined here
   --> $DIR/issue-31221.rs:4:9
@@ -16,17 +16,17 @@ error: unreachable pattern
   --> $DIR/issue-31221.rs:24:9
    |
 LL |         &Var3 => (),
-   |         ----- matches any value
+   |         ----- this pattern is irrefutable; subsequent arms are never executed
 LL |         &Var2 => (),
-   |         ^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^ this arm is never executed
 
 error: unreachable pattern
   --> $DIR/issue-31221.rs:31:9
    |
 LL |         (c, d) => (),
-   |         ------ matches any value
+   |         ------ this pattern is irrefutable; subsequent arms are never executed
 LL |         anything => ()
-   |         ^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^ this arm is never executed
 
 error: aborting due to 3 previous errors
 

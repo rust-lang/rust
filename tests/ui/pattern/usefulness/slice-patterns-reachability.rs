@@ -5,20 +5,29 @@ fn main() {
 
     match s {
         [true, ..] => {}
-        [true, ..] => {} //~ ERROR unreachable pattern
-        [true] => {} //~ ERROR unreachable pattern
+        [true, ..] => {}
+        //~^ ERROR unreachable pattern
+        //~| this arm is never executed
+        [true] => {}
+        //~^ this arm is never executed
         [..] => {}
     }
     match s {
         [.., true] => {}
-        [.., true] => {} //~ ERROR unreachable pattern
-        [true] => {} //~ ERROR unreachable pattern
+        [.., true] => {}
+        //~^ ERROR unreachable pattern
+        //~| this arm is never executed
+        [true] => {}
+        //~^ this arm is never executed
         [..] => {}
     }
     match s {
         [false, .., true] => {}
-        [false, .., true] => {} //~ ERROR unreachable pattern
-        [false, true] => {} //~ ERROR unreachable pattern
+        [false, .., true] => {}
+        //~^ ERROR unreachable pattern
+        //~| this arm is never executed
+        [false, true] => {}
+        //~^ this arm is never executed
         [false] => {}
         [..] => {}
     }

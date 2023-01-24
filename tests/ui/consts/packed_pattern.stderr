@@ -2,7 +2,7 @@ warning: unreachable pattern
   --> $DIR/packed_pattern.rs:16:9
    |
 LL |         FOO => unreachable!(),
-   |         ^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^ this arm is never executed
    |
    = note: `#[warn(unreachable_patterns)]` on by default
 

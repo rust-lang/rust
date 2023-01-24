@@ -465,12 +465,26 @@ pub struct NonConstPath {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unreachable_pattern)]
-pub struct UnreachablePattern {
-    #[label]
-    pub span: Option<Span>,
+#[diag(mir_build_unreachable_patterns)]
+pub struct UnreachablePatterns {
+    #[subdiagnostic]
+    pub unreachable_arms: Vec<UnreachableArm>,
     #[label(catchall_label)]
     pub catchall: Option<Span>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnreachableArm {
+    #[label(mir_build_never_executed)]
+    NeverExecuted {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(mir_build_unreachable_pattern)]
+    PatternUnreachable {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]

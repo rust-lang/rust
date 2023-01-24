@@ -15,7 +15,7 @@ error: unreachable pattern
   --> $DIR/floats.rs:16:7
    |
 LL |       0.02f64 => {}
-   |       ^^^^^^^
+   |       ^^^^^^^^^^^^^ this arm is never executed
    |
 note: the lint level is defined here
   --> $DIR/floats.rs:2:9

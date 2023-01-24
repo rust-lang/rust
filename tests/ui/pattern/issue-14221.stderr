@@ -16,10 +16,10 @@ error: unreachable pattern
   --> $DIR/issue-14221.rs:15:13
    |
 LL |             A => "A",
-   |             - matches any value
+   |             - this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |             B => "B",
-   |             ^ unreachable pattern
+   |             ^^^^^^^^ this arm is never executed
    |
 note: the lint level is defined here
   --> $DIR/issue-14221.rs:1:9

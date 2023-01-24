@@ -2,7 +2,7 @@ error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:7:9
    |
 LL |         (1,) => {}
-   |         ^^^^
+   |         ^^^^^^^^^^ this arm is never executed
    |
 note: the lint level is defined here
   --> $DIR/exhaustiveness-unreachable-pattern.rs:1:9
@@ -11,131 +11,109 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:12:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:14:9
    |
-LL |         (2,) => {}
-   |         ^^^^
+LL |         (2,) => {} 
+   |         ^^^^^^^^^^ this arm is never executed
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:18:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:22:9
    |
 LL |         (1 | 2,) => {}
-   |         ^^^^^^^^
+   |         ^^^^^^^^^^^^^^ this arm is never executed
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:23:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:29:9
    |
 LL |         (1, 3) => {}
-   |         ^^^^^^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:24:9
-   |
+   |         ^^^^^^^^^^^^ this arm is never executed
+...
 LL |         (1, 4) => {}
-   |         ^^^^^^
+   |         ------------ this arm is never executed
+LL |
+LL |         (2, 4) => {}     
+   |         ------------ this arm is never executed
+LL |
+LL |         (2 | 1, 4) => {} 
+   |         ---------------- this arm is never executed
+...
+LL |         (1, 4 | 5) => {} 
+   |         ---------------- this arm is never executed
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:25:9
-   |
-LL |         (2, 4) => {}
-   |         ^^^^^^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:26:9
-   |
-LL |         (2 | 1, 4) => {}
-   |         ^^^^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:28:9
-   |
-LL |         (1, 4 | 5) => {}
-   |         ^^^^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:36:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:48:9
    |
 LL |         (Some(1),) => {}
-   |         ^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^ this arm is never executed
+...
+LL |         (None,) => {}  
+   |         ------------- this arm is never executed
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:37:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:57:9
    |
-LL |         (None,) => {}
-   |         ^^^^^^^
+LL |         ((1..=4,),) => {} 
+   |         ^^^^^^^^^^^^^^^^^ this arm is never executed
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:42:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:64:14
    |
-LL |         ((1..=4,),) => {}
-   |         ^^^^^^^^^^^
+LL |         (1 | 1,) => {} 
+   |              ^ this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:47:14
-   |
-LL |         (1 | 1,) => {}
-   |              ^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:51:19
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:70:19
    |
 LL |         (0 | 1) | 1 => {}
-   |                   ^
+   |                   ^ this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:57:14
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:78:14
    |
 LL |         0 | (0 | 0) => {}
-   |              ^
+   |              ^   - this pattern is unreachable
+   |              |
+   |              this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:57:18
-   |
-LL |         0 | (0 | 0) => {}
-   |                  ^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:65:13
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:86:13
    |
 LL | /             Some(
 LL | |                 0 | 0) => {}
-   | |______________________^
+   | |______________________^ this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:71:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:94:15
    |
-LL |             | 0
-   |               ^
+LL |             | 0 
+   |               ^ this pattern is unreachable
+...
+LL |             | 0] => {} 
+   |               - this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:73:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:107:10
    |
-LL |             | 0] => {}
-   |               ^
+LL |         [1 
+   |          ^ this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:81:10
-   |
-LL |         [1
-   |          ^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:93:10
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:121:10
    |
 LL |         [true
-   |          ^^^^
+   |          ^^^^ this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:100:36
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:130:36
    |
 LL |         (true | false, None | Some(true
-   |                                    ^^^^
+   |                                    ^^^^ this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:105:14
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:137:14
    |
 LL |             (true
-   |              ^^^^
+   |              ^^^^ this pattern is unreachable
 ...
 LL |         (true | false, None | Some(t_or_f!())) => {}
    |                                    --------- in this macro invocation
@@ -143,28 +121,28 @@ LL |         (true | false, None | Some(t_or_f!())) => {}
    = note: this error originates in the macro `t_or_f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:116:14
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:150:14
    |
 LL |         Some(0
-   |              ^
+   |              ^ this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:135:19
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:171:19
    |
 LL |                 | false) => {}
-   |                   ^^^^^
+   |                   ^^^^^ this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:143:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:179:15
    |
 LL |             | true) => {}
-   |               ^^^^
+   |               ^^^^ this pattern is unreachable
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:149:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:187:15
    |
-LL |             | true,
-   |               ^^^^
+LL |             | true, 
+   |               ^^^^ this pattern is unreachable
 
-error: aborting due to 26 previous errors
+error: aborting due to 19 previous errors
 

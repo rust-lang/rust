@@ -2,7 +2,7 @@ error: unreachable pattern
   --> $DIR/match-vec-fixed.rs:7:9
    |
 LL |         [_, _, _] => {}
-   |         ^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^ this arm is never executed
    |
 note: the lint level is defined here
   --> $DIR/match-vec-fixed.rs:1:9
@@ -14,7 +14,7 @@ error: unreachable pattern
   --> $DIR/match-vec-fixed.rs:11:9
    |
 LL |         [_, 1, _] => {}
-   |         ^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^ this arm is never executed
 
 error: aborting due to 2 previous errors
 

@@ -29,19 +29,25 @@ fn main() {
 
     let x: Result<Box<NotSoSecretlyEmpty>, &[Result<!, !>]> = Err(&[]);
     match x {
-        Ok(box _) => (),    //~ ERROR unreachable pattern
+        Ok(box _) => (),
+        //~^ ERROR unreachable pattern
+        //~| this arm is never executed
         Err(&[]) => (),
-        Err(&[..]) => (),   //~ ERROR unreachable pattern
+        Err(&[..]) => (),
+        //~^ this arm is never executed
     }
 
     let x: Result<foo::SecretlyEmpty, Result<NotSoSecretlyEmpty, u32>> = Err(Err(123));
     match x {
         Ok(_y) => (),
         Err(Err(_y)) => (),
-        Err(Ok(_y)) => (),  //~ ERROR unreachable pattern
+        Err(Ok(_y)) => (),
+        //~^ ERROR unreachable pattern
+        //~| this arm is never executed
     }
 
     while let Some(_y) = foo() {
         //~^ ERROR unreachable pattern
+        //~| this pattern is unreachable
     }
 }

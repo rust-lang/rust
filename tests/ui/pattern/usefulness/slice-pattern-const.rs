@@ -40,9 +40,13 @@ fn main() {
     const BOO: &[u8; 0] = &[];
     match &[] {
         [] => (),
-        BOO => (), //~ ERROR unreachable pattern
-        b"" => (), //~ ERROR unreachable pattern
-        _ => (), //~ ERROR unreachable pattern
+        BOO => (),
+        //~^ ERROR unreachable pattern
+        //~| this arm is never executed
+        b"" => (),
+        //~^ this arm is never executed
+        _ => (),
+        //~^ this arm is never executed
     }
 
     const CONST1: &[bool; 1] = &[true];

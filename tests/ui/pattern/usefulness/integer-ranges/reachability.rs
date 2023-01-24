@@ -7,6 +7,22 @@ macro_rules! m {
         match $s {
             $t1 => {}
             $t2 => {}
+            //~^ ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
+            //~| ERROR unreachable pattern
             _ => {}
         }
     }
@@ -14,32 +30,32 @@ macro_rules! m {
 
 fn main() {
     m!(0u8, 42, 41);
-    m!(0u8, 42, 42); //~ ERROR unreachable pattern
+    m!(0u8, 42, 42);
     m!(0u8, 42, 43);
 
     m!(0u8, 20..=30, 19);
-    m!(0u8, 20..=30, 20); //~ ERROR unreachable pattern
-    m!(0u8, 20..=30, 21); //~ ERROR unreachable pattern
-    m!(0u8, 20..=30, 25); //~ ERROR unreachable pattern
-    m!(0u8, 20..=30, 29); //~ ERROR unreachable pattern
-    m!(0u8, 20..=30, 30); //~ ERROR unreachable pattern
+    m!(0u8, 20..=30, 20);
+    m!(0u8, 20..=30, 21);
+    m!(0u8, 20..=30, 25);
+    m!(0u8, 20..=30, 29);
+    m!(0u8, 20..=30, 30);
     m!(0u8, 20..=30, 31);
     m!(0u8, 20..30, 19);
-    m!(0u8, 20..30, 20); //~ ERROR unreachable pattern
-    m!(0u8, 20..30, 21); //~ ERROR unreachable pattern
-    m!(0u8, 20..30, 25); //~ ERROR unreachable pattern
-    m!(0u8, 20..30, 29); //~ ERROR unreachable pattern
+    m!(0u8, 20..30, 20);
+    m!(0u8, 20..30, 21);
+    m!(0u8, 20..30, 25);
+    m!(0u8, 20..30, 29);
     m!(0u8, 20..30, 30);
     m!(0u8, 20..30, 31);
 
-    m!(0u8, 20..=30, 20..=30); //~ ERROR unreachable pattern
-    m!(0u8, 20.. 30, 20.. 30); //~ ERROR unreachable pattern
-    m!(0u8, 20..=30, 20.. 30); //~ ERROR unreachable pattern
+    m!(0u8, 20..=30, 20..=30);
+    m!(0u8, 20.. 30, 20.. 30);
+    m!(0u8, 20..=30, 20.. 30);
     m!(0u8, 20..=30, 19..=30);
-    m!(0u8, 20..=30, 21..=30); //~ ERROR unreachable pattern
-    m!(0u8, 20..=30, 20..=29); //~ ERROR unreachable pattern
+    m!(0u8, 20..=30, 21..=30);
+    m!(0u8, 20..=30, 20..=29);
     m!(0u8, 20..=30, 20..=31);
-    m!('a', 'A'..='z', 'a'..='z'); //~ ERROR unreachable pattern
+    m!('a', 'A'..='z', 'a'..='z');
 
     match 0u8 {
         5 => {},
@@ -102,7 +118,7 @@ fn main() {
     match &0 {
         &42 => {}
         &FOO => {} //~ ERROR unreachable pattern
-        BAR => {} //~ ERROR unreachable pattern
+        BAR => {}
         _ => {}
     }
     // Regression test, see https://github.com/rust-lang/rust/pull/66326#issuecomment-552889933

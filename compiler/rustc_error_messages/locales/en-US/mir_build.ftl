@@ -192,9 +192,12 @@ mir_build_const_param_in_pattern = const parameters cannot be referenced in patt
 
 mir_build_non_const_path = runtime values cannot be referenced in patterns
 
-mir_build_unreachable_pattern = unreachable pattern
-    .label = unreachable pattern
-    .catchall_label = matches any value
+mir_build_unreachable_patterns = unreachable pattern
+    .catchall_label = this pattern is irrefutable; subsequent arms are never executed
+
+mir_build_never_executed = this arm is never executed
+
+mir_build_unreachable_pattern = this pattern is unreachable
 
 mir_build_const_pattern_depends_on_generic_parameter =
     constant pattern depends on a generic parameter

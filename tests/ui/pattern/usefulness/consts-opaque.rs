@@ -31,6 +31,7 @@ fn main() {
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         _ => {} // should not be emitting unreachable warning
         //~^ ERROR unreachable pattern
+        //~| this arm is never executed
     }
 
     match FOO_REF {
@@ -54,7 +55,7 @@ fn main() {
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         //~| ERROR unreachable pattern
         _ => {}
-        //~^ ERROR unreachable pattern
+        //~^ this arm is never executed
     }
 
     match BAR {
@@ -62,8 +63,9 @@ fn main() {
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         Bar => {} // should not be emitting unreachable warning
         //~^ ERROR unreachable pattern
+        //~| this arm is never executed
         _ => {}
-        //~^ ERROR unreachable pattern
+        //~^ this arm is never executed
     }
 
     match BAR {
@@ -73,7 +75,7 @@ fn main() {
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         //~| ERROR unreachable pattern
         _ => {} // should not be emitting unreachable warning
-        //~^ ERROR unreachable pattern
+        //~^ this arm is never executed
     }
 
     match BAZ {
@@ -81,8 +83,9 @@ fn main() {
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         Baz::Baz1 => {} // should not be emitting unreachable warning
         //~^ ERROR unreachable pattern
+        //~| this arm is never executed
         _ => {}
-        //~^ ERROR unreachable pattern
+        //~^ this arm is never executed
     }
 
     match BAZ {
@@ -91,6 +94,7 @@ fn main() {
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         _ => {}
         //~^ ERROR unreachable pattern
+        //~| this arm is never executed
     }
 
     match BAZ {
@@ -99,7 +103,7 @@ fn main() {
         Baz::Baz2 => {} // should not be emitting unreachable warning
         //~^ ERROR unreachable pattern
         _ => {} // should not be emitting unreachable warning
-        //~^ ERROR unreachable pattern
+        //~^ this arm is never executed
     }
 
     type Quux = fn(usize, usize) -> usize;

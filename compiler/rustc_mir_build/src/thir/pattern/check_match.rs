@@ -207,10 +207,17 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         match source {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
             // when the iterator is an uninhabited type. unreachable_code will trigger instead.
-            hir::MatchSource::ForLoopDesugar if arms.len() == 1 => {}
-            hir::MatchSource::ForLoopDesugar
-            | hir::MatchSource::Normal
-            | hir::MatchSource::FormatArgs => report_arm_reachability(&cx, &report),
+            hir::MatchSource::ForLoopDesugar if arms.len() == 1 => {},
+            hir::MatchSource::ForLoopDesugar | hir::MatchSource::FormatArgs => {
+                report_let_reachability(scrut.hir_id, &cx, &report)
+            },
+            hir::MatchSource::Normal => {
+                if let ty::Adt(def, _) = scrut_ty.kind() && def.is_enum() && def.variants().is_empty() {
+                    report_empty_enum_arms(scrut.hir_id, hir_arms, &cx)
+                } else {
+                    report_arm_reachability(scrut.hir_id, hir_arms, &cx, &report)
+                }
+            }
             // Unreachable patterns in try and await expressions occur when one of
             // the arms are an uninhabited type. Which is OK.
             hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
@@ -520,15 +527,6 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
     }
 }
 
-fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<Span>) {
-    tcx.emit_spanned_lint(
-        UNREACHABLE_PATTERNS,
-        id,
-        span,
-        UnreachablePattern { span: if catchall.is_some() { Some(span) } else { None }, catchall },
-    );
-}
-
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
     let source = let_source(tcx, id);
     irrefutable_let_patterns(tcx, id, source, 1, span);
@@ -561,43 +559,122 @@ fn is_let_irrefutable<'p, 'tcx>(
     pat_id: HirId,
     pat: &'p DeconstructedPat<'p, 'tcx>,
 ) -> bool {
-    let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
-    let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty());
+    let arms = MatchArm { pat, hir_id: pat_id, has_guard: false };
+    let report = compute_match_usefulness(&cx, &[arms], pat_id, pat.ty());
 
     // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
     // This also reports unreachable sub-patterns though, so we can't just replace it with an
     // `is_uninhabited` check.
-    report_arm_reachability(&cx, &report);
+    report_let_reachability(pat_id, &cx, &report);
 
     // If the list of witnesses is empty, the match is exhaustive,
     // i.e. the `if let` pattern is irrefutable.
     report.non_exhaustiveness_witnesses.is_empty()
 }
 
-/// Report unreachable arms, if any.
-fn report_arm_reachability<'p, 'tcx>(
+/// Report unreachable let branches, if any.
+fn report_let_reachability<'p, 'tcx>(
+    scrut: HirId,
     cx: &MatchCheckCtxt<'p, 'tcx>,
     report: &UsefulnessReport<'p, 'tcx>,
 ) {
-    use Reachability::*;
-    let mut catchall = None;
-    for (arm, is_useful) in report.arm_usefulness.iter() {
+    let mut unreachable_arms = Vec::new();
+
+    for (arm, is_useful) in &report.arm_usefulness {
         match is_useful {
-            Unreachable => unreachable_pattern(cx.tcx, arm.pat.span(), arm.hir_id, catchall),
-            Reachable(unreachables) if unreachables.is_empty() => {}
+            Reachability::Unreachable => {
+                unreachable_arms.push(UnreachableArm::PatternUnreachable { span: arm.pat.span() });
+            }
             // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
-            Reachable(unreachables) => {
-                let mut unreachables = unreachables.clone();
-                // Emit lints in the order in which they occur in the file.
-                unreachables.sort_unstable();
-                for span in unreachables {
-                    unreachable_pattern(cx.tcx, span, arm.hir_id, None);
+            Reachability::Reachable(unreachables) => {
+                for &span in unreachables {
+                    unreachable_arms.push(UnreachableArm::PatternUnreachable { span });
                 }
             }
         }
-        if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
-            catchall = Some(arm.pat.span());
+    }
+
+    if let Some(
+        UnreachableArm::PatternUnreachable { span } | UnreachableArm::NeverExecuted { span },
+    ) = unreachable_arms.first()
+    {
+        cx.tcx.emit_spanned_lint(
+            UNREACHABLE_PATTERNS,
+            scrut,
+            *span,
+            UnreachablePatterns { unreachable_arms, catchall: None },
+        );
+    }
+}
+
+/// Report unreachable arms, if any.
+fn report_arm_reachability<'p, 'tcx>(
+    scrut: HirId,
+    hir_arms: &'tcx [hir::Arm<'tcx>],
+    cx: &MatchCheckCtxt<'p, 'tcx>,
+    report: &UsefulnessReport<'p, 'tcx>,
+) {
+    let mut unreachable_arms = Vec::new();
+
+    for ((_, is_useful), hir::Arm { span, .. }) in report.arm_usefulness.iter().zip(hir_arms) {
+        match is_useful {
+            Reachability::Unreachable => {
+                unreachable_arms.push(UnreachableArm::NeverExecuted { span: *span });
+            }
+            // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
+            Reachability::Reachable(unreachables) => {
+                for &span in unreachables {
+                    unreachable_arms.push(UnreachableArm::PatternUnreachable { span });
+                }
+            }
         }
+    }
+
+    // Mention it if there's a catch-all arm, but not if it's the last one.
+    let catchall = if let [arms @ .., _last] = &*report.arm_usefulness {
+        arms.iter()
+            .filter_map(|(arm, _)| {
+                (!arm.has_guard && pat_is_catchall(arm.pat)).then(|| arm.pat.span())
+            })
+            .next()
+    } else {
+        None
+    };
+
+    if let Some(
+        UnreachableArm::NeverExecuted { span } | UnreachableArm::PatternUnreachable { span },
+    ) = unreachable_arms.first()
+    {
+        cx.tcx.emit_spanned_lint(
+            UNREACHABLE_PATTERNS,
+            scrut,
+            *span,
+            UnreachablePatterns { unreachable_arms, catchall },
+        );
+    }
+}
+
+/// Report every arm matching on , if any.
+fn report_empty_enum_arms<'p, 'tcx>(
+    scrut: HirId,
+    hir_arms: &'tcx [hir::Arm<'tcx>],
+    cx: &MatchCheckCtxt<'p, 'tcx>,
+) {
+    let unreachable_arms = hir_arms
+        .iter()
+        .map(|arm| UnreachableArm::NeverExecuted { span: arm.span })
+        .collect::<Vec<_>>();
+
+    if let Some(
+        UnreachableArm::NeverExecuted { span } | UnreachableArm::PatternUnreachable { span },
+    ) = unreachable_arms.first()
+    {
+        cx.tcx.emit_spanned_lint(
+            UNREACHABLE_PATTERNS,
+            scrut,
+            *span,
+            UnreachablePatterns { unreachable_arms, catchall: None },
+        );
     }
 }
 

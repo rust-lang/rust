@@ -2,7 +2,10 @@ error: unreachable pattern
   --> $DIR/slice-patterns-reachability.rs:8:9
    |
 LL |         [true, ..] => {}
-   |         ^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^ this arm is never executed
+...
+LL |         [true] => {}
+   |         ------------ this arm is never executed
    |
 note: the lint level is defined here
   --> $DIR/slice-patterns-reachability.rs:1:9
@@ -11,34 +14,22 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:9:9
-   |
-LL |         [true] => {}
-   |         ^^^^^^
-
-error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:14:9
+  --> $DIR/slice-patterns-reachability.rs:17:9
    |
 LL |         [.., true] => {}
-   |         ^^^^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:15:9
-   |
+   |         ^^^^^^^^^^^^^^^^ this arm is never executed
+...
 LL |         [true] => {}
-   |         ^^^^^^
+   |         ------------ this arm is never executed
 
 error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:20:9
+  --> $DIR/slice-patterns-reachability.rs:26:9
    |
-LL |         [false, .., true] => {}
-   |         ^^^^^^^^^^^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:21:9
-   |
+LL |         [false, .., true] => {} 
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ this arm is never executed
+...
 LL |         [false, true] => {}
-   |         ^^^^^^^^^^^^^
+   |         ------------------- this arm is never executed
 
-error: aborting due to 6 previous errors
+error: aborting due to 3 previous errors
 
