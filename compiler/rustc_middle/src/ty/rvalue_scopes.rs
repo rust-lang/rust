@@ -7,12 +7,13 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 /// rules laid out in `rustc_hir_analysis::check::rvalue_scopes`.
 #[derive(TyEncodable, TyDecodable, Clone, Debug, Default, Eq, PartialEq, HashStable)]
 pub struct RvalueScopes {
+    rescope_if_let: bool,
     map: ItemLocalMap<Option<Scope>>,
 }
 
 impl RvalueScopes {
-    pub fn new() -> Self {
-        Self { map: <_>::default() }
+    pub fn new(rescope_if_let: bool) -> Self {
+        Self { rescope_if_let, map: <_>::default() }
     }
 
     /// Returns the scope when the temp created by `expr_id` will be cleaned up.
@@ -39,7 +40,17 @@ impl RvalueScopes {
                     debug!("temporary_scope({expr_id:?}) = {id:?} [enclosing]");
                     return Some(id);
                 }
-                _ => id = p,
+                ScopeData::IfThen => {
+                    if self.rescope_if_let {
+                        debug!("temporary_scope({expr_id:?}) = {p:?} [enclosing]");
+                        return Some(p);
+                    }
+                    id = p;
+                }
+                ScopeData::Node
+                | ScopeData::CallSite
+                | ScopeData::Arguments
+                | ScopeData::Remainder(_) => id = p,
             }
         }
 

@@ -978,6 +978,7 @@ symbols! {
         ident,
         if_let,
         if_let_guard,
+        if_let_rescope,
         if_while_or_patterns,
         ignore,
         impl_header_lifetime_elision,
