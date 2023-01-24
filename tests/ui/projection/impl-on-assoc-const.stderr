@@ -1,0 +1,9 @@
+error[E0575]: expected associated type, found associated constant `Identity::Identity`
+  --> $DIR/impl-on-assoc-const.rs:13:6
+   |
+LL | impl <S as Identity>::Identity {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^ not a associated type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0575`.

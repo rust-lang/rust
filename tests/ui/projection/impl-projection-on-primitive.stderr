@@ -1,0 +1,11 @@
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/impl-projection-on-primitive.rs:13:6
+   |
+LL | impl <S as Identity>::Identity {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an extension trait instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0390`.
