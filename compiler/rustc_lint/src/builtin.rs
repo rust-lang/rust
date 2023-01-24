@@ -2126,7 +2126,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                         region_def_id,
                                     ),
                                     &predicate.bounds,
-                                    predicate.span,
+                                    hir_generics.span_for_predicate_removal(i),
                                     predicate.in_where_clause,
                                 )
                             } else {
@@ -2145,7 +2145,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                     (
                                         Self::lifetimes_outliving_type(inferred_outlives, index),
                                         &predicate.bounds,
-                                        predicate.span,
+                                        hir_generics.span_for_bound_removal(i, index),
                                         predicate.origin == PredicateOrigin::WhereClause,
                                     )
                                 }
