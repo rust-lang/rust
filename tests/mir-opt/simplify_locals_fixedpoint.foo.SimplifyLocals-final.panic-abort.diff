@@ -35,7 +35,7 @@
           StorageLive(_6);
           _6 = (((_1.0: std::option::Option<u8>) as Some).0: u8);
           StorageDead(_6);
-          goto -> bb3;
+          drop(_1) -> [return: bb5, unwind unreachable];
       }
   
       bb3: {
@@ -44,6 +44,15 @@
   
       bb4: {
           StorageDead(_1);
+          goto -> bb6;
+      }
+  
+      bb5: {
+          StorageDead(_1);
+          goto -> bb6;
+      }
+  
+      bb6: {
           return;
       }
   }

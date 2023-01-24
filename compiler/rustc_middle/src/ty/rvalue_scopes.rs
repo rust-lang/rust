@@ -38,7 +38,14 @@ impl RvalueScopes {
                     debug!("temporary_scope({expr_id:?}) = {id:?} [enclosing]");
                     return Some(id);
                 }
-                _ => id = p,
+                ScopeData::IfThen => {
+                    debug!("temporary_scope({expr_id:?}) = {p:?} [enclosing]");
+                    return Some(p);
+                }
+                ScopeData::Node
+                | ScopeData::CallSite
+                | ScopeData::Arguments
+                | ScopeData::Remainder(_) => id = p,
             }
         }
 

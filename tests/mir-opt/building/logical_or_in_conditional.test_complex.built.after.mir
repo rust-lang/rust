@@ -19,7 +19,7 @@ fn test_complex() -> () {
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
-        _2 = E::f() -> [return: bb1, unwind: bb31];
+        _2 = E::f() -> [return: bb1, unwind: bb32];
     }
 
     bb1: {
@@ -38,7 +38,7 @@ fn test_complex() -> () {
 
     bb4: {
         StorageLive(_4);
-        _4 = always_true() -> [return: bb5, unwind: bb31];
+        _4 = always_true() -> [return: bb5, unwind: bb32];
     }
 
     bb5: {
@@ -60,7 +60,7 @@ fn test_complex() -> () {
     }
 
     bb8: {
-        drop(_7) -> [return: bb10, unwind: bb31];
+        drop(_7) -> [return: bb10, unwind: bb32];
     }
 
     bb9: {
@@ -74,7 +74,7 @@ fn test_complex() -> () {
     }
 
     bb11: {
-        drop(_7) -> [return: bb12, unwind: bb31];
+        drop(_7) -> [return: bb12, unwind: bb32];
     }
 
     bb12: {
@@ -94,7 +94,7 @@ fn test_complex() -> () {
     }
 
     bb14: {
-        drop(_10) -> [return: bb16, unwind: bb31];
+        drop(_10) -> [return: bb16, unwind: bb32];
     }
 
     bb15: {
@@ -105,11 +105,12 @@ fn test_complex() -> () {
         StorageDead(_10);
         StorageDead(_9);
         _1 = const ();
+        StorageDead(_2);
         goto -> bb20;
     }
 
     bb17: {
-        drop(_10) -> [return: bb18, unwind: bb31];
+        drop(_10) -> [return: bb18, unwind: bb32];
     }
 
     bb18: {
@@ -119,6 +120,7 @@ fn test_complex() -> () {
     }
 
     bb19: {
+        StorageDead(_2);
         _1 = const ();
         goto -> bb20;
     }
@@ -127,10 +129,9 @@ fn test_complex() -> () {
         StorageDead(_8);
         StorageDead(_5);
         StorageDead(_4);
-        StorageDead(_2);
         StorageDead(_1);
         StorageLive(_11);
-        _11 = always_true() -> [return: bb21, unwind: bb31];
+        _11 = always_true() -> [return: bb21, unwind: bb32];
     }
 
     bb21: {
@@ -138,7 +139,7 @@ fn test_complex() -> () {
     }
 
     bb22: {
-        goto -> bb29;
+        goto -> bb30;
     }
 
     bb23: {
@@ -147,7 +148,7 @@ fn test_complex() -> () {
 
     bb24: {
         StorageLive(_12);
-        _12 = E::f() -> [return: bb25, unwind: bb31];
+        _12 = E::f() -> [return: bb25, unwind: bb32];
     }
 
     bb25: {
@@ -166,21 +167,26 @@ fn test_complex() -> () {
 
     bb28: {
         _0 = const ();
-        goto -> bb30;
+        StorageDead(_12);
+        goto -> bb31;
     }
 
     bb29: {
-        _0 = const ();
+        StorageDead(_12);
         goto -> bb30;
     }
 
     bb30: {
+        _0 = const ();
+        goto -> bb31;
+    }
+
+    bb31: {
         StorageDead(_11);
-        StorageDead(_12);
         return;
     }
 
-    bb31 (cleanup): {
+    bb32 (cleanup): {
         resume;
     }
 }

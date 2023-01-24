@@ -55,10 +55,10 @@ impl DropOrderCollector {
     }
 
     fn if_let(&self) {
-        if let None = self.option_loud_drop(2) {
+        if let None = self.option_loud_drop(1) {
             unreachable!();
         } else {
-            self.print(1);
+            self.print(2);
         }
 
         if let Some(_) = self.option_loud_drop(4) {
@@ -197,10 +197,10 @@ impl DropOrderCollector {
         // take the "else" branch
         if self.option_loud_drop(5).is_some() // 1
             && self.option_loud_drop(6).is_some() // 2
-            && let None = self.option_loud_drop(8) { // 4
+            && let None = self.option_loud_drop(7) { // 3
             unreachable!();
         } else {
-            self.print(7); // 3
+            self.print(8); // 4
         }
 
         // let exprs interspersed
