@@ -432,8 +432,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     let sized_predicate = ty::Binder::dummy(tcx.at(DUMMY_SP).mk_trait_ref(
                         LangItem::Sized,
                         [ty::GenericArg::from(goal.predicate.self_ty())],
-                    ))
-                    .without_const();
+                    ));
 
                     let mut nested_goals = ecx.infcx.eq(
                         goal.param_env,
