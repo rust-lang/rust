@@ -1619,6 +1619,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
     }
+
     fn note_unreachable_loop_return(
         &self,
         err: &mut Diagnostic,
