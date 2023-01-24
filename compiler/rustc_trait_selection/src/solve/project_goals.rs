@@ -15,7 +15,7 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ProjectionPredicate, TypeSuperVisitable, TypeVisitor};
 use rustc_middle::ty::{ToPredicate, TypeVisitable};
-use rustc_span::DUMMY_SP;
+use rustc_span::{sym, DUMMY_SP};
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -390,6 +390,73 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         bug!("`Tuple` does not have an associated type: {:?}", goal);
+    }
+
+    fn consider_builtin_future_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Generator(def_id, substs, _) = *self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        // Generators are not futures unless they come from `async` desugaring
+        let tcx = ecx.tcx();
+        if !tcx.generator_is_async(def_id) {
+            return Err(NoSolution);
+        }
+
+        let term = substs.as_generator().return_ty().into();
+
+        Self::consider_assumption(
+            ecx,
+            goal,
+            ty::Binder::dummy(ty::ProjectionPredicate {
+                projection_ty: ecx.tcx().mk_alias_ty(goal.predicate.def_id(), [self_ty]),
+                term,
+            })
+            .to_predicate(tcx),
+        )
+    }
+
+    fn consider_builtin_generator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Generator(def_id, substs, _) = *self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        // `async`-desugared generators do not implement the generator trait
+        let tcx = ecx.tcx();
+        if tcx.generator_is_async(def_id) {
+            return Err(NoSolution);
+        }
+
+        let generator = substs.as_generator();
+
+        let name = tcx.associated_item(goal.predicate.def_id()).name;
+        let term = if name == sym::Return {
+            generator.return_ty().into()
+        } else if name == sym::Yield {
+            generator.yield_ty().into()
+        } else {
+            bug!("unexpected associated item `<{self_ty} as Generator>::{name}`")
+        };
+
+        Self::consider_assumption(
+            ecx,
+            goal,
+            ty::Binder::dummy(ty::ProjectionPredicate {
+                projection_ty: ecx
+                    .tcx()
+                    .mk_alias_ty(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
+                term,
+            })
+            .to_predicate(tcx),
+        )
     }
 }
 
