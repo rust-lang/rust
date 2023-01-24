@@ -4,6 +4,7 @@ use crate::traits;
 use hir::def::DefKind;
 use hir::def_id::{DefId, LocalDefId};
 use hir::{HirId, OpaqueTyOrigin};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
@@ -16,7 +17,6 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{DefIdTree, GenericArgKind};
 use rustc_span::Span;
-use smallvec::SmallVec;
 
 use std::ops::ControlFlow;
 
@@ -673,29 +673,37 @@ pub fn may_define_opaque_type<'tcx>(
             struct Visitor<'tcx> {
                 opaque_def_id: DefId,
                 tcx: TyCtxt<'tcx>,
-                ignore_nested: SmallVec<[DefId; 1]>,
+                seen: FxHashSet<Ty<'tcx>>,
                 param_env: ty::ParamEnv<'tcx>,
             }
             impl<'tcx> TypeVisitor<'tcx> for Visitor<'tcx> {
                 type BreakTy = ();
+
                 #[instrument(skip(self), level = "trace", ret)]
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                    // Erase all lifetimes, they can't affect anything, but recursion
+                    // may cause late bound regions to differ, because the type visitor
+                    // can't erase them in `visit_binder`.
+                    let t = t.fold_with(&mut BottomUpFolder {
+                        tcx: self.tcx,
+                        ct_op: |c| c,
+                        ty_op: |t| t,
+                        lt_op: |_| self.tcx.lifetimes.re_erased,
+                    });
+                    if !self.seen.insert(t) {
+                        return ControlFlow::Continue(());
+                    }
                     match t.kind() {
                         ty::Alias(ty::Opaque, alias) => {
                             if alias.def_id == self.opaque_def_id {
                                 return ControlFlow::Break(());
                             }
-                            if !self.ignore_nested.contains(&alias.def_id) {
-                                // avoid infinite recursion since the opaque type shows
-                                // up in its own bounds.
-                                self.ignore_nested.push(alias.def_id);
-                                for (pred, _span) in self
-                                    .tcx
-                                    .bound_explicit_item_bounds(alias.def_id)
-                                    .subst_iter_copied(self.tcx, alias.substs)
-                                {
-                                    pred.visit_with(self)?;
-                                }
+                            for (pred, _span) in self
+                                .tcx
+                                .bound_explicit_item_bounds(alias.def_id)
+                                .subst_iter_copied(self.tcx, alias.substs)
+                            {
+                                pred.visit_with(self)?;
                             }
                         }
                         ty::Alias(ty::Projection, _) => {
@@ -708,14 +716,9 @@ pub fn may_define_opaque_type<'tcx>(
                         // Types that have opaque type fields must get walked manually, they
                         // would not be seen by the type visitor otherwise.
                         ty::Adt(adt_def, substs) => {
-                            if !self.ignore_nested.contains(&adt_def.did()) {
-                                // avoid infinite recursion since adts can recursively refer
-                                // to themselves
-                                self.ignore_nested.push(adt_def.did());
-                                for variant in adt_def.variants() {
-                                    for field in &variant.fields {
-                                        field.ty(self.tcx, substs).visit_with(self)?;
-                                    }
+                            for variant in adt_def.variants() {
+                                for field in &variant.fields {
+                                    field.ty(self.tcx, substs).visit_with(self)?;
                                 }
                             }
                         }
@@ -727,7 +730,7 @@ pub fn may_define_opaque_type<'tcx>(
             val.visit_with(&mut Visitor {
                 opaque_def_id: opaque_def_id.to_def_id(),
                 tcx,
-                ignore_nested: SmallVec::new(),
+                seen: Default::default(),
                 param_env,
             })
             .is_break()
