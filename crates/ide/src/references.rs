@@ -1897,4 +1897,123 @@ fn f<T: Trait>() {
             "#]],
         );
     }
+
+    #[test]
+    fn name_clashes() {
+        check(
+            r#"
+trait Foo {
+    fn method$0(&self) -> u8;
+}
+
+struct Bar {
+    method: u8,
+}
+
+impl Foo for Bar {
+    fn method(&self) -> u8 {
+        self.method
+    }
+}
+fn method() {}
+"#,
+            expect![[r#"
+                method Function FileId(0) 16..39 19..25
+
+                FileId(0) 101..107
+            "#]],
+        );
+        check(
+            r#"
+trait Foo {
+    fn method(&self) -> u8;
+}
+
+struct Bar {
+    method$0: u8,
+}
+
+impl Foo for Bar {
+    fn method(&self) -> u8 {
+        self.method
+    }
+}
+fn method() {}
+"#,
+            expect![[r#"
+                method Field FileId(0) 60..70 60..66
+
+                FileId(0) 136..142 Read
+            "#]],
+        );
+        check(
+            r#"
+trait Foo {
+    fn method(&self) -> u8;
+}
+
+struct Bar {
+    method: u8,
+}
+
+impl Foo for Bar {
+    fn method$0(&self) -> u8 {
+        self.method
+    }
+}
+fn method() {}
+"#,
+            expect![[r#"
+                method Function FileId(0) 98..148 101..107
+
+                (no references)
+            "#]],
+        );
+        check(
+            r#"
+trait Foo {
+    fn method(&self) -> u8;
+}
+
+struct Bar {
+    method: u8,
+}
+
+impl Foo for Bar {
+    fn method(&self) -> u8 {
+        self.method$0
+    }
+}
+fn method() {}
+"#,
+            expect![[r#"
+                method Field FileId(0) 60..70 60..66
+
+                FileId(0) 136..142 Read
+            "#]],
+        );
+        check(
+            r#"
+trait Foo {
+    fn method(&self) -> u8;
+}
+
+struct Bar {
+    method: u8,
+}
+
+impl Foo for Bar {
+    fn method(&self) -> u8 {
+        self.method
+    }
+}
+fn method$0() {}
+"#,
+            expect![[r#"
+                method Function FileId(0) 151..165 154..160
+
+                (no references)
+            "#]],
+        );
+    }
 }
