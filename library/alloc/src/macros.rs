@@ -41,7 +41,7 @@
 #[allow_internal_unstable(rustc_attrs, liballoc_internals)]
 macro_rules! vec {
     () => (
-        $crate::__rust_force_expr!($crate::vec::Vec::new_co())
+        $crate::__rust_force_expr!($crate::vec::Vec::new())
     );
     ($elem:expr; $n:expr) => (
         $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
