@@ -982,11 +982,7 @@ fn rustfmt() -> PathBuf {
     assert!(
         me.is_file() || me.with_extension("exe").is_file(),
         "{}",
-        if cfg!(release) {
-            "no rustfmt bin, try running `cargo build --release` before testing"
-        } else {
-            "no rustfmt bin, try running `cargo build` before testing"
-        }
+        "no rustfmt bin, try running `cargo build` or `cargo build --release` before testing"
     );
     me
 }

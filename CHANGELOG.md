@@ -840,7 +840,7 @@ from formatting an attribute #3665
 - Fix formatting of raw string literals #2983
 - Handle chain with try operators with spaces #2986
 - Use correct shape in Visual tuple rewriting #2987
-- Impove formatting of arguments with `visual_style = "Visual"` option #2988
+- Improve formatting of arguments with `visual_style = "Visual"` option #2988
 - Change `print_diff` to output the correct line number 992b179
 - Propagate errors about failing to rewrite a macro 6f318e3
 - Handle formatting of long function signature #3010

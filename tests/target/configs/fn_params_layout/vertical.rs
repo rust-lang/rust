@@ -1,4 +1,4 @@
-// rustfmt-fn_args_layout: Vertical
+// rustfmt-fn_params_layout: Vertical
 // Function arguments density
 
 trait Lorem {
