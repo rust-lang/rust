@@ -3,14 +3,14 @@
 // Based on the issue description
 pub trait PrettyPrinter<'tcx>:
     Printer<
-        'tcx,
-        Error = fmt::Error,
-        Path = Self,
-        Region = Self,
-        Type = Self,
-        DynExistential = Self,
-        Const = Self,
-    >
+    'tcx,
+    Error = fmt::Error,
+    Path = Self,
+    Region = Self,
+    Type = Self,
+    DynExistential = Self,
+    Const = Self,
+>
 {
     //
 }

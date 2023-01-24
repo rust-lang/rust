@@ -1057,21 +1057,22 @@ fn join_bounds_inner(
         },
     )?;
 
-    // Whether retry the function with forced newline is needed:
+    // Whether to retry with a forced newline:
     //   Only if result is not already multiline and did not exceed line width,
     //   and either there is more than one item;
     //       or the single item is of type `Trait`,
     //          and any of the internal arrays contains more than one item;
-    let retry_with_force_newline =
-        if force_newline || (!result.0.contains('\n') && result.0.len() <= shape.width) {
-            false
-        } else {
-            if items.len() > 1 {
-                true
-            } else {
-                is_item_with_multi_items_array(&items[0])
-            }
-        };
+    let retry_with_force_newline = match context.config.version() {
+        Version::One => {
+            !force_newline
+                && items.len() > 1
+                && (result.0.contains('\n') || result.0.len() > shape.width)
+        }
+        Version::Two if force_newline => false,
+        Version::Two if (!result.0.contains('\n') && result.0.len() <= shape.width) => false,
+        Version::Two if items.len() > 1 => true,
+        Version::Two => is_item_with_multi_items_array(&items[0]),
+    };
 
     if retry_with_force_newline {
         join_bounds_inner(context, shape, items, need_indent, true)
