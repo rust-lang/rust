@@ -70,7 +70,8 @@ pub fn resolve_rvalue_scopes<'a, 'tcx>(
     def_id: DefId,
 ) -> RvalueScopes {
     let tcx = &fcx.tcx;
-    let mut rvalue_scopes = RvalueScopes::new();
+    let mut rvalue_scopes =
+        RvalueScopes::new(tcx.features().if_let_rescope && tcx.sess.at_least_rust_2024());
     debug!("start resolving rvalue scopes, def_id={def_id:?}");
     debug!("rvalue_scope: rvalue_candidates={:?}", scope_tree.rvalue_candidates);
     for (&hir_id, candidate) in &scope_tree.rvalue_candidates {
