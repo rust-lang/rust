@@ -90,7 +90,6 @@ mod shim;
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
-mod simplify_try;
 mod sroa;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
@@ -567,8 +566,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
-            &simplify_try::SimplifyArmIdentity,
-            &simplify_try::SimplifyBranchSame,
             &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::new("final")),
