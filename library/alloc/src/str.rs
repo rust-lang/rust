@@ -144,7 +144,7 @@ where
     // the first slice is the only one without a separator preceding it
     let first = match iter.next() {
         Some(first) => first,
-        None => return vec![],
+        None => return Vec::new_co(),
     };
 
     // compute the exact total length of the joined Vec
@@ -159,7 +159,7 @@ where
         .expect("attempt to join into collection with len > usize::MAX");
 
     // prepare an uninitialized buffer
-    let mut result = Vec::with_capacity(reserved_len);
+    let mut result = Vec::with_capacity_co(reserved_len);
     debug_assert!(result.capacity() >= reserved_len);
 
     result.extend_from_slice(first.borrow().as_ref());
