@@ -1749,7 +1749,7 @@ fn foo(foo: Foo) {
 
     #[test]
     fn test_rename_lifetimes() {
-        // cov_mark::check!(rename_lifetime);
+        cov_mark::check!(rename_lifetime);
         check(
             "'yeeee",
             r#"
