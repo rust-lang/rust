@@ -226,12 +226,7 @@ provide! { tcx, def_id, other, cdata,
     deduced_param_attrs => { table }
     is_type_alias_impl_trait => {
         debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
-        cdata
-            .root
-            .tables
-            .is_type_alias_impl_trait
-            .get(cdata, def_id.index)
-            .is_some()
+        cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
     }
     collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
