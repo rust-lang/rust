@@ -20,7 +20,6 @@ mod lower;
 mod mapping;
 mod tls;
 mod utils;
-mod walk;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
@@ -71,7 +70,6 @@ pub use mapping::{
 };
 pub use traits::TraitEnvironment;
 pub use utils::{all_super_traits, is_fn_unsafe_to_call};
-pub use walk::TypeWalk;
 
 pub use chalk_ir::{
     cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
@@ -107,6 +105,7 @@ pub type GenericArgData = chalk_ir::GenericArgData<Interner>;
 
 pub type Ty = chalk_ir::Ty<Interner>;
 pub type TyKind = chalk_ir::TyKind<Interner>;
+pub type TypeFlags = chalk_ir::TypeFlags;
 pub type DynTy = chalk_ir::DynTy<Interner>;
 pub type FnPointer = chalk_ir::FnPointer<Interner>;
 // pub type FnSubst = chalk_ir::FnSubst<Interner>;

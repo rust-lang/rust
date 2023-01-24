@@ -15,7 +15,7 @@ use hir_def::{
     expr::ExprId,
     FunctionId,
 };
-use hir_ty::{TyExt, TypeWalk};
+use hir_ty::{Interner, TyExt, TypeFlags};
 use ide::{Analysis, AnalysisHost, LineCol, RootDatabase};
 use ide_db::base_db::{
     salsa::{self, debug::DebugQueryTable, ParallelDatabase},
@@ -280,12 +280,8 @@ impl flags::AnalysisStats {
                     }
                     true
                 } else {
-                    let mut is_partially_unknown = false;
-                    ty.walk(&mut |ty| {
-                        if ty.is_unknown() {
-                            is_partially_unknown = true;
-                        }
-                    });
+                    let is_partially_unknown =
+                        ty.data(Interner).flags.contains(TypeFlags::HAS_ERROR);
                     if is_partially_unknown {
                         num_exprs_partially_unknown += 1;
                     }

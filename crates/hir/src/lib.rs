@@ -3168,6 +3168,8 @@ impl Type {
     }
 
     pub fn contains_unknown(&self) -> bool {
+        // FIXME: When we get rid of `ConstScalar::Unknown`, we can just look at precomputed
+        // `TypeFlags` in `TyData`.
         return go(&self.ty);
 
         fn go(ty: &Ty) -> bool {
@@ -3482,10 +3484,9 @@ impl Type {
         Type { env: self.env.clone(), ty }
     }
 
+    /// Visits every type, including generic arguments, in this type. `cb` is called with type
+    /// itself first, and then with its generic arguments.
     pub fn walk(&self, db: &dyn HirDatabase, mut cb: impl FnMut(Type)) {
-        // TypeWalk::walk for a Ty at first visits parameters and only after that the Ty itself.
-        // We need a different order here.
-
         fn walk_substs(
             db: &dyn HirDatabase,
             type_: &Type,
