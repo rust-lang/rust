@@ -186,7 +186,13 @@ impl<'tcx> InherentCollect<'tcx> {
             return;
         };
 
-        let self_ty = self.tcx.type_of(item.owner_id);
+        let mut self_ty = self.tcx.type_of(item.owner_id);
+        if matches!(self_ty.kind(), ty::Alias(ty::AliasKind::Projection, _)) {
+            let param_env = self.tcx.param_env(item.owner_id);
+            if let Ok(new_ty) = self.tcx.try_normalize_erasing_regions(param_env, self_ty) {
+                self_ty = new_ty;
+            }
+        }
         match *self_ty.kind() {
             ty::Adt(def, _) => {
                 self.check_def_id(item, self_ty, def.did());
