@@ -2,7 +2,7 @@ This document outlines processes regarding management of rustfmt.
 
 # Stabilising an Option
 
-In this Section, we describe how to stabilise an option of the rustfmt's configration.
+In this Section, we describe how to stabilise an option of the rustfmt's configuration.
 
 ## Conditions
 
