@@ -251,8 +251,8 @@ fn flatten_use_trees(
     use_trees: Vec<UseTree>,
     import_granularity: ImportGranularity,
 ) -> Vec<UseTree> {
-    // Return non-sorted single occurance of the use-trees text string;
-    // order is by first occurance of the use-tree.
+    // Return non-sorted single occurrence of the use-trees text string;
+    // order is by first occurrence of the use-tree.
     use_trees
         .into_iter()
         .flat_map(|tree| tree.flatten(import_granularity))
