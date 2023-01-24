@@ -324,6 +324,7 @@
 #![feature(try_reserve_kind)]
 #![feature(vec_into_raw_parts)]
 #![feature(slice_concat_trait)]
+#![feature(vec_new_co)]
 //
 // Library features (unwind):
 #![feature(panic_unwind)]

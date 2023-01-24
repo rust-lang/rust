@@ -34,7 +34,7 @@ where
                 let (lower, _) = iterator.size_hint();
                 let initial_capacity =
                     cmp::max(RawVec::<T>::MIN_NON_ZERO_CAP, lower.saturating_add(1));
-                let mut vector = Vec::with_capacity(initial_capacity);
+                let mut vector = Vec::with_capacity_co(initial_capacity);
                 unsafe {
                     // SAFETY: We requested capacity at least 1
                     ptr::write(vector.as_mut_ptr(), element);

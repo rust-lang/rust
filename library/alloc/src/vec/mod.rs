@@ -444,6 +444,10 @@ pub type DefVec<T, A = Global> = Vec<T, A, { DEFAULT_COOP_PREFERRED!() }>;
 pub type WeVec<T, const WEIGHT: u8> = Vec<T, Global, { WEIGHT > 127 }>;
 
 impl<T> Vec<T> {
+/*impl<T, const COOP_PREFERRED: bool> Vec<T, Global, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{*/
     /// Constructs a new, empty `Vec<T>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
@@ -461,13 +465,73 @@ impl<T> Vec<T> {
     pub const fn new() -> Self {
         #[allow(unused_braces)]
         Vec::<T, Global, { DEFAULT_COOP_PREFERRED!() }>::new_co()
+        //Self::new_co()
     }
+
+    /// Constructs a new, empty `Vec<T>` with at least the specified capacity.
+    ///
+    /// The vector will be able to hold at least `capacity` elements without
+    /// reallocating. This method is allowed to allocate for more elements than
+    /// `capacity`. If `capacity` is 0, the vector will not allocate.
+    ///
+    /// It is important to note that although the returned vector has the
+    /// minimum *capacity* specified, the vector will have a zero *length*. For
+    /// an explanation of the difference between length and capacity, see
+    /// *[Capacity and reallocation]*.
+    ///
+    /// If it is important to know the exact allocated capacity of a `Vec`,
+    /// always use the [`capacity`] method after construction.
+    ///
+    /// For `Vec<T>` where `T` is a zero-sized type, there will be no allocation
+    /// and the capacity will always be `usize::MAX`.
+    ///
+    /// [Capacity and reallocation]: #capacity-and-reallocation
+    /// [`capacity`]: Vec::capacity
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = Vec::with_capacity(10);
+    ///
+    /// // The vector contains no items, even though it has capacity for more
+    /// assert_eq!(vec.len(), 0);
+    /// assert!(vec.capacity() >= 10);
+    ///
+    /// // These are all done without reallocating...
+    /// for i in 0..10 {
+    ///     vec.push(i);
+    /// }
+    /// assert_eq!(vec.len(), 10);
+    /// assert!(vec.capacity() >= 10);
+    ///
+    /// // ...but this may make the vector reallocate
+    /// vec.push(11);
+    /// assert_eq!(vec.len(), 11);
+    /// assert!(vec.capacity() >= 11);
+    ///
+    /// // A vector of a zero-sized type will always over-allocate, since no
+    /// // allocation is necessary
+    /// let vec_units = Vec::<()>::with_capacity(10);
+    /// assert_eq!(vec_units.capacity(), usize::MAX);
+    /// ```    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity_in(capacity, Global)
+    }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inherent methods
 ////////////////////////////////////////////////////////////////////////////////
 
+/**/
 impl<T, const COOP_PREFERRED: bool> Vec<T, Global, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
@@ -481,6 +545,7 @@ where
         Vec { buf: RawVec::NEW, len: 0 }
     }
 
+    // TODO @FIXME document co-allocation
     /// Constructs a new, empty `Vec<T>` with at least the specified capacity.
     ///
     /// The vector will be able to hold at least `capacity` elements without
@@ -533,9 +598,9 @@ where
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "vec_new_co", reason = "confirm_or_fix_the_function_name", issue = "none")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub fn with_capacity_co(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
     }
 
