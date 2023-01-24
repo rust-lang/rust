@@ -73,7 +73,7 @@ macro_rules! iterator {
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn post_inc_start(&mut self, offset: usize) -> * $raw_mut T {
-                if mem::size_of::<T>() == 0 {
+                if T::IS_ZST {
                     zst_shrink!(self, offset);
                     self.ptr.as_ptr()
                 } else {
@@ -129,7 +129,6 @@ macro_rules! iterator {
                 // non-null end pointer. The call to `next_unchecked!` is safe
                 // since we check if the iterator is empty first.
                 unsafe {
-                    assume(!self.ptr.as_ptr().is_null());
                     if !<T>::IS_ZST {
                         assume(!self.end.is_null());
                     }
