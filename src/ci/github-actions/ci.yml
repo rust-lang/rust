@@ -291,23 +291,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-xl
-            tidy: false
-
-          - name: mingw-check-tidy
-            <<: *job-linux-xl
-            tidy: true
-
-          - name: x86_64-gnu-llvm-13
-            <<: *job-linux-xl
-            tidy: false
-
-          - name: x86_64-gnu-tools
-            <<: *job-linux-xl
-            tidy: false
+          - name: dist-x86_64-linux-alt
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+              IMAGE: dist-x86_64-linux
+            <<: *job-linux-xl
+            tidy: false
 
   auto:
     permissions:
@@ -395,11 +383,6 @@ jobs:
 
           - &dist-x86_64-linux
             name: dist-x86_64-linux
-            <<: *job-linux-xl
-
-          - name: dist-x86_64-linux-alt
-            env:
-              IMAGE: dist-x86_64-linux
             <<: *job-linux-xl
 
           - name: dist-x86_64-musl

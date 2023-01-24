@@ -45,22 +45,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            tidy: false
-            os: ubuntu-20.04-xl
-            env: {}
-          - name: mingw-check-tidy
-            tidy: true
-            os: ubuntu-20.04-xl
-            env: {}
-          - name: x86_64-gnu-llvm-13
-            tidy: false
-            os: ubuntu-20.04-xl
-            env: {}
-          - name: x86_64-gnu-tools
-            tidy: false
+          - name: dist-x86_64-linux-alt
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+              IMAGE: dist-x86_64-linux
+            tidy: false
             os: ubuntu-20.04-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
@@ -248,10 +236,6 @@ jobs:
           - name: dist-x86_64-linux
             os: ubuntu-20.04-xl
             env: {}
-          - name: dist-x86_64-linux-alt
-            env:
-              IMAGE: dist-x86_64-linux
-            os: ubuntu-20.04-xl
           - name: dist-x86_64-musl
             os: ubuntu-20.04-xl
             env: {}
