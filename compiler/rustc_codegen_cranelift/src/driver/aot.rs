@@ -108,6 +108,8 @@ impl OngoingCodegen {
 
         self.concurrency_limiter.finished();
 
+        sess.abort_if_errors();
+
         (
             CodegenResults {
                 modules,
@@ -169,10 +171,22 @@ fn emit_cgu(
 fn emit_module(
     output_filenames: &OutputFilenames,
     prof: &SelfProfilerRef,
-    object: cranelift_object::object::write::Object<'_>,
+    mut object: cranelift_object::object::write::Object<'_>,
     kind: ModuleKind,
     name: String,
 ) -> Result<CompiledModule, String> {
+    if object.format() == cranelift_object::object::BinaryFormat::Elf {
+        let comment_section = object.add_section(
+            Vec::new(),
+            b".comment".to_vec(),
+            cranelift_object::object::SectionKind::OtherString,
+        );
+        let mut producer = vec![0];
+        producer.extend(crate::debuginfo::producer().as_bytes());
+        producer.push(0);
+        object.set_section_data(comment_section, producer, 1);
+    }
+
     let tmp_file = output_filenames.temp_path(OutputType::Object, Some(&name));
     let mut file = match File::create(&tmp_file) {
         Ok(file) => file,
@@ -398,8 +412,6 @@ pub(crate) fn run_aot(
             })
             .collect::<Vec<_>>()
     });
-
-    tcx.sess.abort_if_errors();
 
     let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
     let mut allocator_unwind_context = UnwindContext::new(allocator_module.isa(), true);

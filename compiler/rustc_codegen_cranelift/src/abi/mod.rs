@@ -7,6 +7,7 @@ mod returning;
 use cranelift_module::ModuleError;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;
+use rustc_session::Session;
 use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 
@@ -22,7 +23,7 @@ fn clif_sig_from_fn_abi<'tcx>(
     default_call_conv: CallConv,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> Signature {
-    let call_conv = conv_to_call_conv(fn_abi.conv, default_call_conv);
+    let call_conv = conv_to_call_conv(tcx.sess, fn_abi.conv, default_call_conv);
 
     let inputs = fn_abi.args.iter().map(|arg_abi| arg_abi.get_abi_param(tcx).into_iter()).flatten();
 
@@ -33,24 +34,32 @@ fn clif_sig_from_fn_abi<'tcx>(
     Signature { params, returns, call_conv }
 }
 
-pub(crate) fn conv_to_call_conv(c: Conv, default_call_conv: CallConv) -> CallConv {
+pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: CallConv) -> CallConv {
     match c {
         Conv::Rust | Conv::C => default_call_conv,
         Conv::RustCold => CallConv::Cold,
         Conv::X86_64SysV => CallConv::SystemV,
         Conv::X86_64Win64 => CallConv::WindowsFastcall,
-        Conv::ArmAapcs
-        | Conv::CCmseNonSecureCall
-        | Conv::Msp430Intr
+
+        // Should already get a back compat warning
+        Conv::X86Fastcall | Conv::X86Stdcall | Conv::X86ThisCall | Conv::X86VectorCall => {
+            default_call_conv
+        }
+
+        Conv::X86Intr => sess.fatal("x86-interrupt call conv not yet implemented"),
+
+        Conv::ArmAapcs => sess.fatal("aapcs call conv not yet implemented"),
+        Conv::CCmseNonSecureCall => {
+            sess.fatal("C-cmse-nonsecure-call call conv is not yet implemented");
+        }
+
+        Conv::Msp430Intr
         | Conv::PtxKernel
-        | Conv::X86Fastcall
-        | Conv::X86Intr
-        | Conv::X86Stdcall
-        | Conv::X86ThisCall
-        | Conv::X86VectorCall
         | Conv::AmdGpuKernel
         | Conv::AvrInterrupt
-        | Conv::AvrNonBlockingInterrupt => todo!("{:?}", c),
+        | Conv::AvrNonBlockingInterrupt => {
+            unreachable!("tried to use {c:?} call conv which only exists on an unsupported target");
+        }
     }
 }
 
@@ -161,6 +170,12 @@ fn make_local_place<'tcx>(
     layout: TyAndLayout<'tcx>,
     is_ssa: bool,
 ) -> CPlace<'tcx> {
+    if layout.is_unsized() {
+        fx.tcx.sess.span_fatal(
+            fx.mir.local_decls[local].source_info.span,
+            "unsized locals are not yet supported",
+        );
+    }
     let place = if is_ssa {
         if let rustc_target::abi::Abi::ScalarPair(_, _) = layout.abi {
             CPlace::new_var_pair(fx, local, layout)
