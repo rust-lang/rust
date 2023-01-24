@@ -20,7 +20,6 @@
 use std::mem;
 
 use rustc_hir::def_id::DefId;
-use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarKind, CanonicalVarValues};
 use rustc_infer::infer::canonical::{OriginalQueryValues, QueryRegionConstraints, QueryResponse};
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
@@ -380,13 +379,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         goal: Goal<'tcx, ty::GenericArg<'tcx>>,
     ) -> QueryResult<'tcx> {
         self.infcx.probe(|_| {
-            match crate::traits::wf::obligations(
+            match crate::traits::wf::unnormalized_obligations(
                 self.infcx,
                 goal.param_env,
-                CRATE_HIR_ID, // FIXME body id
-                0,
                 goal.predicate,
-                DUMMY_SP,
             ) {
                 Some(obligations) => self.evaluate_all_and_make_canonical_response(
                     obligations.into_iter().map(|o| o.into()).collect(),
