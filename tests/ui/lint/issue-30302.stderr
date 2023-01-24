@@ -7,10 +7,10 @@ LL |         Nil => true,
    = note: `#[deny(bindings_with_variant_name)]` on by default
 
 error: unreachable pattern
-  --> $DIR/issue-30302.rs:15:9
+  --> $DIR/issue-30302.rs:13:9
    |
 LL |         Nil => true,
-   |         --- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |         _ => false
    |         ^^^^^^^^^^ this arm is never executed

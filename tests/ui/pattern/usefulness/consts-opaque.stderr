@@ -5,10 +5,10 @@ LL |         FOO => {}
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:32:9
+  --> $DIR/consts-opaque.rs:30:9
    |
 LL |         FOO => {}
-   |         --- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |         _ => {} // should not be emitting unreachable warning
    |         ^^^^^^^ this arm is never executed
@@ -26,10 +26,10 @@ LL |         FOO_REF => {}
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:40:9
+  --> $DIR/consts-opaque.rs:38:9
    |
 LL |         FOO_REF => {}
-   |         ------- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^^^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |         Foo(_) => {} // should not be emitting unreachable warning
    |         ^^^^^^^^^^^^ this arm is never executed
@@ -51,15 +51,15 @@ LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^
 
 error: multiple unreachable patterns
-  --> $DIR/consts-opaque.rs:54:9
+  --> $DIR/consts-opaque.rs:53:9
    |
 LL |         Bar => {}
-   |         --- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^^^^^^^ this arm is never executed
 ...
 LL |         _ => {}
-   |         ------- this arm is never executed
+   |         ^^^^^^^ this arm is never executed
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/consts-opaque.rs:62:9
@@ -68,16 +68,16 @@ LL |         BAR => {}
    |         ^^^
 
 error: multiple unreachable patterns
-  --> $DIR/consts-opaque.rs:64:9
+  --> $DIR/consts-opaque.rs:62:9
    |
 LL |         BAR => {}
-   |         --- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |         Bar => {} // should not be emitting unreachable warning
    |         ^^^^^^^^^ this arm is never executed
 ...
 LL |         _ => {}
-   |         ------- this arm is never executed
+   |         ^^^^^^^ this arm is never executed
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/consts-opaque.rs:72:9
@@ -92,16 +92,16 @@ LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^
 
 error: multiple unreachable patterns
-  --> $DIR/consts-opaque.rs:74:9
+  --> $DIR/consts-opaque.rs:72:9
    |
 LL |         BAR => {}
-   |         --- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^^^^^^^ this arm is never executed
 ...
 LL |         _ => {} // should not be emitting unreachable warning
-   |         ------- this arm is never executed
+   |         ^^^^^^^ this arm is never executed
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/consts-opaque.rs:82:9
@@ -110,16 +110,16 @@ LL |         BAZ => {}
    |         ^^^
 
 error: multiple unreachable patterns
-  --> $DIR/consts-opaque.rs:84:9
+  --> $DIR/consts-opaque.rs:82:9
    |
 LL |         BAZ => {}
-   |         --- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |         Baz::Baz1 => {} // should not be emitting unreachable warning
    |         ^^^^^^^^^^^^^^^ this arm is never executed
 ...
 LL |         _ => {}
-   |         ------- this arm is never executed
+   |         ^^^^^^^ this arm is never executed
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/consts-opaque.rs:93:9
@@ -128,10 +128,10 @@ LL |         BAZ => {}
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:95:9
+  --> $DIR/consts-opaque.rs:93:9
    |
 LL |         BAZ => {}
-   |         --- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |         _ => {}
    |         ^^^^^^^ this arm is never executed
@@ -143,22 +143,22 @@ LL |         BAZ => {}
    |         ^^^
 
 error: multiple unreachable patterns
-  --> $DIR/consts-opaque.rs:103:9
+  --> $DIR/consts-opaque.rs:101:9
    |
 LL |         BAZ => {}
-   |         --- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |         Baz::Baz2 => {} // should not be emitting unreachable warning
    |         ^^^^^^^^^^^^^^^ this arm is never executed
 LL |
 LL |         _ => {} // should not be emitting unreachable warning
-   |         ------- this arm is never executed
+   |         ^^^^^^^ this arm is never executed
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:131:9
+  --> $DIR/consts-opaque.rs:130:9
    |
 LL |         Wrap(_) => {}
-   |         ------- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^^^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |         WRAPQUUX => {} // detected unreachable because we do inspect the `Wrap` layer
    |         ^^^^^^^^^^^^^^ this arm is never executed
 

@@ -210,10 +210,10 @@ LL |         5..15 => {},
    |         ^^^^^^^^^^^ this arm is never executed
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:99:9
+  --> $DIR/reachability.rs:98:9
    |
 LL |         _ => {},
-   |         - this pattern is irrefutable; subsequent arms are never executed
+   |         ^ this pattern is irrefutable; subsequent arms are never executed
 LL |         '\u{D7FF}'..='\u{E000}' => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this arm is never executed
 
@@ -223,7 +223,7 @@ error: multiple unreachable patterns
 LL |         &FOO => {}
    |         ^^^^^^^^^^ this arm is never executed
 LL |         BAR => {}
-   |         --------- this arm is never executed
+   |         ^^^^^^^^^ this arm is never executed
 
 error: aborting due to 23 previous errors
 

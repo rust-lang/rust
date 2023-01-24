@@ -1,8 +1,8 @@
 error: unreachable pattern
-  --> $DIR/struct-pattern-match-useless.rs:12:9
+  --> $DIR/struct-pattern-match-useless.rs:11:9
    |
 LL |         Foo { x: _x, y: _y } => (),
-   |         -------------------- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^^^^^^^^^^^^^^^^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |         Foo { .. } => ()
    |         ^^^^^^^^^^^^^^^^ this arm is never executed
    |

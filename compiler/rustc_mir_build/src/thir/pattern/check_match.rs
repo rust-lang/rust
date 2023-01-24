@@ -579,29 +579,29 @@ fn report_let_reachability<'p, 'tcx>(
     report: &UsefulnessReport<'p, 'tcx>,
 ) {
     let mut unreachable_arms = Vec::new();
+    let mut spans = Vec::new();
 
     for (arm, is_useful) in &report.arm_usefulness {
         match is_useful {
             Reachability::Unreachable => {
+                spans.push(arm.pat.span());
                 unreachable_arms.push(UnreachableArm::PatternUnreachable { span: arm.pat.span() });
             }
             // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
             Reachability::Reachable(unreachables) => {
                 for &span in unreachables {
+                    spans.push(span);
                     unreachable_arms.push(UnreachableArm::PatternUnreachable { span });
                 }
             }
         }
     }
 
-    if let Some(
-        UnreachableArm::PatternUnreachable { span } | UnreachableArm::NeverExecuted { span },
-    ) = unreachable_arms.first()
-    {
+    if !unreachable_arms.is_empty() {
         cx.tcx.emit_spanned_lint(
             UNREACHABLE_PATTERNS,
             scrut,
-            *span,
+            spans,
             UnreachablePatterns { count: unreachable_arms.len(), unreachable_arms, catchall: None },
         );
     }
@@ -616,14 +616,17 @@ fn report_arm_reachability<'p, 'tcx>(
 ) {
     let mut unreachable_arms = Vec::new();
 
+    let mut spans = Vec::new();
     for ((_, is_useful), hir::Arm { span, .. }) in report.arm_usefulness.iter().zip(hir_arms) {
         match is_useful {
             Reachability::Unreachable => {
+                spans.push(*span);
                 unreachable_arms.push(UnreachableArm::NeverExecuted { span: *span });
             }
             // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
             Reachability::Reachable(unreachables) => {
                 for &span in unreachables {
+                    spans.push(span);
                     unreachable_arms.push(UnreachableArm::PatternUnreachable { span });
                 }
             }
@@ -640,15 +643,15 @@ fn report_arm_reachability<'p, 'tcx>(
     } else {
         None
     };
+    if let Some(span) = catchall {
+        spans.push(span);
+    }
 
-    if let Some(
-        UnreachableArm::NeverExecuted { span } | UnreachableArm::PatternUnreachable { span },
-    ) = unreachable_arms.first()
-    {
+    if !unreachable_arms.is_empty() {
         cx.tcx.emit_spanned_lint(
             UNREACHABLE_PATTERNS,
             scrut,
-            *span,
+            spans,
             UnreachablePatterns { count: unreachable_arms.len(), unreachable_arms, catchall },
         );
     }
@@ -660,19 +663,21 @@ fn report_empty_enum_arms<'p, 'tcx>(
     hir_arms: &'tcx [hir::Arm<'tcx>],
     cx: &MatchCheckCtxt<'p, 'tcx>,
 ) {
+    let mut spans = Vec::new();
+
     let unreachable_arms = hir_arms
         .iter()
-        .map(|arm| UnreachableArm::NeverExecuted { span: arm.span })
+        .map(|arm| {
+            spans.push(arm.span);
+            UnreachableArm::NeverExecuted { span: arm.span }
+        })
         .collect::<Vec<_>>();
 
-    if let Some(
-        UnreachableArm::NeverExecuted { span } | UnreachableArm::PatternUnreachable { span },
-    ) = unreachable_arms.first()
-    {
+    if !unreachable_arms.is_empty() {
         cx.tcx.emit_spanned_lint(
             UNREACHABLE_PATTERNS,
             scrut,
-            *span,
+            spans,
             UnreachablePatterns { count: unreachable_arms.len(), unreachable_arms, catchall: None },
         );
     }

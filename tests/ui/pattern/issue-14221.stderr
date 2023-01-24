@@ -13,10 +13,10 @@ LL |             B => "B",
    |             ^ help: to match on the variant, qualify the path: `E::B`
 
 error: unreachable pattern
-  --> $DIR/issue-14221.rs:15:13
+  --> $DIR/issue-14221.rs:13:13
    |
 LL |             A => "A",
-   |             - this pattern is irrefutable; subsequent arms are never executed
+   |             ^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |             B => "B",
    |             ^^^^^^^^ this arm is never executed

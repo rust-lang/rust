@@ -17,7 +17,7 @@ LL |         Ok(box _) => (),
    |         ^^^^^^^^^^^^^^^ this arm is never executed
 ...
 LL |         Err(&[..]) => (),
-   |         ---------------- this arm is never executed
+   |         ^^^^^^^^^^^^^^^^ this arm is never executed
 
 error: unreachable pattern
   --> $DIR/uninhabited-patterns.rs:44:9

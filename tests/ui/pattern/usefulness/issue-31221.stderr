@@ -1,8 +1,8 @@
 error: unreachable pattern
-  --> $DIR/issue-31221.rs:18:9
+  --> $DIR/issue-31221.rs:17:9
    |
 LL |         Var3 => (),
-   |         ---- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |         Var2 => (),
    |         ^^^^^^^^^^ this arm is never executed
    |
@@ -13,18 +13,18 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/issue-31221.rs:24:9
+  --> $DIR/issue-31221.rs:23:9
    |
 LL |         &Var3 => (),
-   |         ----- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |         &Var2 => (),
    |         ^^^^^^^^^^^ this arm is never executed
 
 error: unreachable pattern
-  --> $DIR/issue-31221.rs:31:9
+  --> $DIR/issue-31221.rs:30:9
    |
 LL |         (c, d) => (),
-   |         ------ this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |         anything => ()
    |         ^^^^^^^^^^^^^^ this arm is never executed
 

@@ -41,10 +41,10 @@ LL |         BOO => (),
    |         ^^^^^^^^^ this arm is never executed
 ...
 LL |         b"" => (),
-   |         --------- this arm is never executed
+   |         ^^^^^^^^^ this arm is never executed
 LL |
 LL |         _ => (),
-   |         ------- this arm is never executed
+   |         ^^^^^^^ this arm is never executed
 
 error: unreachable pattern
   --> $DIR/slice-pattern-const.rs:55:9

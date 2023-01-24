@@ -5,10 +5,10 @@ LL |         FOO => {},
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/issue-78057.rs:14:9
+  --> $DIR/issue-78057.rs:12:9
    |
 LL |         FOO => {},
-   |         --- this pattern is irrefutable; subsequent arms are never executed
+   |         ^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL |         _ => {}
    |         ^^^^^^^ this arm is never executed

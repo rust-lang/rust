@@ -47,7 +47,7 @@ LL |         Some(_) => {}
    |         ^^^^^^^^^^^^^ this arm is never executed
 ...
 LL |         None => {}
-   |         ---------- this arm is never executed
+   |         ^^^^^^^^^^ this arm is never executed
 
 error: unreachable pattern
   --> $DIR/top-level-alternation.rs:62:9

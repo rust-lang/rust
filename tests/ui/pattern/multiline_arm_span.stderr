@@ -1,8 +1,8 @@
 error: unreachable pattern
-  --> $DIR/multiline_arm_span.rs:9:9
+  --> $DIR/multiline_arm_span.rs:7:9
    |
 LL |           irrefutable => {}
-   |           ----------- this pattern is irrefutable; subsequent arms are never executed
+   |           ^^^^^^^^^^^ this pattern is irrefutable; subsequent arms are never executed
 LL |
 LL | /         other_irrefutable => {
 LL | |
