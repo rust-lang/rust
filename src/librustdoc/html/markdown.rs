@@ -296,7 +296,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             // These characters don't need to be escaped in a URI.
-            // FIXME: use a library function for percent encoding.
+            // See https://url.spec.whatwg.org/#query-percent-encode-set
+            // and https://url.spec.whatwg.org/#urlencoded-parsing
             fn dont_escape(c: u8) -> bool {
                 (b'a' <= c && c <= b'z')
                     || (b'A' <= c && c <= b'Z')
@@ -304,17 +305,41 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                     || c == b'-'
                     || c == b'_'
                     || c == b'.'
+                    || c == b','
                     || c == b'~'
                     || c == b'!'
                     || c == b'\''
                     || c == b'('
                     || c == b')'
+                    || c == b'['
+                    || c == b']'
+                    || c == b'{'
+                    || c == b'}'
                     || c == b'*'
+                    || c == b'/'
+                    || c == b'|'
+                    || c == b'^'
+                    || c == b'\\'
+                    || c == b';'
+                    || c == b':'
+                    || c == b'?'
+                    || c == b'<'
+                    || c == b'>'
+                    // As described in urlencoded-parsing, the
+                    // first `=` is the one that separates key from
+                    // value. Following `=`s are part of the value.
+                    || c == b'='
             }
             let mut test_escaped = String::new();
             for b in test.bytes() {
                 if dont_escape(b) {
                     test_escaped.push(char::from(b));
+                } else if b == b' ' {
+                    // URL queries are decoded with + replaced with SP
+                    test_escaped.push('+');
+                } else if b == b'%' {
+                    test_escaped.push('%');
+                    test_escaped.push('%');
                 } else {
                     write!(test_escaped, "%{:02X}", b).unwrap();
                 }
