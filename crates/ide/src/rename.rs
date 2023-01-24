@@ -521,12 +521,16 @@ impl Foo {
 
     #[test]
     fn test_rename_to_invalid_identifier_lifetime2() {
-        cov_mark::check!(rename_not_a_lifetime_ident_ref);
         check(
-            "foo",
+            "_",
             r#"fn main<'a>(_: &'a$0 ()) {}"#,
-            "error: Invalid name `foo`: not a lifetime identifier",
+            r#"error: Invalid name `_`: not a lifetime identifier"#,
         );
+    }
+
+    #[test]
+    fn test_rename_accepts_lifetime_without_apostrophe() {
+        check("foo", r#"fn main<'a>(_: &'a$0 ()) {}"#, r#"fn main<'foo>(_: &'foo ()) {}"#);
     }
 
     #[test]
@@ -1745,7 +1749,7 @@ fn foo(foo: Foo) {
 
     #[test]
     fn test_rename_lifetimes() {
-        cov_mark::check!(rename_lifetime);
+        // cov_mark::check!(rename_lifetime);
         check(
             "'yeeee",
             r#"
@@ -1829,6 +1833,31 @@ fn foo<'a>() -> &'a () {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn test_rename_label_new_name_without_apostrophe() {
+        check(
+            "foo",
+            r#"
+fn main() {
+    'outer$0: loop {
+        'inner: loop {
+            break 'outer;
+        }
+    }
+}
+        "#,
+            r#"
+fn main() {
+    'foo: loop {
+        'inner: loop {
+            break 'foo;
+        }
+    }
+}
+        "#,
+        );
     }
 
     #[test]

@@ -263,11 +263,10 @@ fn rename_reference(
         Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
     ) {
         match ident_kind {
-            IdentifierKind::Ident | IdentifierKind::Underscore => {
-                cov_mark::hit!(rename_not_a_lifetime_ident_ref);
+            IdentifierKind::Underscore => {
                 bail!("Invalid name `{}`: not a lifetime identifier", new_name);
             }
-            IdentifierKind::Lifetime => cov_mark::hit!(rename_lifetime),
+            _ => cov_mark::hit!(rename_lifetime),
         }
     } else {
         match ident_kind {
@@ -335,7 +334,14 @@ pub fn source_edit_from_references(
             _ => false,
         };
         if !has_emitted_edit && !edited_ranges.contains(&range.start()) {
-            edit.replace(range, new_name.to_string());
+            let new_name = match name {
+                ast::NameLike::Lifetime(_) => {
+                    format!("'{}", new_name.trim_start_matches("'"))
+                }
+                _ => new_name.into(),
+            };
+
+            edit.replace(range, new_name);
             edited_ranges.push(range.start());
         }
     }
@@ -501,7 +507,15 @@ fn source_edit_from_def(
         }
     }
     if edit.is_empty() {
-        edit.replace(range, new_name.to_string());
+        let new_name = match def {
+            Definition::GenericParam(hir::GenericParam::LifetimeParam(_))
+            | Definition::Label(_) => {
+                format!("'{}", new_name.trim_start_matches("'"))
+            }
+            _ => new_name.into(),
+        };
+
+        edit.replace(range, new_name);
     }
     Ok((file_id, edit.finish()))
 }
@@ -521,9 +535,6 @@ impl IdentifierKind {
                 (T![_], _) => Ok(IdentifierKind::Underscore),
                 (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => {
                     Ok(IdentifierKind::Lifetime)
-                }
-                (SyntaxKind::LIFETIME_IDENT, _) => {
-                    bail!("Invalid name `{}`: not a lifetime identifier", new_name)
                 }
                 (_, Some(syntax_error)) => bail!("Invalid name `{}`: {}", new_name, syntax_error),
                 (_, None) => bail!("Invalid name `{}`: not an identifier", new_name),
