@@ -1999,19 +1999,32 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         let used_in_call = matches!(
             explanation,
-            BorrowExplanation::UsedLater(LaterUseKind::Call | LaterUseKind::Other, _call_span, _)
+            BorrowExplanation::UsedLater(
+                _,
+                LaterUseKind::Call | LaterUseKind::Other,
+                _call_span,
+                _
+            )
         );
         if !used_in_call {
             debug!("not later used in call");
             return;
         }
+        if matches!(
+            self.body.local_decls[issued_borrow.borrowed_place.local].local_info(),
+            LocalInfo::IfThenRescopeTemp { .. }
+        ) {
+            // A better suggestion will be issued by the `if_let_rescope` lint
+            return;
+        }
 
-        let use_span =
-            if let BorrowExplanation::UsedLater(LaterUseKind::Other, use_span, _) = explanation {
-                Some(use_span)
-            } else {
-                None
-            };
+        let use_span = if let BorrowExplanation::UsedLater(_, LaterUseKind::Other, use_span, _) =
+            explanation
+        {
+            Some(use_span)
+        } else {
+            None
+        };
 
         let outer_call_loc =
             if let TwoPhaseActivation::ActivatedAt(loc) = issued_borrow.activation_location {
@@ -2862,7 +2875,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // and `move` will not help here.
             (
                 Some(name),
-                BorrowExplanation::UsedLater(LaterUseKind::ClosureCapture, var_or_use_span, _),
+                BorrowExplanation::UsedLater(_, LaterUseKind::ClosureCapture, var_or_use_span, _),
             ) if borrow_spans.for_coroutine() || borrow_spans.for_closure() => self
                 .report_escaping_closure_capture(
                     borrow_spans,
