@@ -334,11 +334,12 @@ pub fn source_edit_from_references(
             _ => false,
         };
         if !has_emitted_edit && !edited_ranges.contains(&range.start()) {
-            let new_name = match name {
-                ast::NameLike::Lifetime(_) => {
-                    format!("'{}", new_name.trim_start_matches("'"))
-                }
-                _ => new_name.into(),
+            let (range, new_name) = match name {
+                ast::NameLike::Lifetime(_) => (
+                    TextRange::new(range.start() + syntax::TextSize::from(1), range.end()),
+                    new_name.strip_prefix('\'').unwrap_or(new_name).to_owned(),
+                ),
+                _ => (range, new_name.to_owned()),
             };
 
             edit.replace(range, new_name);
@@ -507,14 +508,14 @@ fn source_edit_from_def(
         }
     }
     if edit.is_empty() {
-        let new_name = match def {
+        let (range, new_name) = match def {
             Definition::GenericParam(hir::GenericParam::LifetimeParam(_))
-            | Definition::Label(_) => {
-                format!("'{}", new_name.trim_start_matches("'"))
-            }
-            _ => new_name.into(),
+            | Definition::Label(_) => (
+                TextRange::new(range.start() + syntax::TextSize::from(1), range.end()),
+                new_name.strip_prefix('\'').unwrap_or(new_name).to_owned(),
+            ),
+            _ => (range, new_name.to_owned()),
         };
-
         edit.replace(range, new_name);
     }
     Ok((file_id, edit.finish()))
