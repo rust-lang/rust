@@ -12,6 +12,7 @@ LL | |     });
    | |_____^ `Cell<i32>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `Cell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead
    = note: required for `&'_#4r Cell<i32>` to implement `Send`
 note: required because it's used within this generator
   --> $DIR/generator-print-verbose-2.rs:19:17
@@ -36,6 +37,7 @@ LL | |     });
    | |_____^ generator is not `Sync`
    |
    = help: within `[main::{closure#0} upvar_tys=() {Cell<i32>, ()}]`, the trait `Sync` is not implemented for `Cell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead
 note: generator is not `Sync` as this value is used across a yield
   --> $DIR/generator-print-verbose-2.rs:15:9
    |
