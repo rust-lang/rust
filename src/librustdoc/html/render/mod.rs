@@ -789,7 +789,7 @@ fn assoc_type(
         generics = generics.print(cx),
     );
     if !bounds.is_empty() {
-        write!(w, ": {}", print_generic_bounds(bounds, cx))
+        write!(w, ": {}", print_generic_bounds(bounds, cx, " + "))
     }
     write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline));
     if let Some(default) = default {

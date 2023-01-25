@@ -166,13 +166,14 @@ pub(crate) fn comma_sep<T: fmt::Display>(
 pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::GenericBound],
     cx: &'a Context<'tcx>,
+    separator: &'static str,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
 
         for (i, bound) in bounds.iter().filter(|b| bounds_dup.insert(b.clone())).enumerate() {
             if i > 0 {
-                f.write_str(" + ")?;
+                f.write_str(separator)?;
             }
             fmt::Display::fmt(&bound.print(cx), f)?;
         }
@@ -206,9 +207,9 @@ impl clean::GenericParamDef {
 
                 if !bounds.is_empty() {
                     if f.alternate() {
-                        write!(f, ": {:#}", print_generic_bounds(bounds, cx))?;
+                        write!(f, ": {:#}", print_generic_bounds(bounds, cx, " + "))?;
                     } else {
-                        write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx))?;
+                        write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx, " + "))?;
                     }
                 }
 
@@ -295,7 +296,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                 match pred {
                     clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
                         let ty_cx = ty.print(cx);
-                        let generic_bounds = print_generic_bounds(bounds, cx);
+                        let generic_bounds = print_generic_bounds(bounds, cx, " ++ ");
 
                         if bound_params.is_empty() {
                             if f.alternate() {
@@ -320,12 +321,8 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                         }
                     }
                     clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
-                        let mut bounds_display = String::new();
-                        for bound in bounds.iter().map(|b| b.print(cx)) {
-                            write!(bounds_display, "{bound} + ")?;
-                        }
-                        bounds_display.truncate(bounds_display.len() - " + ".len());
-                        write!(f, "{}: {bounds_display}", lifetime.print())
+                        let generic_bounds = print_generic_bounds(bounds, cx, " ++ ");
+                        write!(f, "{}: {generic_bounds}", lifetime.print())
                     }
                     // FIXME(fmease): Render bound params.
                     clean::WherePredicate::EqPredicate { lhs, rhs, bound_params: _ } => {
@@ -356,7 +353,36 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             for _ in 0..indent + 4 {
                 br_with_padding.push_str("&nbsp;");
             }
-            let where_preds = where_preds.to_string().replace("<br>", &br_with_padding);
+            let where_preds = where_preds.to_string().split("<br>").into_iter().enumerate().fold(
+                String::new(),
+                |mut acc, (pos, pred)| {
+                    if pos > 0 {
+                        acc.push_str(&br_with_padding);
+                    }
+                    if pred.split(" ++ ").count() > 4 {
+                        // If we have more than 4 bounds, we put one by line instead.
+                        let mut len = 0;
+                        for (pos, part) in pred.split(" ++ ").enumerate() {
+                            len += part.len();
+                            if len > 80 {
+                                acc.push_str(&br_with_padding);
+                                len = part.len();
+                            }
+                            if pos > 0 {
+                                acc.push_str(" + ");
+                            }
+                            acc.push_str(&part);
+                        }
+                    } else {
+                        if pred.contains(" ++ ") {
+                            acc.push_str(&pred.replace(" ++ ", " + "));
+                        } else {
+                            acc.push_str(&pred);
+                        }
+                    }
+                    acc
+                },
+            );
 
             if ending == Ending::Newline {
                 let mut clause = "&nbsp;".repeat(indent.saturating_sub(1));
@@ -1081,9 +1107,9 @@ fn fmt_type<'cx>(
         }
         clean::ImplTrait(ref bounds) => {
             if f.alternate() {
-                write!(f, "impl {:#}", print_generic_bounds(bounds, cx))
+                write!(f, "impl {:#}", print_generic_bounds(bounds, cx, " + "))
             } else {
-                write!(f, "impl {}", print_generic_bounds(bounds, cx))
+                write!(f, "impl {}", print_generic_bounds(bounds, cx, " + "))
             }
         }
         clean::QPath(box clean::QPathData {
@@ -1615,9 +1641,9 @@ impl clean::TypeBinding {
                 clean::TypeBindingKind::Constraint { ref bounds } => {
                     if !bounds.is_empty() {
                         if f.alternate() {
-                            write!(f, ": {:#}", print_generic_bounds(bounds, cx))?;
+                            write!(f, ": {:#}", print_generic_bounds(bounds, cx, " + "))?;
                         } else {
-                            write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx))?;
+                            write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx, " + "))?;
                         }
                     }
                 }
