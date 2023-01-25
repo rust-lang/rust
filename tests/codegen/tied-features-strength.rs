@@ -3,17 +3,21 @@
 // compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
 // needs-llvm-components: aarch64
 
+// The "+v8a" feature is matched as optional as it isn't added when we
+// are targeting older LLVM versions. Once the min supported version
+// is LLVM-14 we can remove the regex matching for this feature.
+
 // [ENABLE_SVE] compile-flags: -C target-feature=+sve
-// ENABLE_SVE: attributes #0 = { {{.*}} "target-features"="+outline-atomics,+sve,+neon,+v8a" }
+// ENABLE_SVE: attributes #0 = { {{.*}} "target-features"="+outline-atomics,+sve,+neon{{(,\+v8a)?}}" }
 
 // [DISABLE_SVE] compile-flags: -C target-feature=-sve
-// DISABLE_SVE: attributes #0 = { {{.*}} "target-features"="+outline-atomics,-sve,+v8a" }
+// DISABLE_SVE: attributes #0 = { {{.*}} "target-features"="+outline-atomics,-sve{{(,\+v8a)?}}" }
 
 // [DISABLE_NEON] compile-flags: -C target-feature=-neon
-// DISABLE_NEON: attributes #0 = { {{.*}} "target-features"="+outline-atomics,-neon,-fp-armv8,+v8a" }
+// DISABLE_NEON: attributes #0 = { {{.*}} "target-features"="+outline-atomics,-neon,-fp-armv8{{(,\+v8a)?}}" }
 
 // [ENABLE_NEON] compile-flags: -C target-feature=+neon
-// ENABLE_NEON: attributes #0 = { {{.*}} "target-features"="+outline-atomics,+neon,+fp-armv8,+v8a" }
+// ENABLE_NEON: attributes #0 = { {{.*}} "target-features"="+outline-atomics,+neon,+fp-armv8{{(,\+v8a)?}}" }
 
 
 #![feature(no_core, lang_items)]
