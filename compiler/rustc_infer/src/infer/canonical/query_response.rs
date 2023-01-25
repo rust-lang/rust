@@ -482,11 +482,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let result_subst = CanonicalVarValues {
-            var_values: query_response
-                .variables
-                .iter()
-                .enumerate()
-                .map(|(index, info)| {
+            var_values: self.tcx.mk_substs(query_response.variables.iter().enumerate().map(
+                |(index, info)| {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
                             Some(k) => k,
@@ -499,8 +496,8 @@ impl<'tcx> InferCtxt<'tcx> {
                             universe_map[u.as_usize()]
                         })
                     }
-                })
-                .collect(),
+                },
+            )),
         };
 
         let mut obligations = vec![];

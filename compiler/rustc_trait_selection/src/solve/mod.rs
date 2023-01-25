@@ -13,8 +13,6 @@
 // preserves universes and creates a unique var (in the highest universe) for each
 // appearance of a region.
 
-// FIXME: `CanonicalVarValues` should be interned and `Copy`.
-
 // FIXME: uses of `infcx.at` need to enable deferred projection equality once that's implemented.
 
 use std::mem;
@@ -227,7 +225,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let external_constraints = take_external_constraints(self.infcx)?;
 
         Ok(self.infcx.canonicalize_response(Response {
-            var_values: self.var_values.clone(),
+            var_values: self.var_values,
             external_constraints,
             certainty,
         }))
@@ -483,26 +481,24 @@ pub(super) fn response_no_constraints<'tcx>(
     goal: Canonical<'tcx, impl Sized>,
     certainty: Certainty,
 ) -> QueryResult<'tcx> {
-    let var_values = goal
-        .variables
-        .iter()
-        .enumerate()
-        .map(|(i, info)| match info.kind {
-            CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
-                tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into())).into()
+    let var_values =
+        tcx.mk_substs(goal.variables.iter().enumerate().map(|(i, info)| -> ty::GenericArg<'tcx> {
+            match info.kind {
+                CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
+                    tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into())).into()
+                }
+                CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
+                    let br = ty::BoundRegion {
+                        var: ty::BoundVar::from_usize(i),
+                        kind: ty::BrAnon(i as u32, None),
+                    };
+                    tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
+                }
+                CanonicalVarKind::Const(_, ty) | CanonicalVarKind::PlaceholderConst(_, ty) => tcx
+                    .mk_const(ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i)), ty)
+                    .into(),
             }
-            CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
-                let br = ty::BoundRegion {
-                    var: ty::BoundVar::from_usize(i),
-                    kind: ty::BrAnon(i as u32, None),
-                };
-                tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
-            }
-            CanonicalVarKind::Const(_, ty) | CanonicalVarKind::PlaceholderConst(_, ty) => tcx
-                .mk_const(ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i)), ty)
-                .into(),
-        })
-        .collect();
+        }));
 
     Ok(Canonical {
         max_universe: goal.max_universe,
