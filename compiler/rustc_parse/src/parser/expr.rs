@@ -11,15 +11,15 @@ use crate::errors::{
     ComparisonOrShiftInterpretedAsGenericSugg, DoCatchSyntaxRemoved, DotDotDot, EqFieldInit,
     ExpectedElseBlock, ExpectedEqForLetExpr, ExpectedExpressionFoundLet,
     FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
-    IfExpressionMissingCondition, IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub,
-    InvalidBlockMacroSegment, InvalidComparisonOperator, InvalidComparisonOperatorSub,
-    InvalidInterpolatedExpression, InvalidLiteralSuffixOnTupleIndex, InvalidLogicalOperator,
-    InvalidLogicalOperatorSub, LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator,
-    LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
-    MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm,
-    MissingDotDot, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
-    NoFieldsForFnCall, NotAsNegationOperator, NotAsNegationOperatorSub,
-    OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
+    IfExpressionLetSomeSub, IfExpressionMissingCondition, IfExpressionMissingThenBlock,
+    IfExpressionMissingThenBlockSub, InvalidBlockMacroSegment, InvalidComparisonOperator,
+    InvalidComparisonOperatorSub, InvalidInterpolatedExpression, InvalidLiteralSuffixOnTupleIndex,
+    InvalidLogicalOperator, InvalidLogicalOperatorSub, LabeledLoopInBreak, LeadingPlusNotSupported,
+    LeftArrowOperator, LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath,
+    MalformedLoopLabel, MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg,
+    MissingCommaAfterMatchArm, MissingDotDot, MissingInInForLoop, MissingInInForLoopSub,
+    MissingSemicolonBeforeArray, NoFieldsForFnCall, NotAsNegationOperator,
+    NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
     RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
     StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedIfWithIf,
     UnexpectedTokenAfterLabel, UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
@@ -2251,9 +2251,10 @@ impl<'a> Parser<'a> {
                     if let ExprKind::Block(_, None) = right.kind => {
                         self.sess.emit_err(IfExpressionMissingThenBlock {
                             if_span: lo,
-                            sub: IfExpressionMissingThenBlockSub::UnfinishedCondition(
-                                cond_span.shrink_to_lo().to(*binop_span)
-                            ),
+                            missing_then_block_sub:
+                                IfExpressionMissingThenBlockSub::UnfinishedCondition(cond_span.shrink_to_lo().to(*binop_span)),
+                                let_else_sub: None,
+
                         });
                         std::mem::replace(right, this.mk_expr_err(binop_span.shrink_to_hi()))
                     },
@@ -2279,9 +2280,15 @@ impl<'a> Parser<'a> {
             if let Some(block) = recover_block_from_condition(self) {
                 block
             } else {
+                let let_else_sub = matches!(cond.kind, ExprKind::Let(..))
+                    .then(|| IfExpressionLetSomeSub { if_span: lo });
+
                 self.sess.emit_err(IfExpressionMissingThenBlock {
                     if_span: lo,
-                    sub: IfExpressionMissingThenBlockSub::AddThenBlock(cond_span.shrink_to_hi()),
+                    missing_then_block_sub: IfExpressionMissingThenBlockSub::AddThenBlock(
+                        cond_span.shrink_to_hi(),
+                    ),
+                    let_else_sub,
                 });
                 self.mk_block_err(cond_span.shrink_to_hi())
             }

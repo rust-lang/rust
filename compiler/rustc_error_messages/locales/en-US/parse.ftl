@@ -238,6 +238,7 @@ parse_const_let_mutually_exclusive = `const` and `let` are mutually exclusive
 
 parse_invalid_expression_in_let_else = a `{$operator}` expression cannot be directly assigned in `let...else`
 parse_invalid_curly_in_let_else = right curly brace `{"}"}` before `else` in a `let...else` statement not allowed
+parse_extra_if_in_let_else = remove the `if` if you meant to write a `let...else` statement
 
 parse_compound_assignment_expression_in_let = can't reassign to an uninitialized variable
     .suggestion = initialize the variable
