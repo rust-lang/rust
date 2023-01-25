@@ -282,6 +282,8 @@ pub(crate) fn create_config(
             providers.lint_mod = |_, _| {};
             // Prevent `rustc_hir_analysis::check_crate` from calling `typeck` on all bodies.
             providers.typeck_item_bodies = |_, _| {};
+            providers.check_mod_item_types =
+                |_, _| panic!("check_mod_item_types should not get called at all in rustdoc");
             // hack so that `used_trait_imports` won't try to call typeck
             providers.used_trait_imports = |_, _| Box::leak(Box::new(UnordSet::default()));
             // In case typeck does end up being called, don't ICE in case there were name resolution errors
@@ -322,14 +324,8 @@ pub(crate) fn run_global_ctxt(
     // typeck function bodies or run the default rustc lints.
     // (see `override_queries` in the `config`)
 
-    // HACK(jynelson) this calls an _extremely_ limited subset of `typeck`
+    // HACK(jynelson) this calls an _extremely_ limited subset of what the `analysis` query does
     // and might break if queries change their assumptions in the future.
-
-    // NOTE: This is copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
-    tcx.sess.time("item_types_checking", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
-    });
-    tcx.sess.abort_if_errors();
     tcx.sess.time("missing_docs", || {
         rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
     });
