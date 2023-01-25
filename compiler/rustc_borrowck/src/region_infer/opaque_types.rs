@@ -273,7 +273,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // This logic duplicates most of `check_opaque_meets_bounds`.
         // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
         let param_env = self.tcx.param_env(def_id);
-        let body_id = self.tcx.local_def_id_to_hir_id(def_id);
         // HACK This bubble is required for this tests to pass:
         // type-alias-impl-trait/issue-67844-nested-opaque.rs
         let infcx =
@@ -290,7 +289,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // the bounds that the function supplies.
         let opaque_ty = self.tcx.mk_opaque(def_id.to_def_id(), id_substs);
         if let Err(err) = ocx.eq(
-            &ObligationCause::misc(instantiated_ty.span, body_id),
+            &ObligationCause::misc(instantiated_ty.span, def_id),
             param_env,
             opaque_ty,
             definition_ty,
@@ -298,7 +297,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             infcx
                 .err_ctxt()
                 .report_mismatched_types(
-                    &ObligationCause::misc(instantiated_ty.span, body_id),
+                    &ObligationCause::misc(instantiated_ty.span, def_id),
                     opaque_ty,
                     definition_ty,
                     err,
@@ -309,7 +308,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         ocx.register_obligation(Obligation::misc(
             infcx.tcx,
             instantiated_ty.span,
-            body_id,
+            def_id,
             param_env,
             predicate,
         ));

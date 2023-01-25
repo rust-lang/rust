@@ -43,7 +43,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let ret_ty =
         fcx.register_infer_ok_obligations(fcx.infcx.replace_opaque_types_with_inference_vars(
             declared_ret_ty,
-            body.value.hir_id,
+            fn_def_id,
             decl.output.span(),
             fcx.param_env,
         ));

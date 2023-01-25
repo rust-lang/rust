@@ -754,12 +754,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         let ocx = ObligationCtxt::new(&infcx);
 
                         let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
-                        let hir_id = tcx
-                            .hir()
-                            .local_def_id_to_hir_id(self.body.source.def_id().expect_local());
                         let cause = ObligationCause::new(
                             terminator.source_info.span,
-                            hir_id,
+                            self.body.source.def_id().expect_local(),
                             ObligationCauseCode::ItemObligation(callee),
                         );
                         let normalized_predicates = ocx.normalize(&cause, param_env, predicates);

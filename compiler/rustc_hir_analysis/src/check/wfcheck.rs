@@ -37,7 +37,7 @@ use std::ops::{ControlFlow, Deref};
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx>,
     span: Span,
-    body_id: hir::HirId,
+    body_def_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 }
 impl<'a, 'tcx> Deref for WfCheckingCtxt<'a, 'tcx> {
@@ -59,7 +59,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         self.ocx.normalize(
-            &ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc)),
+            &ObligationCause::new(span, self.body_def_id, ObligationCauseCode::WellFormed(loc)),
             self.param_env,
             value,
         )
@@ -71,8 +71,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         loc: Option<WellFormedLoc>,
         arg: ty::GenericArg<'tcx>,
     ) {
-        let cause =
-            traits::ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc));
+        let cause = traits::ObligationCause::new(
+            span,
+            self.body_def_id,
+            ObligationCauseCode::WellFormed(loc),
+        );
         // for a type to be WF, we do not need to check if const trait predicates satisfy.
         let param_env = self.param_env.without_const();
         self.ocx.register_obligation(traits::Obligation::new(
@@ -93,11 +96,10 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     F: for<'a> FnOnce(&WfCheckingCtxt<'a, 'tcx>),
 {
     let param_env = tcx.param_env(body_def_id);
-    let body_id = tcx.hir().local_def_id_to_hir_id(body_def_id);
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
 
-    let mut wfcx = WfCheckingCtxt { ocx, span, body_id, param_env };
+    let mut wfcx = WfCheckingCtxt { ocx, span, body_def_id, param_env };
 
     if !tcx.features().trivial_bounds {
         wfcx.check_false_global_bounds()
@@ -105,7 +107,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     f(&mut wfcx);
 
     let assumed_wf_types = wfcx.ocx.assumed_wf_types(param_env, span, body_def_id);
-    let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
+    let implied_bounds = infcx.implied_bounds_tys(param_env, body_def_id, assumed_wf_types);
 
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
@@ -374,7 +376,6 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                     continue;
                 }
 
-                let item_hir_id = item.id.hir_id();
                 let param_env = tcx.param_env(item_def_id);
 
                 let item_required_bounds = match item.kind {
@@ -390,7 +391,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                         gather_gat_bounds(
                             tcx,
                             param_env,
-                            item_hir_id,
+                            item_def_id.def_id,
                             sig.inputs_and_output,
                             // We also assume that all of the function signature's parameter types
                             // are well formed.
@@ -412,7 +413,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                         gather_gat_bounds(
                             tcx,
                             param_env,
-                            item_hir_id,
+                            item_def_id.def_id,
                             tcx.explicit_item_bounds(item_def_id).to_vec(),
                             &FxIndexSet::default(),
                             gat_def_id.def_id,
@@ -458,7 +459,6 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
         let gat_item_hir = tcx.hir().expect_trait_item(gat_def_id.def_id);
         debug!(?required_bounds);
         let param_env = tcx.param_env(gat_def_id);
-        let gat_hir = gat_item_hir.hir_id();
 
         let mut unsatisfied_bounds: Vec<_> = required_bounds
             .into_iter()
@@ -466,13 +466,25 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                 ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(
                     a,
                     b,
-                ))) => {
-                    !region_known_to_outlive(tcx, gat_hir, param_env, &FxIndexSet::default(), a, b)
-                }
+                ))) => !region_known_to_outlive(
+                    tcx,
+                    gat_def_id.def_id,
+                    param_env,
+                    &FxIndexSet::default(),
+                    a,
+                    b,
+                ),
                 ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
                     a,
                     b,
-                ))) => !ty_known_to_outlive(tcx, gat_hir, param_env, &FxIndexSet::default(), a, b),
+                ))) => !ty_known_to_outlive(
+                    tcx,
+                    gat_def_id.def_id,
+                    param_env,
+                    &FxIndexSet::default(),
+                    a,
+                    b,
+                ),
                 _ => bug!("Unexpected PredicateKind"),
             })
             .map(|clause| clause.to_string())
@@ -551,7 +563,7 @@ fn augment_param_env<'tcx>(
 fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    item_hir: hir::HirId,
+    item_def_id: LocalDefId,
     to_check: T,
     wf_tys: &FxIndexSet<Ty<'tcx>>,
     gat_def_id: LocalDefId,
@@ -584,7 +596,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
         // reflected in a where clause on the GAT itself.
         for (ty, ty_idx) in &types {
             // In our example, requires that `Self: 'a`
-            if ty_known_to_outlive(tcx, item_hir, param_env, &wf_tys, *ty, *region_a) {
+            if ty_known_to_outlive(tcx, item_def_id, param_env, &wf_tys, *ty, *region_a) {
                 debug!(?ty_idx, ?region_a_idx);
                 debug!("required clause: {ty} must outlive {region_a}");
                 // Translate into the generic parameters of the GAT. In
@@ -622,7 +634,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
             if ty::ReStatic == **region_b || region_a == region_b {
                 continue;
             }
-            if region_known_to_outlive(tcx, item_hir, param_env, &wf_tys, *region_a, *region_b) {
+            if region_known_to_outlive(tcx, item_def_id, param_env, &wf_tys, *region_a, *region_b) {
                 debug!(?region_a_idx, ?region_b_idx);
                 debug!("required clause: {region_a} must outlive {region_b}");
                 // Translate into the generic parameters of the GAT.
@@ -658,7 +670,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
 /// `ty` outlives `region`.
 fn ty_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
-    id: hir::HirId,
+    id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxIndexSet<Ty<'tcx>>,
     ty: Ty<'tcx>,
@@ -675,7 +687,7 @@ fn ty_known_to_outlive<'tcx>(
 /// `region_a` outlives `region_b`
 fn region_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
-    id: hir::HirId,
+    id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxIndexSet<Ty<'tcx>>,
     region_a: ty::Region<'tcx>,
@@ -699,7 +711,7 @@ fn region_known_to_outlive<'tcx>(
 /// to be tested), then resolve region and return errors
 fn resolve_regions_with_wf_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
-    id: hir::HirId,
+    id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxIndexSet<Ty<'tcx>>,
     add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'tcx>, &'a RegionBoundPairs<'tcx>),
@@ -1093,7 +1105,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                 wfcx.register_bound(
                     traits::ObligationCause::new(
                         hir_ty.span,
-                        wfcx.body_id,
+                        wfcx.body_def_id,
                         traits::FieldSized {
                             adt_kind: match item_adt_kind(&item.kind) {
                                 Some(i) => i,
@@ -1113,7 +1125,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
             if let ty::VariantDiscr::Explicit(discr_def_id) = variant.discr {
                 let cause = traits::ObligationCause::new(
                     tcx.def_span(discr_def_id),
-                    wfcx.body_id,
+                    wfcx.body_def_id,
                     traits::MiscObligation,
                 );
                 wfcx.register_obligation(traits::Obligation::new(
@@ -1174,7 +1186,7 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: &ty::AssocI
         traits::wf::predicate_obligations(
             wfcx.infcx,
             wfcx.param_env,
-            wfcx.body_id,
+            wfcx.body_def_id,
             normalized_bound,
             bound_span,
         )
@@ -1214,7 +1226,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
         wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
         if forbid_unsized {
             wfcx.register_bound(
-                traits::ObligationCause::new(ty_span, wfcx.body_id, traits::WellFormed(None)),
+                traits::ObligationCause::new(ty_span, wfcx.body_def_id, traits::WellFormed(None)),
                 wfcx.param_env,
                 item_ty,
                 tcx.require_lang_item(LangItem::Sized, None),
@@ -1229,7 +1241,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
 
         if should_check_for_sync {
             wfcx.register_bound(
-                traits::ObligationCause::new(ty_span, wfcx.body_id, traits::SharedStatic),
+                traits::ObligationCause::new(ty_span, wfcx.body_def_id, traits::SharedStatic),
                 wfcx.param_env,
                 item_ty,
                 tcx.require_lang_item(LangItem::Sync, Some(ty_span)),
@@ -1269,7 +1281,7 @@ fn check_impl<'tcx>(
                 let mut obligations = traits::wf::trait_obligations(
                     wfcx.infcx,
                     wfcx.param_env,
-                    wfcx.body_id,
+                    wfcx.body_def_id,
                     &trait_pred,
                     ast_trait_ref.path.span,
                     item,
@@ -1466,7 +1478,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             let pred = wfcx.normalize(sp, None, pred);
             let cause = traits::ObligationCause::new(
                 sp,
-                wfcx.body_id,
+                wfcx.body_def_id,
                 traits::ItemObligation(def_id.to_def_id()),
             );
             traits::Obligation::new(tcx, cause, wfcx.param_env, pred)
@@ -1482,12 +1494,11 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
         traits::wf::predicate_obligations(
             infcx,
             wfcx.param_env.without_const(),
-            wfcx.body_id,
+            wfcx.body_def_id,
             p,
             sp,
         )
     });
-
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
     wfcx.register_obligations(obligations);
 }
@@ -1549,7 +1560,7 @@ fn check_fn_or_method<'tcx>(
         // Check that the argument is a tuple
         if let Some(ty) = inputs.next() {
             wfcx.register_bound(
-                ObligationCause::new(span, wfcx.body_id, ObligationCauseCode::RustCall),
+                ObligationCause::new(span, wfcx.body_def_id, ObligationCauseCode::RustCall),
                 wfcx.param_env,
                 *ty,
                 tcx.require_lang_item(hir::LangItem::Tuple, Some(span)),
@@ -1597,7 +1608,7 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
                     traits::wf::predicate_obligations(
                         wfcx.infcx,
                         wfcx.param_env,
-                        wfcx.body_id,
+                        wfcx.body_def_id,
                         normalized_bound,
                         bound_span,
                     )
@@ -1697,7 +1708,7 @@ fn receiver_is_valid<'tcx>(
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
     let cause =
-        ObligationCause::new(span, wfcx.body_id, traits::ObligationCauseCode::MethodReceiver);
+        ObligationCause::new(span, wfcx.body_def_id, traits::ObligationCauseCode::MethodReceiver);
 
     let can_eq_self = |ty| infcx.can_eq(wfcx.param_env, self_ty, ty).is_ok();
 
@@ -1709,7 +1720,7 @@ fn receiver_is_valid<'tcx>(
         return true;
     }
 
-    let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_id, span, receiver_ty);
+    let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_def_id, span, receiver_ty);
 
     // The `arbitrary_self_types` feature allows raw pointer receivers like `self: *const Self`.
     if arbitrary_self_types_enabled {
@@ -1894,8 +1905,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         let mut span = self.span;
         let empty_env = ty::ParamEnv::empty();
 
-        let def_id = tcx.hir().local_def_id(self.body_id);
-        let predicates_with_span = tcx.predicates_of(def_id).predicates.iter().copied();
+        let predicates_with_span = tcx.predicates_of(self.body_def_id).predicates.iter().copied();
         // Check elaborated bounds.
         let implied_obligations = traits::elaborate_predicates_with_span(tcx, predicates_with_span);
 
@@ -1910,7 +1920,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             // Match the existing behavior.
             if pred.is_global() && !pred.has_late_bound_vars() {
                 let pred = self.normalize(span, None, pred);
-                let hir_node = tcx.hir().find(self.body_id);
+                let hir_node = tcx.hir().find_by_def_id(self.body_def_id);
 
                 // only use the span of the predicate clause (#90869)
 
@@ -1929,7 +1939,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
                 let obligation = traits::Obligation::new(
                     tcx,
-                    traits::ObligationCause::new(span, self.body_id, traits::TrivialBound),
+                    traits::ObligationCause::new(span, self.body_def_id, traits::TrivialBound),
                     empty_env,
                     pred,
                 );

@@ -10,7 +10,7 @@ pub use suggestions::*;
 use crate::coercion::DynamicCoerceMany;
 use crate::{Diverges, EnclosingBreakables, Inherited};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
@@ -38,7 +38,7 @@ use std::ops::Deref;
 /// [`ItemCtxt`]: rustc_hir_analysis::collect::ItemCtxt
 /// [`InferCtxt`]: infer::InferCtxt
 pub struct FnCtxt<'a, 'tcx> {
-    pub(super) body_id: hir::HirId,
+    pub(super) body_id: LocalDefId,
 
     /// The parameter environment used for proving trait obligations
     /// in this function. This can change when we descend into
@@ -117,7 +117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn new(
         inh: &'a Inherited<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: hir::HirId,
+        body_id: LocalDefId,
     ) -> FnCtxt<'a, 'tcx> {
         FnCtxt {
             body_id,
@@ -204,7 +204,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn item_def_id(&self) -> DefId {
-        self.body_id.owner.to_def_id()
+        self.body_id.to_def_id()
     }
 
     fn get_type_parameter_bounds(

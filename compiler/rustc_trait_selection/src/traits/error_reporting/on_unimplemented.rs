@@ -149,10 +149,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().substs));
         let trait_ref = trait_ref.skip_binder();
 
-        let mut flags = vec![(
-            sym::ItemContext,
-            self.describe_enclosure(obligation.cause.body_id).map(|s| s.to_owned()),
-        )];
+        let body_hir = self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
+        let mut flags =
+            vec![(sym::ItemContext, self.describe_enclosure(body_hir).map(|s| s.to_owned()))];
 
         match obligation.cause.code() {
             ObligationCauseCode::BuiltinDerivedObligation(..)

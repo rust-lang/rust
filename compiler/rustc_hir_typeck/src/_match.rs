@@ -186,10 +186,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         prior_arm: Option<(Option<hir::HirId>, Ty<'tcx>, Span)>,
     ) {
         let hir = self.tcx.hir();
-
         // First, check that we're actually in the tail of a function.
-        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Block(block, _), .. }) =
-            hir.get(self.body_id) else { return; };
+        let Some(body_id) = hir.maybe_body_owned_by(self.body_id) else { return; };
+        let body = hir.body(body_id);
+        let hir::ExprKind::Block(block, _) = body.value.kind else { return; };
         let Some(hir::Stmt { kind: hir::StmtKind::Semi(last_expr), .. })
             = block.innermost_block().stmts.last() else {  return; };
         if last_expr.hir_id != expr.hir_id {
@@ -198,7 +198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Next, make sure that we have no type expectation.
         let Some(ret) = hir
-            .find_by_def_id(self.body_id.owner.def_id)
+            .find_by_def_id(self.body_id)
             .and_then(|owner| owner.fn_decl())
             .map(|decl| decl.output.span()) else { return; };
         let Expectation::IsLast(stmt) = expectation else {
