@@ -110,21 +110,34 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, loc: Location) {
-        if let StatementKind::Assign(box (place, _)) | StatementKind::Deinit(box place) =
-            statement.kind
-        {
-            let place_ty = place.ty(self.local_decls, self.tcx).ty;
-            if self.known_to_be_zst(place_ty)
-                && self.tcx.consider_optimizing(|| {
-                    format!(
-                        "RemoveZsts - Place: {:?} SourceInfo: {:?}",
-                        place, statement.source_info
-                    )
-                })
-            {
-                statement.make_nop();
+        let place_for_ty = match statement.kind {
+            StatementKind::Assign(box (place, ref rvalue)) => {
+                rvalue.is_safe_to_remove().then_some(place)
             }
+            StatementKind::Deinit(box place)
+            | StatementKind::SetDiscriminant { box place, variant_index: _ }
+            | StatementKind::AscribeUserType(box (place, _), _)
+            | StatementKind::Retag(_, box place)
+            | StatementKind::PlaceMention(box place)
+            | StatementKind::FakeRead(box (_, place)) => Some(place),
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                Some(local.into())
+            }
+            StatementKind::Coverage(_)
+            | StatementKind::Intrinsic(_)
+            | StatementKind::Nop
+            | StatementKind::ConstEvalCounter => None,
+        };
+        if let Some(place_for_ty) = place_for_ty
+            && let ty = place_for_ty.ty(self.local_decls, self.tcx).ty
+            && self.known_to_be_zst(ty)
+            && self.tcx.consider_optimizing(|| {
+                format!("RemoveZsts - Place: {:?} SourceInfo: {:?}", place_for_ty, statement.source_info)
+            })
+        {
+            statement.make_nop();
+        } else {
+            self.super_statement(statement, loc);
         }
-        self.super_statement(statement, loc);
     }
 }
