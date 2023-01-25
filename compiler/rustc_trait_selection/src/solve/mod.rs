@@ -277,12 +277,15 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                         param_env,
                         predicate: (def_id, substs, kind),
                     }),
+                ty::PredicateKind::ObjectSafe(trait_def_id) => {
+                    self.compute_object_safe_goal(trait_def_id)
+                }
+                ty::PredicateKind::WellFormed(arg) => {
+                    self.compute_well_formed_goal(Goal { param_env, predicate: arg })
+                }
                 ty::PredicateKind::Ambiguous => self.make_canonical_response(Certainty::AMBIGUOUS),
                 // FIXME: implement these predicates :)
-                ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::ObjectSafe(_)
-                | ty::PredicateKind::ConstEvaluatable(_)
-                | ty::PredicateKind::ConstEquate(_, _) => {
+                ty::PredicateKind::ConstEvaluatable(_) | ty::PredicateKind::ConstEquate(_, _) => {
                     self.make_canonical_response(Certainty::Yes)
                 }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
@@ -361,6 +364,32 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         } else {
             Err(NoSolution)
         }
+    }
+
+    fn compute_object_safe_goal(&mut self, trait_def_id: DefId) -> QueryResult<'tcx> {
+        if self.tcx().is_object_safe(trait_def_id) {
+            self.make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
+    }
+
+    fn compute_well_formed_goal(
+        &mut self,
+        goal: Goal<'tcx, ty::GenericArg<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        self.infcx.probe(|_| {
+            match crate::traits::wf::unnormalized_obligations(
+                self.infcx,
+                goal.param_env,
+                goal.predicate,
+            ) {
+                Some(obligations) => self.evaluate_all_and_make_canonical_response(
+                    obligations.into_iter().map(|o| o.into()).collect(),
+                ),
+                None => self.make_canonical_response(Certainty::AMBIGUOUS),
+            }
+        })
     }
 }
 

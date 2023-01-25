@@ -351,7 +351,7 @@ dependencies = [
  "cargo-test-macro",
  "cargo-test-support",
  "cargo-util",
- "clap 4.1.3",
+ "clap 4.1.4",
  "crates-io",
  "curl",
  "curl-sys",
@@ -655,9 +655,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.1.3"
+version = "4.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8d93d855ce6a0aa87b8473ef9169482f40abaa2e9e0993024c35c902cbd5920"
+checksum = "f13b9c79b5d1dd500d20ef541215a6423c75829ef43117e1b4d17fd8af0b5d76"
 dependencies = [
  "bitflags",
  "clap_derive 4.1.0",
@@ -675,7 +675,7 @@ version = "4.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10861370d2ba66b0f5989f83ebf35db6421713fd92351790e7fdd6c36774c56b"
 dependencies = [
- "clap 4.1.3",
+ "clap 4.1.4",
 ]
 
 [[package]]
@@ -2294,7 +2294,7 @@ name = "jsondoclint"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 4.1.3",
+ "clap 4.1.4",
  "fs-err",
  "rustdoc-json-types",
  "serde",
@@ -2557,7 +2557,7 @@ dependencies = [
  "ammonia",
  "anyhow",
  "chrono",
- "clap 4.1.3",
+ "clap 4.1.4",
  "clap_complete",
  "elasticlunr-rs",
  "env_logger 0.10.0",
@@ -3528,7 +3528,7 @@ dependencies = [
 name = "rustbook"
 version = "0.1.0"
 dependencies = [
- "clap 4.1.3",
+ "clap 4.1.4",
  "env_logger 0.7.1",
  "mdbook",
 ]
