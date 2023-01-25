@@ -2098,6 +2098,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::Char
+            | ty::Pat(..)
             | ty::RawPtr(..)
             | ty::Never
             | ty::Ref(_, _, hir::Mutability::Not)
@@ -2116,11 +2117,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Tuple(tys) => {
                 // (*) binder moved here
                 Where(obligation.predicate.rebind(tys.iter().collect()))
-            }
-
-            ty::Pat(ty, _) => {
-                // (*) binder moved here
-                Where(obligation.predicate.rebind(vec![ty]))
             }
 
             ty::Generator(_, substs, hir::Movability::Movable) => {
@@ -2382,7 +2378,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<Normalized<'tcx, SubstsRef<'tcx>>, ()> {
         let placeholder_obligation =
             self.infcx.replace_bound_vars_with_placeholders(obligation.predicate);
-        let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
+        let mut placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
+        if let ty::Pat(..) = *placeholder_obligation_trait_ref.self_ty().kind() {
+            // We can't do implementations for ranged types yet, so we just pick the unranged ones,
+            // even if that is unsound if those traits have methods with mutable references.
+            placeholder_obligation_trait_ref.substs = self.infcx.tcx.mk_substs(
+                placeholder_obligation_trait_ref.substs.iter().map(|arg| match arg.unpack() {
+                    ty::GenericArgKind::Type(ty) => match *ty.kind() {
+                        ty::Pat(ty, _) => ty.into(),
+                        _ => arg,
+                    },
+                    _ => arg,
+                }),
+            );
+        }
 
         let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
 

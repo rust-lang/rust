@@ -15,5 +15,5 @@ macro_rules! apply {
 apply!(1);
 
 fn main() {
-    let _x = unsafe { NonZero(1) };
+    let _x = unsafe { NonZero(1 as _) };
 }

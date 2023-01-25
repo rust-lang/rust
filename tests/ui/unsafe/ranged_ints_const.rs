@@ -8,7 +8,7 @@
 pub(crate) struct NonZero<T>(pub(crate) T);
 fn main() {}
 
-const fn foo() -> NonZero<u32> { NonZero(0) }
+const fn foo() -> NonZero<u32> { NonZero(0_u32 as _) }
 //~^ ERROR initializing type with `rustc_layout_scalar_valid_range` attr is unsafe
 
-const fn bar() -> NonZero<u32> { unsafe { NonZero(0) } }
+const fn bar() -> NonZero<u32> { unsafe { NonZero(0_u32 as _) } }

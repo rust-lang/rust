@@ -482,6 +482,15 @@ impl<'tcx> ConstToPat<'tcx> {
                 }
                 PatKind::Constant { value: cv }
             }
+            ty::Pat(inner, _) => {
+                let cv = match cv {
+                    mir::ConstantKind::Ty(c) => mir::ConstantKind::Ty(tcx.mk_const(c.kind(), *inner)),
+                    mir::ConstantKind::Unevaluated(_, _) => cv,
+                    mir::ConstantKind::Val(v, _) => mir::ConstantKind::Val(v, *inner),
+                };
+                let value = self.recur(cv, mir_structural_match_violation)?;
+                PatKind::PatTy { value }
+            },
             _ => {
                 self.saw_const_match_error.set(true);
                 let err = InvalidPattern { span, non_sm_ty: cv.ty() };

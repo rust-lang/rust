@@ -579,6 +579,10 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             }
         }
 
+        (&ty::Pat(a_t, pat_a), &ty::Pat(b_t, pat_b)) if pat_a == pat_b => {
+            Ok(tcx.mk_pat_ty(relation.relate(a_t, b_t)?, pat_a))
+        }
+
         _ => Err(TypeError::Sorts(expected_found(relation, a, b))),
     }
 }

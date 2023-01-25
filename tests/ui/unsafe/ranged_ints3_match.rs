@@ -9,13 +9,13 @@ use std::cell::Cell;
 #[repr(transparent)]
 pub(crate) struct NonZero<T>(pub(crate) T);
 fn main() {
-    let mut x = unsafe { NonZero(Cell::new(1)) };
+    let mut x = unsafe { NonZero(Cell::new(1) as _) };
     match x {
         NonZero(ref x) => { x }
         //~^ ERROR borrow of layout constrained field with interior mutability
     };
 
-    let mut y = unsafe { NonZero(42) };
+    let mut y = unsafe { NonZero(42 as _) };
     match y { NonZero(ref y) => { y } }; // OK, type of `y` is freeze
     match y { NonZero(ref mut y) => { y } };
     //~^ ERROR mutation of layout constrained field

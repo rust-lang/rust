@@ -794,6 +794,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                 PatKind::Deref { subpattern: subpattern.fold_with(folder) }
             }
             PatKind::Constant { value } => PatKind::Constant { value },
+            PatKind::PatTy { ref value } => PatKind::PatTy { value: value.fold_with(folder) },
             PatKind::Range(ref range) => PatKind::Range(range.clone()),
             PatKind::Slice { ref prefix, ref slice, ref suffix } => PatKind::Slice {
                 prefix: prefix.fold_with(folder),

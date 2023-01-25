@@ -2103,6 +2103,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     ProjectionElem::Deref => {
                         let base_ty = place_base.ty(self.body(), self.infcx.tcx).ty;
 
+                        let base_ty = match *base_ty.kind() {
+                            ty::Pat(inner, _) => inner,
+                            _ => base_ty,
+                        };
+
                         // Check the kind of deref to decide
                         match base_ty.kind() {
                             ty::Ref(_, _, mutbl) => {

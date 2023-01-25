@@ -10,6 +10,6 @@ struct Foo(i8);
 
 // Need to do in a constant, as runtime codegen
 // does not compute the layout of `Foo` in check builds.
-const FOO: Foo = unsafe { Foo(1) };
+const FOO: Foo = unsafe { Foo(1_i8 as _) };
 
 fn main() {}

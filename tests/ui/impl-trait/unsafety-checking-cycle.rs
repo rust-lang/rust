@@ -26,7 +26,7 @@ fn not_field(c: bool) -> impl Sized {
         let x = unsafe { NonZero(not_field(false)) };
         &x;
     }
-    5u32
+    unsafe { NonZero::<u32>(5u32 as _) }.0
 }
 
 fn main() {}

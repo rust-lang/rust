@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/unsafe-borrow-match.rs:13:17
+   |
+LL |     match &mut foo {
+   |           -------- this expression has type `&mut NonZero<_>`
+LL |         NonZero((a,)) => *a = 0_i32 as _,
+   |                 ^^^^ expected pattern, found tuple
+   |
+   = note: expected pattern type `_ is 1..`
+                     found tuple `(_,)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

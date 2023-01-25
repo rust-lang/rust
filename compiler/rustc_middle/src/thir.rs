@@ -660,6 +660,11 @@ pub enum PatKind<'tcx> {
         value: mir::ConstantKind<'tcx>,
     },
 
+    /// A refinement type like `u32 is 1..100`
+    PatTy {
+        value: Box<Pat<'tcx>>,
+    },
+
     Range(Box<PatRange<'tcx>>),
 
     /// Matches against a slice, checking the length and extracting elements.
@@ -814,6 +819,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 }
                 write!(f, "{}", subpattern)
             }
+            PatKind::PatTy { ref value } => write!(f, "{value}"),
             PatKind::Constant { value } => write!(f, "{}", value),
             PatKind::Range(box PatRange { lo, hi, end }) => {
                 write!(f, "{}", lo)?;

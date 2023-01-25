@@ -256,6 +256,9 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
             (bx.bitcast(lldata, lldata_ty), bx.bitcast(llextra, llextra_ty))
         }
+        (&ty::Pat(a, a_pat), &ty::Pat(b, b_pat)) if a_pat == b_pat => {
+            unsize_ptr(bx, src, a, b, old_info)
+        }
         _ => bug!("unsize_ptr: called on bad types"),
     }
 }

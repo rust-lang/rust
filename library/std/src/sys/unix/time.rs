@@ -9,11 +9,23 @@ pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
 pub const TIMESPEC_MAX: libc::timespec =
     libc::timespec { tv_sec: <libc::time_t>::MAX, tv_nsec: 1_000_000_000 - 1 };
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Eq, Ord, Hash)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
 #[rustc_layout_scalar_valid_range_end(999_999_999)]
 struct Nanoseconds(u32);
+
+impl PartialOrd for Nanoseconds {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        (self.0 as u32).partial_cmp(&(other.0 as u32))
+    }
+}
+
+impl PartialEq for Nanoseconds {
+    fn eq(&self, other: &Self) -> bool {
+        (self.0 as u32) == (other.0 as u32)
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SystemTime {
@@ -68,7 +80,7 @@ impl Timespec {
     const fn new(tv_sec: i64, tv_nsec: i64) -> Timespec {
         assert!(tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC as i64);
         // SAFETY: The assert above checks tv_nsec is within the valid range
-        Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds(tv_nsec as u32) } }
+        Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds(tv_nsec as u32 as _) } }
     }
 
     pub fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
@@ -86,12 +98,15 @@ impl Timespec {
             //
             // Ideally this code could be rearranged such that it more
             // directly expresses the lower-cost behavior we want from it.
-            let (secs, nsec) = if self.tv_nsec.0 >= other.tv_nsec.0 {
-                ((self.tv_sec - other.tv_sec) as u64, self.tv_nsec.0 - other.tv_nsec.0)
+            let (secs, nsec) = if self.tv_nsec.0 as u32 >= other.tv_nsec.0 as u32 {
+                (
+                    (self.tv_sec - other.tv_sec) as u64,
+                    self.tv_nsec.0 as u32 - other.tv_nsec.0 as u32,
+                )
             } else {
                 (
                     (self.tv_sec - other.tv_sec - 1) as u64,
-                    self.tv_nsec.0 + (NSEC_PER_SEC as u32) - other.tv_nsec.0,
+                    self.tv_nsec.0 as u32 + (NSEC_PER_SEC as u32) - other.tv_nsec.0 as u32,
                 )
             };
 
@@ -113,7 +128,7 @@ impl Timespec {
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
-        let mut nsec = other.subsec_nanos() + self.tv_nsec.0;
+        let mut nsec = other.subsec_nanos() + self.tv_nsec.0 as u32;
         if nsec >= NSEC_PER_SEC as u32 {
             nsec -= NSEC_PER_SEC as u32;
             secs = secs.checked_add(1)?;
@@ -129,7 +144,7 @@ impl Timespec {
             .and_then(|secs| self.tv_sec.checked_sub(secs))?;
 
         // Similar to above, nanos can't overflow.
-        let mut nsec = self.tv_nsec.0 as i32 - other.subsec_nanos() as i32;
+        let mut nsec = self.tv_nsec.0 as u32 as i32 - other.subsec_nanos() as i32;
         if nsec < 0 {
             nsec += NSEC_PER_SEC as i32;
             secs = secs.checked_sub(1)?;

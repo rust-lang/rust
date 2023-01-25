@@ -7,6 +7,6 @@
 #[repr(transparent)]
 pub(crate) struct NonZero<T>(pub(crate) T);
 fn main() {
-    let mut x = unsafe { NonZero(1) };
+    let mut x = unsafe { NonZero(1 as _) };
     let y = &mut x.0; //~ ERROR mutation of layout constrained field is unsafe
 }

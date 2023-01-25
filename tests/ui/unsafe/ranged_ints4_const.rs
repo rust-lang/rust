@@ -9,14 +9,14 @@ pub(crate) struct NonZero<T>(pub(crate) T);
 fn main() {}
 
 const fn foo() -> NonZero<u32> {
-    let mut x = unsafe { NonZero(1) };
-    x.0 = 0;
+    let mut x = unsafe { NonZero(1_u32 as _) };
+    x.0 = 0_u32 as _;
     //~^ ERROR mutation of layout constrained field is unsafe
     x
 }
 
 const fn bar() -> NonZero<u32> {
-    let mut x = unsafe { NonZero(1) };
-    unsafe { x.0 = 0 }; // this is UB
+    let mut x = unsafe { NonZero(1_u32 as _) };
+    unsafe { x.0 = 0_u32 as _ }; // this is UB
     x
 }

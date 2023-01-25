@@ -763,7 +763,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatKind::Constant { .. } | PatKind::Range { .. } | PatKind::Wild => {}
+            PatKind::PatTy { .. }
+            | PatKind::Constant { .. }
+            | PatKind::Range { .. }
+            | PatKind::Wild => {}
 
             PatKind::Deref { ref subpattern } => {
                 self.visit_primary_bindings(subpattern, pattern_user_ty.deref(), f);

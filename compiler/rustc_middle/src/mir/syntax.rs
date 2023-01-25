@@ -1181,6 +1181,10 @@ pub enum CastKind {
     IntToFloat,
     PtrToPtr,
     FnPtrToPtr,
+    /// A cast from a `T is 1..10` type to `T`.
+    StripPattern,
+    /// An unsafe cast from `T` to `T is 1..10`.
+    Patternize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

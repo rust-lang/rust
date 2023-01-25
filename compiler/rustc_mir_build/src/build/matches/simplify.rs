@@ -173,6 +173,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
+            PatKind::PatTy { ref value } => {
+                candidate.match_pairs.push(MatchPair::new(match_pair.place, value, self));
+                Ok(())
+            }
+
             PatKind::Binding {
                 name: _,
                 mutability: _,

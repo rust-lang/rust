@@ -332,7 +332,6 @@ LL |         let _val: NonNull<i32> = mem::uninitialized();
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
-   = note: raw pointers must be initialized
 
 error: the type `(NonZeroU32, i32)` does not permit zero-initialization
   --> $DIR/invalid_value.rs:95:39
@@ -355,7 +354,6 @@ LL |         let _val: (NonZeroU32, i32) = mem::uninitialized();
    |                                       help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::num::NonZeroU32` must be non-null
-   = note: integers must be initialized
 
 error: the type `*const dyn Send` does not permit zero-initialization
   --> $DIR/invalid_value.rs:98:37
@@ -462,7 +460,6 @@ note: because `std::num::NonZeroU32` must be non-null (in this field of the only
    |
 LL |     Banana(NonZeroU32),
    |            ^^^^^^^^^^
-   = note: integers must be initialized
 
 error: the type `bool` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:112:26
@@ -501,11 +498,6 @@ LL |         let _val: NonBig = mem::uninitialized();
    |                            help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `NonBig` must be initialized inside its custom valid range
-note: integers must be initialized (in this struct field)
-  --> $DIR/invalid_value.rs:23:26
-   |
-LL | pub(crate) struct NonBig(u64);
-   |                          ^^^
 
 error: the type `Fruit` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:121:27
@@ -587,11 +579,6 @@ LL |         let _val: WrapAroundRange = mem::uninitialized();
    |                                     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `WrapAroundRange` must be initialized inside its custom valid range
-note: integers must be initialized (in this struct field)
-  --> $DIR/invalid_value.rs:49:35
-   |
-LL | pub(crate) struct WrapAroundRange(u8);
-   |                                   ^^
 
 error: the type `Result<i32, i32>` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:144:38
@@ -659,7 +646,6 @@ LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
-   = note: raw pointers must be initialized
 
 error: the type `bool` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:159:26

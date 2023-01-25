@@ -8,7 +8,8 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_target::abi::Size;
 
 /// Constructs the types used when accessing a Box's pointer
 pub fn build_ptr_tys<'tcx>(
@@ -21,6 +22,17 @@ pub fn build_ptr_tys<'tcx>(
     let unique_ty = tcx.bound_type_of(unique_did).subst(tcx, substs);
     let nonnull_ty = tcx.bound_type_of(nonnull_did).subst(tcx, substs);
     let ptr_ty = tcx.mk_imm_ptr(pointee);
+    let ptr_ty = tcx.mk_pat_ty(
+        ptr_ty,
+        tcx.mk_pat(ty::PatternKind::Range {
+            start: Some(tcx.mk_const(
+                ty::ScalarInt::try_from_int(1, Size::from_bytes(16)).unwrap(),
+                tcx.types.u128,
+            )),
+            end: None,
+            include_end: false,
+        }),
+    );
 
     (unique_ty, nonnull_ty, ptr_ty)
 }
@@ -68,15 +80,20 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
             let (unique_ty, nonnull_ty, ptr_ty) =
                 build_ptr_tys(tcx, base_ty.boxed_ty(), self.unique_did, self.nonnull_did);
 
-            let ptr_local = self.patch.new_internal(ptr_ty, source_info.span);
+            let raw_ptr_ty = ptr_ty.strip_pattern().unwrap();
+            let ptr_local = self.patch.new_internal(raw_ptr_ty, source_info.span);
 
             self.patch.add_assign(
                 location,
                 Place::from(ptr_local),
-                Rvalue::Use(Operand::Copy(
-                    Place::from(place.local)
-                        .project_deeper(&build_projection(unique_ty, nonnull_ty, ptr_ty), tcx),
-                )),
+                Rvalue::Cast(
+                    CastKind::StripPattern,
+                    Operand::Copy(
+                        Place::from(place.local)
+                            .project_deeper(&build_projection(unique_ty, nonnull_ty, ptr_ty), tcx),
+                    ),
+                    raw_ptr_ty,
+                ),
             );
 
             place.local = ptr_local;

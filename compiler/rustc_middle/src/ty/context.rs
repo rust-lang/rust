@@ -1865,6 +1865,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn mk_pat_ty(self, ty: Ty<'tcx>, pat: Pattern<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(Pat(ty, pat))
+    }
+
+    #[inline]
     pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ref(r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
     }

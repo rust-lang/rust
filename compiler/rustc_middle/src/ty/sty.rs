@@ -1927,17 +1927,19 @@ impl<'tcx> Ty<'tcx> {
     /// contents are abstract to rustc.)
     #[inline]
     pub fn is_scalar(self) -> bool {
-        matches!(
-            self.kind(),
-            Bool | Char
-                | Int(_)
-                | Float(_)
-                | Uint(_)
-                | FnDef(..)
-                | FnPtr(_)
-                | RawPtr(_)
-                | Infer(IntVar(_) | FloatVar(_))
-        )
+        match *self.kind() {
+            Bool
+            | Char
+            | Int(_)
+            | Float(_)
+            | Uint(_)
+            | FnDef(..)
+            | FnPtr(_)
+            | RawPtr(_)
+            | Infer(IntVar(_) | FloatVar(_)) => true,
+            ty::Pat(inner, _) => inner.is_scalar(),
+            _ => false,
+        }
     }
 
     /// Returns `true` if this type is a floating point type.
@@ -2045,6 +2047,15 @@ impl<'tcx> Ty<'tcx> {
             }
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
             RawPtr(mt) if explicit => Some(*mt),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    /// Obtain the type part of a `type is pat` type.
+    pub fn strip_pattern(self) -> Option<Self> {
+        match *self.kind() {
+            ty::Pat(inner, _) => Some(inner),
             _ => None,
         }
     }

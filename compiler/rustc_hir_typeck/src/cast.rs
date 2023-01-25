@@ -755,6 +755,22 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty), CastTy::from_ty(self.cast_ty))
         {
+            (Some(Pat(from)), _) => {
+                if let Some(mut diag) = fcx.demand_eqtype_diag(self.span, self.cast_ty, from) {
+                    diag.span_label(self.span, "pattern type casts removing the pattern cannote also change the patterned type");
+                    let err = diag.emit();
+                    return Err(CastError::ErrorGuaranteed(err));
+                }
+                return Ok(CastKind::StripPattern);
+            }
+            (_, Some(Pat(to))) => {
+                if let Some(mut diag) = fcx.demand_eqtype_diag(self.span, to, self.expr_ty) {
+                    diag.span_label(self.span, "pattern type casts adding the pattern cannot also change the patterned type");
+                    let err = diag.emit();
+                    return Err(CastError::ErrorGuaranteed(err));
+                }
+                return Ok(CastKind::Patternize);
+            }
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
             // Function item types may need to be reified before casts.
             (None, Some(t_cast)) => {
@@ -814,6 +830,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
 
         match (t_from, t_cast) {
+            (Pat(_), _) | (_, Pat(_)) => Err(CastError::IllegalCast),
+
             // These types have invariants! can't cast into them.
             (_, Int(CEnum) | FnPtr) => Err(CastError::NonScalar),
 

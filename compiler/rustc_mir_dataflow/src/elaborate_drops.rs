@@ -2,12 +2,12 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::patch::MirPatch;
-use rustc_middle::mir::*;
+use rustc_middle::mir::{self, *};
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Size, VariantIdx};
 use std::{fmt, iter};
 
 /// The value of an inserted drop flag.
@@ -415,19 +415,44 @@ where
         let nonnull_ty =
             unique_ty.ty_adt_def().unwrap().non_enum_variant().fields[0].ty(self.tcx(), substs);
         let ptr_ty = self.tcx().mk_imm_ptr(substs[0].expect_ty());
+        let ptr_pat_ty = self.tcx().mk_pat_ty(
+            ptr_ty,
+            self.tcx().mk_pat(ty::PatternKind::Range {
+                start: Some(self.tcx().mk_const(
+                    ty::ScalarInt::try_from_int(1, Size::from_bytes(16)).unwrap(),
+                    self.tcx().types.u128,
+                )),
+                end: None,
+                include_end: false,
+            }),
+        );
 
         let unique_place = self.tcx().mk_place_field(self.place, Field::new(0), unique_ty);
         let nonnull_place = self.tcx().mk_place_field(unique_place, Field::new(0), nonnull_ty);
-        let ptr_place = self.tcx().mk_place_field(nonnull_place, Field::new(0), ptr_ty);
-        let interior = self.tcx().mk_place_deref(ptr_place);
 
         let interior_path = self.elaborator.deref_subpath(self.path);
 
         let succ = self.box_free_block(adt, substs, self.succ, self.unwind);
+
+        let ptr_place = self.tcx().mk_place_field(nonnull_place, Field::new(0), ptr_pat_ty);
+
+        let ptr_tmp = self.new_temp(ptr_ty);
+
+        let interior = self.tcx().mk_place_deref(Place::from(ptr_tmp));
+
         let unwind_succ =
             self.unwind.map(|unwind| self.box_free_block(adt, substs, unwind, Unwind::InCleanup));
 
-        self.drop_subpath(interior, interior_path, succ, unwind_succ)
+        let block = self.drop_subpath(interior, interior_path, succ, unwind_succ);
+
+        let loc = mir::Location { block, statement_index: 0 };
+        self.elaborator.patch().add_assign(
+            loc,
+            ptr_tmp.into(),
+            Rvalue::Cast(CastKind::StripPattern, Operand::Copy(ptr_place), ptr_ty),
+        );
+
+        block
     }
 
     #[instrument(level = "debug", ret)]

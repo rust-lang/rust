@@ -151,6 +151,7 @@ fn run_passes_inner<'tcx>(
     }
 }
 
+#[instrument(level = "trace", skip(tcx, body))]
 pub fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
     validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
 }

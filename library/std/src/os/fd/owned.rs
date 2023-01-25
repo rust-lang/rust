@@ -73,7 +73,7 @@ impl BorrowedFd<'_> {
     pub const unsafe fn borrow_raw(fd: RawFd) -> Self {
         assert!(fd != u32::MAX as RawFd);
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { Self { fd, _phantom: PhantomData } }
+        unsafe { Self { fd: fd as _, _phantom: PhantomData as _ } }
     }
 }
 
@@ -126,7 +126,7 @@ impl BorrowedFd<'_> {
 impl AsRawFd for BorrowedFd<'_> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.fd
+        self.fd as i32
     }
 }
 
@@ -134,7 +134,7 @@ impl AsRawFd for BorrowedFd<'_> {
 impl AsRawFd for OwnedFd {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.fd
+        self.fd as i32
     }
 }
 
@@ -142,7 +142,7 @@ impl AsRawFd for OwnedFd {
 impl IntoRawFd for OwnedFd {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        let fd = self.fd;
+        let fd = self.as_raw_fd();
         forget(self);
         fd
     }
@@ -160,7 +160,7 @@ impl FromRawFd for OwnedFd {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         assert_ne!(fd, u32::MAX as RawFd);
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { Self { fd } }
+        unsafe { Self { fd: fd as _ } }
     }
 }
 
@@ -174,7 +174,7 @@ impl Drop for OwnedFd {
             // the file descriptor was closed or not, and if we retried (for
             // something like EINTR), we might close another valid file descriptor
             // opened after we closed ours.
-            let _ = libc::close(self.fd);
+            let _ = libc::close(self.fd as i32);
         }
     }
 }

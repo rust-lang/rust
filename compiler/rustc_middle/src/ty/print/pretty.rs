@@ -650,7 +650,35 @@ pub trait PrettyPrinter<'tcx>:
             ty::Uint(t) => p!(write("{}", t.name_str())),
             ty::Float(t) => p!(write("{}", t.name_str())),
             ty::Pat(ty, pat) => {
-                p!("(", print(ty), ") is ", write("{pat:?}"))
+                match *ty.kind() {
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(..)
+                    | ty::Uint(..)
+                    | ty::Float(..)
+                    | ty::Never
+                    | ty::Tuple(..)
+                    | ty::FnDef(..)
+                    | ty::FnPtr(..)
+                    | ty::Infer(..)
+                    | ty::Error(..)
+                    | ty::Param(..)
+                    | ty::Bound(..)
+                    | ty::Adt(..)
+                    | ty::Foreign(..)
+                    | ty::Placeholder(..)
+                    | ty::Alias(..)
+                    | ty::Array(..)
+                    | ty::Slice(..)
+                    | ty::Generator(..)
+                    | ty::GeneratorWitness(..)
+                    | ty::Closure(..)
+                    | ty::Str => p!(print(ty)),
+                    ty::Pat(..) | ty::Ref(..) | ty::Dynamic(..) | ty::RawPtr(..) => {
+                        p!("(", print(ty), ")")
+                    }
+                }
+                p!(" is ", write("{pat:?}"))
             }
             ty::RawPtr(ref tm) => {
                 p!(write(
@@ -1751,15 +1779,17 @@ impl<'t> TyCtxt<'t> {
         self.def_path_str_with_substs(def_id, &[])
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     pub fn def_path_str_with_substs(self, def_id: DefId, substs: &'t [GenericArg<'t>]) -> String {
         let ns = guess_def_namespace(self, def_id);
-        debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
+        trace!(?ns);
         FmtPrinter::new(self, ns).print_def_path(def_id, substs).unwrap().into_buffer()
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     pub fn value_path_str_with_substs(self, def_id: DefId, substs: &'t [GenericArg<'t>]) -> String {
         let ns = guess_def_namespace(self, def_id);
-        debug!("value_path_str: def_id={:?}, ns={:?}", def_id, ns);
+        trace!(?ns);
         FmtPrinter::new(self, ns).print_value_path(def_id, substs).unwrap().into_buffer()
     }
 }

@@ -25,6 +25,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::CastKind::*;
         // FIXME: In which cases should we trigger UB when the source is uninit?
         match cast_kind {
+            Patternize | StripPattern => {
+                self.copy_op(src, dest, true)?;
+            }
+
             Pointer(PointerCast::Unsize) => {
                 let cast_ty = self.layout_of(cast_ty)?;
                 self.unsize_into(src, cast_ty, dest)?;
@@ -368,10 +372,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
-        match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
+        let (src_ty, target_ty) = match (src.layout.ty.kind(), cast_ty.ty.kind()) {
+            (&ty::Pat(a, pat_a), &ty::Pat(b, pat_b)) if pat_a == pat_b => (a, b),
+            _ => (src.layout.ty, cast_ty.ty),
+        };
+        match (src_ty.kind(), target_ty.kind()) {
             (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(TypeAndMut { ty: c, .. }))
             | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: c, .. })) => {
-                self.unsize_into_ptr(src, dest, *s, *c)
+                self.unsize_into_ptr(src, dest, s, c)
             }
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b);

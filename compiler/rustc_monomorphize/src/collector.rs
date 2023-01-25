@@ -1081,10 +1081,10 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
     };
 
-    match (&source_ty.kind(), &target_ty.kind()) {
+    match (source_ty.kind(), target_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            ptr_vtable(*a, *b)
+            ptr_vtable(a, b)
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
@@ -1111,6 +1111,9 @@ fn find_vtable_types_for_unsizing<'tcx>(
                 source_fields[coerce_index].ty(*tcx, source_substs),
                 target_fields[coerce_index].ty(*tcx, target_substs),
             )
+        }
+        (&ty::Pat(source_ty, a), &ty::Pat(target_ty, b)) if a == b => {
+            find_vtable_types_for_unsizing(tcx, source_ty, target_ty)
         }
         _ => bug!(
             "find_vtable_types_for_unsizing: invalid coercion {:?} -> {:?}",

@@ -1,14 +1,14 @@
 error[E0282]: type annotations needed
-  --> $DIR/unsafe-assign.rs:12:5
+  --> $DIR/unsafe-borrow-tuple.rs:12:18
    |
-LL |     foo.0.0 = 0_i32;
-   |     ^^^^^^^ cannot infer type
+LL |     let a = &mut foo.0.0;
+   |                  ^^^^^^^ cannot infer type
 
 error[E0609]: no field `0` on type `_ is 1..`
-  --> $DIR/unsafe-assign.rs:12:11
+  --> $DIR/unsafe-borrow-tuple.rs:12:24
    |
-LL |     foo.0.0 = 0_i32;
-   |           ^
+LL |     let a = &mut foo.0.0;
+   |                        ^
 
 error: aborting due to 2 previous errors
 

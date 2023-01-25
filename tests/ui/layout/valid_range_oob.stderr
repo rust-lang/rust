@@ -1,6 +1,13 @@
 error: internal compiler error: unexpected panic
 
 query stack during panic:
-#0 [layout_of] computing layout of `Foo`
-#1 [eval_to_allocation_raw] const-evaluating + checking `FOO`
+#0 [layout_of] computing layout of `i8 is ..=257`
+#1 [check_mod_deathness] checking deathness of variables in top-level module
+end of query stack
+
+error: internal compiler error: unexpected panic
+
+query stack during panic:
+#0 [layout_of] computing layout of `i8 is ..=257`
+#1 [layout_of] computing layout of `Foo`
 end of query stack

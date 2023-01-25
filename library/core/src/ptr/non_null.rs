@@ -198,7 +198,7 @@ impl<T: ?Sized> NonNull<T> {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
         unsafe {
             assert_unsafe_precondition!("NonNull::new_unchecked requires that the pointer is non-null", [T: ?Sized](ptr: *mut T) => !ptr.is_null());
-            NonNull { pointer: ptr as _ }
+            NonNull { pointer: ptr as *const T as _ }
         }
     }
 
@@ -271,7 +271,7 @@ impl<T: ?Sized> NonNull<T> {
     pub fn addr(self) -> NonZeroUsize {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
-        unsafe { NonZeroUsize::new_unchecked(self.pointer.addr()) }
+        unsafe { NonZeroUsize::new_unchecked((self.pointer as *const T).addr()) }
     }
 
     /// Creates a new pointer with the given address.
@@ -285,7 +285,11 @@ impl<T: ?Sized> NonNull<T> {
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn with_addr(self, addr: NonZeroUsize) -> Self {
         // SAFETY: The result of `ptr::from::with_addr` is non-null because `addr` is guaranteed to be non-zero.
-        unsafe { NonNull::new_unchecked(self.pointer.with_addr(addr.get()) as *mut _) }
+        unsafe {
+            NonNull::new_unchecked(
+                (self.pointer as *const T).cast_mut().with_addr(addr.get()) as *mut _
+            )
+        }
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
@@ -323,7 +327,7 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use]
     #[inline(always)]
     pub const fn as_ptr(self) -> *mut T {
-        self.pointer as *mut T
+        self.pointer as *const T as *mut T
     }
 
     /// Returns a shared reference to the value. If the value may be uninitialized, [`as_uninit_ref`]
@@ -778,7 +782,7 @@ impl<T: ?Sized> const From<&mut T> for NonNull<T> {
     #[inline]
     fn from(reference: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
-        unsafe { NonNull { pointer: reference as *mut T } }
+        unsafe { NonNull { pointer: reference as *mut T as *const T as _ } }
     }
 }
 
@@ -792,6 +796,6 @@ impl<T: ?Sized> const From<&T> for NonNull<T> {
     fn from(reference: &T) -> Self {
         // SAFETY: A reference cannot be null, so the conditions for
         // new_unchecked() are respected.
-        unsafe { NonNull { pointer: reference as *const T } }
+        unsafe { NonNull { pointer: reference as *const T as _ } }
     }
 }

@@ -646,9 +646,15 @@ where
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
                 | ty::Foreign(..)
-                | ty::Pat(_, _)
                 | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
+                }
+
+                // Pattern types are transparent from a layout perspective except
+                // for the change in valid values.
+                ty::Pat(ty, _) => {
+                    let inner_layout = TyAndLayout { ty, layout: this.layout };
+                    field_ty_or_layout(inner_layout, cx, i)
                 }
 
                 // Potentially-fat pointers.
@@ -820,6 +826,10 @@ where
 
         let pointee_info =
             match *this.ty.kind() {
+                ty::Pat(inner, _) => tcx
+                    .layout_of(param_env.and(inner))
+                    .ok()
+                    .and_then(|layout| Self::ty_and_layout_pointee_info_at(layout, cx, offset)),
                 ty::RawPtr(mt) if offset.bytes() == 0 => {
                     tcx.layout_of(param_env.and(mt.ty)).ok().map(|layout| PointeeInfo {
                         size: layout.size,

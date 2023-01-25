@@ -75,6 +75,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::AscribeUserType { .. }
             | PatKind::Array { .. }
             | PatKind::Wild
+            | PatKind::PatTy { .. }
             | PatKind::Binding { .. }
             | PatKind::Leaf { .. }
             | PatKind::Deref { .. } => self.error_simplifyable(match_pair),
@@ -108,6 +109,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             PatKind::Slice { .. }
             | PatKind::Array { .. }
+            | PatKind::PatTy { .. }
             | PatKind::Wild
             | PatKind::Or { .. }
             | PatKind::Binding { .. }

@@ -433,6 +433,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
         let rval_ty = rvalue.ty(self.body(), self.tcx());
@@ -517,14 +518,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
     /// Checks that the types internal to the `place` match up with
     /// what would be expected.
+    #[instrument(level = "trace", skip(self), ret)]
     fn sanitize_place(
         &mut self,
         place: &Place<'tcx>,
         location: Location,
         context: PlaceContext,
     ) -> PlaceTy<'tcx> {
-        debug!("sanitize_place: {:?}", place);
-
         let mut place_ty = PlaceTy::from_ty(self.body().local_decls[place.local].ty);
 
         for elem in place.projection.iter() {
@@ -630,6 +630,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     fn sanitize_projection(
         &mut self,
         base: PlaceTy<'tcx>,
@@ -637,7 +638,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         place: &Place<'tcx>,
         location: Location,
     ) -> PlaceTy<'tcx> {
-        debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
         let tcx = self.tcx();
         let base_ty = base.ty;
         match pi {
@@ -1310,6 +1310,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(discr, term_location);
 
                 let switch_ty = discr.ty(body, tcx);
+                let switch_ty = switch_ty.strip_pattern().unwrap_or(switch_ty);
                 if !switch_ty.is_integral() && !switch_ty.is_char() && !switch_ty.is_bool() {
                     span_mirbug!(self, term, "bad SwitchInt discr ty {:?}", switch_ty);
                 }
@@ -2107,6 +2108,66 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             }
                         }
                     }
+                    CastKind::Patternize => {
+                        let ty_from = op.ty(body, tcx);
+                        let cast_ty_to = CastTy::from_ty(*ty);
+                        match cast_ty_to {
+                            Some(CastTy::Pat(to)) => {
+                                if let Err(terr) = self.eq_types(
+                                    ty_from,
+                                    to,
+                                    location.to_locations(),
+                                    ConstraintCategory::Cast,
+                                ) {
+                                    span_mirbug!(
+                                        self,
+                                        rvalue,
+                                        "relating {:?} with {:?} yields {:?}",
+                                        ty_from,
+                                        to,
+                                        terr
+                                    )
+                                }
+                            }
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "Invalid Patternize cast {ty_from} -> {ty}",
+                                )
+                            }
+                        }
+                    }
+                    CastKind::StripPattern => {
+                        let ty_from = op.ty(body, tcx);
+                        let cast_ty_from = CastTy::from_ty(ty_from);
+                        match cast_ty_from {
+                            Some(CastTy::Pat(from)) => {
+                                if let Err(terr) = self.eq_types(
+                                    *ty,
+                                    from,
+                                    location.to_locations(),
+                                    ConstraintCategory::Cast,
+                                ) {
+                                    span_mirbug!(
+                                        self,
+                                        rvalue,
+                                        "relating {:?} with {:?} yields {:?}",
+                                        ty,
+                                        from,
+                                        terr
+                                    )
+                                }
+                            }
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "Invalid StripPattern cast {ty_from} -> {ty}",
+                                )
+                            }
+                        }
+                    }
                     CastKind::IntToFloat => {
                         let ty_from = op.ty(body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
@@ -2426,6 +2487,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             match elem {
                 ProjectionElem::Deref => {
                     let base_ty = Place::ty_from(borrowed_place.local, proj_base, body, tcx).ty;
+
+                    let base_ty = match *base_ty.kind() {
+                        ty::Pat(inner, _) => inner,
+                        _ => base_ty,
+                    };
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.kind() {

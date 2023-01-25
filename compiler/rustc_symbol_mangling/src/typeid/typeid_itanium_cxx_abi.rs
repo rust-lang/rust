@@ -690,7 +690,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         }
 
         ty::Pat(ty0, pat) => {
-            ty = tcx.mk_ty(ty::Pat(transform_ty(tcx, *ty0, options), *pat));
+            ty = tcx.mk_pat_ty(transform_ty(tcx, *ty0, options), *pat);
         }
 
         ty::Slice(ty0) => {

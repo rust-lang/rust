@@ -8,17 +8,18 @@ fn nested_field() {
     #[rustc_layout_scalar_valid_range_start(1)]
     struct NonZero<T>(T);
 
-    let mut foo = unsafe { NonZero((1,)) };
-    foo.0.0 = 0;
-    //~^ ERROR: mutation of layout constrained field is unsafe
+    let mut foo = unsafe { NonZero((1_i32,) as _) };
+    foo.0.0 = 0_i32;
+    //~^ ERROR: type annotations needed
+    //~| ERROR: no field `0` on type `_ is 1..`
 }
 
 fn block() {
     #[rustc_layout_scalar_valid_range_start(1)]
     struct NonZero<T>(T);
 
-    let mut foo = unsafe { NonZero((1,)) };
-    { foo.0 }.0 = 0;
+    let mut foo = unsafe { NonZero((1_i32,) as _) };
+    { foo.0 as (_,) }.0 = 0_i32;
     // ^ not unsafe because the result of the block expression is a new place
 }
 

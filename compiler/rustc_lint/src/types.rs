@@ -707,9 +707,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
             };
             return get_nullable_type(cx, inner_field_ty);
         }
-        ty::Int(ty) => tcx.mk_mach_int(ty),
-        ty::Uint(ty) => tcx.mk_mach_uint(ty),
-        ty::RawPtr(ty_mut) => tcx.mk_ptr(ty_mut),
+        ty::Int(_) | ty::Uint(_) | ty::RawPtr(_) => ty,
         // As these types are always non-null, the nullable equivalent of
         // Option<T> of these types are their raw pointer counterparts.
         ty::Ref(_region, ty, mutbl) => tcx.mk_ptr(ty::TypeAndMut { ty, mutbl }),
@@ -718,6 +716,7 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
             // must use an Option<fn(..) -> _> to represent it.
             ty
         }
+        ty::Pat(inner, _) => return get_nullable_type(cx, inner),
 
         // We should only ever reach this case if ty_is_known_nonnull is extended
         // to other types.
@@ -999,11 +998,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_char_help),
             },
 
-            ty::Pat(..) => FfiUnsafe {
-                ty,
-                reason: fluent::lint_improper_ctypes_pat_reason,
-                help: Some(fluent::lint_improper_ctypes_pat_help),
-            },
+            ty::Pat(inner, _) => self.check_type_for_ffi(cache, inner),
 
             ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_128bit, help: None }

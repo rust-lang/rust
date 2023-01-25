@@ -462,6 +462,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
         // Type parameters from polymorphized functions.
         ty::Param(_) => build_param_type_di_node(cx, t),
+        ty::Pat(inner, _) => return type_di_node(cx, inner),
         _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
     };
 

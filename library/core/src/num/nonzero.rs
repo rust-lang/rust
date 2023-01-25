@@ -35,12 +35,29 @@ macro_rules! nonzero_integers {
             #[doc = concat!("assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int), ">());")]
             /// ```
             #[$stability]
-            #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+            #[derive(Copy, Clone, Eq, Ord, Hash)]
             #[repr(transparent)]
             #[rustc_layout_scalar_valid_range_start(1)]
             #[rustc_nonnull_optimization_guaranteed]
             #[rustc_diagnostic_item = stringify!($Ty)]
             pub struct $Ty($Int);
+
+            #[$stability]
+            impl PartialEq for $Ty {
+                fn eq(&self, other: &Self) -> bool {
+                    self.0 as $Int == other.0 as $Int
+                }
+            }
+
+            #[$stability]
+            impl crate::marker::StructuralPartialEq for $Ty {}
+
+            #[$stability]
+            impl PartialOrd for $Ty {
+                fn partial_cmp(&self, other: &Self) -> Option<crate::cmp::Ordering> {
+                    (self.0 as $Int).partial_cmp(&(other.0 as $Int))
+                }
+            }
 
             impl $Ty {
                 /// Creates a non-zero without checking whether the value is non-zero.
@@ -60,7 +77,7 @@ macro_rules! nonzero_integers {
                             concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument"),
                             (n: $Int) => n != 0
                         );
-                        Self(n)
+                        Self(n as _)
                     }
                 }
 
@@ -72,7 +89,7 @@ macro_rules! nonzero_integers {
                 pub const fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
                         // SAFETY: we just checked that there's no `0`
-                        Some(unsafe { Self(n) })
+                        Some(unsafe { Self(n as _) })
                     } else {
                         None
                     }
@@ -83,7 +100,7 @@ macro_rules! nonzero_integers {
                 #[inline]
                 #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
                 pub const fn get(self) -> $Int {
-                    self.0
+                    self.0 as _
                 }
 
             }
@@ -94,7 +111,7 @@ macro_rules! nonzero_integers {
                 #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
                 #[inline]
                 fn from(nonzero: $Ty) -> Self {
-                    nonzero.0
+                    nonzero.0 as $Int
                 }
             }
 
@@ -218,7 +235,7 @@ macro_rules! nonzero_leading_trailing_zeros {
                 #[inline]
                 pub const fn leading_zeros(self) -> u32 {
                     // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
-                    unsafe { intrinsics::ctlz_nonzero(self.0 as $Uint) as u32 }
+                    unsafe { intrinsics::ctlz_nonzero(self.get() as $Uint) as u32 }
                 }
 
                 /// Returns the number of trailing zeros in the binary representation
@@ -242,7 +259,7 @@ macro_rules! nonzero_leading_trailing_zeros {
                 #[inline]
                 pub const fn trailing_zeros(self) -> u32 {
                     // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
-                    unsafe { intrinsics::cttz_nonzero(self.0 as $Uint) as u32 }
+                    unsafe { intrinsics::cttz_nonzero(self.get() as $Uint) as u32 }
                 }
 
             }
@@ -492,7 +509,7 @@ macro_rules! nonzero_unsigned_operations {
                               without modifying the original"]
                 #[inline]
                 pub const fn ilog10(self) -> u32 {
-                    super::int_log10::$Int(self.0)
+                    super::int_log10::$Int(self.0 as _)
                 }
             }
         )+

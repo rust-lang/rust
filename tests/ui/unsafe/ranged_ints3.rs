@@ -9,6 +9,6 @@ use std::cell::Cell;
 #[repr(transparent)]
 pub(crate) struct NonZero<T>(pub(crate) T);
 fn main() {
-    let mut x = unsafe { NonZero(Cell::new(1)) };
+    let mut x = unsafe { NonZero(Cell::new(1) as _) };
     let y = &x.0; //~ ERROR borrow of layout constrained field with interior mutability
 }

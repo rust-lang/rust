@@ -627,6 +627,32 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
+                    CastKind::StripPattern => {
+                        if let ty::Pat(ty, _) = op_ty.kind() {
+                            if ty != target_type {
+                                self.fail(location, format!("Trying to convert types from {ty} to {target_type} while stripping pattern"));
+                            }
+                        } else {
+                            self.fail(
+                                location,
+                                format!("{op_ty} is not a pattern type during pattern stripping"),
+                            );
+                        }
+                    }
+                    CastKind::Patternize => {
+                        if let ty::Pat(ty, _) = *target_type.kind() {
+                            if ty != op_ty {
+                                self.fail(location, format!("Trying to convert types from {ty} to {target_type} while patternizing"));
+                            }
+                        } else {
+                            self.fail(
+                                location,
+                                format!(
+                                    "{target_type} is not a pattern type during patternization"
+                                ),
+                            );
+                        }
+                    }
                 }
             }
             Rvalue::Repeat(_, _)

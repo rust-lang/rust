@@ -113,24 +113,39 @@ fn layout_of_uncached<'tcx>(
 
     Ok(match *ty.kind() {
         ty::Pat(ty, pat) => {
-            let layout = cx.layout_of(ty)?.layout;
-            let mut abi = layout.abi();
+            let layout = cx.layout_of(ty)?;
             match *pat {
                 ty::PatternKind::Range { start, end, include_end } => {
+                    let mut abi = layout.abi;
                     if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &mut abi {
+                        let full_range = WrappingRange::full(scalar.size(cx));
                         if let Some(start) = start {
-                            scalar.valid_range_mut().start =
-                                start.eval_bits(tcx, param_env, start.ty());
+                            let start = start.kind().eval(tcx, param_env);
+                            let start = start.try_to_bits(Size::from_bytes(16)).unwrap();
+                            assert!(
+                                full_range.contains(start),
+                                "{:?} does not contain {start}",
+                                full_range
+                            );
+                            scalar.valid_range_mut().start = start;
                         }
                         if let Some(end) = end {
-                            let mut end = end.eval_bits(tcx, param_env, end.ty());
+                            let end = end.kind().eval(tcx, param_env);
+                            let mut end = end.try_to_bits(Size::from_bytes(16)).unwrap();
                             if !include_end {
                                 end = end.wrapping_sub(1);
                             }
+                            assert!(
+                                full_range.contains(end),
+                                "{:?} does not contain {end}",
+                                full_range
+                            );
                             scalar.valid_range_mut().end = end;
                         }
 
-                        tcx.intern_layout(LayoutS { abi, ..LayoutS::clone(&layout.0) })
+                        tcx.intern_layout(LayoutS { abi, ..LayoutS::clone(&layout.layout.0) })
+                    } else if layout.is_zst() {
+                        return layout_of_uncached(cx, ty);
                     } else {
                         bug!("pattern type with range but not scalar layout: {ty:?}, {layout:?}")
                     }

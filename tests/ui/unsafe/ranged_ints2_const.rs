@@ -10,20 +10,20 @@ fn main() {
 }
 
 const fn foo() -> NonZero<u32> {
-    let mut x = unsafe { NonZero(1) };
+    let mut x = unsafe { NonZero(1 as _) };
     let y = &mut x.0; //~ ERROR mutable references
     //~^ ERROR mutation of layout constrained field is unsafe
-    unsafe { NonZero(1) }
+    unsafe { NonZero(1_u32 as _) }
 }
 
 const fn bar() -> NonZero<u32> {
-    let mut x = unsafe { NonZero(1) };
+    let mut x = unsafe { NonZero(1 as _) };
     let y = unsafe { &mut x.0 }; //~ ERROR mutable references
-    unsafe { NonZero(1) }
+    unsafe { NonZero(1_u32 as _) }
 }
 
 const fn boo() -> NonZero<u32> {
-    let mut x = unsafe { NonZero(1) };
+    let mut x = unsafe { NonZero(1 as _) };
     unsafe { let y = &mut x.0; } //~ ERROR mutable references
-    unsafe { NonZero(1) }
+    unsafe { NonZero(1_u32 as _) }
 }

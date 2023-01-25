@@ -11,6 +11,7 @@ use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::Size;
 
 use super::ItemCtxt;
 use super::{bad_placeholder, is_suggestable_infer_ty};
@@ -389,7 +390,36 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
         },
 
-        Node::Field(field) => icx.to_ty(field.ty),
+        Node::Field(field) => {
+            let ty = icx.to_ty(field.ty);
+            trace!(?ty);
+            let parent = tcx.parent(def_id.to_def_id());
+            let nest = |start, end| {
+                trace!(?ty, ?start, ?end);
+                // FIXME: use nested as type of constant instead of u128
+                let to_const = |i|
+                Some(tcx.mk_const(ty::ScalarInt::try_from_uint(i?, Size::from_bytes(16)).unwrap(), tcx.types.u128));
+                let start = to_const(start);
+                let end = to_const(end);
+                trace!(?ty, ?start, ?end);
+                tcx.mk_pat_ty(ty, tcx.mk_pat(ty::PatternKind::Range { start, end, include_end: end.is_some() }))
+            };
+            match tcx.layout_scalar_valid_range(parent) {
+                (std::ops::Bound::Included(start), std::ops::Bound::Included(end)) => {
+                    nest(Some(start), Some(end))
+                },
+                (std::ops::Bound::Included(start), std::ops::Bound::Unbounded) => {
+                    nest(Some(start), None)
+                },
+                (std::ops::Bound::Unbounded, std::ops::Bound::Included(end)) => nest(None, Some(end)),
+                (std::ops::Bound::Excluded(_), _) |
+                (_, std::ops::Bound::Excluded(_)) => span_bug!(field.span, "scalar range attributes can't produce excluded bounds"),
+                // No attributes
+                (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded) => {
+                    ty
+                },
+            }
+        },
 
         Node::Expr(&Expr { kind: ExprKind::Closure { .. }, .. }) => {
             tcx.typeck(def_id).node_type(hir_id)

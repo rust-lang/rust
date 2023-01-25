@@ -23,7 +23,7 @@ impl IntTy {
 }
 
 // Valid types for the result of a non-coercion cast
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CastTy<'tcx> {
     /// Various types that are represented as ints and handled mostly
     /// in the same way, merged for easier matching.
@@ -36,6 +36,8 @@ pub enum CastTy<'tcx> {
     Ptr(ty::TypeAndMut<'tcx>),
     /// Casting into a `dyn*` value.
     DynStar,
+    /// pattern types: `SomeType is 1..100`.
+    Pat(Ty<'tcx>),
 }
 
 /// Cast Kind. See [RFC 401](https://rust-lang.github.io/rfcs/0401-coercions.html)
@@ -54,6 +56,8 @@ pub enum CastKind {
     FnPtrPtrCast,
     FnPtrAddrCast,
     DynStarCast,
+    StripPattern,
+    Patternize,
 }
 
 impl<'tcx> CastTy<'tcx> {
@@ -72,6 +76,7 @@ impl<'tcx> CastTy<'tcx> {
             ty::RawPtr(mt) => Some(CastTy::Ptr(mt)),
             ty::FnPtr(..) => Some(CastTy::FnPtr),
             ty::Dynamic(_, _, ty::DynStar) => Some(CastTy::DynStar),
+            ty::Pat(t, _) => Some(CastTy::Pat(t)),
             _ => None,
         }
     }
@@ -82,6 +87,10 @@ pub fn mir_cast_kind<'tcx>(from_ty: Ty<'tcx>, cast_ty: Ty<'tcx>) -> mir::CastKin
     let from = CastTy::from_ty(from_ty);
     let cast = CastTy::from_ty(cast_ty);
     let cast_kind = match (from, cast) {
+        // Casting away the pattern is always fine, we just lose information.
+        (Some(CastTy::Pat(from)), _) if from == cast_ty => mir::CastKind::StripPattern,
+        (_, Some(CastTy::Pat(cast))) if from_ty == cast => mir::CastKind::Patternize,
+
         (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
             mir::CastKind::PointerExposeAddress
         }

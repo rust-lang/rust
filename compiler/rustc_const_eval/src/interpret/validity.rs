@@ -491,7 +491,27 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     ) -> InterpResult<'tcx, bool> {
         // Go over all the primitive types
         let ty = value.layout.ty;
-        match ty.kind() {
+        match *ty.kind() {
+            ty::Pat(inner, _) => {
+                let mut value = value.clone();
+                value.layout.ty = inner;
+                // First visit the inner type to report more targetted errors
+                // if the value is already not valid at the inner type.
+                self.visit_value(&value)?;
+                // Then check the extra pattern restrictions.
+                let scalar = self.read_immediate(&value, "initialized scalar value")?;
+                match (*scalar, value.layout.abi) {
+                    (Immediate::Scalar(scalar), Abi::Scalar(s))
+                    | (Immediate::ScalarPair(scalar, _), Abi::ScalarPair(s, _)) => {
+                        self.visit_scalar(scalar, s)?
+                    }
+                    other => span_bug!(
+                        self.ecx.cur_span(),
+                        "invalid abi {other:?} for pattern type {ty:?}"
+                    ),
+                }
+                Ok(true)
+            }
             ty::Bool => {
                 let value = self.read_scalar(value, "a boolean")?;
                 try_validation!(
@@ -545,11 +565,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             }
             ty::Ref(_, ty, mutbl) => {
                 if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
-                    && *mutbl == Mutability::Mut
+                    && mutbl == Mutability::Mut
                 {
                     // A mutable reference inside a const? That does not seem right (except if it is
                     // a ZST).
-                    let layout = self.ecx.layout_of(*ty)?;
+                    let layout = self.ecx.layout_of(ty)?;
                     if !layout.is_zst() {
                         throw_validation_failure!(self.path, { "mutable reference in a `const`" });
                     }
@@ -584,7 +604,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // Nothing to check.
                 Ok(true)
             }
-            ty::Pat(..) => unimplemented!(),
             // The above should be all the primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
             ty::Adt(..)
@@ -779,7 +798,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             Abi::Scalar(scalar_layout) => {
                 if !scalar_layout.is_uninit_valid() {
                     // There is something to check here.
-                    let scalar = self.read_scalar(op, "initiailized scalar value")?;
+                    let scalar = self.read_scalar(op, "initialized scalar value")?;
                     self.visit_scalar(scalar, scalar_layout)?;
                 }
             }
@@ -789,7 +808,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // the other must be init.
                 if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
                     let (a, b) =
-                        self.read_immediate(op, "initiailized scalar value")?.to_scalar_pair();
+                        self.read_immediate(op, "initialized scalar value")?.to_scalar_pair();
                     self.visit_scalar(a, a_layout)?;
                     self.visit_scalar(b, b_layout)?;
                 }

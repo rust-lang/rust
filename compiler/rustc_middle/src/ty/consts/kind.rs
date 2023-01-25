@@ -95,6 +95,12 @@ pub enum Expr<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Expr<'_>, 24);
 
+impl<'tcx> From<ty::ScalarInt> for ConstKind<'tcx> {
+    fn from(v: ty::ScalarInt) -> Self {
+        Self::Value(v.into())
+    }
+}
+
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstKind<'_>, 32);
 

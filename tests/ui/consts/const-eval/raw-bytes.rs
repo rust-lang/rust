@@ -6,10 +6,10 @@
 #![feature(never_type, rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
 #![allow(invalid_value)]
 
-use std::mem;
 use std::alloc::Layout;
-use std::ptr::NonNull;
+use std::mem;
 use std::num::{NonZeroU8, NonZeroUsize};
+use std::ptr::NonNull;
 use std::slice::{from_ptr_range, from_raw_parts};
 
 #[repr(usize)]
@@ -50,7 +50,6 @@ const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8)
 const BAD_OPTION_CHAR: Option<(char, char)> = Some(('x', unsafe { mem::transmute(!0u32) }));
 //~^ ERROR is undefined behavior
 
-
 const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
 
@@ -62,22 +61,21 @@ const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
 #[rustc_layout_scalar_valid_range_start(10)]
 #[rustc_layout_scalar_valid_range_end(30)]
 struct RestrictedRange1(u32);
-const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
+const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42_u32 as _) };
 //~^ ERROR it is undefined behavior to use this value
 
 #[rustc_layout_scalar_valid_range_start(30)]
 #[rustc_layout_scalar_valid_range_end(10)]
 struct RestrictedRange2(u32);
-const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
+const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20_u32 as _) };
 //~^ ERROR it is undefined behavior to use this value
 
 const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
-//~^ ERROR it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let x: &dyn Send = &42;
     let meta = std::ptr::metadata(x);
     mem::transmute((0_usize, meta))
 };
-
 
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR it is undefined behavior to use this value
@@ -112,7 +110,6 @@ enum Bar {}
 const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
 //~^ ERROR it is undefined behavior to use this value
 
-
 /// A newtype wrapper to prevent MIR generation from inserting reborrows that would affect the error
 /// message.
 #[repr(transparent)]
@@ -143,8 +140,9 @@ const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize::MAX)
 
 const STR_NO_INIT: &str = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
 //~^ ERROR it is undefined behavior to use this value
-const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
-//~^ ERROR it is undefined behavior to use this value
+const MYSTR_NO_INIT: &MyStr =
+    //~^ ERROR it is undefined behavior to use this value
+    unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
 const MYSTR_NO_INIT_ISSUE83182: &MyStr = unsafe { mem::transmute::<&[_], _>(&[&()]) };
 //~^ ERROR: it is undefined behavior to use this value
 
@@ -160,7 +158,6 @@ const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize))
 const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
 //~^ ERROR it is undefined behavior to use this value
 //~| constant
-
 
 // bad: sized field is not okay
 const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
@@ -183,9 +180,10 @@ const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8
 const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4usize))) };
 //~^ ERROR it is undefined behavior to use this value
 //~| expected a vtable
-const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
-//~^ ERROR it is undefined behavior to use this value
-//~| expected a vtable
+const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> =
+    //~^ ERROR it is undefined behavior to use this value
+    //~| expected a vtable
+    unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
 // bad data *inside* the trait object
 const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) };
 //~^ ERROR it is undefined behavior to use this value
@@ -196,7 +194,6 @@ const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92
 const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
 //~^ ERROR it is undefined behavior to use this value
 
-
 // not ok, since alignment needs to be non-zero.
 const LAYOUT_INVALID_ZERO: Layout = unsafe { Layout::from_size_align_unchecked(0x1000, 0x00) };
 //~^ ERROR it is undefined behavior to use this value
@@ -205,11 +202,9 @@ const LAYOUT_INVALID_ZERO: Layout = unsafe { Layout::from_size_align_unchecked(0
 const LAYOUT_INVALID_THREE: Layout = unsafe { Layout::from_size_align_unchecked(9, 3) };
 //~^ ERROR it is undefined behavior to use this value
 
-
 const _: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) }; //~ ERROR undefined behavior
 const _: &[!] = unsafe { &*(1_usize as *const [!; 1]) }; //~ ERROR undefined behavior
 const _: &[!] = unsafe { &*(1_usize as *const [!; 42]) }; //~ ERROR undefined behavior
-
 
 // Reading uninitialized  data
 pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) };

@@ -1954,6 +1954,8 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::PtrToPtr
                 | CastKind::Pointer(_)
                 | CastKind::PointerFromExposedAddress
+                | CastKind::StripPattern
+                | CastKind::Patternize
                 | CastKind::DynStar,
                 _,
                 _,

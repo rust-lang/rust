@@ -2,9 +2,12 @@
 // compile-flags: -Z mir-opt-level=4
 
 #![crate_type = "lib"]
-#![feature(lang_items)]
+#![feature(lang_items, rustc_attrs)]
 #![no_std]
 
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_nonnull_optimization_guaranteed]
 struct NonNull<T: ?Sized>(*const T);
 
 struct Unique<T: ?Sized>(NonNull<T>);
@@ -19,7 +22,7 @@ impl<T: ?Sized> Drop for Box<T> {
 #[lang = "box_free"]
 #[inline(always)]
 unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
-    dealloc(ptr.0.0)
+    dealloc(ptr.0.0 as _)
 }
 
 #[inline(never)]

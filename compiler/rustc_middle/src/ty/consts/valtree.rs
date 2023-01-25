@@ -35,6 +35,12 @@ pub enum ValTree<'tcx> {
     Branch(&'tcx [ValTree<'tcx>]),
 }
 
+impl<'tcx> From<ScalarInt> for ValTree<'tcx> {
+    fn from(v: ScalarInt) -> Self {
+        Self::Leaf(v)
+    }
+}
+
 impl<'tcx> ValTree<'tcx> {
     pub fn zst() -> Self {
         Self::Branch(&[])

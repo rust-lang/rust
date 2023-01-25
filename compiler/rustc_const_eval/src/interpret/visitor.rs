@@ -49,6 +49,9 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
         ecx: &InterpCx<'mir, 'tcx, M>,
         field: usize,
     ) -> InterpResult<'tcx, Self>;
+
+    /// Strip a layer of pattern types to get at the inner type
+    fn strip_pat_ty(self) -> Self;
 }
 
 /// A thing that we can project into given *mutable* access to `ecx`, and that has a layout.
@@ -88,6 +91,9 @@ pub trait ValueMut<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, M>,
         field: usize,
     ) -> InterpResult<'tcx, Self>;
+
+    /// Strip a layer of pattern types to get at the inner type
+    fn strip_pat_ty(self) -> Self;
 }
 
 // We cannot have a general impl which shows that Value implies ValueMut. (When we do, it says we
@@ -130,6 +136,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tc
         field: usize,
     ) -> InterpResult<'tcx, Self> {
         ecx.operand_field(self, field)
+    }
+
+    #[inline(always)]
+    fn strip_pat_ty(mut self) -> Self {
+        let ty::Pat(raw_ptr_ty, _) = *self.layout.ty.kind() else {
+            bug!("NonNull must contain a pattern type, but had {}", self.layout.ty)
+        };
+        self.layout.ty = raw_ptr_ty;
+        self
     }
 }
 
@@ -179,6 +194,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     ) -> InterpResult<'tcx, Self> {
         ecx.operand_field(self, field)
     }
+
+    #[inline(always)]
+    fn strip_pat_ty(mut self) -> Self {
+        let ty::Pat(raw_ptr_ty, _) = *self.layout.ty.kind() else {
+            bug!("NonNull must contain a pattern type, but had {}", self.layout.ty)
+        };
+        self.layout.ty = raw_ptr_ty;
+        self
+    }
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
@@ -219,6 +243,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
         field: usize,
     ) -> InterpResult<'tcx, Self> {
         ecx.mplace_field(self, field)
+    }
+
+    #[inline(always)]
+    fn strip_pat_ty(mut self) -> Self {
+        let ty::Pat(raw_ptr_ty, _) = *self.layout.ty.kind() else {
+            bug!("NonNull must contain a pattern type, but had {}", self.layout.ty)
+        };
+        self.layout.ty = raw_ptr_ty;
+        self
     }
 }
 
@@ -268,6 +301,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
         field: usize,
     ) -> InterpResult<'tcx, Self> {
         ecx.mplace_field(self, field)
+    }
+
+    #[inline(always)]
+    fn strip_pat_ty(mut self) -> Self {
+        let ty::Pat(raw_ptr_ty, _) = *self.layout.ty.kind() else {
+            bug!("NonNull must contain a pattern type, but had {}", self.layout.ty)
+        };
+        self.layout.ty = raw_ptr_ty;
+        self
     }
 }
 
@@ -319,6 +361,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
         field: usize,
     ) -> InterpResult<'tcx, Self> {
         ecx.place_field(self, field)
+    }
+
+    #[inline(always)]
+    fn strip_pat_ty(mut self) -> Self {
+        let ty::Pat(raw_ptr_ty, _) = *self.layout.ty.kind() else {
+            bug!("NonNull must contain a pattern type, but had {}", self.layout.ty)
+        };
+        self.layout.ty = raw_ptr_ty;
+        self
     }
 }
 
@@ -466,7 +517,7 @@ macro_rules! make_value_visitor {
                         );
                         // ... that contains a `NonNull`... (gladly, only a single field here)
                         assert_eq!(nonnull_ptr.layout().fields.count(), 1);
-                        let raw_ptr = nonnull_ptr.project_field(self.ecx(), 0)?; // the actual raw ptr
+                        let raw_ptr = nonnull_ptr.project_field(self.ecx(), 0)?.strip_pat_ty(); // the actual raw ptr
                         // ... whose only field finally is a raw ptr we can dereference.
                         self.visit_box(&raw_ptr)?;
 
