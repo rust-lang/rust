@@ -18,8 +18,8 @@ LL |     pub fn set_closure(&mut self, function: impl Fn(&mut Trader) + 'a) {
    |                                                  ^^^^^^^^^^^^^^^ required by this bound in `Trader::<'a>::set_closure`
 help: consider borrowing the argument
    |
-LL |     let closure = |trader : &Trader| {
-   |                             +
+LL |     let closure = |trader : &mut Trader| {
+   |                             ++++
 
 error: aborting due to previous error
 
