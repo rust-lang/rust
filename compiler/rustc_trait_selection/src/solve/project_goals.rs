@@ -562,7 +562,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         bug!("`Unsize` does not have an associated type: {:?}", goal);
     }
 
-    fn consider_builtin_dyn_unsize_candidates(
+    fn consider_builtin_dyn_upcast_candidates(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<super::CanonicalResponse<'tcx>> {

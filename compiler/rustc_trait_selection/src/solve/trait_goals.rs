@@ -262,11 +262,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 // `T` -> `dyn Trait` unsizing
                 (_, &ty::Dynamic(data, region, ty::Dyn)) => {
                     // Can only unsize to an object-safe type
-                    // FIXME: Can auto traits be *not* object safe?
                     if data
-                        .auto_traits()
-                        .chain(data.principal_def_id())
-                        .any(|def_id| !tcx.is_object_safe(def_id))
+                        .principal_def_id()
+                        .map_or(false, |def_id| !tcx.check_is_object_safe(def_id))
                     {
                         return Err(NoSolution);
                     }
@@ -365,7 +363,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         })
     }
 
-    fn consider_builtin_dyn_unsize_candidates(
+    fn consider_builtin_dyn_upcast_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<CanonicalResponse<'tcx>> {
@@ -387,9 +385,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return vec![];
         }
 
-        let mut responses = vec![];
         let mut unsize_dyn_to_principal = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
-            let _ = ecx.infcx.probe(|_| -> Result<(), NoSolution> {
+            ecx.infcx.probe(|_| -> Result<_, NoSolution> {
                 // Require that all of the trait predicates from A match B, except for
                 // the auto traits. We do this by constructing a new A type with B's
                 // auto traits, and equating these types.
@@ -414,16 +411,17 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region))),
                 );
 
-                responses.push(ecx.evaluate_all_and_make_canonical_response(nested_obligations)?);
-
-                Ok(())
-            });
+                ecx.evaluate_all_and_make_canonical_response(nested_obligations)
+            })
         };
 
+        let mut responses = vec![];
         // If the principal def ids match (or are both none), then we're not doing
         // trait upcasting. We're just removing auto traits (or shortening the lifetime).
         if a_data.principal_def_id() == b_data.principal_def_id() {
-            unsize_dyn_to_principal(a_data.principal());
+            if let Ok(response) = unsize_dyn_to_principal(a_data.principal()) {
+                responses.push(response);
+            }
         } else if let Some(a_principal) = a_data.principal()
             && let Some(b_principal) = b_data.principal()
         {
@@ -433,7 +431,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 }
                 let erased_trait_ref = super_trait_ref
                     .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
-                unsize_dyn_to_principal(Some(erased_trait_ref));
+                if let Ok(response) = unsize_dyn_to_principal(Some(erased_trait_ref)) {
+                    responses.push(response);
+                }
             }
         }
 
