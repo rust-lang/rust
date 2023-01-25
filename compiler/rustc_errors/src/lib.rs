@@ -666,7 +666,7 @@ impl Handler {
     /// NOTE: *do not* call this function from rustc. It is only meant to be called from rustdoc.
     /// Rustdoc documents multiple targets at once, meaning there may be multiple versions
     /// of the same function in scope at the same time, which isn't legal Rust otherwise. See
-    /// https://doc.rust-lang.org/beta/rustdoc/advanced-features.html#interactions-between-platform-specific-docs
+    /// <https://doc.rust-lang.org/beta/rustdoc/advanced-features.html#interactions-between-platform-specific-docs>
     /// for details
     pub fn reset_delayed_bugs(&self) {
         let mut inner = self.inner.borrow_mut();
