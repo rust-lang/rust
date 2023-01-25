@@ -198,12 +198,10 @@ fn convert_message_format_to_rustfmt_args(
             Ok(())
         }
         "human" => Ok(()),
-        _ => {
-            return Err(format!(
-                "invalid --message-format value: {}. Allowed values are: short|json|human",
-                message_format
-            ));
-        }
+        _ => Err(format!(
+            "invalid --message-format value: {}. Allowed values are: short|json|human",
+            message_format
+        )),
     }
 }
 
@@ -215,7 +213,7 @@ fn print_usage_to_stderr(reason: &str) {
         .expect("failed to write to stderr");
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Verbosity {
     Verbose,
     Normal,

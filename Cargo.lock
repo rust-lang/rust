@@ -4926,7 +4926,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-config_proc_macro"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4936,7 +4936,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.5.1"
+version = "1.5.2"
 dependencies = [
  "annotate-snippets",
  "anyhow",
