@@ -511,7 +511,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         bx.range_metadata(load, scalar.valid_range(bx));
                     }
                 }
-                abi::Pointer => {
+                abi::Pointer(_) => {
                     if !scalar.valid_range(bx).contains(0) {
                         bx.nonnull_metadata(load);
                     }

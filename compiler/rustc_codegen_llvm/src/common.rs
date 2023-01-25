@@ -236,7 +236,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             Scalar::Int(int) => {
                 let data = int.assert_bits(layout.size(self));
                 let llval = self.const_uint_big(self.type_ix(bitsize), data);
-                if layout.primitive() == Pointer {
+                if matches!(layout.primitive(), Pointer(_)) {
                     unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)
@@ -284,7 +284,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         1,
                     )
                 };
-                if layout.primitive() != Pointer {
+                if !matches!(layout.primitive(), Pointer(_)) {
                     unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)
