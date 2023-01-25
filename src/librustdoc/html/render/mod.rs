@@ -64,6 +64,7 @@ use serde::{Serialize, Serializer};
 
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::error::Error;
+use crate::errors::FailedToReadFile;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
@@ -2854,10 +2855,9 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
     let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| -> bool {
         let contents = match fs::read_to_string(&path) {
             Ok(contents) => contents,
-            Err(err) => {
+            Err(error) => {
                 let span = item.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner());
-                tcx.sess
-                    .span_err(span, &format!("failed to read file {}: {}", path.display(), err));
+                tcx.sess.emit_err(FailedToReadFile { span, path, error });
                 return false;
             }
         };

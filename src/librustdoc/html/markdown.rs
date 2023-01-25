@@ -43,6 +43,7 @@ use std::str;
 
 use crate::clean::RenderedLink;
 use crate::doctest;
+use crate::errors::{CodeblockAttributeKind, InvalidCodeblockAttribute};
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::highlight;
@@ -803,7 +804,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { id: ExtraInfoId::Def(did), sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
+    fn error_invalid_codeblock_attr(&self, name: &str, suggested_kind: CodeblockAttributeKind) {
         let hir_id = match self.id {
             ExtraInfoId::Hir(hir_id) => hir_id,
             ExtraInfoId::Def(item_did) => {
@@ -816,12 +817,11 @@ impl<'tcx> ExtraInfo<'tcx> {
                 }
             }
         };
-        self.tcx.struct_span_lint_hir(
+        self.tcx.emit_spanned_lint(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             hir_id,
             self.sp,
-            msg,
-            |lint| lint.help(help),
+            InvalidCodeblockAttribute { attr_name: name, suggested_attr_kind: suggested_kind },
         );
     }
 }
@@ -956,41 +956,21 @@ impl LangString {
                 }
                 x if extra.is_some() => {
                     let s = x.to_lowercase();
-                    if let Some((flag, help)) = if s == "compile-fail"
-                        || s == "compile_fail"
-                        || s == "compilefail"
+                    if let Some(kind) =
+                        if s == "compile-fail" || s == "compile_fail" || s == "compilefail" {
+                            Some(CodeblockAttributeKind::CompileFail)
+                        } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
+                            Some(CodeblockAttributeKind::ShouldPanic)
+                        } else if s == "no-run" || s == "no_run" || s == "norun" {
+                            Some(CodeblockAttributeKind::NoRun)
+                        } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
+                            Some(CodeblockAttributeKind::TestHarness)
+                        } else {
+                            None
+                        }
                     {
-                        Some((
-                            "compile_fail",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or won't fail if it compiles successfully",
-                        ))
-                    } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
-                        Some((
-                            "should_panic",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or won't fail if it doesn't panic when running",
-                        ))
-                    } else if s == "no-run" || s == "no_run" || s == "norun" {
-                        Some((
-                            "no_run",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or will be run (which you might not want)",
-                        ))
-                    } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
-                        Some((
-                            "test_harness",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or the code will be wrapped inside a main function",
-                        ))
-                    } else {
-                        None
-                    } {
                         if let Some(extra) = extra {
-                            extra.error_invalid_codeblock_attr(
-                                &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
-                                help,
-                            );
+                            extra.error_invalid_codeblock_attr(x, kind);
                         }
                     }
                     seen_other_tags = true;

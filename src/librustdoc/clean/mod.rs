@@ -38,6 +38,7 @@ use std::mem;
 use thin_vec::ThinVec;
 
 use crate::core::{self, DocContext, ImplTraitParam};
+use crate::errors::AnonymousImportsCannotBeInlined;
 use crate::formats::item_type::ItemType;
 use crate::visit_ast::Module as DocModule;
 
@@ -2405,14 +2406,10 @@ fn clean_use_statement_inner<'tcx>(
 
     if pub_underscore {
         if let Some(ref inline) = inline_attr {
-            rustc_errors::struct_span_err!(
-                cx.tcx.sess,
-                inline.span(),
-                E0780,
-                "anonymous imports cannot be inlined"
-            )
-            .span_label(import.span, "anonymous import")
-            .emit();
+            cx.tcx.sess.emit_err(AnonymousImportsCannotBeInlined {
+                inline_span: inline.span(),
+                import_span: import.span,
+            });
         }
     }
 

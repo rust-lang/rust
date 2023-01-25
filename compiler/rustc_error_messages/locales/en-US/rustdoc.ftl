@@ -109,3 +109,22 @@ rustdoc_error_reading_file_not_utf8 =
 
 rustdoc_error_loading_examples =
     failed to load examples: {$error} (for path {$path})
+
+rustdoc_anonymous_imports_cannot_be_inlined =
+    anonymous imports cannot be inlined
+    .import_span = anonymous import
+
+rustdoc_invalid_codeblock_attribute =
+    unknown attribute `{$attr_name}`. Did you mean `{$suggested_attr_name}`?
+    .compile_fail = the code block will either not be tested if not marked as a rust one or won't fail if it compiles successfully
+    .should_panic = the code block will either not be tested if not marked as a rust one or won't fail if it doesn't panic when running
+    .no_run = the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
+    .test_harness = the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+
+rustdoc_failed_to_read_file =
+    failed to read file {$path}: {$error}
+
+rustdoc_bare_url_not_hyperlink =
+    this URL is not a hyperlink
+    .note = bare URLs are not automatically turned into clickable links
+    .suggestion = use an automatic link instead

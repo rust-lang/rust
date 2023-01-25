@@ -1,3 +1,4 @@
+use rustc_errors::{DecorateLint, DiagnosticMessage};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::Span;
 
@@ -178,4 +179,72 @@ pub struct ErrorReadingFileNotUtf8<'a> {
 pub struct ErrorLoadingExamples {
     pub error: io::Error,
     pub path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(rustdoc_anonymous_imports_cannot_be_inlined, code = "E0780")]
+pub struct AnonymousImportsCannotBeInlined {
+    #[primary_span]
+    pub inline_span: Span,
+    #[label(import_span)]
+    pub import_span: Span,
+}
+
+pub struct InvalidCodeblockAttribute<'a> {
+    pub attr_name: &'a str,
+    pub suggested_attr_kind: CodeblockAttributeKind,
+}
+
+impl<'a> DecorateLint<'a, ()> for InvalidCodeblockAttribute<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        use CodeblockAttributeKind::*;
+
+        diag.set_arg("attr_name", self.attr_name);
+        let suggested_attr_name = match self.suggested_attr_kind {
+            CompileFail => "compile_fail",
+            ShouldPanic => "should_panic",
+            NoRun => "no_run",
+            TestHarness => "test_harness",
+        };
+        diag.set_arg("suggested_attr_name", suggested_attr_name);
+        diag.subdiagnostic(self.suggested_attr_kind);
+        diag
+    }
+
+    fn msg(&self) -> DiagnosticMessage {
+        rustc_errors::fluent::rustdoc_invalid_codeblock_attribute
+    }
+}
+
+#[derive(Subdiagnostic)]
+pub enum CodeblockAttributeKind {
+    #[help(compile_fail)]
+    CompileFail,
+    #[help(should_panic)]
+    ShouldPanic,
+    #[help(no_run)]
+    NoRun,
+    #[help(test_harness)]
+    TestHarness,
+}
+
+#[derive(Diagnostic)]
+#[diag(rustdoc_failed_to_read_file)]
+pub struct FailedToReadFile<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub path: &'a Path,
+    pub error: io::Error,
+}
+
+#[derive(LintDiagnostic)]
+#[note]
+#[diag(rustdoc_bare_url_not_hyperlink)]
+pub struct BareUrlNotHyperlink<'a> {
+    #[suggestion(code = "<{url}>", applicability = "machine-applicable")]
+    pub span: Span,
+    pub url: &'a str,
 }
