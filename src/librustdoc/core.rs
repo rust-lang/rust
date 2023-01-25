@@ -302,6 +302,21 @@ pub(crate) fn create_config(
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
+            providers.type_of = |tcx, def_id| {
+                let did = def_id.expect_local();
+                use rustc_hir::*;
+
+                let hir_id = tcx.hir().local_def_id_to_hir_id(did);
+
+                match tcx.hir().get(hir_id) {
+                    Node::Item(item) => match item.kind {
+                        ItemKind::OpaqueTy(_) => return tcx.ty_error(),
+                        _ => {}
+                    },
+                    _ => {}
+                }
+                (rustc_interface::DEFAULT_QUERY_PROVIDERS.type_of)(tcx, def_id)
+            };
         }),
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
