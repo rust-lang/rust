@@ -65,6 +65,7 @@ impl fmt::Display for AllocError {
     }
 }
 
+/// (Non-Null) Pointer and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
 pub struct PtrAndMeta {
@@ -72,6 +73,7 @@ pub struct PtrAndMeta {
     pub meta: GlobalCoAllocMeta,
 }
 
+/// (NonNull) Slice and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
 /// Used for results (from `CoAllocator`'s functions, where applicable).
@@ -89,24 +91,15 @@ macro_rules! SHORT_TERM_VEC_PREFERS_COOP {
     };
 }
 
+/// `Result` of `SliceAndMeta` or `AllocError`.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
 pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
 
-#[unstable(feature = "global_co_alloc", issue = "none")]
-pub const fn co_alloc_metadata_num_slots<A: Allocator>() -> usize {
-    // @FIXME later
-    if false {
-        panic!(
-            "FIXME - consider replacing co_alloc_metadata_num_slots() with co_alloc_metadata_num_slots_with_preference(bool), and adding const flags as appropriate."
-        );
-    }
-    if A::IS_CO_ALLOCATOR { 1 } else { 0 }
-}
-
-#[unstable(feature = "global_co_alloc", issue = "none")]
+/// Return 0 or 1, indicating whether to use coallocation metadata or not.
 /// Param `coop_preferred` - if false, then this returns `0`, regardless of
 /// whether allocator `A` is cooperative.
+#[unstable(feature = "global_co_alloc", issue = "none")]
 pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
     coop_preferred: bool,
 ) -> usize {
