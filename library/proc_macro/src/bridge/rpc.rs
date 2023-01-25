@@ -5,8 +5,8 @@ use std::io::Write;
 use std::num::NonZeroU32;
 use std::str;
 //use std::alloc::Global;
-use alloc::DEFAULT_COOP_PREFERRED;
 use alloc::alloc::Global;
+use alloc::DEFAULT_COOP_PREFERRED;
 
 pub(super) type Writer = super::buffer::Buffer;
 

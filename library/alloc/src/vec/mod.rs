@@ -150,8 +150,8 @@ use self::spec_extend::SpecExtend;
 mod spec_extend;
 
 /// Default `Vec`, `DefVec`, `DecVeque`, `DefDecVeq` "cooperation" (`COOP_PREFERRED`) generic parameter.
-/// NOT for public use. It's exported only so that library/proc_macro (and other internals) can use this. TODO FIXME.
-#[unstable(feature = "global_co_alloc_def", issue = "none")]
+/// NOT for public use. It's exported only so that library/proc_macro (and other internals) can use this. FIXME.
+#[unstable(feature = "global_co_alloc_default", issue = "none")]
 // pub const DEFAULT_COOP_PREFERRED: bool = true;
 #[macro_export]
 macro_rules! DEFAULT_COOP_PREFERRED {
@@ -445,10 +445,10 @@ pub type DefVec<T, A = Global> = Vec<T, A, { DEFAULT_COOP_PREFERRED!() }>;
 pub type WeVec<T, const WEIGHT: u8> = Vec<T, Global, { WEIGHT > 127 }>;
 
 impl<T> Vec<T> {
-/*impl<T, const COOP_PREFERRED: bool> Vec<T, Global, COOP_PREFERRED>
-where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
-{*/
+    /*impl<T, const COOP_PREFERRED: bool> Vec<T, Global, COOP_PREFERRED>
+    where
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    {*/
     /// Constructs a new, empty `Vec<T>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
@@ -525,7 +525,6 @@ where
     pub fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
     }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -546,7 +545,7 @@ where
         Vec { buf: RawVec::NEW, len: 0 }
     }
 
-    // TODO @FIXME document co-allocation
+    // @FIXME document co-allocation
     /// Constructs a new, empty `Vec<T>` with at least the specified capacity.
     ///
     /// The vector will be able to hold at least `capacity` elements without
