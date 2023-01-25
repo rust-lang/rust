@@ -293,24 +293,6 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 
 const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];
 
-/// When rustdoc is running, provide a list of all known features so that all their respective
-/// primitives may be documented.
-///
-/// IMPORTANT: If you're adding another feature list above, make sure to add it to this iterator!
-pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol>)> {
-    std::iter::empty()
-        .chain(ARM_ALLOWED_FEATURES.iter())
-        .chain(AARCH64_ALLOWED_FEATURES.iter())
-        .chain(X86_ALLOWED_FEATURES.iter())
-        .chain(HEXAGON_ALLOWED_FEATURES.iter())
-        .chain(POWERPC_ALLOWED_FEATURES.iter())
-        .chain(MIPS_ALLOWED_FEATURES.iter())
-        .chain(RISCV_ALLOWED_FEATURES.iter())
-        .chain(WASM_ALLOWED_FEATURES.iter())
-        .chain(BPF_ALLOWED_FEATURES.iter())
-        .cloned()
-}
-
 pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
     match &*sess.target.arch {
         "arm" => ARM_ALLOWED_FEATURES,
@@ -462,16 +444,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         supported_target_features: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            if tcx.sess.opts.actually_rustdoc {
-                // rustdoc needs to be able to document functions that use all the features, so
-                // whitelist them all
-                all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
-            } else {
-                supported_target_features(tcx.sess)
-                    .iter()
-                    .map(|&(a, b)| (a.to_string(), b))
-                    .collect()
-            }
+            supported_target_features(tcx.sess).iter().map(|&(a, b)| (a.to_string(), b)).collect()
         },
         asm_target_features,
         ..*providers

@@ -11,6 +11,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path, TraitCandidate};
 use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
@@ -317,6 +318,12 @@ pub(crate) fn create_config(
                 }
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.type_of)(tcx, def_id)
             };
+            providers.codegen_fn_attrs = |_, did| {
+                assert!(did.is_local());
+                CodegenFnAttrs::new()
+            };
+            providers.supported_target_features =
+                |_, _| panic!("supported_target_features should not get called by rustdoc");
         }),
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
