@@ -25,7 +25,7 @@
 -                                          // mir::Constant
                                            // + span: $DIR/cycle.rs:17:7: 17:8
                                            // + literal: Const { ty: fn() {g}, val: Value(<ZST>) }
-+         StorageLive(_3);                 // scope 1 at $DIR/cycle.rs:6:5: 6:8
++         StorageLive(_3);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:9
 +         StorageLive(_4);                 // scope 1 at $DIR/cycle.rs:6:5: 6:6
 +         _4 = &_2;                        // scope 1 at $DIR/cycle.rs:6:5: 6:6
 +         StorageLive(_5);                 // scope 1 at $DIR/cycle.rs:6:5: 6:8
@@ -34,6 +34,7 @@
       }
   
       bb1: {
++         StorageDead(_3);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:9
 +         StorageDead(_2);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:9
           StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:+1:9: +1:10
           _0 = const ();                   // scope 0 at $DIR/cycle.rs:+0:11: +2:2
@@ -51,7 +52,6 @@
 +     bb4: {
 +         StorageDead(_5);                 // scope 1 at $DIR/cycle.rs:6:5: 6:8
 +         StorageDead(_4);                 // scope 1 at $DIR/cycle.rs:6:7: 6:8
-+         StorageDead(_3);                 // scope 1 at $DIR/cycle.rs:6:8: 6:9
 +         drop(_2) -> bb1;                 // scope 1 at $DIR/cycle.rs:7:1: 7:2
       }
   }

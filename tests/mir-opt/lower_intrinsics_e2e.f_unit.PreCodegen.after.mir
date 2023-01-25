@@ -10,7 +10,6 @@ fn f_unit() -> () {
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 1 at $DIR/lower_intrinsics_e2e.rs:21:9: 21:17
         _1 = f_zst::<()>(const ()) -> bb1; // scope 1 at $DIR/lower_intrinsics_e2e.rs:21:9: 21:17
                                          // mir::Constant
                                          // + span: $DIR/lower_intrinsics_e2e.rs:21:9: 21:14
@@ -18,7 +17,6 @@ fn f_unit() -> () {
     }
 
     bb1: {
-        StorageDead(_1);                 // scope 1 at $DIR/lower_intrinsics_e2e.rs:21:17: 21:18
         return;                          // scope 0 at $DIR/lower_intrinsics_e2e.rs:+2:2: +2:2
     }
 }

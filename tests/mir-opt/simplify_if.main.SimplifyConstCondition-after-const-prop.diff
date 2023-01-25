@@ -14,7 +14,6 @@
       }
   
       bb1: {
-          StorageLive(_2);                 // scope 0 at $DIR/simplify_if.rs:+2:9: +2:15
           _2 = noop() -> bb2;              // scope 0 at $DIR/simplify_if.rs:+2:9: +2:15
                                            // mir::Constant
                                            // + span: $DIR/simplify_if.rs:7:9: 7:13
@@ -22,7 +21,6 @@
       }
   
       bb2: {
-          StorageDead(_2);                 // scope 0 at $DIR/simplify_if.rs:+2:15: +2:16
           goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:+1:5: +3:6
       }
   
