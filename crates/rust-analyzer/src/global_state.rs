@@ -3,7 +3,7 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::{sync::Arc, time::Instant};
+use std::{mem, sync::Arc, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
@@ -197,29 +197,41 @@ impl GlobalState {
             // We need to fix up the changed events a bit, if we have a create or modify for a file
             // id that is followed by a delete we actually no longer observe the file text from the
             // create or modify which may cause problems later on
+            let mut collapsed_create_delete = false;
             changed_files.dedup_by(|a, b| {
                 use vfs::ChangeKind::*;
+
+                let has_collapsed_create_delete = mem::replace(&mut collapsed_create_delete, false);
 
                 if a.file_id != b.file_id {
                     return false;
                 }
 
-                match (a.change_kind, b.change_kind) {
+                // true => delete the second element (a), we swap them here as they are inverted by dedup_by
+                match (b.change_kind, a.change_kind) {
                     // duplicate can be merged
                     (Create, Create) | (Modify, Modify) | (Delete, Delete) => true,
                     // just leave the create, modify is irrelevant
-                    (Create, Modify) => {
-                        std::mem::swap(a, b);
+                    (Create, Modify) => true,
+                    // modify becomes irrelevant if the file is deleted
+                    (Modify, Delete) => {
+                        mem::swap(a, b);
                         true
                     }
-                    // modify becomes irrelevant if the file is deleted
-                    (Modify, Delete) => true,
-                    // we should fully remove this occurrence,
-                    // but leaving just a delete works as well
-                    (Create, Delete) => true,
+                    // Remove the create message, and in the following loop, also remove the delete
+                    (Create, Delete) => {
+                        collapsed_create_delete = true;
+                        b.change_kind = Delete;
+                        true
+                    }
+                    // trailing delete from earlier
+                    (Delete, Create | Modify) if has_collapsed_create_delete => {
+                        b.change_kind = Create;
+                        true
+                    }
                     // this is equivalent to a modify
                     (Delete, Create) => {
-                        a.change_kind = Modify;
+                        b.change_kind = Modify;
                         true
                     }
                     // can't really occur
@@ -227,7 +239,9 @@ impl GlobalState {
                     (Delete, Modify) => false,
                 }
             });
-
+            if collapsed_create_delete {
+                changed_files.pop();
+            }
             for file in &changed_files {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
                     let path = path.to_path_buf();

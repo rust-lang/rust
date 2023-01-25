@@ -362,7 +362,7 @@ impl GlobalState {
             let loader = &mut self.loader;
             let mem_docs = &self.mem_docs;
             let mut load = move |path: &AbsPath| {
-                let _p = profile::span("GlobalState::load");
+                let _p = profile::span("switch_workspaces::load");
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 if !mem_docs.contains(&vfs_path) {
                     let contents = loader.handle.load_sync(path);
@@ -584,10 +584,10 @@ pub(crate) fn load_proc_macro(
     path: &AbsPath,
     dummy_replace: &[Box<str>],
 ) -> ProcMacroLoadResult {
+    let server = server.map_err(ToOwned::to_owned)?;
     let res: Result<Vec<_>, String> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf())
             .map_err(|io| format!("Proc-macro dylib loading failed: {io}"))?;
-        let server = server.map_err(ToOwned::to_owned)?;
         let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;
         if vec.is_empty() {
             return Err("proc macro library returned no proc macros".to_string());
