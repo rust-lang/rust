@@ -2549,7 +2549,7 @@ impl ToString for char {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "bool_to_string_specialization", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "bool_to_string_specialization", since = "1.68.0")]
 impl ToString for bool {
     #[inline]
     fn to_string(&self) -> String {
