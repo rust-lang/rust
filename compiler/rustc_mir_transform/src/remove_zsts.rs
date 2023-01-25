@@ -1,4 +1,4 @@
-//! Removes assignments to ZST places.
+//! Removes operations on ZST places, and convert ZST operands to constants.
 
 use crate::MirPass;
 use rustc_middle::mir::interpret::ConstValue;
@@ -53,7 +53,7 @@ fn maybe_zst(ty: Ty<'_>) -> bool {
 }
 
 impl<'tcx> Replacer<'_, 'tcx> {
-    fn is_zst(&self, ty: Ty<'tcx>) -> bool {
+    fn known_to_be_zst(&self, ty: Ty<'tcx>) -> bool {
         if !maybe_zst(ty) {
             return false;
         }
@@ -64,7 +64,7 @@ impl<'tcx> Replacer<'_, 'tcx> {
     }
 
     fn make_zst(&self, ty: Ty<'tcx>) -> Constant<'tcx> {
-        debug_assert!(self.is_zst(ty));
+        debug_assert!(self.known_to_be_zst(ty));
         Constant {
             span: rustc_span::DUMMY_SP,
             user_ty: None,
@@ -83,12 +83,12 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             VarDebugInfoContents::Const(_) => {}
             VarDebugInfoContents::Place(place) => {
                 let place_ty = place.ty(self.local_decls, self.tcx).ty;
-                if self.is_zst(place_ty) {
+                if self.known_to_be_zst(place_ty) {
                     var_debug_info.value = VarDebugInfoContents::Const(self.make_zst(place_ty))
                 }
             }
             VarDebugInfoContents::Composite { ty, fragments: _ } => {
-                if self.is_zst(ty) {
+                if self.known_to_be_zst(ty) {
                     var_debug_info.value = VarDebugInfoContents::Const(self.make_zst(ty))
                 }
             }
@@ -100,7 +100,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             return;
         }
         let op_ty = operand.ty(self.local_decls, self.tcx);
-        if self.is_zst(op_ty)
+        if self.known_to_be_zst(op_ty)
             && self.tcx.consider_optimizing(|| {
                 format!("RemoveZsts - Operand: {:?} Location: {:?}", operand, loc)
             })
@@ -114,7 +114,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             statement.kind
         {
             let place_ty = place.ty(self.local_decls, self.tcx).ty;
-            if self.is_zst(place_ty)
+            if self.known_to_be_zst(place_ty)
                 && self.tcx.consider_optimizing(|| {
                     format!(
                         "RemoveZsts - Place: {:?} SourceInfo: {:?}",
