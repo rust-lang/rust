@@ -1,11 +1,3 @@
-# `trace_macros`
-
-The tracking issue for this feature is [#29598].
-
-[#29598]: https://github.com/rust-lang/rust/issues/29598
-
-------------------------
-
 With `trace_macros` you can trace the expansion of macros in your code.
 
 ## Examples

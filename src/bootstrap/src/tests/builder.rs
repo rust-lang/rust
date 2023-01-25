@@ -312,7 +312,7 @@ mod dist {
         // Make sure rustdoc is only built once.
         assert_eq!(
             first(cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },]
+            &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } }]
         );
     }
 
@@ -636,7 +636,7 @@ mod dist {
         // stage minus 1 if --stage is not 0. Very confusing!
         assert_eq!(
             first(builder.cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },]
+            &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } }]
         );
     }
 
