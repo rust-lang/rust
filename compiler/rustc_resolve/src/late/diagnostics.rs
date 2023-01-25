@@ -227,20 +227,27 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
                     && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
-                        if let AssocItemKind::Fn(_) = &i.kind && i.ident.name == item_str.name
+                        if let AssocItemKind::Fn(..) | AssocItemKind::Const(..) = &i.kind
+                            && i.ident.name == item_str.name
                         {
                             debug!(?item_str.name);
                             return true
                         }
                         false
                     })
-                    && let AssocItemKind::Fn(fn_) = &item.kind
                 {
-                    debug!(?fn_);
-                    let self_sugg = if fn_.sig.decl.has_self() { "self." } else { "Self::" };
+                    let self_sugg = match &item.kind {
+                        AssocItemKind::Fn(fn_) if fn_.sig.decl.has_self() => "self.",
+                        _ => "Self::",
+                    };
+
                     Some((
                         item_span.shrink_to_lo(),
-                        "consider using the associated function",
+                        match &item.kind {
+                            AssocItemKind::Fn(..) => "consider using the associated function",
+                            AssocItemKind::Const(..) => "consider using the associated constant",
+                            _ => unreachable!("item kind was filtered above"),
+                        },
                         self_sugg.to_string()
                     ))
                 } else {
