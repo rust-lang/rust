@@ -57,6 +57,8 @@ mod compiler_builtins;
 mod concurrency_limiter;
 mod config;
 mod constant;
+// FIXME revert back to the external crate with Cranelift 0.93
+mod cranelift_native;
 mod debuginfo;
 mod discriminant;
 mod driver;
