@@ -11,10 +11,14 @@
 #[macro_export]
 macro_rules! bug {
     () => ( $crate::bug!("impossible case reached") );
-    ($msg:expr) => ({ $crate::util::bug::bug_fmt(::std::format_args!($msg)) });
+    ($msg:expr) => ({
+        // Outline the construction of format_args to decrease code size.
+        (|| -> ! { $crate::util::bug::bug_fmt(::std::format_args!($msg)) } )()
+    });
     ($msg:expr,) => ({ $crate::bug!($msg) });
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::util::bug::bug_fmt(::std::format_args!($fmt, $($arg)+))
+        // Outline the construction of format_args to decrease code size.
+        (|| -> ! { $crate::util::bug::bug_fmt(::std::format_args!($fmt, $($arg)+)) } )()
     });
 }
 
@@ -28,10 +32,14 @@ macro_rules! bug {
 /// [`Session::delay_span_bug`]: rustc_session::Session::delay_span_bug
 #[macro_export]
 macro_rules! span_bug {
-    ($span:expr, $msg:expr) => ({ $crate::util::bug::span_bug_fmt($span, ::std::format_args!($msg)) });
+    ($span:expr, $msg:expr) => ({
+        // Outline the construction of format_args to decrease code size.
+        (|| -> ! { $crate::util::bug::span_bug_fmt($span, ::std::format_args!($msg)) } )()
+    });
     ($span:expr, $msg:expr,) => ({ $crate::span_bug!($span, $msg) });
     ($span:expr, $fmt:expr, $($arg:tt)+) => ({
-        $crate::util::bug::span_bug_fmt($span, ::std::format_args!($fmt, $($arg)+))
+        // Outline the construction of format_args to decrease code size.
+        (|| -> ! { $crate::util::bug::span_bug_fmt($span, ::std::format_args!($fmt, $($arg)+)) } )()
     });
 }
 
