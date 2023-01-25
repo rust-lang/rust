@@ -219,14 +219,6 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
         return;
     };
 
-    // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
-    // `async-std` (and `pub async fn` in general).
-    // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
-    // See https://github.com/rust-lang/rust/issues/75100
-    if tcx.sess.opts.actually_rustdoc {
-        return;
-    }
-
     let substs = InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id());
     let span = tcx.def_span(item.owner_id.def_id);
 
