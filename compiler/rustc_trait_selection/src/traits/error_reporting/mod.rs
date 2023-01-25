@@ -2825,7 +2825,7 @@ pub struct FindExprBySpan<'hir> {
 }
 
 impl<'hir> FindExprBySpan<'hir> {
-    fn new(span: Span) -> Self {
+    pub fn new(span: Span) -> Self {
         Self { span, result: None, ty_result: None }
     }
 }

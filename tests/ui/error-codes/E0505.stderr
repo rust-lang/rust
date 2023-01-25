@@ -1,6 +1,9 @@
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/E0505.rs:9:13
    |
+LL |     let x = Value{};
+   |         - binding `x` declared here
+LL |     {
 LL |         let _ref_to_val: &Value = &x;
    |                                   -- borrow of `x` occurs here
 LL |         eat(x);

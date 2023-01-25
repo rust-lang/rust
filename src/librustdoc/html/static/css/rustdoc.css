@@ -533,7 +533,7 @@ ul.block, .block li {
 .rustdoc .example-wrap > pre {
 	margin: 0;
 	flex-grow: 1;
-	overflow-x: auto;
+	overflow: auto hidden;
 }
 
 .rustdoc .example-wrap > pre.example-line-numbers,

@@ -1,6 +1,8 @@
 error[E0505]: cannot move out of `s` because it is borrowed
   --> $DIR/borrowck-overloaded-index-move-index.rs:50:22
    |
+LL |     let mut s = "hello".to_string();
+   |         ----- binding `s` declared here
 LL |     let rs = &mut s;
    |              ------ borrow of `s` occurs here
 LL |
@@ -13,6 +15,8 @@ LL |     use_mut(rs);
 error[E0505]: cannot move out of `s` because it is borrowed
   --> $DIR/borrowck-overloaded-index-move-index.rs:53:7
    |
+LL |     let mut s = "hello".to_string();
+   |         ----- binding `s` declared here
 LL |     let rs = &mut s;
    |              ------ borrow of `s` occurs here
 ...

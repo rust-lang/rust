@@ -997,6 +997,30 @@ impl<'tcx> TyCtxt<'tcx> {
         v.0
     }
 
+    /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in its return type and associated alias span when type alias is used
+    pub fn return_type_impl_or_dyn_traits_with_type_alias(
+        self,
+        scope_def_id: LocalDefId,
+    ) -> Option<(Vec<&'tcx hir::Ty<'tcx>>, Span)> {
+        let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
+        let mut v = TraitObjectVisitor(vec![], self.hir());
+        // when the return type is a type alias
+        if let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) = self.hir().fn_decl_by_hir_id(hir_id)
+            && let hir::TyKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: hir::def::Res::Def(DefKind::TyAlias, def_id), .. }, )) = hir_output.kind
+            && let Some(local_id) = def_id.as_local()
+            && let Some(alias_ty) = self.hir().get_by_def_id(local_id).alias_ty() // it is type alias
+            && let Some(alias_generics) = self.hir().get_by_def_id(local_id).generics()
+        {
+            v.visit_ty(alias_ty);
+            if !v.0.is_empty() {
+                return Some((v.0, alias_generics.span));
+            }
+        }
+        return None;
+    }
+
     pub fn return_type_impl_trait(self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
         // `type_of()` will fail on these (#55796, #86483), so only allow `fn`s or closures.
         match self.hir().get_by_def_id(scope_def_id) {

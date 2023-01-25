@@ -49,9 +49,9 @@ error[E0506]: cannot assign to `x` because it is borrowed
 LL |     let c2 = || x * 5;
    |              -- - borrow occurs due to use in closure
    |              |
-   |              borrow of `x` occurs here
+   |              `x` is borrowed here
 LL |     x = 5;
-   |     ^^^^^ assignment to borrowed `x` occurs here
+   |     ^^^^^ `x` is assigned to here but it was already borrowed
 LL |
 LL |     drop(c2);
    |          -- borrow later used here
@@ -62,9 +62,9 @@ error[E0506]: cannot assign to `x` because it is borrowed
 LL |     let c1 = || get(&x);
    |              --      - borrow occurs due to use in closure
    |              |
-   |              borrow of `x` occurs here
+   |              `x` is borrowed here
 LL |     x = 5;
-   |     ^^^^^ assignment to borrowed `x` occurs here
+   |     ^^^^^ `x` is assigned to here but it was already borrowed
 LL |
 LL |     drop(c1);
    |          -- borrow later used here
@@ -75,9 +75,9 @@ error[E0506]: cannot assign to `*x` because it is borrowed
 LL |     let c1 = || get(&*x);
    |              --      -- borrow occurs due to use in closure
    |              |
-   |              borrow of `*x` occurs here
+   |              `*x` is borrowed here
 LL |     *x = 5;
-   |     ^^^^^^ assignment to borrowed `*x` occurs here
+   |     ^^^^^^ `*x` is assigned to here but it was already borrowed
 LL |
 LL |     drop(c1);
    |          -- borrow later used here
@@ -88,9 +88,9 @@ error[E0506]: cannot assign to `*x.f` because it is borrowed
 LL |     let c1 = || get(&*x.f);
    |              --      ---- borrow occurs due to use in closure
    |              |
-   |              borrow of `*x.f` occurs here
+   |              `*x.f` is borrowed here
 LL |     *x.f = 5;
-   |     ^^^^^^^^ assignment to borrowed `*x.f` occurs here
+   |     ^^^^^^^^ `*x.f` is assigned to here but it was already borrowed
 LL |
 LL |     drop(c1);
    |          -- borrow later used here

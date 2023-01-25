@@ -1,6 +1,9 @@
 error[E0597]: `n` does not live long enough
   --> $DIR/issue-69114-static-mut-ty.rs:19:15
    |
+LL |     let n = 42;
+   |         - binding `n` declared here
+LL |     unsafe {
 LL |         BAR = &n;
    |         ------^^
    |         |     |
@@ -13,6 +16,9 @@ LL | }
 error[E0597]: `n` does not live long enough
   --> $DIR/issue-69114-static-mut-ty.rs:27:22
    |
+LL |     let n = 42;
+   |         - binding `n` declared here
+LL |     unsafe {
 LL |         BAR_ELIDED = &n;
    |         -------------^^
    |         |            |

@@ -1,6 +1,8 @@
 //! Print diagnostics to explain why values are borrowed.
 
 use rustc_errors::{Applicability, Diagnostic};
+use rustc_hir as hir;
+use rustc_hir::intravisit::Visitor;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
@@ -11,6 +13,7 @@ use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
+use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
 
 use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
@@ -63,6 +66,36 @@ impl<'tcx> BorrowExplanation<'tcx> {
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
     ) {
+        if let Some(span) = borrow_span {
+            let def_id = body.source.def_id();
+            if let Some(node) = tcx.hir().get_if_local(def_id)
+                && let Some(body_id) = node.body_id()
+            {
+                let body = tcx.hir().body(body_id);
+                let mut expr_finder = FindExprBySpan::new(span);
+                expr_finder.visit_expr(body.value);
+                if let Some(mut expr) = expr_finder.result {
+                    while let hir::ExprKind::AddrOf(_, _, inner)
+                        | hir::ExprKind::Unary(hir::UnOp::Deref, inner)
+                        | hir::ExprKind::Field(inner, _)
+                        | hir::ExprKind::MethodCall(_, inner, _, _)
+                        | hir::ExprKind::Index(inner, _) = &expr.kind
+                    {
+                        expr = inner;
+                    }
+                    if let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind
+                        && let [hir::PathSegment { ident, args: None, .. }] = p.segments
+                        && let hir::def::Res::Local(hir_id) = p.res
+                        && let Some(hir::Node::Pat(pat)) = tcx.hir().find(hir_id)
+                    {
+                        err.span_label(
+                            pat.span,
+                            &format!("binding `{ident}` declared here"),
+                        );
+                    }
+                }
+            }
+        }
         match *self {
             BorrowExplanation::UsedLater(later_use_kind, var_or_use_span, path_span) => {
                 let message = match later_use_kind {

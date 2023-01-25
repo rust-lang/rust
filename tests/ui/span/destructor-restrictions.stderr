@@ -1,6 +1,8 @@
 error[E0597]: `*a` does not live long enough
   --> $DIR/destructor-restrictions.rs:8:10
    |
+LL |         let a = Box::new(RefCell::new(4));
+   |             - binding `a` declared here
 LL |         *a.borrow() + 1
    |          ^^^^^^^^^^
    |          |

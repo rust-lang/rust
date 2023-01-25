@@ -12,6 +12,7 @@ LL | |     });
    | |_____^ `Cell<i32>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `Cell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead
    = note: required for `&Cell<i32>` to implement `Send`
 note: required because it's used within this generator
   --> $DIR/not-send-sync.rs:16:17
@@ -36,6 +37,7 @@ LL | |     });
    | |_____^ generator is not `Sync`
    |
    = help: within `[generator@$DIR/not-send-sync.rs:9:17: 9:19]`, the trait `Sync` is not implemented for `Cell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead
 note: generator is not `Sync` as this value is used across a yield
   --> $DIR/not-send-sync.rs:12:9
    |

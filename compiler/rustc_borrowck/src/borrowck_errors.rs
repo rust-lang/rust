@@ -37,7 +37,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             desc,
         );
 
-        err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_desc));
+        err.span_label(borrow_span, format!("{} is borrowed here", borrow_desc));
         err.span_label(span, format!("use of borrowed {}", borrow_desc));
         err
     }
@@ -250,8 +250,8 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             desc,
         );
 
-        err.span_label(borrow_span, format!("borrow of {} occurs here", desc));
-        err.span_label(span, format!("assignment to borrowed {} occurs here", desc));
+        err.span_label(borrow_span, format!("{} is borrowed here", desc));
+        err.span_label(span, format!("{} is assigned to here but it was already borrowed", desc));
         err
     }
 

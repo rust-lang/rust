@@ -5,6 +5,7 @@ LL |     require_send(send_gen);
    |                  ^^^^^^^^ generator is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/generator-print-verbose-1.rs:35:9
    |
@@ -29,6 +30,7 @@ LL |     require_send(send_gen);
    |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
    = note: required for `Arc<RefCell<i32>>` to implement `Send`
 note: required because it's used within this generator
   --> $DIR/generator-print-verbose-1.rs:42:5
