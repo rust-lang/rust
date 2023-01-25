@@ -926,43 +926,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(in super::super) fn note_need_for_fn_pointer(
-        &self,
-        err: &mut Diagnostic,
-        expected: Ty<'tcx>,
-        found: Ty<'tcx>,
-    ) {
-        let (sig, did, substs) = match (&expected.kind(), &found.kind()) {
-            (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
-                if sig1 != sig2 {
-                    return;
-                }
-                err.note(
-                    "different `fn` items always have unique types, even if their signatures are \
-                     the same",
-                );
-                (sig1, *did1, substs1)
-            }
-            (ty::FnDef(did, substs), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.bound_fn_sig(*did).subst(self.tcx, substs);
-                if sig1 != *sig2 {
-                    return;
-                }
-                (sig1, *did, substs)
-            }
-            _ => return,
-        };
-        err.help(&format!("change the expected type to be function pointer `{}`", sig));
-        err.help(&format!(
-            "if the expected type is due to type inference, cast the expected `fn` to a function \
-             pointer: `{} as {}`",
-            self.tcx.def_path_str_with_substs(did, substs),
-            sig
-        ));
-    }
-
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     #[instrument(skip(self, span), level = "debug")]

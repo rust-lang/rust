@@ -1613,12 +1613,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 if visitor.ret_exprs.len() > 0 && let Some(expr) = expression {
                     self.note_unreachable_loop_return(&mut err, &expr, &visitor.ret_exprs);
                 }
+
                 let reported = err.emit_unless(unsized_return);
 
                 self.final_ty = Some(fcx.tcx.ty_error_with_guaranteed(reported));
             }
         }
     }
+
     fn note_unreachable_loop_return(
         &self,
         err: &mut Diagnostic,
