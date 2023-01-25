@@ -185,6 +185,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             Err(NoSolution)
         }
     }
+
+    fn consider_builtin_pointee_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        _goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.make_canonical_response(Certainty::Yes)
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {

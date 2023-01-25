@@ -7,6 +7,7 @@ use super::{Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
@@ -390,6 +391,96 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         bug!("`Tuple` does not have an associated type: {:?}", goal);
+    }
+
+    fn consider_builtin_pointee_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+        ecx.infcx.probe(|_| {
+            let metadata_ty = match goal.predicate.self_ty().kind() {
+                ty::Bool
+                | ty::Char
+                | ty::Int(..)
+                | ty::Uint(..)
+                | ty::Float(..)
+                | ty::Array(..)
+                | ty::RawPtr(..)
+                | ty::Ref(..)
+                | ty::FnDef(..)
+                | ty::FnPtr(..)
+                | ty::Closure(..)
+                | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
+                | ty::Generator(..)
+                | ty::GeneratorWitness(..)
+                | ty::Never
+                | ty::Foreign(..) => tcx.types.unit,
+
+                ty::Error(e) => tcx.ty_error_with_guaranteed(*e),
+
+                ty::Str | ty::Slice(_) => tcx.types.usize,
+
+                ty::Dynamic(_, _, _) => {
+                    let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
+                    tcx.bound_type_of(dyn_metadata)
+                        .subst(tcx, &[ty::GenericArg::from(goal.predicate.self_ty())])
+                }
+
+                ty::Infer(ty::TyVar(..)) | ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
+                    // FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with no constraints.
+                    let sized_predicate = ty::Binder::dummy(tcx.at(DUMMY_SP).mk_trait_ref(
+                        LangItem::Sized,
+                        [ty::GenericArg::from(goal.predicate.self_ty())],
+                    ));
+
+                    let mut nested_goals = ecx.infcx.eq(
+                        goal.param_env,
+                        goal.predicate.term.ty().unwrap(),
+                        tcx.types.unit,
+                    )?;
+                    nested_goals.push(goal.with(tcx, sized_predicate));
+
+                    return ecx.evaluate_all_and_make_canonical_response(nested_goals);
+                }
+
+                ty::Adt(def, substs) if def.is_struct() => {
+                    match def.non_enum_variant().fields.last() {
+                        None => tcx.types.unit,
+                        Some(field_def) => {
+                            let self_ty = field_def.ty(tcx, substs);
+                            let new_goal = goal.with(
+                                tcx,
+                                ty::Binder::dummy(goal.predicate.with_self_ty(tcx, self_ty)),
+                            );
+                            return ecx.evaluate_all_and_make_canonical_response(vec![new_goal]);
+                        }
+                    }
+                }
+                ty::Adt(_, _) => tcx.types.unit,
+
+                ty::Tuple(elements) => match elements.last() {
+                    None => tcx.types.unit,
+                    Some(&self_ty) => {
+                        let new_goal = goal.with(
+                            tcx,
+                            ty::Binder::dummy(goal.predicate.with_self_ty(tcx, self_ty)),
+                        );
+                        return ecx.evaluate_all_and_make_canonical_response(vec![new_goal]);
+                    }
+                },
+
+                ty::Infer(ty::FreshTy(..) | ty::FreshIntTy(..) | ty::FreshFloatTy(..))
+                | ty::Bound(..) => bug!(
+                    "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
+                    goal.predicate.self_ty()
+                ),
+            };
+
+            let nested_goals =
+                ecx.infcx.eq(goal.param_env, goal.predicate.term.ty().unwrap(), metadata_ty)?;
+            ecx.evaluate_all_and_make_canonical_response(nested_goals)
+        })
     }
 }
 
