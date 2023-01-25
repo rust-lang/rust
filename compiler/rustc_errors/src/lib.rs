@@ -661,6 +661,19 @@ impl Handler {
         inner.stashed_diagnostics = Default::default();
     }
 
+    /// Avoid failing compilation in the presence of delayed bugs.
+    ///
+    /// NOTE: *do not* call this function from rustc. It is only meant to be called from rustdoc.
+    /// Rustdoc documents multiple targets at once, meaning there may be multiple versions
+    /// of the same function in scope at the same time, which isn't legal Rust otherwise. See
+    /// https://doc.rust-lang.org/beta/rustdoc/advanced-features.html#interactions-between-platform-specific-docs
+    /// for details
+    pub fn reset_delayed_bugs(&self) {
+        let mut inner = self.inner.borrow_mut();
+        inner.delayed_span_bugs = Default::default();
+        inner.delayed_good_path_bugs = Default::default();
+    }
+
     /// Stash a given diagnostic with the given `Span` and [`StashKey`] as the key.
     /// Retrieve a stashed diagnostic with `steal_diagnostic`.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {

@@ -862,6 +862,12 @@ fn main_args(at_args: &[String]) -> MainResult {
                     }),
                 }
             })
-        })
+        })?;
+        // than ICEing. Rustdoc documents multiple targets at once, meaning there may be multiple versions
+        // of the same function in scope at the same time, which isn't legal Rust otherwise. See
+        // https://doc.rust-lang.org/beta/rustdoc/advanced-features.html#interactions-between-platform-specific-docs
+        // for details
+        sess.diagnostic().reset_delayed_bugs();
+        Ok(())
     })
 }

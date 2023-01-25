@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+// check-pass
+
 trait Foo<T>: Sized {
     fn bar(i: i32, t: T, s: &Self) -> (T, i32);
 }
