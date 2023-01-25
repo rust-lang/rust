@@ -5,6 +5,7 @@ LL |     require_send(send_gen);
    |                  ^^^^^^^^ generator is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-68112.rs:36:9
    |
@@ -23,7 +24,7 @@ LL | fn require_send(_: impl Send) {}
    |                         ^^^^ required by this bound in `require_send`
 
 error[E0277]: `RefCell<i32>` cannot be shared between threads safely
-  --> $DIR/issue-68112.rs:63:18
+  --> $DIR/issue-68112.rs:64:18
    |
 LL |     require_send(send_gen);
    |     ------------ ^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
@@ -31,25 +32,26 @@ LL |     require_send(send_gen);
    |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
    = note: required for `Arc<RefCell<i32>>` to implement `Send`
 note: required because it's used within this generator
-  --> $DIR/issue-68112.rs:48:5
+  --> $DIR/issue-68112.rs:49:5
    |
 LL |     || {
    |     ^^
 note: required because it appears within the type `impl Generator<Return = Arc<RefCell<i32>>>`
-  --> $DIR/issue-68112.rs:45:30
+  --> $DIR/issue-68112.rs:46:30
    |
 LL | pub fn make_gen2<T>(t: T) -> impl Generator<Return = T> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required because it appears within the type `impl Generator<Return = Arc<RefCell<i32>>>`
-  --> $DIR/issue-68112.rs:53:34
+  --> $DIR/issue-68112.rs:54:34
    |
 LL | fn make_non_send_generator2() -> impl Generator<Return = Arc<RefCell<i32>>> {
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: required because it captures the following types: `impl Generator<Return = Arc<RefCell<i32>>>`, `()`
 note: required because it's used within this generator
-  --> $DIR/issue-68112.rs:59:20
+  --> $DIR/issue-68112.rs:60:20
    |
 LL |     let send_gen = || {
    |                    ^^
