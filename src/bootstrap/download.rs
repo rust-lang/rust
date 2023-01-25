@@ -318,15 +318,27 @@ impl Config {
         let channel = format!("{version}-{date}");
 
         let host = self.build;
-        let rustfmt_path = self.initial_rustc.with_file_name(exe("rustfmt", host));
-        let bin_root = self.out.join(host.triple).join("stage0");
+        let bin_root = self.out.join(host.triple).join("rustfmt");
+        let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
         let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
         if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
             return Some(rustfmt_path);
         }
 
-        let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
-        self.download_component(DownloadSource::Dist, filename, "rustfmt-preview", &date, "stage0");
+        self.download_component(
+            DownloadSource::Dist,
+            format!("rustfmt-{version}-{build}.tar.xz", build = host.triple),
+            "rustfmt-preview",
+            &date,
+            "rustfmt",
+        );
+        self.download_component(
+            DownloadSource::Dist,
+            format!("rustc-{version}-{build}.tar.xz", build = host.triple),
+            "rustc",
+            &date,
+            "rustfmt",
+        );
 
         self.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
         self.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
