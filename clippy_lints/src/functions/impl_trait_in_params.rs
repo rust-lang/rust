@@ -23,7 +23,7 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body:
                             if let Some(gen_span) = generics.span_for_param_suggestion() {
                                 diag.span_suggestion_with_style(
                                     gen_span,
-                                    "add a type paremeter, `{}`: `{}`",
+                                    "add a type paremeter",
                                     format!(", {next_letter}: {}", &param.name.ident().as_str()[5..]),
                                     rustc_errors::Applicability::MaybeIncorrect,
                                     rustc_errors::SuggestionStyle::ShowAlways,
