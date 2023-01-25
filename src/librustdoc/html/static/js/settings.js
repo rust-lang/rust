@@ -48,13 +48,13 @@
     }
 
     function showLightAndDark() {
-        removeClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
-        removeClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
+        removeClass(document.getElementById("preferred-light-theme"), "hidden");
+        removeClass(document.getElementById("preferred-dark-theme"), "hidden");
     }
 
     function hideLightAndDark() {
-        addClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
-        addClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
+        addClass(document.getElementById("preferred-light-theme"), "hidden");
+        addClass(document.getElementById("preferred-dark-theme"), "hidden");
     }
 
     function updateLightAndDark() {
@@ -79,17 +79,6 @@
             };
             toggle.onkeyup = handleKey;
             toggle.onkeyrelease = handleKey;
-        });
-        onEachLazy(settingsElement.getElementsByClassName("select-wrapper"), elem => {
-            const select = elem.getElementsByTagName("select")[0];
-            const settingId = select.id;
-            const settingValue = getSettingValue(settingId);
-            if (settingValue !== null) {
-                select.value = settingValue;
-            }
-            select.onchange = function() {
-                changeSetting(this.id, this.value);
-            };
         });
         onEachLazy(settingsElement.querySelectorAll("input[type=\"radio\"]"), elem => {
             const settingId = elem.name;
@@ -127,38 +116,40 @@
         let output = "";
 
         for (const setting of settings) {
-            output += "<div class=\"setting-line\">";
             const js_data_name = setting["js_name"];
             const setting_name = setting["name"];
 
             if (setting["options"] !== undefined) {
                 // This is a select setting.
                 output += `\
-<div class="radio-line" id="${js_data_name}">
-    <div class="setting-name">${setting_name}</div>
-<div class="choices">`;
+<div class="setting-line" id="${js_data_name}">
+    <div class="setting-radio-name">${setting_name}</div>
+    <div class="setting-radio-choices">`;
                 onEach(setting["options"], option => {
                     const checked = option === setting["default"] ? " checked" : "";
                     const full = `${js_data_name}-${option.replace(/ /g,"-")}`;
 
                     output += `\
-<label for="${full}" class="choice">
-    <input type="radio" name="${js_data_name}"
-        id="${full}" value="${option}"${checked}>
-    <span>${option}</span>
-</label>`;
+        <label for="${full}" class="setting-radio">
+            <input type="radio" name="${js_data_name}"
+                id="${full}" value="${option}"${checked}>
+            <span>${option}</span>
+        </label>`;
                 });
-                output += "</div></div>";
+                output += `\
+    </div>
+</div>`;
             } else {
                 // This is a checkbox toggle.
                 const checked = setting["default"] === true ? " checked" : "";
                 output += `\
-<label class="settings-toggle">\
-    <input type="checkbox" id="${js_data_name}"${checked}>\
-    <span class="label">${setting_name}</span>\
-</label>`;
+<div class="setting-line">\
+    <label class="setting-check">\
+        <input type="checkbox" id="${js_data_name}"${checked}>\
+        <span>${setting_name}</span>\
+    </label>\
+</div>`;
             }
-            output += "</div>";
         }
         return output;
     }

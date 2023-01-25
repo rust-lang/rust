@@ -59,7 +59,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
             || self.suggest_clone_for_ref(err, expr, expr_ty, expected)
             || self.suggest_into(err, expr, expr_ty, expected)
-            || self.suggest_floating_point_literal(err, expr, expected);
+            || self.suggest_floating_point_literal(err, expr, expected)
+            || self.note_result_coercion(err, expr, expected, expr_ty);
         if !suggested {
             self.point_at_expr_source_of_inferred_type(err, expr, expr_ty, expected);
         }
@@ -81,7 +82,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.emit_type_mismatch_suggestions(err, expr, expr_ty, expected, expected_ty_expr, error);
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
-        self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
         self.check_for_range_as_method_call(err, expr, expr_ty, expected);
         self.check_for_binding_assigned_block_without_tail_expression(err, expr, expr_ty, expected);
@@ -695,6 +695,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             suggestions,
             Applicability::MaybeIncorrect,
         );
+    }
+
+    pub(crate) fn note_result_coercion(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) -> bool {
+        let ty::Adt(e, substs_e) = expected.kind() else { return false; };
+        let ty::Adt(f, substs_f) = found.kind() else { return false; };
+        if e.did() != f.did() {
+            return false;
+        }
+        if Some(e.did()) != self.tcx.get_diagnostic_item(sym::Result) {
+            return false;
+        }
+        let map = self.tcx.hir();
+        if let Some(hir::Node::Expr(expr)) = map.find_parent(expr.hir_id)
+            && let hir::ExprKind::Ret(_) = expr.kind
+        {
+            // `return foo;`
+        } else if map.get_return_block(expr.hir_id).is_some() {
+            // Function's tail expression.
+        } else {
+            return false;
+        }
+        let e = substs_e.type_at(1);
+        let f = substs_f.type_at(1);
+        if self
+            .infcx
+            .type_implements_trait(
+                self.tcx.get_diagnostic_item(sym::Into).unwrap(),
+                [f, e],
+                self.param_env,
+            )
+            .must_apply_modulo_regions()
+        {
+            err.multipart_suggestion(
+                "use `?` to coerce and return an appropriate `Err`, and wrap the resulting value \
+                 in `Ok` so the expression remains of type `Result`",
+                vec![
+                    (expr.span.shrink_to_lo(), "Ok(".to_string()),
+                    (expr.span.shrink_to_hi(), "?)".to_string()),
+                ],
+                Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+        false
     }
 
     /// If the expected type is an enum (Issue #55250) with any variants whose
