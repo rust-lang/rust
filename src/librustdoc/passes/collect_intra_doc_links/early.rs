@@ -118,6 +118,10 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
         }
     }
 
+    fn is_doc_reachable(&self, def_id: DefId) -> bool {
+        self.extern_doc_reachable.contains(&def_id) || self.local_doc_reachable.contains(&def_id)
+    }
+
     /// Add traits in scope for links in impls collected by the `collect-intra-doc-links` pass.
     /// That pass filters impls using type-based information, but we don't yet have such
     /// information here, so we just conservatively calculate traits in scope for *all* modules
@@ -148,10 +152,10 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                 // privacy, private traits and impls from other crates are never documented in
                 // the current crate, and links in their doc comments are not resolved.
                 for &(trait_def_id, impl_def_id, simplified_self_ty) in &all_trait_impls {
-                    if self.resolver.cstore().visibility_untracked(trait_def_id).is_public()
-                        && simplified_self_ty.and_then(|ty| ty.def()).map_or(true, |ty_def_id| {
-                            self.resolver.cstore().visibility_untracked(ty_def_id).is_public()
-                        })
+                    if self.is_doc_reachable(trait_def_id)
+                        && simplified_self_ty
+                            .and_then(|ty| ty.def())
+                            .map_or(true, |ty_def_id| self.is_doc_reachable(ty_def_id))
                     {
                         if self.visited_mods.insert(trait_def_id) {
                             self.resolve_doc_links_extern_impl(trait_def_id, false);
@@ -160,7 +164,7 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                     }
                 }
                 for (ty_def_id, impl_def_id) in all_inherent_impls {
-                    if self.resolver.cstore().visibility_untracked(ty_def_id).is_public() {
+                    if self.is_doc_reachable(ty_def_id) {
                         self.resolve_doc_links_extern_impl(impl_def_id, true);
                     }
                 }
