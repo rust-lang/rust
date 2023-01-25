@@ -1,34 +1,16 @@
 // Vendored from https://github.com/bytecodealliance/wasmtime/blob/b58a197d33f044193c3d608010f5e6ec394ac07e/cranelift/native/src/lib.rs
 // which is licensed as
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-// unlike rustc_codegen_cranelift itself.
+// unlike rustc_codegen_cranelift itself. Also applies a small change to remove #![cfg_attr] that
+// rust's CI complains about and to fix formatting to match rustc.
 // FIXME revert back to the external crate with Cranelift 0.93
 #![allow(warnings)]
 
 //! Performs autodetection of the host for the purposes of running
 //! Cranelift to generate code to run on the same machine.
 
-#![deny(
-    missing_docs,
-    trivial_numeric_casts,
-    unused_extern_crates,
-    unstable_features
-)]
+#![deny(missing_docs, trivial_numeric_casts, unused_extern_crates, unstable_features)]
 #![warn(unused_import_braces)]
-#![cfg_attr(feature = "clippy", plugin(clippy(conf_file = "../../clippy.toml")))]
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::new_without_default))]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    warn(
-        clippy::float_arithmetic,
-        clippy::mut_mut,
-        clippy::nonminimal_bool,
-        clippy::map_unwrap_or,
-        clippy::clippy::print_stdout,
-        clippy::unicode_not_nfc,
-        clippy::use_self
-    )
-)]
 
 use cranelift_codegen::isa;
 use target_lexicon::Triple;
@@ -241,9 +223,7 @@ mod tests {
     fn test() {
         if let Ok(isa_builder) = builder() {
             let flag_builder = settings::builder();
-            let isa = isa_builder
-                .finish(settings::Flags::new(flag_builder))
-                .unwrap();
+            let isa = isa_builder.finish(settings::Flags::new(flag_builder)).unwrap();
 
             if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
                 assert_eq!(isa.default_call_conv(), CallConv::AppleAarch64);
