@@ -79,9 +79,7 @@
           _15 = const false;               // scope 5 at $DIR/const_debuginfo.rs:+8:13: +8:34
           _16 = const 123_u32;             // scope 5 at $DIR/const_debuginfo.rs:+8:13: +8:34
           StorageLive(_10);                // scope 6 at $DIR/const_debuginfo.rs:+10:9: +10:10
-          Deinit(_10);                     // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
-          ((_10 as Some).0: u16) = const 99_u16; // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
-          discriminant(_10) = 1;           // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
+          _10 = Option::<u16>::Some(const 99_u16); // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
           StorageLive(_17);                // scope 7 at $DIR/const_debuginfo.rs:+12:9: +12:10
           StorageLive(_18);                // scope 7 at $DIR/const_debuginfo.rs:+12:9: +12:10
           Deinit(_17);                     // scope 7 at $DIR/const_debuginfo.rs:+12:13: +12:35

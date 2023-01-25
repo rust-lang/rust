@@ -1,5 +1,6 @@
 use crate::util::expand_aggregate;
 use crate::MirPass;
+use rustc_hir::def::DefKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
@@ -11,16 +12,19 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
         for bb in basic_blocks {
             bb.expand_statements(|stmt| {
                 // FIXME(eddyb) don't match twice on `stmt.kind` (post-NLL).
-                match stmt.kind {
-                    // FIXME(#48193) Deaggregate arrays when it's cheaper to do so.
-                    StatementKind::Assign(box (
-                        _,
-                        Rvalue::Aggregate(box AggregateKind::Array(_), _),
-                    )) => {
-                        return None;
-                    }
-                    StatementKind::Assign(box (_, Rvalue::Aggregate(_, _))) => {}
-                    _ => return None,
+                let StatementKind::Assign(box (
+                    _, Rvalue::Aggregate(box ref kind, _))
+                ) = stmt.kind else { return None };
+
+                // FIXME(#48193) Deaggregate arrays when it's cheaper to do so.
+                if let AggregateKind::Array(_) = kind {
+                    return None;
+                }
+
+                if let AggregateKind::Adt(def_id, ..) = kind
+                    && matches!(tcx.def_kind(def_id), DefKind::Enum)
+                {
+                    return None;
                 }
 
                 let stmt = stmt.replace_nop();

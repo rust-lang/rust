@@ -16,9 +16,7 @@
           StorageLive(_2);                 // scope 1 at $DIR/sroa.rs:+1:22: +1:29
           StorageLive(_3);                 // scope 1 at $DIR/sroa.rs:+1:27: +1:28
           _3 = _1;                         // scope 1 at $DIR/sroa.rs:+1:27: +1:28
-          Deinit(_2);                      // scope 1 at $DIR/sroa.rs:+1:22: +1:29
-          ((_2 as Some).0: usize) = move _3; // scope 1 at $DIR/sroa.rs:+1:22: +1:29
-          discriminant(_2) = 1;            // scope 1 at $DIR/sroa.rs:+1:22: +1:29
+          _2 = Option::<usize>::Some(move _3); // scope 1 at $DIR/sroa.rs:+1:22: +1:29
           StorageDead(_3);                 // scope 1 at $DIR/sroa.rs:+1:28: +1:29
           _4 = discriminant(_2);           // scope 1 at $DIR/sroa.rs:+1:12: +1:19
           switchInt(move _4) -> [1: bb1, otherwise: bb2]; // scope 1 at $DIR/sroa.rs:+1:12: +1:19

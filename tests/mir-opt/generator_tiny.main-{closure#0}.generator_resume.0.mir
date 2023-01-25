@@ -54,9 +54,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator_tiny.rs:19:16: 19:24
         StorageLive(_6);                 // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
         StorageLive(_7);                 // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
         _7 = ();                         // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
-        Deinit(_0);                      // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
-        ((_0 as Yielded).0: ()) = move _7; // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
-        discriminant(_0) = 0;            // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
+        _0 = GeneratorState::<(), ()>::Yielded(move _7); // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
         discriminant((*(_1.0: &mut [generator@$DIR/generator_tiny.rs:19:16: 19:24]))) = 3; // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
         return;                          // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
     }

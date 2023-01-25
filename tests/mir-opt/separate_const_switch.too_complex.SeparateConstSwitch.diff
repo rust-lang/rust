@@ -38,14 +38,10 @@
           _6 = ((_1 as Err).0: usize);     // scope 0 at $DIR/separate_const_switch.rs:+8:17: +8:18
           StorageLive(_7);                 // scope 2 at $DIR/separate_const_switch.rs:+8:42: +8:43
           _7 = _6;                         // scope 2 at $DIR/separate_const_switch.rs:+8:42: +8:43
-          Deinit(_2);                      // scope 2 at $DIR/separate_const_switch.rs:+8:23: +8:44
-          ((_2 as Break).0: usize) = move _7; // scope 2 at $DIR/separate_const_switch.rs:+8:23: +8:44
-          discriminant(_2) = 1;            // scope 2 at $DIR/separate_const_switch.rs:+8:23: +8:44
+          _2 = ControlFlow::<usize, i32>::Break(move _7); // scope 2 at $DIR/separate_const_switch.rs:+8:23: +8:44
           StorageDead(_7);                 // scope 2 at $DIR/separate_const_switch.rs:+8:43: +8:44
           StorageDead(_6);                 // scope 0 at $DIR/separate_const_switch.rs:+8:43: +8:44
--         goto -> bb4;                     // scope 0 at $DIR/separate_const_switch.rs:+8:43: +8:44
-+         _8 = discriminant(_2);           // scope 0 at $DIR/separate_const_switch.rs:+5:11: +10:6
-+         switchInt(move _8) -> [0: bb6, 1: bb4, otherwise: bb5]; // scope 0 at $DIR/separate_const_switch.rs:+5:5: +10:6
+          goto -> bb4;                     // scope 0 at $DIR/separate_const_switch.rs:+8:43: +8:44
       }
   
       bb2: {
@@ -57,53 +53,41 @@
           _4 = ((_1 as Ok).0: i32);        // scope 0 at $DIR/separate_const_switch.rs:+7:16: +7:17
           StorageLive(_5);                 // scope 1 at $DIR/separate_const_switch.rs:+7:44: +7:45
           _5 = _4;                         // scope 1 at $DIR/separate_const_switch.rs:+7:44: +7:45
-          Deinit(_2);                      // scope 1 at $DIR/separate_const_switch.rs:+7:22: +7:46
-          ((_2 as Continue).0: i32) = move _5; // scope 1 at $DIR/separate_const_switch.rs:+7:22: +7:46
-          discriminant(_2) = 0;            // scope 1 at $DIR/separate_const_switch.rs:+7:22: +7:46
+          _2 = ControlFlow::<usize, i32>::Continue(move _5); // scope 1 at $DIR/separate_const_switch.rs:+7:22: +7:46
           StorageDead(_5);                 // scope 1 at $DIR/separate_const_switch.rs:+7:45: +7:46
           StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+7:45: +7:46
--         goto -> bb4;                     // scope 0 at $DIR/separate_const_switch.rs:+7:45: +7:46
--     }
-- 
--     bb4: {
-          _8 = discriminant(_2);           // scope 0 at $DIR/separate_const_switch.rs:+5:11: +10:6
--         switchInt(move _8) -> [0: bb7, 1: bb5, otherwise: bb6]; // scope 0 at $DIR/separate_const_switch.rs:+5:5: +10:6
-+         switchInt(move _8) -> [0: bb6, 1: bb4, otherwise: bb5]; // scope 0 at $DIR/separate_const_switch.rs:+5:5: +10:6
+          goto -> bb4;                     // scope 0 at $DIR/separate_const_switch.rs:+7:45: +7:46
       }
   
--     bb5: {
-+     bb4: {
+      bb4: {
+          _8 = discriminant(_2);           // scope 0 at $DIR/separate_const_switch.rs:+5:11: +10:6
+          switchInt(move _8) -> [0: bb7, 1: bb5, otherwise: bb6]; // scope 0 at $DIR/separate_const_switch.rs:+5:5: +10:6
+      }
+  
+      bb5: {
           StorageLive(_11);                // scope 0 at $DIR/separate_const_switch.rs:+12:28: +12:29
           _11 = ((_2 as Break).0: usize);  // scope 0 at $DIR/separate_const_switch.rs:+12:28: +12:29
-          Deinit(_0);                      // scope 4 at $DIR/separate_const_switch.rs:+12:34: +12:38
-          discriminant(_0) = 0;            // scope 4 at $DIR/separate_const_switch.rs:+12:34: +12:38
+          _0 = Option::<i32>::None;        // scope 4 at $DIR/separate_const_switch.rs:+12:34: +12:38
           StorageDead(_11);                // scope 0 at $DIR/separate_const_switch.rs:+12:37: +12:38
--         goto -> bb8;                     // scope 0 at $DIR/separate_const_switch.rs:+12:37: +12:38
-+         goto -> bb7;                     // scope 0 at $DIR/separate_const_switch.rs:+12:37: +12:38
+          goto -> bb8;                     // scope 0 at $DIR/separate_const_switch.rs:+12:37: +12:38
       }
   
--     bb6: {
-+     bb5: {
+      bb6: {
           unreachable;                     // scope 0 at $DIR/separate_const_switch.rs:+5:11: +10:6
       }
   
--     bb7: {
-+     bb6: {
+      bb7: {
           StorageLive(_9);                 // scope 0 at $DIR/separate_const_switch.rs:+11:31: +11:32
           _9 = ((_2 as Continue).0: i32);  // scope 0 at $DIR/separate_const_switch.rs:+11:31: +11:32
           StorageLive(_10);                // scope 3 at $DIR/separate_const_switch.rs:+11:42: +11:43
           _10 = _9;                        // scope 3 at $DIR/separate_const_switch.rs:+11:42: +11:43
-          Deinit(_0);                      // scope 3 at $DIR/separate_const_switch.rs:+11:37: +11:44
-          ((_0 as Some).0: i32) = move _10; // scope 3 at $DIR/separate_const_switch.rs:+11:37: +11:44
-          discriminant(_0) = 1;            // scope 3 at $DIR/separate_const_switch.rs:+11:37: +11:44
+          _0 = Option::<i32>::Some(move _10); // scope 3 at $DIR/separate_const_switch.rs:+11:37: +11:44
           StorageDead(_10);                // scope 3 at $DIR/separate_const_switch.rs:+11:43: +11:44
           StorageDead(_9);                 // scope 0 at $DIR/separate_const_switch.rs:+11:43: +11:44
--         goto -> bb8;                     // scope 0 at $DIR/separate_const_switch.rs:+11:43: +11:44
-+         goto -> bb7;                     // scope 0 at $DIR/separate_const_switch.rs:+11:43: +11:44
+          goto -> bb8;                     // scope 0 at $DIR/separate_const_switch.rs:+11:43: +11:44
       }
   
--     bb8: {
-+     bb7: {
+      bb8: {
           StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+14:1: +14:2
           return;                          // scope 0 at $DIR/separate_const_switch.rs:+14:2: +14:2
       }

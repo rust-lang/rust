@@ -15,7 +15,6 @@ use rustc_target::spec::abi::Abi;
 use std::fmt;
 use std::iter;
 
-use crate::util::expand_aggregate;
 use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
     pass_manager as pm, remove_noop_landing_pads, simplify,
@@ -831,19 +830,23 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     // return;
     debug!("build_ctor: variant_index={:?}", variant_index);
 
-    let statements = expand_aggregate(
-        Place::return_place(),
-        adt_def.variant(variant_index).fields.iter().enumerate().map(|(idx, field_def)| {
-            (Operand::Move(Place::from(Local::new(idx + 1))), field_def.ty(tcx, substs))
-        }),
-        AggregateKind::Adt(adt_def.did(), variant_index, substs, None, None),
+    let kind = AggregateKind::Adt(adt_def.did(), variant_index, substs, None, None);
+    let variant = adt_def.variant(variant_index);
+    let statement = Statement {
+        kind: StatementKind::Assign(Box::new((
+            Place::return_place(),
+            Rvalue::Aggregate(
+                Box::new(kind),
+                (0..variant.fields.len())
+                    .map(|idx| Operand::Move(Place::from(Local::new(idx + 1))))
+                    .collect(),
+            ),
+        ))),
         source_info,
-        tcx,
-    )
-    .collect();
+    };
 
     let start_block = BasicBlockData {
-        statements,
+        statements: vec![statement],
         terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
         is_cleanup: false,
     };
