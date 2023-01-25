@@ -18,9 +18,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:+1:9: +1:14
-          Deinit(_1);                      // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:+1:17: +1:25
-          (_1.0: i32) = const 42_i32;      // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:+1:17: +1:25
-          (_1.1: i32) = const 43_i32;      // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:+1:17: +1:25
+          _1 = (const 42_i32, const 43_i32); // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:+1:17: +1:25
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_mut_ref.rs:+2:9: +2:10
           _2 = &mut _1;                    // scope 1 at $DIR/mutable_variable_aggregate_mut_ref.rs:+2:13: +2:19
           ((*_2).1: i32) = const 99_i32;   // scope 2 at $DIR/mutable_variable_aggregate_mut_ref.rs:+3:5: +3:13

@@ -122,9 +122,7 @@ fn array_casts() -> () {
                                          // + literal: Const { ty: &usize, val: Unevaluated(array_casts, [], Some(promoted[0])) }
         Retag(_35);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _18 = &(*_35);                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        Deinit(_13);                     // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        (_13.0: &usize) = move _14;      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        (_13.1: &usize) = move _18;      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _13 = (move _14, move _18);      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_13);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_18);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_14);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

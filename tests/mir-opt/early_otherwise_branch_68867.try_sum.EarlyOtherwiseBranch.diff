@@ -73,9 +73,7 @@
           _5 = _1;                         // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:15: +5:16
           StorageLive(_6);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:18: +5:23
           _6 = _2;                         // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:18: +5:23
-          Deinit(_4);                      // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:14: +5:24
-          (_4.0: &ViewportPercentageLength) = move _5; // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:14: +5:24
-          (_4.1: &ViewportPercentageLength) = move _6; // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:14: +5:24
+          _4 = (move _5, move _6);         // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:14: +5:24
           StorageDead(_6);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:23: +5:24
           StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:23: +5:24
           _34 = deref_copy (_4.0: &ViewportPercentageLength); // scope 0 at $DIR/early_otherwise_branch_68867.rs:+5:14: +5:24
@@ -91,7 +89,7 @@
   
       bb2: {
           StorageLive(_33);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:+10:25: +10:27
-          Deinit(_33);                     // scope 0 at $DIR/early_otherwise_branch_68867.rs:+10:25: +10:27
+          _33 = ();                        // scope 0 at $DIR/early_otherwise_branch_68867.rs:+10:25: +10:27
           _0 = Result::<ViewportPercentageLength, ()>::Err(move _33); // scope 0 at $DIR/early_otherwise_branch_68867.rs:+10:21: +10:28
           StorageDead(_33);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:+10:27: +10:28
           StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:+11:6: +11:7

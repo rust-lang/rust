@@ -4,19 +4,18 @@
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/mutable_variable_unprop_assign.rs:+0:11: +0:11
       let _1: i32;                         // in scope 0 at $DIR/mutable_variable_unprop_assign.rs:+1:9: +1:10
-      let mut _2: i32;                     // in scope 0 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
+      let mut _3: i32;                     // in scope 0 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
       scope 1 {
           debug a => _1;                   // in scope 1 at $DIR/mutable_variable_unprop_assign.rs:+1:9: +1:10
-          let mut _5: i32;                 // in scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:9: +2:14
-          let mut _6: i32;                 // in scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:9: +2:14
+          let mut _2: (i32, i32);          // in scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:9: +2:14
           scope 2 {
-              debug x => (i32, i32){ .0 => _5, .1 => _6, }; // in scope 2 at $DIR/mutable_variable_unprop_assign.rs:+2:9: +2:14
-              let _3: i32;                 // in scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:9: +4:10
+              debug x => _2;               // in scope 2 at $DIR/mutable_variable_unprop_assign.rs:+2:9: +2:14
+              let _4: i32;                 // in scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:9: +4:10
               scope 3 {
-                  debug y => _3;           // in scope 3 at $DIR/mutable_variable_unprop_assign.rs:+4:9: +4:10
-                  let _4: i32;             // in scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:9: +5:10
+                  debug y => _4;           // in scope 3 at $DIR/mutable_variable_unprop_assign.rs:+4:9: +4:10
+                  let _5: i32;             // in scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:9: +5:10
                   scope 4 {
-                      debug z => _4;       // in scope 4 at $DIR/mutable_variable_unprop_assign.rs:+5:9: +5:10
+                      debug z => _5;       // in scope 4 at $DIR/mutable_variable_unprop_assign.rs:+5:9: +5:10
                   }
               }
           }
@@ -31,25 +30,21 @@
       }
   
       bb1: {
-          StorageLive(_5);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:9: +2:14
-          StorageLive(_6);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:9: +2:14
-          Deinit(_5);                      // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:29: +2:35
-          Deinit(_6);                      // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:29: +2:35
-          _5 = const 1_i32;                // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:29: +2:35
-          _6 = const 2_i32;                // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:29: +2:35
-          StorageLive(_2);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
-          _2 = _1;                         // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
-          _6 = move _2;                    // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:5: +3:12
-          StorageDead(_2);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
-          StorageLive(_3);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:9: +4:10
-          _3 = _6;                         // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:13: +4:16
-          StorageLive(_4);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:9: +5:10
--         _4 = _5;                         // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:13: +5:16
-+         _4 = const 1_i32;                // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:13: +5:16
-          StorageDead(_4);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2
-          StorageDead(_3);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2
-          StorageDead(_5);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2
-          StorageDead(_6);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2
+          StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:9: +2:14
+-         _2 = (const 1_i32, const 2_i32); // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:29: +2:35
++         _2 = const (1_i32, 2_i32);       // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:29: +2:35
+          StorageLive(_3);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
+          _3 = _1;                         // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
+          (_2.1: i32) = move _3;           // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:5: +3:12
+          StorageDead(_3);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
+          StorageLive(_4);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:9: +4:10
+          _4 = (_2.1: i32);                // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:13: +4:16
+          StorageLive(_5);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:9: +5:10
+-         _5 = (_2.0: i32);                // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:13: +5:16
++         _5 = const 1_i32;                // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:13: +5:16
+          StorageDead(_5);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2
+          StorageDead(_4);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2
+          StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2
           StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2
           return;                          // scope 0 at $DIR/mutable_variable_unprop_assign.rs:+6:2: +6:2
       }
