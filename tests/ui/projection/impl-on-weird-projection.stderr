@@ -1,0 +1,76 @@
+error[E0391]: cycle detected when finding all inherent impls defined in crate
+   |
+   = note: ...which requires normalizing `<I8<{i8::MIN}> as Identity>::Identity`...
+note: ...which requires evaluating type-level constant...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires const-evaluating + checking `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires const-evaluating + checking `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires caching MIR for CTFE of the const argument `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires elaborating drops for `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires borrow-checking the const argument`<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires processing MIR for the const argument `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires const checking the const argument `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires preparing the const argument `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}` for borrow checking...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires unsafety-checking the const argument `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires building MIR for `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires building THIR for `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+note: ...which requires type-checking the const argument `<impl at $DIR/impl-on-weird-projection.rs:14:1: 14:43>::{constant#0}`...
+  --> $DIR/impl-on-weird-projection.rs:14:10
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |          ^^^^^^^^^
+   = note: ...which requires collecting all inherent impls for `IntSimplifiedType(I8)`...
+   = note: ...which requires collecting all impls for a type in a crate...
+   = note: ...which again requires finding all inherent impls defined in crate, completing the cycle
+   = note: cycle used when running analysis passes on this crate
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.
