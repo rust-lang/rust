@@ -234,16 +234,43 @@ $ brew install rust-analyzer
 
 === Emacs
 
-Note this excellent https://robert.kra.hn/posts/2021-02-07_rust-with-emacs/[guide] from https://github.com/rksm[@rksm].
-
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
-Emacs support is maintained as part of the https://github.com/emacs-lsp/lsp-mode[Emacs-LSP] package in https://github.com/emacs-lsp/lsp-mode/blob/master/lsp-rust.el[lsp-rust.el].
+To use `rust-analyzer`, you need to install and enable one of the two popular two popular LSP client implementations for Emacs, https://github.com/joaotavora/eglot[Eglot] or https://github.com/emacs-lsp/lsp-mode[LSP Mode]. Both enable `rust-analyzer` by default in rust buffers if it is available.
 
-1. Install the most recent version of `emacs-lsp` package by following the https://github.com/emacs-lsp/lsp-mode[Emacs-LSP instructions].
-2. Set `lsp-rust-server` to `'rust-analyzer`.
-3. Run `lsp` in a Rust buffer.
-4. (Optionally) bind commands like `lsp-rust-analyzer-join-lines`, `lsp-extend-selection` and `lsp-rust-analyzer-expand-macro` to keys.
+==== Eglot
+
+Eglot is the more minimalistic and lightweight LSP client for Emacs, integrates well with existing Emacs functionality and will be built into Emacs starting from release 29.
+
+After installing Eglot, e.g. via `M-x package-install` (not needed from Emacs 29), you can enable it via the `M-x eglot` command or load it automatically in `rust-mode` via
+
+[source,emacs-lisp]
+----
+(add-hook 'rust-mode-hook 'eglot-ensure)
+----
+
+For more detailed instructions and options see the https://joaotavora.github.io/eglot[Eglot manual] (also available from Emacs via `M-x info`) and the
+https://github.com/joaotavora/eglot/blob/master/README.md[Eglot readme].
+
+Eglot does not support the rust-analyzer extensions to the language-server protocol and does not aim to do so in the future. The https://github.com/nemethf/eglot-x#rust-analyzer-extensions[eglot-x] package adds experimental support for those LSP extensions.
+
+==== LSP Mode
+
+LSP-mode is the original LSP-client for emacs. Compared to Eglot it has a larger codebase and supports more features, like LSP protocol extensions.
+With extension packages like https://github.com/emacs-lsp/lsp-mode[LSP UI] it offers a lot of visual eyecandy.
+Further it integrates well with https://github.com/emacs-lsp/dap-mode[DAP mode] for support of the Debug Adapter Protocol.
+
+You can install LSP-mode via `M-x package-install` and then run it via the `M-x lsp` command or load it automatically in rust buffers with
+
+[source,emacs-lisp]
+----
+(add-hook 'rust-mode-hook 'lsp-deferred)
+----
+
+For more information on how to set up LSP mode and its extension package see the instructions in the https://emacs-lsp.github.io/lsp-mode/page/installation[LSP mode manual].
+Also see the https://emacs-lsp.github.io/lsp-mode/page/lsp-rust-analyzer/[rust-analyzer section] for `rust-analyzer` specific options and commands, which you can optionally bind to keys.
+
+Note the excellent https://robert.kra.hn/posts/2021-02-07_rust-with-emacs/[guide] from https://github.com/rksm[@rksm] on how to set-up Emacs for Rust development with LSP mode and several other packages.
 
 === Vim/NeoVim
 
