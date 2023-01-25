@@ -48,7 +48,9 @@ pub(super) fn expand_and_analyze(
     // make the offset point to the start of the original token, as that is what the
     // intermediate offsets calculated in expansion always points to
     let offset = offset - relative_offset;
-    let expansion = expand(sema, original_file, speculative_file, offset, fake_ident_token);
+    let expansion =
+        expand(sema, original_file, speculative_file, offset, fake_ident_token, relative_offset);
+
     // add the relative offset back, so that left_biased finds the proper token
     let offset = expansion.offset + relative_offset;
     let token = expansion.original_file.token_at_offset(offset).left_biased()?;
@@ -67,6 +69,7 @@ fn expand(
     mut speculative_file: SyntaxNode,
     mut offset: TextSize,
     mut fake_ident_token: SyntaxToken,
+    relative_offset: TextSize,
 ) -> ExpansionResult {
     let _p = profile::span("CompletionContext::expand");
     let mut derive_ctx = None;
@@ -97,7 +100,7 @@ fn expand(
                 // successful expansions
                 (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) => {
                     let new_offset = fake_mapped_token.text_range().start();
-                    if new_offset > actual_expansion.text_range().end() {
+                    if new_offset + relative_offset > actual_expansion.text_range().end() {
                         // offset outside of bounds from the original expansion,
                         // stop here to prevent problems from happening
                         break 'expansion;
@@ -176,7 +179,7 @@ fn expand(
                 // successful expansions
                 (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) => {
                     let new_offset = fake_mapped_token.text_range().start();
-                    if new_offset > actual_expansion.text_range().end() {
+                    if new_offset + relative_offset > actual_expansion.text_range().end() {
                         // offset outside of bounds from the original expansion,
                         // stop here to prevent problems from happening
                         break 'expansion;
