@@ -7,9 +7,9 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::mir::interpret::{self, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar as InterpScalar, read_target_uint};
+use rustc_middle::mir::interpret::{self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{self, AddressSpace, Align, HasDataLayout, Primitive, Size, WrappingRange};
+use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
 
 use crate::base;
 use crate::context::CodegenCx;
@@ -307,12 +307,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
             .expect("const_alloc_to_llvm: could not read relocation pointer")
             as u64;
 
-        let address_space = match cx.tcx.global_alloc(alloc_id) {
-            GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
-            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
-                AddressSpace::DATA
-            }
-        };
+        let address_space = cx.tcx.global_alloc(alloc_id).address_space(cx);
 
         llvals.push(cx.scalar_to_backend(
             InterpScalar::from_pointer(
