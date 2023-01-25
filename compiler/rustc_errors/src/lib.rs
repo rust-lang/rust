@@ -511,7 +511,7 @@ impl Drop for HandlerInner {
         self.emit_stashed_diagnostics();
 
         if !self.has_errors() {
-            let bugs = std::mem::replace(&mut self.delayed_span_bugs, Vec::new());
+            let bugs = std::mem::take(&mut self.delayed_span_bugs);
             self.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
         }
 
@@ -521,7 +521,7 @@ impl Drop for HandlerInner {
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
         if !self.has_any_message() && !self.suppressed_expected_diag {
-            let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
+            let bugs = std::mem::take(&mut self.delayed_good_path_bugs);
             self.flush_delayed(
                 bugs,
                 "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
@@ -1231,7 +1231,7 @@ impl Handler {
 
     pub fn flush_delayed(&self) {
         let mut inner = self.inner.lock();
-        let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
+        let bugs = std::mem::take(&mut inner.delayed_span_bugs);
         inner.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
     }
 }
