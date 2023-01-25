@@ -317,7 +317,7 @@ pub struct ForeignFnWithQualifier {
     pub span: Span,
     #[label(extern_block_label)]
     pub extern_span: Span,
-    #[suggestion_verbose(code = "fn ", applicability = "maybe-incorrect")]
+    #[suggestion(style = "verbose", code = "fn ", applicability = "maybe-incorrect")]
     pub replace_span: Span,
 }
 
@@ -404,7 +404,11 @@ pub struct GenericArgAfterConstraint {
     pub last_arg_span: Span,
     #[label(first_constraint_label)]
     pub first_constraint_span: Span,
-    #[suggestion_verbose(code = "{correct_order}", applicability = "machine-applicable")]
+    #[suggestion(
+        style = "verbose",
+        code = "{correct_order}",
+        applicability = "machine-applicable"
+    )]
     pub replace_span: Span,
     pub args_len: usize,
     pub constraints_len: usize,
