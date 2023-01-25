@@ -98,6 +98,26 @@ fn aarch64_windows() {
 }
 
 #[test]
+#[cfg(all(target_arch = "aarch64", target_os = "freebsd"))]
+fn aarch64_freebsd() {
+    println!("asimd: {:?}", is_aarch64_feature_detected!("asimd"));
+    println!("pmull: {:?}", is_aarch64_feature_detected!("pmull"));
+    println!("fp: {:?}", is_aarch64_feature_detected!("fp"));
+    println!("fp16: {:?}", is_aarch64_feature_detected!("fp16"));
+    println!("sve: {:?}", is_aarch64_feature_detected!("sve"));
+    println!("crc: {:?}", is_aarch64_feature_detected!("crc"));
+    println!("lse: {:?}", is_aarch64_feature_detected!("lse"));
+    println!("rdm: {:?}", is_aarch64_feature_detected!("rdm"));
+    println!("rcpc: {:?}", is_aarch64_feature_detected!("rcpc"));
+    println!("dotprod: {:?}", is_aarch64_feature_detected!("dotprod"));
+    println!("tme: {:?}", is_aarch64_feature_detected!("tme"));
+    println!("paca: {:?}", is_aarch64_feature_detected!("paca"));
+    println!("pacg: {:?}", is_aarch64_feature_detected!("pacg"));
+    println!("aes: {:?}", is_aarch64_feature_detected!("aes"));
+    println!("sha2: {:?}", is_aarch64_feature_detected!("sha2"));
+}
+
+#[test]
 #[cfg(all(target_arch = "powerpc", target_os = "linux"))]
 fn powerpc_linux() {
     println!("altivec: {}", is_powerpc_feature_detected!("altivec"));
