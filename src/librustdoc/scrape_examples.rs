@@ -2,6 +2,10 @@
 
 use crate::clean;
 use crate::config;
+use crate::errors::{
+    ErrorLoadingExamples, ScrapeExamplesOutputPathAndTargetCrateNotTogether,
+    ScrapeTestsNotWithScrapeExamplesOutputPathAndTargetCrate,
+};
 use crate::formats;
 use crate::formats::renderer::FormatRenderer;
 use crate::html::render::Context;
@@ -52,11 +56,11 @@ impl ScrapeExamplesOptions {
                 scrape_tests,
             })),
             (Some(_), false, _) | (None, true, _) => {
-                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
+                diag.emit_err(ScrapeExamplesOutputPathAndTargetCrateNotTogether);
                 Err(1)
             }
             (None, false, true) => {
-                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate with --scrape-tests");
+                diag.emit_err(ScrapeTestsNotWithScrapeExamplesOutputPathAndTargetCrate);
                 Err(1)
             }
             (None, false, false) => Ok(None),
@@ -342,23 +346,19 @@ pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
     diag: &rustc_errors::Handler,
 ) -> Result<AllCallLocations, i32> {
-    let inner = || {
-        let mut all_calls: AllCallLocations = FxHashMap::default();
-        for path in with_examples {
-            let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
-            let mut decoder = MemDecoder::new(&bytes, 0);
-            let calls = AllCallLocations::decode(&mut decoder);
+    let mut all_calls: AllCallLocations = FxHashMap::default();
+    for path in with_examples {
+        let bytes = fs::read(&path).map_err(|error| {
+            diag.emit_err(ErrorLoadingExamples { error, path });
+            1
+        })?;
+        let mut decoder = MemDecoder::new(&bytes, 0);
+        let calls = AllCallLocations::decode(&mut decoder);
 
-            for (function, fn_calls) in calls.into_iter() {
-                all_calls.entry(function).or_default().extend(fn_calls.into_iter());
-            }
+        for (function, fn_calls) in calls.into_iter() {
+            all_calls.entry(function).or_default().extend(fn_calls.into_iter());
         }
+    }
 
-        Ok(all_calls)
-    };
-
-    inner().map_err(|e: String| {
-        diag.err(&format!("failed to load examples: {}", e));
-        1
-    })
+    Ok(all_calls)
 }

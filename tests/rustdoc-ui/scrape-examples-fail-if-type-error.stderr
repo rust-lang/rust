@@ -5,7 +5,7 @@ LL |   INVALID_FUNC();
    |   ^^^^^^^^^^^^ could not resolve path `INVALID_FUNC`
    |
    = note: this error was originally ignored because you are running `rustdoc`
-   = note: try running again with `rustc` or `cargo check` and you may get a more detailed error
+   = help: try running again with `rustc` or `cargo check` and you may get a more detailed error
 
 error: Compilation failed, aborting rustdoc
 

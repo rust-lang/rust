@@ -27,6 +27,9 @@ use std::sync::LazyLock;
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
+use crate::errors::{
+    CouldNotResolvePath, DeprecatedAttr, DeprecatedAttrKind, MissingCrateLevelDocs,
+};
 use crate::formats::cache::Cache;
 use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
 use crate::passes::{self, Condition::*};
@@ -382,36 +385,25 @@ pub(crate) fn run_global_ctxt(
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
     if krate.module.doc_value().map(|d| d.is_empty()).unwrap_or(true) {
-        let help = format!(
-            "The following guide may be of use:\n\
-            {}/rustdoc/how-to-write-documentation.html",
-            crate::DOC_RUST_LANG_ORG_CHANNEL
-        );
-        tcx.struct_lint_node(
+        tcx.emit_lint(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
-            "no documentation found for this crate's top-level module",
-            |lint| lint.help(help),
+            MissingCrateLevelDocs { doc_rust_lang_org_channel: crate::DOC_RUST_LANG_ORG_CHANNEL },
         );
     }
 
-    fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler, sp: Span) {
-        let mut msg =
-            diag.struct_span_warn(sp, &format!("the `#![doc({})]` attribute is deprecated", name));
-        msg.note(
-            "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-            for more information",
-        );
+    fn report_deprecated_attr(attr_name: &str, diag: &rustc_errors::Handler, span: Span) {
+        let kind = if attr_name == "no_default_passes" {
+            Some(DeprecatedAttrKind::NoDefaultPasses)
+        } else if attr_name.starts_with("passes") {
+            Some(DeprecatedAttrKind::Passes)
+        } else if attr_name.starts_with("plugins") {
+            Some(DeprecatedAttrKind::Plugins)
+        } else {
+            None
+        };
 
-        if name == "no_default_passes" {
-            msg.help("`#![doc(no_default_passes)]` no longer functions; you may want to use `#![doc(document_private_items)]`");
-        } else if name.starts_with("passes") {
-            msg.help("`#![doc(passes = \"...\")]` no longer functions; you may want to use `#![doc(document_private_items)]`");
-        } else if name.starts_with("plugins") {
-            msg.warn("`#![doc(plugins = \"...\")]` no longer functions; see CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>");
-        }
-
-        msg.emit();
+        diag.emit_warning(DeprecatedAttr { span, attr_name, kind });
     }
 
     // Process all of the crate attributes, extracting plugin metadata along
@@ -495,25 +487,13 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
             // We have less context here than in rustc_resolve,
             // so we can only emit the name and span.
             // However we can give a hint that rustc_resolve will have more info.
-            let label = format!(
-                "could not resolve path `{}`",
-                path.segments
-                    .iter()
-                    .map(|segment| segment.ident.as_str())
-                    .intersperse("::")
-                    .collect::<String>()
-            );
-            let mut err = rustc_errors::struct_span_err!(
-                self.tcx.sess,
-                path.span,
-                E0433,
-                "failed to resolve: {}",
-                label
-            );
-            err.span_label(path.span, label);
-            err.note("this error was originally ignored because you are running `rustdoc`");
-            err.note("try running again with `rustc` or `cargo check` and you may get a more detailed error");
-            err.emit();
+            let path_display = path
+                .segments
+                .iter()
+                .map(|segment| segment.ident.as_str())
+                .intersperse("::")
+                .collect::<String>();
+            self.tcx.sess.emit_err(CouldNotResolvePath { span: path.span, path: path_display });
         }
         // We could have an outer resolution that succeeded,
         // but with generic parameters that failed.

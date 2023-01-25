@@ -82,6 +82,7 @@ use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
+use crate::errors::CompilationFailed;
 use crate::passes::collect_intra_doc_links;
 
 /// A macro to create a FxHashMap.
@@ -108,6 +109,7 @@ mod core;
 mod docfs;
 mod doctest;
 mod error;
+mod errors;
 mod externalfiles;
 mod fold;
 mod formats;
@@ -812,7 +814,7 @@ fn main_args(at_args: &[String]) -> MainResult {
             };
 
             if sess.diagnostic().has_errors_or_lint_errors().is_some() {
-                sess.fatal("Compilation failed, aborting rustdoc");
+                sess.emit_fatal(CompilationFailed);
             }
 
             let global_ctxt = abort_on_err(queries.global_ctxt(), sess);
