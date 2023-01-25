@@ -1,6 +1,8 @@
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/augmented-assignments.rs:16:5
    |
+LL |     let mut x = Int(1);
+   |         ----- binding `x` declared here
 LL |     x
    |     - borrow of `x` occurs here
 ...

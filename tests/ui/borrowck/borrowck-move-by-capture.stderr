@@ -10,7 +10,7 @@ LL |         let _h = to_fn_once(move || -> isize { *bar });
    |                             |                  |
    |                             |                  variable moved due to use in closure
    |                             |                  move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
-   |                             move out of `bar` occurs here
+   |                             `bar` is moved here
 
 error: aborting due to previous error
 

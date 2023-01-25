@@ -1,6 +1,9 @@
 error[E0597]: `b2` does not live long enough
   --> $DIR/dropck_arr_cycle_checked.rs:93:24
    |
+LL |     let (b1, b2, b3);
+   |              -- binding `b2` declared here
+...
 LL |     b1.a[0].v.set(Some(&b2));
    |                        ^^^ borrowed value does not live long enough
 ...
@@ -15,6 +18,9 @@ LL | }
 error[E0597]: `b3` does not live long enough
   --> $DIR/dropck_arr_cycle_checked.rs:95:24
    |
+LL |     let (b1, b2, b3);
+   |                  -- binding `b3` declared here
+...
 LL |     b1.a[1].v.set(Some(&b3));
    |                        ^^^ borrowed value does not live long enough
 ...
@@ -29,6 +35,9 @@ LL | }
 error[E0597]: `b1` does not live long enough
   --> $DIR/dropck_arr_cycle_checked.rs:99:24
    |
+LL |     let (b1, b2, b3);
+   |          -- binding `b1` declared here
+...
 LL |     b3.a[0].v.set(Some(&b1));
    |                        ^^^ borrowed value does not live long enough
 ...

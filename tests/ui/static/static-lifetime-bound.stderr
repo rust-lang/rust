@@ -9,6 +9,8 @@ LL | fn f<'a: 'static>(_: &'a i32) {}
 error[E0597]: `x` does not live long enough
   --> $DIR/static-lifetime-bound.rs:5:7
    |
+LL |     let x = 0;
+   |         - binding `x` declared here
 LL |     f(&x);
    |     --^^-
    |     | |

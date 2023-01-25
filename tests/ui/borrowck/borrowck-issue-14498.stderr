@@ -13,10 +13,10 @@ error[E0506]: cannot assign to `**y` because it is borrowed
   --> $DIR/borrowck-issue-14498.rs:25:5
    |
 LL |     let p = &y;
-   |             -- borrow of `**y` occurs here
+   |             -- `**y` is borrowed here
 LL |     let q = &***p;
 LL |     **y = 2;
-   |     ^^^^^^^ assignment to borrowed `**y` occurs here
+   |     ^^^^^^^ `**y` is assigned to here but it was already borrowed
 LL |     drop(p);
    |          - borrow later used here
 
@@ -24,10 +24,10 @@ error[E0506]: cannot assign to `**y` because it is borrowed
   --> $DIR/borrowck-issue-14498.rs:35:5
    |
 LL |     let p = &y;
-   |             -- borrow of `**y` occurs here
+   |             -- `**y` is borrowed here
 LL |     let q = &***p;
 LL |     **y = 2;
-   |     ^^^^^^^ assignment to borrowed `**y` occurs here
+   |     ^^^^^^^ `**y` is assigned to here but it was already borrowed
 LL |     drop(p);
    |          - borrow later used here
 
@@ -35,10 +35,10 @@ error[E0506]: cannot assign to `**y` because it is borrowed
   --> $DIR/borrowck-issue-14498.rs:45:5
    |
 LL |     let p = &y;
-   |             -- borrow of `**y` occurs here
+   |             -- `**y` is borrowed here
 LL |     let q = &***p;
 LL |     **y = 2;
-   |     ^^^^^^^ assignment to borrowed `**y` occurs here
+   |     ^^^^^^^ `**y` is assigned to here but it was already borrowed
 LL |     drop(p);
    |          - borrow later used here
 
@@ -46,10 +46,10 @@ error[E0506]: cannot assign to `**y` because it is borrowed
   --> $DIR/borrowck-issue-14498.rs:55:5
    |
 LL |     let p = &y;
-   |             -- borrow of `**y` occurs here
+   |             -- `**y` is borrowed here
 LL |     let q = &***p;
 LL |     **y = 2;
-   |     ^^^^^^^ assignment to borrowed `**y` occurs here
+   |     ^^^^^^^ `**y` is assigned to here but it was already borrowed
 LL |     drop(p);
    |          - borrow later used here
 
@@ -57,10 +57,10 @@ error[E0506]: cannot assign to `**y.a` because it is borrowed
   --> $DIR/borrowck-issue-14498.rs:65:5
    |
 LL |     let p = &y.a;
-   |             ---- borrow of `**y.a` occurs here
+   |             ---- `**y.a` is borrowed here
 LL |     let q = &***p;
 LL |     **y.a = 2;
-   |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
+   |     ^^^^^^^^^ `**y.a` is assigned to here but it was already borrowed
 LL |     drop(p);
    |          - borrow later used here
 
@@ -68,10 +68,10 @@ error[E0506]: cannot assign to `**y.a` because it is borrowed
   --> $DIR/borrowck-issue-14498.rs:75:5
    |
 LL |     let p = &y.a;
-   |             ---- borrow of `**y.a` occurs here
+   |             ---- `**y.a` is borrowed here
 LL |     let q = &***p;
 LL |     **y.a = 2;
-   |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
+   |     ^^^^^^^^^ `**y.a` is assigned to here but it was already borrowed
 LL |     drop(p);
    |          - borrow later used here
 
@@ -79,10 +79,10 @@ error[E0506]: cannot assign to `**y.a` because it is borrowed
   --> $DIR/borrowck-issue-14498.rs:85:5
    |
 LL |     let p = &y.a;
-   |             ---- borrow of `**y.a` occurs here
+   |             ---- `**y.a` is borrowed here
 LL |     let q = &***p;
 LL |     **y.a = 2;
-   |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
+   |     ^^^^^^^^^ `**y.a` is assigned to here but it was already borrowed
 LL |     drop(p);
    |          - borrow later used here
 
@@ -90,10 +90,10 @@ error[E0506]: cannot assign to `**y.a` because it is borrowed
   --> $DIR/borrowck-issue-14498.rs:95:5
    |
 LL |     let p = &y.a;
-   |             ---- borrow of `**y.a` occurs here
+   |             ---- `**y.a` is borrowed here
 LL |     let q = &***p;
 LL |     **y.a = 2;
-   |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
+   |     ^^^^^^^^^ `**y.a` is assigned to here but it was already borrowed
 LL |     drop(p);
    |          - borrow later used here
 

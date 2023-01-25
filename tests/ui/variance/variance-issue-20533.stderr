@@ -1,6 +1,8 @@
 error[E0505]: cannot move out of `a` because it is borrowed
   --> $DIR/variance-issue-20533.rs:28:14
    |
+LL |         let a = AffineU32(1);
+   |             - binding `a` declared here
 LL |         let x = foo(&a);
    |                     -- borrow of `a` occurs here
 LL |         drop(a);
@@ -11,6 +13,8 @@ LL |         drop(x);
 error[E0505]: cannot move out of `a` because it is borrowed
   --> $DIR/variance-issue-20533.rs:34:14
    |
+LL |         let a = AffineU32(1);
+   |             - binding `a` declared here
 LL |         let x = bar(&a);
    |                     -- borrow of `a` occurs here
 LL |         drop(a);
@@ -21,6 +25,8 @@ LL |         drop(x);
 error[E0505]: cannot move out of `a` because it is borrowed
   --> $DIR/variance-issue-20533.rs:40:14
    |
+LL |         let a = AffineU32(1);
+   |             - binding `a` declared here
 LL |         let x = baz(&a);
    |                     -- borrow of `a` occurs here
 LL |         drop(a);

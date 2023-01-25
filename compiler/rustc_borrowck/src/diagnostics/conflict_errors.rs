@@ -1736,7 +1736,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 &self.local_names,
                 &mut err,
                 "",
-                None,
+                Some(borrow_span),
                 None,
             );
         }

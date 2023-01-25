@@ -1,6 +1,8 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/issue-36537.rs:5:13
    |
+LL |         let a = 42;
+   |             - binding `a` declared here
 LL |         p = &a;
    |             ^^ borrowed value does not live long enough
 ...
