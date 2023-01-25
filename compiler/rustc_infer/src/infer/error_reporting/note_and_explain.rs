@@ -515,7 +515,11 @@ fn foo(&tcx) -> Self::T { String::new() }
         // `expected` and point at it.
         let parent_id = tcx.hir().get_parent_item(hir_id);
         let item = tcx.hir().find_by_def_id(parent_id.def_id);
+
         debug!("expected_projection parent item {:?}", item);
+
+        let param_env = tcx.param_env(body_owner_def_id);
+
         match item {
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. })) => {
                 // FIXME: account for `#![feature(specialization)]`
@@ -527,7 +531,8 @@ fn foo(&tcx) -> Self::T { String::new() }
                             if let hir::Defaultness::Default { has_value: true } =
                                 tcx.impl_defaultness(item.id.owner_id)
                             {
-                                if tcx.type_of(item.id.owner_id) == found {
+                                let assoc_ty = tcx.bound_type_of(item.id.owner_id).subst_identity();
+                                if self.infcx.can_eq(param_env, assoc_ty, found).is_ok() {
                                     diag.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
@@ -547,7 +552,9 @@ fn foo(&tcx) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
-                        if tcx.type_of(item.id.owner_id) == found {
+                        let assoc_ty = tcx.bound_type_of(item.id.owner_id).subst_identity();
+
+                        if self.infcx.can_eq(param_env, assoc_ty, found).is_ok() {
                             diag.span_label(item.span, "expected this associated type");
                             return true;
                         }

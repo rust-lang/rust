@@ -1850,7 +1850,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         self.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
 
-
         if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values
             && let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind()
             && let Some(def_id) = def_id.as_local()
