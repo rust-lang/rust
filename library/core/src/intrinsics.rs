@@ -58,7 +58,6 @@ use crate::marker::DiscriminantKind;
 use crate::marker::Tuple;
 use crate::mem;
 
-#[cfg(not(bootstrap))]
 pub mod mir;
 
 // These imports are used for simplifying intra-doc links
@@ -963,7 +962,6 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
     #[rustc_safe_intrinsic]
-    #[cfg(not(bootstrap))]
     pub fn assert_mem_uninitialized_valid<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
