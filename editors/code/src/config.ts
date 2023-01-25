@@ -268,8 +268,6 @@ export function substituteVSCodeVariables<T>(resp: T): T {
             res[key] = substituteVSCodeVariables(val);
         }
         return res as T;
-    } else if (Is.func(resp)) {
-        throw new Error("Unexpected function type in substitution");
     }
     return resp;
 }
