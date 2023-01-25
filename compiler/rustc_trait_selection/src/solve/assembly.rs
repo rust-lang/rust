@@ -133,6 +133,16 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_future_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_generator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -259,6 +269,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
         } else if lang_items.tuple_trait() == Some(trait_def_id) {
             G::consider_builtin_tuple_candidate(self, goal)
+        } else if lang_items.future_trait() == Some(trait_def_id) {
+            G::consider_builtin_future_candidate(self, goal)
+        } else if lang_items.gen_trait() == Some(trait_def_id) {
+            G::consider_builtin_generator_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
