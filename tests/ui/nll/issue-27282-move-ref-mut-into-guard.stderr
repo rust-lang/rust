@@ -4,7 +4,7 @@ error[E0507]: cannot move out of `foo` in pattern guard
 LL |             if { (|| { let bar = foo; bar.take() })(); false } => {},
    |                   ^^             --- move occurs because `foo` has type `&mut Option<&i32>`, which does not implement the `Copy` trait
    |                   |
-   |                   move out of `foo` occurs here
+   |                   `foo` is moved here
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
 
@@ -14,7 +14,7 @@ error[E0507]: cannot move out of `foo` in pattern guard
 LL |             if let Some(()) = { (|| { let bar = foo; bar.take() })(); None } => {},
    |                                  ^^             --- move occurs because `foo` has type `&mut Option<&i32>`, which does not implement the `Copy` trait
    |                                  |
-   |                                  move out of `foo` occurs here
+   |                                  `foo` is moved here
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
 

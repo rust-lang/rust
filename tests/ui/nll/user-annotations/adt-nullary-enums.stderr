@@ -1,6 +1,8 @@
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-nullary-enums.rs:33:41
    |
+LL |       let c = 66;
+   |           - binding `c` declared here
 LL | /     combine(
 LL | |         SomeEnum::SomeVariant(Cell::new(&c)),
    | |                                         ^^ borrowed value does not live long enough
@@ -15,7 +17,9 @@ error[E0597]: `c` does not live long enough
    |
 LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
-...
+LL |     let c = 66;
+   |         - binding `c` declared here
+LL |     combine(
 LL |         SomeEnum::SomeVariant(Cell::new(&c)),
    |                               ----------^^-
    |                               |         |

@@ -1,6 +1,9 @@
 error[E0597]: `*x` does not live long enough
   --> $DIR/regions-infer-borrow-scope-within-loop.rs:13:20
    |
+LL |         let x = make_box();
+   |             - binding `x` declared here
+...
 LL |         y = borrow(&*x);
    |                    ^^^ borrowed value does not live long enough
 ...

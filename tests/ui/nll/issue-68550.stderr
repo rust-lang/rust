@@ -2,7 +2,9 @@ error[E0597]: `x` does not live long enough
   --> $DIR/issue-68550.rs:12:20
    |
 LL | fn run<'a, A>(x: A)
-   |        -- lifetime `'a` defined here
+   |        --     - binding `x` declared here
+   |        |
+   |        lifetime `'a` defined here
 ...
 LL |     let _: &'a A = &x;
    |            -----   ^^ borrowed value does not live long enough

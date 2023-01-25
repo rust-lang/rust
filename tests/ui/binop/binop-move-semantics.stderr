@@ -41,6 +41,8 @@ LL | fn move_then_borrow<T: Add<Output=()> + Clone + Copy>(x: T) {
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/binop-move-semantics.rs:21:5
    |
+LL | fn move_borrowed<T: Add<Output=()>>(x: T, mut y: T) {
+   |                                     - binding `x` declared here
 LL |     let m = &x;
    |             -- borrow of `x` occurs here
 ...
@@ -53,6 +55,9 @@ LL |     use_mut(n); use_imm(m);
 error[E0505]: cannot move out of `y` because it is borrowed
   --> $DIR/binop-move-semantics.rs:23:5
    |
+LL | fn move_borrowed<T: Add<Output=()>>(x: T, mut y: T) {
+   |                                           ----- binding `y` declared here
+LL |     let m = &x;
 LL |     let n = &mut y;
    |             ------ borrow of `y` occurs here
 ...

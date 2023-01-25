@@ -21,6 +21,9 @@ LL | fn test() {
 error[E0597]: `y` does not live long enough
   --> $DIR/escape-argument.rs:27:25
    |
+LL |         let y = 22;
+   |             - binding `y` declared here
+LL |         let mut closure = expect_sig(|p, y| *p = y);
 LL |         closure(&mut p, &y);
    |                         ^^ borrowed value does not live long enough
 LL |

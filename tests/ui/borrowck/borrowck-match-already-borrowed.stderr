@@ -2,7 +2,7 @@ error[E0503]: cannot use `foo` because it was mutably borrowed
   --> $DIR/borrowck-match-already-borrowed.rs:9:19
    |
 LL |     let p = &mut foo;
-   |             -------- borrow of `foo` occurs here
+   |             -------- `foo` is borrowed here
 LL |     let _ = match foo {
    |                   ^^^ use of borrowed `foo`
 ...
@@ -13,7 +13,7 @@ error[E0503]: cannot use `foo.0` because it was mutably borrowed
   --> $DIR/borrowck-match-already-borrowed.rs:12:16
    |
 LL |     let p = &mut foo;
-   |             -------- borrow of `foo` occurs here
+   |             -------- `foo` is borrowed here
 ...
 LL |         Foo::A(x) => x
    |                ^ use of borrowed `foo`
@@ -25,7 +25,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/borrowck-match-already-borrowed.rs:22:9
    |
 LL |     let r = &mut x;
-   |             ------ borrow of `x` occurs here
+   |             ------ `x` is borrowed here
 LL |     let _ = match x {
 LL |         x => x + 1,
    |         ^ use of borrowed `x`
@@ -37,7 +37,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/borrowck-match-already-borrowed.rs:23:9
    |
 LL |     let r = &mut x;
-   |             ------ borrow of `x` occurs here
+   |             ------ `x` is borrowed here
 ...
 LL |         y => y + 2,
    |         ^ use of borrowed `x`

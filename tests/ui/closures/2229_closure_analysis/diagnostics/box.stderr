@@ -2,12 +2,12 @@ error[E0506]: cannot assign to `e.0.0.m.x` because it is borrowed
   --> $DIR/box.rs:21:5
    |
 LL |     let mut c = || {
-   |                 -- borrow of `e.0.0.m.x` occurs here
+   |                 -- `e.0.0.m.x` is borrowed here
 LL |         e.0.0.m.x = format!("not-x");
    |         --------- borrow occurs due to use in closure
 ...
 LL |     e.0.0.m.x = format!("not-x");
-   |     ^^^^^^^^^ assignment to borrowed `e.0.0.m.x` occurs here
+   |     ^^^^^^^^^ `e.0.0.m.x` is assigned to here but it was already borrowed
 LL |
 LL |     c();
    |     - borrow later used here
@@ -32,12 +32,12 @@ error[E0506]: cannot assign to `e.0.0.m.x` because it is borrowed
   --> $DIR/box.rs:55:5
    |
 LL |     let c = || {
-   |             -- borrow of `e.0.0.m.x` occurs here
+   |             -- `e.0.0.m.x` is borrowed here
 LL |         println!("{}", e.0.0.m.x);
    |                        --------- borrow occurs due to use in closure
 ...
 LL |     e.0.0.m.x = format!("not-x");
-   |     ^^^^^^^^^ assignment to borrowed `e.0.0.m.x` occurs here
+   |     ^^^^^^^^^ `e.0.0.m.x` is assigned to here but it was already borrowed
 LL |
 LL |     c();
    |     - borrow later used here

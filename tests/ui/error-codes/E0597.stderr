@@ -1,6 +1,8 @@
 error[E0597]: `y` does not live long enough
   --> $DIR/E0597.rs:8:16
    |
+LL |     let y = 0;
+   |         - binding `y` declared here
 LL |     x.x = Some(&y);
    |                ^^ borrowed value does not live long enough
 LL |

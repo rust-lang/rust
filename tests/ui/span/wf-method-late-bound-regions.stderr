@@ -4,6 +4,7 @@ error[E0597]: `pointer` does not live long enough
 LL |     let dangling = {
    |         -------- borrow later stored here
 LL |         let pointer = Box::new(42);
+   |             ------- binding `pointer` declared here
 LL |         f2.xmute(&pointer)
    |                  ^^^^^^^^ borrowed value does not live long enough
 LL |     };
