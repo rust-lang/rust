@@ -130,7 +130,7 @@ impl std::fmt::Display for AssocKind {
 /// done only on items with the same name.
 #[derive(Debug, Clone, PartialEq, HashStable)]
 pub struct AssocItems<'tcx> {
-    pub(super) items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
+    items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
 }
 
 impl<'tcx> AssocItems<'tcx> {
