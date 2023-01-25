@@ -427,7 +427,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         .subst(tcx, &[ty::GenericArg::from(goal.predicate.self_ty())])
                 }
 
-                ty::Infer(ty::TyVar(..)) | ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
+                ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
                     // FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with no constraints.
                     let sized_predicate = ty::Binder::dummy(tcx.at(DUMMY_SP).mk_trait_ref(
                         LangItem::Sized,
@@ -470,7 +470,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     }
                 },
 
-                ty::Infer(ty::FreshTy(..) | ty::FreshIntTy(..) | ty::FreshFloatTy(..))
+                ty::Infer(
+                    ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
+                )
                 | ty::Bound(..) => bug!(
                     "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
                     goal.predicate.self_ty()
