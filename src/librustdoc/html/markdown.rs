@@ -323,6 +323,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                     || c == b';'
                     || c == b':'
                     || c == b'?'
+                    // While these would be encoded if we used the URL
+                    // serializer algorithm, they don't actually need to be
+                    // encoded for the [query mode parser] to give the correct
+                    // result. The HTML [attribute parser] does the right
+                    // thing with them as well, as long as the attribute is
+                    // quoted (which it is).
+                    //
+                    // [query mode parser]: https://url.spec.whatwg.org/#query-state
+                    // [attribute parser]: https://html.spec.whatwg.org/#attribute-value-(double-quoted)-state
                     || c == b'<'
                     || c == b'>'
                     // As described in urlencoded-parsing, the
