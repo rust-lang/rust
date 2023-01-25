@@ -6,7 +6,7 @@ use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::{Namespace, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path, TraitCandidate};
 use rustc_interface::interface;
@@ -22,7 +22,6 @@ use rustc_span::{source_map, Span, Symbol};
 use std::cell::RefCell;
 use std::mem;
 use std::rc::Rc;
-use std::sync::LazyLock;
 
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
@@ -284,10 +283,7 @@ pub(crate) fn create_config(
             // Prevent `rustc_hir_analysis::check_crate` from calling `typeck` on all bodies.
             providers.typeck_item_bodies = |_, _| {};
             // hack so that `used_trait_imports` won't try to call typeck
-            providers.used_trait_imports = |_, _| {
-                static EMPTY_SET: LazyLock<UnordSet<LocalDefId>> = LazyLock::new(UnordSet::default);
-                &EMPTY_SET
-            };
+            providers.used_trait_imports = |_, _| Box::leak(Box::new(UnordSet::default()));
             // In case typeck does end up being called, don't ICE in case there were name resolution errors
             providers.typeck = move |tcx, def_id| {
                 // Closures' tables come from their outermost function,
