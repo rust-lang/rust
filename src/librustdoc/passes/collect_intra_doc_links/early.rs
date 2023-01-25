@@ -162,6 +162,7 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                         }
                         self.resolve_doc_links_extern_impl(impl_def_id, false);
                     }
+                    self.all_trait_impls.push(impl_def_id);
                 }
                 for (ty_def_id, impl_def_id) in all_inherent_impls {
                     if self.is_doc_reachable(ty_def_id) {
@@ -171,9 +172,6 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                 for impl_def_id in all_incoherent_impls {
                     self.resolve_doc_links_extern_impl(impl_def_id, true);
                 }
-
-                self.all_trait_impls
-                    .extend(all_trait_impls.into_iter().map(|(_, def_id, _)| def_id));
             }
 
             if crates.len() > start_cnum {
