@@ -18,6 +18,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             @call("mir_storage_dead", args) => {
                 Ok(StatementKind::StorageDead(self.parse_local(args[0])?))
             },
+            @call("mir_deinit", args) => {
+                Ok(StatementKind::Deinit(Box::new(self.parse_place(args[0])?)))
+            },
             @call("mir_retag", args) => {
                 Ok(StatementKind::Retag(RetagKind::Default, Box::new(self.parse_place(args[0])?)))
             },
@@ -141,6 +144,14 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     fn parse_rvalue(&self, expr_id: ExprId) -> PResult<Rvalue<'tcx>> {
         parse_by_kind!(self, expr_id, _, "rvalue",
             @call("mir_discriminant", args) => self.parse_place(args[0]).map(Rvalue::Discriminant),
+            @call("mir_checked", args) => {
+                parse_by_kind!(self, args[0], _, "binary op",
+                    ExprKind::Binary { op, lhs, rhs } => Ok(Rvalue::CheckedBinaryOp(
+                        *op, Box::new((self.parse_operand(*lhs)?, self.parse_operand(*rhs)?))
+                    )),
+                )
+            },
+            @call("mir_len", args) => Ok(Rvalue::Len(self.parse_place(args[0])?)),
             ExprKind::Borrow { borrow_kind, arg } => Ok(
                 Rvalue::Ref(self.tcx.lifetimes.re_erased, *borrow_kind, self.parse_place(*arg)?)
             ),
@@ -152,6 +163,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             ),
             ExprKind::Unary { op, arg } => Ok(
                 Rvalue::UnaryOp(*op, self.parse_operand(*arg)?)
+            ),
+            ExprKind::Repeat { value, count } => Ok(
+                Rvalue::Repeat(self.parse_operand(*value)?, *count)
             ),
             _ => self.parse_operand(expr_id).map(Rvalue::Use),
         )
