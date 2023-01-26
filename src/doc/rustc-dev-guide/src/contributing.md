@@ -390,20 +390,20 @@ Just a few things to keep in mind:
     add a special annotation before specifying the date:
 
     ```md
-    <!-- date-check --> Jul 2022
+    <!-- date-check --> Jan 2023
     ```
 
     Example:
 
     ```md
-    As of <!-- date-check --> Jul 2022, the foo did the bar.
+    As of <!-- date-check --> Jan 2023, the foo did the bar.
     ```
 
     For cases where the date should not be part of the visible rendered output,
     use the following instead:
 
     ```md
-    <!-- date-check: Jul 2022 -->
+    <!-- date-check: Jan 2023 -->
     ```
 
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
