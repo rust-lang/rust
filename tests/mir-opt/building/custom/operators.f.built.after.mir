@@ -2,6 +2,7 @@
 
 fn f(_1: i32, _2: bool) -> i32 {
     let mut _0: i32;                     // return place in scope 0 at $DIR/operators.rs:+0:30: +0:33
+    let mut _3: (i32, bool);             // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
 
     bb0: {
         _1 = Neg(_1);                    // scope 0 at $DIR/operators.rs:+2:9: +2:15
@@ -20,7 +21,10 @@ fn f(_1: i32, _2: bool) -> i32 {
         _2 = Le(_1, _1);                 // scope 0 at $DIR/operators.rs:+15:9: +15:19
         _2 = Ge(_1, _1);                 // scope 0 at $DIR/operators.rs:+16:9: +16:19
         _2 = Gt(_1, _1);                 // scope 0 at $DIR/operators.rs:+17:9: +17:18
-        _0 = _1;                         // scope 0 at $DIR/operators.rs:+18:9: +18:16
-        return;                          // scope 0 at $DIR/operators.rs:+19:9: +19:17
+        _3 = CheckedAdd(_1, _1);         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+        _2 = (_3.1: bool);               // scope 0 at $DIR/operators.rs:+19:9: +19:18
+        _1 = (_3.0: i32);                // scope 0 at $DIR/operators.rs:+20:9: +20:18
+        _0 = _1;                         // scope 0 at $DIR/operators.rs:+21:9: +21:16
+        return;                          // scope 0 at $DIR/operators.rs:+22:9: +22:17
     }
 }
