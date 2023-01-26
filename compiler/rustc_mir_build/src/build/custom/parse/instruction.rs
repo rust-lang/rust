@@ -147,6 +147,12 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             ExprKind::AddressOf { mutability, arg } => Ok(
                 Rvalue::AddressOf(*mutability, self.parse_place(*arg)?)
             ),
+            ExprKind::Binary { op, lhs, rhs } =>  Ok(
+                Rvalue::BinaryOp(*op, Box::new((self.parse_operand(*lhs)?, self.parse_operand(*rhs)?)))
+            ),
+            ExprKind::Unary { op, arg } => Ok(
+                Rvalue::UnaryOp(*op, self.parse_operand(*arg)?)
+            ),
             _ => self.parse_operand(expr_id).map(Rvalue::Use),
         )
     }
