@@ -51,11 +51,8 @@ enum AllocInit {
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
 #[allow(unused_braces)]
-pub(crate) struct RawVec<
-    T,
-    A: Allocator = Global,
-    const COOP_PREF: bool = { DEFAULT_COOP_PREF!() },
-> where
+pub(crate) struct RawVec<T, A: Allocator = Global, const COOP_PREF: bool = { DEFAULT_COOP_PREF!() }>
+where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     ptr: Unique<T>,
@@ -64,8 +61,8 @@ pub(crate) struct RawVec<
     // As of v1.67.0, `cmp` for `TypeId` is not `const`, unfortunately:
     //pub(crate) meta: [GlobalCoAllocMeta; {if core::any::TypeId::of::<A>()==core::any::TypeId::of::<Global>() {1} else {0}}],
     //pub(crate) meta: [GlobalCoAllocMeta; mem::size_of::<A::IsCoAllocator>()],
-    pub(crate) metas: [GlobalCoAllocMeta;
-        alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
+    pub(crate) metas:
+        [GlobalCoAllocMeta; alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
 }
 
 impl<T, const COOP_PREF: bool> RawVec<T, Global, COOP_PREF>
@@ -517,15 +514,14 @@ where
     memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
 }
 
-unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREF: bool> Drop
-    for RawVec<T, A, COOP_PREF>
+unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREF: bool> Drop for RawVec<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     default fn drop(&mut self) {
         if let Some((ptr, layout)) = self.current_memory() {
-            if A::IS_CO_ALLOCATOR && COOP_PREF {
+            if A::CO_ALLOCATES_WITH_META && COOP_PREF {
                 let meta = self.metas[0];
                 unsafe { self.alloc.co_deallocate(PtrAndMeta { ptr, meta }, layout) }
             } else {

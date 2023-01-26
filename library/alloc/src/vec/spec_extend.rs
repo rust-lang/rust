@@ -30,8 +30,7 @@ where
     }
 }
 
-impl<T, A: Allocator, const COOP_PREF: bool> SpecExtend<T, IntoIter<T>>
-    for Vec<T, A, COOP_PREF>
+impl<T, A: Allocator, const COOP_PREF: bool> SpecExtend<T, IntoIter<T>> for Vec<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {

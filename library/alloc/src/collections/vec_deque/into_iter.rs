@@ -38,8 +38,7 @@ where
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug
-    for IntoIter<T, A, COOP_PREF>
+impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug for IntoIter<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -188,8 +187,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> DoubleEndedIterator
-    for IntoIter<T, A, COOP_PREF>
+impl<T, A: Allocator, const COOP_PREF: bool> DoubleEndedIterator for IntoIter<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -262,8 +260,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> ExactSizeIterator
-    for IntoIter<T, A, COOP_PREF>
+impl<T, A: Allocator, const COOP_PREF: bool> ExactSizeIterator for IntoIter<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -280,9 +277,7 @@ impl<T, A: Allocator, const COOP_PREF: bool> FusedIterator for IntoIter<T, A, CO
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, A: Allocator, const COOP_PREF: bool> TrustedLen
-    for IntoIter<T, A, COOP_PREF>
-where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+unsafe impl<T, A: Allocator, const COOP_PREF: bool> TrustedLen for IntoIter<T, A, COOP_PREF> where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
 {
 }

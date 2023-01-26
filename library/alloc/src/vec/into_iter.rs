@@ -49,8 +49,7 @@ pub struct IntoIter<
 }
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
-impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug
-    for IntoIter<T, A, COOP_PREF>
+impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug for IntoIter<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -198,17 +197,13 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send, A: Allocator + Send, const COOP_PREF: bool> Send
-    for IntoIter<T, A, COOP_PREF>
-where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+unsafe impl<T: Send, A: Allocator + Send, const COOP_PREF: bool> Send for IntoIter<T, A, COOP_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
 {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync, A: Allocator + Sync, const COOP_PREF: bool> Sync
-    for IntoIter<T, A, COOP_PREF>
-where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+unsafe impl<T: Sync, A: Allocator + Sync, const COOP_PREF: bool> Sync for IntoIter<T, A, COOP_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
 {
 }
 
@@ -330,8 +325,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> DoubleEndedIterator
-    for IntoIter<T, A, COOP_PREF>
+impl<T, A: Allocator, const COOP_PREF: bool> DoubleEndedIterator for IntoIter<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -375,8 +369,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> ExactSizeIterator
-    for IntoIter<T, A, COOP_PREF>
+impl<T, A: Allocator, const COOP_PREF: bool> ExactSizeIterator for IntoIter<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -392,10 +385,8 @@ impl<T, A: Allocator, const COOP_PREF: bool> FusedIterator for IntoIter<T, A, CO
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, A: Allocator, const COOP_PREF: bool> TrustedLen
-    for IntoIter<T, A, COOP_PREF>
-where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+unsafe impl<T, A: Allocator, const COOP_PREF: bool> TrustedLen for IntoIter<T, A, COOP_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
 {
 }
 
@@ -424,8 +415,7 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
-impl<T: Clone, A: Allocator + Clone, const COOP_PREF: bool> Clone
-    for IntoIter<T, A, COOP_PREF>
+impl<T: Clone, A: Allocator + Clone, const COOP_PREF: bool> Clone for IntoIter<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -447,8 +437,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREF: bool> Drop
-    for IntoIter<T, A, COOP_PREF>
+unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREF: bool> Drop for IntoIter<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -491,17 +480,14 @@ where
 // also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-unsafe impl<T, A: Allocator, const COOP_PREF: bool> InPlaceIterable
-    for IntoIter<T, A, COOP_PREF>
-where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+unsafe impl<T, A: Allocator, const COOP_PREF: bool> InPlaceIterable for IntoIter<T, A, COOP_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
 {
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-unsafe impl<T, A: Allocator, const COOP_PREF: bool> SourceIter
-    for IntoIter<T, A, COOP_PREF>
+unsafe impl<T, A: Allocator, const COOP_PREF: bool> SourceIter for IntoIter<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
