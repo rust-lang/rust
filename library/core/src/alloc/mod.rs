@@ -25,23 +25,6 @@ use crate::error::Error;
 use crate::fmt;
 use crate::ptr::{self, NonNull};
 
-// @FIXME Make this target-specific
-/// Metadata for `Vec/VecDeque/RawVec` to assist the allocator. Make sure its
-/// alignment is not bigger than alignment of `usize`. Otherwise, even if (a
-/// particular) `Vec/VecDeque/RawVec` generic instance doesn't use cooperation,
-/// it would increase size of that `Vec/VecDeque/RawVec` because of alignment
-/// rules! @FIXME compile time test that `GlobalCoAllocMeta` alignment <=
-/// `usize` alignment.
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[allow(missing_debug_implementations)]
-#[derive(Clone, Copy)]
-pub struct GlobalCoAllocMeta {
-    //pub one: usize,
-    /*pub two: usize,
-    pub three: usize,
-    pub four: usize,*/
-}
-
 /// The `AllocError` error indicates an allocation failure
 /// that may be due to resource exhaustion or to
 /// something wrong when combining the given input arguments with this
@@ -68,18 +51,20 @@ impl fmt::Display for AllocError {
 /// (Non-Null) Pointer and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
-pub struct PtrAndMeta {
+#[derive(Clone, Copy)]
+pub struct PtrAndMeta<M: Clone + Copy> {
     pub ptr: NonNull<u8>,
-    pub meta: GlobalCoAllocMeta,
+    pub meta: M,
 }
 
 /// (NonNull) Slice and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
+#[derive(Clone, Copy)]
 /// Used for results (from `CoAllocator`'s functions, where applicable).
-pub struct SliceAndMeta {
+pub struct SliceAndMeta<M: Clone + Copy> {
     pub slice: NonNull<[u8]>,
-    pub meta: GlobalCoAllocMeta,
+    pub meta: M,
 }
 
 #[unstable(feature = "global_co_alloc_short_term_pref", issue = "none")]
@@ -94,8 +79,9 @@ macro_rules! SHORT_TERM_VEC_PREFERS_COOP {
 /// `Result` of `SliceAndMeta` or `AllocError`.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
-pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
+pub type SliceAndMetaResult<M> = Result<SliceAndMeta<M>, AllocError>;
 
+// @FIXME REMOVE
 /// Return 0 or 1, indicating whether to use coallocation metadata or not.
 /// Param `coop_preferred` - if false, then this returns `0`, regardless of
 /// whether allocator `A` is cooperative.
@@ -172,6 +158,8 @@ pub unsafe trait Allocator {
     // It applies to the global (default) allocator only. And/or System allocator?! @FIXME
     const CO_ALLOCATES_WITH_META: bool = false;
 
+    /// @FIXME Validate (preferrable at compile time, otherwise as a test) that this type's
+    /// alignment <= `usize` alignment.
     type CoAllocMeta: Clone + Copy = ();
 
     /// Attempts to allocate a block of memory.
@@ -196,7 +184,7 @@ pub unsafe trait Allocator {
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
-    fn co_allocate(&self, _layout: Layout, _result: &mut SliceAndMetaResult) {
+    fn co_allocate(&self, _layout: Layout, _result: &mut SliceAndMetaResult<Self::CoAllocMeta>) {
         panic!("FIXME")
     }
 
@@ -222,7 +210,11 @@ pub unsafe trait Allocator {
         Ok(ptr)
     }
 
-    fn co_allocate_zeroed(&self, layout: Layout, mut result: &mut SliceAndMetaResult) {
+    fn co_allocate_zeroed(
+        &self,
+        layout: Layout,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
+    ) {
         self.co_allocate(layout, &mut result);
         if let Ok(SliceAndMeta { slice, .. }) = result {
             // SAFETY: `alloc` returns a valid memory block
@@ -241,7 +233,7 @@ pub unsafe trait Allocator {
     /// [*fit*]: #memory-fitting
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
 
-    unsafe fn co_deallocate(&self, _ptr_and_meta: PtrAndMeta, _layout: Layout) {
+    unsafe fn co_deallocate(&self, _ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>, _layout: Layout) {
         panic!("FIXME")
     }
 
@@ -311,10 +303,10 @@ pub unsafe trait Allocator {
 
     unsafe fn co_grow(
         &self,
-        ptr_and_meta: PtrAndMeta,
+        ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>,
         old_layout: Layout,
         new_layout: Layout,
-        mut result: &mut SliceAndMetaResult,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
     ) {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
@@ -405,10 +397,10 @@ pub unsafe trait Allocator {
 
     unsafe fn co_grow_zeroed(
         &self,
-        ptr_and_meta: PtrAndMeta,
+        ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>,
         old_layout: Layout,
         new_layout: Layout,
-        mut result: &mut SliceAndMetaResult,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
     ) {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
@@ -500,10 +492,10 @@ pub unsafe trait Allocator {
 
     unsafe fn co_shrink(
         &self,
-        ptr_and_meta: PtrAndMeta,
+        ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>,
         old_layout: Layout,
         new_layout: Layout,
-        mut result: &mut SliceAndMetaResult,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
     ) {
         debug_assert!(
             new_layout.size() <= old_layout.size(),

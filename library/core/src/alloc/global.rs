@@ -1,4 +1,3 @@
-use crate::alloc::GlobalCoAllocMeta;
 use crate::alloc::Layout;
 use crate::cmp;
 use crate::ptr;
@@ -6,9 +5,9 @@ use crate::ptr;
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
 /// Used for parameters and results (to/from `GlobalCoAllocator`'s functions, where applicable).
-pub struct RawAndMeta {
+pub struct RawAndMeta<M: Clone + Copy> {
     pub ptr: *mut u8,
-    pub meta: GlobalCoAllocMeta,
+    pub meta: M,
 }
 
 /// A memory allocator that can be registered as the standard library’s default
@@ -130,6 +129,11 @@ pub struct RawAndMeta {
 ///   having side effects.
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
+    /// @FIXME Validate (preferrable at compile time, otherwise as a test) that this type's
+    /// alignment <= `usize` alignment.
+    #[unstable(feature = "global_co_alloc_meta", issue = "none")]
+    type CoAllocMeta: Clone + Copy = ();
+
     /// Allocate memory as described by the given `layout`.
     ///
     /// Returns a pointer to newly-allocated memory,
@@ -166,7 +170,7 @@ pub unsafe trait GlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8;
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_alloc(&self, _layout: Layout, mut _result: &mut RawAndMeta) {
+    unsafe fn co_alloc(&self, _layout: Layout, mut _result: &mut RawAndMeta<Self::CoAllocMeta>) {
         panic!("@FIXME")
     }
 
@@ -186,7 +190,7 @@ pub unsafe trait GlobalAlloc {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_dealloc(&self, _ptr_and_meta: RawAndMeta, _layout: Layout) {
+    unsafe fn co_dealloc(&self, _ptr_and_meta: RawAndMeta<Self::CoAllocMeta>, _layout: Layout) {
         panic!("@FIXME")
     }
 
@@ -223,7 +227,11 @@ pub unsafe trait GlobalAlloc {
     }
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_alloc_zeroed(&self, layout: Layout, mut result: &mut RawAndMeta) {
+    unsafe fn co_alloc_zeroed(
+        &self,
+        layout: Layout,
+        mut result: &mut RawAndMeta<Self::CoAllocMeta>,
+    ) {
         let size = layout.size();
         // SAFETY: the safety contract for `alloc` must be upheld by the caller.
         unsafe { self.co_alloc(layout, &mut result) };
@@ -310,10 +318,10 @@ pub unsafe trait GlobalAlloc {
     #[unstable(feature = "global_co_alloc", issue = "none")]
     unsafe fn co_realloc(
         &self,
-        ptr_and_meta: RawAndMeta,
+        ptr_and_meta: RawAndMeta<Self::CoAllocMeta>,
         layout: Layout,
         new_size: usize,
-        mut result: &mut RawAndMeta,
+        mut result: &mut RawAndMeta<Self::CoAllocMeta>,
     ) {
         // SAFETY: the caller must ensure that the `new_size` does not overflow.
         // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid.
