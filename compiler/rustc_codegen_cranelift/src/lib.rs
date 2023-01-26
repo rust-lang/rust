@@ -57,6 +57,8 @@ mod compiler_builtins;
 mod concurrency_limiter;
 mod config;
 mod constant;
+// FIXME revert back to the external crate with Cranelift 0.93
+mod cranelift_native;
 mod debuginfo;
 mod discriminant;
 mod driver;
@@ -278,12 +280,14 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         }
     }
 
-    if target_triple.architecture == target_lexicon::Architecture::X86_64 {
+    if let target_lexicon::Architecture::Aarch64(_) | target_lexicon::Architecture::X86_64 =
+        target_triple.architecture
+    {
         // Windows depends on stack probes to grow the committed part of the stack
         flags_builder.enable("enable_probestack").unwrap();
         flags_builder.set("probestack_strategy", "inline").unwrap();
     } else {
-        // __cranelift_probestack is not provided and inline stack probes are only supported on x86_64
+        // __cranelift_probestack is not provided and inline stack probes are only supported on AArch64 and x86_64
         flags_builder.set("enable_probestack", "false").unwrap();
     }
 

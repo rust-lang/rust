@@ -10,73 +10,45 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: ${{ runner.os }}-cargo-installed-crates
-
-    - name: Cache cargo registry and index
-      uses: actions/cache@v3
-      with:
-        path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-        key: ${{ runner.os }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
-
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
-    - name: Prepare dependencies
+    - name: Use sparse cargo registry
       run: |
-        git config --global user.email "user@example.com"
-        git config --global user.name "User"
-        ./y.rs prepare
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
+
+    - name: Prepare dependencies
+      run: ./y.rs prepare
 
     - name: Test
-      run: |
-        # Enable backtraces for easier debugging
-        export RUST_BACKTRACE=1
-
-        ./scripts/test_bootstrap.sh
+      run: ./scripts/test_bootstrap.sh
   rustc_test_suite:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: ${{ runner.os }}-cargo-installed-crates
-
-    - name: Cache cargo registry and index
-      uses: actions/cache@v3
-      with:
-        path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-        key: ${{ runner.os }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
-
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
-    - name: Prepare dependencies
+    - name: Use sparse cargo registry
       run: |
-        git config --global user.email "user@example.com"
-        git config --global user.name "User"
-        ./y.rs prepare
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
+
+    - name: Prepare dependencies
+      run: ./y.rs prepare
 
     - name: Test
-      run: |
-        # Enable backtraces for easier debugging
-        export RUST_BACKTRACE=1
-
-        ./scripts/test_rustc_tests.sh
+      run: ./scripts/test_rustc_tests.sh

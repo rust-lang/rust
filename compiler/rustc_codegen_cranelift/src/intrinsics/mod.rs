@@ -201,7 +201,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
     let mut res = fx.bcx.ins().bmask(int_ty, val);
 
     if ty.is_float() {
-        res = fx.bcx.ins().bitcast(ty, res);
+        res = codegen_bitcast(fx, ty, res);
     }
 
     res
@@ -241,10 +241,9 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             substs,
             args,
             destination,
+            target,
             source_info.span,
         );
-        let ret_block = fx.get_block(target);
-        fx.bcx.ins().jump(ret_block, &[]);
     } else if codegen_float_intrinsic_call(fx, intrinsic, args, destination) {
         let ret_block = fx.get_block(target);
         fx.bcx.ins().jump(ret_block, &[]);
@@ -651,7 +650,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(substs.type_at(0));
             if layout.abi.is_uninhabited() {
                 with_no_trimmed_paths!({
-                    crate::base::codegen_panic(
+                    crate::base::codegen_panic_nounwind(
                         fx,
                         &format!("attempted to instantiate uninhabited type `{}`", layout.ty),
                         source_info,
@@ -664,7 +663,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 && !fx.tcx.permits_zero_init(fx.param_env().and(layout))
             {
                 with_no_trimmed_paths!({
-                    crate::base::codegen_panic(
+                    crate::base::codegen_panic_nounwind(
                         fx,
                         &format!(
                             "attempted to zero-initialize type `{}`, which is invalid",
@@ -680,7 +679,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 && !fx.tcx.permits_uninit_init(fx.param_env().and(layout))
             {
                 with_no_trimmed_paths!({
-                    crate::base::codegen_panic(
+                    crate::base::codegen_panic_nounwind(
                         fx,
                         &format!(
                             "attempted to leave type `{}` uninitialized, which is invalid",
