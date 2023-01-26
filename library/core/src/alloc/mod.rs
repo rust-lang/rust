@@ -50,19 +50,17 @@ impl fmt::Display for AllocError {
 
 /// (Non-Null) Pointer and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[allow(missing_debug_implementations)]
-#[derive(Clone, Copy)]
-pub struct PtrAndMeta<M: Clone + Copy> {
+#[derive(Clone, Copy, Debug)]
+pub struct PtrAndMeta<M: CoAllocMetaBase> {
     pub ptr: NonNull<u8>,
     pub meta: M,
 }
 
 /// (NonNull) Slice and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[allow(missing_debug_implementations)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 /// Used for results (from `CoAllocator`'s functions, where applicable).
-pub struct SliceAndMeta<M: Clone + Copy> {
+pub struct SliceAndMeta<M: CoAllocMetaBase> {
     pub slice: NonNull<[u8]>,
     pub meta: M,
 }
@@ -78,7 +76,6 @@ macro_rules! SHORT_TERM_VEC_PREFERS_COOP {
 
 /// `Result` of `SliceAndMeta` or `AllocError`.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[allow(missing_debug_implementations)]
 pub type SliceAndMetaResult<M> = Result<SliceAndMeta<M>, AllocError>;
 
 // @FIXME REMOVE
@@ -158,9 +155,11 @@ pub unsafe trait Allocator {
     // It applies to the global (default) allocator only. And/or System allocator?! @FIXME
     const CO_ALLOCATES_WITH_META: bool = false;
 
+    /// NOT for public use. The default value MAY be REMOVED or CHANGED.
+    /// 
     /// @FIXME Validate (preferrable at compile time, otherwise as a test) that this type's
     /// alignment <= `usize` alignment.
-    type CoAllocMeta: Clone + Copy = ();
+    type CoAllocMeta: CoAllocMetaBase = CoAllocMetaPlain;
 
     /// Attempts to allocate a block of memory.
     ///
@@ -586,5 +585,26 @@ where
     ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
+    }
+}
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub trait CoAllocMetaBase: Clone + Copy {
+    /// NOT for public use. This MAY BE REMOVED or CHANGED.
+    /// 
+    /// For EXPERIMENTATION only.
+    fn new_plain() -> Self;
+}
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[derive(Clone, Copy, Debug)]
+pub struct CoAllocMetaPlain {}
+
+static CO_ALLOC_META_PLAIN: CoAllocMetaPlain = CoAllocMetaPlain {};
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+impl CoAllocMetaBase for CoAllocMetaPlain {
+    fn new_plain() -> Self {
+        CO_ALLOC_META_PLAIN
     }
 }
