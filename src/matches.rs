@@ -246,8 +246,18 @@ fn rewrite_match_arm(
     };
 
     // Patterns
-    // 5 = ` => {`
-    let pat_shape = shape.sub_width(5)?.offset_left(pipe_offset)?;
+    let pat_shape = match &arm.body.kind {
+        ast::ExprKind::Block(_, Some(label)) => {
+            // Some block with a label ` => 'label: {`
+            // 7 = ` => : {`
+            let label_len = label.ident.as_str().len();
+            shape.sub_width(7 + label_len)?.offset_left(pipe_offset)?
+        }
+        _ => {
+            // 5 = ` => {`
+            shape.sub_width(5)?.offset_left(pipe_offset)?
+        }
+    };
     let pats_str = arm.pat.rewrite(context, pat_shape)?;
 
     // Guard
