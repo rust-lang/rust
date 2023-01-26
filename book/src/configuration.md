@@ -100,3 +100,24 @@ Note: `custom_inner_attributes` is an unstable feature so it has to be enabled e
 
 Lints that recognize this configuration option can be
 found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)
+
+### Disabling evaluation of certain code
+
+> **Note:** This should only be used in cases where other solutions, like `#[allow(clippy::all)]`, are not sufficient.
+
+Very rarely, you may wish to prevent Clippy from evaluating certain sections of code entirely. You can do this with
+[conditional compilation](https://doc.rust-lang.org/reference/conditional-compilation.html) by checking that the
+`cargo-clippy` feature is not set. You may need to provide a stub so that the code compiles:
+
+```rust
+#[cfg(not(feature = "cargo-clippy"))]
+include!(concat!(env!("OUT_DIR"), "/my_big_function-generated.rs"));
+
+#[cfg(feature = "cargo-clippy")]
+fn my_big_function(_input: &str) -> Option<MyStruct> {
+    None
+}
+```
+
+This feature is not actually part of your crate, so specifying `--all-features` to other tools, e.g. `cargo test
+--all-features`, will not disable it.
