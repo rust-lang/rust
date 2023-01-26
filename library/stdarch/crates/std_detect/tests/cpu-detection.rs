@@ -98,8 +98,11 @@ fn aarch64_windows() {
 }
 
 #[test]
-#[cfg(all(target_arch = "aarch64", target_os = "freebsd"))]
-fn aarch64_freebsd() {
+#[cfg(all(
+    target_arch = "aarch64",
+    any(target_os = "freebsd", target_os = "openbsd")
+))]
+fn aarch64_bsd() {
     println!("asimd: {:?}", is_aarch64_feature_detected!("asimd"));
     println!("pmull: {:?}", is_aarch64_feature_detected!("pmull"));
     println!("fp: {:?}", is_aarch64_feature_detected!("fp"));

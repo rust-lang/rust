@@ -53,13 +53,13 @@ pub(crate) fn detect_features() -> cache::Initializer {
         );
     }
 
-    parse_system_registers(aa64isar0, aa64isar1, aa64pfr0)
+    parse_system_registers(aa64isar0, aa64isar1, Some(aa64pfr0))
 }
 
 pub(crate) fn parse_system_registers(
     aa64isar0: u64,
     aa64isar1: u64,
-    aa64pfr0: u64,
+    aa64pfr0: Option<u64>,
 ) -> cache::Initializer {
     let mut value = cache::Initializer::default();
 
@@ -76,26 +76,28 @@ pub(crate) fn parse_system_registers(
     enable_feature(Feature::crc, bits_shift(aa64isar0, 19, 16) >= 1);
 
     // ID_AA64PFR0_EL1 - Processor Feature Register 0
-    let fp = bits_shift(aa64pfr0, 19, 16) < 0xF;
-    let fphp = bits_shift(aa64pfr0, 19, 16) >= 1;
-    let asimd = bits_shift(aa64pfr0, 23, 20) < 0xF;
-    let asimdhp = bits_shift(aa64pfr0, 23, 20) >= 1;
-    enable_feature(Feature::fp, fp);
-    enable_feature(Feature::fp16, fphp);
-    // SIMD support requires float support - if half-floats are
-    // supported, it also requires half-float support:
-    enable_feature(Feature::asimd, fp && asimd && (!fphp | asimdhp));
-    // SIMD extensions require SIMD support:
-    enable_feature(Feature::aes, asimd && bits_shift(aa64isar0, 7, 4) >= 1);
-    let sha1 = bits_shift(aa64isar0, 11, 8) >= 1;
-    let sha2 = bits_shift(aa64isar0, 15, 12) >= 1;
-    enable_feature(Feature::sha2, asimd && sha1 && sha2);
-    enable_feature(Feature::rdm, asimd && bits_shift(aa64isar0, 31, 28) >= 1);
-    enable_feature(
-        Feature::dotprod,
-        asimd && bits_shift(aa64isar0, 47, 44) >= 1,
-    );
-    enable_feature(Feature::sve, asimd && bits_shift(aa64pfr0, 35, 32) >= 1);
+    if let Some(aa64pfr0) = aa64pfr0 {
+        let fp = bits_shift(aa64pfr0, 19, 16) < 0xF;
+        let fphp = bits_shift(aa64pfr0, 19, 16) >= 1;
+        let asimd = bits_shift(aa64pfr0, 23, 20) < 0xF;
+        let asimdhp = bits_shift(aa64pfr0, 23, 20) >= 1;
+        enable_feature(Feature::fp, fp);
+        enable_feature(Feature::fp16, fphp);
+        // SIMD support requires float support - if half-floats are
+        // supported, it also requires half-float support:
+        enable_feature(Feature::asimd, fp && asimd && (!fphp | asimdhp));
+        // SIMD extensions require SIMD support:
+        enable_feature(Feature::aes, asimd && bits_shift(aa64isar0, 7, 4) >= 1);
+        let sha1 = bits_shift(aa64isar0, 11, 8) >= 1;
+        let sha2 = bits_shift(aa64isar0, 15, 12) >= 1;
+        enable_feature(Feature::sha2, asimd && sha1 && sha2);
+        enable_feature(Feature::rdm, asimd && bits_shift(aa64isar0, 31, 28) >= 1);
+        enable_feature(
+            Feature::dotprod,
+            asimd && bits_shift(aa64isar0, 47, 44) >= 1,
+        );
+        enable_feature(Feature::sve, asimd && bits_shift(aa64pfr0, 35, 32) >= 1);
+    }
 
     // ID_AA64PFR0_EL1 - Processor Feature Register 0
     // Check for either APA or API field
