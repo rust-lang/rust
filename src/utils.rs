@@ -463,6 +463,7 @@ pub(crate) fn first_line_ends_with(s: &str, c: char) -> bool {
 pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr: &str) -> bool {
     match expr.kind {
         ast::ExprKind::MacCall(..)
+        | ast::ExprKind::FormatArgs(..)
         | ast::ExprKind::Call(..)
         | ast::ExprKind::MethodCall(..)
         | ast::ExprKind::Array(..)

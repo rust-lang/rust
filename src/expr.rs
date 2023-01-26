@@ -400,7 +400,10 @@ pub(crate) fn format_expr(
             }
         }
         ast::ExprKind::Underscore => Some("_".to_owned()),
-        ast::ExprKind::IncludedBytes(..) => unreachable!(),
+        ast::ExprKind::FormatArgs(..) | ast::ExprKind::IncludedBytes(..) => {
+            // These do not occur in the AST because macros aren't expanded.
+            unreachable!()
+        }
         ast::ExprKind::Err => None,
     };
 
