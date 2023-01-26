@@ -316,7 +316,7 @@ pub(crate) struct IncoherentImpls {
 /// Define `LazyTables` and `TableBuilders` at the same time.
 macro_rules! define_tables {
     (
-        - nullable: $($name1:ident: Table<$IDX1:ty, $T1:ty>,)+
+        - defaulted: $($name1:ident: Table<$IDX1:ty, $T1:ty>,)+
         - optional: $($name2:ident: Table<$IDX2:ty, $T2:ty>,)+
     ) => {
         #[derive(MetadataEncodable, MetadataDecodable)]
@@ -343,7 +343,7 @@ macro_rules! define_tables {
 }
 
 define_tables! {
-- nullable:
+- defaulted:
     is_intrinsic: Table<DefIndex, bool>,
     is_macro_rules: Table<DefIndex, bool>,
     is_type_alias_impl_trait: Table<DefIndex, bool>,

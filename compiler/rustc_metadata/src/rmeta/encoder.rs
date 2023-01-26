@@ -365,26 +365,26 @@ impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     }
 }
 
-// Shorthand for `$self.$tables.$table.set($def_id.index, $self.lazy_value($value))`, which would
+// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_value($value))`, which would
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         {
             let value = $value;
             let lazy = $self.lazy(value);
-            $self.$tables.$table.set($def_id.index, lazy);
+            $self.$tables.$table.set_some($def_id.index, lazy);
         }
     }};
 }
 
-// Shorthand for `$self.$tables.$table.set($def_id.index, $self.lazy_value($value))`, which would
+// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_value($value))`, which would
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         {
             let value = $value;
             let lazy = $self.lazy_array(value);
-            $self.$tables.$table.set($def_id.index, lazy);
+            $self.$tables.$table.set_some($def_id.index, lazy);
         }
     }};
 }
@@ -467,14 +467,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             {
                 let def_key = self.lazy(table.def_key(def_index));
                 let def_path_hash = table.def_path_hash(def_index);
-                self.tables.def_keys.set(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, def_path_hash);
+                self.tables.def_keys.set_some(def_index, def_key);
+                self.tables.def_path_hashes.set_some(def_index, def_path_hash);
             }
         } else {
             for (def_index, def_key, def_path_hash) in table.enumerated_keys_and_path_hashes() {
                 let def_key = self.lazy(def_key);
-                self.tables.def_keys.set(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, *def_path_hash);
+                self.tables.def_keys.set_some(def_index, def_key);
+                self.tables.def_path_hashes.set_some(def_index, *def_path_hash);
             }
         }
     }
@@ -548,7 +548,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             let on_disk_index: u32 =
                 on_disk_index.try_into().expect("cannot export more than U32_MAX files");
-            adapted.set(on_disk_index, self.lazy(source_file));
+            adapted.set_some(on_disk_index, self.lazy(source_file));
         }
 
         adapted.encode(&mut self.opaque)
@@ -1147,9 +1147,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if state.is_doc_hidden {
             attr_flags |= AttrFlags::IS_DOC_HIDDEN;
         }
-        if !attr_flags.is_empty() {
-            self.tables.attr_flags.set_nullable(def_id.local_def_index, attr_flags);
-        }
+        self.tables.attr_flags.set(def_id.local_def_index, attr_flags);
     }
 
     fn encode_def_ids(&mut self) {
@@ -1161,7 +1159,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.opt_def_kind(local_id);
             let Some(def_kind) = def_kind else { continue };
-            self.tables.opt_def_kind.set(def_id.index, def_kind);
+            self.tables.opt_def_kind.set_some(def_id.index, def_kind);
             let def_span = tcx.def_span(local_id);
             record!(self.tables.def_span[def_id] <- def_span);
             self.encode_attrs(local_id);
@@ -1264,14 +1262,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             };
             record!(self.tables.variant_data[variant.def_id] <- data);
 
-            self.tables.constness.set(variant.def_id.index, hir::Constness::Const);
+            self.tables.constness.set_some(variant.def_id.index, hir::Constness::Const);
             record_array!(self.tables.children[variant.def_id] <- variant.fields.iter().map(|f| {
                 assert!(f.did.is_local());
                 f.did.index
             }));
 
             if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
-                self.tables.constness.set(ctor_def_id.index, hir::Constness::Const);
+                self.tables.constness.set_some(ctor_def_id.index, hir::Constness::Const);
                 let fn_sig = tcx.fn_sig(ctor_def_id);
                 record!(self.tables.fn_sig[ctor_def_id] <- fn_sig);
                 // FIXME only encode signature for ctor_def_id
@@ -1342,16 +1340,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
 
         let impl_defaultness = tcx.impl_defaultness(def_id.expect_local());
-        self.tables.impl_defaultness.set(def_id.index, impl_defaultness);
+        self.tables.impl_defaultness.set_some(def_id.index, impl_defaultness);
         let trait_item = tcx.associated_item(def_id);
-        self.tables.assoc_container.set(def_id.index, trait_item.container);
+        self.tables.assoc_container.set_some(def_id.index, trait_item.container);
 
         match trait_item.kind {
             ty::AssocKind::Const => {}
             ty::AssocKind::Fn => {
                 record_array!(self.tables.fn_arg_names[def_id] <- tcx.fn_arg_names(def_id));
-                self.tables.asyncness.set(def_id.index, tcx.asyncness(def_id));
-                self.tables.constness.set(def_id.index, hir::Constness::NotConst);
+                self.tables.asyncness.set_some(def_id.index, tcx.asyncness(def_id));
+                self.tables.constness.set_some(def_id.index, hir::Constness::NotConst);
             }
             ty::AssocKind::Type => {
                 self.encode_explicit_item_bounds(def_id);
@@ -1367,14 +1365,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
 
         let ast_item = self.tcx.hir().expect_impl_item(def_id.expect_local());
-        self.tables.impl_defaultness.set(def_id.index, ast_item.defaultness);
+        self.tables.impl_defaultness.set_some(def_id.index, ast_item.defaultness);
         let impl_item = self.tcx.associated_item(def_id);
-        self.tables.assoc_container.set(def_id.index, impl_item.container);
+        self.tables.assoc_container.set_some(def_id.index, impl_item.container);
 
         match impl_item.kind {
             ty::AssocKind::Fn => {
                 let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
-                self.tables.asyncness.set(def_id.index, sig.header.asyncness);
+                self.tables.asyncness.set_some(def_id.index, sig.header.asyncness);
                 record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
                 // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
                 let constness = if self.tcx.is_const_fn_raw(def_id) {
@@ -1382,18 +1380,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 } else {
                     hir::Constness::NotConst
                 };
-                self.tables.constness.set(def_id.index, constness);
+                self.tables.constness.set_some(def_id.index, constness);
             }
             ty::AssocKind::Const | ty::AssocKind::Type => {}
         }
         if let Some(trait_item_def_id) = impl_item.trait_item_def_id {
-            self.tables.trait_item_def_id.set(def_id.index, trait_item_def_id.into());
+            self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
         }
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-            if tcx.is_intrinsic(def_id) {
-                self.tables.is_intrinsic.set_nullable(def_id.index, true);
-            }
+            self.tables.is_intrinsic.set(def_id.index, tcx.is_intrinsic(def_id));
         }
     }
 
@@ -1522,14 +1518,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         match item.kind {
             hir::ItemKind::Fn(ref sig, .., body) => {
-                self.tables.asyncness.set(def_id.index, sig.header.asyncness);
+                self.tables.asyncness.set_some(def_id.index, sig.header.asyncness);
                 record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
-                self.tables.constness.set(def_id.index, sig.header.constness);
+                self.tables.constness.set_some(def_id.index, sig.header.constness);
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
-                if macro_def.macro_rules {
-                    self.tables.is_macro_rules.set_nullable(def_id.index, true);
-                }
+                self.tables.is_macro_rules.set(def_id.index, macro_def.macro_rules);
                 record!(self.tables.macro_definition[def_id] <- &*macro_def.body);
             }
             hir::ItemKind::Mod(ref m) => {
@@ -1537,20 +1531,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::OpaqueTy(ref opaque) => {
                 self.encode_explicit_item_bounds(def_id);
-                if matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias) {
-                    self.tables.is_type_alias_impl_trait.set_nullable(def_id.index, true);
-                }
+                self.tables
+                    .is_type_alias_impl_trait
+                    .set(def_id.index, matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias));
             }
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
-                self.tables.impl_defaultness.set(def_id.index, *defaultness);
-                self.tables.constness.set(def_id.index, *constness);
+                self.tables.impl_defaultness.set_some(def_id.index, *defaultness);
+                self.tables.constness.set_some(def_id.index, *constness);
 
                 let trait_ref = self.tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::skip_binder);
                 if let Some(trait_ref) = trait_ref {
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
                     if let Ok(mut an) = trait_def.ancestors(self.tcx, def_id) {
                         if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
-                            self.tables.impl_parent.set(def_id.index, parent.into());
+                            self.tables.impl_parent.set_some(def_id.index, parent.into());
                         }
                     }
 
@@ -1564,7 +1558,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
 
                 let polarity = self.tcx.impl_polarity(def_id);
-                self.tables.impl_polarity.set(def_id.index, polarity);
+                self.tables.impl_polarity.set_some(def_id.index, polarity);
             }
             hir::ItemKind::Trait(..) => {
                 let trait_def = self.tcx.trait_def(def_id);
@@ -1601,9 +1595,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
         if let hir::ItemKind::Fn(..) = item.kind {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-            if tcx.is_intrinsic(def_id) {
-                self.tables.is_intrinsic.set_nullable(def_id.index, true);
-            }
+            self.tables.is_intrinsic.set(def_id.index, tcx.is_intrinsic(def_id));
         }
         if let hir::ItemKind::Impl { .. } = item.kind {
             if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
@@ -1650,7 +1642,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             ty::Closure(_, substs) => {
                 let constness = self.tcx.constness(def_id.to_def_id());
-                self.tables.constness.set(def_id.to_def_id().index, constness);
+                self.tables.constness.set_some(def_id.to_def_id().index, constness);
                 record!(self.tables.fn_sig[def_id.to_def_id()] <- ty::EarlyBinder(substs.as_closure().sig()));
             }
 
@@ -1678,12 +1670,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.hygiene_ctxt.encode(
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), index, ctxt_data| {
-                syntax_contexts.set(index, this.lazy(ctxt_data));
+                syntax_contexts.set_some(index, this.lazy(ctxt_data));
             },
             |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
                 if let Some(index) = index.as_local() {
-                    expn_data_table.set(index.as_raw(), this.lazy(expn_data));
-                    expn_hash_table.set(index.as_raw(), this.lazy(hash));
+                    expn_data_table.set_some(index.as_raw(), this.lazy(expn_data));
+                    expn_hash_table.set_some(index.as_raw(), this.lazy(hash));
                 }
             },
         );
@@ -1708,10 +1700,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let spans = self.tcx.sess.parse_sess.proc_macro_quoted_spans();
             for (i, span) in spans.into_iter().enumerate() {
                 let span = self.lazy(span);
-                self.tables.proc_macro_quoted_spans.set(i, span);
+                self.tables.proc_macro_quoted_spans.set_some(i, span);
             }
 
-            self.tables.opt_def_kind.set(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
+            self.tables.opt_def_kind.set_some(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
             self.encode_attrs(LOCAL_CRATE.as_def_id().expect_local());
             let vis = tcx.local_visibility(CRATE_DEF_ID).map_id(|def_id| def_id.local_def_index);
@@ -1753,8 +1745,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
-                self.tables.opt_def_kind.set(def_id.index, DefKind::Macro(macro_kind));
-                self.tables.proc_macro.set(def_id.index, macro_kind);
+                self.tables.opt_def_kind.set_some(def_id.index, DefKind::Macro(macro_kind));
+                self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record!(self.tables.def_ident_span[def_id] <- span);
@@ -1979,22 +1971,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         match nitem.kind {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
-                self.tables.asyncness.set(def_id.index, hir::IsAsync::NotAsync);
+                self.tables.asyncness.set_some(def_id.index, hir::IsAsync::NotAsync);
                 record_array!(self.tables.fn_arg_names[def_id] <- *names);
                 let constness = if self.tcx.is_const_fn_raw(def_id) {
                     hir::Constness::Const
                 } else {
                     hir::Constness::NotConst
                 };
-                self.tables.constness.set(def_id.index, constness);
+                self.tables.constness.set_some(def_id.index, constness);
                 record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             }
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => {}
         }
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
-            if tcx.is_intrinsic(def_id) {
-                self.tables.is_intrinsic.set_nullable(def_id.index, true);
-            }
+            self.tables.is_intrinsic.set(def_id.index, tcx.is_intrinsic(def_id));
         }
     }
 }
