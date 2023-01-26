@@ -1,4 +1,4 @@
-error: [-, +]
+error: [+, +]
   --> $DIR/variance-associated-types.rs:13:1
    |
 LL | struct Foo<'a, T : Trait<'a>> {

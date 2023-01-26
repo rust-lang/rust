@@ -191,12 +191,13 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         // from the "cause" field, we could perhaps give more tailored
         // error messages.
         let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
+        // Subtype(&'a u8, &'b u8) => Outlives('a: 'b) => SubRegion('b, 'a)
         self.fields
             .infcx
             .inner
             .borrow_mut()
             .unwrap_region_constraints()
-            .make_subregion(origin, a, b);
+            .make_subregion(origin, b, a);
 
         Ok(a)
     }
