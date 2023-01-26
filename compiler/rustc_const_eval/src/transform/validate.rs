@@ -13,7 +13,7 @@ use rustc_middle::mir::{
     ProjectionElem, RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind,
     Terminator, TerminatorKind, UnOp, START_BLOCK,
 };
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -228,11 +228,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Fast path before we normalize.
         if src == dest {
             // Equal types, all is good.
-            return true;
-        }
-        // Normalization reveals opaque types, but we may be validating MIR while computing
-        // said opaque types, causing cycles.
-        if (src, dest).has_opaque_types() {
             return true;
         }
 

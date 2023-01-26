@@ -79,6 +79,7 @@ use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
 mod note;
+mod note_and_explain;
 mod suggest;
 
 pub(crate) mod need_type_info;
@@ -1846,7 +1847,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         self.check_and_note_conflicting_crates(diag, terr);
-        self.tcx.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
+
+        self.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
 
         if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values
             && let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind()

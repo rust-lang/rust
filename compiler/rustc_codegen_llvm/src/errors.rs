@@ -40,10 +40,6 @@ pub(crate) struct ErrorCreatingImportLibrary<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_instrument_coverage_requires_llvm_12)]
-pub(crate) struct InstrumentCoverageRequiresLLVM12;
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_symbol_already_defined)]
 pub(crate) struct SymbolAlreadyDefined<'a> {
     #[primary_span]
