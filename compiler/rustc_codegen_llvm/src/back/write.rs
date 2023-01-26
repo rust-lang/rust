@@ -3,7 +3,7 @@ use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
 };
 
-use crate::base;
+use crate::{base, LLVMDiffItem};
 use crate::common;
 use crate::consts;
 use crate::llvm::{Value, LLVMVerifyFunction, LLVMReplaceAllUsesWith};
@@ -525,7 +525,8 @@ fn get_params(fnc: &Value) -> Vec<&Value> {
 
 // TODO: cleanup
 unsafe fn create_wrapper<'a>(
-    module: &'a ModuleCodegen<ModuleLlvm>,
+    llmod: &'a llvm::Module,
+    //module: &'a ModuleCodegen<ModuleLlvm>,
     fnc: &'a Value,
     u_type: &Type,
     fnc_name: String,
@@ -536,7 +537,7 @@ unsafe fn create_wrapper<'a>(
         Vec<&'a Value>,
         CString,
         ) {
-        let llmod = module.module_llvm.llmod();
+        //let llmod = module.module_llvm.llmod();
         let context = LLVMGetModuleContext(llmod);
         let inner_fnc_name = "inner_".to_string() + &fnc_name;
         let c_inner_fnc_name = CString::new(inner_fnc_name.clone()).unwrap();
@@ -578,12 +579,12 @@ unsafe fn create_wrapper<'a>(
 // TODO: Don't write a wrapper function, just unwrap the struct inside of the same fnc.
 // Might help during debugging, if you have one function less to jump trough
 pub(crate) unsafe fn extract_return_type<'a>(
-    module: &'a ModuleCodegen<ModuleLlvm>,
+    llmod: &'a llvm::Module,
     fnc: &'a Value,
     u_type: &Type,
     fnc_name: String,
     ) -> &'a Value {
-    let llmod = module.module_llvm.llmod();
+    //let llmod = module.module_llvm.llmod();
     let context = llvm::LLVMGetModuleContext(llmod);
     let f_type = LLVMTypeOf(fnc);
     dbg!("Unpacking", fnc_name.clone());
@@ -591,18 +592,11 @@ pub(crate) unsafe fn extract_return_type<'a>(
 
     let inner_param_num = LLVMCountParams(fnc);
     let (outer_fnc, outer_bb, mut outer_args, _inner_args, c_inner_fnc_name) =
-        create_wrapper(module, fnc, u_type, fnc_name);
+        create_wrapper(llmod, fnc, u_type, fnc_name);
 
     if inner_param_num as usize != outer_args.len() {
         panic!("Args len shouldn't differ. Please report this.");
     }
-
-    // if let Err(e) = compare_param_types(outer_args.clone(), inner_args) {
-    //     panic!(
-    //         "Argument types differ between wrapper and wrapped function! {}",
-    //         e
-    //         );
-    // }
 
     let builder = LLVMCreateBuilderInContext(context);
     LLVMPositionBuilderAtEnd(builder, outer_bb);
@@ -635,14 +629,10 @@ pub(crate) unsafe fn extract_return_type<'a>(
 // As unsafe as it can be.
 #[allow(unused_variables)]
 #[allow(unused)]
-pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffItem, src_name: &String
-                              ) -> Result<(), FatalError> {
-    let llmod = module.module_llvm.llmod();
-    let autodiff_mode = tasks.mode;
-    //dbg!(llmod);
-    //LLVMDumpModule(llmod);
+pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, tasks: &LLVMDiffItem, source: String) -> Result<(), FatalError> {
 
-    let rust_name = src_name;
+    let autodiff_mode = tasks.mode;
+    let rust_name = source;
     let rust_name2 = &tasks.target;
 
     let args_activity = tasks.input_activity.clone();
@@ -652,7 +642,6 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
     let name2 = CString::new(rust_name2.clone()).unwrap();
     let src_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
     let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr());
-    //let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_c_str().as_ptr());
     assert!(src_fnc_tmp.is_some());
     assert!(target_fnc_tmp.is_some());
     dbg!("let there be Dragons (and Enzyme)");
@@ -679,7 +668,7 @@ pub(crate) unsafe fn enzyme_ad(module: &ModuleCodegen<ModuleLlvm>, tasks: &DiffI
         let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
         if num_elem_in_ret_struct == 1 {
             let u_type = LLVMTypeOf(target_fnc);
-            res = extract_return_type(module, res, u_type, rust_name2.clone());// TODO: check if name or name2
+            res = extract_return_type(llmod, res, u_type, rust_name2.clone());// TODO: check if name or name2
         }
     }
     dbg!(target_fnc);
@@ -704,13 +693,17 @@ pub(crate) unsafe fn differentiate(
     diff_fncs: Vec<(DiffItem, String)>,
     ) -> Result<(), FatalError> {
 
-    dbg!(&diff_fncs);
+    let llmod = module.module_llvm.llmod();
 
-    if !diff_fncs.is_empty() {
-        for (task, name) in diff_fncs {
-            let res = enzyme_ad(module, &task, &name);
-            assert!(res.is_ok());
-        }
+    dbg!(&diff_fncs);
+    let names: Vec<String> = diff_fncs.iter().map(|(_fnc, name)| name.clone()).collect();
+    let tasks = &module.module_llvm.lldiff_items;
+
+    dbg!(names.len());
+    dbg!(tasks.len());
+    for (task, name) in tasks.iter().zip(names) {
+        let res = enzyme_ad(llmod, &task, name);
+        assert!(res.is_ok());
     }
 
     Ok(())
@@ -897,15 +890,6 @@ pub(crate) unsafe fn optimize(
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
     }
-    // let fncs = &module.module_llvm.diff_fncs;
-    // if !fncs.is_empty() {
-    //     dbg!(&fncs);
-    //     for (task, name) in fncs {
-    //         let res = enzyme_ad(module, task, name);
-    //         assert!(res.is_ok());
-    //     }
-    // }
-
 
     Ok(())
 }

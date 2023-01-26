@@ -128,12 +128,9 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
                 cx.debuginfo_finalize();
             }
 
-            //dbg!(&cx.instances.borrow());
             let out = tcx.autodiff_functions(()).into_iter()
                 .filter_map(|item| {
                     let instance = Instance::mono(tcx, item.source);
-                    // First step towards EnzymeTypeTree
-                    cx.get_enzyme_typtree(item.source);
                     let fnc: &Value = cx.instances.borrow().get(&instance)?;
                     let name = llvm::get_value_name(fnc);
                     let name = String::from_utf8(name.to_vec()).ok()?;

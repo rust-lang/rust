@@ -21,6 +21,7 @@ extern crate rustc_macros;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 
+use llvm_::TypeTree;
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -32,11 +33,13 @@ use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
+use rustc_hir::def_id::DefId;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::infer::unify_key::ToType;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::metadata::DiffItem;
+use rustc_middle::ty::{TyCtxt, self, Ty};
+use rustc_middle::metadata::{DiffItem, DiffMode, DiffActivity};
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -246,7 +249,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         cgcx: &CodegenContext<Self>,
         module: &ModuleCodegen<Self::Module>,
         diff_fncs: Vec<(DiffItem, String)>,
-    ) -> Result<(), FatalError> {
+        ) -> Result<(), FatalError> {
         unsafe {
             back::write::differentiate(module, cgcx, diff_fncs)
         }
@@ -396,12 +399,65 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 }
 
+pub fn get_enzyme_typtree(id: DefId, tcx: TyCtxt<'_>, llcx: &'_ llvm::Context) -> TypeTree {
+    let mut tt = TypeTree::new();
+    let fn_ty: Ty<'_> = tcx.type_of(id);
+    if !fn_ty.is_fn() {
+        return tt;
+    }
+    dbg!(fn_ty);
+    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
+    let tmp = fnc_binder.no_bound_vars();
+    dbg!(tmp.is_some());
+    let tmp_f32_type = ty::FloatTy::F32;
+    let tmp_f64_type = ty::FloatTy::F64;
+    let f32_type = ty::FloatVarValue(tmp_f32_type);
+    let f64_type = ty::FloatVarValue(tmp_f64_type);
+
+    if tmp.is_some() {
+        let x: ty::FnSig<'_> = tmp.unwrap();
+        dbg!(x);
+        let output: Ty<'_> = x.output();
+        dbg!(output);
+        if output.is_floating_point() {
+            let isf32 = output == f32_type.to_type(tcx);
+            let isf64 = output == f64_type.to_type(tcx);
+            if isf32 {
+                tt = TypeTree::from_type(llvm::CConcreteType::DT_Float, llcx)
+            } else if isf64 {
+                tt = TypeTree::from_type(llvm::CConcreteType::DT_Double, llcx)
+            } else {
+                panic!("floatTy scalar that is neither f32 nor f64");
+            }
+            let max = output.numeric_max_val(tcx);
+            dbg!(max);
+        }
+        let inputs = x.inputs();
+        for input in inputs {
+            dbg!(input);
+        }
+    }
+    return tt;
+}
+
+
+pub struct LLVMDiffItem {
+    pub source: DefId,
+    pub target: String,
+    pub mode: DiffMode,
+    pub ret_tt: TypeTree,
+    pub ret_activity: DiffActivity,
+    pub input_tt: Vec<TypeTree>,
+    pub input_activity: Vec<DiffActivity>,
+}
+
 // Important! Enzyme
 #[allow(dead_code)]
 pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
     tm: &'static mut llvm::TargetMachine,
+    lldiff_items: Vec<LLVMDiffItem>,
 }
 
 unsafe impl Send for ModuleLlvm {}
@@ -412,7 +468,26 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name) }
+            //let tmp: Vec<DiffItem> = tcx.autodiff_functions();
+            let out = tcx.autodiff_functions(()).into_iter()
+                .map(|item| {
+                    LLVMDiffItem {
+                        ret_tt: TypeTree::new(),
+                        input_tt: vec![],
+                        source: item.source,
+                        target: item.target.clone(),
+                        mode: item.mode,
+                        ret_activity: item.ret_activity,
+                        input_activity: item.input_activity.clone(),
+
+                    }
+                })
+            .collect::<Vec<_>>();
+            // pub target: String,
+            // pub mode: DiffMode,
+            // pub ret_activity: DiffActivity,
+            // pub input_activity: Vec<DiffActivity>,
+            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name), lldiff_items: out }
         }
     }
 
@@ -420,7 +495,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess) }
+            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess), lldiff_items: vec![] }
         }
     }
 
@@ -442,7 +517,8 @@ impl ModuleLlvm {
                 }
             };
 
-            Ok(ModuleLlvm { llmod_raw, llcx, tm })
+
+            Ok(ModuleLlvm { llmod_raw, llcx, tm, lldiff_items: vec![] })
         }
     }
 
