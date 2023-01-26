@@ -24,12 +24,12 @@ pub struct DrainFilter<
     T,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-    const COOP_PREFERRED: bool = true,
+    const COOP_PREF: bool = true,
 > where
     F: FnMut(&mut T) -> bool,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
-    pub(super) vec: &'a mut Vec<T, A, COOP_PREFERRED>,
+    pub(super) vec: &'a mut Vec<T, A, COOP_PREF>,
     /// The index of the item that will be inspected by the next call to `next`.
     pub(super) idx: usize,
     /// The number of items that have been drained (removed) thus far.
@@ -46,10 +46,10 @@ pub struct DrainFilter<
     pub(super) panic_flag: bool,
 }
 
-impl<T, F, A: Allocator, const COOP_PREFERRED: bool> DrainFilter<'_, T, F, A, COOP_PREFERRED>
+impl<T, F, A: Allocator, const COOP_PREF: bool> DrainFilter<'_, T, F, A, COOP_PREF>
 where
     F: FnMut(&mut T) -> bool,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -115,11 +115,11 @@ where
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator, const COOP_PREFERRED: bool> Iterator
-    for DrainFilter<'_, T, F, A, COOP_PREFERRED>
+impl<T, F, A: Allocator, const COOP_PREF: bool> Iterator
+    for DrainFilter<'_, T, F, A, COOP_PREF>
 where
     F: FnMut(&mut T) -> bool,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     type Item = T;
 
@@ -155,26 +155,26 @@ where
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator, const COOP_PREFERRED: bool> Drop
-    for DrainFilter<'_, T, F, A, COOP_PREFERRED>
+impl<T, F, A: Allocator, const COOP_PREF: bool> Drop
+    for DrainFilter<'_, T, F, A, COOP_PREF>
 where
     F: FnMut(&mut T) -> bool,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     fn drop(&mut self) {
-        struct BackshiftOnDrop<'a, 'b, T, F, A: Allocator, const COOP_PREFERRED: bool>
+        struct BackshiftOnDrop<'a, 'b, T, F, A: Allocator, const COOP_PREF: bool>
         where
             F: FnMut(&mut T) -> bool,
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
         {
-            drain: &'b mut DrainFilter<'a, T, F, A, COOP_PREFERRED>,
+            drain: &'b mut DrainFilter<'a, T, F, A, COOP_PREF>,
         }
 
-        impl<'a, 'b, T, F, A: Allocator, const COOP_PREFERRED: bool> Drop
-            for BackshiftOnDrop<'a, 'b, T, F, A, COOP_PREFERRED>
+        impl<'a, 'b, T, F, A: Allocator, const COOP_PREF: bool> Drop
+            for BackshiftOnDrop<'a, 'b, T, F, A, COOP_PREF>
         where
             F: FnMut(&mut T) -> bool,
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
         {
             fn drop(&mut self) {
                 unsafe {

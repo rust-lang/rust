@@ -398,13 +398,13 @@ fn slice_write_vectored(
 }
 
 /// Reserves the required space, and pads the vec with 0s if necessary.
-fn reserve_and_pad<A: Allocator, const COOP_PREFERRED: bool>(
+fn reserve_and_pad<A: Allocator, const COOP_PREF: bool>(
     pos_mut: &mut u64,
-    vec: &mut Vec<u8, A, COOP_PREFERRED>,
+    vec: &mut Vec<u8, A, COOP_PREF>,
     buf_len: usize,
 ) -> io::Result<usize>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     let pos: usize = (*pos_mut).try_into().map_err(|_| {
         io::const_io_error!(
@@ -444,14 +444,14 @@ where
 
 /// Writes the slice to the vec without allocating
 /// # Safety: vec must have buf.len() spare capacity
-unsafe fn vec_write_unchecked<A, const COOP_PREFERRED: bool>(
+unsafe fn vec_write_unchecked<A, const COOP_PREF: bool>(
     pos: usize,
-    vec: &mut Vec<u8, A, COOP_PREFERRED>,
+    vec: &mut Vec<u8, A, COOP_PREF>,
     buf: &[u8],
 ) -> usize
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     debug_assert!(vec.capacity() >= pos + buf.len());
     vec.as_mut_ptr().add(pos).copy_from(buf.as_ptr(), buf.len());
@@ -467,14 +467,14 @@ where
 /// This also allows for the vec body to be empty, but with a position of N.
 /// This means that [`Write`] will pad the vec with 0 initially,
 /// before writing anything from that point
-fn vec_write<A, const COOP_PREFERRED: bool>(
+fn vec_write<A, const COOP_PREF: bool>(
     pos_mut: &mut u64,
-    vec: &mut Vec<u8, A, COOP_PREFERRED>,
+    vec: &mut Vec<u8, A, COOP_PREF>,
     buf: &[u8],
 ) -> io::Result<usize>
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     let buf_len = buf.len();
     let mut pos = reserve_and_pad(pos_mut, vec, buf_len)?;
@@ -503,14 +503,14 @@ where
 /// This also allows for the vec body to be empty, but with a position of N.
 /// This means that [`Write`] will pad the vec with 0 initially,
 /// before writing anything from that point
-fn vec_write_vectored<A, const COOP_PREFERRED: bool>(
+fn vec_write_vectored<A, const COOP_PREF: bool>(
     pos_mut: &mut u64,
-    vec: &mut Vec<u8, A, COOP_PREFERRED>,
+    vec: &mut Vec<u8, A, COOP_PREF>,
     bufs: &[IoSlice<'_>],
 ) -> io::Result<usize>
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     // For safety reasons, we don't want this sum to overflow ever.
     // If this saturates, the reserve should panic to avoid any unsound writing.
@@ -558,10 +558,10 @@ impl Write for Cursor<&mut [u8]> {
 }
 
 #[stable(feature = "cursor_mut_vec", since = "1.25.0")]
-impl<A, const COOP_PREFERRED: bool> Write for Cursor<&mut Vec<u8, A, COOP_PREFERRED>>
+impl<A, const COOP_PREF: bool> Write for Cursor<&mut Vec<u8, A, COOP_PREF>>
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, self.inner, buf)
@@ -583,10 +583,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, const COOP_PREFERRED: bool> Write for Cursor<Vec<u8, A, COOP_PREFERRED>>
+impl<A, const COOP_PREF: bool> Write for Cursor<Vec<u8, A, COOP_PREF>>
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, &mut self.inner, buf)

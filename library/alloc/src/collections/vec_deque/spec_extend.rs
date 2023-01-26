@@ -13,11 +13,11 @@ pub(super) trait SpecExtend<T, I> {
     fn spec_extend(&mut self, iter: I);
 }
 
-impl<T, I, A: Allocator, const COOP_PREFERRED: bool> SpecExtend<T, I>
-    for VecDeque<T, A, COOP_PREFERRED>
+impl<T, I, A: Allocator, const COOP_PREF: bool> SpecExtend<T, I>
+    for VecDeque<T, A, COOP_PREF>
 where
     I: Iterator<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     default fn spec_extend(&mut self, mut iter: I) {
         // This function should be the moral equivalent of:
@@ -27,11 +27,11 @@ where
         // }
 
         // May only be called if `deque.len() < deque.capacity()`
-        unsafe fn push_unchecked<T, A: Allocator, const COOP_PREFERRED: bool>(
-            deque: &mut VecDeque<T, A, COOP_PREFERRED>,
+        unsafe fn push_unchecked<T, A: Allocator, const COOP_PREF: bool>(
+            deque: &mut VecDeque<T, A, COOP_PREF>,
             element: T,
         ) where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
         {
             // SAFETY: Because of the precondition, it's guaranteed that there is space
             // in the logical array after the last element.
@@ -59,11 +59,11 @@ where
     }
 }
 
-impl<T, I, A: Allocator, const COOP_PREFERRED: bool> SpecExtend<T, I>
-    for VecDeque<T, A, COOP_PREFERRED>
+impl<T, I, A: Allocator, const COOP_PREF: bool> SpecExtend<T, I>
+    for VecDeque<T, A, COOP_PREF>
 where
     I: TrustedLen<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     default fn spec_extend(&mut self, iter: I) {
         // This is the case for a TrustedLen iterator.
@@ -96,10 +96,10 @@ where
     }
 }
 
-impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecExtend<T, vec::IntoIter<T>>
-    for VecDeque<T, A, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREF: bool> SpecExtend<T, vec::IntoIter<T>>
+    for VecDeque<T, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     fn spec_extend(&mut self, mut iterator: vec::IntoIter<T>) {
         let slice = iterator.as_slice();
@@ -113,23 +113,23 @@ where
     }
 }
 
-impl<'a, T: 'a, I, A: Allocator, const COOP_PREFERRED: bool> SpecExtend<&'a T, I>
-    for VecDeque<T, A, COOP_PREFERRED>
+impl<'a, T: 'a, I, A: Allocator, const COOP_PREF: bool> SpecExtend<&'a T, I>
+    for VecDeque<T, A, COOP_PREF>
 where
     I: Iterator<Item = &'a T>,
     T: Copy,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     default fn spec_extend(&mut self, iterator: I) {
         self.spec_extend(iterator.copied())
     }
 }
 
-impl<'a, T: 'a, A: Allocator, const COOP_PREFERRED: bool> SpecExtend<&'a T, slice::Iter<'a, T>>
-    for VecDeque<T, A, COOP_PREFERRED>
+impl<'a, T: 'a, A: Allocator, const COOP_PREF: bool> SpecExtend<&'a T, slice::Iter<'a, T>>
+    for VecDeque<T, A, COOP_PREF>
 where
     T: Copy,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();

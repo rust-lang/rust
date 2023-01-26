@@ -1679,12 +1679,12 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_array_try_from_vec", since = "1.66.0")]
-impl<T, const N: usize, const COOP_PREFERRED: bool> TryFrom<Vec<T, Global, COOP_PREFERRED>>
+impl<T, const N: usize, const COOP_PREF: bool> TryFrom<Vec<T, Global, COOP_PREF>>
     for Box<[T; N]>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
 {
-    type Error = Vec<T, Global, COOP_PREFERRED>;
+    type Error = Vec<T, Global, COOP_PREF>;
 
     /// Attempts to convert a `Vec<T>` into a `Box<[T; N]>`.
     ///
@@ -1704,7 +1704,7 @@ where
     /// let state: Box<[f32; 100]> = vec![1.0; 100].try_into().unwrap();
     /// assert_eq!(state.len(), 100);
     /// ```
-    fn try_from(vec: Vec<T, Global, COOP_PREFERRED>) -> Result<Self, Self::Error> {
+    fn try_from(vec: Vec<T, Global, COOP_PREF>) -> Result<Self, Self::Error> {
         if vec.len() == N {
             let boxed_slice = vec.into_boxed_slice();
             Ok(unsafe { boxed_slice_as_array_unchecked(boxed_slice) })

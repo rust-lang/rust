@@ -20,13 +20,13 @@ pub struct Drain<
     'a,
     T: 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-    const COOP_PREFERRED: bool = { SHORT_TERM_VEC_PREFERS_COOP!() },
+    const COOP_PREF: bool = { SHORT_TERM_VEC_PREFERS_COOP!() },
 > where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     // We can't just use a &mut VecDeque<T, A>, as that would make Drain invariant over T
     // and we want it to be covariant instead
-    deque: NonNull<VecDeque<T, A, COOP_PREFERRED>>,
+    deque: NonNull<VecDeque<T, A, COOP_PREF>>,
     // drain_start is stored in deque.len
     drain_len: usize,
     // index into the logical array, not the physical one (always lies in [0..deque.len))
@@ -38,12 +38,12 @@ pub struct Drain<
     _marker: PhantomData<&'a T>,
 }
 
-impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> Drain<'a, T, A, COOP_PREFERRED>
+impl<'a, T, A: Allocator, const COOP_PREF: bool> Drain<'a, T, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     pub(super) unsafe fn new(
-        deque: &'a mut VecDeque<T, A, COOP_PREFERRED>,
+        deque: &'a mut VecDeque<T, A, COOP_PREF>,
         drain_start: usize,
         drain_len: usize,
     ) -> Self {
@@ -95,10 +95,10 @@ where
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug, A: Allocator, const COOP_PREFERRED: bool> fmt::Debug
-    for Drain<'_, T, A, COOP_PREFERRED>
+impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug
+    for Drain<'_, T, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain")
@@ -111,36 +111,36 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Sync, A: Allocator + Sync, const COOP_PREFERRED: bool> Sync
-    for Drain<'_, T, A, COOP_PREFERRED>
+unsafe impl<T: Sync, A: Allocator + Sync, const COOP_PREF: bool> Sync
+    for Drain<'_, T, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
 }
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Send, A: Allocator + Send, const COOP_PREFERRED: bool> Send
-    for Drain<'_, T, A, COOP_PREFERRED>
+unsafe impl<T: Send, A: Allocator + Send, const COOP_PREF: bool> Send
+    for Drain<'_, T, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> Drop for Drain<'_, T, A, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREF: bool> Drop for Drain<'_, T, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T, A: Allocator, const COOP_PREFERRED: bool>(
-            &'r mut Drain<'a, T, A, COOP_PREFERRED>,
+        struct DropGuard<'r, 'a, T, A: Allocator, const COOP_PREF: bool>(
+            &'r mut Drain<'a, T, A, COOP_PREF>,
         )
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:;
+            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:;
 
-        impl<'r, 'a, T, A: Allocator, const COOP_PREFERRED: bool> Drop
-            for DropGuard<'r, 'a, T, A, COOP_PREFERRED>
+        impl<'r, 'a, T, A: Allocator, const COOP_PREF: bool> Drop
+            for DropGuard<'r, 'a, T, A, COOP_PREF>
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
         {
             fn drop(&mut self) {
                 if self.0.remaining != 0 {
@@ -222,9 +222,9 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> Iterator for Drain<'_, T, A, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREF: bool> Iterator for Drain<'_, T, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     type Item = T;
 
@@ -247,10 +247,10 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator
-    for Drain<'_, T, A, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREF: bool> DoubleEndedIterator
+    for Drain<'_, T, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -264,15 +264,15 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator
-    for Drain<'_, T, A, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREF: bool> ExactSizeIterator
+    for Drain<'_, T, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> FusedIterator for Drain<'_, T, A, COOP_PREFERRED> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
+impl<T, A: Allocator, const COOP_PREF: bool> FusedIterator for Drain<'_, T, A, COOP_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
 {
 }

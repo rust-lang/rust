@@ -155,7 +155,7 @@ use crate::alloc::Global;
 use crate::collections::TryReserveError;
 use crate::slice;
 use crate::vec::{self, AsVecIntoIter, Vec};
-use crate::DEFAULT_COOP_PREFERRED;
+use crate::DEFAULT_COOP_PREF;
 
 use super::SpecExtend;
 
@@ -1525,17 +1525,17 @@ unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
 /// [`drain`]: BinaryHeap::drain
 #[stable(feature = "drain", since = "1.6.0")]
 #[derive(Debug)]
-pub struct Drain<'a, T: 'a, const COOP_PREFERRED: bool>
+pub struct Drain<'a, T: 'a, const COOP_PREF: bool>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
 {
-    iter: vec::Drain<'a, T, Global, COOP_PREFERRED>,
+    iter: vec::Drain<'a, T, Global, COOP_PREF>,
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, const COOP_PREFERRED: bool> Iterator for Drain<'_, T, COOP_PREFERRED>
+impl<T, const COOP_PREF: bool> Iterator for Drain<'_, T, COOP_PREF>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
 {
     type Item = T;
 
@@ -1551,9 +1551,9 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, const COOP_PREFERRED: bool> DoubleEndedIterator for Drain<'_, T, COOP_PREFERRED>
+impl<T, const COOP_PREF: bool> DoubleEndedIterator for Drain<'_, T, COOP_PREF>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
 {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1562,9 +1562,9 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, const COOP_PREFERRED: bool> ExactSizeIterator for Drain<'_, T, COOP_PREFERRED>
+impl<T, const COOP_PREF: bool> ExactSizeIterator for Drain<'_, T, COOP_PREF>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
 {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
@@ -1572,8 +1572,8 @@ where
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, const COOP_PREFERRED: bool> FusedIterator for Drain<'_, T, COOP_PREFERRED> where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:
+impl<T, const COOP_PREF: bool> FusedIterator for Drain<'_, T, COOP_PREF> where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:
 {
 }
 
@@ -1664,7 +1664,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 #[allow(unused_braces)]
-impl<T> From<BinaryHeap<T>> for Vec<T, Global, { DEFAULT_COOP_PREFERRED!() }> {
+impl<T> From<BinaryHeap<T>> for Vec<T, Global, { DEFAULT_COOP_PREF!() }> {
     /// Converts a `BinaryHeap<T>` into a `Vec<T>`.
     ///
     /// This conversion requires no data movement or allocation, and has
