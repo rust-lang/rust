@@ -128,3 +128,9 @@ rustdoc_bare_url_not_hyperlink =
     this URL is not a hyperlink
     .note = bare URLs are not automatically turned into clickable links
     .suggestion = use an automatic link instead
+
+rustdoc_missing_doc_code_examples =
+    missing code example in this documentation
+
+rustdoc_private_doc_tests =
+    documentation test in private item

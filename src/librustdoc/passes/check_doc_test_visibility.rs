@@ -9,6 +9,7 @@ use super::Pass;
 use crate::clean;
 use crate::clean::*;
 use crate::core::DocContext;
+use crate::errors::{MissingDocCodeExamples, PrivateDocTests};
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
 use crate::visit::DocVisitor;
 use crate::visit_ast::inherits_doc_hidden;
@@ -120,24 +121,22 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
     if tests.found_tests == 0 && cx.tcx.features().rustdoc_missing_doc_code_examples {
         if should_have_doc_example(cx, item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
-            let sp = item.attr_span(cx.tcx);
-            cx.tcx.struct_span_lint_hir(
+            let span = item.attr_span(cx.tcx);
+            cx.tcx.emit_spanned_lint(
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
-                sp,
-                "missing code example in this documentation",
-                |lint| lint,
+                span,
+                MissingDocCodeExamples,
             );
         }
     } else if tests.found_tests > 0
         && !cx.cache.effective_visibilities.is_exported(cx.tcx, item.item_id.expect_def_id())
     {
-        cx.tcx.struct_span_lint_hir(
+        cx.tcx.emit_spanned_lint(
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
             item.attr_span(cx.tcx),
-            "documentation test in private item",
-            |lint| lint,
+            PrivateDocTests,
         );
     }
 }

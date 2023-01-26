@@ -3,7 +3,7 @@ use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::Span;
 
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Diagnostic)]
 #[diag(rustdoc_compilation_failed)]
@@ -248,3 +248,11 @@ pub struct BareUrlNotHyperlink<'a> {
     pub span: Span,
     pub url: &'a str,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(rustdoc_missing_doc_code_examples)]
+pub struct MissingDocCodeExamples;
+
+#[derive(LintDiagnostic)]
+#[diag(rustdoc_private_doc_tests)]
+pub struct PrivateDocTests;
