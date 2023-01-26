@@ -335,9 +335,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Tuple(_)
             | ty::Param(_)
             | ty::Placeholder(..)
-            | ty::Infer(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
-            ty::Bound(..) => bug!("unexpected bound type: {goal:?}"),
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
             ty::Alias(_, alias_ty) => alias_ty,
         };
 
@@ -385,9 +386,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Tuple(_)
             | ty::Param(_)
             | ty::Placeholder(..)
-            | ty::Infer(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
-            ty::Bound(..) => bug!("unexpected bound type: {goal:?}"),
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
             ty::Dynamic(bounds, ..) => bounds,
         };
 
