@@ -131,6 +131,7 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                         && simplified_self_ty.and_then(|ty| ty.def()).map_or(true, |ty_def_id| {
                             self.resolver.cstore().visibility_untracked(ty_def_id).is_public()
                         })
+                        && !self.resolver.cstore().is_doc_hidden_untracked(impl_def_id)
                     {
                         if self.visited_mods.insert(trait_def_id) {
                             self.resolve_doc_links_extern_impl(trait_def_id, false);
@@ -139,7 +140,9 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                     }
                 }
                 for (ty_def_id, impl_def_id) in all_inherent_impls {
-                    if self.resolver.cstore().visibility_untracked(ty_def_id).is_public() {
+                    if self.resolver.cstore().visibility_untracked(ty_def_id).is_public()
+                        && !self.resolver.cstore().is_doc_hidden_untracked(impl_def_id)
+                    {
                         self.resolve_doc_links_extern_impl(impl_def_id, true);
                     }
                 }
@@ -165,7 +168,9 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
             self.resolver.cstore().associated_item_def_ids_untracked(def_id, self.resolver.sess()),
         );
         for assoc_def_id in assoc_item_def_ids {
-            if !is_inherent || self.resolver.cstore().visibility_untracked(assoc_def_id).is_public()
+            if (!is_inherent
+                || self.resolver.cstore().visibility_untracked(assoc_def_id).is_public())
+                && !self.resolver.cstore().is_doc_hidden_untracked(assoc_def_id)
             {
                 self.resolve_doc_links_extern_outer_fixme(assoc_def_id, def_id);
             }
