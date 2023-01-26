@@ -244,7 +244,7 @@ fn adjust_for_rust_scalar<'tcx>(
     }
 
     // Only pointer types handled below.
-    let Scalar::Initialized { value: Pointer, valid_range} = scalar else { return };
+    let Scalar::Initialized { value: Pointer(_), valid_range} = scalar else { return };
 
     if !valid_range.contains(0) {
         attrs.set(ArgAttribute::NonNull);
@@ -479,7 +479,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
             }
 
             let size = arg.layout.size;
-            if arg.layout.is_unsized() || size > Pointer.size(cx) {
+            if arg.layout.is_unsized() || size > Pointer(AddressSpace::DATA).size(cx) {
                 arg.make_indirect();
             } else {
                 // We want to pass small aggregates as immediates, but using

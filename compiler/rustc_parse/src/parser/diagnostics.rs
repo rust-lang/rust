@@ -2372,7 +2372,7 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    pub(crate) fn maybe_recover_colon_colon_in_pat_typo(
+    pub(crate) fn maybe_recover_colon_colon_in_pat_typo_or_anon_enum(
         &mut self,
         mut first_pat: P<Pat>,
         expected: Expected,
@@ -2383,26 +2383,41 @@ impl<'a> Parser<'a> {
         if !matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
             || !self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
         {
+            let mut snapshot_type = self.create_snapshot_for_diagnostic();
+            snapshot_type.bump(); // `:`
+            match snapshot_type.parse_ty() {
+                Err(inner_err) => {
+                    inner_err.cancel();
+                }
+                Ok(ty) => {
+                    let Err(mut err) = self.expected_one_of_not_found(&[], &[]) else {
+                        return first_pat;
+                    };
+                    err.span_label(ty.span, "specifying the type of a pattern isn't supported");
+                    self.restore_snapshot(snapshot_type);
+                    let span = first_pat.span.to(ty.span);
+                    first_pat = self.mk_pat(span, PatKind::Wild);
+                    err.emit();
+                }
+            }
             return first_pat;
         }
         // The pattern looks like it might be a path with a `::` -> `:` typo:
         // `match foo { bar:baz => {} }`
-        let span = self.token.span;
+        let colon_span = self.token.span;
         // We only emit "unexpected `:`" error here if we can successfully parse the
         // whole pattern correctly in that case.
-        let snapshot = self.create_snapshot_for_diagnostic();
+        let mut snapshot_pat = self.create_snapshot_for_diagnostic();
+        let mut snapshot_type = self.create_snapshot_for_diagnostic();
 
         // Create error for "unexpected `:`".
         match self.expected_one_of_not_found(&[], &[]) {
             Err(mut err) => {
-                self.bump(); // Skip the `:`.
-                match self.parse_pat_no_top_alt(expected) {
+                snapshot_pat.bump(); // Skip the `:`.
+                snapshot_type.bump(); // Skip the `:`.
+                match snapshot_pat.parse_pat_no_top_alt(expected) {
                     Err(inner_err) => {
-                        // Carry on as if we had not done anything, callers will emit a
-                        // reasonable error.
                         inner_err.cancel();
-                        err.cancel();
-                        self.restore_snapshot(snapshot);
                     }
                     Ok(mut pat) => {
                         // We've parsed the rest of the pattern.
@@ -2466,8 +2481,8 @@ impl<'a> Parser<'a> {
                             _ => {}
                         }
                         if show_sugg {
-                            err.span_suggestion(
-                                span,
+                            err.span_suggestion_verbose(
+                                colon_span.until(self.look_ahead(1, |t| t.span)),
                                 "maybe write a path separator here",
                                 "::",
                                 Applicability::MaybeIncorrect,
@@ -2475,13 +2490,24 @@ impl<'a> Parser<'a> {
                         } else {
                             first_pat = self.mk_pat(new_span, PatKind::Wild);
                         }
-                        err.emit();
+                        self.restore_snapshot(snapshot_pat);
                     }
                 }
+                match snapshot_type.parse_ty() {
+                    Err(inner_err) => {
+                        inner_err.cancel();
+                    }
+                    Ok(ty) => {
+                        err.span_label(ty.span, "specifying the type of a pattern isn't supported");
+                        self.restore_snapshot(snapshot_type);
+                        let new_span = first_pat.span.to(ty.span);
+                        first_pat = self.mk_pat(new_span, PatKind::Wild);
+                    }
+                }
+                err.emit();
             }
             _ => {
                 // Carry on as if we had not done anything. This should be unreachable.
-                self.restore_snapshot(snapshot);
             }
         };
         first_pat

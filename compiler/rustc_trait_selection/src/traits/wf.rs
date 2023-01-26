@@ -4,8 +4,8 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
-use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::Span;
+use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_span::{Span, DUMMY_SP};
 
 use std::iter;
 /// Returns the set of obligations needed to make `arg` well-formed.
@@ -73,6 +73,34 @@ pub fn obligations<'tcx>(
     let result = wf.normalize(infcx);
     debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", arg, body_id, result);
     Some(result)
+}
+
+/// Compute the predicates that are required for a type to be well-formed.
+///
+/// This is only intended to be used in the new solver, since it does not
+/// take into account recursion depth or proper error-reporting spans.
+pub fn unnormalized_obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    arg: GenericArg<'tcx>,
+) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+    if let ty::GenericArgKind::Lifetime(..) = arg.unpack() {
+        return Some(vec![]);
+    }
+
+    debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
+
+    let mut wf = WfPredicates {
+        tcx: infcx.tcx,
+        param_env,
+        body_id: CRATE_DEF_ID,
+        span: DUMMY_SP,
+        out: vec![],
+        recursion_depth: 0,
+        item: None,
+    };
+    wf.compute(arg);
+    Some(wf.out)
 }
 
 /// Returns the obligations that make this trait reference

@@ -1,13 +1,14 @@
 use std::mem;
 
-use super::{Certainty, InferCtxtEvalExt};
-use rustc_infer::{
-    infer::InferCtxt,
-    traits::{
-        query::NoSolution, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
-        SelectionError, TraitEngine,
-    },
+use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::{
+    query::NoSolution, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
+    PredicateObligation, SelectionError, TraitEngine,
 };
+use rustc_middle::ty;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+
+use super::{Certainty, InferCtxtEvalExt};
 
 /// A trait engine using the new trait solver.
 ///
@@ -70,9 +71,55 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                     Err(NoSolution) => {
                         errors.push(FulfillmentError {
                             obligation: obligation.clone(),
-                            code: FulfillmentErrorCode::CodeSelectionError(
-                                SelectionError::Unimplemented,
-                            ),
+                            code: match goal.predicate.kind().skip_binder() {
+                                ty::PredicateKind::Clause(ty::Clause::Projection(_)) => {
+                                    FulfillmentErrorCode::CodeProjectionError(
+                                        // FIXME: This could be a `Sorts` if the term is a type
+                                        MismatchedProjectionTypes { err: TypeError::Mismatch },
+                                    )
+                                }
+                                ty::PredicateKind::Subtype(pred) => {
+                                    let (a, b) = infcx.replace_bound_vars_with_placeholders(
+                                        goal.predicate.kind().rebind((pred.a, pred.b)),
+                                    );
+                                    let expected_found = ExpectedFound::new(true, a, b);
+                                    FulfillmentErrorCode::CodeSubtypeError(
+                                        expected_found,
+                                        TypeError::Sorts(expected_found),
+                                    )
+                                }
+                                ty::PredicateKind::Coerce(pred) => {
+                                    let (a, b) = infcx.replace_bound_vars_with_placeholders(
+                                        goal.predicate.kind().rebind((pred.a, pred.b)),
+                                    );
+                                    let expected_found = ExpectedFound::new(false, a, b);
+                                    FulfillmentErrorCode::CodeSubtypeError(
+                                        expected_found,
+                                        TypeError::Sorts(expected_found),
+                                    )
+                                }
+                                ty::PredicateKind::ConstEquate(a, b) => {
+                                    let (a, b) = infcx.replace_bound_vars_with_placeholders(
+                                        goal.predicate.kind().rebind((a, b)),
+                                    );
+                                    let expected_found = ExpectedFound::new(true, a, b);
+                                    FulfillmentErrorCode::CodeConstEquateError(
+                                        expected_found,
+                                        TypeError::ConstMismatch(expected_found),
+                                    )
+                                }
+                                ty::PredicateKind::Clause(_)
+                                | ty::PredicateKind::WellFormed(_)
+                                | ty::PredicateKind::ObjectSafe(_)
+                                | ty::PredicateKind::ClosureKind(_, _, _)
+                                | ty::PredicateKind::ConstEvaluatable(_)
+                                | ty::PredicateKind::TypeWellFormedFromEnv(_)
+                                | ty::PredicateKind::Ambiguous => {
+                                    FulfillmentErrorCode::CodeSelectionError(
+                                        SelectionError::Unimplemented,
+                                    )
+                                }
+                            },
                             root_obligation: obligation,
                         });
                         continue;

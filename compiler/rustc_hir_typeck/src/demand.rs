@@ -62,7 +62,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_floating_point_literal(err, expr, expected)
             || self.note_result_coercion(err, expr, expected, expr_ty);
         if !suggested {
-            self.point_at_expr_source_of_inferred_type(err, expr, expr_ty, expected);
+            self.point_at_expr_source_of_inferred_type(err, expr, expr_ty, expected, expr.span);
         }
     }
 
@@ -222,6 +222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         found: Ty<'tcx>,
         expected: Ty<'tcx>,
+        mismatch_span: Span,
     ) -> bool {
         let map = self.tcx.hir();
 
@@ -270,7 +271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lt_op: |_| self.tcx.lifetimes.re_erased,
             ct_op: |c| c,
             ty_op: |t| match *t.kind() {
-                ty::Infer(ty::TyVar(vid)) => self.tcx.mk_ty_infer(ty::TyVar(self.root_var(vid))),
+                ty::Infer(ty::TyVar(_)) => self.tcx.mk_ty_var(ty::TyVid::from_u32(0)),
                 ty::Infer(ty::IntVar(_)) => {
                     self.tcx.mk_ty_infer(ty::IntVar(ty::IntVid { index: 0 }))
                 }
@@ -281,7 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         };
         let mut prev = eraser.fold_ty(ty);
-        let mut prev_span = None;
+        let mut prev_span: Option<Span> = None;
 
         for binding in expr_finder.uses {
             // In every expression where the binding is referenced, we will look at that
@@ -333,13 +334,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // inferred in this method call.
                             let arg = &args[i];
                             let arg_ty = self.node_ty(arg.hir_id);
-                            err.span_label(
-                                arg.span,
-                                &format!(
-                                    "this is of type `{arg_ty}`, which causes `{ident}` to be \
-                                     inferred as `{ty}`",
-                                ),
-                            );
+                            if !arg.span.overlaps(mismatch_span) {
+                                err.span_label(
+                                    arg.span,
+                                    &format!(
+                                        "this is of type `{arg_ty}`, which causes `{ident}` to be \
+                                        inferred as `{ty}`",
+                                    ),
+                                );
+                            }
                             param_args.insert(param_ty, (arg, arg_ty));
                         }
                     }
@@ -382,12 +385,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self.can_eq(self.param_env, ty, found).is_ok()
                 {
                     // We only point at the first place where the found type was inferred.
+                    if !segment.ident.span.overlaps(mismatch_span) {
                     err.span_label(
                         segment.ident.span,
                         with_forced_trimmed_paths!(format!(
                             "here the type of `{ident}` is inferred to be `{ty}`",
                         )),
-                    );
+                    );}
                     break;
                 } else if !param_args.is_empty() {
                     break;
@@ -406,12 +410,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We use the *previous* span because if the type is known *here* it means
                     // it was *evaluated earlier*. We don't do this for method calls because we
                     // evaluate the method's self type eagerly, but not in any other case.
-                    err.span_label(
-                        span,
-                        with_forced_trimmed_paths!(format!(
-                            "here the type of `{ident}` is inferred to be `{ty}`",
-                        )),
-                    );
+                    if !span.overlaps(mismatch_span) {
+                        err.span_label(
+                            span,
+                            with_forced_trimmed_paths!(format!(
+                                "here the type of `{ident}` is inferred to be `{ty}`",
+                            )),
+                        );
+                    }
                     break;
                 }
                 prev = ty;

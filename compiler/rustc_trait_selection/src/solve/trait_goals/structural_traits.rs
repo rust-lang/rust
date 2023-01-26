@@ -24,15 +24,16 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Never
         | ty::Char => Ok(vec![]),
 
-        ty::Placeholder(..)
-        | ty::Dynamic(..)
+        ty::Dynamic(..)
         | ty::Param(..)
         | ty::Foreign(..)
         | ty::Alias(ty::Projection, ..)
-        | ty::Bound(..)
-        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
+        | ty::Placeholder(..) => Err(NoSolution),
 
-        ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            bug!("unexpected type `{ty}`")
+        }
 
         ty::RawPtr(ty::TypeAndMut { ty: element_ty, .. }) | ty::Ref(_, element_ty, _) => {
             Ok(vec![element_ty])
@@ -99,11 +100,12 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Foreign(..)
         | ty::Alias(..)
         | ty::Param(_)
-        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
+        | ty::Placeholder(..) => Err(NoSolution),
 
-        ty::Placeholder(..)
-        | ty::Bound(..)
-        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            bug!("unexpected type `{ty}`")
+        }
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
@@ -148,11 +150,12 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         | ty::Adt(_, _)
         | ty::Alias(_, _)
         | ty::Param(_)
-        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
+        | ty::Placeholder(..) => Err(NoSolution),
 
-        ty::Placeholder(..)
-        | ty::Bound(..)
-        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            bug!("unexpected type `{ty}`")
+        }
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
@@ -173,6 +176,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     }
 }
 
+// Returns a binder of the tupled inputs types and output type from a builtin callable type.
 pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     tcx: TyCtxt<'tcx>,
     self_ty: Ty<'tcx>,
@@ -215,9 +219,13 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Tuple(_)
         | ty::Alias(_, _)
         | ty::Param(_)
-        | ty::Placeholder(_)
-        | ty::Bound(_, _)
-        | ty::Infer(_)
+        | ty::Placeholder(..)
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Error(_) => Err(NoSolution),
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            bug!("unexpected type `{self_ty}`")
+        }
     }
 }
