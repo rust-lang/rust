@@ -361,6 +361,13 @@ rustc_queries! {
         desc { |tcx| "constructing THIR tree for `{}`", tcx.def_path_str(key.did.to_def_id()) }
     }
 
+    /// Create a list-like THIR representation for debugging.
+    query thir_flat(key: ty::WithOptConstParam<LocalDefId>) -> String {
+        no_hash
+        arena_cache
+        desc { |tcx| "constructing flat THIR representation for `{}`", tcx.def_path_str(key.did.to_def_id()) }
+    }
+
     /// Set of all the `DefId`s in this crate that have MIR associated with
     /// them. This includes all the body owners, but also things like struct
     /// constructors.

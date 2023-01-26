@@ -498,6 +498,21 @@ fn print_with_analysis(tcx: TyCtxt<'_>, ppm: PpMode) -> Result<(), ErrorGuarante
             out
         }
 
+        ThirFlat => {
+            let mut out = String::new();
+            abort_on_err(rustc_hir_analysis::check_crate(tcx), tcx.sess);
+            debug!("pretty printing THIR flat");
+            for did in tcx.hir().body_owners() {
+                let _ = writeln!(
+                    out,
+                    "{:?}:\n{}\n",
+                    did,
+                    tcx.thir_flat(ty::WithOptConstParam::unknown(did))
+                );
+            }
+            out
+        }
+
         _ => unreachable!(),
     };
 
