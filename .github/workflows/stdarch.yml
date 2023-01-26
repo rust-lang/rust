@@ -1,4 +1,4 @@
-name: CI with sysroot compiled in release mode
+name: stdarch tests with sysroot compiled in release mode
 
 on:
   - push
@@ -108,4 +108,9 @@ jobs:
 
     - name: Run tests
       run: |
-        ./test.sh --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }}
+        ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
+
+    - name: Run stdarch tests
+      run: |
+        cd build_sysroot/sysroot_src/library/stdarch/
+        CHANNEL=release TARGET=x86_64-unknown-linux-gnu ../../../../cargo.sh test
