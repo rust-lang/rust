@@ -211,13 +211,16 @@
 //!
 //! #### Statements
 //!  - Assign statements work via normal Rust assignment.
-//!  - [`Retag`] statements have an associated function.
+//!  - [`Retag`], [`StorageLive`], [`StorageDead`], [`Deinit`] statements have an associated function.
 //!
 //! #### Rvalues
 //!
 //!  - Operands implicitly convert to `Use` rvalues.
 //!  - `&`, `&mut`, `addr_of!`, and `addr_of_mut!` all work to create their associated rvalue.
-//!  - [`Discriminant`] has an associated function.
+//!  - [`Discriminant`] and [`Len`] have associated functions.
+//!  - Unary and binary operations use their normal Rust syntax - `a * b`, `!c`, etc.
+//!  - Checked binary operations are represented by wrapping the associated binop in [`Checked`].
+//!  - Array repetition syntax (`[foo; 10]`) creates the associated rvalue.
 //!
 //! #### Terminators
 //!
@@ -261,6 +264,9 @@ define!("mir_drop_and_replace", fn DropAndReplace<T>(place: T, value: T, goto: B
 define!("mir_call", fn Call<T>(place: T, goto: BasicBlock, call: T));
 define!("mir_storage_live", fn StorageLive<T>(local: T));
 define!("mir_storage_dead", fn StorageDead<T>(local: T));
+define!("mir_deinit", fn Deinit<T>(place: T));
+define!("mir_checked", fn Checked<T>(binop: T) -> (T, bool));
+define!("mir_len", fn Len<T>(place: T) -> usize);
 define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);

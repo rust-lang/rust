@@ -22,6 +22,9 @@ pub fn f(a: i32, b: bool) -> i32 {
         b = a <= a;
         b = a >= a;
         b = a > a;
+        let res = Checked(a + a);
+        b = res.1;
+        a = res.0;
         RET = a;
         Return()
     })
