@@ -253,7 +253,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             Int(i, false) => cx.type_from_unsigned_integer(i),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
-            Pointer => {
+            Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
                 let pointee =
                     if let Some(pointee) = self.pointee_info_at(cx, offset) {
@@ -262,7 +262,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
                     else {
                         cx.type_i8()
                     };
-                cx.type_ptr_to(pointee)
+                cx.type_ptr_to_ext(pointee, address_space)
             }
         }
     }

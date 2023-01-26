@@ -149,7 +149,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                     emit_va_arg(self, args[0], ret_ty)
                                 }
                             }
-                            Primitive::F64 | Primitive::Pointer => {
+                            Primitive::F64 | Primitive::Pointer(_) => {
                                 emit_va_arg(self, args[0], ret_ty)
                             }
                             // `va_arg` should never be used with the return type f32.

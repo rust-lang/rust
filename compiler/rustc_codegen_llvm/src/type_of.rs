@@ -7,7 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty, TypeVisitable};
-use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
+use rustc_target::abi::{Abi, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
 use smallvec::{smallvec, SmallVec};
@@ -312,14 +312,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             Int(i, _) => cx.type_from_integer(i),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
-            Pointer => {
+            Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
-                let (pointee, address_space) =
-                    if let Some(pointee) = self.pointee_info_at(cx, offset) {
-                        (cx.type_pointee_for_align(pointee.align), pointee.address_space)
-                    } else {
-                        (cx.type_i8(), AddressSpace::DATA)
-                    };
+                let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
+                    cx.type_pointee_for_align(pointee.align)
+                } else {
+                    cx.type_i8()
+                };
                 cx.type_ptr_to_ext(pointee, address_space)
             }
         }
