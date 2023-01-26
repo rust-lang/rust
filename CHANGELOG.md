@@ -4,13 +4,13 @@ All notable changes to this project will be documented in this file.
 See [Changelog Update](book/src/development/infrastructure/changelog_update.md) if you want to update this
 document.
 
-## Unreleased / In Rust Nightly
+## Unreleased / Beta / In Rust Nightly
 
 [d822110d...master](https://github.com/rust-lang/rust-clippy/compare/d822110d...master)
 
 ## Rust 1.67
 
-Current beta, released 2023-01-26
+Current stable, released 2023-01-26
 
 [4f142aa1...d822110d](https://github.com/rust-lang/rust-clippy/compare/4f142aa1...d822110d)
 
@@ -203,7 +203,7 @@ Current beta, released 2023-01-26
 
 ## Rust 1.66
 
-Current stable, released 2022-12-15
+Released 2022-12-15
 
 [b52fb523...4f142aa1](https://github.com/rust-lang/rust-clippy/compare/b52fb523...4f142aa1)
 
