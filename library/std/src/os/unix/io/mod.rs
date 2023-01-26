@@ -54,6 +54,16 @@
 //! Like boxes, `OwnedFd` values conceptually own the resource they point to,
 //! and free (close) it when they are dropped.
 //!
+//! ## Required file-descriptor flags
+//!
+//! On Unix platforms, file descriptors that don't have the `O_CLOEXEC` flag
+//! set may be implicitly leaked into spawned child processes. This can be
+//! violate I/O safety, when the a file descriptor held in one part of the code
+//! is not intended to be exposed to child processes, and a spawn in another
+//! part of the code unknowingly exposes it. Consequently, Rust code that
+//! produces new `OwnedFd` or `BorrowedFd` values must either set the
+//! `O_CLOEXEC` flag, or be marked `unsafe`.
+//!
 //! ## `/proc/self/mem` and similar OS features
 //!
 //! Some platforms have special files, such as `/proc/self/mem`, which

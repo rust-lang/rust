@@ -45,6 +45,19 @@
 //! Like boxes, `OwnedHandle` and `OwnedSocket` values conceptually own the
 //! resource they point to, and free (close) it when they are dropped.
 //!
+//! ## Required socket flags
+//!
+//! On Windows, sockets that don't have the `WSA_FLAG_OVERLAPPED` flag can't be
+//! passed to `WSASend` calls when a non-NULL `lpOverlapped` argument is
+//! provided. And sockets that don't have the `WSA_FLAG_NO_HANDLE_INHERIT`
+//! flag set may be implicitly leaked into spawned child processes. This can be
+//! violate I/O safety, when the a socket held in one part of the code is not
+//! intended to be exposed to child processes, and a spawn in another part of
+//! the code unknowingly exposes it. Consequently, Rust code that produces new
+//! `OwnedSocket` or `BorrowedSocket` values must either set the
+//! `WSA_FLAG_OVERLAPPED` and `WSA_FLAG_NO_HANDLE_INHERIT` flags, or be marked
+//! `unsafe`.
+//!
 //! [`BorrowedHandle<'a>`]: crate::os::windows::io::BorrowedHandle
 //! [`BorrowedSocket<'a>`]: crate::os::windows::io::BorrowedSocket
 
