@@ -192,6 +192,50 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         ecx.make_canonical_response(Certainty::Yes)
     }
+
+    fn consider_builtin_future_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let ty::Generator(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+            return Err(NoSolution);
+        };
+
+        // Generators are not futures unless they come from `async` desugaring
+        let tcx = ecx.tcx();
+        if !tcx.generator_is_async(def_id) {
+            return Err(NoSolution);
+        }
+
+        // Async generator unconditionally implement `Future`
+        ecx.make_canonical_response(Certainty::Yes)
+    }
+
+    fn consider_builtin_generator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Generator(def_id, substs, _) = *self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        // `async`-desugared generators do not implement the generator trait
+        let tcx = ecx.tcx();
+        if tcx.generator_is_async(def_id) {
+            return Err(NoSolution);
+        }
+
+        let generator = substs.as_generator();
+        Self::consider_assumption(
+            ecx,
+            goal,
+            ty::Binder::dummy(
+                tcx.mk_trait_ref(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
+            )
+            .to_predicate(tcx),
+        )
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {

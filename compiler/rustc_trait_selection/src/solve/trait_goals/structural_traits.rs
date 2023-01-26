@@ -173,6 +173,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     }
 }
 
+// Returns a binder of the tupled inputs types and output type from a builtin callable type.
 pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     tcx: TyCtxt<'tcx>,
     self_ty: Ty<'tcx>,
