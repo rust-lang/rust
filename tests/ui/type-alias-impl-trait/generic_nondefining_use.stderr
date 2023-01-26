@@ -7,7 +7,7 @@ LL | type OneTy<T> = impl Debug;
 LL |     5u32
    |     ^^^^
 
-error: non-defining opaque type use in defining scope
+error[E0792]: expected generic lifetime parameter, found `'static`
   --> $DIR/generic_nondefining_use.rs:21:5
    |
 LL | type OneLifetime<'a> = impl Debug;

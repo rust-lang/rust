@@ -182,6 +182,9 @@ pub fn fluent_bundle(
     trace!(?locale);
     let mut bundle = new_bundle(vec![locale]);
 
+    // Add convenience functions available to ftl authors.
+    register_functions(&mut bundle);
+
     // Fluent diagnostics can insert directionality isolation markers around interpolated variables
     // indicating that there may be a shift from right-to-left to left-to-right text (or
     // vice-versa). These are disabled because they are sometimes visible in the error output, but
@@ -244,6 +247,15 @@ pub fn fluent_bundle(
     Ok(Some(bundle))
 }
 
+fn register_functions(bundle: &mut FluentBundle) {
+    bundle
+        .add_function("STREQ", |positional, _named| match positional {
+            [FluentValue::String(a), FluentValue::String(b)] => format!("{}", (a == b)).into(),
+            _ => FluentValue::Error,
+        })
+        .expect("Failed to add a function to the bundle.");
+}
+
 /// Type alias for the result of `fallback_fluent_bundle` - a reference-counted pointer to a lazily
 /// evaluated fluent bundle.
 pub type LazyFallbackBundle = Lrc<Lazy<FluentBundle, impl FnOnce() -> FluentBundle>>;
@@ -256,6 +268,9 @@ pub fn fallback_fluent_bundle(
 ) -> LazyFallbackBundle {
     Lrc::new(Lazy::new(move || {
         let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
+
+        register_functions(&mut fallback_bundle);
+
         // See comment in `fluent_bundle`.
         fallback_bundle.set_use_isolating(with_directionality_markers);
 
