@@ -20,6 +20,7 @@ LL |     let x = f == g;
    = note: expected fn item `fn() {f}`
               found fn item `fn() {g}`
    = note: different fn items have unique types, even if their signatures are the same
+   = help: consider casting both fn items to fn pointers using `as fn()`
 
 error: aborting due to 2 previous errors
 
