@@ -270,10 +270,9 @@ pub fn each_linked_rlib(
 
 /// Create an 'rlib'.
 ///
-/// An rlib in its current incarnation is essentially a renamed .a file. The rlib primarily contains
-/// the object file of the crate, but it also contains all of the object files from native
-/// libraries. This is done by unzipping native libraries and inserting all of the contents into
-/// this archive.
+/// An rlib in its current incarnation is essentially a renamed .a file (with "dummy" object files).
+/// The rlib primarily contains the object file of the crate, but it also some of the object files
+/// from native libraries.
 fn link_rlib<'a>(
     sess: &'a Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
@@ -347,44 +346,23 @@ fn link_rlib<'a>(
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
-        match lib.kind {
-            NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
-                if flavor == RlibFlavor::Normal && sess.opts.unstable_opts.packed_bundled_libs => {}
-            NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
-                if flavor == RlibFlavor::Normal =>
-            {
-                // Don't allow mixing +bundle with +whole_archive since an rlib may contain
-                // multiple native libs, some of which are +whole-archive and some of which are
-                // -whole-archive and it isn't clear how we can currently handle such a
-                // situation correctly.
-                // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
-                sess.emit_err(errors::IncompatibleLinkingModifiers);
-            }
-            NativeLibKind::Static { bundle: None | Some(true), .. } => {}
-            NativeLibKind::Static { bundle: Some(false), .. }
-            | NativeLibKind::Dylib { .. }
-            | NativeLibKind::Framework { .. }
-            | NativeLibKind::RawDylib
-            | NativeLibKind::LinkArg
-            | NativeLibKind::Unspecified => continue,
+        let NativeLibKind::Static { bundle: None | Some(true), whole_archive } = lib.kind else {
+            continue;
+        };
+        if whole_archive == Some(true) && !codegen_results.crate_info.feature_packed_bundled_libs {
+            sess.emit_err(errors::IncompatibleLinkingModifiers);
         }
-        if let Some(name) = lib.name {
-            let location =
+        if flavor == RlibFlavor::Normal && let Some(filename) = lib.filename {
+            let path = find_native_static_library(filename.as_str(), true, &lib_search_paths, sess);
+            let src = read(path).map_err(|e| sess.emit_fatal(errors::ReadFileError {message: e }))?;
+            let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
+            let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
+            packed_bundled_libs.push(wrapper_file);
+        } else if let Some(name) = lib.name {
+            let path =
                 find_native_static_library(name.as_str(), lib.verbatim, &lib_search_paths, sess);
-            if sess.opts.unstable_opts.packed_bundled_libs && flavor == RlibFlavor::Normal {
-                let filename = lib.filename.unwrap();
-                let lib_path =
-                    find_native_static_library(filename.as_str(), true, &lib_search_paths, sess);
-                let src = read(lib_path)
-                    .map_err(|e| sess.emit_fatal(errors::ReadFileError { message: e }))?;
-                let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
-                let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
-                packed_bundled_libs.push(wrapper_file);
-                continue;
-            }
-            ab.add_archive(&location, Box::new(|_| false)).unwrap_or_else(|error| {
-                sess.emit_fatal(errors::AddNativeLibrary { library_path: location, error });
-            });
+            ab.add_archive(&path, Box::new(|_| false)).unwrap_or_else(|error| {
+                sess.emit_fatal(errors::AddNativeLibrary { library_path: path, error })});
         }
     }
 
@@ -516,36 +494,14 @@ fn link_staticlib<'a>(
         &codegen_results.crate_info,
         Some(CrateType::Staticlib),
         &mut |cnum, path| {
-            let name = codegen_results.crate_info.crate_name[&cnum];
-            let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
-
-            // Here when we include the rlib into our staticlib we need to make a
-            // decision whether to include the extra object files along the way.
-            // These extra object files come from statically included native
-            // libraries, but they may be cfg'd away with #[link(cfg(..))].
-            //
-            // This unstable feature, though, only needs liblibc to work. The only
-            // use case there is where musl is statically included in liblibc.rlib,
-            // so if we don't want the included version we just need to skip it. As
-            // a result the logic here is that if *any* linked library is cfg'd away
-            // we just skip all object files.
-            //
-            // Clearly this is not sufficient for a general purpose feature, and
-            // we'd want to read from the library's metadata to determine which
-            // object files come from where and selectively skip them.
-            let skip_object_files = native_libs.iter().any(|lib| {
-                matches!(lib.kind, NativeLibKind::Static { bundle: None | Some(true), .. })
-                    && !relevant_lib(sess, lib)
-            });
-
             let lto = are_upstream_rust_objects_already_included(sess)
                 && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
 
-            // Ignoring obj file starting with the crate name
-            // as simple comparison is not enough - there
-            // might be also an extra name suffix
-            let obj_start = name.as_str().to_owned();
+            let native_libs = codegen_results.crate_info.native_libraries[&cnum].iter();
+            let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, &lib));
+            let relevant_libs: FxHashSet<_> = relevant.filter_map(|lib| lib.filename).collect();
 
+            let bundled_libs: FxHashSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
             ab.add_archive(
                 path,
                 Box::new(move |fname: &str| {
@@ -559,19 +515,24 @@ fn link_staticlib<'a>(
                         return true;
                     }
 
-                    // Otherwise if this is *not* a rust object and we're skipping
-                    // objects then skip this file
-                    if skip_object_files
-                        && (!fname.starts_with(&obj_start) || !fname.ends_with(".o"))
-                    {
+                    // Skip objects for bundled libs.
+                    if bundled_libs.contains(&Symbol::intern(fname)) {
                         return true;
                     }
 
-                    // ok, don't skip this
                     false
                 }),
             )
             .unwrap();
+
+            archive_builder_builder
+                .extract_bundled_libs(path, tempdir.as_ref(), &relevant_libs)
+                .unwrap_or_else(|e| sess.emit_fatal(e));
+            for filename in relevant_libs {
+                let joined = tempdir.as_ref().join(filename.as_str());
+                let path = joined.as_path();
+                ab.add_archive(path, Box::new(|_| false)).unwrap();
+            }
 
             all_native_libs
                 .extend(codegen_results.crate_info.native_libraries[&cnum].iter().cloned());
@@ -2590,18 +2551,8 @@ fn add_static_crate<'a>(
         cmd.link_rlib(&fix_windows_verbatim_for_gcc(path));
     };
 
-    // See the comment above in `link_staticlib` and `link_rlib` for why if
-    // there's a static library that's not relevant we skip all object
-    // files.
-    let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
-    let skip_native = native_libs.iter().any(|lib| {
-        matches!(lib.kind, NativeLibKind::Static { bundle: None | Some(true), .. })
-            && !relevant_lib(sess, lib)
-    });
-
-    if (!are_upstream_rust_objects_already_included(sess)
-        || ignored_for_lto(sess, &codegen_results.crate_info, cnum))
-        && !skip_native
+    if !are_upstream_rust_objects_already_included(sess)
+        || ignored_for_lto(sess, &codegen_results.crate_info, cnum)
     {
         link_upstream(cratepath);
         return;
@@ -2632,17 +2583,13 @@ fn add_static_crate<'a>(
                 let is_rust_object =
                     canonical.starts_with(&canonical_name) && looks_like_rust_object_file(&f);
 
-                // If we've been requested to skip all native object files
-                // (those not generated by the rust compiler) then we can skip
-                // this file. See above for why we may want to do this.
-                let skip_because_cfg_say_so = skip_native && !is_rust_object;
-
                 // If we're performing LTO and this is a rust-generated object
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                let skip_because_lto =
-                    upstream_rust_objects_already_included && is_rust_object && is_builtins;
+                if upstream_rust_objects_already_included && is_rust_object && is_builtins {
+                    return true;
+                }
 
                 // We skip native libraries because:
                 // 1. This native libraries won't be used from the generated rlib,
@@ -2650,10 +2597,6 @@ fn add_static_crate<'a>(
                 // 2. We can't allow it to be a single remaining entry in archive
                 //    as some linkers may complain on that.
                 if bundled_lib_file_names.contains(&Symbol::intern(f)) {
-                    return true;
-                }
-
-                if skip_because_cfg_say_so || skip_because_lto {
                     return true;
                 }
 
