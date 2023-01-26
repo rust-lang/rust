@@ -116,7 +116,8 @@ impl<'a> Parser<'a> {
 
             // Check if the user wrote `foo:bar` instead of `foo::bar`.
             if ra == RecoverColon::Yes {
-                first_pat = self.maybe_recover_colon_colon_in_pat_typo(first_pat, expected);
+                first_pat =
+                    self.maybe_recover_colon_colon_in_pat_typo_or_anon_enum(first_pat, expected);
             }
 
             if let Some(leading_vert_span) = leading_vert_span {
