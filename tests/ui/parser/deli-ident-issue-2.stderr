@@ -1,11 +1,9 @@
 error: unexpected closing delimiter: `}`
   --> $DIR/deli-ident-issue-2.rs:5:1
    |
-LL | fn main() {
-   |           - this opening brace...
-...
+LL |         let _a = vec!];
+   |                      - missing open `[` for this delimiter
 LL |     }
-   |     - ...matches this closing brace
 LL | }
    | ^ unexpected closing delimiter
 

@@ -1,11 +1,6 @@
 error: unexpected closing delimiter: `)`
   --> $DIR/issue-69259.rs:3:5
    |
-LL | fn main() {}
-   |           -- ...matches this closing brace
-   |           |
-   |           this opening brace...
-LL |
 LL | fn f) {}
    |     ^ unexpected closing delimiter
 

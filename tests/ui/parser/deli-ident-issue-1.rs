@@ -1,4 +1,3 @@
-// error-pattern: this file contains an unclosed delimiter
 #![feature(let_chains)]
 trait Demo {}
 

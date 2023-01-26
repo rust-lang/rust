@@ -1,11 +1,9 @@
 error: unexpected closing delimiter: `}`
   --> $DIR/issue-68987-unmatch-issue-3.rs:8:1
    |
-LL | fn f(i: u32, j: u32) {
-   |                      - this opening brace...
-...
+LL |         write!&mut res, " ");
+   |                            - missing open `(` for this delimiter
 LL |     }
-   |     - ...matches this closing brace
 LL | }
    | ^ unexpected closing delimiter
 
