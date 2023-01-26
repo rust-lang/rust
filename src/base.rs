@@ -124,6 +124,8 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         context.add_command_line_option("-fno-semantic-interposition");
         // NOTE: Rust relies on LLVM not doing TBAA (https://github.com/rust-lang/unsafe-code-guidelines/issues/292).
         context.add_command_line_option("-fno-strict-aliasing");
+        // NOTE: Rust relies on LLVM doing wrapping on overflow.
+        context.add_command_line_option("-fwrapv");
 
         if tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections) {
             context.add_command_line_option("-ffunction-sections");
