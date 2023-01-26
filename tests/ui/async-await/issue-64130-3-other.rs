@@ -17,7 +17,7 @@ impl !Qux for Foo {}
 fn is_qux<T: Qux>(t: T) {}
 
 async fn bar() {
-    let x = Foo;
+    let x = Box::new(Foo);
     baz().await;
 }
 

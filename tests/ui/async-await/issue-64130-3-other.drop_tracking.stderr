@@ -10,8 +10,8 @@ LL |     is_qux(bar());
 note: future does not implement `Qux` as this value is used across an await
   --> $DIR/issue-64130-3-other.rs:21:10
    |
-LL |     let x = Foo;
-   |         - has type `Foo` which does not implement `Qux`
+LL |     let x = Box::new(Foo);
+   |         - has type `Box<Foo>` which does not implement `Qux`
 LL |     baz().await;
    |          ^^^^^^ await occurs here, with `x` maybe used later
 LL | }

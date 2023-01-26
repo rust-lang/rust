@@ -23,6 +23,7 @@ async fn other() {}
 pub async fn uhoh() {
     let _guard = bar(); //~ WARNING `Umm` held across
     other().await;
+    drop(_guard);
 }
 
 fn main() {

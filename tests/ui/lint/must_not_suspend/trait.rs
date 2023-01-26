@@ -25,6 +25,9 @@ pub async fn uhoh() {
     let _guard2 = r#dyn(); //~ ERROR boxed `Wow` trait object held across
 
     other().await;
+
+    drop(_guard1);
+    drop(_guard2);
 }
 
 fn main() {

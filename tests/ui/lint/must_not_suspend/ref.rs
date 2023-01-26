@@ -23,6 +23,7 @@ impl Bar {
 
         other().await;
 
+        let _g = &*guard;
         *guard = Umm { i: 2 }
     }
 }

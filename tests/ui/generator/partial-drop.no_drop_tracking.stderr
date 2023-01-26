@@ -1,17 +1,16 @@
 error: generator cannot be sent between threads safely
-  --> $DIR/partial-drop.rs:16:17
+  --> $DIR/partial-drop.rs:17:17
    |
 LL |       assert_send(|| {
    |  _________________^
 LL | |
-LL | |         // FIXME: it would be nice to make this work.
 LL | |         let guard = Bar { foo: Foo, x: 42 };
 LL | |         drop(guard.foo);
 LL | |         yield;
 LL | |     });
    | |_____^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/partial-drop.rs:16:17: 16:19]`, the trait `Send` is not implemented for `Foo`
+   = help: within `[generator@$DIR/partial-drop.rs:17:17: 17:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/partial-drop.rs:21:9
    |
@@ -23,7 +22,7 @@ LL |         yield;
 LL |     });
    |     - `guard` is later dropped here
 note: required by a bound in `assert_send`
-  --> $DIR/partial-drop.rs:44:19
+  --> $DIR/partial-drop.rs:33:19
    |
 LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
@@ -34,46 +33,16 @@ error: generator cannot be sent between threads safely
 LL |       assert_send(|| {
    |  _________________^
 LL | |
-LL | |         // FIXME: it would be nice to make this work.
 LL | |         let guard = Bar { foo: Foo, x: 42 };
-...  |
+LL | |         let Bar { foo, x } = guard;
+LL | |         drop(foo);
 LL | |         yield;
 LL | |     });
    | |_____^ generator is not `Send`
    |
    = help: within `[generator@$DIR/partial-drop.rs:24:17: 24:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
-  --> $DIR/partial-drop.rs:31:9
-   |
-LL |         let guard = Bar { foo: Foo, x: 42 };
-   |             ----- has type `Bar` which is not `Send`
-...
-LL |         yield;
-   |         ^^^^^ yield occurs here, with `guard` maybe used later
-LL |     });
-   |     - `guard` is later dropped here
-note: required by a bound in `assert_send`
-  --> $DIR/partial-drop.rs:44:19
-   |
-LL | fn assert_send<T: Send>(_: T) {}
-   |                   ^^^^ required by this bound in `assert_send`
-
-error: generator cannot be sent between threads safely
-  --> $DIR/partial-drop.rs:34:17
-   |
-LL |       assert_send(|| {
-   |  _________________^
-LL | |
-LL | |         // FIXME: it would be nice to make this work.
-LL | |         let guard = Bar { foo: Foo, x: 42 };
-...  |
-LL | |         yield;
-LL | |     });
-   | |_____^ generator is not `Send`
-   |
-   = help: within `[generator@$DIR/partial-drop.rs:34:17: 34:19]`, the trait `Send` is not implemented for `Foo`
-note: generator is not `Send` as this value is used across a yield
-  --> $DIR/partial-drop.rs:40:9
+  --> $DIR/partial-drop.rs:29:9
    |
 LL |         let Bar { foo, x } = guard;
    |                   --- has type `Foo` which is not `Send`
@@ -83,10 +52,10 @@ LL |         yield;
 LL |     });
    |     - `foo` is later dropped here
 note: required by a bound in `assert_send`
-  --> $DIR/partial-drop.rs:44:19
+  --> $DIR/partial-drop.rs:33:19
    |
 LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

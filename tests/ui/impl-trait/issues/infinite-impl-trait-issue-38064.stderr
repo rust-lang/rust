@@ -8,13 +8,13 @@ LL |     Foo(bar())
    |     ---------- returning here with type `Foo<impl Quux>`
 ...
 LL | fn bar() -> impl Quux {
-   |             --------- returning this opaque type `Foo<impl Quux>`
+   |             --------- returning this type `Foo<impl Quux>`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/infinite-impl-trait-issue-38064.rs:14:13
    |
 LL | fn foo() -> impl Quux {
-   |             --------- returning this opaque type `Bar<impl Quux>`
+   |             --------- returning this type `Bar<impl Quux>`
 ...
 LL | fn bar() -> impl Quux {
    |             ^^^^^^^^^ recursive opaque type

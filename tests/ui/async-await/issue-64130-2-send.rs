@@ -14,7 +14,7 @@ impl !Send for Foo {}
 fn is_send<T: Send>(t: T) { }
 
 async fn bar() {
-    let x = Foo;
+    let x = Box::new(Foo);
     baz().await;
 }
 

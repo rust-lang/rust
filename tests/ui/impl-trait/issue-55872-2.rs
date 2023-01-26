@@ -16,6 +16,7 @@ impl<S> Bar for S {
     fn foo<T>() -> Self::E {
         async {}
         //~^ ERROR type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+        //[drop_tracking_mir]~^^ ERROR type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
     }
 }
 

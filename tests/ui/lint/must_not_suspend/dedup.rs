@@ -16,7 +16,9 @@ async fn wheeee<T>(t: T) {
 }
 
 async fn yes() {
-    wheeee(&No {}).await; //~ ERROR `No` held across
+    let no = No {}; //~ ERROR `No` held across
+    wheeee(&no).await; //[no_drop_tracking]~ ERROR `No` held across
+    drop(no);
 }
 
 fn main() {

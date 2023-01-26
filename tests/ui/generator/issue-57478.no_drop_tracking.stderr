@@ -1,9 +1,8 @@
 error: generator cannot be sent between threads safely
-  --> $DIR/issue-57478.rs:12:17
+  --> $DIR/issue-57478.rs:13:17
    |
 LL |       assert_send(|| {
    |  _________________^
-LL | |
 LL | |
 LL | |         let guard = Foo;
 LL | |         drop(guard);
@@ -11,7 +10,7 @@ LL | |         yield;
 LL | |     })
    | |_____^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/issue-57478.rs:12:17: 12:19]`, the trait `Send` is not implemented for `Foo`
+   = help: within `[generator@$DIR/issue-57478.rs:13:17: 13:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-57478.rs:17:9
    |

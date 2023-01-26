@@ -28,7 +28,7 @@ macro_rules! type_combinations {
             //~^ ERROR cannot be sent between threads
             //~| ERROR cannot be sent between threads
             //~| ERROR cannot be sent between threads
-            //[no_drop_tracking,drop_tracking_mir]~^^^^ ERROR cannot be sent between threads
+            //[no_drop_tracking]~^^^^ ERROR cannot be sent between threads
         }
 
         // Simple owned value. This works because the Client is considered moved into `drop`,
@@ -38,10 +38,10 @@ macro_rules! type_combinations {
                 _ => yield,
             };
             assert_send(g);
-            //[no_drop_tracking,drop_tracking_mir]~^ ERROR cannot be sent between threads
-            //[no_drop_tracking,drop_tracking_mir]~| ERROR cannot be sent between threads
-            //[no_drop_tracking,drop_tracking_mir]~| ERROR cannot be sent between threads
-            //[no_drop_tracking,drop_tracking_mir]~| ERROR cannot be sent between threads
+            //[no_drop_tracking]~^ ERROR cannot be sent between threads
+            //[no_drop_tracking]~| ERROR cannot be sent between threads
+            //[no_drop_tracking]~| ERROR cannot be sent between threads
+            //[no_drop_tracking]~| ERROR cannot be sent between threads
         }
     )* }
 }
