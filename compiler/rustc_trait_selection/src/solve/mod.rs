@@ -141,17 +141,6 @@ type CanonicalResponse<'tcx> = Canonical<'tcx, Response<'tcx>>;
 /// solver, merge the two responses again.
 pub type QueryResult<'tcx> = Result<CanonicalResponse<'tcx>, NoSolution>;
 
-pub trait TyCtxtExt<'tcx> {
-    fn evaluate_goal(self, goal: CanonicalGoal<'tcx>) -> QueryResult<'tcx>;
-}
-
-impl<'tcx> TyCtxtExt<'tcx> for TyCtxt<'tcx> {
-    fn evaluate_goal(self, goal: CanonicalGoal<'tcx>) -> QueryResult<'tcx> {
-        let mut search_graph = search_graph::SearchGraph::new(self);
-        EvalCtxt::evaluate_canonical_goal(self, &mut search_graph, goal)
-    }
-}
-
 pub trait InferCtxtEvalExt<'tcx> {
     /// Evaluates a goal from **outside** of the trait solver.
     ///
@@ -194,6 +183,15 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         self.infcx.tcx
     }
 
+    /// The entry point of the solver.
+    ///
+    /// This function deals with (coinductive) cycles, overflow, and caching
+    /// and then calls [`EvalCtxt::compute_goal`] which contains the actual
+    /// logic of the solver.
+    ///
+    /// Instead of calling this function directly, use either [EvalCtxt::evaluate_goal]
+    /// if you're inside of the solver or [InferCtxtEvalExt::evaluate_root_goal] if you're
+    /// outside of it.
     #[instrument(level = "debug", skip(tcx, search_graph), ret)]
     fn evaluate_canonical_goal(
         tcx: TyCtxt<'tcx>,
