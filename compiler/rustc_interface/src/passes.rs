@@ -16,7 +16,7 @@ use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
-use rustc_hir::def_id::StableCrateId;
+use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -30,7 +30,7 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn, Untracked};
+use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -47,7 +47,7 @@ use std::marker::PhantomPinned;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 
 pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
@@ -548,7 +548,7 @@ fn escape_dep_env(symbol: Symbol) -> String {
 
 fn write_out_deps(
     sess: &Session,
-    boxed_resolver: &RefCell<BoxedResolver>,
+    cstore: &CrateStoreDyn,
     outputs: &OutputFilenames,
     out_filenames: &[PathBuf],
 ) {
@@ -600,20 +600,19 @@ fn write_out_deps(
                 }
             }
 
-            boxed_resolver.borrow_mut().access(|resolver| {
-                for cnum in resolver.cstore().crates_untracked() {
-                    let source = resolver.cstore().crate_source_untracked(cnum);
-                    if let Some((path, _)) = &source.dylib {
-                        files.push(escape_dep_filename(&path.display().to_string()));
-                    }
-                    if let Some((path, _)) = &source.rlib {
-                        files.push(escape_dep_filename(&path.display().to_string()));
-                    }
-                    if let Some((path, _)) = &source.rmeta {
-                        files.push(escape_dep_filename(&path.display().to_string()));
-                    }
+            let cstore = cstore.as_any().downcast_ref::<CStore>().unwrap();
+            for cnum in cstore.crates_untracked() {
+                let source = cstore.crate_source_untracked(cnum);
+                if let Some((path, _)) = &source.dylib {
+                    files.push(escape_dep_filename(&path.display().to_string()));
                 }
-            });
+                if let Some((path, _)) = &source.rlib {
+                    files.push(escape_dep_filename(&path.display().to_string()));
+                }
+                if let Some((path, _)) = &source.rmeta {
+                    files.push(escape_dep_filename(&path.display().to_string()));
+                }
+            }
         }
 
         let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
@@ -661,13 +660,11 @@ fn write_out_deps(
     }
 }
 
-pub fn prepare_outputs(
-    sess: &Session,
-    krate: &ast::Crate,
-    boxed_resolver: &RefCell<BoxedResolver>,
-    crate_name: Symbol,
-) -> Result<OutputFilenames> {
+fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
+    let sess = tcx.sess;
     let _timer = sess.timer("prepare_outputs");
+    let (_, krate) = &*tcx.resolver_for_lowering(()).borrow();
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
 
     // FIXME: rustdoc passes &[] instead of &krate.attrs here
     let outputs = util::build_output_filenames(&krate.attrs, sess);
@@ -679,25 +676,21 @@ pub fn prepare_outputs(
     if let Some(ref input_path) = sess.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                let reported = sess.emit_err(InputFileWouldBeOverWritten { path: input_path });
-                return Err(reported);
+                sess.emit_fatal(InputFileWouldBeOverWritten { path: input_path });
             }
             if let Some(ref dir_path) = output_conflicts_with_dir(&output_paths) {
-                let reported =
-                    sess.emit_err(GeneratedFileConflictsWithDirectory { input_path, dir_path });
-                return Err(reported);
+                sess.emit_fatal(GeneratedFileConflictsWithDirectory { input_path, dir_path });
             }
         }
     }
 
     if let Some(ref dir) = sess.io.temps_dir {
         if fs::create_dir_all(dir).is_err() {
-            let reported = sess.emit_err(TempsDirError);
-            return Err(reported);
+            sess.emit_fatal(TempsDirError);
         }
     }
 
-    write_out_deps(sess, boxed_resolver, &outputs, &output_paths);
+    write_out_deps(sess, tcx.cstore_untracked(), &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
@@ -705,19 +698,19 @@ pub fn prepare_outputs(
     if !only_dep_info {
         if let Some(ref dir) = sess.io.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                let reported = sess.emit_err(OutDirError);
-                return Err(reported);
+                sess.emit_fatal(OutDirError);
             }
         }
     }
 
-    Ok(outputs)
+    outputs.into()
 }
 
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
+    providers.output_filenames = output_filenames;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
