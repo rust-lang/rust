@@ -1194,14 +1194,9 @@ impl LinkCollector<'_, '_> {
             }
 
         // item can be non-local e.g. when using #[doc(primitive = "pointer")]
-        if let Some((src_id, dst_id)) = id
-            .as_local()
-            // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
-            // would presumably panic if a fake `DefIndex` were passed.
-            .and_then(|dst_id| {
-                item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
-            })
-        {
+        if let Some((src_id, dst_id)) = id.as_local().and_then(|dst_id| {
+            item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
+        }) {
             if self.cx.tcx.effective_visibilities(()).is_exported(src_id)
                 && !self.cx.tcx.effective_visibilities(()).is_exported(dst_id)
             {
