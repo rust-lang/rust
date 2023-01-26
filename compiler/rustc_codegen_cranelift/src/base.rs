@@ -610,17 +610,13 @@ fn codegen_stmt<'tcx>(
                     }
                 }
                 Rvalue::Cast(
-                    CastKind::Pointer(PointerCast::UnsafeFnPointer),
-                    ref operand,
-                    to_ty,
-                )
-                | Rvalue::Cast(
-                    CastKind::Pointer(PointerCast::MutToConstPointer),
-                    ref operand,
-                    to_ty,
-                )
-                | Rvalue::Cast(
-                    CastKind::Pointer(PointerCast::ArrayToPointer),
+                    CastKind::StripPattern
+                    | CastKind::Patternize
+                    | CastKind::Pointer(
+                        PointerCast::UnsafeFnPointer
+                        | PointerCast::MutToConstPointer
+                        | PointerCast::ArrayToPointer,
+                    ),
                     ref operand,
                     to_ty,
                 ) => {

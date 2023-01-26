@@ -133,6 +133,8 @@ fn check_rvalue<'tcx>(
         | Rvalue::Use(operand)
         | Rvalue::Cast(
             CastKind::PointerFromExposedAddress
+            | CastKind::StripPattern
+            | CastKind::Patternize
             | CastKind::IntToInt
             | CastKind::FloatToInt
             | CastKind::IntToFloat
