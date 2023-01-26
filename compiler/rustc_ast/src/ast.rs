@@ -18,6 +18,7 @@
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
+pub use crate::format::*;
 pub use crate::util::parser::ExprPrecedence;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
@@ -1269,6 +1270,7 @@ impl Expr {
             ExprKind::Try(..) => ExprPrecedence::Try,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Yeet(..) => ExprPrecedence::Yeet,
+            ExprKind::FormatArgs(..) => ExprPrecedence::FormatArgs,
             ExprKind::Err => ExprPrecedence::Err,
         }
     }
@@ -1498,6 +1500,9 @@ pub enum ExprKind {
     /// large binary blobs - should always behave like [`ExprKind::Lit`]
     /// with a `ByteStr` literal.
     IncludedBytes(Lrc<[u8]>),
+
+    /// A `format_args!()` expression.
+    FormatArgs(P<FormatArgs>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err,

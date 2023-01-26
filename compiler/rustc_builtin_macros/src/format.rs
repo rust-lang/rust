@@ -1,7 +1,11 @@
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::Expr;
+use rustc_ast::{
+    Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
+    FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
+    FormatOptions, FormatPlaceholder, FormatTrait,
+};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, Applicability, MultiSpan, PResult};
 use rustc_expand::base::{self, *};
@@ -12,21 +16,15 @@ use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
 
-mod ast;
-use ast::*;
-
-mod expand;
-use expand::expand_parsed_format_args;
-
 // The format_args!() macro is expanded in three steps:
 //  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,
 //     but doesn't parse the template (the literal) itself.
 //  2. Second, `make_format_args` will parse the template, the format options, resolve argument references,
-//     produce diagnostics, and turn the whole thing into a `FormatArgs` structure.
-//  3. Finally, `expand_parsed_format_args` will turn that `FormatArgs` structure
-//     into the expression that the macro expands to.
+//     produce diagnostics, and turn the whole thing into a `FormatArgs` AST node.
+//  3. Much later, in AST lowering (rustc_ast_lowering), that `FormatArgs` structure will be turned
+//     into the expression of type `core::fmt::Arguments`.
 
-// See format/ast.rs for the FormatArgs structure and glossary.
+// See rustc_ast/src/format.rs for the FormatArgs structure and glossary.
 
 // Only used in parse_args and report_invalid_references,
 // to indicate how a referred argument was used.
@@ -850,7 +848,7 @@ fn expand_format_args_impl<'cx>(
     match parse_args(ecx, sp, tts) {
         Ok((efmt, args)) => {
             if let Ok(format_args) = make_format_args(ecx, efmt, args, nl) {
-                MacEager::expr(expand_parsed_format_args(ecx, format_args))
+                MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(P(format_args))))
             } else {
                 MacEager::expr(DummyResult::raw_expr(sp, true))
             }

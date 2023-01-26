@@ -1,5 +1,5 @@
-use rustc_ast::ptr::P;
-use rustc_ast::Expr;
+use crate::ptr::P;
+use crate::Expr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -39,7 +39,7 @@ use rustc_span::Span;
 /// Basically the "AST" for a complete `format_args!()`.
 ///
 /// E.g., `format_args!("hello {name}");`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct FormatArgs {
     pub span: Span,
     pub template: Vec<FormatArgsPiece>,
@@ -49,7 +49,7 @@ pub struct FormatArgs {
 /// A piece of a format template string.
 ///
 /// E.g. "hello" or "{name}".
-#[derive(Clone, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum FormatArgsPiece {
     Literal(Symbol),
     Placeholder(FormatPlaceholder),
@@ -59,13 +59,19 @@ pub enum FormatArgsPiece {
 ///
 /// E.g. `1, 2, name="ferris", n=3`,
 /// but also implicit captured arguments like `x` in `format_args!("{x}")`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct FormatArguments {
     arguments: Vec<FormatArgument>,
     num_unnamed_args: usize,
     num_explicit_args: usize,
     names: FxHashMap<Symbol, usize>,
 }
+
+// FIXME: Rustdoc has trouble proving Send/Sync for this. See #106930.
+#[cfg(parallel_compiler)]
+unsafe impl Sync for FormatArguments {}
+#[cfg(parallel_compiler)]
+unsafe impl Send for FormatArguments {}
 
 impl FormatArguments {
     pub fn new() -> Self {
@@ -121,18 +127,22 @@ impl FormatArguments {
         &self.arguments[..self.num_explicit_args]
     }
 
-    pub fn into_vec(self) -> Vec<FormatArgument> {
-        self.arguments
+    pub fn all_args(&self) -> &[FormatArgument] {
+        &self.arguments[..]
+    }
+
+    pub fn all_args_mut(&mut self) -> &mut [FormatArgument] {
+        &mut self.arguments[..]
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct FormatArgument {
     pub kind: FormatArgumentKind,
     pub expr: P<Expr>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum FormatArgumentKind {
     /// `format_args(…, arg)`
     Normal,
@@ -152,7 +162,7 @@ impl FormatArgumentKind {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
 pub struct FormatPlaceholder {
     /// Index into [`FormatArgs::arguments`].
     pub argument: FormatArgPosition,
@@ -164,7 +174,7 @@ pub struct FormatPlaceholder {
     pub format_options: FormatOptions,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
 pub struct FormatArgPosition {
     /// Which argument this position refers to (Ok),
     /// or would've referred to if it existed (Err).
@@ -175,7 +185,7 @@ pub struct FormatArgPosition {
     pub span: Option<Span>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
 pub enum FormatArgPositionKind {
     /// `{}` or `{:.*}`
     Implicit,
@@ -185,7 +195,7 @@ pub enum FormatArgPositionKind {
     Named,
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq, Hash)]
 pub enum FormatTrait {
     /// `{}`
     Display,
@@ -207,7 +217,7 @@ pub enum FormatTrait {
     UpperHex,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Default, Debug, PartialEq, Eq)]
 pub struct FormatOptions {
     /// The width. E.g. `{:5}` or `{:width$}`.
     pub width: Option<FormatCount>,
@@ -221,7 +231,7 @@ pub struct FormatOptions {
     pub flags: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
 pub enum FormatAlignment {
     /// `{:<}`
     Left,
@@ -231,7 +241,7 @@ pub enum FormatAlignment {
     Center,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
 pub enum FormatCount {
     /// `{:5}` or `{:.5}`
     Literal(usize),

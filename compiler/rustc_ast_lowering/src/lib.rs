@@ -80,6 +80,7 @@ mod asm;
 mod block;
 mod errors;
 mod expr;
+mod format;
 mod index;
 mod item;
 mod lifetime_collector;

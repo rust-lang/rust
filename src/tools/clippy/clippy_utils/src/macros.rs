@@ -1,6 +1,5 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
-use crate::is_path_diagnostic_item;
 use crate::source::snippet_opt;
 use crate::visitors::{for_each_expr, Descend};
 
@@ -8,7 +7,7 @@ use arrayvec::ArrayVec;
 use itertools::{izip, Either, Itertools};
 use rustc_ast::ast::LitKind;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{self as hir, Expr, ExprField, ExprKind, HirId, Node, QPath};
+use rustc_hir::{self as hir, Expr, ExprField, ExprKind, HirId, LangItem, Node, QPath, TyKind};
 use rustc_lexer::unescape::unescape_literal;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
 use rustc_lint::LateContext;
@@ -439,8 +438,7 @@ impl<'tcx> FormatArgsValues<'tcx> {
                 // ArgumentV1::from_usize(<val>)
                 if let ExprKind::Call(callee, [val]) = expr.kind
                     && let ExprKind::Path(QPath::TypeRelative(ty, _)) = callee.kind
-                    && let hir::TyKind::Path(QPath::Resolved(_, path)) = ty.kind
-                    && path.segments.last().unwrap().ident.name == sym::ArgumentV1
+                    && let TyKind::Path(QPath::LangItem(LangItem::FormatArgument, _, _)) = ty.kind
                 {
                     let val_idx = if val.span.ctxt() == expr.span.ctxt()
                         && let ExprKind::Field(_, field) = val.kind
@@ -486,20 +484,6 @@ struct ParamPosition {
 
 impl<'tcx> Visitor<'tcx> for ParamPosition {
     fn visit_expr_field(&mut self, field: &'tcx ExprField<'tcx>) {
-        fn parse_count(expr: &Expr<'_>) -> Option<usize> {
-            // ::core::fmt::rt::v1::Count::Param(1usize),
-            if let ExprKind::Call(ctor, [val]) = expr.kind
-                && let ExprKind::Path(QPath::Resolved(_, path)) = ctor.kind
-                && path.segments.last()?.ident.name == sym::Param
-                && let ExprKind::Lit(lit) = &val.kind
-                && let LitKind::Int(pos, _) = lit.node
-            {
-                Some(pos as usize)
-            } else {
-                None
-            }
-        }
-
         match field.ident.name {
             sym::position => {
                 if let ExprKind::Lit(lit) = &field.expr.kind
@@ -519,15 +503,41 @@ impl<'tcx> Visitor<'tcx> for ParamPosition {
     }
 }
 
+fn parse_count(expr: &Expr<'_>) -> Option<usize> {
+    // <::core::fmt::rt::v1::Count>::Param(1usize),
+    if let ExprKind::Call(ctor, [val]) = expr.kind
+        && let ExprKind::Path(QPath::TypeRelative(_, path)) = ctor.kind
+            && path.ident.name == sym::Param
+            && let ExprKind::Lit(lit) = &val.kind
+            && let LitKind::Int(pos, _) = lit.node
+    {
+        Some(pos as usize)
+    } else {
+        None
+    }
+}
+
 /// Parses the `fmt` arg of `Arguments::new_v1_formatted(pieces, args, fmt, _)`
 fn parse_rt_fmt<'tcx>(fmt_arg: &'tcx Expr<'tcx>) -> Option<impl Iterator<Item = ParamPosition> + 'tcx> {
     if let ExprKind::AddrOf(.., array) = fmt_arg.kind
         && let ExprKind::Array(specs) = array.kind
     {
         Some(specs.iter().map(|spec| {
-            let mut position = ParamPosition::default();
-            position.visit_expr(spec);
-            position
+            if let ExprKind::Call(f, args) = spec.kind
+                && let ExprKind::Path(QPath::TypeRelative(ty, f)) = f.kind
+                && let TyKind::Path(QPath::LangItem(LangItem::FormatPlaceholder, _, _)) = ty.kind
+                && f.ident.name == sym::new
+                && let [position, _fill, _align, _flags, precision, width] = args
+                && let ExprKind::Lit(position) = &position.kind
+                && let LitKind::Int(position, _) = position.node {
+                    ParamPosition {
+                        value: position as usize,
+                        width: parse_count(width),
+                        precision: parse_count(precision),
+                    }
+            } else {
+                ParamPosition::default()
+            }
         }))
     } else {
         None
@@ -890,7 +900,7 @@ impl<'tcx> FormatArgsExpn<'tcx> {
         // ::core::fmt::Arguments::new_v1_formatted(pieces, args, fmt, _unsafe_arg)
         if let ExprKind::Call(callee, [pieces, args, rest @ ..]) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = callee.kind
-            && is_path_diagnostic_item(cx, ty, sym::Arguments)
+            && let TyKind::Path(QPath::LangItem(LangItem::FormatArguments, _, _)) = ty.kind
             && matches!(seg.ident.as_str(), "new_v1" | "new_v1_formatted")
         {
             let format_string = FormatString::new(cx, pieces)?;

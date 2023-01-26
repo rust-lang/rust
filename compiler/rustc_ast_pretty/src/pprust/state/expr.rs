@@ -6,6 +6,8 @@ use rustc_ast::token;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{self as ast, BlockCheckMode};
+use rustc_ast::{FormatAlignment, FormatArgPosition, FormatArgsPiece, FormatCount, FormatTrait};
+use std::fmt::Write;
 
 impl<'a> State<'a> {
     fn print_else(&mut self, els: Option<&ast::Expr>) {
@@ -527,8 +529,22 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprKind::InlineAsm(a) => {
+                // FIXME: This should have its own syntax, distinct from a macro invocation.
                 self.word("asm!");
                 self.print_inline_asm(a);
+            }
+            ast::ExprKind::FormatArgs(fmt) => {
+                // FIXME: This should have its own syntax, distinct from a macro invocation.
+                self.word("format_args!");
+                self.popen();
+                self.rbox(0, Inconsistent);
+                self.word(reconstruct_format_args_template_string(&fmt.template));
+                for arg in fmt.arguments.all_args() {
+                    self.word_space(",");
+                    self.print_expr(&arg.expr);
+                }
+                self.end();
+                self.pclose();
             }
             ast::ExprKind::MacCall(m) => self.print_mac(m),
             ast::ExprKind::Paren(e) => {
@@ -628,4 +644,92 @@ impl<'a> State<'a> {
             ast::CaptureBy::Ref => {}
         }
     }
+}
+
+pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> String {
+    let mut template = "\"".to_string();
+    for piece in pieces {
+        match piece {
+            FormatArgsPiece::Literal(s) => {
+                for c in s.as_str().escape_debug() {
+                    template.push(c);
+                    if let '{' | '}' = c {
+                        template.push(c);
+                    }
+                }
+            }
+            FormatArgsPiece::Placeholder(p) => {
+                template.push('{');
+                let (Ok(n) | Err(n)) = p.argument.index;
+                write!(template, "{n}").unwrap();
+                if p.format_options != Default::default() || p.format_trait != FormatTrait::Display
+                {
+                    template.push_str(":");
+                }
+                if let Some(fill) = p.format_options.fill {
+                    template.push(fill);
+                }
+                match p.format_options.alignment {
+                    Some(FormatAlignment::Left) => template.push_str("<"),
+                    Some(FormatAlignment::Right) => template.push_str(">"),
+                    Some(FormatAlignment::Center) => template.push_str("^"),
+                    None => {}
+                }
+                let flags = p.format_options.flags;
+                if flags >> (rustc_parse_format::FlagSignPlus as usize) & 1 != 0 {
+                    template.push('+');
+                }
+                if flags >> (rustc_parse_format::FlagSignMinus as usize) & 1 != 0 {
+                    template.push('-');
+                }
+                if flags >> (rustc_parse_format::FlagAlternate as usize) & 1 != 0 {
+                    template.push('#');
+                }
+                if flags >> (rustc_parse_format::FlagSignAwareZeroPad as usize) & 1 != 0 {
+                    template.push('0');
+                }
+                if let Some(width) = &p.format_options.width {
+                    match width {
+                        FormatCount::Literal(n) => write!(template, "{n}").unwrap(),
+                        FormatCount::Argument(FormatArgPosition {
+                            index: Ok(n) | Err(n), ..
+                        }) => {
+                            write!(template, "{n}$").unwrap();
+                        }
+                    }
+                }
+                if let Some(precision) = &p.format_options.precision {
+                    template.push('.');
+                    match precision {
+                        FormatCount::Literal(n) => write!(template, "{n}").unwrap(),
+                        FormatCount::Argument(FormatArgPosition {
+                            index: Ok(n) | Err(n), ..
+                        }) => {
+                            write!(template, "{n}$").unwrap();
+                        }
+                    }
+                }
+                if flags >> (rustc_parse_format::FlagDebugLowerHex as usize) & 1 != 0 {
+                    template.push('x');
+                }
+                if flags >> (rustc_parse_format::FlagDebugUpperHex as usize) & 1 != 0 {
+                    template.push('X');
+                }
+                template.push_str(match p.format_trait {
+                    FormatTrait::Display => "",
+                    FormatTrait::Debug => "?",
+                    FormatTrait::LowerExp => "e",
+                    FormatTrait::UpperExp => "E",
+                    FormatTrait::Octal => "o",
+                    FormatTrait::Pointer => "p",
+                    FormatTrait::Binary => "b",
+                    FormatTrait::LowerHex => "x",
+                    FormatTrait::UpperHex => "X",
+                });
+                template.push('}');
+            }
+        }
+    }
+    template.push('"');
+    template
 }

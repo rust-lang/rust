@@ -2117,6 +2117,8 @@ pub enum MatchSource {
     TryDesugar,
     /// A desugared `<expr>.await`.
     AwaitDesugar,
+    /// A desugared `format_args!()`.
+    FormatArgs,
 }
 
 impl MatchSource {
@@ -2128,6 +2130,7 @@ impl MatchSource {
             ForLoopDesugar => "for",
             TryDesugar => "?",
             AwaitDesugar => ".await",
+            FormatArgs => "format_args!()",
         }
     }
 }
