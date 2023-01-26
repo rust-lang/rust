@@ -18,7 +18,7 @@
 use std::mem;
 
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::canonical::{Canonical, CanonicalVarKind, CanonicalVarValues};
+use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::infer::canonical::{OriginalQueryValues, QueryRegionConstraints, QueryResponse};
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
@@ -481,30 +481,11 @@ pub(super) fn response_no_constraints<'tcx>(
     goal: Canonical<'tcx, impl Sized>,
     certainty: Certainty,
 ) -> QueryResult<'tcx> {
-    let var_values =
-        tcx.mk_substs(goal.variables.iter().enumerate().map(|(i, info)| -> ty::GenericArg<'tcx> {
-            match info.kind {
-                CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
-                    tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into())).into()
-                }
-                CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
-                    let br = ty::BoundRegion {
-                        var: ty::BoundVar::from_usize(i),
-                        kind: ty::BrAnon(i as u32, None),
-                    };
-                    tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
-                }
-                CanonicalVarKind::Const(_, ty) | CanonicalVarKind::PlaceholderConst(_, ty) => tcx
-                    .mk_const(ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i)), ty)
-                    .into(),
-            }
-        }));
-
     Ok(Canonical {
         max_universe: goal.max_universe,
         variables: goal.variables,
         value: Response {
-            var_values: CanonicalVarValues { var_values },
+            var_values: CanonicalVarValues::make_identity(tcx, goal.variables),
             external_constraints: Default::default(),
             certainty,
         },

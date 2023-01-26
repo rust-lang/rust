@@ -337,6 +337,39 @@ TrivialTypeTraversalAndLiftImpls! {
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {
+    // Given a list of canonical variables, construct a set of values which are
+    // the identity response.
+    pub fn make_identity(
+        tcx: TyCtxt<'tcx>,
+        infos: CanonicalVarInfos<'tcx>,
+    ) -> CanonicalVarValues<'tcx> {
+        CanonicalVarValues {
+            var_values: tcx.mk_substs(infos.iter().enumerate().map(
+                |(i, info)| -> ty::GenericArg<'tcx> {
+                    match info.kind {
+                        CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => tcx
+                            .mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into()))
+                            .into(),
+                        CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
+                            let br = ty::BoundRegion {
+                                var: ty::BoundVar::from_usize(i),
+                                kind: ty::BrAnon(i as u32, None),
+                            };
+                            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
+                        }
+                        CanonicalVarKind::Const(_, ty)
+                        | CanonicalVarKind::PlaceholderConst(_, ty) => tcx
+                            .mk_const(
+                                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i)),
+                                ty,
+                            )
+                            .into(),
+                    }
+                },
+            )),
+        }
+    }
+
     /// Creates dummy var values which should not be used in a
     /// canonical response.
     pub fn dummy() -> CanonicalVarValues<'tcx> {
@@ -346,41 +379,6 @@ impl<'tcx> CanonicalVarValues<'tcx> {
     #[inline]
     pub fn len(&self) -> usize {
         self.var_values.len()
-    }
-
-    /// Makes an identity substitution from this one: each bound var
-    /// is matched to the same bound var, preserving the original kinds.
-    /// For example, if we have:
-    /// `self.var_values == [Type(u32), Lifetime('a), Type(u64)]`
-    /// we'll return a substitution `subst` with:
-    /// `subst.var_values == [Type(^0), Lifetime(^1), Type(^2)]`.
-    pub fn make_identity(&self, tcx: TyCtxt<'tcx>) -> Self {
-        use crate::ty::subst::GenericArgKind;
-
-        CanonicalVarValues {
-            var_values: tcx.mk_substs(self.var_values.iter().enumerate().map(
-                |(i, kind)| -> ty::GenericArg<'tcx> {
-                    match kind.unpack() {
-                        GenericArgKind::Type(..) => tcx
-                            .mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into()))
-                            .into(),
-                        GenericArgKind::Lifetime(..) => {
-                            let br = ty::BoundRegion {
-                                var: ty::BoundVar::from_usize(i),
-                                kind: ty::BrAnon(i as u32, None),
-                            };
-                            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
-                        }
-                        GenericArgKind::Const(ct) => tcx
-                            .mk_const(
-                                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i)),
-                                ct.ty(),
-                            )
-                            .into(),
-                    }
-                },
-            )),
-        }
     }
 }
 
