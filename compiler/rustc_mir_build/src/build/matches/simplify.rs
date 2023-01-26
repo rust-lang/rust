@@ -16,6 +16,7 @@ use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
 use rustc_hir::RangeEnd;
+use rustc_middle::mir::ProjectionElem;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::IntegerExt;
@@ -174,7 +175,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::PatTy { ref value } => {
-                candidate.match_pairs.push(MatchPair::new(match_pair.place, value, self));
+                let place = match_pair.place.project(ProjectionElem::OpaqueCast(value.ty));
+                candidate.match_pairs.push(MatchPair::new(place, value, self));
                 Ok(())
             }
 

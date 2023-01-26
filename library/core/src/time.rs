@@ -35,6 +35,8 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 #[rustc_layout_scalar_valid_range_end(999_999_999)]
 struct Nanoseconds(u32);
 
+impl crate::marker::StructuralPartialEq for Nanoseconds {}
+
 impl PartialEq for Nanoseconds {
     fn eq(&self, other: &Self) -> bool {
         self.0 as u32 == other.0 as u32

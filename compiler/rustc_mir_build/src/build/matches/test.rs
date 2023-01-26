@@ -158,7 +158,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let place = place_builder.to_place(self);
         let place_ty = place.ty(&self.local_decls, self.tcx);
-        debug!(?place, ?place_ty,);
+        debug!(?place, ?place_ty);
 
         let source_info = self.source_info(test.span);
         match test.kind {

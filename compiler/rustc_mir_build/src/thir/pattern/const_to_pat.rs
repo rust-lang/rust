@@ -229,7 +229,7 @@ impl<'tcx> ConstToPat<'tcx> {
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn recur(
         &self,
         cv: mir::ConstantKind<'tcx>,

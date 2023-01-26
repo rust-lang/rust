@@ -959,8 +959,10 @@ pub enum ProjectionElem<V, T> {
     /// The included Symbol is the name of the variant, used for printing MIR.
     Downcast(Option<Symbol>, VariantIdx),
 
-    /// Like an explicit cast from an opaque type to a concrete type, but without
-    /// requiring an intermediate variable.
+    /// Like an explicit cast, but without requiring an intermediate variable.
+    /// Can cast the following things:
+    /// * from an opaque type to a concrete type
+    /// * from a pattern type to its inner type
     OpaqueCast(T),
 }
 

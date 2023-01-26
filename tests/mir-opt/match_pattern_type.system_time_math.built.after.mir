@@ -1,0 +1,39 @@
+// MIR for `system_time_math` after built
+
+fn system_time_math() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/match_pattern_type.rs:+0:23: +0:23
+    let mut _1: std::time::Duration;     // in scope 0 at $DIR/match_pattern_type.rs:+1:11: +1:25
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at $DIR/match_pattern_type.rs:+1:11: +1:25
+        _1 = const _;                    // scope 0 at $DIR/match_pattern_type.rs:+1:11: +1:25
+                                         // mir::Constant
+                                         // + span: $DIR/match_pattern_type.rs:5:11: 5:25
+                                         // + literal: Const { ty: Duration, val: Unevaluated(Duration::ZERO, [], None) }
+        FakeRead(ForMatchedPlace(None), _1); // scope 0 at $DIR/match_pattern_type.rs:+1:11: +1:25
+        switchInt((_1.0: u64)) -> [0: bb1, otherwise: bb3]; // scope 0 at $DIR/match_pattern_type.rs:+1:5: +1:25
+    }
+
+    bb1: {
+        switchInt((((_1.1: core::time::Nanoseconds).0: u32 is 0..=999999999) as u32)) -> [0: bb2, otherwise: bb3]; // scope 0 at $DIR/match_pattern_type.rs:+1:5: +1:25
+    }
+
+    bb2: {
+        falseEdge -> [real: bb4, imaginary: bb3]; // scope 0 at $DIR/match_pattern_type.rs:+2:9: +2:23
+    }
+
+    bb3: {
+        _0 = const ();                   // scope 0 at $DIR/match_pattern_type.rs:+3:14: +3:16
+        goto -> bb5;                     // scope 0 at $DIR/match_pattern_type.rs:+3:14: +3:16
+    }
+
+    bb4: {
+        _0 = const ();                   // scope 0 at $DIR/match_pattern_type.rs:+2:27: +2:29
+        goto -> bb5;                     // scope 0 at $DIR/match_pattern_type.rs:+2:27: +2:29
+    }
+
+    bb5: {
+        StorageDead(_1);                 // scope 0 at $DIR/match_pattern_type.rs:+5:1: +5:2
+        return;                          // scope 0 at $DIR/match_pattern_type.rs:+5:2: +5:2
+    }
+}

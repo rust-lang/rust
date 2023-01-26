@@ -742,9 +742,17 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             ProjectionElem::OpaqueCast(ty) => {
                 let ty = self.sanitize_type(place, ty);
                 let ty = self.cx.normalize(ty, location);
+                let compare_ty = match *base.ty.kind() {
+                    ty::Alias(ty::Opaque, _) => base.ty,
+                    ty::Pat(inner, _) => inner,
+                    _ => {
+                        span_mirbug!(self, place, "tried to cast {} to {ty}", base.ty);
+                        base.ty
+                    }
+                };
                 self.cx
                     .eq_types(
-                        base.ty,
+                        compare_ty,
                         ty,
                         location.to_locations(),
                         ConstraintCategory::TypeAnnotation,
