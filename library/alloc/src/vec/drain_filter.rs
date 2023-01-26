@@ -115,8 +115,7 @@ where
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator, const COOP_PREF: bool> Iterator
-    for DrainFilter<'_, T, F, A, COOP_PREF>
+impl<T, F, A: Allocator, const COOP_PREF: bool> Iterator for DrainFilter<'_, T, F, A, COOP_PREF>
 where
     F: FnMut(&mut T) -> bool,
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
@@ -155,8 +154,7 @@ where
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator, const COOP_PREF: bool> Drop
-    for DrainFilter<'_, T, F, A, COOP_PREF>
+impl<T, F, A: Allocator, const COOP_PREF: bool> Drop for DrainFilter<'_, T, F, A, COOP_PREF>
 where
     F: FnMut(&mut T) -> bool,
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,

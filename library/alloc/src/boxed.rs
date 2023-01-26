@@ -1679,8 +1679,7 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_array_try_from_vec", since = "1.66.0")]
-impl<T, const N: usize, const COOP_PREF: bool> TryFrom<Vec<T, Global, COOP_PREF>>
-    for Box<[T; N]>
+impl<T, const N: usize, const COOP_PREF: bool> TryFrom<Vec<T, Global, COOP_PREF>> for Box<[T; N]>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
 {

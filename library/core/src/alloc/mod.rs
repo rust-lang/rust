@@ -103,7 +103,7 @@ pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
 pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
     coop_preferred: bool,
 ) -> usize {
-    if A::IS_CO_ALLOCATOR && coop_preferred { 1 } else { 0 }
+    if A::CO_ALLOCATES_WITH_META && coop_preferred { 1 } else { 0 }
 }
 
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
@@ -170,8 +170,9 @@ pub unsafe trait Allocator {
     /// If this is any type with non-zero size, then the actual `Allocator` implementation supports cooperative functions (`co_*`) as first class citizens.
     //type IsCoAllocator = ();
     // It applies to the global (default) allocator only. And/or System allocator?! @FIXME
-    // @FIXME make false by default
-    const IS_CO_ALLOCATOR: bool = true;
+    const CO_ALLOCATES_WITH_META: bool = false;
+
+    type CoAllocMeta: Clone + Copy = ();
 
     /// Attempts to allocate a block of memory.
     ///

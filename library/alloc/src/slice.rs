@@ -97,9 +97,7 @@ pub(crate) mod hack {
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T, A: Allocator, const COOP_PREF: bool>(
-        b: Box<[T], A>,
-    ) -> Vec<T, A, COOP_PREF>
+    pub fn into_vec<T, A: Allocator, const COOP_PREF: bool>(b: Box<[T], A>) -> Vec<T, A, COOP_PREF>
     where
         [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
     {
@@ -467,10 +465,7 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn to_vec_in<A: Allocator, const COOP_PREF: bool>(
-        &self,
-        alloc: A,
-    ) -> Vec<T, A, COOP_PREF>
+    pub fn to_vec_in<A: Allocator, const COOP_PREF: bool>(&self, alloc: A) -> Vec<T, A, COOP_PREF>
     where
         T: Clone,
         [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
@@ -496,9 +491,7 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec<A: Allocator, const COOP_PREF: bool>(
-        self: Box<Self, A>,
-    ) -> Vec<T, A, COOP_PREF>
+    pub fn into_vec<A: Allocator, const COOP_PREF: bool>(self: Box<Self, A>) -> Vec<T, A, COOP_PREF>
     where
         [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
     {

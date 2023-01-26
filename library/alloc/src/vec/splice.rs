@@ -32,8 +32,7 @@ pub struct Splice<
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator, const COOP_PREF: bool> Iterator
-    for Splice<'_, I, A, COOP_PREF>
+impl<I: Iterator, A: Allocator, const COOP_PREF: bool> Iterator for Splice<'_, I, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -68,8 +67,7 @@ where
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator, const COOP_PREF: bool> Drop
-    for Splice<'_, I, A, COOP_PREF>
+impl<I: Iterator, A: Allocator, const COOP_PREF: bool> Drop for Splice<'_, I, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {

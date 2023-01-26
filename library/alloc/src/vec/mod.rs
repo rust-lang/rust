@@ -2615,9 +2615,7 @@ where
         // - `new_cap` refers to the same sized allocation as `cap` because
         // `new_cap * size_of::<T>()` == `cap * size_of::<[T; N]>()`
         // - `len` <= `cap`, so `len * N` <= `cap * N`.
-        unsafe {
-            Vec::<T, A, COOP_PREF>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc)
-        }
+        unsafe { Vec::<T, A, COOP_PREF>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc) }
     }
 }
 
@@ -2730,8 +2728,7 @@ trait ExtendFromWithinSpec {
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>);
 }
 
-impl<T: Clone, A: Allocator, const COOP_PREF: bool> ExtendFromWithinSpec
-    for Vec<T, A, COOP_PREF>
+impl<T: Clone, A: Allocator, const COOP_PREF: bool> ExtendFromWithinSpec for Vec<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -2753,8 +2750,7 @@ where
     }
 }
 
-impl<T: Copy, A: Allocator, const COOP_PREF: bool> ExtendFromWithinSpec
-    for Vec<T, A, COOP_PREF>
+impl<T: Copy, A: Allocator, const COOP_PREF: bool> ExtendFromWithinSpec for Vec<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -2868,8 +2864,7 @@ where
     message = "vector indices are of type `usize` or ranges of `usize`",
     label = "vector indices are of type `usize` or ranges of `usize`"
 )]
-impl<T, I: SliceIndex<[T]>, A: Allocator, const COOP_PREF: bool> Index<I>
-    for Vec<T, A, COOP_PREF>
+impl<T, I: SliceIndex<[T]>, A: Allocator, const COOP_PREF: bool> Index<I> for Vec<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -2972,8 +2967,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, A: Allocator, const COOP_PREF: bool> IntoIterator
-    for &'a mut Vec<T, A, COOP_PREF>
+impl<'a, T, A: Allocator, const COOP_PREF: bool> IntoIterator for &'a mut Vec<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -3212,8 +3206,7 @@ where
 
 /// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialOrd, A: Allocator, const COOP_PREF: bool> PartialOrd
-    for Vec<T, A, COOP_PREF>
+impl<T: PartialOrd, A: Allocator, const COOP_PREF: bool> PartialOrd for Vec<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -3242,8 +3235,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREF: bool> Drop
-    for Vec<T, A, COOP_PREF>
+unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREF: bool> Drop for Vec<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -3273,8 +3265,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug
-    for Vec<T, A, COOP_PREF>
+impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug for Vec<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -3284,8 +3275,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> AsRef<Vec<T, A, COOP_PREF>>
-    for Vec<T, A, COOP_PREF>
+impl<T, A: Allocator, const COOP_PREF: bool> AsRef<Vec<T, A, COOP_PREF>> for Vec<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -3295,8 +3285,7 @@ where
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> AsMut<Vec<T, A, COOP_PREF>>
-    for Vec<T, A, COOP_PREF>
+impl<T, A: Allocator, const COOP_PREF: bool> AsMut<Vec<T, A, COOP_PREF>> for Vec<T, A, COOP_PREF>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {

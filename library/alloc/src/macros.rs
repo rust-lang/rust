@@ -155,7 +155,7 @@ macro_rules! DEFAULT_COOP_PREF {
 #[macro_export]
 macro_rules! meta_num_slots {
     ($alloc:ty, $coop_pref:expr) => {
-        if ($alloc::IS_CO_ALLOCATOR) && ($coop_pref) { 1 } else { 0 }
+        if ($alloc::CO_ALLOCATES_WITH_META) && ($coop_pref) { 1 } else { 0 }
     };
 }
 // -\---> replace with something like:
@@ -164,7 +164,7 @@ macro_rules! meta_num_slots {
 pub const fn meta_num_slots<A: Allocator>(
     COOP_PREF: bool,
 ) -> usize {
-    if A::IS_CO_ALLOCATOR && COOP_PREF { 1 } else { 0 }
+    if A::CO_ALLOCATES_WITH_META && COOP_PREF { 1 } else { 0 }
 }
 */
 
@@ -181,7 +181,7 @@ pub const fn meta_num_slots<A: Allocator>(
 #[macro_export]
 macro_rules! meta_num_slots_default {
     ($alloc:ty) => {
-        if ($alloc::IS_CO_ALLOCATOR) && (DEFAULT_COOP_PREF!()) { 1 } else { 0 }
+        if ($alloc::CO_ALLOCATES_WITH_META) && (DEFAULT_COOP_PREF!()) { 1 } else { 0 }
     };
 }
 
@@ -191,7 +191,7 @@ macro_rules! meta_num_slots_default {
 #[macro_export]
 macro_rules! meta_num_slots_global {
     ($coop_pref:expr) => {
-        if ::alloc::alloc::Global::IS_CO_ALLOCATOR && ($coop_pref) { 1 } else { 0 }
+        if ::alloc::alloc::Global::CO_ALLOCATES_WITH_META && ($coop_pref) { 1 } else { 0 }
     };
 }
 
@@ -205,6 +205,6 @@ macro_rules! meta_num_slots_global {
 #[macro_export]
 macro_rules! meta_num_slots_default_global {
     () => {
-        if ::alloc::alloc::Global::IS_CO_ALLOCATOR && (DEFAULT_COOP_PREF!()) { 1 } else { 0 }
+        if ::alloc::alloc::Global::CO_ALLOCATES_WITH_META && (DEFAULT_COOP_PREF!()) { 1 } else { 0 }
     };
 }

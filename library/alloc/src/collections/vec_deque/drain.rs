@@ -95,8 +95,7 @@ where
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug
-    for Drain<'_, T, A, COOP_PREF>
+impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug for Drain<'_, T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -111,17 +110,13 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Sync, A: Allocator + Sync, const COOP_PREF: bool> Sync
-    for Drain<'_, T, A, COOP_PREF>
-where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+unsafe impl<T: Sync, A: Allocator + Sync, const COOP_PREF: bool> Sync for Drain<'_, T, A, COOP_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
 {
 }
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Send, A: Allocator + Send, const COOP_PREF: bool> Send
-    for Drain<'_, T, A, COOP_PREF>
-where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+unsafe impl<T: Send, A: Allocator + Send, const COOP_PREF: bool> Send for Drain<'_, T, A, COOP_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
 {
 }
 
@@ -137,8 +132,7 @@ where
         where
             [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:;
 
-        impl<'r, 'a, T, A: Allocator, const COOP_PREF: bool> Drop
-            for DropGuard<'r, 'a, T, A, COOP_PREF>
+        impl<'r, 'a, T, A: Allocator, const COOP_PREF: bool> Drop for DropGuard<'r, 'a, T, A, COOP_PREF>
         where
             [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
         {
@@ -247,8 +241,7 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> DoubleEndedIterator
-    for Drain<'_, T, A, COOP_PREF>
+impl<T, A: Allocator, const COOP_PREF: bool> DoubleEndedIterator for Drain<'_, T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -264,10 +257,8 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> ExactSizeIterator
-    for Drain<'_, T, A, COOP_PREF>
-where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+impl<T, A: Allocator, const COOP_PREF: bool> ExactSizeIterator for Drain<'_, T, A, COOP_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
 {
 }
 
