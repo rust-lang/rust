@@ -1,7 +1,7 @@
 /// Creates a [`Vec`] containing the arguments.
 ///
-/// `vec!` allows `Vec`s to be defined with the same syntax as array expressions.
-/// There are two forms of this macro:
+/// `vec!` allows `Vec`s to be defined with the same syntax as array expressions. There are two
+/// forms of this macro:
 ///
 /// - Create a [`Vec`] containing a given list of elements:
 ///
@@ -19,19 +19,17 @@
 /// assert_eq!(v, [1, 1, 1]);
 /// ```
 ///
-/// Note that unlike array expressions this syntax supports all elements
-/// which implement [`Clone`] and the number of elements doesn't have to be
-/// a constant.
+/// Note that unlike array expressions this syntax supports all elements which implement [`Clone`]
+/// and the number of elements doesn't have to be a constant.
 ///
-/// This will use `clone` to duplicate an expression, so one should be careful
-/// using this with types having a nonstandard `Clone` implementation. For
-/// example, `vec![Rc::new(1); 5]` will create a vector of five references
-/// to the same boxed integer value, not five references pointing to independently
-/// boxed integers.
+/// This will use `clone` to duplicate an expression, so one should be careful using this with types
+/// having a nonstandard `Clone` implementation. For example, `vec![Rc::new(1); 5]` will create a
+/// vector of five references to the same boxed integer value, not five references pointing to
+/// independently boxed integers.
 ///
-/// Also, note that `vec![expr; 0]` is allowed, and produces an empty vector.
-/// This will still evaluate `expr`, however, and immediately drop the resulting value, so
-/// be mindful of side effects.
+/// Also, note that `vec![expr; 0]` is allowed, and produces an empty vector. This will still
+/// evaluate `expr`, however, and immediately drop the resulting value, so be mindful of side
+/// effects.
 ///
 /// [`Vec`]: crate::vec::Vec
 #[cfg(all(not(no_global_oom_handling), not(test)))]
@@ -54,10 +52,9 @@ macro_rules! vec {
     );
 }
 
-// HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is
-// required for this macro definition, is not available. Instead use the
-// `slice::into_vec`  function which is only available with cfg(test)
-// NB see the slice::hack module in slice.rs for more information
+// HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is required for this
+// macro definition, is not available. Instead use the `slice::into_vec`  function which is only
+// available with cfg(test) NB see the slice::hack module in slice.rs for more information
 #[cfg(all(not(no_global_oom_handling), test))]
 #[allow(unused_macro_rules)]
 macro_rules! vec {
@@ -75,19 +72,18 @@ macro_rules! vec {
 
 /// Creates a `String` using interpolation of runtime expressions.
 ///
-/// The first argument `format!` receives is a format string. This must be a string
-/// literal. The power of the formatting string is in the `{}`s contained.
+/// The first argument `format!` receives is a format string. This must be a string literal. The
+/// power of the formatting string is in the `{}`s contained.
 ///
-/// Additional parameters passed to `format!` replace the `{}`s within the
-/// formatting string in the order given unless named or positional parameters
-/// are used; see [`std::fmt`] for more information.
+/// Additional parameters passed to `format!` replace the `{}`s within the formatting string in the
+/// order given unless named or positional parameters are used; see [`std::fmt`] for more
+/// information.
 ///
-/// A common use for `format!` is concatenation and interpolation of strings.
-/// The same convention is used with [`print!`] and [`write!`] macros,
-/// depending on the intended destination of the string.
+/// A common use for `format!` is concatenation and interpolation of strings. The same convention is
+/// used with [`print!`] and [`write!`] macros, depending on the intended destination of the string.
 ///
-/// To convert a single value to a string, use the [`to_string`] method. This
-/// will use the [`Display`] formatting trait.
+/// To convert a single value to a string, use the [`to_string`] method. This will use the
+/// [`Display`] formatting trait.
 ///
 /// [`std::fmt`]: ../std/fmt/index.html
 /// [`print!`]: ../std/macro.print.html
@@ -97,9 +93,8 @@ macro_rules! vec {
 ///
 /// # Panics
 ///
-/// `format!` panics if a formatting trait implementation returns an error.
-/// This indicates an incorrect implementation
-/// since `fmt::Write for String` never returns an error itself.
+/// `format!` panics if a formatting trait implementation returns an error. This indicates an
+/// incorrect implementation since `fmt::Write for String` never returns an error itself.
 ///
 /// # Examples
 ///
@@ -127,5 +122,89 @@ macro_rules! format {
 macro_rules! __rust_force_expr {
     ($e:expr) => {
         $e
+    };
+}
+
+/// Default coallocation "cooperation" (`COOP_PREF`) generic parameter.
+///
+/// NOT for public use. It's exported only so that library/proc_macro (and other internals) can use
+/// this.
+///
+// FIXME replace with a `const` (or some kind of compile time preference) once a related ICE is
+// fixed. Then move the const to a submodule, for example alloc::co_alloc.
+#[unstable(feature = "global_co_alloc_default", issue = "none")]
+#[macro_export]
+macro_rules! DEFAULT_COOP_PREF {
+    () => {
+        true
+    };
+}
+// -\---> replace with something like: pub const DEFAULT_COOP_PREF: bool = true;
+
+/// Return 0 or 1, indicating whether to use coallocation metadata (or not) with the given allocator
+/// type `alloc` and cooperation preference `coop_pref`.
+///
+/// NOT for public use. Param `coop_pref` - can override the allocator's default preference for
+/// cooperation, or can make the type not cooperative, regardless of whether allocator `A` is
+/// cooperative.
+// FIXME replace the macro with an (updated version of the below) `const` function). Only once
+// generic_const_exprs is stable (that is, when consumer crates don't need to declare
+// generic_const_exprs feature anymore). Then move the function to a submodule, for example
+// ::alloc::co_alloc.
+#[unstable(feature = "global_co_alloc", issue = "none")]
+#[macro_export]
+macro_rules! meta_num_slots {
+    ($alloc:ty, $coop_pref:expr) => {
+        if ($alloc::IS_CO_ALLOCATOR) && ($coop_pref) { 1 } else { 0 }
+    };
+}
+// -\---> replace with something like:
+/*
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub const fn meta_num_slots<A: Allocator>(
+    COOP_PREF: bool,
+) -> usize {
+    if A::IS_CO_ALLOCATOR && COOP_PREF { 1 } else { 0 }
+}
+*/
+
+/// Like `meta_num_slots`, but for the default coallocation preference (`DEFAULT_COOP_PREF`).
+///
+/// Return 0 or 1, indicating whether to use coallocation metadata (or not) with the given allocator
+/// type `alloc` and the default cooperation preference (`DEFAULT_COOP_PREF()!`).
+///
+/// NOT for public use.
+// FIXME replace the macro with a `const` function. Only once generic_const_exprs is stable (that
+// is, when consumer crates don't need to declare generic_const_exprs feature anymore). Then move
+// the function to a submodule, for example ::alloc::co_alloc.
+#[unstable(feature = "global_co_alloc", issue = "none")]
+#[macro_export]
+macro_rules! meta_num_slots_default {
+    ($alloc:ty) => {
+        if ($alloc::IS_CO_ALLOCATOR) && (DEFAULT_COOP_PREF!()) { 1 } else { 0 }
+    };
+}
+
+/// NOT for public use.
+// See above.
+#[unstable(feature = "global_co_alloc", issue = "none")]
+#[macro_export]
+macro_rules! meta_num_slots_global {
+    ($coop_pref:expr) => {
+        if ::alloc::alloc::Global::IS_CO_ALLOCATOR && ($coop_pref) { 1 } else { 0 }
+    };
+}
+
+/// Like `meta_num_slots`, but for Global allocator and default coallocation preference
+/// (`DEFAULT_COOP_PREF`).
+///
+/// NOT for public use.
+// @FIXME once generic_const_exprs is stable, replace this with a `const` function. Then move the
+// function to a submodule, for example alloc::co_alloc. See above.
+#[unstable(feature = "global_co_alloc", issue = "none")]
+#[macro_export]
+macro_rules! meta_num_slots_default_global {
+    () => {
+        if ::alloc::alloc::Global::IS_CO_ALLOCATOR && (DEFAULT_COOP_PREF!()) { 1 } else { 0 }
     };
 }
