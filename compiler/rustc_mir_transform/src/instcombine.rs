@@ -6,7 +6,8 @@ use rustc_middle::mir::{
     BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
 };
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, layout::TyAndLayout, ParamEnv, ParamEnvAnd, SubstsRef, Ty, TyCtxt};
+use rustc_span::symbol::{sym, Symbol};
 
 pub struct InstCombine;
 
@@ -16,7 +17,11 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let ctx = InstCombineContext { tcx, local_decls: &body.local_decls };
+        let ctx = InstCombineContext {
+            tcx,
+            local_decls: &body.local_decls,
+            param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
+        };
         for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
                 match statement.kind {
@@ -33,6 +38,10 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
                 &mut block.terminator.as_mut().unwrap(),
                 &mut block.statements,
             );
+            ctx.combine_intrinsic_assert(
+                &mut block.terminator.as_mut().unwrap(),
+                &mut block.statements,
+            );
         }
     }
 }
@@ -40,6 +49,7 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
 struct InstCombineContext<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
+    param_env: ParamEnv<'tcx>,
 }
 
 impl<'tcx> InstCombineContext<'tcx, '_> {
@@ -200,4 +210,76 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         });
         terminator.kind = TerminatorKind::Goto { target: destination_block };
     }
+
+    fn combine_intrinsic_assert(
+        &self,
+        terminator: &mut Terminator<'tcx>,
+        _statements: &mut Vec<Statement<'tcx>>,
+    ) {
+        let TerminatorKind::Call { func, target, .. } = &mut terminator.kind  else { return; };
+        let Some(target_block) = target else { return; };
+        let func_ty = func.ty(self.local_decls, self.tcx);
+        let Some((intrinsic_name, substs)) = resolve_rust_intrinsic(self.tcx, func_ty) else {
+            return;
+        };
+        // The intrinsics we are interested in have one generic parameter
+        if substs.is_empty() {
+            return;
+        }
+        let ty = substs.type_at(0);
+
+        // Check this is a foldable intrinsic before we query the layout of our generic parameter
+        let Some(assert_panics) = intrinsic_assert_panics(intrinsic_name) else { return; };
+        let Ok(layout) = self.tcx.layout_of(self.param_env.and(ty)) else { return; };
+        if assert_panics(self.tcx, self.param_env.and(layout)) {
+            // If we know the assert panics, indicate to later opts that the call diverges
+            *target = None;
+        } else {
+            // If we know the assert does not panic, turn the call into a Goto
+            terminator.kind = TerminatorKind::Goto { target: *target_block };
+        }
+    }
+}
+
+fn intrinsic_assert_panics<'tcx>(
+    intrinsic_name: Symbol,
+) -> Option<fn(TyCtxt<'tcx>, ParamEnvAnd<'tcx, TyAndLayout<'tcx>>) -> bool> {
+    fn inhabited_predicate<'tcx>(
+        _tcx: TyCtxt<'tcx>,
+        param_env_and_layout: ParamEnvAnd<'tcx, TyAndLayout<'tcx>>,
+    ) -> bool {
+        let (_param_env, layout) = param_env_and_layout.into_parts();
+        layout.abi.is_uninhabited()
+    }
+    fn zero_valid_predicate<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        param_env_and_layout: ParamEnvAnd<'tcx, TyAndLayout<'tcx>>,
+    ) -> bool {
+        !tcx.permits_zero_init(param_env_and_layout)
+    }
+    fn mem_uninitialized_valid_predicate<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        param_env_and_layout: ParamEnvAnd<'tcx, TyAndLayout<'tcx>>,
+    ) -> bool {
+        !tcx.permits_uninit_init(param_env_and_layout)
+    }
+
+    match intrinsic_name {
+        sym::assert_inhabited => Some(inhabited_predicate),
+        sym::assert_zero_valid => Some(zero_valid_predicate),
+        sym::assert_mem_uninitialized_valid => Some(mem_uninitialized_valid_predicate),
+        _ => None,
+    }
+}
+
+fn resolve_rust_intrinsic<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    func_ty: Ty<'tcx>,
+) -> Option<(Symbol, SubstsRef<'tcx>)> {
+    if let ty::FnDef(def_id, substs) = *func_ty.kind() {
+        if tcx.is_intrinsic(def_id) {
+            return Some((tcx.item_name(def_id), substs));
+        }
+    }
+    None
 }

@@ -678,8 +678,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             let do_panic = match intrinsic {
                 Inhabited => layout.abi.is_uninhabited(),
-                ZeroValid => !bx.tcx().permits_zero_init(layout),
-                MemUninitializedValid => !bx.tcx().permits_uninit_init(layout),
+                ZeroValid => !bx.tcx().permits_zero_init(bx.param_env().and(layout)),
+                MemUninitializedValid => !bx.tcx().permits_uninit_init(bx.param_env().and(layout)),
             };
             Some(if do_panic {
                 let msg_str = with_no_visible_paths!({

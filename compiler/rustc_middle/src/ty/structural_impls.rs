@@ -11,6 +11,7 @@ use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_target::abi::TyAndLayout;
 
 use std::fmt;
 use std::mem::ManuallyDrop;
@@ -851,5 +852,11 @@ impl<'tcx> TypeVisitable<'tcx> for InferConst<'tcx> {
 impl<'tcx> TypeSuperVisitable<'tcx> for ty::UnevaluatedConst<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.substs.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for TyAndLayout<'tcx, Ty<'tcx>> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        visitor.visit_ty(self.ty)
     }
 }
