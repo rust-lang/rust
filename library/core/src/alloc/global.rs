@@ -1,11 +1,12 @@
 use crate::alloc::Layout;
+use crate::alloc::{CoAllocMetaBase, CoAllocMetaPlain};
 use crate::cmp;
 use crate::ptr;
 
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[allow(missing_debug_implementations)]
+#[derive(Debug)]
 /// Used for parameters and results (to/from `GlobalCoAllocator`'s functions, where applicable).
-pub struct RawAndMeta<M: Clone + Copy> {
+pub struct RawAndMeta<M: CoAllocMetaBase> {
     pub ptr: *mut u8,
     pub meta: M,
 }
@@ -129,10 +130,12 @@ pub struct RawAndMeta<M: Clone + Copy> {
 ///   having side effects.
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
+    /// NOT for public use. The default value MAY be REMOVED or CHANGED.
+    /// 
     /// @FIXME Validate (preferrable at compile time, otherwise as a test) that this type's
     /// alignment <= `usize` alignment.
     #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-    type CoAllocMeta: Clone + Copy = ();
+    type CoAllocMeta: CoAllocMetaBase = CoAllocMetaPlain;
 
     /// Allocate memory as described by the given `layout`.
     ///

@@ -7,6 +7,7 @@ use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
+use core::alloc::CoAllocMetaBase;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -136,12 +137,11 @@ where
     /// the returned `RawVec`.
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
-        #[allow(unreachable_code)] // @FIXME CoAlloc
         Self {
             ptr: Unique::dangling(),
             cap: 0,
             alloc,
-            metas: [loop {}; // @FIXME CoAlloc
+            metas: [A::CoAllocMeta::new_plain(); // @FIXME CoAlloc
                 alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
         }
     }
@@ -221,7 +221,7 @@ where
                 ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
                 cap: capacity,
                 alloc,
-                metas: [loop {}; // @FIXME CoAlloc
+                metas: [A::CoAllocMeta::new_plain(); // @FIXME CoAlloc
                     alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
             }
         }
@@ -244,7 +244,7 @@ where
             ptr: unsafe { Unique::new_unchecked(ptr) },
             cap: capacity,
             alloc,
-            metas: [loop {}; //@FIXME CoAlloc
+            metas: [A::CoAllocMeta::new_plain(); //@FIXME CoAlloc
                 alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
         }
     }
