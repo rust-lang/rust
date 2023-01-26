@@ -598,7 +598,7 @@ fn doc_std(
             .arg(&builder.version)
             .args(extra_args);
         if builder.config.library_docs_private_items {
-            cargo.arg("--document-private-items");
+            cargo.arg("--document-private-items").arg("--document-hidden-items");
         }
         builder.run(&mut cargo.into());
     };
