@@ -222,7 +222,7 @@ returned by `Emitter::fluent_bundle`. This bundle is used preferentially when
 translating messages, the fallback bundle is only used if the primary bundle is
 missing a message or not provided.
 
-As of <!-- date-check --> June 2022, there are no locale bundles
+As of <!-- date-check --> Jan 2023, there are no locale bundles
 distributed with the compiler, but mechanisms are implemented for loading
 bundles.
 
