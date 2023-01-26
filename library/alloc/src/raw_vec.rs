@@ -1,6 +1,6 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
-use core::alloc::{self, GlobalCoAllocMeta, LayoutError, PtrAndMeta};
+use core::alloc::{self, LayoutError, PtrAndMeta};
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
@@ -62,7 +62,7 @@ where
     //pub(crate) meta: [GlobalCoAllocMeta; {if core::any::TypeId::of::<A>()==core::any::TypeId::of::<Global>() {1} else {0}}],
     //pub(crate) meta: [GlobalCoAllocMeta; mem::size_of::<A::IsCoAllocator>()],
     pub(crate) metas:
-        [GlobalCoAllocMeta; alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
+        [A::CoAllocMeta; alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
 }
 
 impl<T, const COOP_PREF: bool> RawVec<T, Global, COOP_PREF>
@@ -136,11 +136,12 @@ where
     /// the returned `RawVec`.
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
+        #[allow(unreachable_code)] // @FIXME CoAlloc
         Self {
             ptr: Unique::dangling(),
             cap: 0,
             alloc,
-            metas: [GlobalCoAllocMeta {/*one: 1*/ /* , two: 2, three: 3, four: 4*/};
+            metas: [loop {}; // @FIXME CoAlloc
                 alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
         }
     }
@@ -215,11 +216,12 @@ where
             // Allocators currently return a `NonNull<[u8]>` whose length
             // matches the size requested. If that ever changes, the capacity
             // here should change to `ptr.len() / mem::size_of::<T>()`.
+            #[allow(unreachable_code)] // @FIXME CoAlloc
             Self {
                 ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
                 cap: capacity,
                 alloc,
-                metas: [GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/};
+                metas: [loop {}; // @FIXME CoAlloc
                     alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
             }
         }
@@ -237,11 +239,12 @@ where
     /// guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
+        #[allow(unreachable_code)] //@FIXME CoAlloc
         Self {
             ptr: unsafe { Unique::new_unchecked(ptr) },
             cap: capacity,
             alloc,
-            metas: [GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/};
+            metas: [loop {}; //@FIXME CoAlloc
                 alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)],
         }
     }
