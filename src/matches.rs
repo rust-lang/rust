@@ -306,8 +306,9 @@ fn block_can_be_flattened<'a>(
     expr: &'a ast::Expr,
 ) -> Option<&'a ast::Block> {
     match expr.kind {
-        ast::ExprKind::Block(ref block, _)
-            if !is_unsafe_block(block)
+        ast::ExprKind::Block(ref block, label)
+            if label.is_none()
+                && !is_unsafe_block(block)
                 && !context.inside_macro()
                 && is_simple_block(context, block, Some(&expr.attrs))
                 && !stmt_is_expr_mac(&block.stmts[0]) =>
