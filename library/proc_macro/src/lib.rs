@@ -581,7 +581,7 @@ impl fmt::Debug for Span {
 
 /// A line-column pair representing the start or end of a `Span`.
 #[unstable(feature = "proc_macro_span", issue = "54725")]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct LineColumn {
     /// The 1-indexed line in the source file on which the span starts or ends (inclusive).
     #[unstable(feature = "proc_macro_span", issue = "54725")]
