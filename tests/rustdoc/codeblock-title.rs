@@ -3,7 +3,7 @@
 // @has foo/fn.bar.html '//*[@class="example-wrap compile_fail"]/*[@class="tooltip"]' "ⓘ"
 // @has foo/fn.bar.html '//*[@class="example-wrap ignore"]/*[@class="tooltip"]' "ⓘ"
 // @has foo/fn.bar.html '//*[@class="example-wrap should_panic"]/*[@class="tooltip"]' "ⓘ"
-// @has foo/fn.bar.html '//*[@data-edition="2018"]' "ⓘ"
+// @has foo/fn.bar.html '//*[@title="This example runs with edition 2018"]' "ⓘ"
 
 /// foo
 ///
