@@ -240,7 +240,7 @@ impl TypeRef {
                 TypeRef::DynTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
             ast::Type::MacroType(mt) => match mt.macro_call() {
-                Some(mc) => ctx.ast_id(ctx.db, &mc).map(TypeRef::Macro).unwrap_or(TypeRef::Error),
+                Some(mc) => ctx.ast_id(&mc).map(TypeRef::Macro).unwrap_or(TypeRef::Error),
                 None => TypeRef::Error,
             },
         }
