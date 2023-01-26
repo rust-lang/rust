@@ -30,7 +30,7 @@ impl MultiSpan for Span {
 }
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl MultiSpan for Vec<Span, Global, DEFAULT_COOP_PREFERRED> {
+impl MultiSpan for Vec<Span, Global, DEFAULT_COOP_PREF> {
     fn into_spans(self) -> Vec<Span> {
         self
     }

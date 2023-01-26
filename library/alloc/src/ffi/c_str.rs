@@ -8,7 +8,7 @@ use crate::rc::Rc;
 use crate::slice::hack::into_vec;
 use crate::string::String;
 use crate::vec::Vec;
-use crate::DEFAULT_COOP_PREFERRED;
+use crate::DEFAULT_COOP_PREF;
 use core::borrow::Borrow;
 use core::ffi::{c_char, CStr};
 use core::fmt;
@@ -726,7 +726,7 @@ impl fmt::Debug for CString {
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
 #[allow(unused_braces)]
-impl From<CString> for Vec<u8, Global, { DEFAULT_COOP_PREFERRED!() }> {
+impl From<CString> for Vec<u8, Global, { DEFAULT_COOP_PREF!() }> {
     /// Converts a [`CString`] into a <code>[Vec]<[u8]></code>.
     ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.

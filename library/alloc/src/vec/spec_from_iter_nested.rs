@@ -5,7 +5,7 @@ use core::ptr;
 
 use crate::alloc::Global;
 use crate::raw_vec::RawVec;
-use crate::DEFAULT_COOP_PREFERRED;
+use crate::DEFAULT_COOP_PREF;
 
 use super::{SpecExtend, Vec};
 
@@ -17,10 +17,10 @@ pub(super) trait SpecFromIterNested<T, I> {
 }
 
 #[allow(unused_braces)]
-impl<T, I, const COOP_PREFERRED: bool> SpecFromIterNested<T, I> for Vec<T, Global, COOP_PREFERRED>
+impl<T, I, const COOP_PREF: bool> SpecFromIterNested<T, I> for Vec<T, Global, COOP_PREF>
 where
     I: Iterator<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be
@@ -45,13 +45,13 @@ where
         };
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
-        <Vec<T, Global, COOP_PREFERRED> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
+        <Vec<T, Global, COOP_PREF> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
         vector
     }
 }
 
 #[allow(unused_braces)]
-impl<T, I> SpecFromIterNested<T, I> for Vec<T, Global, { DEFAULT_COOP_PREFERRED!() }>
+impl<T, I> SpecFromIterNested<T, I> for Vec<T, Global, { DEFAULT_COOP_PREF!() }>
 where
     I: TrustedLen<Item = T>,
 {

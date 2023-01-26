@@ -378,9 +378,9 @@ impl Write for &mut [u8] {
 /// Write is implemented for `Vec<u8>` by appending to the vector.
 /// The vector will grow as needed.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator, const COOP_PREFERRED: bool> Write for Vec<u8, A, COOP_PREFERRED>
+impl<A: Allocator, const COOP_PREF: bool> Write for Vec<u8, A, COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -417,9 +417,9 @@ where
 
 /// Read is implemented for `VecDeque<u8>` by consuming bytes from the front of the `VecDeque`.
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
-impl<A: Allocator, const _COOP_PREFERRED: bool> Read for VecDeque<u8, A, _COOP_PREFERRED>
+impl<A: Allocator, const _COOP_PREF: bool> Read for VecDeque<u8, A, _COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREF)]:,
 {
     /// Fill `buf` with the contents of the "front" slice as returned by
     /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are
@@ -444,9 +444,9 @@ where
 
 /// Write is implemented for `VecDeque<u8>` by appending to the `VecDeque`, growing it as needed.
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
-impl<A: Allocator, const _COOP_PREFERRED: bool> Write for VecDeque<u8, A, _COOP_PREFERRED>
+impl<A: Allocator, const _COOP_PREF: bool> Write for VecDeque<u8, A, _COOP_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(_COOP_PREF)]:,
 {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
