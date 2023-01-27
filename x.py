@@ -22,7 +22,7 @@ if sys.version_info.major < 3:
             pass
 
 rust_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
+sys.path[:0] = [os.path.join(rust_dir, "src", "bootstrap")]
 
 import bootstrap
 bootstrap.main()
