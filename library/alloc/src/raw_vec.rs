@@ -1,6 +1,7 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
 use crate::meta_num_slots_default;
+use core::alloc::CoAllocMetaBase;
 use core::alloc::{self, LayoutError, PtrAndMeta};
 use core::cmp;
 use core::intrinsics;
@@ -8,7 +9,6 @@ use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
-use core::alloc::CoAllocMetaBase;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -53,8 +53,11 @@ enum AllocInit {
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
 #[allow(unused_braces)] //@FIXME remove #[allow(unused_braces)] once that false positive warning fix is included on stable
-pub(crate) struct RawVec<T, A: Allocator = Global, const COOP_PREF: bool = { CO_ALLOC_PREF_DEFAULT!() }>
-where
+pub(crate) struct RawVec<
+    T,
+    A: Allocator = Global,
+    const COOP_PREF: bool = { CO_ALLOC_PREF_DEFAULT!() },
+> where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
     ptr: Unique<T>,
@@ -121,7 +124,7 @@ impl<T, A: Allocator, const COOP_PREF: bool> RawVec<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
-    const fn new_plain_metas() -> [A::CoAllocMeta; {meta_num_slots_default!(A)}] {
+    const fn new_plain_metas() -> [A::CoAllocMeta; { meta_num_slots_default!(A) }] {
         loop {}
     }
 
