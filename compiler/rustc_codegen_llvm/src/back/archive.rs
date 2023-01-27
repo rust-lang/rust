@@ -102,7 +102,9 @@ pub struct LlvmArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
-        if sess.target.arch == "wasm32" || sess.target.arch == "wasm64" {
+        // FIXME use ArArchiveBuilder on most targets again once reading thin archives is
+        // implemented
+        if true || sess.target.arch == "wasm32" || sess.target.arch == "wasm64" {
             Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
         } else {
             Box::new(ArArchiveBuilder::new(sess, get_llvm_object_symbols))
