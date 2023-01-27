@@ -122,6 +122,28 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             && goal.param_env.visit_with(&mut visitor).is_continue()
     }
 
+    /// After normalizing the projection to `normalized_alias` with the given
+    /// `normalization_certainty`, constrain the inference variable `term` to it
+    /// and return a query response.
+    fn eq_term_and_make_canonical_response(
+        &mut self,
+        goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
+        normalization_certainty: Certainty,
+        normalized_alias: impl Into<ty::Term<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        // The term of our goal should be fully unconstrained, so this should never fail.
+        //
+        // It can however be ambiguous when the `normalized_alias` contains a projection.
+        let nested_goals = self
+            .infcx
+            .eq(goal.param_env, goal.predicate.term, normalized_alias.into())
+            .expect("failed to unify with unconstrained term");
+        let rhs_certainty =
+            self.evaluate_all(nested_goals).expect("failed to unify with unconstrained term");
+
+        self.make_canonical_response(normalization_certainty.unify_and(rhs_certainty))
+    }
+
     fn merge_project_candidates(
         &mut self,
         mut candidates: Vec<Candidate<'tcx>>,
@@ -218,7 +240,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 .map(|pred| goal.with(tcx, pred));
 
             nested_goals.extend(where_clause_bounds);
-            let trait_ref_certainty = ecx.evaluate_all(nested_goals)?;
+            let match_impl_certainty = ecx.evaluate_all(nested_goals)?;
 
             // In case the associated item is hidden due to specialization, we have to
             // return ambiguity this would otherwise be incomplete, resulting in
@@ -230,7 +252,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 goal.predicate.def_id(),
                 impl_def_id
             )? else {
-                return ecx.make_canonical_response(trait_ref_certainty.unify_and(Certainty::AMBIGUOUS));
+                return ecx.make_canonical_response(match_impl_certainty.unify_and(Certainty::AMBIGUOUS));
             };
 
             if !assoc_def.item.defaultness(tcx).has_value() {
@@ -277,17 +299,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 ty.map_bound(|ty| ty.into())
             };
 
-            // The term of our goal should be fully unconstrained, so this should never fail.
-            //
-            // It can however be ambiguous when the resolved type is a projection.
-            let nested_goals = ecx
-                .infcx
-                .eq(goal.param_env, goal.predicate.term, term.subst(tcx, substs))
-                .expect("failed to unify with unconstrained term");
-            let rhs_certainty =
-                ecx.evaluate_all(nested_goals).expect("failed to unify with unconstrained term");
-
-            ecx.make_canonical_response(trait_ref_certainty.unify_and(rhs_certainty))
+            ecx.eq_term_and_make_canonical_response(goal, match_impl_certainty, term.subst(tcx, substs))
         })
     }
 
@@ -307,18 +319,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 )?;
                 let subst_certainty = ecx.evaluate_all(nested_goals)?;
 
-                // The term of our goal should be fully unconstrained, so this should never fail.
-                //
-                // It can however be ambiguous when the resolved type is a projection.
-                let nested_goals = ecx
-                    .infcx
-                    .eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)
-                    .expect("failed to unify with unconstrained term");
-                let rhs_certainty = ecx
-                    .evaluate_all(nested_goals)
-                    .expect("failed to unify with unconstrained term");
-
-                ecx.make_canonical_response(subst_certainty.unify_and(rhs_certainty))
+                ecx.eq_term_and_make_canonical_response(
+                    goal,
+                    subst_certainty,
+                    assumption_projection_pred.term,
+                )
             })
         } else {
             Err(NoSolution)
@@ -434,14 +439,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         [ty::GenericArg::from(goal.predicate.self_ty())],
                     ));
 
-                    let mut nested_goals = ecx.infcx.eq(
-                        goal.param_env,
-                        goal.predicate.term.ty().unwrap(),
+                    let is_sized_certainty = ecx.evaluate_goal(goal.with(tcx, sized_predicate))?.1;
+                    return ecx.eq_term_and_make_canonical_response(
+                        goal,
+                        is_sized_certainty,
                         tcx.types.unit,
-                    )?;
-                    nested_goals.push(goal.with(tcx, sized_predicate));
-
-                    return ecx.evaluate_all_and_make_canonical_response(nested_goals);
+                    );
                 }
 
                 ty::Adt(def, substs) if def.is_struct() => {
@@ -453,7 +456,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                                 tcx,
                                 ty::Binder::dummy(goal.predicate.with_self_ty(tcx, self_ty)),
                             );
-                            return ecx.evaluate_all_and_make_canonical_response(vec![new_goal]);
+                            let (_, certainty) = ecx.evaluate_goal(new_goal)?;
+                            return ecx.make_canonical_response(certainty);
                         }
                     }
                 }
@@ -466,7 +470,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                             tcx,
                             ty::Binder::dummy(goal.predicate.with_self_ty(tcx, self_ty)),
                         );
-                        return ecx.evaluate_all_and_make_canonical_response(vec![new_goal]);
+                        let (_, certainty) = ecx.evaluate_goal(new_goal)?;
+                        return ecx.make_canonical_response(certainty);
                     }
                 },
 
@@ -479,9 +484,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 ),
             };
 
-            let nested_goals =
-                ecx.infcx.eq(goal.param_env, goal.predicate.term.ty().unwrap(), metadata_ty)?;
-            ecx.evaluate_all_and_make_canonical_response(nested_goals)
+            ecx.eq_term_and_make_canonical_response(goal, Certainty::Yes, metadata_ty)
         })
     }
 
