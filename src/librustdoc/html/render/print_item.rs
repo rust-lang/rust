@@ -391,7 +391,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 };
                 write!(
                     w,
-                    "<div class=\"item-left {stab}{add}import-item\"{id}>\
+                    "<div class=\"item-left{add}{stab}\"{id}>\
                          <code>{vis}{imp}</code>\
                      </div>\
                      {stab_tags_before}{stab_tags}{stab_tags_after}",
@@ -437,7 +437,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 };
                 write!(
                     w,
-                    "<div class=\"item-left {stab}{add}module-item\">\
+                    "<div class=\"item-left{add}{stab}\">\
                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
                         {visibility_emoji}\
                         {unsafety_flag}\
