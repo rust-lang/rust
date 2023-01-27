@@ -109,6 +109,7 @@ fn add_missing_impl_members_inner(
 
     if ctx.token_at_offset().all(|t| {
         t.parent_ancestors()
+            .take_while(|node| node != impl_def.syntax())
             .any(|s| ast::BlockExpr::can_cast(s.kind()) || ast::ParamList::can_cast(s.kind()))
     }) {
         return None;
@@ -1485,5 +1486,36 @@ impl Trait for () {
     $0fn bar(&self) {}
 }"#,
         )
+    }
+
+    #[test]
+    fn test_works_inside_function() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Tr {
+    fn method();
+}
+fn main() {
+    struct S;
+    impl Tr for S {
+        $0
+    }
+}
+"#,
+            r#"
+trait Tr {
+    fn method();
+}
+fn main() {
+    struct S;
+    impl Tr for S {
+        fn method() {
+        ${0:todo!()}
+    }
+    }
+}
+"#,
+        );
     }
 }
