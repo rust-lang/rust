@@ -35,7 +35,8 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
         },
         Primitive::F32 => types::F32,
         Primitive::F64 => types::F64,
-        Primitive::Pointer => pointer_ty(tcx),
+        // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+        Primitive::Pointer(_) => pointer_ty(tcx),
     }
 }
 

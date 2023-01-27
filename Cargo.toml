@@ -18,7 +18,9 @@ crate-type = ["dylib"]
 cranelift-codegen = { version = "0.92", features = ["unwind", "all-arch"] }
 cranelift-frontend = { version = "0.92" }
 cranelift-module = { version = "0.92" }
-cranelift-native = { version = "0.92" }
+# NOTE vendored as src/cranelift_native.rs
+# FIXME revert back to the external crate with Cranelift 0.93
+#cranelift-native = { version = "0.92" }
 cranelift-jit = { version = "0.92", optional = true }
 cranelift-object = { version = "0.92" }
 target-lexicon = "0.12.0"
