@@ -10,7 +10,7 @@ git fetch
 git checkout -- .
 git checkout "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
 
-git am ../patches/*-sysroot-*.patch
+git -c user.name=Dummy -c user.email=dummy@example.com am ../patches/*-sysroot-*.patch
 
 git apply - <<EOF
 diff --git a/library/alloc/Cargo.toml b/library/alloc/Cargo.toml
@@ -25,8 +25,8 @@ index d95b5b7f17f..00b6f0e3635 100644
 +compiler_builtins = { version = "0.1.66", features = ['rustc-dep-of-std', 'no-asm'] }
 
  [dev-dependencies]
- rand = "0.7"
- rand_xorshift = "0.2"
+ rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
+ rand_xorshift = "0.3.0"
 EOF
 
 cat > config.toml <<EOF
@@ -51,7 +51,7 @@ popd
 # FIXME remove once inline asm is fully supported
 export RUSTFLAGS="$RUSTFLAGS --cfg=rustix_use_libc"
 
-export CFG_VIRTUAL_RUST_SOURCE_BASE_DIR="$(cd build_sysroot/sysroot_src; pwd)"
+export CFG_VIRTUAL_RUST_SOURCE_BASE_DIR="$(cd download/sysroot/sysroot_src; pwd)"
 
 # Allow the testsuite to use llvm tools
 host_triple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
