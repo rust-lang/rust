@@ -6,11 +6,10 @@ use super::prepare::GitRepo;
 use super::utils::{spawn_and_wait, CargoProject, Compiler};
 use super::SysrootKind;
 
-pub(crate) static ABI_CAFE_REPO: GitRepo =
+static ABI_CAFE_REPO: GitRepo =
     GitRepo::github("Gankra", "abi-cafe", "4c6dc8c9c687e2b3a760ff2176ce236872b37212", "abi-cafe");
 
-pub(crate) static ABI_CAFE: CargoProject =
-    CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe");
+static ABI_CAFE: CargoProject = CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe");
 
 pub(crate) fn run(
     channel: &str,
@@ -19,6 +18,9 @@ pub(crate) fn run(
     cg_clif_dylib: &Path,
     bootstrap_host_compiler: &Compiler,
 ) {
+    ABI_CAFE_REPO.fetch(dirs);
+    spawn_and_wait(ABI_CAFE.fetch("cargo", &bootstrap_host_compiler.rustc, dirs));
+
     eprintln!("Building sysroot for abi-cafe");
     build_sysroot::build_sysroot(
         dirs,
