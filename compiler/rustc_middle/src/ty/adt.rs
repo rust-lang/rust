@@ -90,11 +90,11 @@ pub struct AdtDefData {
     /// The `DefId` of the struct, enum or union item.
     pub did: DefId,
     /// Variants of the ADT. If this is a struct or union, then there will be a single variant.
-    pub(crate) variants: IndexVec<VariantIdx, VariantDef>,
+    variants: IndexVec<VariantIdx, VariantDef>,
     /// Flags of the ADT (e.g., is this a struct? is this non-exhaustive?).
-    pub(crate) flags: AdtFlags,
+    flags: AdtFlags,
     /// Repr options provided by the user.
-    pub(crate) repr: ReprOptions,
+    repr: ReprOptions,
 }
 
 impl PartialOrd for AdtDefData {

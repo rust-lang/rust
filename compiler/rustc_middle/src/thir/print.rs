@@ -522,7 +522,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
     fn print_adt_expr(&mut self, adt_expr: &AdtExpr<'tcx>, depth_lvl: usize) {
         print_indented!(self, "adt_def:", depth_lvl);
-        self.print_adt_def(&*adt_expr.adt_def.0, depth_lvl + 1);
+        self.print_adt_def(adt_expr.adt_def, depth_lvl + 1);
         print_indented!(
             self,
             format!("variant_index: {:?}", adt_expr.variant_index),
@@ -544,12 +544,12 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         }
     }
 
-    fn print_adt_def(&mut self, adt_def: &ty::AdtDefData, depth_lvl: usize) {
+    fn print_adt_def(&mut self, adt_def: ty::AdtDef<'tcx>, depth_lvl: usize) {
         print_indented!(self, "AdtDef {", depth_lvl);
-        print_indented!(self, format!("did: {:?}", adt_def.did), depth_lvl + 1);
-        print_indented!(self, format!("variants: {:?}", adt_def.variants), depth_lvl + 1);
-        print_indented!(self, format!("flags: {:?}", adt_def.flags), depth_lvl + 1);
-        print_indented!(self, format!("repr: {:?}", adt_def.repr), depth_lvl + 1);
+        print_indented!(self, format!("did: {:?}", adt_def.did()), depth_lvl + 1);
+        print_indented!(self, format!("variants: {:?}", adt_def.variants()), depth_lvl + 1);
+        print_indented!(self, format!("flags: {:?}", adt_def.flags()), depth_lvl + 1);
+        print_indented!(self, format!("repr: {:?}", adt_def.repr()), depth_lvl + 1);
     }
 
     fn print_fru_info(&mut self, fru_info: &FruInfo<'tcx>, depth_lvl: usize) {
@@ -633,7 +633,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             PatKind::Variant { adt_def, substs, variant_index, subpatterns } => {
                 print_indented!(self, "Variant {", depth_lvl + 1);
                 print_indented!(self, "adt_def: ", depth_lvl + 2);
-                self.print_adt_def(&*adt_def.0, depth_lvl + 3);
+                self.print_adt_def(*adt_def, depth_lvl + 3);
                 print_indented!(self, format!("substs: {:?}", substs), depth_lvl + 2);
                 print_indented!(self, format!("variant_index: {:?}", variant_index), depth_lvl + 2);
 
