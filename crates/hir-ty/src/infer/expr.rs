@@ -13,6 +13,7 @@ use hir_def::{
         ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     generics::TypeOrConstParamData,
+    lang_item::LangItem,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
     ConstParamId, FieldId, ItemContainerId, Lookup,
@@ -157,7 +158,8 @@ impl<'a> InferenceContext<'a> {
                 }
 
                 // The ok-ish type that is expected from the last expression
-                let ok_ty = self.resolve_associated_type(try_ty.clone(), self.resolve_ops_try_ok());
+                let ok_ty =
+                    self.resolve_associated_type(try_ty.clone(), self.resolve_ops_try_output());
 
                 self.with_breakable_ctx(BreakableKind::Block, ok_ty.clone(), None, |this| {
                     this.infer_expr(*body, &Expectation::has_type(ok_ty));
@@ -593,9 +595,19 @@ impl<'a> InferenceContext<'a> {
                 self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
             }
             Expr::Try { expr } => {
-                // FIXME: Note down method resolution her
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok())
+                if let Some(trait_) = self.resolve_lang_trait(LangItem::Try) {
+                    if let Some(func) = self.db.trait_data(trait_).method_by_name(&name!(branch)) {
+                        let subst = TyBuilder::subst_for_def(self.db, trait_, None)
+                            .push(inner_ty.clone())
+                            .build();
+                        self.write_method_resolution(tgt_expr, func, subst.clone());
+                    }
+                    let try_output = self.resolve_output_on(trait_);
+                    self.resolve_associated_type(inner_ty, try_output)
+                } else {
+                    self.err_ty()
+                }
             }
             Expr::Cast { expr, type_ref } => {
                 // FIXME: propagate the "castable to" expectation (and find a test case that shows this is necessary)
@@ -744,7 +756,7 @@ impl<'a> InferenceContext<'a> {
                 let base_ty = self.infer_expr_inner(*base, &Expectation::none());
                 let index_ty = self.infer_expr(*index, &Expectation::none());
 
-                if let Some(index_trait) = self.resolve_ops_index() {
+                if let Some(index_trait) = self.resolve_lang_trait(LangItem::Index) {
                     let canonicalized = self.canonicalize(base_ty.clone());
                     let receiver_adjustments = method_resolution::resolve_indexing_op(
                         self.db,
