@@ -22,7 +22,7 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif 4'),
-		url("SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2") format("woff2");
+		url("SourceSerif4-Regular-46f98efaafac5295.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -30,7 +30,7 @@
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif 4 Italic'),
-		url("SourceSerif4-It-d034fe4ef9d0fa00.ttf.woff2") format("woff2");
+		url("SourceSerif4-It-acdfaf1a8af734b1.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -38,7 +38,7 @@
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif 4 Bold'),
-		url("SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2") format("woff2");
+		url("SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
