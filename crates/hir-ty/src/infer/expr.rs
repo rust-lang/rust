@@ -17,7 +17,7 @@ use hir_def::{
     resolver::resolver_for_expr,
     ConstParamId, FieldId, ItemContainerId, Lookup,
 };
-use hir_expand::name::Name;
+use hir_expand::name::{name, Name};
 use stdx::always;
 use syntax::ast::RangeOp;
 
@@ -741,7 +741,6 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Expr::Index { base, index } => {
-                // FIXME: note down method resolution for the `index`/`index_mut` function
                 let base_ty = self.infer_expr_inner(*base, &Expectation::none());
                 let index_ty = self.infer_expr(*index, &Expectation::none());
 
@@ -758,6 +757,15 @@ impl<'a> InferenceContext<'a> {
                             adj.apply(&mut self.table, base_ty)
                         });
                     self.write_expr_adj(*base, adj);
+                    if let Some(func) =
+                        self.db.trait_data(index_trait).method_by_name(&name!(index))
+                    {
+                        let substs = TyBuilder::subst_for_def(self.db, index_trait, None)
+                            .push(self_ty.clone())
+                            .push(index_ty.clone())
+                            .build();
+                        self.write_method_resolution(tgt_expr, func, substs.clone());
+                    }
                     self.resolve_associated_type_with_params(
                         self_ty,
                         self.resolve_ops_index_output(),

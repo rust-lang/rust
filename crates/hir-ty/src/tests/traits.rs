@@ -2295,10 +2295,8 @@ fn unselected_projection_in_trait_env_no_cycle() {
     // this is not a cycle
     check_types(
         r#"
-//- /main.rs
-trait Index {
-    type Output;
-}
+//- minicore: index
+use core::ops::Index;
 
 type Key<S: UnificationStoreBase> = <S as UnificationStoreBase>::Key;
 
