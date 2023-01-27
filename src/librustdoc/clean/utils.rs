@@ -29,11 +29,6 @@ mod tests;
 pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
 
-    for &cnum in cx.tcx.crates(()) {
-        // Analyze doc-reachability for extern items
-        crate::visit_lib::lib_embargo_visit_item(cx, cnum.as_def_id());
-    }
-
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
     let mut module = clean_doc_module(&module, cx);

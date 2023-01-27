@@ -41,6 +41,7 @@ pub(crate) struct ResolverCaches {
     pub(crate) traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
     pub(crate) all_trait_impls: Option<Vec<DefId>>,
     pub(crate) all_macro_rules: FxHashMap<Symbol, Res<NodeId>>,
+    pub(crate) extern_doc_reachable: DefIdSet,
 }
 
 pub(crate) struct DocContext<'tcx> {
@@ -362,6 +363,10 @@ pub(crate) fn run_global_ctxt(
         render_options,
         show_coverage,
     };
+
+    ctxt.cache
+        .effective_visibilities
+        .init(mem::take(&mut ctxt.resolver_caches.extern_doc_reachable));
 
     // Small hack to force the Sized trait to be present.
     //
