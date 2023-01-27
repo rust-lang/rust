@@ -40,6 +40,9 @@ exclude = [
 cache-timeout = 86400
 warning-policy = "error"
 
+[output.linkcheck.http-headers]
+'github\.com' = ["Accept: application/vnd.github+json", "Authorization: Bearer $GITHUB_TOKEN"]
+
 [output.html.redirect]
 "/compiletest.html" = "tests/compiletest.html"
 "/diagnostics/sessiondiagnostic.html" = "diagnostics/diagnostic-structs.html"
