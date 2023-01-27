@@ -184,7 +184,7 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 ) -> Result<Option<ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>)>>, NoSolution> {
     match *self_ty.kind() {
         ty::FnDef(def_id, substs) => Ok(Some(
-            tcx.bound_fn_sig(def_id)
+            tcx.fn_sig(def_id)
                 .subst(tcx, substs)
                 .map_bound(|sig| (tcx.mk_tup(sig.inputs().iter()), sig.output())),
         )),

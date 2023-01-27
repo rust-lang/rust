@@ -369,7 +369,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (ty::FnPtr(sig), ty::FnDef(did, substs)) => {
                 let expected_sig = &(self.normalize_fn_sig)(*sig);
                 let found_sig =
-                    &(self.normalize_fn_sig)(self.tcx.bound_fn_sig(*did).subst(self.tcx, substs));
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).subst(self.tcx, substs));
 
                 let fn_name = self.tcx.def_path_str_with_substs(*did, substs);
 
@@ -408,9 +408,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
                 let expected_sig =
-                    &(self.normalize_fn_sig)(self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1));
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did1).subst(self.tcx, substs1));
                 let found_sig =
-                    &(self.normalize_fn_sig)(self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2));
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did2).subst(self.tcx, substs2));
 
                 if self.same_type_modulo_infer(*expected_sig, *found_sig) {
                     diag.note("different fn items have unique types, even if their signatures are the same");
@@ -440,7 +440,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             (ty::FnDef(did, substs), ty::FnPtr(sig)) => {
                 let expected_sig =
-                    &(self.normalize_fn_sig)(self.tcx.bound_fn_sig(*did).subst(self.tcx, substs));
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).subst(self.tcx, substs));
                 let found_sig = &(self.normalize_fn_sig)(*sig);
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig) {
