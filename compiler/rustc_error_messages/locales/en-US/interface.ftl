@@ -11,10 +11,6 @@ interface_mixed_bin_crate =
 interface_mixed_proc_macro_crate =
     cannot mix `proc-macro` crate type with others
 
-interface_proc_macro_doc_without_arg =
-    Trying to document proc macro crate without passing '--crate-type proc-macro to rustdoc
-    .warn = The generated documentation may be incorrect
-
 interface_error_writing_dependencies =
     error writing dependencies to `{$path}`: {$error}
 

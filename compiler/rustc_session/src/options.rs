@@ -165,11 +165,6 @@ top_level_options!(
         /// Indicates how the compiler should treat unstable features.
         unstable_features: UnstableFeatures [TRACKED],
 
-        /// Indicates whether this run of the compiler is actually rustdoc. This
-        /// is currently just a hack and will be removed eventually, so please
-        /// try to not rely on this too much.
-        actually_rustdoc: bool [TRACKED],
-
         /// Control path trimming.
         trimmed_def_paths: TrimmedDefPaths [TRACKED],
 

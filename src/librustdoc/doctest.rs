@@ -80,7 +80,6 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
         unstable_features: options.unstable_features,
-        actually_rustdoc: true,
         edition: options.edition,
         target_triple: options.target.clone(),
         crate_name: options.crate_name.clone(),

@@ -1,14 +1,11 @@
-error[E0433]: failed to resolve: could not resolve path `INVALID_FUNC`
-  --> $DIR/scrape-examples-fail-if-type-error.rs:5:3
-   |
-LL |   INVALID_FUNC();
-   |   ^^^^^^^^^^^^ could not resolve path `INVALID_FUNC`
-   |
-   = note: this error was originally ignored because you are running `rustdoc`
-   = note: try running again with `rustc` or `cargo check` and you may get a more detailed error
-
 error: Compilation failed, aborting rustdoc
+
+error[E0425]: cannot find function, tuple struct or tuple variant `INVALID_FUNC` in this scope
+  --> $DIR/scrape-examples-fail-if-type-error.rs:5:5
+   |
+LL |     INVALID_FUNC();
+   |     ^^^^^^^^^^^^ not found in this scope
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0433`.
+For more information about this error, try `rustc --explain E0425`.

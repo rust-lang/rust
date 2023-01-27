@@ -12,7 +12,7 @@ use rustc_hir::{HirId, Path, TraitCandidate};
 use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{InternalSubsts, ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::lint;
@@ -256,7 +256,6 @@ pub(crate) fn create_config(
         externs,
         target_triple: target,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
-        actually_rustdoc: true,
         unstable_opts,
         error_format,
         diagnostic_width,
@@ -311,7 +310,10 @@ pub(crate) fn create_config(
 
                 match tcx.hir().get(hir_id) {
                     Node::Item(item) => match item.kind {
-                        ItemKind::OpaqueTy(_) => return tcx.ty_error(),
+                        ItemKind::OpaqueTy(_) => {
+                            return tcx
+                                .mk_opaque(def_id, InternalSubsts::identity_for_item(tcx, def_id));
+                        }
                         _ => {}
                     },
                     _ => {}

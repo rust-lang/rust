@@ -29,9 +29,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::InlineAsm<'hir> {
         // Rustdoc needs to support asm! from foreign architectures: don't try
         // lowering the register constraints in this case.
-        let asm_arch =
-            if self.tcx.sess.opts.actually_rustdoc { None } else { self.tcx.sess.asm_arch };
-        if asm_arch.is_none() && !self.tcx.sess.opts.actually_rustdoc {
+        let asm_arch = self.tcx.sess.asm_arch;
+        if asm_arch.is_none() {
             self.tcx.sess.emit_err(InlineAsmUnsupportedTarget { span: sp });
         }
         if let Some(asm_arch) = asm_arch {
@@ -57,7 +56,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
         if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
             && !matches!(asm_arch, Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64))
-            && !self.tcx.sess.opts.actually_rustdoc
         {
             self.tcx.sess.emit_err(AttSyntaxOnlyX86 { span: sp });
         }

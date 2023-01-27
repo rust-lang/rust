@@ -9,8 +9,8 @@ pub trait NeedsBody {
 
 /// This function has docs
 pub fn f<B: UnknownBound>(a: UnknownType, b: B) {
-//~^ ERROR cannot find trait `UnknownBound` in this scope
-//~| ERROR cannot find type `UnknownType` in this scope
+    //~^ ERROR cannot find trait `UnknownBound` in this scope
+    //~| ERROR cannot find type `UnknownType` in this scope
     impl UnknownTrait for ValidType {} //~ ERROR cannot find trait `UnknownTrait`
     impl<T: UnknownBound> UnknownTrait for T {}
     //~^ ERROR cannot find trait `UnknownBound` in this scope
@@ -28,7 +28,9 @@ pub fn f<B: UnknownBound>(a: UnknownType, b: B) {
         /// This function has documentation
         fn f() {
             <UnknownTypeShouldBeIgnored>::a();
+            //~^ ERROR cannot find type `UnknownTypeShouldBeIgnored` in this scope
             content::shouldnt::matter();
+            //~^ ERROR use of undeclared crate or module `content`
             unknown_macro!();
             //~^ ERROR cannot find macro `unknown_macro` in this scope
 
@@ -36,13 +38,14 @@ pub fn f<B: UnknownBound>(a: UnknownType, b: B) {
             macro_rules! can_define_macros_here_too {
                 () => {
                     this::content::should::also::be::ignored()
-                }
+                    //~^ ERROR use of undeclared crate or module `this`
+                };
             }
             can_define_macros_here_too!();
 
             /// This also is documented.
             pub fn doubly_nested(c: UnknownType) {
-            //~^ ERROR cannot find type `UnknownType` in this scope
+                //~^ ERROR cannot find type `UnknownType` in this scope
             }
         }
     }

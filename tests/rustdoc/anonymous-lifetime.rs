@@ -16,10 +16,8 @@ pub trait Stream {
 impl<S: ?Sized + Stream + Unpin> Stream for &mut S {
     type Item = S::Item;
 
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-    ) -> Poll<Option<Self::Item>> {
-        S::poll_next(Pin::new(&mut **self), cx)
+    fn poll_next(mut self: Pin<&mut Self>) -> Poll<Option<Self::Item>> {
+        S::poll_next(Pin::new(&mut **self))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

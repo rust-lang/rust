@@ -1,0 +1,16 @@
+error[E0412]: cannot find type `DoesNotExist` in this scope
+  --> $DIR/generic-argument.rs:5:11
+   |
+LL |     Vec::<DoesNotExist>::new()
+   |           ^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | pub fn f<DoesNotExist>() -> impl ValidTrait {
+   |         ++++++++++++++
+
+error: Compilation failed, aborting rustdoc
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

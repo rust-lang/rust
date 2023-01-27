@@ -13,11 +13,13 @@ pub fn foo() {}
 // @has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#method.method"]' 'link from struct'
 // @has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#method.clone"]' 'MyStruct::clone'
 // @has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#associatedtype.Input"]' 'MyStruct::Input'
-pub struct MyStruct { foo: () }
+pub struct MyStruct {
+    foo: (),
+}
 
 impl Clone for MyStruct {
     fn clone(&self) -> Self {
-        MyStruct
+        MyStruct { foo: () }
     }
 }
 
@@ -31,8 +33,7 @@ impl T for MyStruct {
 
     /// [link from method][MyStruct::method] on method
     // @has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#method.method"]' 'link from method'
-    fn method(i: usize) {
-    }
+    fn method(i: usize) {}
 }
 
 /// Ambiguity between which trait to use

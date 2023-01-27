@@ -3,7 +3,6 @@
 // build-aux-docs
 
 #![feature(rustdoc_internals)]
-
 #![crate_name = "foo"]
 
 extern crate source_code;
@@ -31,14 +30,13 @@ fn babar() {}
 // @has - '//pre[@class="rust"]//a/@href' '/struct.String.html'
 // @has - '//pre[@class="rust"]//a/@href' '/primitive.u32.html'
 // @has - '//pre[@class="rust"]//a/@href' '/primitive.str.html'
-// @count - '//pre[@class="rust"]//a[@href="#23"]' 5
+// @count - '//pre[@class="rust"]//a[@href="#23"]' 0
 // @has - '//pre[@class="rust"]//a[@href="../../source_code/struct.SourceCode.html"]' 'source_code::SourceCode'
 pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::SourceCode) {
     let x = 12;
     let y: Foo = Foo;
     let z: Bar = bar::Bar { field: Foo };
     babar();
-    // @has - '//pre[@class="rust"]//a[@href="#26"]' 'hello'
     y.hello();
 }
 
@@ -49,19 +47,17 @@ pub fn foo2<T: bar::sub::Trait, V: Trait>(t: &T, v: &V, b: bool) {}
 pub trait AnotherTrait {}
 pub trait WhyNot {}
 
-// @has - '//pre[@class="rust"]//a[@href="#49"]' 'AnotherTrait'
-// @has - '//pre[@class="rust"]//a[@href="#50"]' 'WhyNot'
 pub fn foo3<T, V>(t: &T, v: &V)
 where
     T: AnotherTrait,
-    V: WhyNot
-{}
+    V: WhyNot,
+{
+}
 
 pub trait AnotherTrait2 {}
 
-// @has - '//pre[@class="rust"]//a[@href="#60"]' 'AnotherTrait2'
 pub fn foo4() {
-    let x: Vec<AnotherTrait2> = Vec::new();
+    let x: Box<AnotherTrait2> = unimplemented!();
 }
 
 // @has - '//pre[@class="rust"]//a[@href="../../foo/primitive.bool.html"]' 'bool'

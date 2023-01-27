@@ -2155,11 +2155,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
             let report_error = |this: &Self, ns| {
                 let what = if ns == TypeNS { "type parameters" } else { "local variables" };
-                if this.should_report_errs() {
-                    this.r
-                        .session
-                        .span_err(ident.span, &format!("imports cannot refer to {}", what));
-                }
+                this.r.session.span_err(ident.span, &format!("imports cannot refer to {}", what));
             };
 
             for &ns in nss {
@@ -3350,13 +3346,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         let Finalize { node_id, path_span, .. } = finalize;
         let report_errors = |this: &mut Self, res: Option<Res>| {
-            if this.should_report_errs() {
-                let (err, candidates) =
-                    this.smart_resolve_report_errors(path, path_span, source, res);
+            let (err, candidates) = this.smart_resolve_report_errors(path, path_span, source, res);
 
-                let def_id = this.parent_scope.module.nearest_parent_mod();
-                let instead = res.is_some();
-                let suggestion = if let Some((start, end)) = this.diagnostic_metadata.in_range
+            let def_id = this.parent_scope.module.nearest_parent_mod();
+            let instead = res.is_some();
+            let suggestion = if let Some((start, end)) = this.diagnostic_metadata.in_range
                     && path[0].ident.span.lo() == end.span.lo()
                 {
                     let mut sugg = ".";
@@ -3379,16 +3373,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     None
                 };
 
-                this.r.use_injections.push(UseError {
-                    err,
-                    candidates,
-                    def_id,
-                    instead,
-                    suggestion,
-                    path: path.into(),
-                    is_call: source.is_call(),
-                });
-            }
+            this.r.use_injections.push(UseError {
+                err,
+                candidates,
+                def_id,
+                instead,
+                suggestion,
+                path: path.into(),
+                is_call: source.is_call(),
+            });
 
             PartialRes::new(Res::Err)
         };
@@ -3454,39 +3447,32 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             let def_id = this.parent_scope.module.nearest_parent_mod();
 
-            if this.should_report_errs() {
-                if candidates.is_empty() {
-                    if path.len() == 2 && prefix_path.len() == 1 {
-                        // Delay to check whether methond name is an associated function or not
-                        // ```
-                        // let foo = Foo {};
-                        // foo::bar(); // possibly suggest to foo.bar();
-                        //```
-                        err.stash(
-                            prefix_path[0].ident.span,
-                            rustc_errors::StashKey::CallAssocMethod,
-                        );
-                    } else {
-                        // When there is no suggested imports, we can just emit the error
-                        // and suggestions immediately. Note that we bypass the usually error
-                        // reporting routine (ie via `self.r.report_error`) because we need
-                        // to post-process the `ResolutionError` above.
-                        err.emit();
-                    }
+            if candidates.is_empty() {
+                if path.len() == 2 && prefix_path.len() == 1 {
+                    // Delay to check whether methond name is an associated function or not
+                    // ```
+                    // let foo = Foo {};
+                    // foo::bar(); // possibly suggest to foo.bar();
+                    //```
+                    err.stash(prefix_path[0].ident.span, rustc_errors::StashKey::CallAssocMethod);
                 } else {
-                    // If there are suggested imports, the error reporting is delayed
-                    this.r.use_injections.push(UseError {
-                        err,
-                        candidates,
-                        def_id,
-                        instead: false,
-                        suggestion: None,
-                        path: prefix_path.into(),
-                        is_call: source.is_call(),
-                    });
+                    // When there is no suggested imports, we can just emit the error
+                    // and suggestions immediately. Note that we bypass the usually error
+                    // reporting routine (ie via `self.r.report_error`) because we need
+                    // to post-process the `ResolutionError` above.
+                    err.emit();
                 }
             } else {
-                err.cancel();
+                // If there are suggested imports, the error reporting is delayed
+                this.r.use_injections.push(UseError {
+                    err,
+                    candidates,
+                    def_id,
+                    instead: false,
+                    suggestion: None,
+                    path: prefix_path.into(),
+                    is_call: source.is_call(),
+                });
             }
 
             // We don't return `Some(parent_err)` here, because the error will
@@ -3576,15 +3562,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     ///
     /// This doesn't emit errors for function bodies if this is rustdoc.
     fn report_error(&mut self, span: Span, resolution_error: ResolutionError<'a>) {
-        if self.should_report_errs() {
-            self.r.report_error(span, resolution_error);
-        }
-    }
-
-    #[inline]
-    /// If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items.
-    fn should_report_errs(&self) -> bool {
-        !(self.r.session.opts.actually_rustdoc && self.in_func_body)
+        self.r.report_error(span, resolution_error);
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.

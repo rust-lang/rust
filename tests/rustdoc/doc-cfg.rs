@@ -21,7 +21,7 @@ pub mod unix_only {
     //  'Available on Unix only.'
     // @count - '//*[@class="stab portability"]' 1
     pub fn unix_only_function() {
-        content::should::be::irrelevant();
+        //content::should::be::irrelevant();
     }
 
     // @has doc_cfg/unix_only/trait.ArmOnly.html \
@@ -51,7 +51,7 @@ pub mod wasi_only {
     //  'Available on WASI only.'
     // @count - '//*[@class="stab portability"]' 1
     pub fn wasi_only_function() {
-        content::should::be::irrelevant();
+        //content::should::be::irrelevant();
     }
 
     // @has doc_cfg/wasi_only/trait.Wasm32Only.html \
@@ -81,7 +81,7 @@ pub mod wasi_only {
 //        'Available with target feature avx only.'
 #[target_feature(enable = "avx")]
 pub unsafe fn uses_target_feature() {
-    content::should::be::irrelevant();
+    //content::should::be::irrelevant();
 }
 
 // @has doc_cfg/fn.uses_cfg_target_feature.html

@@ -1,8 +1,7 @@
 use crate::errors::{
     CantEmitMIR, EmojiIdentifier, ErrorWritingDependencies, FerrisIdentifier,
     GeneratedFileConflictsWithDirectory, InputFileWouldBeOverWritten, MixedBinCrate,
-    MixedProcMacroCrate, OutDirError, ProcMacroCratePanicAbort, ProcMacroDocWithoutArg,
-    TempsDirError,
+    MixedProcMacroCrate, OutDirError, ProcMacroCratePanicAbort, TempsDirError,
 };
 use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
@@ -385,28 +384,18 @@ pub fn configure_and_expand(
         sess.emit_warning(ProcMacroCratePanicAbort);
     }
 
-    // For backwards compatibility, we don't try to run proc macro injection
-    // if rustdoc is run on a proc macro crate without '--crate-type proc-macro' being
-    // specified. This should only affect users who manually invoke 'rustdoc', as
-    // 'cargo doc' will automatically pass the proper '--crate-type' flags.
-    // However, we do emit a warning, to let such users know that they should
-    // start passing '--crate-type proc-macro'
-    if has_proc_macro_decls && sess.opts.actually_rustdoc && !is_proc_macro_crate {
-        sess.emit_warning(ProcMacroDocWithoutArg);
-    } else {
-        krate = sess.time("maybe_create_a_macro_crate", || {
-            let is_test_crate = sess.opts.test;
-            rustc_builtin_macros::proc_macro_harness::inject(
-                sess,
-                resolver,
-                krate,
-                is_proc_macro_crate,
-                has_proc_macro_decls,
-                is_test_crate,
-                sess.diagnostic(),
-            )
-        });
-    }
+    krate = sess.time("maybe_create_a_macro_crate", || {
+        let is_test_crate = sess.opts.test;
+        rustc_builtin_macros::proc_macro_harness::inject(
+            sess,
+            resolver,
+            krate,
+            is_proc_macro_crate,
+            has_proc_macro_decls,
+            is_test_crate,
+            sess.diagnostic(),
+        )
+    });
 
     // Done with macro expansion!
 

@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `error`
+  --> $DIR/async.rs:4:5
+   |
+LL |     error::_in::async_fn()
+   |     ^^^^^ use of undeclared crate or module `error`
+
+error: Compilation failed, aborting rustdoc
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

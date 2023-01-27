@@ -673,10 +673,9 @@ impl Session {
     }
 
     /// Returns `true` if internal lints should be added to the lint store - i.e. if
-    /// `-Zunstable-options` is provided and this isn't rustdoc (internal lints can trigger errors
-    /// to be emitted under rustdoc).
+    /// `-Zunstable-options` is provided
     pub fn enable_internal_lints(&self) -> bool {
-        self.unstable_options() && !self.opts.actually_rustdoc
+        self.unstable_options()
     }
 
     pub fn instrument_coverage(&self) -> bool {

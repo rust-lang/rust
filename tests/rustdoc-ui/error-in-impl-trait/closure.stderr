@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `content`
+  --> $DIR/closure.rs:3:8
+   |
+LL |     || content::doesnt::matter()
+   |        ^^^^^^^ use of undeclared crate or module `content`
+
+error: Compilation failed, aborting rustdoc
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

@@ -1,8 +1,25 @@
 error: cannot find macro `unknown_macro` in this scope
-  --> $DIR/impl-fn-nesting.rs:32:13
+  --> $DIR/impl-fn-nesting.rs:34:13
    |
 LL |             unknown_macro!();
    |             ^^^^^^^^^^^^^
+
+error[E0433]: failed to resolve: use of undeclared crate or module `content`
+  --> $DIR/impl-fn-nesting.rs:32:13
+   |
+LL |             content::shouldnt::matter();
+   |             ^^^^^^^ use of undeclared crate or module `content`
+
+error[E0433]: failed to resolve: use of undeclared crate or module `this`
+  --> $DIR/impl-fn-nesting.rs:40:21
+   |
+LL |                     this::content::should::also::be::ignored()
+   |                     ^^^^ use of undeclared crate or module `this`
+...
+LL |             can_define_macros_here_too!();
+   |             ----------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `can_define_macros_here_too` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0405]: cannot find trait `UnknownBound` in this scope
   --> $DIR/impl-fn-nesting.rs:11:13
@@ -52,15 +69,21 @@ error[E0412]: cannot find type `UnknownType` in this scope
 LL |         type Item = UnknownType;
    |                     ^^^^^^^^^^^ not found in this scope
 
+error[E0412]: cannot find type `UnknownTypeShouldBeIgnored` in this scope
+  --> $DIR/impl-fn-nesting.rs:30:14
+   |
+LL |             <UnknownTypeShouldBeIgnored>::a();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
 error[E0412]: cannot find type `UnknownType` in this scope
-  --> $DIR/impl-fn-nesting.rs:44:37
+  --> $DIR/impl-fn-nesting.rs:47:37
    |
 LL |             pub fn doubly_nested(c: UnknownType) {
    |                                     ^^^^^^^^^^^ not found in this scope
 
 error: Compilation failed, aborting rustdoc
 
-error: aborting due to 11 previous errors
+error: aborting due to 14 previous errors
 
-Some errors have detailed explanations: E0405, E0412.
+Some errors have detailed explanations: E0405, E0412, E0433.
 For more information about an error, try `rustc --explain E0405`.

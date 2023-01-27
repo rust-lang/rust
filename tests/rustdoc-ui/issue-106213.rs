@@ -2,6 +2,6 @@
 // edition:2021
 
 fn use_avx() -> dyn  {
-    //~^ ERROR at least one trait is required for an object type
-    !( ident_error )
+    !(ident_error)
+    //~^ ERROR cannot find value `ident_error` in this scope
 }
