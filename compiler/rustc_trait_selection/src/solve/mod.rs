@@ -390,6 +390,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
+    // Recursively evaluates a list of goals to completion, returning the certainty
+    // of all of the goals.
     fn evaluate_all(
         &mut self,
         mut goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
@@ -426,6 +428,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         })
     }
 
+    // Recursively evaluates a list of goals to completion, making a query response.
+    //
+    // This is just a convenient way of calling [`EvalCtxt::evaluate_all`],
+    // then [`EvalCtxt::make_canonical_response`].
     fn evaluate_all_and_make_canonical_response(
         &mut self,
         goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,

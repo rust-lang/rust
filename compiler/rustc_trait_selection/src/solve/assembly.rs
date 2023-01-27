@@ -1,6 +1,8 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::infcx_ext::InferCtxtExt;
+#[cfg(doc)]
+use super::trait_goals::structural_traits::*;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
@@ -98,52 +100,75 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx>;
 
+    // A type implements an `auto trait` if its components do as well. These components
+    // are given by built-in rules from [`instantiate_constituent_tys_for_auto_trait`].
     fn consider_auto_trait_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A trait alias holds if the RHS traits and `where` clauses hold.
     fn consider_trait_alias_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is `Copy` or `Clone` if its components are `Sized`. These components
+    // are given by built-in rules from [`instantiate_constituent_tys_for_sized_trait`].
     fn consider_builtin_sized_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is `Copy` or `Clone` if its components are `Copy` or `Clone`. These
+    // components are given by built-in rules from [`instantiate_constituent_tys_for_copy_clone_trait`].
     fn consider_builtin_copy_clone_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is `PointerSized` if we can compute its layout, and that layout
+    // matches the layout of `usize`.
     fn consider_builtin_pointer_sized_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A callable type (a closure, fn def, or fn ptr) is known to implement the `Fn<A>`
+    // family of traits where `A` is given by the signature of the type.
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         kind: ty::ClosureKind,
     ) -> QueryResult<'tcx>;
 
+    // `Tuple` is implemented if the `Self` type is a tuple.
     fn consider_builtin_tuple_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // `Pointee` is always implemented.
+    //
+    // See the projection implementation for the `Metadata` types for all of
+    // the built-in types. For structs, the metadata type is given by the struct
+    // tail.
     fn consider_builtin_pointee_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A generator (that comes from an `async` desugaring) is known to implement
+    // `Future<Output = O>`, where `O` is given by the generator's return type
+    // that was computed during type-checking.
     fn consider_builtin_future_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A generator (that doesn't come from an `async` desugaring) is known to
+    // implement `Generator<R, Yield = Y, Return = O>`, given the resume, yield,
+    // and return types of the generator computed during type-checking.
     fn consider_builtin_generator_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
