@@ -155,7 +155,7 @@ use crate::alloc::Global;
 use crate::collections::TryReserveError;
 use crate::slice;
 use crate::vec::{self, AsVecIntoIter, Vec};
-use crate::DEFAULT_COOP_PREF;
+use crate::CO_ALLOC_PREF_DEFAULT;
 
 use super::SpecExtend;
 
@@ -1664,7 +1664,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 #[allow(unused_braces)]
-impl<T> From<BinaryHeap<T>> for Vec<T, Global, { DEFAULT_COOP_PREF!() }> {
+impl<T> From<BinaryHeap<T>> for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     /// Converts a `BinaryHeap<T>` into a `Vec<T>`.
     ///
     /// This conversion requires no data movement or allocation, and has

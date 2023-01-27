@@ -5,7 +5,7 @@ use core::ptr;
 
 use crate::alloc::Global;
 use crate::raw_vec::RawVec;
-use crate::DEFAULT_COOP_PREF;
+use crate::CO_ALLOC_PREF_DEFAULT;
 
 use super::{SpecExtend, Vec};
 
@@ -51,7 +51,7 @@ where
 }
 
 #[allow(unused_braces)]
-impl<T, I> SpecFromIterNested<T, I> for Vec<T, Global, { DEFAULT_COOP_PREF!() }>
+impl<T, I> SpecFromIterNested<T, I> for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }>
 where
     I: TrustedLen<Item = T>,
 {

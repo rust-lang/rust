@@ -134,7 +134,7 @@ macro_rules! __rust_force_expr {
 // fixed. Then move the const to a submodule, for example alloc::co_alloc.
 #[unstable(feature = "global_co_alloc_default", issue = "none")]
 #[macro_export]
-macro_rules! DEFAULT_COOP_PREF {
+macro_rules! CO_ALLOC_PREF_DEFAULT {
     () => {
         true
     };
