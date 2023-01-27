@@ -7,14 +7,14 @@ use clippy_utils::macros::{
 };
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_errors::{
     Applicability,
     SuggestionStyle::{CompletelyHidden, ShowCode},
 };
-use rustc_hir::{Expr, ExprKind, HirId, QPath};
+use rustc_hir::{Expr, ExprKind, HirId, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
@@ -237,7 +237,7 @@ fn check_unused_format_specifier(cx: &LateContext<'_>, arg: &FormatArg<'_>) {
         );
     }
 
-    if is_type_diagnostic_item(cx, param_ty, sym::Arguments) && !arg.format.is_default_for_trait() {
+    if is_type_lang_item(cx, param_ty, LangItem::FormatArguments) && !arg.format.is_default_for_trait() {
         span_lint_and_then(
             cx,
             UNUSED_FORMAT_SPECS,
