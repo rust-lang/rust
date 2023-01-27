@@ -1,5 +1,6 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
+use crate::meta_num_slots_default;
 use core::alloc::{self, LayoutError, PtrAndMeta};
 use core::cmp;
 use core::intrinsics;
@@ -120,6 +121,10 @@ impl<T, A: Allocator, const COOP_PREF: bool> RawVec<T, A, COOP_PREF>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
+    const fn new_plain_metas() -> [A::CoAllocMeta; {meta_num_slots_default!(A)}] {
+        loop {}
+    }
+
     // Tiny Vecs are dumb. Skip to:
     // - 8 if the element size is 1, because any heap allocators is likely
     //   to round up a request of less than 8 bytes to at least 8 bytes.
