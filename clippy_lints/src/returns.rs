@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::visitors::{for_each_expr, Descend};
-use clippy_utils::{fn_def_id, path_to_local_id};
+use clippy_utils::{fn_def_id, path_to_local_id, span_find_starting_semi};
 use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -151,7 +151,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         kind: FnKind<'tcx>,
         _: &'tcx FnDecl<'tcx>,
         body: &'tcx Body<'tcx>,
-        _: Span,
+        sp: Span,
         _: HirId,
     ) {
         match kind {
@@ -166,14 +166,14 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                 check_final_expr(cx, body.value, vec![], replacement);
             },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
-                check_block_return(cx, &body.value.kind, vec![]);
+                check_block_return(cx, &body.value.kind, sp, vec![]);
             },
         }
     }
 }
 
 // if `expr` is a block, check if there are needless returns in it
-fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>, semi_spans: Vec<Span>) {
+fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>, sp: Span, mut semi_spans: Vec<Span>) {
     if let ExprKind::Block(block, _) = expr_kind {
         if let Some(block_expr) = block.expr {
             check_final_expr(cx, block_expr, semi_spans, RetReplacement::Empty);
@@ -183,12 +183,14 @@ fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>, 
                     check_final_expr(cx, expr, semi_spans, RetReplacement::Empty);
                 },
                 StmtKind::Semi(semi_expr) => {
-                    let mut semi_spans_and_this_one = semi_spans;
-                    // we only want the span containing the semicolon so we can remove it later. From `entry.rs:382`
-                    if let Some(semicolon_span) = stmt.span.trim_start(semi_expr.span) {
-                        semi_spans_and_this_one.push(semicolon_span);
-                        check_final_expr(cx, semi_expr, semi_spans_and_this_one, RetReplacement::Empty);
+                    // Remove ending semicolons and any whitespace ' ' in between.
+                    // Without `return`, the suggestion might not compile if the semicolon is retained
+                    if let Some(semi_span) = stmt.span.trim_start(semi_expr.span) {
+                        let semi_span_to_remove =
+                            span_find_starting_semi(cx.sess().source_map(), semi_span.with_hi(sp.hi()));
+                        semi_spans.push(semi_span_to_remove);
                     }
+                    check_final_expr(cx, semi_expr, semi_spans, RetReplacement::Empty);
                 },
                 _ => (),
             }
@@ -231,9 +233,9 @@ fn check_final_expr<'tcx>(
             emit_return_lint(cx, ret_span, semi_spans, inner.as_ref().map(|i| i.span), replacement);
         },
         ExprKind::If(_, then, else_clause_opt) => {
-            check_block_return(cx, &then.kind, semi_spans.clone());
+            check_block_return(cx, &then.kind, peeled_drop_expr.span, semi_spans.clone());
             if let Some(else_clause) = else_clause_opt {
-                check_block_return(cx, &else_clause.kind, semi_spans);
+                check_block_return(cx, &else_clause.kind, peeled_drop_expr.span, semi_spans);
             }
         },
         // a match expr, check all arms
@@ -246,7 +248,7 @@ fn check_final_expr<'tcx>(
             }
         },
         // if it's a whole block, check it
-        other_expr_kind => check_block_return(cx, other_expr_kind, semi_spans),
+        other_expr_kind => check_block_return(cx, other_expr_kind, peeled_drop_expr.span, semi_spans),
     }
 }
 

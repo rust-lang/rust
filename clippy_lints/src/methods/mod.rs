@@ -3102,7 +3102,7 @@ declare_clippy_lint! {
     ///     Ok(())
     /// }
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub SEEK_FROM_CURRENT,
     complexity,
     "use dedicated method for seek from current position"
@@ -3133,7 +3133,7 @@ declare_clippy_lint! {
     ///     t.rewind();
     /// }
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub SEEK_TO_START_INSTEAD_OF_REWIND,
     complexity,
     "jumping to the start of stream using `seek` method"

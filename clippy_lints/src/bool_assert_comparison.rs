@@ -1,10 +1,11 @@
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
-use clippy_utils::{diagnostics::span_lint_and_sugg, ty::implements_trait};
+use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Lit};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Ident;
 
@@ -43,9 +44,7 @@ fn is_bool_lit(e: &Expr<'_>) -> bool {
     ) && !e.span.from_expansion()
 }
 
-fn is_impl_not_trait_with_bool_out(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    let ty = cx.typeck_results().expr_ty(e);
-
+fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     cx.tcx
         .lang_items()
         .not_trait()
@@ -77,31 +76,57 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
             return;
         }
         let Some ((a, b, _)) = find_assert_eq_args(cx, expr, macro_call.expn) else { return };
-        if !(is_bool_lit(a) ^ is_bool_lit(b)) {
+
+        let a_span = a.span.source_callsite();
+        let b_span = b.span.source_callsite();
+
+        let (lit_span, non_lit_expr) = match (is_bool_lit(a), is_bool_lit(b)) {
+            // assert_eq!(true, b)
+            //            ^^^^^^
+            (true, false) => (a_span.until(b_span), b),
+            // assert_eq!(a, true)
+            //             ^^^^^^
+            (false, true) => (b_span.with_lo(a_span.hi()), a),
             // If there are two boolean arguments, we definitely don't understand
             // what's going on, so better leave things as is...
             //
             // Or there is simply no boolean and then we can leave things as is!
-            return;
-        }
+            _ => return,
+        };
 
-        if !is_impl_not_trait_with_bool_out(cx, a) || !is_impl_not_trait_with_bool_out(cx, b) {
+        let non_lit_ty = cx.typeck_results().expr_ty(non_lit_expr);
+
+        if !is_impl_not_trait_with_bool_out(cx, non_lit_ty) {
             // At this point the expression which is not a boolean
             // literal does not implement Not trait with a bool output,
             // so we cannot suggest to rewrite our code
             return;
         }
 
+        if !is_copy(cx, non_lit_ty) {
+            // Only lint with types that are `Copy` because `assert!(x)` takes
+            // ownership of `x` whereas `assert_eq(x, true)` does not
+            return;
+        }
+
         let macro_name = macro_name.as_str();
         let non_eq_mac = &macro_name[..macro_name.len() - 3];
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             BOOL_ASSERT_COMPARISON,
             macro_call.span,
             &format!("used `{macro_name}!` with a literal bool"),
-            "replace it with",
-            format!("{non_eq_mac}!(..)"),
-            Applicability::MaybeIncorrect,
+            |diag| {
+                // assert_eq!(...)
+                // ^^^^^^^^^
+                let name_span = cx.sess().source_map().span_until_char(macro_call.span, '!');
+
+                diag.multipart_suggestion(
+                    format!("replace it with `{non_eq_mac}!(..)`"),
+                    vec![(name_span, non_eq_mac.to_string()), (lit_span, String::new())],
+                    Applicability::MachineApplicable,
+                );
+            },
         );
     }
 }

@@ -4,7 +4,12 @@ error: casting `isize` to `i8` may truncate the value
 LL |     1isize as i8;
    |     ^^^^^^^^^^^^
    |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
    = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     i8::try_from(1isize);
+   |     ~~~~~~~~~~~~~~~~~~~~
 
 error: casting `isize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`isize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> $DIR/cast_size.rs:15:5
@@ -37,24 +42,48 @@ error: casting `isize` to `i32` may truncate the value on targets with 64-bit wi
    |
 LL |     1isize as i32;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     i32::try_from(1isize);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `isize` to `u32` may truncate the value on targets with 64-bit wide pointers
   --> $DIR/cast_size.rs:20:5
    |
 LL |     1isize as u32;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     u32::try_from(1isize);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `usize` to `u32` may truncate the value on targets with 64-bit wide pointers
   --> $DIR/cast_size.rs:21:5
    |
 LL |     1usize as u32;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     u32::try_from(1usize);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `usize` to `i32` may truncate the value on targets with 64-bit wide pointers
   --> $DIR/cast_size.rs:22:5
    |
 LL |     1usize as i32;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     i32::try_from(1usize);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `usize` to `i32` may wrap around the value on targets with 32-bit wide pointers
   --> $DIR/cast_size.rs:22:5
@@ -69,18 +98,36 @@ error: casting `i64` to `isize` may truncate the value on targets with 32-bit wi
    |
 LL |     1i64 as isize;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     isize::try_from(1i64);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `i64` to `usize` may truncate the value on targets with 32-bit wide pointers
   --> $DIR/cast_size.rs:25:5
    |
 LL |     1i64 as usize;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     usize::try_from(1i64);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u64` to `isize` may truncate the value on targets with 32-bit wide pointers
   --> $DIR/cast_size.rs:26:5
    |
 LL |     1u64 as isize;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     isize::try_from(1u64);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u64` to `isize` may wrap around the value on targets with 64-bit wide pointers
   --> $DIR/cast_size.rs:26:5
@@ -93,6 +140,12 @@ error: casting `u64` to `usize` may truncate the value on targets with 32-bit wi
    |
 LL |     1u64 as usize;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     usize::try_from(1u64);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u32` to `isize` may wrap around the value on targets with 32-bit wide pointers
   --> $DIR/cast_size.rs:28:5
