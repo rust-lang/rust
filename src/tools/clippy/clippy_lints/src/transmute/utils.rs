@@ -20,28 +20,16 @@ pub(super) fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx
     }
 }
 
-/// Check if the type conversion can be expressed as a pointer cast, instead of
-/// a transmute. In certain cases, including some invalid casts from array
-/// references to pointers, this may cause additional errors to be emitted and/or
-/// ICE error messages. This function will panic if that occurs.
-pub(super) fn can_be_expressed_as_pointer_cast<'tcx>(
-    cx: &LateContext<'tcx>,
-    e: &'tcx Expr<'_>,
-    from_ty: Ty<'tcx>,
-    to_ty: Ty<'tcx>,
-) -> bool {
-    use CastKind::{AddrPtrCast, ArrayPtrCast, FnPtrAddrCast, FnPtrPtrCast, PtrAddrCast, PtrPtrCast};
-    matches!(
-        check_cast(cx, e, from_ty, to_ty),
-        Some(PtrPtrCast | PtrAddrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast)
-    )
-}
-
 /// If a cast from `from_ty` to `to_ty` is valid, returns an Ok containing the kind of
 /// the cast. In certain cases, including some invalid casts from array references
 /// to pointers, this may cause additional errors to be emitted and/or ICE error
 /// messages. This function will panic if that occurs.
-fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> Option<CastKind> {
+pub(super) fn check_cast<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'_>,
+    from_ty: Ty<'tcx>,
+    to_ty: Ty<'tcx>,
+) -> Option<CastKind> {
     let hir_id = e.hir_id;
     let local_def_id = hir_id.owner.def_id;
 

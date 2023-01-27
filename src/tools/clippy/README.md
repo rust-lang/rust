@@ -194,11 +194,21 @@ value` mapping e.g.
 ```toml
 avoid-breaking-exported-api = false
 disallowed-names = ["toto", "tata", "titi"]
-cognitive-complexity-threshold = 30
 ```
 
-See the [list of configurable lints](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration),
-the lint descriptions contain the names and meanings of these configuration variables.
+The [table of configurations](https://doc.rust-lang.org/nightly/clippy/lint_configuration.html)
+contains all config values, their default, and a list of lints they affect.
+Each [configurable lint](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration)
+, also contains information about these values.
+
+For configurations that are a list type with default values such as
+[disallowed-names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names),
+you can use the unique value `".."` to extend the default values instead of replacing them.
+
+```toml
+# default of disallowed-names is ["foo", "baz", "quux"]
+disallowed-names = ["bar", ".."] # -> ["bar", "foo", "baz", "quux"]
+```
 
 > **Note**
 >

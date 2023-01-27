@@ -1,6 +1,6 @@
 [package]
 name = "clippy_lints"
-version = "0.1.68"
+version = "0.1.69"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"

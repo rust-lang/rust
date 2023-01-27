@@ -46,11 +46,17 @@ error: transmute from `fn(usize) -> u8` to `usize` which could be expressed as a
 LL |     let _usize_from_fn_ptr_transmute = unsafe { transmute::<fn(usize) -> u8, usize>(foo) };
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `foo as usize`
 
+error: transmute from `*const u32` to `usize` which could be expressed as a pointer cast instead
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:55:36
+   |
+LL |     let _usize_from_ref = unsafe { transmute::<*const u32, usize>(&1u32) };
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&1u32 as *const u32 as usize`
+
 error: transmute from a reference to a pointer
-  --> $DIR/transmutes_expressible_as_ptr_casts.rs:64:14
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:66:14
    |
 LL |     unsafe { transmute::<&[i32; 1], *const u8>(in_param) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `in_param as *const [i32; 1] as *const u8`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

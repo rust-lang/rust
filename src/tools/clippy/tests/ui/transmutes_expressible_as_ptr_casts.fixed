@@ -51,6 +51,8 @@ fn main() {
     // e is a function pointer type and U is an integer; fptr-addr-cast
     let _usize_from_fn_ptr_transmute = unsafe { foo as usize };
     let _usize_from_fn_ptr = foo as *const usize;
+
+    let _usize_from_ref = unsafe { &1u32 as *const u32 as usize };
 }
 
 // If a ref-to-ptr cast of this form where the pointer type points to a type other
