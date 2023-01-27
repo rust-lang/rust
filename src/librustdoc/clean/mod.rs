@@ -2112,10 +2112,12 @@ fn get_all_import_attributes<'hir>(
 ) {
     let hir_map = tcx.hir();
     let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
+    let mut visited = FxHashSet::default();
     // If the item is an import and has at least a path with two parts, we go into it.
     while let hir::ItemKind::Use(path, _) = item.kind &&
         path.segments.len() > 1 &&
-        let hir::def::Res::Def(_, def_id) = path.segments[path.segments.len() - 2].res
+        let hir::def::Res::Def(_, def_id) = path.segments[path.segments.len() - 2].res &&
+        visited.insert(def_id)
     {
         if let Some(hir::Node::Item(parent_item)) = hir_map.get_if_local(def_id) {
             // We add the attributes from this import into the list.
