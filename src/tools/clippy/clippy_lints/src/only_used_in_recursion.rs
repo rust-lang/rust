@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdMap;
 use rustc_hir::{Body, Expr, ExprKind, HirId, ImplItem, ImplItemKind, Node, PatKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::subst::{EarlyBinder, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ConstKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, Ident};
@@ -244,7 +244,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
             })) => {
                 #[allow(trivial_casts)]
                 if let Some(Node::Item(item)) = get_parent_node(cx.tcx, owner_id.into())
-                    && let Some(trait_ref) = cx.tcx.impl_trait_ref(item.owner_id).map(|t| t.subst_identity())
+                    && let Some(trait_ref) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::subst_identity)
                     && let Some(trait_item_id) = cx.tcx.associated_item(owner_id).trait_item_def_id
                 {
                     (

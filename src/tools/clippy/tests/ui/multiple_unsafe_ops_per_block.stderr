@@ -1,0 +1,129 @@
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> $DIR/multiple_unsafe_ops_per_block.rs:32:5
+   |
+LL | /     unsafe {
+LL | |         STATIC += 1;
+LL | |         not_very_safe();
+LL | |     }
+   | |_____^
+   |
+note: modification of a mutable static occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:33:9
+   |
+LL |         STATIC += 1;
+   |         ^^^^^^^^^^^
+note: unsafe function call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:34:9
+   |
+LL |         not_very_safe();
+   |         ^^^^^^^^^^^^^^^
+   = note: `-D clippy::multiple-unsafe-ops-per-block` implied by `-D warnings`
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> $DIR/multiple_unsafe_ops_per_block.rs:41:5
+   |
+LL | /     unsafe {
+LL | |         drop(u.u);
+LL | |         *raw_ptr();
+LL | |     }
+   | |_____^
+   |
+note: union field access occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:42:14
+   |
+LL |         drop(u.u);
+   |              ^^^
+note: raw pointer dereference occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:43:9
+   |
+LL |         *raw_ptr();
+   |         ^^^^^^^^^^
+
+error: this `unsafe` block contains 3 unsafe operations, expected only one
+  --> $DIR/multiple_unsafe_ops_per_block.rs:48:5
+   |
+LL | /     unsafe {
+LL | |         asm!("nop");
+LL | |         sample.not_very_safe();
+LL | |         STATIC = 0;
+LL | |     }
+   | |_____^
+   |
+note: inline assembly used here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:49:9
+   |
+LL |         asm!("nop");
+   |         ^^^^^^^^^^^
+note: unsafe method call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:50:9
+   |
+LL |         sample.not_very_safe();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+note: modification of a mutable static occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:51:9
+   |
+LL |         STATIC = 0;
+   |         ^^^^^^^^^^
+
+error: this `unsafe` block contains 6 unsafe operations, expected only one
+  --> $DIR/multiple_unsafe_ops_per_block.rs:57:5
+   |
+LL | /     unsafe {
+LL | |         drop(u.u);
+LL | |         drop(STATIC);
+LL | |         sample.not_very_safe();
+...  |
+LL | |         asm!("nop");
+LL | |     }
+   | |_____^
+   |
+note: union field access occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:58:14
+   |
+LL |         drop(u.u);
+   |              ^^^
+note: access of a mutable static occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:59:14
+   |
+LL |         drop(STATIC);
+   |              ^^^^^^
+note: unsafe method call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:60:9
+   |
+LL |         sample.not_very_safe();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+note: unsafe function call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:61:9
+   |
+LL |         not_very_safe();
+   |         ^^^^^^^^^^^^^^^
+note: raw pointer dereference occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:62:9
+   |
+LL |         *raw_ptr();
+   |         ^^^^^^^^^^
+note: inline assembly used here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:63:9
+   |
+LL |         asm!("nop");
+   |         ^^^^^^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> $DIR/multiple_unsafe_ops_per_block.rs:101:5
+   |
+LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: unsafe function call occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:101:14
+   |
+LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: raw pointer dereference occurs here
+  --> $DIR/multiple_unsafe_ops_per_block.rs:101:39
+   |
+LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+   |                                       ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

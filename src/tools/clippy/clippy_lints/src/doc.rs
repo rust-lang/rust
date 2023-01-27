@@ -251,7 +251,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub UNNECESSARY_SAFETY_DOC,
     restriction,
     "`pub fn` or `pub trait` with `# Safety` docs"
