@@ -643,10 +643,6 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::EarlyBinder(self.collect_return_position_impl_trait_in_trait_tys(def_id))
     }
 
-    pub fn bound_fn_sig(self, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'tcx>> {
-        ty::EarlyBinder(self.fn_sig(def_id))
-    }
-
     pub fn bound_explicit_item_bounds(
         self,
         def_id: DefId,
@@ -1315,7 +1311,7 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Determines whether an item is an intrinsic by Abi.
 pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    matches!(tcx.fn_sig(def_id).abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
+    matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

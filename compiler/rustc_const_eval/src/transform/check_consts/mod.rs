@@ -72,7 +72,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
             let ty::Closure(_, substs) = ty.kind() else { bug!("type_of closure not ty::Closure") };
             substs.as_closure().sig()
         } else {
-            self.tcx.fn_sig(did)
+            self.tcx.fn_sig(did).subst_identity()
         }
     }
 }

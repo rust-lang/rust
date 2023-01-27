@@ -9,12 +9,12 @@ pub fn provide(providers: &mut ty::query::Providers) {
 fn assumed_wf_types(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Ty<'_>> {
     match tcx.def_kind(def_id) {
         DefKind::Fn => {
-            let sig = tcx.fn_sig(def_id);
+            let sig = tcx.fn_sig(def_id).subst_identity();
             let liberated_sig = tcx.liberate_late_bound_regions(def_id, sig);
             liberated_sig.inputs_and_output
         }
         DefKind::AssocFn => {
-            let sig = tcx.fn_sig(def_id);
+            let sig = tcx.fn_sig(def_id).subst_identity();
             let liberated_sig = tcx.liberate_late_bound_regions(def_id, sig);
             let mut assumed_wf_types: Vec<_> =
                 tcx.assumed_wf_types(tcx.parent(def_id)).as_slice().into();

@@ -58,7 +58,12 @@ fn equate_intrinsic_type<'tcx>(
         let fty = tcx.mk_fn_ptr(sig);
         let it_def_id = it.owner_id.def_id;
         let cause = ObligationCause::new(it.span, it_def_id, ObligationCauseCode::IntrinsicType);
-        require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.owner_id)), fty);
+        require_same_types(
+            tcx,
+            &cause,
+            tcx.mk_fn_ptr(tcx.fn_sig(it.owner_id).subst_identity()),
+            fty,
+        );
     }
 }
 

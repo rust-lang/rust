@@ -2120,7 +2120,8 @@ impl CheckAttrVisitor<'_> {
             let id = hir_id.expect_owner();
             let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id).unwrap();
 
-            let sig = tcx.liberate_late_bound_regions(id.to_def_id(), tcx.fn_sig(id));
+            let sig =
+                tcx.liberate_late_bound_regions(id.to_def_id(), tcx.fn_sig(id).subst_identity());
             let sig = tcx.normalize_erasing_regions(ParamEnv::empty(), sig);
 
             // We don't currently require that the function signature is equal to

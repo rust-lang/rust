@@ -357,7 +357,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     match entry_type {
         EntryFnType::Main { .. } => {
             let start_id = tcx.lang_items().start_fn().unwrap();
-            let main_ret_ty = tcx.fn_sig(entry_id).output();
+            let main_ret_ty = tcx.fn_sig(entry_id).no_bound_vars().unwrap().output();
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
             let start_instance = ty::Instance::resolve(
                 tcx,

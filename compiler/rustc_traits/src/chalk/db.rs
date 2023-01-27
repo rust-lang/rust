@@ -269,7 +269,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
 
-        let sig = self.interner.tcx.bound_fn_sig(def_id);
+        let sig = self.interner.tcx.fn_sig(def_id);
         let (inputs_and_output, iobinders, _) = crate::chalk::lowering::collect_bound_vars(
             self.interner,
             self.interner.tcx,

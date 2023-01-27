@@ -542,7 +542,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let ty::FnDef(did, ..) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
-            if tcx.fn_sig(did).abi() == RustIntrinsic && tcx.item_name(did) == sym::transmute {
+            if tcx.fn_sig(did).skip_binder().abi() == RustIntrinsic
+                && tcx.item_name(did) == sym::transmute
+            {
                 let from = fn_sig.inputs().skip_binder()[0];
                 let to = fn_sig.output().skip_binder();
                 // We defer the transmute to the end of typeck, once all inference vars have

@@ -1128,6 +1128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::AssocKind::Fn => self
                                 .tcx
                                 .fn_sig(item.def_id)
+                                .subst_identity()
                                 .inputs()
                                 .skip_binder()
                                 .get(0)
@@ -1264,7 +1265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let Some(assoc) = self.associated_value(*impl_did, item_name)
                 && assoc.kind == ty::AssocKind::Fn
             {
-                let sig = self.tcx.fn_sig(assoc.def_id);
+                let sig = self.tcx.fn_sig(assoc.def_id).subst_identity();
                 sig.inputs().skip_binder().get(0).and_then(|first| if first.peel_refs() == rcvr_ty.peel_refs() {
                     None
                 } else {
@@ -2098,7 +2099,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // just changing the path.
                     && pick.item.fn_has_self_parameter
                     && let Some(self_ty) =
-                        self.tcx.fn_sig(pick.item.def_id).inputs().skip_binder().get(0)
+                        self.tcx.fn_sig(pick.item.def_id).subst_identity().inputs().skip_binder().get(0)
                     && self_ty.is_ref()
                 {
                     let suggested_path = match deref_ty.kind() {
@@ -2351,7 +2352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // implement the `AsRef` trait.
                         let skip = skippable.contains(&did)
                             || (("Pin::new" == *pre) && (sym::as_ref == item_name.name))
-                            || inputs_len.map_or(false, |inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().inputs().len() != inputs_len);
+                            || inputs_len.map_or(false, |inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() != inputs_len);
                         // Make sure the method is defined for the *actual* receiver: we don't
                         // want to treat `Box<Self>` as a receiver if it only works because of
                         // an autoderef to `&self`
@@ -2731,7 +2732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // check the method arguments number
             if let Ok(pick) = probe &&
                 let fn_sig = self.tcx.fn_sig(pick.item.def_id) &&
-                let fn_args = fn_sig.skip_binder().inputs() &&
+                let fn_args = fn_sig.skip_binder().skip_binder().inputs() &&
                 fn_args.len() == args.len() + 1 {
                 err.span_suggestion_verbose(
                     method_name.span.shrink_to_hi(),

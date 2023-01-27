@@ -164,7 +164,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             check_mut_from_ref(cx, sig, None);
             for arg in check_fn_args(
                 cx,
-                cx.tcx.fn_sig(item.owner_id).skip_binder().inputs(),
+                cx.tcx.fn_sig(item.owner_id).subst_identity().skip_binder().inputs(),
                 sig.decl.inputs,
                 &[],
             )
@@ -217,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
         check_mut_from_ref(cx, sig, Some(body));
         let decl = sig.decl;
-        let sig = cx.tcx.fn_sig(item_id).skip_binder();
+        let sig = cx.tcx.fn_sig(item_id).subst_identity().skip_binder();
         let lint_args: Vec<_> = check_fn_args(cx, sig.inputs(), decl.inputs, body.params)
             .filter(|arg| !is_trait_item || arg.mutability() == Mutability::Not)
             .collect();
@@ -624,7 +624,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             return;
                         };
 
-                        match *self.cx.tcx.fn_sig(id).skip_binder().inputs()[i].peel_refs().kind() {
+                        match *self.cx.tcx.fn_sig(id).subst_identity().skip_binder().inputs()[i].peel_refs().kind() {
                             ty::Dynamic(preds, _, _) if !matches_preds(self.cx, args.deref_ty.ty(self.cx), preds) => {
                                 set_skip_flag();
                             },

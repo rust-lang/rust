@@ -299,7 +299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 // We special case methods, because they can influence inference through the
                 // call's arguments and we can provide a more explicit span.
-                let sig = self.tcx.fn_sig(def_id);
+                let sig = self.tcx.fn_sig(def_id).subst_identity();
                 let def_self_ty = sig.input(0).skip_binder();
                 let rcvr_ty = self.node_ty(rcvr.hir_id);
                 // Get the evaluated type *after* calling the method call, so that the influence
@@ -603,6 +603,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let substs = ty::InternalSubsts::for_item(self.tcx, m.def_id, |param, _| {
                     self.var_for_def(deref.span, param)
                 });
+                let mutability =
+                    match self.tcx.fn_sig(m.def_id).skip_binder().input(0).skip_binder().kind() {
+                        ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
+                        ty::Ref(_, _, _) => "&",
+                        _ => "",
+                    };
                 vec![
                     (
                         deref.span.until(base.span),
@@ -611,11 +617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             with_no_trimmed_paths!(
                                 self.tcx.def_path_str_with_substs(m.def_id, substs,)
                             ),
-                            match self.tcx.fn_sig(m.def_id).input(0).skip_binder().kind() {
-                                ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
-                                ty::Ref(_, _, _) => "&",
-                                _ => "",
-                            },
+                            mutability,
                         ),
                     ),
                     match &args[..] {
@@ -1036,7 +1038,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match method.kind {
             ty::AssocKind::Fn => {
                 method.fn_has_self_parameter
-                    && self.tcx.fn_sig(method.def_id).inputs().skip_binder().len() == 1
+                    && self.tcx.fn_sig(method.def_id).skip_binder().inputs().skip_binder().len()
+                        == 1
             }
             _ => false,
         }

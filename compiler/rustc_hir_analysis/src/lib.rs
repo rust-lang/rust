@@ -182,7 +182,7 @@ fn require_same_types<'tcx>(
 }
 
 fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
-    let main_fnsig = tcx.fn_sig(main_def_id);
+    let main_fnsig = tcx.fn_sig(main_def_id).subst_identity();
     let main_span = tcx.def_span(main_def_id);
 
     fn main_fn_diagnostics_def_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> LocalDefId {
@@ -449,7 +449,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                     ObligationCauseCode::StartFunctionType,
                 ),
                 se_ty,
-                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id)),
+                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id).subst_identity()),
             );
         }
         _ => {

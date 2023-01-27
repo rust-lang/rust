@@ -1296,7 +1296,7 @@ impl<'v> RootCollector<'_, 'v> {
         };
 
         let start_def_id = self.tcx.require_lang_item(LangItem::Start, None);
-        let main_ret_ty = self.tcx.fn_sig(main_def_id).output();
+        let main_ret_ty = self.tcx.fn_sig(main_def_id).no_bound_vars().unwrap().output();
 
         // Given that `main()` has no arguments,
         // then its return type cannot have

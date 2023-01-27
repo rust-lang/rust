@@ -1087,7 +1087,7 @@ pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir 
 }
 
 #[instrument(level = "debug", skip(tcx))]
-fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
+fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'_>> {
     use rustc_hir::Node::*;
     use rustc_hir::*;
 
@@ -1096,7 +1096,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    match tcx.hir().get(hir_id) {
+    let output = match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             generics,
@@ -1169,7 +1169,8 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         x => {
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
-    }
+    };
+    ty::EarlyBinder(output)
 }
 
 fn infer_return_ty_for_fn_sig<'tcx>(

@@ -1231,7 +1231,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
         }
         ty::AssocKind::Fn => {
-            let sig = tcx.fn_sig(assoc_item.def_id);
+            let sig = tcx.fn_sig(assoc_item.def_id).subst_identity();
 
             let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
                 ty::BoundVariableKind::Region(ty::BrNamed(_, name))

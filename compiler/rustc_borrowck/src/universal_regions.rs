@@ -472,7 +472,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // C-variadic fns also have a `VaList` input that's not listed in the signature
         // (as it's created inside the body itself, not passed in from outside).
         if let DefiningTy::FnDef(def_id, _) = defining_ty {
-            if self.infcx.tcx.fn_sig(def_id).c_variadic() {
+            if self.infcx.tcx.fn_sig(def_id).skip_binder().c_variadic() {
                 let va_list_did = self.infcx.tcx.require_lang_item(
                     LangItem::VaList,
                     Some(self.infcx.tcx.def_span(self.mir_def.did)),
@@ -665,7 +665,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             DefiningTy::FnDef(def_id, _) => {
-                let sig = tcx.fn_sig(def_id);
+                let sig = tcx.fn_sig(def_id).subst_identity();
                 let sig = indices.fold_to_region_vids(tcx, sig);
                 sig.inputs_and_output()
             }

@@ -1225,7 +1225,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl<'_>) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
-        let sig = self.cx.tcx.fn_sig(def_id);
+        let sig = self.cx.tcx.fn_sig(def_id).subst_identity();
         let sig = self.cx.tcx.erase_late_bound_regions(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {

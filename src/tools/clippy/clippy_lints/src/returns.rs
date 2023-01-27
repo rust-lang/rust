@@ -288,6 +288,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
             && cx
                 .tcx
                 .fn_sig(def_id)
+                .subst_identity()
                 .skip_binder()
                 .output()
                 .walk()

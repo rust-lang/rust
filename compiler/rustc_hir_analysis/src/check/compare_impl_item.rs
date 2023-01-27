@@ -249,7 +249,7 @@ fn compare_method_predicate_entailment<'tcx>(
     let unnormalized_impl_sig = infcx.replace_bound_vars_with_fresh_vars(
         impl_m_span,
         infer::HigherRankedType,
-        tcx.fn_sig(impl_m.def_id),
+        tcx.fn_sig(impl_m.def_id).subst_identity(),
     );
     let unnormalized_impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(unnormalized_impl_sig));
 
@@ -257,7 +257,7 @@ fn compare_method_predicate_entailment<'tcx>(
     let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
     debug!("compare_impl_method: impl_fty={:?}", impl_sig);
 
-    let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
+    let trait_sig = tcx.fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
     let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
 
     // Next, add all inputs and output as well-formed tys. Importantly,
@@ -422,8 +422,8 @@ fn extract_bad_args_for_implies_lint<'tcx>(
 
     // Map late-bound regions from trait to impl, so the names are right.
     let mapping = std::iter::zip(
-        tcx.fn_sig(trait_m.def_id).bound_vars(),
-        tcx.fn_sig(impl_m.def_id).bound_vars(),
+        tcx.fn_sig(trait_m.def_id).skip_binder().bound_vars(),
+        tcx.fn_sig(impl_m.def_id).skip_binder().bound_vars(),
     )
     .filter_map(|(impl_bv, trait_bv)| {
         if let ty::BoundVariableKind::Region(impl_bv) = impl_bv
@@ -540,7 +540,7 @@ fn compare_asyncness<'tcx>(
     trait_item_span: Option<Span>,
 ) -> Result<(), ErrorGuaranteed> {
     if tcx.asyncness(trait_m.def_id) == hir::IsAsync::Async {
-        match tcx.fn_sig(impl_m.def_id).skip_binder().output().kind() {
+        match tcx.fn_sig(impl_m.def_id).skip_binder().skip_binder().output().kind() {
             ty::Alias(ty::Opaque, ..) => {
                 // allow both `async fn foo()` and `fn foo() -> impl Future`
             }
@@ -643,7 +643,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         infcx.replace_bound_vars_with_fresh_vars(
             return_span,
             infer::HigherRankedType,
-            tcx.fn_sig(impl_m.def_id),
+            tcx.fn_sig(impl_m.def_id).subst_identity(),
         ),
     );
     impl_sig.error_reported()?;
@@ -657,7 +657,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let unnormalized_trait_sig = tcx
         .liberate_late_bound_regions(
             impl_m.def_id,
-            tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
+            tcx.fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
         )
         .fold_with(&mut collector);
     let trait_sig = ocx.normalize(&norm_cause, param_env, unnormalized_trait_sig);
@@ -1117,7 +1117,7 @@ fn compare_self_type<'tcx>(
             ty::ImplContainer => impl_trait_ref.self_ty(),
             ty::TraitContainer => tcx.types.self_param,
         };
-        let self_arg_ty = tcx.fn_sig(method.def_id).input(0);
+        let self_arg_ty = tcx.fn_sig(method.def_id).subst_identity().input(0);
         let param_env = ty::ParamEnv::reveal_all();
 
         let infcx = tcx.infer_ctxt().build();
@@ -1350,8 +1350,8 @@ fn compare_number_of_method_arguments<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_m_fty = tcx.fn_sig(impl_m.def_id);
     let trait_m_fty = tcx.fn_sig(trait_m.def_id);
-    let trait_number_args = trait_m_fty.inputs().skip_binder().len();
-    let impl_number_args = impl_m_fty.inputs().skip_binder().len();
+    let trait_number_args = trait_m_fty.skip_binder().inputs().skip_binder().len();
+    let impl_number_args = impl_m_fty.skip_binder().inputs().skip_binder().len();
 
     if trait_number_args != impl_number_args {
         let trait_span = trait_m

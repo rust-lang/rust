@@ -2599,7 +2599,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
                         self.mir_def_id(),
-                        self.infcx.tcx.fn_sig(self.mir_def_id()),
+                        self.infcx.tcx.fn_sig(self.mir_def_id()).subst_identity(),
                     ),
                     _ => None,
                 }

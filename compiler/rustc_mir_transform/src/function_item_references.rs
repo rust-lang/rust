@@ -79,7 +79,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         for bound in bounds {
             if let Some(bound_ty) = self.is_pointer_trait(&bound.kind().skip_binder()) {
                 // Get the argument types as they appear in the function signature.
-                let arg_defs = self.tcx.fn_sig(def_id).skip_binder().inputs();
+                let arg_defs = self.tcx.fn_sig(def_id).subst_identity().skip_binder().inputs();
                 for (arg_num, arg_def) in arg_defs.iter().enumerate() {
                     // For all types reachable from the argument type in the fn sig
                     for generic_inner_ty in arg_def.walk() {
@@ -161,7 +161,8 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             .as_ref()
             .assert_crate_local()
             .lint_root;
-        let fn_sig = self.tcx.fn_sig(fn_id);
+        // FIXME: use existing printing routines to print the function signature
+        let fn_sig = self.tcx.fn_sig(fn_id).subst(self.tcx, fn_substs);
         let unsafety = fn_sig.unsafety().prefix_str();
         let abi = match fn_sig.abi() {
             Abi::Rust => String::from(""),

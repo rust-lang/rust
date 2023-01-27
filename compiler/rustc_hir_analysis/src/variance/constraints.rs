@@ -119,7 +119,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::FnDef(..) => {
-                self.add_constraints_from_sig(current_item, tcx.fn_sig(def_id), self.covariant);
+                self.add_constraints_from_sig(
+                    current_item,
+                    tcx.fn_sig(def_id).subst_identity(),
+                    self.covariant,
+                );
             }
 
             ty::Error(_) => {}

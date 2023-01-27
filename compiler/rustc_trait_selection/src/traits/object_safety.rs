@@ -395,7 +395,7 @@ fn virtual_call_violation_for_method<'tcx>(
     trait_def_id: DefId,
     method: &ty::AssocItem,
 ) -> Option<MethodViolationCode> {
-    let sig = tcx.fn_sig(method.def_id);
+    let sig = tcx.fn_sig(method.def_id).subst_identity();
 
     // The method's first parameter must be named `self`
     if !method.fn_has_self_parameter {

@@ -1379,7 +1379,7 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
                                     .chain(args.iter())
                                     .position(|arg| arg.hir_id == id)?;
                                 let id = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
-                                let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i];
+                                let ty = cx.tcx.fn_sig(id).subst_identity().skip_binder().inputs()[i];
                                 ty_is_fn_once_param(cx.tcx, ty, cx.tcx.param_env(id).caller_bounds()).then_some(())
                             },
                             _ => None,
@@ -1580,14 +1580,14 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
 /// Convenience function to get the return type of a function.
 pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> {
     let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
-    let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
+    let ret_ty = cx.tcx.fn_sig(fn_def_id).subst_identity().output();
     cx.tcx.erase_late_bound_regions(ret_ty)
 }
 
 /// Convenience function to get the nth argument type of a function.
 pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId, nth: usize) -> Ty<'tcx> {
     let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
-    let arg = cx.tcx.fn_sig(fn_def_id).input(nth);
+    let arg = cx.tcx.fn_sig(fn_def_id).subst_identity().input(nth);
     cx.tcx.erase_late_bound_regions(arg)
 }
 

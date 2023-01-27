@@ -921,26 +921,22 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         expected: Ty<'tcx>,
     ) -> bool {
         match method.kind {
-            ty::AssocKind::Fn => {
-                let fty = self.tcx.bound_fn_sig(method.def_id);
-                self.probe(|_| {
-                    let substs = self.fresh_substs_for_item(self.span, method.def_id);
-                    let fty = fty.subst(self.tcx, substs);
-                    let fty =
-                        self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
+            ty::AssocKind::Fn => self.probe(|_| {
+                let substs = self.fresh_substs_for_item(self.span, method.def_id);
+                let fty = self.tcx.fn_sig(method.def_id).subst(self.tcx, substs);
+                let fty = self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
 
-                    if let Some(self_ty) = self_ty {
-                        if self
-                            .at(&ObligationCause::dummy(), self.param_env)
-                            .sup(fty.inputs()[0], self_ty)
-                            .is_err()
-                        {
-                            return false;
-                        }
+                if let Some(self_ty) = self_ty {
+                    if self
+                        .at(&ObligationCause::dummy(), self.param_env)
+                        .sup(fty.inputs()[0], self_ty)
+                        .is_err()
+                    {
+                        return false;
                     }
-                    self.can_sub(self.param_env, fty.output(), expected).is_ok()
-                })
-            }
+                }
+                self.can_sub(self.param_env, fty.output(), expected).is_ok()
+            }),
             _ => false,
         }
     }
@@ -1887,7 +1883,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn xform_method_sig(&self, method: DefId, substs: SubstsRef<'tcx>) -> ty::FnSig<'tcx> {
-        let fn_sig = self.tcx.bound_fn_sig(method);
+        let fn_sig = self.tcx.fn_sig(method);
         debug!(?fn_sig);
 
         assert!(!substs.has_escaping_bound_vars());
