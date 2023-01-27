@@ -965,6 +965,9 @@ impl Config {
         config.changelog_seen = toml.changelog_seen;
 
         let build = toml.build.unwrap_or_default();
+        if let Some(file_build) = build.build {
+            config.build = TargetSelection::from_user(&file_build);
+        };
 
         set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
