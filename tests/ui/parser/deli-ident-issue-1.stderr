@@ -1,0 +1,37 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/deli-ident-issue-1.rs:24:66
+   |
+LL | impl dyn Demo {
+   |               - unclosed delimiter
+...
+LL |         && let Some(c) = num {
+   |                              - this delimiter might not be properly closed...
+...
+LL |     }
+   |     - ...as it matches this but it has different indentation
+...
+LL | fn main() { }
+   |                                                                  ^
+
+error[E0574]: expected struct, variant or union type, found local variable `c`
+  --> $DIR/deli-ident-issue-1.rs:17:17
+   |
+LL |         && b == c {
+   |                 ^ not a struct, variant or union type
+
+error[E0308]: mismatched types
+  --> $DIR/deli-ident-issue-1.rs:17:9
+   |
+LL |       fn check(&self, val: Option<u32>, num: Option<u32>) {
+   |                                                           - expected `()` because of default return type
+...
+LL | /         && b == c {
+LL | |
+LL | |
+LL | |         }
+   | |_________^ expected `()`, found `bool`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0574.
+For more information about an error, try `rustc --explain E0308`.
