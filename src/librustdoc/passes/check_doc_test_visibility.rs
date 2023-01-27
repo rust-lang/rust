@@ -14,8 +14,8 @@ use crate::visit::DocVisitor;
 use crate::visit_ast::inherits_doc_hidden;
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
+use rustc_middle::ty::DefIdTree;
 use rustc_session::lint;
-use rustc_span::symbol::sym;
 
 pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
     name: "check_doc_test_visibility",
@@ -79,11 +79,11 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
 
     // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
     // would presumably panic if a fake `DefIndex` were passed.
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.item_id.expect_def_id().expect_local());
+    let def_id = item.item_id.expect_def_id().expect_local();
 
     // check if parent is trait impl
-    if let Some(parent_hir_id) = cx.tcx.hir().opt_parent_id(hir_id) {
-        if let Some(parent_node) = cx.tcx.hir().find(parent_hir_id) {
+    if let Some(parent_def_id) = cx.tcx.opt_local_parent(def_id) {
+        if let Some(parent_node) = cx.tcx.hir().find_by_def_id(parent_def_id) {
             if matches!(
                 parent_node,
                 hir::Node::Item(hir::Item {
@@ -96,13 +96,16 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
         }
     }
 
-    if cx.tcx.hir().attrs(hir_id).lists(sym::doc).has_word(sym::hidden)
-        || inherits_doc_hidden(cx.tcx, hir_id)
-        || cx.tcx.hir().span(hir_id).in_derive_expansion()
+    if cx.tcx.is_doc_hidden(def_id.to_def_id())
+        || inherits_doc_hidden(cx.tcx, def_id)
+        || cx.tcx.def_span(def_id.to_def_id()).in_derive_expansion()
     {
         return false;
     }
-    let (level, source) = cx.tcx.lint_level_at_node(crate::lint::MISSING_DOC_CODE_EXAMPLES, hir_id);
+    let (level, source) = cx.tcx.lint_level_at_node(
+        crate::lint::MISSING_DOC_CODE_EXAMPLES,
+        cx.tcx.hir().local_def_id_to_hir_id(def_id),
+    );
     level != lint::Level::Allow || matches!(source, LintLevelSource::Default)
 }
 
