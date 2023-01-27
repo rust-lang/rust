@@ -15,7 +15,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
@@ -116,7 +116,8 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
     });
 
-    Item::from_hir_id_and_parts(doc.id, Some(doc.name), ModuleItem(Module { items, span }), cx)
+    let kind = ModuleItem(Module { items, span });
+    Item::from_def_id_and_parts(doc.def_id.to_def_id(), Some(doc.name), kind, cx)
 }
 
 fn clean_generic_bound<'tcx>(
@@ -2067,12 +2068,12 @@ struct OneLevelVisitor<'hir> {
     map: rustc_middle::hir::map::Map<'hir>,
     item: Option<&'hir hir::Item<'hir>>,
     looking_for: Ident,
-    target_hir_id: hir::HirId,
+    target_def_id: LocalDefId,
 }
 
 impl<'hir> OneLevelVisitor<'hir> {
-    fn new(map: rustc_middle::hir::map::Map<'hir>, target_hir_id: hir::HirId) -> Self {
-        Self { map, item: None, looking_for: Ident::empty(), target_hir_id }
+    fn new(map: rustc_middle::hir::map::Map<'hir>, target_def_id: LocalDefId) -> Self {
+        Self { map, item: None, looking_for: Ident::empty(), target_def_id }
     }
 
     fn reset(&mut self, looking_for: Ident) {
@@ -2092,7 +2093,7 @@ impl<'hir> hir::intravisit::Visitor<'hir> for OneLevelVisitor<'hir> {
         if self.item.is_none()
             && item.ident == self.looking_for
             && matches!(item.kind, hir::ItemKind::Use(_, _))
-            || item.hir_id() == self.target_hir_id
+            || item.owner_id.def_id == self.target_def_id
         {
             self.item = Some(item);
         }
@@ -2106,11 +2107,11 @@ impl<'hir> hir::intravisit::Visitor<'hir> for OneLevelVisitor<'hir> {
 fn get_all_import_attributes<'hir>(
     mut item: &hir::Item<'hir>,
     tcx: TyCtxt<'hir>,
-    target_hir_id: hir::HirId,
+    target_def_id: LocalDefId,
     attributes: &mut Vec<ast::Attribute>,
 ) {
     let hir_map = tcx.hir();
-    let mut visitor = OneLevelVisitor::new(hir_map, target_hir_id);
+    let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
     // If the item is an import and has at least a path with two parts, we go into it.
     while let hir::ItemKind::Use(path, _) = item.kind &&
         path.segments.len() > 1 &&
@@ -2138,7 +2139,7 @@ fn clean_maybe_renamed_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::Item<'tcx>,
     renamed: Option<Symbol>,
-    import_id: Option<hir::HirId>,
+    import_id: Option<LocalDefId>,
 ) -> Vec<Item> {
     use hir::ItemKind;
 
@@ -2183,7 +2184,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Impl(impl_) => return clean_impl(impl_, item.hir_id(), cx),
+            ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
             // proc macros can have a name set by attributes
             ItemKind::Fn(ref sig, generics, body_id) => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
@@ -2218,10 +2219,10 @@ fn clean_maybe_renamed_item<'tcx>(
 
         let mut extra_attrs = Vec::new();
         if let Some(hir::Node::Item(use_node)) =
-            import_id.and_then(|hir_id| cx.tcx.hir().find(hir_id))
+            import_id.and_then(|def_id| cx.tcx.hir().find_by_def_id(def_id))
         {
             // We get all the various imports' attributes.
-            get_all_import_attributes(use_node, cx.tcx, item.hir_id(), &mut extra_attrs);
+            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs);
         }
 
         if !extra_attrs.is_empty() {
@@ -2244,12 +2245,12 @@ fn clean_maybe_renamed_item<'tcx>(
 
 fn clean_variant<'tcx>(variant: &hir::Variant<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let kind = VariantItem(clean_variant_data(&variant.data, &variant.disr_expr, cx));
-    Item::from_hir_id_and_parts(variant.hir_id, Some(variant.ident.name), kind, cx)
+    Item::from_def_id_and_parts(variant.def_id.to_def_id(), Some(variant.ident.name), kind, cx)
 }
 
 fn clean_impl<'tcx>(
     impl_: &hir::Impl<'tcx>,
-    hir_id: hir::HirId,
+    def_id: LocalDefId,
     cx: &mut DocContext<'tcx>,
 ) -> Vec<Item> {
     let tcx = cx.tcx;
@@ -2260,7 +2261,6 @@ fn clean_impl<'tcx>(
         .iter()
         .map(|ii| clean_impl_item(tcx.hir().impl_item(ii.id), cx))
         .collect::<Vec<_>>();
-    let def_id = tcx.hir().local_def_id(hir_id);
 
     // If this impl block is an implementation of the Deref trait, then we
     // need to try inlining the target's inherent impl blocks as well.
@@ -2289,7 +2289,7 @@ fn clean_impl<'tcx>(
                 ImplKind::Normal
             },
         }));
-        Item::from_hir_id_and_parts(hir_id, None, kind, cx)
+        Item::from_def_id_and_parts(def_id.to_def_id(), None, kind, cx)
     };
     if let Some(type_alias) = type_alias {
         ret.push(make_item(trait_.clone(), type_alias, items.clone()));
@@ -2510,8 +2510,8 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 
-        Item::from_hir_id_and_parts(
-            item.hir_id(),
+        Item::from_def_id_and_parts(
+            item.owner_id.def_id.to_def_id(),
             Some(renamed.unwrap_or(item.ident.name)),
             kind,
             cx,

@@ -27,7 +27,6 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_hir::HirId;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
@@ -296,7 +295,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             // These characters don't need to be escaped in a URI.
-            // FIXME: use a library function for percent encoding.
+            // See https://url.spec.whatwg.org/#query-percent-encode-set
+            // and https://url.spec.whatwg.org/#urlencoded-parsing
+            // and https://url.spec.whatwg.org/#url-code-points
             fn dont_escape(c: u8) -> bool {
                 (b'a' <= c && c <= b'z')
                     || (b'A' <= c && c <= b'Z')
@@ -304,17 +305,32 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                     || c == b'-'
                     || c == b'_'
                     || c == b'.'
+                    || c == b','
                     || c == b'~'
                     || c == b'!'
                     || c == b'\''
                     || c == b'('
                     || c == b')'
                     || c == b'*'
+                    || c == b'/'
+                    || c == b';'
+                    || c == b':'
+                    || c == b'?'
+                    // As described in urlencoded-parsing, the
+                    // first `=` is the one that separates key from
+                    // value. Following `=`s are part of the value.
+                    || c == b'='
             }
             let mut test_escaped = String::new();
             for b in test.bytes() {
                 if dont_escape(b) {
                     test_escaped.push(char::from(b));
+                } else if b == b' ' {
+                    // URL queries are decoded with + replaced with SP
+                    test_escaped.push('+');
+                } else if b == b'%' {
+                    test_escaped.push('%');
+                    test_escaped.push('%');
                 } else {
                     write!(test_escaped, "%{:02X}", b).unwrap();
                 }
@@ -784,45 +800,26 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
 }
 
 pub(crate) struct ExtraInfo<'tcx> {
-    id: ExtraInfoId,
+    def_id: DefId,
     sp: Span,
     tcx: TyCtxt<'tcx>,
 }
 
-enum ExtraInfoId {
-    Hir(HirId),
-    Def(DefId),
-}
-
 impl<'tcx> ExtraInfo<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, hir_id: HirId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { id: ExtraInfoId::Hir(hir_id), sp, tcx }
-    }
-
-    pub(crate) fn new_did(tcx: TyCtxt<'tcx>, did: DefId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { id: ExtraInfoId::Def(did), sp, tcx }
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: DefId, sp: Span) -> ExtraInfo<'tcx> {
+        ExtraInfo { def_id, sp, tcx }
     }
 
     fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
-        let hir_id = match self.id {
-            ExtraInfoId::Hir(hir_id) => hir_id,
-            ExtraInfoId::Def(item_did) => {
-                match item_did.as_local() {
-                    Some(item_did) => self.tcx.hir().local_def_id_to_hir_id(item_did),
-                    None => {
-                        // If non-local, no need to check anything.
-                        return;
-                    }
-                }
-            }
-        };
-        self.tcx.struct_span_lint_hir(
-            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-            hir_id,
-            self.sp,
-            msg,
-            |lint| lint.help(help),
-        );
+        if let Some(def_id) = self.def_id.as_local() {
+            self.tcx.struct_span_lint_hir(
+                crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
+                self.tcx.hir().local_def_id_to_hir_id(def_id),
+                self.sp,
+                msg,
+                |lint| lint.help(help),
+            );
+        }
     }
 }
 

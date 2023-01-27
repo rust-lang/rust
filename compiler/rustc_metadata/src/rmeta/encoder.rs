@@ -3,6 +3,7 @@ use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
+use rustc_ast::util::comments;
 use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -759,36 +760,54 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
+struct AnalyzeAttrState {
+    is_exported: bool,
+    may_have_doc_links: bool,
+    is_doc_hidden: bool,
+}
+
 /// Returns whether an attribute needs to be recorded in metadata, that is, if it's usable and
 /// useful in downstream crates. Local-only attributes are an obvious example, but some
 /// rustdoc-specific attributes can equally be of use while documenting the current crate only.
 ///
 /// Removing these superfluous attributes speeds up compilation by making the metadata smaller.
 ///
-/// Note: the `is_def_id_public` parameter is used to cache whether the given `DefId` has a public
+/// Note: the `is_exported` parameter is used to cache whether the given `DefId` has a public
 /// visibility: this is a piece of data that can be computed once per defid, and not once per
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
-fn should_encode_attr(
-    tcx: TyCtxt<'_>,
-    attr: &Attribute,
-    def_id: LocalDefId,
-    is_def_id_public: &mut Option<bool>,
-) -> bool {
+fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
+    let mut should_encode = false;
     if rustc_feature::is_builtin_only_local(attr.name_or_empty()) {
         // Attributes marked local-only don't need to be encoded for downstream crates.
-        false
-    } else if attr.doc_str().is_some() {
-        // We keep all public doc comments because they might be "imported" into downstream crates
-        // if they use `#[doc(inline)]` to copy an item's documentation into their own.
-        *is_def_id_public.get_or_insert_with(|| tcx.effective_visibilities(()).is_exported(def_id))
+    } else if let Some(s) = attr.doc_str() {
+        // We keep all doc comments reachable to rustdoc because they might be "imported" into
+        // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
+        // their own.
+        if state.is_exported {
+            should_encode = true;
+            if comments::may_have_doc_links(s.as_str()) {
+                state.may_have_doc_links = true;
+            }
+        }
     } else if attr.has_name(sym::doc) {
-        // If this is a `doc` attribute, and it's marked `inline` (as in `#[doc(inline)]`), we can
-        // remove it. It won't be inlinable in downstream crates.
-        attr.meta_item_list().map(|l| l.iter().any(|l| !l.has_name(sym::inline))).unwrap_or(false)
+        // If this is a `doc` attribute that doesn't have anything except maybe `inline` (as in
+        // `#[doc(inline)]`), then we can remove it. It won't be inlinable in downstream crates.
+        if let Some(item_list) = attr.meta_item_list() {
+            for item in item_list {
+                if !item.has_name(sym::inline) {
+                    should_encode = true;
+                    if item.has_name(sym::hidden) {
+                        state.is_doc_hidden = true;
+                        break;
+                    }
+                }
+            }
+        }
     } else {
-        true
+        should_encode = true;
     }
+    should_encode
 }
 
 fn should_encode_visibility(def_kind: DefKind) -> bool {
@@ -1108,24 +1127,24 @@ fn should_encode_trait_impl_trait_tys(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
-        let mut is_public: Option<bool> = None;
-
-        let hir_attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
-        let mut attrs = hir_attrs
+        let mut state = AnalyzeAttrState {
+            is_exported: tcx.effective_visibilities(()).is_exported(def_id),
+            may_have_doc_links: false,
+            is_doc_hidden: false,
+        };
+        let attr_iter = tcx
+            .hir()
+            .attrs(tcx.hir().local_def_id_to_hir_id(def_id))
             .iter()
-            .filter(move |attr| should_encode_attr(tcx, attr, def_id, &mut is_public));
+            .filter(|attr| analyze_attr(attr, &mut state));
 
-        record_array!(self.tables.attributes[def_id.to_def_id()] <- attrs.clone());
+        record_array!(self.tables.attributes[def_id.to_def_id()] <- attr_iter);
+
         let mut attr_flags = AttrFlags::empty();
-        if attrs.any(|attr| attr.may_have_doc_links()) {
+        if state.may_have_doc_links {
             attr_flags |= AttrFlags::MAY_HAVE_DOC_LINKS;
         }
-        if hir_attrs
-            .iter()
-            .filter(|attr| attr.has_name(sym::doc))
-            .filter_map(|attr| attr.meta_item_list())
-            .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
-        {
+        if state.is_doc_hidden {
             attr_flags |= AttrFlags::IS_DOC_HIDDEN;
         }
         if !attr_flags.is_empty() {
