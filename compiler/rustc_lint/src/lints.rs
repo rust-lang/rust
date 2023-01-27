@@ -921,6 +921,13 @@ pub struct TyQualified {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_ty_compare_operator_used)]
+#[note]
+#[note(lint_ty_no_compare_operator_for_diagnostics)]
+#[help]
+pub struct TyCompareOperatorUsed;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_lintpass_by_hand)]
 #[help]
 pub struct LintPassByHand;

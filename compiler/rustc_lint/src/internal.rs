@@ -3,11 +3,12 @@
 
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
-    QueryInstability, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
-    UntranslatableDiagnosticTrivial,
+    QueryInstability, TyCompareOperatorUsed, TyQualified, TykindDiag, TykindKind,
+    UntranslatableDiag, UntranslatableDiagnosticTrivial,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
+use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{def_id::DefId, Expr, ExprKind, GenericArg, PatKind, Path, PathSegment, QPath};
 use rustc_hir::{HirId, Impl, Item, ItemKind, Node, Pat, Ty, TyKind};
@@ -127,12 +128,7 @@ declare_lint_pass!(TyTyKind => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for TyTyKind {
-    fn check_path(
-        &mut self,
-        cx: &LateContext<'tcx>,
-        path: &rustc_hir::Path<'tcx>,
-        _: rustc_hir::HirId,
-    ) {
+    fn check_path(&mut self, cx: &LateContext<'tcx>, path: &hir::Path<'tcx>, _: hir::HirId) {
         if let Some(segment) = path.segments.iter().nth_back(1)
         && lint_ty_kind_usage(cx, &segment.res)
         {
@@ -270,6 +266,37 @@ fn gen_args(segment: &PathSegment<'_>) -> String {
 }
 
 declare_tool_lint! {
+    pub rustc::TY_COMPARE_OPERATOR,
+    Allow,
+    "using the a comparison operator on `Ty`"
+}
+
+declare_lint_pass!(TyCompareOperator => [TY_COMPARE_OPERATOR]);
+
+impl<'tcx> LateLintPass<'tcx> for TyCompareOperator {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        use hir::BinOpKind::*;
+
+        if let hir::ExprKind::Binary(
+                hir::BinOp { node:Eq | Ne | Gt | Lt | Le | Ge, span},
+                lhs,
+                rhs
+            ) = expr.kind
+            && let ty::Adt(lhs_def, _) = cx.typeck_results().node_type(lhs.hir_id).peel_refs().kind()
+            && let ty::Adt(rhs_def, _) = cx.typeck_results().node_type(rhs.hir_id).peel_refs().kind()
+            && cx.tcx.is_diagnostic_item(sym::Ty, lhs_def.did())
+            && cx.tcx.is_diagnostic_item(sym::Ty, rhs_def.did())
+        {
+            cx.emit_spanned_lint(
+                TY_COMPARE_OPERATOR,
+                span,
+                TyCompareOperatorUsed,
+            )
+        }
+    }
+}
+
+declare_tool_lint! {
     /// The `lint_pass_impl_without_macro` detects manual implementations of a lint
     /// pass, without using [`declare_lint_pass`] or [`impl_lint_pass`].
     pub rustc::LINT_PASS_IMPL_WITHOUT_MACRO,
@@ -318,7 +345,7 @@ fn is_doc_keyword(s: Symbol) -> bool {
 }
 
 impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         for attr in cx.tcx.hir().attrs(item.hir_id()) {
             if !attr.has_name(sym::doc) {
                 continue;

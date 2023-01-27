@@ -524,6 +524,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
     store.register_late_mod_pass(|_| Box::new(TyTyKind));
+    store.register_lints(&TyCompareOperator::get_lints());
+    store.register_late_mod_pass(|_| Box::new(TyCompareOperator));
     store.register_lints(&Diagnostics::get_lints());
     store.register_early_pass(|| Box::new(Diagnostics));
     store.register_late_mod_pass(|_| Box::new(Diagnostics));
@@ -543,6 +545,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(DEFAULT_HASH_TYPES),
             LintId::of(POTENTIAL_QUERY_INSTABILITY),
             LintId::of(USAGE_OF_TY_TYKIND),
+            LintId::of(TY_COMPARE_OPERATOR),
             LintId::of(PASS_BY_VALUE),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(USAGE_OF_QUALIFIED_TY),

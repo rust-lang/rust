@@ -1,0 +1,67 @@
+error: using the a comparison operator on `Ty`
+  --> $DIR/ty_compare_operator.rs:18:21
+   |
+LL |     let _ = ty1::Ty == ty1::Ty;
+   |                     ^^
+   |
+   = note: this does probably not what you want as it does not handle inference variables and more
+   = note: it's also not recommended to use it for diagnostics
+   = help: for more information, see https://rustc-dev-guide.rust-lang.org/ty.html#comparing-types
+note: the lint level is defined here
+  --> $DIR/ty_compare_operator.rs:4:11
+   |
+LL | #![forbid(rustc::ty_compare_operator)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: using the a comparison operator on `Ty`
+  --> $DIR/ty_compare_operator.rs:20:21
+   |
+LL |     let _ = ty1::Ty != ty1::Ty;
+   |                     ^^
+   |
+   = note: this does probably not what you want as it does not handle inference variables and more
+   = note: it's also not recommended to use it for diagnostics
+   = help: for more information, see https://rustc-dev-guide.rust-lang.org/ty.html#comparing-types
+
+error: using the a comparison operator on `Ty`
+  --> $DIR/ty_compare_operator.rs:22:21
+   |
+LL |     let _ = ty1::Ty < ty1::Ty;
+   |                     ^
+   |
+   = note: this does probably not what you want as it does not handle inference variables and more
+   = note: it's also not recommended to use it for diagnostics
+   = help: for more information, see https://rustc-dev-guide.rust-lang.org/ty.html#comparing-types
+
+error: using the a comparison operator on `Ty`
+  --> $DIR/ty_compare_operator.rs:24:21
+   |
+LL |     let _ = ty1::Ty <= ty1::Ty;
+   |                     ^^
+   |
+   = note: this does probably not what you want as it does not handle inference variables and more
+   = note: it's also not recommended to use it for diagnostics
+   = help: for more information, see https://rustc-dev-guide.rust-lang.org/ty.html#comparing-types
+
+error: using the a comparison operator on `Ty`
+  --> $DIR/ty_compare_operator.rs:26:21
+   |
+LL |     let _ = ty1::Ty > ty1::Ty;
+   |                     ^
+   |
+   = note: this does probably not what you want as it does not handle inference variables and more
+   = note: it's also not recommended to use it for diagnostics
+   = help: for more information, see https://rustc-dev-guide.rust-lang.org/ty.html#comparing-types
+
+error: using the a comparison operator on `Ty`
+  --> $DIR/ty_compare_operator.rs:28:21
+   |
+LL |     let _ = ty1::Ty >= ty1::Ty;
+   |                     ^^
+   |
+   = note: this does probably not what you want as it does not handle inference variables and more
+   = note: it's also not recommended to use it for diagnostics
+   = help: for more information, see https://rustc-dev-guide.rust-lang.org/ty.html#comparing-types
+
+error: aborting due to 6 previous errors
+
