@@ -111,7 +111,14 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 impl<T, F> LazyLock<T, F> {
     /// Get the inner value if it has already been initialized.
     fn get(&self) -> Option<&T> {
-        if self.once.is_completed() { Some(unsafe { &*(*self.data.get()).value }) } else { None }
+        if self.once.is_completed() {
+            // SAFETY:
+            // The closure has been run successfully, so `value` has been initialized
+            // and will not be modified again.
+            Some(unsafe { &*(*self.data.get()).value })
+        } else {
+            None
+        }
     }
 }
 
