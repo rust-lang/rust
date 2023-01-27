@@ -1,7 +1,6 @@
-use crate::mem::ManuallyDrop;
-
 use crate::cell::UnsafeCell;
 use crate::fmt;
+use crate::mem::ManuallyDrop;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
@@ -151,12 +150,10 @@ impl<T: Default> Default for LazyLock<T> {
 #[unstable(feature = "once_cell", issue = "74465")]
 impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("LazyLock")
-            .field(match self.get() {
-                Some(v) => v,
-                None => &"Uninit",
-            })
-            .finish()
+        match self.get() {
+            Some(v) => f.debug_tuple("LazyLock").field(v).finish(),
+            None => f.write_str("LazyLock(Uninit)"),
+        }
     }
 }
 
