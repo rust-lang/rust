@@ -44,10 +44,8 @@ aot.issue-72793
 
 testsuite.extended_sysroot
 test.rust-random/rand
-bench.simple-raytracer
+test.simple-raytracer
 test.libcore
 test.regex-shootout-regex-dna
 test.regex
 test.portable-simd
-
-testsuite.abi-cafe
