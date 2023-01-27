@@ -45,14 +45,24 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 projection_ty: goal.predicate.projection_ty,
                 term: unconstrained_rhs,
             });
-            let (_has_changed, normalize_certainty) =
-                self.evaluate_goal(goal.with(self.tcx(), unconstrained_predicate))?;
+            let (_has_changed, normalize_certainty) = self.in_projection_eq_hack(|this| {
+                this.evaluate_goal(goal.with(this.tcx(), unconstrained_predicate))
+            })?;
 
             let nested_eq_goals =
                 self.infcx.eq(goal.param_env, unconstrained_rhs, predicate.term)?;
             let eval_certainty = self.evaluate_all(nested_eq_goals)?;
             self.make_canonical_response(normalize_certainty.unify_and(eval_certainty))
         }
+    }
+
+    /// This sets a flag used by a debug assert in [`EvalCtxt::evaluate_goal`],
+    /// see the comment in that method for more details.
+    fn in_projection_eq_hack<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.in_projection_eq_hack = true;
+        let result = f(self);
+        self.in_projection_eq_hack = false;
+        result
     }
 
     /// Is the projection predicate is of the form `exists<T> <Ty as Trait>::Assoc = T`.
