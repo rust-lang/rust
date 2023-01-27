@@ -115,8 +115,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
         return;
     }
 
-    let outlives_environment =
-        OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
+    let outlives_environment = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
     let _ = infcx
         .err_ctxt()
@@ -676,7 +675,6 @@ fn resolve_regions_with_wf_tys<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let outlives_environment = OutlivesEnvironment::with_bounds(
         param_env,
-        Some(&infcx),
         infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
     );
     let region_bound_pairs = outlives_environment.region_bound_pairs();
