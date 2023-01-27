@@ -1,6 +1,7 @@
 #![feature(fmt_helpers_for_derive)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
+#![feature(structural_match)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
@@ -818,20 +819,20 @@ impl UniverseIndex {
     /// name the region `'a`, but that region was not nameable from
     /// `U` because it was not in scope there.
     pub fn next_universe(self) -> UniverseIndex {
-        UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
+        UniverseIndex::from_u32(self.as_u32().checked_add(1).unwrap())
     }
 
     /// Returns `true` if `self` can name a name from `other` -- in other words,
     /// if the set of names in `self` is a superset of those in
     /// `other` (`self >= other`).
     pub fn can_name(self, other: UniverseIndex) -> bool {
-        self.private >= other.private
+        self.as_u32() >= other.as_u32()
     }
 
     /// Returns `true` if `self` cannot name some names from `other` -- in other
     /// words, if the set of names in `self` is a strict subset of
     /// those in `other` (`self < other`).
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
-        self.private < other.private
+        self.as_u32() < other.as_u32()
     }
 }

@@ -3,6 +3,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(min_specialization)]
 #![feature(once_cell)]
+#![feature(structural_match)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
 #![recursion_limit = "256"]

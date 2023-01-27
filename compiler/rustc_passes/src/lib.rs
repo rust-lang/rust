@@ -10,6 +10,7 @@
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
+#![feature(structural_match)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 

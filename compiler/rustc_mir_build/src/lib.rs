@@ -10,6 +10,7 @@
 #![feature(min_specialization)]
 #![feature(once_cell)]
 #![feature(try_blocks)]
+#![feature(structural_match)]
 #![recursion_limit = "256"]
 
 #[macro_use]

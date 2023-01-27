@@ -20,6 +20,7 @@
 #![feature(if_let_guard)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(structural_match)]
 #![feature(try_blocks)]
 #![recursion_limit = "512"] // For rustdoc
 

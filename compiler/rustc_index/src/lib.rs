@@ -9,6 +9,7 @@
         new_uninit,
         step_trait,
         stmt_expr_attributes,
+        structural_match,
         test
     )
 )]

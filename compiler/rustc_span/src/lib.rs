@@ -19,6 +19,7 @@
 #![feature(negative_impls)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
+#![feature(structural_match)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

@@ -5,6 +5,7 @@
 #![feature(min_specialization)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
+#![feature(structural_match)]
 #![allow(rustc::potential_query_instability)]
 #![recursion_limit = "256"]
 

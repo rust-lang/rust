@@ -7,6 +7,7 @@
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(option_get_or_insert_default)]
+#![feature(structural_match)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]

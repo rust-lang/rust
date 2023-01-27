@@ -8,6 +8,7 @@
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
+#![feature(structural_match)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]

@@ -15,6 +15,7 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(step_trait)]
+#![feature(structural_match)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

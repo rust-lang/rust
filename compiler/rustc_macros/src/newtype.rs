@@ -93,7 +93,7 @@ impl Parse for Newtype {
                 }
                 impl<E: ::rustc_serialize::Encoder> ::rustc_serialize::Encodable<E> for #name {
                     fn encode(&self, e: &mut E) {
-                        e.emit_u32(self.private);
+                        e.emit_u32(self.as_u32());
                     }
                 }
             }
@@ -103,11 +103,16 @@ impl Parse for Newtype {
 
         if ord {
             derive_paths.push(parse_quote!(Ord));
-            derive_paths.push(parse_quote!(PartialOrd));
         }
 
         let step = if ord {
             quote! {
+                impl ::std::cmp::PartialOrd for #name {
+                    fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+                        self.as_u32().partial_cmp(&other.as_u32())
+                    }
+                }
+
                 impl ::std::iter::Step for #name {
                     #[inline]
                     fn steps_between(start: &Self, end: &Self) -> Option<usize> {
@@ -150,7 +155,7 @@ impl Parse for Newtype {
                         #[inline]
                         fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
                             if #max_val < u32::MAX {
-                                l.map(|i| i.private).unwrap_or(#max_val+1) == r.map(|i| i.private).unwrap_or(#max_val+1)
+                                l.map(|i| i.as_u32()).unwrap_or(#max_val+1) == r.map(|i| i.as_u32()).unwrap_or(#max_val+1)
                             } else {
                                 match (l, r) {
                                     (Some(l), Some(r)) => r == l,
@@ -170,12 +175,20 @@ impl Parse for Newtype {
 
         Ok(Self(quote! {
             #(#attrs)*
-            #[derive(Clone, Copy, PartialEq, Eq, Hash, #(#derive_paths),*)]
+            #[derive(Clone, Copy, Eq, Hash, #(#derive_paths),*)]
             #[rustc_layout_scalar_valid_range_end(#max)]
             #[rustc_pass_by_value]
             #vis struct #name {
                 private: u32,
             }
+
+            impl ::std::cmp::PartialEq for #name {
+                fn eq(&self, other: &Self) -> bool {
+                    self.as_u32() == other.as_u32()
+                }
+            }
+
+            impl ::std::marker::StructuralPartialEq for #name {}
 
             #(#consts)*
 
@@ -224,7 +237,7 @@ impl Parse for Newtype {
                 /// Prefer using `from_u32`.
                 #[inline]
                 #vis const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                    Self { private: value }
+                    Self { private: value as _ }
                 }
 
                 /// Extracts the value of this index as a `usize`.
@@ -236,7 +249,7 @@ impl Parse for Newtype {
                 /// Extracts the value of this index as a `u32`.
                 #[inline]
                 #vis const fn as_u32(self) -> u32 {
-                    self.private
+                    self.private as u32
                 }
 
                 /// Extracts the value of this index as a `usize`.

@@ -69,6 +69,7 @@ This API is completely unstable and subject to change.
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(slice_partition_dedup)]
+#![feature(structural_match)]
 #![feature(try_blocks)]
 #![feature(is_some_and)]
 #![feature(type_alias_impl_trait)]

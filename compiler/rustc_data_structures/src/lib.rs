@@ -17,6 +17,7 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(structural_match)]
 #![feature(type_alias_impl_trait)]
 #![feature(new_uninit)]
 #![feature(once_cell)]
