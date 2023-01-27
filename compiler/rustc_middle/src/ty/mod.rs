@@ -31,7 +31,6 @@ pub use generics::*;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
