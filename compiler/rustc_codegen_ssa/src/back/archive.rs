@@ -14,7 +14,7 @@ use tempfile::Builder as TempFileBuilder;
 
 use std::error::Error;
 use std::fs::File;
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 // Re-exporting for rustc_codegen_llvm::back::archive
@@ -116,11 +116,12 @@ impl<'a> ArArchiveBuilder<'a> {
     }
 }
 
-fn try_filter_fat_archs<'a>(
+fn try_filter_fat_archs(
     archs: object::read::Result<&[impl FatArch]>,
     target_arch: object::Architecture,
-    archive_map_data: &'a [u8],
-) -> io::Result<Option<(&'a [u8], u64)>> {
+    archive_path: &Path,
+    archive_map_data: &[u8],
+) -> io::Result<Option<PathBuf>> {
     let archs = archs.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     let desired = match archs.iter().find(|a| a.architecture() == target_arch) {
@@ -128,30 +129,38 @@ fn try_filter_fat_archs<'a>(
         None => return Ok(None),
     };
 
-    Ok(Some((
+    let (mut new_f, extracted_path) = tempfile::Builder::new()
+        .suffix(archive_path.file_name().unwrap())
+        .tempfile()?
+        .keep()
+        .unwrap();
+
+    new_f.write_all(
         desired.data(archive_map_data).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
-        desired.offset().into(),
-    )))
+    )?;
+
+    Ok(Some(extracted_path))
 }
 
-pub fn try_extract_macho_fat_archive<'a>(
+pub fn try_extract_macho_fat_archive(
     sess: &Session,
-    archive_bytes: &'a [u8],
-) -> io::Result<Option<(&'a [u8], u64)>> {
+    archive_path: &Path,
+) -> io::Result<Option<PathBuf>> {
+    let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
     let target_arch = match sess.target.arch.as_ref() {
         "aarch64" => object::Architecture::Aarch64,
         "x86_64" => object::Architecture::X86_64,
         _ => return Ok(None),
     };
 
-    match object::macho::FatHeader::parse(archive_bytes) {
+    match object::macho::FatHeader::parse(&*archive_map) {
         Ok(h) if h.magic.get(object::endian::BigEndian) == object::macho::FAT_MAGIC => {
-            let archs = object::macho::FatHeader::parse_arch32(archive_bytes);
-            try_filter_fat_archs(archs, target_arch, archive_bytes)
+            let archs = object::macho::FatHeader::parse_arch32(&*archive_map);
+            try_filter_fat_archs(archs, target_arch, archive_path, &*archive_map)
         }
         Ok(h) if h.magic.get(object::endian::BigEndian) == object::macho::FAT_MAGIC_64 => {
-            let archs = object::macho::FatHeader::parse_arch64(archive_bytes);
-            try_filter_fat_archs(archs, target_arch, archive_bytes)
+            let archs = object::macho::FatHeader::parse_arch64(&*archive_map);
+            try_filter_fat_archs(archs, target_arch, archive_path, &*archive_map)
         }
         // Not a FatHeader at all, just return None.
         _ => Ok(None),
@@ -164,24 +173,21 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         archive_path: &Path,
         mut skip: Box<dyn FnMut(&str) -> bool + 'static>,
     ) -> io::Result<()> {
-        let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
+        let mut archive_path = archive_path.to_path_buf();
+        if self.sess.target.llvm_target.contains("-apple-macosx") {
+            if let Some(new_archive_path) =
+                try_extract_macho_fat_archive(&self.sess, &archive_path)?
+            {
+                archive_path = new_archive_path
+            }
+        }
+
         if self.src_archives.iter().any(|archive| archive.0 == archive_path) {
             return Ok(());
         }
 
-        let (archive_bytes, offset) = if self.sess.target.llvm_target.contains("-apple-macosx") {
-            if let Some((sub_archive, archive_offset)) =
-                try_extract_macho_fat_archive(&self.sess, &*archive_map)?
-            {
-                (sub_archive, Some(archive_offset))
-            } else {
-                (&*archive_map, None)
-            }
-        } else {
-            (&*archive_map, None)
-        };
-
-        let archive = ArchiveFile::parse(&*archive_bytes)
+        let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
+        let archive = ArchiveFile::parse(&*archive_map)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
         let archive_index = self.src_archives.len();
 
@@ -190,13 +196,9 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             let file_name = String::from_utf8(entry.name().to_vec())
                 .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
             if !skip(&file_name) {
-                let mut range = entry.file_range();
-                if let Some(offset) = offset {
-                    range.0 += offset;
-                }
                 self.entries.push((
                     file_name.into_bytes(),
-                    ArchiveEntry::FromArchive { archive_index, file_range: range },
+                    ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
                 ));
             }
         }
