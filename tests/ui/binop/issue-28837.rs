@@ -11,7 +11,7 @@ fn main() {
 
     a / a; //~ ERROR cannot divide `A` by `A`
 
-    a % a; //~ ERROR cannot mod `A` by `A`
+    a % a; //~ ERROR cannot rem `A` by `A`
 
     a & a; //~ ERROR no implementation for `A & A`
 
