@@ -3672,6 +3672,7 @@ name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "memchr",
  "rustc_data_structures",
  "rustc_index",
  "rustc_lexer",
