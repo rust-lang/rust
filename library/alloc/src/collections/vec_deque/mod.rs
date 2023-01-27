@@ -7,7 +7,7 @@
 
 #![feature(global_co_alloc)]
 #![stable(feature = "rust1", since = "1.0.0")]
-use crate::DEFAULT_COOP_PREF;
+use crate::CO_ALLOC_PREF_DEFAULT;
 use core::alloc;
 use core::cmp::{self, Ordering};
 use core::fmt;
@@ -97,7 +97,7 @@ mod tests;
 pub struct VecDeque<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-    const COOP_PREF: bool = { DEFAULT_COOP_PREF!() },
+    const COOP_PREF: bool = { CO_ALLOC_PREF_DEFAULT!() },
 > where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {

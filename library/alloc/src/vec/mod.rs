@@ -403,7 +403,7 @@ pub struct Vec<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
     //@FIXME: #[unstable(feature ="global_co_alloc_vec", issue="none")]
-    const COOP_PREF: bool = { DEFAULT_COOP_PREF!() },
+    const COOP_PREF: bool = { CO_ALLOC_PREF_DEFAULT!() },
 > where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
 {
@@ -425,7 +425,7 @@ pub type PlVec<T, A = Global> = Vec<T, A, false>;
 /// author considered using `CoVec` or `PlVec`, but left it to default instead.
 #[unstable(feature = "global_co_alloc_defvec", issue = "none")]
 #[allow(unused_braces)]
-pub type DefVec<T, A = Global> = Vec<T, A, { DEFAULT_COOP_PREF!() }>;
+pub type DefVec<T, A = Global> = Vec<T, A, { CO_ALLOC_PREF_DEFAULT!() }>;
 
 /// "Weighted cooperative" Vec. Weight means how much it wants to cooperate (with the allocator). 0
 /// = always pack; u8::MAX = always cooperate (if `Global` supports it).
@@ -454,7 +454,7 @@ impl<T> Vec<T> {
     #[must_use]
     pub const fn new() -> Self {
         #[allow(unused_braces)]
-        Vec::<T, Global, { DEFAULT_COOP_PREF!() }>::new_co()
+        Vec::<T, Global, { CO_ALLOC_PREF_DEFAULT!() }>::new_co()
         //Self::new_co()
     }
 
@@ -3317,7 +3317,7 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T: Clone> From<&[T]> for Vec<T, Global, { DEFAULT_COOP_PREF!() }> {
+impl<T: Clone> From<&[T]> for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
     /// # Examples
@@ -3338,7 +3338,7 @@ impl<T: Clone> From<&[T]> for Vec<T, Global, { DEFAULT_COOP_PREF!() }> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
 #[allow(unused_braces)]
-impl<T: Clone> From<&mut [T]> for Vec<T, Global, { DEFAULT_COOP_PREF!() }> {
+impl<T: Clone> From<&mut [T]> for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
     ///
     /// # Examples
@@ -3359,7 +3359,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T, Global, { DEFAULT_COOP_PREF!() }> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array", since = "1.44.0")]
 #[allow(unused_braces)]
-impl<T, const N: usize> From<[T; N]> for Vec<T, Global, { DEFAULT_COOP_PREF!() }> {
+impl<T, const N: usize> From<[T; N]> for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     /// Allocate a `Vec<T>` and move `s`'s items into it.
     ///
     /// # Examples
@@ -3383,7 +3383,7 @@ impl<T, const N: usize> From<[T; N]> for Vec<T, Global, { DEFAULT_COOP_PREF!() }
 
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
 #[allow(unused_braces)]
-impl<'a, T> From<Cow<'a, [T]>> for Vec<T, Global, { DEFAULT_COOP_PREF!() }>
+impl<'a, T> From<Cow<'a, [T]>> for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
@@ -3461,7 +3461,7 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl From<&str> for Vec<u8, Global, { DEFAULT_COOP_PREF!() }> {
+impl From<&str> for Vec<u8, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     /// Allocate a `Vec<u8>` and fill it with a UTF-8 string.
     ///
     /// # Examples
