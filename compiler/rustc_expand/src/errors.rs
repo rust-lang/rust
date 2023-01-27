@@ -368,3 +368,10 @@ pub(crate) struct ModuleMultipleCandidates {
     pub default_path: String,
     pub secondary_path: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_trace_macro)]
+pub struct TraceMacro {
+    #[primary_span]
+    pub span: Span,
+}
