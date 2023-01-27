@@ -115,13 +115,15 @@ impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyArray<T> {
     type Value<'tcx> = LazyArray<T::Value<'tcx>>;
 }
 
+impl<T> Default for LazyArray<T> {
+    fn default() -> LazyArray<T> {
+        LazyArray::from_position_and_num_elems(NonZeroUsize::new(1).unwrap(), 0)
+    }
+}
+
 impl<T> LazyArray<T> {
     fn from_position_and_num_elems(position: NonZeroUsize, num_elems: usize) -> LazyArray<T> {
         LazyArray { position, num_elems, _marker: PhantomData }
-    }
-
-    fn empty() -> LazyArray<T> {
-        LazyArray::from_position_and_num_elems(NonZeroUsize::new(1).unwrap(), 0)
     }
 }
 

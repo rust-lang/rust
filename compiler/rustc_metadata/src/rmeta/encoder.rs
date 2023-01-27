@@ -76,13 +76,13 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     symbol_table: FxHashMap<Symbol, usize>,
 }
 
-/// If the current crate is a proc-macro, returns early with `LazyArray::empty()`.
+/// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
 /// This is useful for skipping the encoding of things that aren't needed
 /// for proc-macro crates.
 macro_rules! empty_proc_macro {
     ($self:ident) => {
         if $self.is_proc_macro {
-            return LazyArray::empty();
+            return LazyArray::default();
         }
     };
 }
@@ -1961,7 +1961,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 Linkage::Static => Some(LinkagePreference::RequireStatic),
             }));
         }
-        LazyArray::empty()
+        LazyArray::default()
     }
 
     fn encode_info_for_foreign_item(&mut self, def_id: DefId, nitem: &hir::ForeignItem<'_>) {

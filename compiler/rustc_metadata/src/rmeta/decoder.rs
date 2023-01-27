@@ -654,7 +654,7 @@ impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyValue<T> {
 impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyArray<T> {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
         let len = decoder.read_usize();
-        if len == 0 { LazyArray::empty() } else { decoder.read_lazy_array(len) }
+        if len == 0 { LazyArray::default() } else { decoder.read_lazy_array(len) }
     }
 }
 
@@ -864,7 +864,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, index)
-                .unwrap_or_else(LazyArray::empty)
+                .unwrap_or_else(LazyArray::default)
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
@@ -896,7 +896,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, item_id)
-                .unwrap_or_else(LazyArray::empty)
+                .unwrap_or_else(LazyArray::default)
                 .decode(self)
                 .filter_map(|index| {
                     let kind = self.def_kind(index);
@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .fn_arg_names
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .unwrap_or_else(LazyArray::default)
             .decode((self, sess))
             .nth(0)
             .map_or(false, |ident| ident.name == kw::SelfLower)
@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .unwrap_or_else(LazyArray::default)
             .decode((self, sess))
             .map(move |child_index| self.local_def_id(child_index))
     }
@@ -1131,7 +1131,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .unwrap_or_else(LazyArray::default)
             .decode(self)
             .map(move |index| respan(self.get_span(index, sess), self.item_name(index)))
     }
@@ -1144,7 +1144,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .unwrap_or_else(LazyArray::default)
             .decode(self)
             .map(move |field_index| self.get_visibility(field_index))
     }
@@ -1159,7 +1159,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .inherent_impls
                 .get(self, id)
-                .unwrap_or_else(LazyArray::empty)
+                .unwrap_or_else(LazyArray::default)
                 .decode(self)
                 .map(|index| self.local_def_id(index)),
         )
@@ -1174,7 +1174,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .inherent_impls
                 .get(self, ty_index)
-                .unwrap_or_else(LazyArray::empty)
+                .unwrap_or_else(LazyArray::default)
                 .decode(self)
                 .map(move |impl_index| (ty_def_id, self.local_def_id(impl_index)))
         })

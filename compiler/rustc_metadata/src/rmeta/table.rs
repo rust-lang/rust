@@ -38,6 +38,12 @@ impl IsDefault for u32 {
     }
 }
 
+impl<T> IsDefault for LazyArray<T> {
+    fn is_default(&self) -> bool {
+        self.num_elems == 0
+    }
+}
+
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.
 /// Unchecked invariant: `Self::default()` should encode as `[0; BYTE_LEN]`,
@@ -286,32 +292,60 @@ impl<T> FixedSizeEncoding for Option<LazyValue<T>> {
     }
 }
 
+impl<T> LazyArray<T> {
+    #[inline]
+    fn write_to_bytes_impl(self, b: &mut [u8; 8]) {
+        let ([position_bytes, meta_bytes],[])= b.as_chunks_mut::<4>() else { panic!() };
+
+        let position = self.position.get();
+        let position: u32 = position.try_into().unwrap();
+        position.write_to_bytes(position_bytes);
+
+        let len = self.num_elems;
+        let len: u32 = len.try_into().unwrap();
+        len.write_to_bytes(meta_bytes);
+    }
+
+    fn from_bytes_impl(position_bytes: &[u8; 4], meta_bytes: &[u8; 4]) -> Option<LazyArray<T>> {
+        let position = NonZeroUsize::new(u32::from_bytes(position_bytes) as usize)?;
+        let len = u32::from_bytes(meta_bytes) as usize;
+        Some(LazyArray::from_position_and_num_elems(position, len))
+    }
+}
+
+impl<T> FixedSizeEncoding for LazyArray<T> {
+    type ByteArray = [u8; 8];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 8]) -> Self {
+        let ([position_bytes, meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
+        if *meta_bytes == [0; 4] {
+            return Default::default();
+        }
+        LazyArray::from_bytes_impl(position_bytes, meta_bytes).unwrap()
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 8]) {
+        assert!(!self.is_default());
+        self.write_to_bytes_impl(b)
+    }
+}
+
 impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
     type ByteArray = [u8; 8];
 
     #[inline]
     fn from_bytes(b: &[u8; 8]) -> Self {
         let ([position_bytes, meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
-        let position = NonZeroUsize::new(u32::from_bytes(position_bytes) as usize)?;
-        let len = u32::from_bytes(meta_bytes) as usize;
-        Some(LazyArray::from_position_and_num_elems(position, len))
+        LazyArray::from_bytes_impl(position_bytes, meta_bytes)
     }
 
     #[inline]
     fn write_to_bytes(self, b: &mut [u8; 8]) {
         match self {
             None => unreachable!(),
-            Some(lazy) => {
-                let ([position_bytes, meta_bytes],[])= b.as_chunks_mut::<4>() else { panic!() };
-
-                let position = lazy.position.get();
-                let position: u32 = position.try_into().unwrap();
-                position.write_to_bytes(position_bytes);
-
-                let len = lazy.num_elems;
-                let len: u32 = len.try_into().unwrap();
-                len.write_to_bytes(meta_bytes);
-            }
+            Some(lazy) => lazy.write_to_bytes_impl(b),
         }
     }
 }
