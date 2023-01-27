@@ -81,7 +81,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(sysroot_dir, sysroot_src_dir).unwrap()
+    Sysroot::load(sysroot_dir, sysroot_src_dir)
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {

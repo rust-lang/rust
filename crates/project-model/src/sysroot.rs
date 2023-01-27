@@ -70,6 +70,10 @@ impl Sysroot {
     pub fn crates(&self) -> impl Iterator<Item = SysrootCrate> + ExactSizeIterator + '_ {
         self.crates.iter().map(|(id, _data)| id)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.crates.is_empty()
+    }
 }
 
 impl Sysroot {
@@ -79,8 +83,7 @@ impl Sysroot {
         let sysroot_dir = discover_sysroot_dir(dir, extra_env)?;
         let sysroot_src_dir =
             discover_sysroot_src_dir_or_add_component(&sysroot_dir, dir, extra_env)?;
-        let res = Sysroot::load(sysroot_dir, sysroot_src_dir)?;
-        Ok(res)
+        Ok(Sysroot::load(sysroot_dir, sysroot_src_dir))
     }
 
     pub fn discover_rustc(
@@ -97,11 +100,10 @@ impl Sysroot {
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir).ok_or_else(|| {
             format_err!("can't load standard library from sysroot {}", sysroot_dir.display())
         })?;
-        let res = Sysroot::load(sysroot_dir, sysroot_src_dir)?;
-        Ok(res)
+        Ok(Sysroot::load(sysroot_dir, sysroot_src_dir))
     }
 
-    pub fn load(sysroot_dir: AbsPathBuf, sysroot_src_dir: AbsPathBuf) -> Result<Sysroot> {
+    pub fn load(sysroot_dir: AbsPathBuf, sysroot_src_dir: AbsPathBuf) -> Sysroot {
         let mut sysroot =
             Sysroot { root: sysroot_dir, src_root: sysroot_src_dir, crates: Arena::default() };
 
@@ -152,14 +154,14 @@ impl Sysroot {
             } else {
                 ""
             };
-            anyhow::bail!(
+            tracing::error!(
                 "could not find libcore in sysroot path `{}`{}",
                 sysroot.src_root.as_path().display(),
                 var_note,
             );
         }
 
-        Ok(sysroot)
+        sysroot
     }
 
     fn by_name(&self, name: &str) -> Option<SysrootCrate> {
