@@ -82,9 +82,12 @@ fn main() {
     }
     match None {
         // There is only one error that correctly points to the whole subpattern
-        Some(0) | Some(0 | 0) => {}
-        //~^ ERROR: unreachable pattern
-        //~| this pattern is unreachable
+        Some(0) |
+            Some(
+            //~^ ERROR: unreachable pattern
+            //~| this pattern is unreachable
+                0 | 0) => {}
+
         _ => {}
     }
     match [0; 2] {
@@ -165,14 +168,16 @@ fn main() {
     // https://github.com/rust-lang/rust/issues/76836
     match None {
         Some(false) => {}
-        None | Some(true | false) => {} //~ ERROR unreachable
+        None | Some(true |
+             false) => {} //~ ERROR unreachable
     }
 
     // A subpattern that is unreachable in all branches is overall unreachable.
     match (true, true) {
         (false, true) => {}
         (true, true) => {}
-        (false | true, false | true) => {}
+        (false | true, false
+            | true) => {}
         //~^ ERROR unreachable pattern
         //~| this pattern is unreachable
     }
@@ -180,7 +185,8 @@ fn main() {
         (true, false) => {}
         (true, true) => {}
         (
-            false | true,
+            false
+            | true,
             //~^ ERROR unreachable pattern
             //~| this pattern is unreachable
             false | true,
