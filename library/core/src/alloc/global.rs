@@ -131,7 +131,7 @@ pub struct RawAndMeta<M: CoAllocMetaBase> {
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
     /// NOT for public use. The default value MAY be REMOVED or CHANGED.
-    /// 
+    ///
     /// @FIXME Validate (preferrable at compile time, otherwise as a test) that this type's
     /// alignment <= `usize` alignment.
     #[unstable(feature = "global_co_alloc_meta", issue = "none")]

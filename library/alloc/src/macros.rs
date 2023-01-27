@@ -207,6 +207,10 @@ macro_rules! meta_num_slots_global {
 #[macro_export]
 macro_rules! meta_num_slots_default_global {
     () => {
-        if ::alloc::alloc::Global::CO_ALLOC_META_NUM_SLOTS && (DEFAULT_COOP_PREF!()) { 1 } else { 0 }
+        if ::alloc::alloc::Global::CO_ALLOC_META_NUM_SLOTS && (DEFAULT_COOP_PREF!()) {
+            1
+        } else {
+            0
+        }
     };
 }
