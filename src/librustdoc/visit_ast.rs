@@ -55,11 +55,21 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
-pub(crate) fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: LocalDefId) -> bool {
-    while let Some(id) = tcx.opt_local_parent(node) {
-        node = id;
-        if tcx.is_doc_hidden(node.to_def_id()) {
+pub(crate) fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut def_id: LocalDefId) -> bool {
+    let hir = tcx.hir();
+    while let Some(id) = tcx.opt_local_parent(def_id) {
+        def_id = id;
+        if tcx.is_doc_hidden(def_id.to_def_id()) {
             return true;
+        } else if let Some(node) = hir.find_by_def_id(def_id) &&
+            matches!(
+                node,
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),
+            )
+        {
+            // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
+            // on them, they don't inherit it from the parent context.
+            return false;
         }
     }
     false
