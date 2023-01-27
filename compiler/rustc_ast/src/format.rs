@@ -227,8 +227,30 @@ pub struct FormatOptions {
     pub alignment: Option<FormatAlignment>,
     /// The fill character. E.g. the `.` in `{:.>10}`.
     pub fill: Option<char>,
-    /// The `+`, `-`, `0`, `#`, `x?` and `X?` flags.
-    pub flags: u32,
+    /// The `+` or `-` flag.
+    pub sign: Option<FormatSign>,
+    /// The `#` flag.
+    pub alternate: bool,
+    /// The `0` flag. E.g. the `0` in `{:02x}`.
+    pub zero_pad: bool,
+    /// The `x` or `X` flag (for `Debug` only). E.g. the `x` in `{:x?}`.
+    pub debug_hex: Option<FormatDebugHex>,
+}
+
+#[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum FormatSign {
+    /// The `+` flag.
+    Plus,
+    /// The `-` flag.
+    Minus,
+}
+
+#[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum FormatDebugHex {
+    /// The `x` flag in `{:x?}`.
+    Lower,
+    /// The `X` flag in `{:X?}`.
+    Upper,
 }
 
 #[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq)]

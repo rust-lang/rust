@@ -295,9 +295,8 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
                 DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator
             ) {
                 return None;
-            } else if ignore_unused_generics
-                && tcx.generics_of(def_id).requires_monomorphization(tcx)
-            {
+            }
+            if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
                 return None;
             }
             Some(local_def_id.to_def_id())

@@ -180,43 +180,40 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
     let supported_platforms = [
         // tier 1
-        "aarch64-unknown-linux-gnu",
-        "i686-pc-windows-gnu",
-        "i686-pc-windows-msvc",
-        "i686-unknown-linux-gnu",
-        "x86_64-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-pc-windows-gnu",
-        "x86_64-pc-windows-msvc",
+        ("aarch64-unknown-linux-gnu", false),
+        ("i686-pc-windows-gnu", false),
+        ("i686-pc-windows-msvc", false),
+        ("i686-unknown-linux-gnu", false),
+        ("x86_64-unknown-linux-gnu", true),
+        ("x86_64-apple-darwin", true),
+        ("x86_64-pc-windows-gnu", true),
+        ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
-        "aarch64-apple-darwin",
-        "aarch64-pc-windows-msvc",
-        "aarch64-unknown-linux-musl",
-        "arm-unknown-linux-gnueabi",
-        "arm-unknown-linux-gnueabihf",
-        "armv7-unknown-linux-gnueabihf",
-        "mips-unknown-linux-gnu",
-        "mips64-unknown-linux-gnuabi64",
-        "mips64el-unknown-linux-gnuabi64",
-        "mipsel-unknown-linux-gnu",
-        "powerpc-unknown-linux-gnu",
-        "powerpc64-unknown-linux-gnu",
-        "powerpc64le-unknown-linux-gnu",
-        "riscv64gc-unknown-linux-gnu",
-        "s390x-unknown-linux-gnu",
-        "x86_64-unknown-freebsd",
-        "x86_64-unknown-illumos",
-        "x86_64-unknown-linux-musl",
-        "x86_64-unknown-netbsd",
+        ("aarch64-apple-darwin", false),
+        ("aarch64-pc-windows-msvc", false),
+        ("aarch64-unknown-linux-musl", false),
+        ("arm-unknown-linux-gnueabi", false),
+        ("arm-unknown-linux-gnueabihf", false),
+        ("armv7-unknown-linux-gnueabihf", false),
+        ("mips-unknown-linux-gnu", false),
+        ("mips64-unknown-linux-gnuabi64", false),
+        ("mips64el-unknown-linux-gnuabi64", false),
+        ("mipsel-unknown-linux-gnu", false),
+        ("powerpc-unknown-linux-gnu", false),
+        ("powerpc64-unknown-linux-gnu", false),
+        ("powerpc64le-unknown-linux-gnu", false),
+        ("riscv64gc-unknown-linux-gnu", false),
+        ("s390x-unknown-linux-gnu", false),
+        ("x86_64-unknown-freebsd", false),
+        ("x86_64-unknown-illumos", false),
+        ("x86_64-unknown-linux-musl", false),
+        ("x86_64-unknown-netbsd", false),
     ];
-    if !supported_platforms.contains(&&*config.build.triple) {
-        return false;
-    }
 
-    let triple = &*config.build.triple;
-    if (triple == "aarch64-unknown-linux-gnu" || triple.contains("i686")) && asserts {
-        // No alt builder for aarch64-unknown-linux-gnu today.
-        return false;
+    if !supported_platforms.contains(&(&*config.build.triple, asserts)) {
+        if asserts == true || !supported_platforms.contains(&(&*config.build.triple, true)) {
+            return false;
+        }
     }
 
     if CiEnv::is_ci() {

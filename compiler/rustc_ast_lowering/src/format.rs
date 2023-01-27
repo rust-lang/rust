@@ -137,26 +137,43 @@ fn make_format_spec<'hir>(
         }
         Err(_) => ctx.expr(sp, hir::ExprKind::Err),
     };
-    let fill = ctx.expr_char(sp, placeholder.format_options.fill.unwrap_or(' '));
+    let &FormatOptions {
+        ref width,
+        ref precision,
+        alignment,
+        fill,
+        sign,
+        alternate,
+        zero_pad,
+        debug_hex,
+    } = &placeholder.format_options;
+    let fill = ctx.expr_char(sp, fill.unwrap_or(' '));
     let align = ctx.expr_lang_item_type_relative(
         sp,
         hir::LangItem::FormatAlignment,
-        match placeholder.format_options.alignment {
+        match alignment {
             Some(FormatAlignment::Left) => sym::Left,
             Some(FormatAlignment::Right) => sym::Right,
             Some(FormatAlignment::Center) => sym::Center,
             None => sym::Unknown,
         },
     );
-    let flags = ctx.expr_u32(sp, placeholder.format_options.flags);
-    let prec = make_count(ctx, sp, &placeholder.format_options.precision, argmap);
-    let width = make_count(ctx, sp, &placeholder.format_options.width, argmap);
+    // This needs to match `FlagV1` in library/core/src/fmt/mod.rs.
+    let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
+        | ((sign == Some(FormatSign::Minus)) as u32) << 1
+        | (alternate as u32) << 2
+        | (zero_pad as u32) << 3
+        | ((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4
+        | ((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5;
+    let flags = ctx.expr_u32(sp, flags);
+    let precision = make_count(ctx, sp, &precision, argmap);
+    let width = make_count(ctx, sp, &width, argmap);
     let format_placeholder_new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
         sp,
         hir::LangItem::FormatPlaceholder,
         sym::new,
     ));
-    let args = ctx.arena.alloc_from_iter([position, fill, align, flags, prec, width]);
+    let args = ctx.arena.alloc_from_iter([position, fill, align, flags, precision, width]);
     ctx.expr_call_mut(sp, format_placeholder_new, args)
 }
 
