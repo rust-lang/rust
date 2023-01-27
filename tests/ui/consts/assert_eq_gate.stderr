@@ -1,0 +1,11 @@
+error: `core::panicking::assert_failed` is not yet stable as a const fn
+  --> $DIR/assert_eq_gate.rs:1:15
+   |
+LL | const _: () = assert_eq!(1, 1);
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(const_assert_eq)]` to the crate attributes to enable
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
