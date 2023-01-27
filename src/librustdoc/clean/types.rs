@@ -439,17 +439,6 @@ impl Item {
         self.attrs.doc_value()
     }
 
-    /// Convenience wrapper around [`Self::from_def_id_and_parts`] which converts
-    /// `hir_id` to a [`DefId`]
-    pub(crate) fn from_hir_id_and_parts(
-        hir_id: hir::HirId,
-        name: Option<Symbol>,
-        kind: ItemKind,
-        cx: &mut DocContext<'_>,
-    ) -> Item {
-        Item::from_def_id_and_parts(cx.tcx.hir().local_def_id(hir_id).to_def_id(), name, kind, cx)
-    }
-
     pub(crate) fn from_def_id_and_parts(
         def_id: DefId,
         name: Option<Symbol>,
@@ -2416,10 +2405,7 @@ impl ConstantKind {
 
     pub(crate) fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
-            ConstantKind::TyConst { .. } => false,
-            ConstantKind::Extern { def_id } => def_id.as_local().map_or(false, |def_id| {
-                is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
-            }),
+            ConstantKind::TyConst { .. } | ConstantKind::Extern { .. } => false,
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 is_literal_expr(tcx, body.hir_id)
             }
