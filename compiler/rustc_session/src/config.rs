@@ -945,6 +945,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     if sess.target.has_thread_local {
         ret.insert((sym::target_thread_local, None));
     }
+    let mut has_atomic = false;
     for (i, align) in [
         (8, layout.i8_align.abi),
         (16, layout.i16_align.abi),
@@ -953,6 +954,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
         (128, layout.i128_align.abi),
     ] {
         if i >= min_atomic_width && i <= max_atomic_width {
+            has_atomic = true;
             let mut insert_atomic = |s, align: Align| {
                 ret.insert((sym::target_has_atomic_load_store, Some(Symbol::intern(s))));
                 if atomic_cas {
@@ -967,6 +969,12 @@ fn default_configuration(sess: &Session) -> CrateConfig {
             if s == wordsz {
                 insert_atomic("ptr", layout.pointer_align.abi);
             }
+        }
+    }
+    if sess.is_nightly_build() && has_atomic {
+        ret.insert((sym::target_has_atomic_load_store, None));
+        if atomic_cas {
+            ret.insert((sym::target_has_atomic, None));
         }
     }
 
