@@ -479,7 +479,10 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 // - char conversions (https://github.com/rust-lang/rust/issues/89259)
                 let const_context = in_constant(cx, e.hir_id);
 
-                let from_ty = cx.typeck_results().expr_ty_adjusted(arg);
+                let (from_ty, from_ty_adjusted) = match cx.typeck_results().expr_adjustments(arg) {
+                    [] => (cx.typeck_results().expr_ty(arg), false),
+                    [.., a] => (a.target, true),
+                };
                 // Adjustments for `to_ty` happen after the call to `transmute`, so don't use them.
                 let to_ty = cx.typeck_results().expr_ty(e);
 
@@ -506,7 +509,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                     );
 
                 if !linted {
-                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, arg);
+                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg);
                 }
             }
         }

@@ -28,6 +28,7 @@ fn main() {
     1i32 as u8;
     1f64 as isize;
     1f64 as usize;
+    1f32 as u32 as u16;
     // Test clippy::cast_possible_wrap
     1u8 as i8;
     1u16 as i16;
