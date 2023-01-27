@@ -1,4 +1,4 @@
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:18:23
    |
 LL |     let _: [u8; faz::<'a>(&())];
@@ -10,7 +10,7 @@ note: the late bound lifetime parameter is introduced here
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:21:23
    |
 LL |     let _: [u8; faz::<'b>(&())];
@@ -22,7 +22,7 @@ note: the late bound lifetime parameter is introduced here
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:41:24
    |
 LL |     let _: Foo<{ faz::<'a>(&()) }>;
@@ -34,7 +34,7 @@ note: the late bound lifetime parameter is introduced here
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:44:24
    |
 LL |     let _: Foo<{ faz::<'b>(&()) }>;
@@ -94,7 +94,7 @@ LL |     let _ = [0; bar::<N>()];
    |
    = help: try adding a `where` bound using this expression: `where [(); bar::<N>()]:`
 
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:30:23
    |
 LL |     let _ = [0; faz::<'a>(&())];
@@ -106,7 +106,7 @@ note: the late bound lifetime parameter is introduced here
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:33:23
    |
 LL |     let _ = [0; faz::<'b>(&())];
@@ -134,7 +134,7 @@ LL |     let _ = Foo::<{ bar::<N>() }>;
    |
    = help: try adding a `where` bound using this expression: `where [(); { bar::<N>() }]:`
 
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:52:27
    |
 LL |     let _ = Foo::<{ faz::<'a>(&()) }>;
@@ -146,7 +146,7 @@ note: the late bound lifetime parameter is introduced here
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:55:27
    |
 LL |     let _ = Foo::<{ faz::<'b>(&()) }>;
@@ -160,3 +160,4 @@ LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
 
 error: aborting due to 16 previous errors
 
+For more information about this error, try `rustc --explain E0794`.
