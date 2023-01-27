@@ -36,13 +36,13 @@ use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
 use rustc_hir::def_id::DefId;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::infer::unify_key::ToType;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{TyCtxt, self, Ty};
+use rustc_middle::ty::{TyCtxt, self, Ty, ParamEnvAnd};
 use rustc_middle::metadata::{DiffItem, DiffMode, DiffActivity};
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::FieldsShape;
 
 use std::any::Any;
 use std::ffi::CStr;
@@ -399,44 +399,78 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 }
 
-pub fn get_enzyme_typtree(id: DefId, tcx: TyCtxt<'_>, llcx: &'_ llvm::Context) -> TypeTree {
-    let mut tt = TypeTree::new();
-    let fn_ty: Ty<'_> = tcx.type_of(id);
-    if !fn_ty.is_fn() {
-        return tt;
+fn get_scalar_cctype<'tcx>(ty: Ty<'_>, tcx: TyCtxt<'tcx>) -> Option<llvm::CConcreteType> {
+    let mut res = None;
+    if ty.is_integral() {
+        res = Some(llvm::CConcreteType::DT_Integer)
     }
-    dbg!(fn_ty);
-    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
-    let tmp = fnc_binder.no_bound_vars();
-    dbg!(tmp.is_some());
-    let tmp_f32_type = ty::FloatTy::F32;
-    let tmp_f64_type = ty::FloatTy::F64;
-    let f32_type = ty::FloatVarValue(tmp_f32_type);
-    let f64_type = ty::FloatVarValue(tmp_f64_type);
+    if ty.is_floating_point() {
+        res = match ty {
+            x if x == tcx.types.f32 => Some(llvm::CConcreteType::DT_Float ),
+            x if x == tcx.types.f64 => Some(llvm::CConcreteType::DT_Double),
+            _ => panic!("floatTy scalar that is neither f32 nor f64"),
+        };
+    };
+    res
+}
 
-    if tmp.is_some() {
-        let x: ty::FnSig<'_> = tmp.unwrap();
-        dbg!(x);
-        let output: Ty<'_> = x.output();
-        dbg!(output);
-        if output.is_floating_point() {
-            let isf32 = output == f32_type.to_type(tcx);
-            let isf64 = output == f64_type.to_type(tcx);
-            if isf32 {
-                tt = TypeTree::from_type(llvm::CConcreteType::DT_Float, llcx)
-            } else if isf64 {
-                tt = TypeTree::from_type(llvm::CConcreteType::DT_Double, llcx)
-            } else {
-                panic!("floatTy scalar that is neither f32 nor f64");
-            }
-            let max = output.numeric_max_val(tcx);
-            dbg!(max);
+pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
+                                tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context) -> TypeTree {
+    let mut tt = TypeTree::new();
+
+    if id.is_scalar() && id.is_any_ptr() {
+        if  id.is_fn_ptr() {
+            unimplemented!("AH");
         }
-        let inputs = x.inputs();
-        for input in inputs {
-            dbg!(input);
+        dbg!("a pointer");
+        tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx).only(-1);
+        let inner_id = id.builtin_deref(true).unwrap().ty;
+        let inner_tt = get_enzyme_typtree(inner_id, llvm_data_layout, tcx, llcx);
+        tt.merge(inner_tt.only(-1));
+        println!("returning ptr tt: {}", tt);
+        return tt;
+
+    }
+    if id.is_scalar() && !id.is_any_ptr(){
+        dbg!("a scalar");
+        let cctype = get_scalar_cctype(id, tcx).unwrap();
+        return llvm::TypeTree::from_type(cctype, llcx).only(-1);
+    }
+    dbg!("not a scalar");
+
+    let param_env_and = ParamEnvAnd {
+        param_env: ty::ParamEnv::empty(),
+        value: id,
+    };
+    let layout = tcx.layout_of(param_env_and);
+    assert!(layout.is_ok());
+    let layout = layout.unwrap().layout;
+    let fields = layout.fields();
+    let abi = layout.abi();
+    let max_size = layout.size();
+    dbg!(layout);
+    dbg!(fields);
+    dbg!(abi);
+    dbg!(max_size);
+
+    dbg!(id);
+    if let FieldsShape::Array{stride, count} = fields {
+        let byte_stride = stride.bytes_usize();
+        let byte_max_size = max_size.bytes_usize();
+        let isize_count: isize = (*count).try_into().unwrap();
+
+        dbg!("Handling array");
+        assert!(byte_stride * *count as usize == byte_max_size);
+        assert!(*count > 0); // return empty TT for empty?
+        let sub_id = id.builtin_index().unwrap();
+        let sub_tt = get_enzyme_typtree(sub_id, llvm_data_layout, tcx, llcx);
+        for i in 0isize..isize_count {
+            println!("tt: {}", tt);
+            println!("sub_tt: {}", sub_tt);
+            tt.merge(sub_tt.clone().only(i * (byte_stride as isize)));
         }
     }
+    println!("returning tt: {}", tt);
     return tt;
 }
 
@@ -468,25 +502,40 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            //let tmp: Vec<DiffItem> = tcx.autodiff_functions();
             let out = tcx.autodiff_functions(()).into_iter()
                 .map(|item| {
+                    let id: DefId = item.source;
+                    let fn_ty: Ty<'_> = tcx.type_of(id);
+                    if !fn_ty.is_fn() {
+                        panic!("should be a fn");
+                    }
+                    dbg!(fn_ty);
+                    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
+                    let tmp = fnc_binder.no_bound_vars();
+                    assert!(tmp.is_some());
+                    let x: ty::FnSig<'_> = tmp.unwrap();
+                    let output: Ty<'_> = x.output();
+                    let inputs: &[Ty<'_>] = x.inputs();
+                    let llvm_data_layout = llvm::LLVMGetDataLayoutStr(&*llmod_raw);
+                    let llvm_data_layout = std::str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
+                        .expect("got a non-UTF8 data-layout from LLVM");
+                    let mut input_tt = vec![];
+                    for input in inputs {
+                        input_tt.push(get_enzyme_typtree(*input, llvm_data_layout, tcx, llcx));
+                    }
+                    let ret_tt = get_enzyme_typtree(output, llvm_data_layout, tcx, llcx);
+                    println!("ret_tt: {}", ret_tt);
                     LLVMDiffItem {
-                        ret_tt: TypeTree::new(),
+                        ret_tt,
                         input_tt: vec![],
                         source: item.source,
                         target: item.target.clone(),
                         mode: item.mode,
                         ret_activity: item.ret_activity,
                         input_activity: item.input_activity.clone(),
-
                     }
                 })
             .collect::<Vec<_>>();
-            // pub target: String,
-            // pub mode: DiffMode,
-            // pub ret_activity: DiffActivity,
-            // pub input_activity: Vec<DiffActivity>,
             ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name), lldiff_items: out }
         }
     }
