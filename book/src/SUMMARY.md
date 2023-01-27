@@ -5,6 +5,7 @@
 - [Installation](installation.md)
 - [Usage](usage.md)
 - [Configuration](configuration.md)
+    - [Lint Configuration](lint_configuration.md)
 - [Clippy's Lints](lints.md)
 - [Continuous Integration](continuous_integration/README.md)
     - [GitHub Actions](continuous_integration/github_actions.md)

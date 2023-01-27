@@ -647,9 +647,12 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).subst(cx.tcx, subs), Some(id))),
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-            sig_from_bounds(cx, ty, cx.tcx.item_bounds(def_id).subst(cx.tcx, substs), cx.tcx.opt_parent(def_id))
-        },
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => sig_from_bounds(
+            cx,
+            ty,
+            cx.tcx.item_bounds(def_id).subst(cx.tcx, substs),
+            cx.tcx.opt_parent(def_id),
+        ),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
         ty::Dynamic(bounds, _, _) => {
             let lang_items = cx.tcx.lang_items();

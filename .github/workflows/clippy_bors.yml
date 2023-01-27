@@ -157,6 +157,11 @@ jobs:
     - name: Test metadata collection
       run: cargo collect-metadata
 
+    - name: Test lint_configuration.md is up-to-date
+      run: |
+        echo "run \`cargo collect-metadata\` if this fails"
+        git update-index --refresh
+
   integration_build:
     needs: changelog
     runs-on: ubuntu-latest
