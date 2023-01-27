@@ -410,8 +410,21 @@ fn signature_help_for_record_lit(
     let fields;
 
     let db = sema.db;
-    match sema.resolve_path(&record.path()?)? {
-        PathResolution::Def(ModuleDef::Adt(adt)) => match adt {
+    let path_res = sema.resolve_path(&record.path()?)?;
+    if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
+        fields = variant.fields(db);
+        let en = variant.parent_enum(db);
+
+        res.doc = en.docs(db).map(|it| it.into());
+        format_to!(res.signature, "enum {}::{} {{ ", en.name(db), variant.name(db));
+    } else {
+        let adt = match path_res {
+            PathResolution::SelfType(imp) => imp.self_ty(db).as_adt()?,
+            PathResolution::Def(ModuleDef::Adt(adt)) => adt,
+            _ => return None,
+        };
+
+        match adt {
             hir::Adt::Struct(it) => {
                 fields = it.fields(db);
                 res.doc = it.docs(db).map(|it| it.into());
@@ -423,15 +436,7 @@ fn signature_help_for_record_lit(
                 format_to!(res.signature, "union {} {{ ", it.name(db));
             }
             _ => return None,
-        },
-        PathResolution::Def(ModuleDef::Variant(variant)) => {
-            fields = variant.fields(db);
-            let en = variant.parent_enum(db);
-
-            res.doc = en.docs(db).map(|it| it.into());
-            format_to!(res.signature, "enum {}::{} {{ ", en.name(db), variant.name(db));
         }
-        _ => return None,
     }
 
     let mut fields =
@@ -1568,6 +1573,24 @@ fn f() {
             expect![[r#"
                 enum Opt::Some { 0: u8 }
                                  -----
+            "#]],
+        );
+    }
+
+    #[test]
+    fn record_literal_self() {
+        check(
+            r#"
+struct S { t: u8 }
+impl S {
+    fn new() -> Self {
+        Self { $0 }
+    }
+}
+        "#,
+            expect![[r#"
+                struct S { t: u8 }
+                           ^^^^^
             "#]],
         );
     }
