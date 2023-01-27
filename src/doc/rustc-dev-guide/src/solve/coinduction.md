@@ -49,8 +49,8 @@ unique `impl` which should be used.
 
 ## How to implement coinduction
 
-While our implementation can not check for coninduction by trying to construct an infinite
-tree as that would take infinite ressources, it still makes sense to think of coinduction
+While our implementation can not check for coinduction by trying to construct an infinite
+tree as that would take infinite resources, it still makes sense to think of coinduction
 from this perspective.
 
 As we cannot check for infinite trees, we instead search for patterns for which we know that
@@ -70,7 +70,7 @@ where
 {} 
 ```
 Proving `Wrapper<?0>: Foo` uses the impl `impl<T> Foo for Wrapper<Wrapper<T>>` which constrains
-`?0` to `Vec<?1>` and then requires `Wrapper<?1>: Foo`. Due to canonicalization this would be
+`?0` to `Wrapper<?1>` and then requires `Wrapper<?1>: Foo`. Due to canonicalization this would be
 detected as a cycle.
 
 The idea to solve is to return a *provisional result* whenever we detect a cycle and repeatedly
@@ -112,8 +112,8 @@ impl<T: Clone> Clone for List<T> {
 ```
 
 We are using `tail.clone()` in this impl. For this we have to prove `Box<List<T>>: Clone`
-which requires `List<T>: Clone` but that relies on the currently impl which we are currently
-checking. By adding that requirement to the `where`-clauses of the impl, which is what we would
+which requires `List<T>: Clone` but that relies on the impl which we are currently checking.
+By adding that requirement to the `where`-clauses of the impl, which is what we would
 do with [perfect derive], we move that cycle into the trait solver and [get an error][ex1].
 
 ### Recursive data types
@@ -163,12 +163,12 @@ The issues here are not relevant for the current solver.
 
 #### Implied super trait bounds
 
-Our trait system currectly treats super traits, e.g. `trait Trait: SuperTrait`,
+Our trait system currently treats super traits, e.g. `trait Trait: SuperTrait`,
 by 1) requiring that `SuperTrait` has to hold for all types which implement `Trait`,
 and 2) assuming `SuperTrait` holds if `Trait` holds.
 
 Relying on 2) while proving 1) is unsound. This can only be observed in case of
-coinductive cycles. Without a cycles, whenever we rely on 2) we must have also
+coinductive cycles. Without cycles, whenever we rely on 2) we must have also
 proven 1) without relying on 2) for the used impl of `Trait`.
 
 ```rust

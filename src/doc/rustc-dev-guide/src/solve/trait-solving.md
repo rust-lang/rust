@@ -52,13 +52,17 @@ Also add issues where each of these rules have been broken in the past
 
 This means that we must never return *success* for goals for which no `impl` exists. That would
 simply be unsound by assuming a trait is implemented even though it is not. When using predicates
-from the `where`-bounds, the `impl` whill be proved by the user of the item.
+from the `where`-bounds, the `impl` will be proved by the user of the item.
 
 ### 2. If type checker solves generic goal concrete instantiations of that goal have the same result
 
 Pretty much: If we successfully typecheck a generic function concrete instantiations
 of that function should also typeck. We should not get errors post-monomorphization.
-We can however get overflow.
+We can however get overflow as in the following snippet:
+
+```rust
+fn foo<T: Trait>(x: )
+```
 
 ### 3. Trait goals in empty environments are proven by a unique impl.
 
@@ -71,7 +75,15 @@ An exception here are *marker traits* which are allowed to overlap.
 ### 4. Normalization in empty environments results in a unique type
 
 Normalization for alias types/consts has a unique result. Otherwise we can easily implement
-transmute in safe code.
+transmute in safe code. Given the following function, we have to make sure that the input and
+output types always get normalized to the same concrete type.
+```rust
+fn foo<T: Trait>(
+    x: <T as Trait>::Assoc
+) -> <T as Trait>::Assoc {
+    x
+}
+```
 
 ### 5. During coherence trait solving has to be complete
 
