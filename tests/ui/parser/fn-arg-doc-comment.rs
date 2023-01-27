@@ -21,10 +21,10 @@ fn main() {
     // verify that the parser recovered and properly typechecked the args
     f("", "");
     //~^ ERROR arguments to this function are incorrect
-    //~| NOTE expected `u8`, found `&str`
-    //~| NOTE expected `u8`, found `&str`
+    //~| NOTE expected `u8`, found `&'static str`
+    //~| NOTE expected `u8`, found `&'static str`
     bar("");
     //~^ ERROR mismatched types
     //~| NOTE arguments to this function are incorrect
-    //~| NOTE expected `i32`, found `&str`
+    //~| NOTE expected `i32`, found `&'static str`
 }

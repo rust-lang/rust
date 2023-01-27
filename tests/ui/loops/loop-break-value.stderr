@@ -149,13 +149,13 @@ error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:16:15
    |
 LL |         break "asdf";
-   |               ^^^^^^ expected `i32`, found `&str`
+   |               ^^^^^^ expected `i32`, found `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:21:31
    |
 LL |             break 'outer_loop "nope";
-   |                               ^^^^^^ expected `i32`, found `&str`
+   |                               ^^^^^^ expected `i32`, found `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:73:26

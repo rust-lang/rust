@@ -5,7 +5,7 @@ LL |             let _bar: u32 = $arg;
    |                       --- expected due to this
 ...
 LL | foo!("baz");
-   |      ^^^^^ expected `u32`, found `&str`
+   |      ^^^^^ expected `u32`, found `&'static str`
 
 error: aborting due to previous error
 

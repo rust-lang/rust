@@ -2,7 +2,7 @@ error[E0308]: `match` arms have incompatible types
   --> $DIR/single-line.rs:2:52
    |
 LL |     let _ = match Some(42) { Some(x) => x, None => "" };
-   |             --------------              -          ^^ expected integer, found `&str`
+   |             --------------              -          ^^ expected integer, found `&'static str`
    |             |                           |
    |             |                           this is found to be of type `{integer}`
    |             `match` arms have incompatible types

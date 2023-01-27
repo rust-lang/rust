@@ -4,7 +4,7 @@ error[E0061]: this function takes 2 arguments but 3 arguments were supplied
 LL |   two_args(1, "", X {});
    |   ^^^^^^^^    --  ---- argument of type `X` unexpected
    |               |
-   |               expected `f32`, found `&str`
+   |               expected `f32`, found `&'static str`
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:5:4

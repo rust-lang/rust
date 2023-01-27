@@ -17,7 +17,7 @@ error[E0308]: mismatched types
   --> $DIR/bad-type-in-vec-push.rs:18:12
    |
 LL |     x.push("");
-   |       ---- ^^ expected integer, found `&str`
+   |       ---- ^^ expected integer, found `&'static str`
    |       |
    |       arguments to this method are incorrect
    |

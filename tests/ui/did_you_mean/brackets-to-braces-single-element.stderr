@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/brackets-to-braces-single-element.rs:1:24
    |
 LL | const A: [&str; 1] = { "hello" };
-   |                        ^^^^^^^ expected array `[&'static str; 1]`, found `&str`
+   |                        ^^^^^^^ expected array `[&'static str; 1]`, found `&'static str`
    |
 help: to create an array, use square brackets instead of curly braces
    |

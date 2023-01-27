@@ -6,7 +6,7 @@ LL | fn bad_echo<T>(_t: T) -> T {
    |             |
    |             this type parameter
 LL |     "this should not suggest impl Trait"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&'static str`
    |
    = note: expected type parameter `T`
                    found reference `&'static str`
@@ -19,7 +19,7 @@ LL | fn bad_echo_2<T: Trait>(_t: T) -> T {
    |               |
    |               this type parameter
 LL |     "this will not suggest it, because that would probably be wrong"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&'static str`
    |
    = note: expected type parameter `T`
                    found reference `&'static str`
@@ -33,7 +33,7 @@ LL | fn other_bounds_bad<T>() -> T
    |                     this type parameter
 ...
 LL |     "don't suggest this, because Option<T> places additional constraints"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&'static str`
    |
    = note: expected type parameter `T`
                    found reference `&'static str`
@@ -49,7 +49,7 @@ LL | fn used_in_trait<T>() -> T
    |                  this type parameter
 ...
 LL |     "don't suggest this, because the generic param is used in the bound."
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&'static str`
    |
    = note: expected type parameter `T`
                    found reference `&'static str`

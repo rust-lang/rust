@@ -21,7 +21,7 @@ LL |     pub type Boo = impl ::std::fmt::Debug;
 LL | fn bomp() -> boo::Boo {
    |              -------- expected `Boo` because of return type
 LL |     ""
-   |     ^^ expected opaque type, found `&str`
+   |     ^^ expected opaque type, found `&'static str`
    |
    = note: expected opaque type `Boo`
                 found reference `&'static str`

@@ -15,7 +15,7 @@ fn main() {
     //~| expected `usize`, found floating-point number
     let e = [0; "foo"];
     //~^ ERROR mismatched types
-    //~| expected `usize`, found `&str`
+    //~| expected `usize`, found `&'static str`
     let f = [0; -4_isize];
     //~^ ERROR mismatched types
     //~| expected `usize`, found `isize`

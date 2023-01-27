@@ -303,7 +303,7 @@ impl<'tcx> Ty<'tcx> {
                 if tymut_string != "_"
                     && (ty.is_simple_text() || tymut_string.len() < "mutable reference".len())
                 {
-                    format!("`&{}`", tymut_string).into()
+                    format!("`{}`", self).into()
                 } else {
                     // Unknown type name, it's long or has type arguments
                     match mutbl {

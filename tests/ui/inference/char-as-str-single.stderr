@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/char-as-str-single.rs:9:19
    |
 LL |     let _: char = "a";
-   |            ----   ^^^ expected `char`, found `&str`
+   |            ----   ^^^ expected `char`, found `&'static str`
    |            |
    |            expected due to this
    |
@@ -15,7 +15,7 @@ error[E0308]: mismatched types
   --> $DIR/char-as-str-single.rs:10:19
    |
 LL |     let _: char = "人";
-   |            ----   ^^^^ expected `char`, found `&str`
+   |            ----   ^^^^ expected `char`, found `&'static str`
    |            |
    |            expected due to this
    |
@@ -28,7 +28,7 @@ error[E0308]: mismatched types
   --> $DIR/char-as-str-single.rs:11:19
    |
 LL |     let _: char = "'";
-   |            ----   ^^^ expected `char`, found `&str`
+   |            ----   ^^^ expected `char`, found `&'static str`
    |            |
    |            expected due to this
    |
