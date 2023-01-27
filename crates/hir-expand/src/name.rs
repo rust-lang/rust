@@ -347,6 +347,7 @@ pub mod known {
         recursion_limit,
         feature,
         // known methods of lang items
+        call_once,
         eq,
         ne,
         ge,

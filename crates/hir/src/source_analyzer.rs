@@ -628,7 +628,7 @@ impl SourceAnalyzer {
                                 {
                                     return Some(PathResolution::DeriveHelper(DeriveHelper {
                                         derive: *macro_id,
-                                        idx,
+                                        idx: idx as u32,
                                     }));
                                 }
                             }

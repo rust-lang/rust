@@ -63,7 +63,7 @@ impl<D> TyBuilder<D> {
     }
 
     fn build_internal(self) -> (D, Substitution) {
-        assert_eq!(self.vec.len(), self.param_kinds.len());
+        assert_eq!(self.vec.len(), self.param_kinds.len(), "{:?}", &self.param_kinds);
         for (a, e) in self.vec.iter().zip(self.param_kinds.iter()) {
             self.assert_match_kind(a, e);
         }
@@ -281,6 +281,21 @@ impl TyBuilder<Tuple> {
     pub fn build(self) -> Ty {
         let (Tuple(size), subst) = self.build_internal();
         TyKind::Tuple(size, subst).intern(Interner)
+    }
+
+    pub fn tuple_with<I>(elements: I) -> Ty
+    where
+        I: IntoIterator<Item = Ty>,
+        <I as IntoIterator>::IntoIter: ExactSizeIterator,
+    {
+        let elements = elements.into_iter();
+        let len = elements.len();
+        let mut b =
+            TyBuilder::new(Tuple(len), iter::repeat(ParamKind::Type).take(len).collect(), None);
+        for e in elements {
+            b = b.push(e);
+        }
+        b.build()
     }
 }
 

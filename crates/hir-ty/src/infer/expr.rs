@@ -331,11 +331,18 @@ impl<'a> InferenceContext<'a> {
                     derefed_callee.callable_sig(self.db).map_or(false, |sig| sig.is_varargs)
                         || res.is_none();
                 let (param_tys, ret_ty) = match res {
-                    Some(res) => {
+                    Some((func, params, ret_ty)) => {
                         let adjustments = auto_deref_adjust_steps(&derefs);
                         // FIXME: Handle call adjustments for Fn/FnMut
                         self.write_expr_adj(*callee, adjustments);
-                        res
+                        if let Some((trait_, func)) = func {
+                            let subst = TyBuilder::subst_for_def(self.db, trait_, None)
+                                .push(callee_ty.clone())
+                                .push(TyBuilder::tuple_with(params.iter().cloned()))
+                                .build();
+                            self.write_method_resolution(tgt_expr, func, subst.clone());
+                        }
+                        (params, ret_ty)
                     }
                     None => (Vec::new(), self.err_ty()), // FIXME diagnostic
                 };
@@ -586,6 +593,7 @@ impl<'a> InferenceContext<'a> {
                 self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
             }
             Expr::Try { expr } => {
+                // FIXME: Note down method resolution her
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok())
             }
@@ -626,6 +634,7 @@ impl<'a> InferenceContext<'a> {
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let inner_ty = self.resolve_ty_shallow(&inner_ty);
+                // FIXME: Note down method resolution her
                 match op {
                     UnaryOp::Deref => {
                         autoderef::deref(&mut self.table, inner_ty).unwrap_or_else(|| self.err_ty())
@@ -732,6 +741,7 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Expr::Index { base, index } => {
+                // FIXME: note down method resolution for the `index`/`index_mut` function
                 let base_ty = self.infer_expr_inner(*base, &Expectation::none());
                 let index_ty = self.infer_expr(*index, &Expectation::none());
 

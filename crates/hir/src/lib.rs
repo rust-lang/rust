@@ -2411,7 +2411,7 @@ impl Local {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DeriveHelper {
     pub(crate) derive: MacroId,
-    pub(crate) idx: usize,
+    pub(crate) idx: u32,
 }
 
 impl DeriveHelper {
@@ -2421,15 +2421,18 @@ impl DeriveHelper {
 
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
         match self.derive {
-            MacroId::Macro2Id(it) => {
-                db.macro2_data(it).helpers.as_deref().and_then(|it| it.get(self.idx)).cloned()
-            }
+            MacroId::Macro2Id(it) => db
+                .macro2_data(it)
+                .helpers
+                .as_deref()
+                .and_then(|it| it.get(self.idx as usize))
+                .cloned(),
             MacroId::MacroRulesId(_) => None,
             MacroId::ProcMacroId(proc_macro) => db
                 .proc_macro_data(proc_macro)
                 .helpers
                 .as_deref()
-                .and_then(|it| it.get(self.idx))
+                .and_then(|it| it.get(self.idx as usize))
                 .cloned(),
         }
         .unwrap_or_else(|| Name::missing())
@@ -2440,7 +2443,7 @@ impl DeriveHelper {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BuiltinAttr {
     krate: Option<CrateId>,
-    idx: usize,
+    idx: u32,
 }
 
 impl BuiltinAttr {
@@ -2449,7 +2452,8 @@ impl BuiltinAttr {
         if let builtin @ Some(_) = Self::builtin(name) {
             return builtin;
         }
-        let idx = db.crate_def_map(krate.id).registered_attrs().iter().position(|it| it == name)?;
+        let idx =
+            db.crate_def_map(krate.id).registered_attrs().iter().position(|it| it == name)? as u32;
         Some(BuiltinAttr { krate: Some(krate.id), idx })
     }
 
@@ -2457,21 +2461,21 @@ impl BuiltinAttr {
         hir_def::builtin_attr::INERT_ATTRIBUTES
             .iter()
             .position(|tool| tool.name == name)
-            .map(|idx| BuiltinAttr { krate: None, idx })
+            .map(|idx| BuiltinAttr { krate: None, idx: idx as u32 })
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> SmolStr {
         // FIXME: Return a `Name` here
         match self.krate {
-            Some(krate) => db.crate_def_map(krate).registered_attrs()[self.idx].clone(),
-            None => SmolStr::new(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx].name),
+            Some(krate) => db.crate_def_map(krate).registered_attrs()[self.idx as usize].clone(),
+            None => SmolStr::new(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx as usize].name),
         }
     }
 
     pub fn template(&self, _: &dyn HirDatabase) -> Option<AttributeTemplate> {
         match self.krate {
             Some(_) => None,
-            None => Some(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx].template),
+            None => Some(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx as usize].template),
         }
     }
 }
@@ -2479,7 +2483,7 @@ impl BuiltinAttr {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ToolModule {
     krate: Option<CrateId>,
-    idx: usize,
+    idx: u32,
 }
 
 impl ToolModule {
@@ -2488,7 +2492,8 @@ impl ToolModule {
         if let builtin @ Some(_) = Self::builtin(name) {
             return builtin;
         }
-        let idx = db.crate_def_map(krate.id).registered_tools().iter().position(|it| it == name)?;
+        let idx =
+            db.crate_def_map(krate.id).registered_tools().iter().position(|it| it == name)? as u32;
         Some(ToolModule { krate: Some(krate.id), idx })
     }
 
@@ -2496,14 +2501,14 @@ impl ToolModule {
         hir_def::builtin_attr::TOOL_MODULES
             .iter()
             .position(|&tool| tool == name)
-            .map(|idx| ToolModule { krate: None, idx })
+            .map(|idx| ToolModule { krate: None, idx: idx as u32 })
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> SmolStr {
         // FIXME: Return a `Name` here
         match self.krate {
-            Some(krate) => db.crate_def_map(krate).registered_tools()[self.idx].clone(),
-            None => SmolStr::new(hir_def::builtin_attr::TOOL_MODULES[self.idx]),
+            Some(krate) => db.crate_def_map(krate).registered_tools()[self.idx as usize].clone(),
+            None => SmolStr::new(hir_def::builtin_attr::TOOL_MODULES[self.idx as usize]),
         }
     }
 }
@@ -2831,7 +2836,7 @@ impl Impl {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef {
     env: Arc<TraitEnvironment>,
     trait_ref: hir_ty::TraitRef,

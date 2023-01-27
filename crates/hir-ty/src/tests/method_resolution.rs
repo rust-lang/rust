@@ -986,14 +986,13 @@ fn main() {
 }
 
 #[test]
-fn method_resolution_encountering_fn_type() {
+fn explicit_fn_once_call_fn_item() {
     check_types(
         r#"
-//- /main.rs
+//- minicore: fn
 fn foo() {}
-trait FnOnce { fn call(self); }
-fn test() { foo.call(); }
-          //^^^^^^^^^^ {unknown}
+fn test() { foo.call_once(); }
+          //^^^^^^^^^^^^^^^ ()
 "#,
     );
 }

@@ -106,6 +106,11 @@ pub mod marker {
         impl<T: ?Sized> Copy for &T {}
     }
     // endregion:copy
+
+    // region:fn
+    #[lang = "tuple_trait"]
+    pub trait Tuple {}
+    // endregion:fn
 }
 
 // region:default
@@ -329,19 +334,26 @@ pub mod ops {
 
     // region:fn
     mod function {
+        use crate::marker::Tuple;
+
         #[lang = "fn"]
         #[fundamental]
-        pub trait Fn<Args>: FnMut<Args> {}
+        pub trait Fn<Args: Tuple>: FnMut<Args> {
+            extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+        }
 
         #[lang = "fn_mut"]
         #[fundamental]
-        pub trait FnMut<Args>: FnOnce<Args> {}
+        pub trait FnMut<Args: Tuple>: FnOnce<Args> {
+            extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+        }
 
         #[lang = "fn_once"]
         #[fundamental]
-        pub trait FnOnce<Args> {
+        pub trait FnOnce<Args: Tuple> {
             #[lang = "fn_once_output"]
             type Output;
+            extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
         }
     }
     pub use self::function::{Fn, FnMut, FnOnce};
