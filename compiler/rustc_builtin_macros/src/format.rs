@@ -4,7 +4,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
     Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
-    FormatOptions, FormatPlaceholder, FormatTrait,
+    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, Applicability, MultiSpan, PResult};
@@ -435,7 +435,16 @@ pub fn make_format_args(
                     format_options: FormatOptions {
                         fill: format.fill,
                         alignment,
-                        flags: format.flags,
+                        sign: format.sign.map(|s| match s {
+                            parse::Sign::Plus => FormatSign::Plus,
+                            parse::Sign::Minus => FormatSign::Minus,
+                        }),
+                        alternate: format.alternate,
+                        zero_pad: format.zero_pad,
+                        debug_hex: format.debug_hex.map(|s| match s {
+                            parse::DebugHex::Lower => FormatDebugHex::Lower,
+                            parse::DebugHex::Upper => FormatDebugHex::Upper,
+                        }),
                         precision,
                         width,
                     },

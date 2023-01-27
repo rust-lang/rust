@@ -16,7 +16,6 @@
 
 pub use Alignment::*;
 pub use Count::*;
-pub use Flag::*;
 pub use Piece::*;
 pub use Position::*;
 
@@ -111,8 +110,14 @@ pub struct FormatSpec<'a> {
     pub fill: Option<char>,
     /// Optionally specified alignment.
     pub align: Alignment,
-    /// Packed version of various flags provided.
-    pub flags: u32,
+    /// The `+` or `-` flag.
+    pub sign: Option<Sign>,
+    /// The `#` flag.
+    pub alternate: bool,
+    /// The `0` flag.
+    pub zero_pad: bool,
+    /// The `x` or `X` flag. (Only for `Debug`.)
+    pub debug_hex: Option<DebugHex>,
     /// The integer precision to use.
     pub precision: Count<'a>,
     /// The span of the precision formatting flag (for diagnostics).
@@ -162,24 +167,22 @@ pub enum Alignment {
     AlignUnknown,
 }
 
-/// Various flags which can be applied to format strings. The meaning of these
-/// flags is defined by the formatters themselves.
+/// Enum for the sign flags.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Flag {
-    /// A `+` will be used to denote positive numbers.
-    FlagSignPlus,
-    /// A `-` will be used to denote negative numbers. This is the default.
-    FlagSignMinus,
-    /// An alternate form will be used for the value. In the case of numbers,
-    /// this means that the number will be prefixed with the supplied string.
-    FlagAlternate,
-    /// For numbers, this means that the number will be padded with zeroes,
-    /// and the sign (`+` or `-`) will precede them.
-    FlagSignAwareZeroPad,
-    /// For Debug / `?`, format integers in lower-case hexadecimal.
-    FlagDebugLowerHex,
-    /// For Debug / `?`, format integers in upper-case hexadecimal.
-    FlagDebugUpperHex,
+pub enum Sign {
+    /// The `+` flag.
+    Plus,
+    /// The `-` flag.
+    Minus,
+}
+
+/// Enum for the debug hex flags.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum DebugHex {
+    /// The `x` flag in `{:x?}`.
+    Lower,
+    /// The `X` flag in `{:X?}`.
+    Upper,
 }
 
 /// A count is used for the precision and width parameters of an integer, and
@@ -597,7 +600,10 @@ impl<'a> Parser<'a> {
         let mut spec = FormatSpec {
             fill: None,
             align: AlignUnknown,
-            flags: 0,
+            sign: None,
+            alternate: false,
+            zero_pad: false,
+            debug_hex: None,
             precision: CountImplied,
             precision_span: None,
             width: CountImplied,
@@ -626,13 +632,13 @@ impl<'a> Parser<'a> {
         }
         // Sign flags
         if self.consume('+') {
-            spec.flags |= 1 << (FlagSignPlus as u32);
+            spec.sign = Some(Sign::Plus);
         } else if self.consume('-') {
-            spec.flags |= 1 << (FlagSignMinus as u32);
+            spec.sign = Some(Sign::Minus);
         }
         // Alternate marker
         if self.consume('#') {
-            spec.flags |= 1 << (FlagAlternate as u32);
+            spec.alternate = true;
         }
         // Width and precision
         let mut havewidth = false;
@@ -647,7 +653,7 @@ impl<'a> Parser<'a> {
                 spec.width_span = Some(self.span(end - 1, end + 1));
                 havewidth = true;
             } else {
-                spec.flags |= 1 << (FlagSignAwareZeroPad as u32);
+                spec.zero_pad = true;
             }
         }
 
@@ -678,14 +684,14 @@ impl<'a> Parser<'a> {
         // Optional radix followed by the actual format specifier
         if self.consume('x') {
             if self.consume('?') {
-                spec.flags |= 1 << (FlagDebugLowerHex as u32);
+                spec.debug_hex = Some(DebugHex::Lower);
                 spec.ty = "?";
             } else {
                 spec.ty = "x";
             }
         } else if self.consume('X') {
             if self.consume('?') {
-                spec.flags |= 1 << (FlagDebugUpperHex as u32);
+                spec.debug_hex = Some(DebugHex::Upper);
                 spec.ty = "?";
             } else {
                 spec.ty = "X";
@@ -708,7 +714,10 @@ impl<'a> Parser<'a> {
         let mut spec = FormatSpec {
             fill: None,
             align: AlignUnknown,
-            flags: 0,
+            sign: None,
+            alternate: false,
+            zero_pad: false,
+            debug_hex: None,
             precision: CountImplied,
             precision_span: None,
             width: CountImplied,
