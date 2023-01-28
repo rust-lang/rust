@@ -125,10 +125,17 @@ impl TaskPath {
             if let Some(str) = os_str.to_str() {
                 if let Some((found_kind, found_prefix)) = str.split_once("::") {
                     if found_kind.is_empty() {
-                        panic!("empty kind in task path {}", path.display());
+                        eprintln!("empty kind in task path {}\n", path.display());
+                        crate::detail_exit(1);
                     }
                     kind = Kind::parse(found_kind);
-                    assert!(kind.is_some());
+                    match kind {
+                        None => {
+                            eprintln!("Kind cannot be parsed");
+                            crate::detail_exit(1); 
+                        },
+                        _ => {}
+                    };
                     path = Path::new(found_prefix).join(components.as_path());
                 }
             }
@@ -294,11 +301,11 @@ impl StepDescription {
 
         // sanity checks on rules
         for (desc, should_run) in v.iter().zip(&should_runs) {
-            assert!(
-                !should_run.paths.is_empty(),
-                "{:?} should have at least one pathset",
-                desc.name
-            );
+            if should_run.paths.is_empty() {
+                eprintln!("{:?} should have at least one pathset", desc.name);
+                crate::detail_exit(1);
+            }
+
         }
 
         if paths.is_empty() || builder.config.include_default_paths {
@@ -436,11 +443,10 @@ impl<'a> ShouldRun<'a> {
 
     // single alias, which does not correspond to any on-disk path
     pub fn alias(mut self, alias: &str) -> Self {
-        assert!(
-            !self.builder.src.join(alias).exists(),
-            "use `builder.path()` for real paths: {}",
-            alias
-        );
+        if !self.builder.src.join(alias).exists() {
+            eprintln!("use `builder.path()` for real paths: {}", alias);
+            crate::detail_exit(1);
+        }
         self.paths.insert(PathSet::Set(
             std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
         ));
@@ -819,7 +825,7 @@ impl<'a> Builder<'a> {
             Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
             Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
-                panic!()
+                crate::detail_exit(1);
             }
         };
 
@@ -884,7 +890,10 @@ impl<'a> Builder<'a> {
             const NIX_IDS: &[&str] = &["ID=nixos", "ID='nixos'", "ID=\"nixos\""];
             let os_release = match File::open("/etc/os-release") {
                 Err(e) if e.kind() == ErrorKind::NotFound => return,
-                Err(e) => panic!("failed to access /etc/os-release: {}", e),
+                Err(e) => {
+                    eprintln!("failed to access /etc/os-release: {}", e);
+                    crate::detail_exit(1);   
+                },
                 Ok(f) => f,
             };
             if !BufReader::new(os_release).lines().any(|l| NIX_IDS.contains(&t!(l).trim())) {
@@ -970,8 +979,14 @@ impl<'a> Builder<'a> {
             Some("http") | Some("https") => {
                 self.download_http_with_retries(&tempfile, url, help_on_error)
             }
-            Some(other) => panic!("unsupported protocol {other} in {url}"),
-            None => panic!("no protocol in {url}"),
+            Some(other) => {
+                eprintln!("unsupported protocol {} in {}", other, url);
+                crate::detail_exit(1);
+            },
+            None => {
+                eprintln!("no protocol in {}", url);
+                crate::detail_exit(1);
+            },
         }
         t!(std::fs::rename(&tempfile, dest_path));
     }
@@ -1052,7 +1067,8 @@ impl<'a> Builder<'a> {
             let dst_path = dst.join(short_path);
             self.verbose(&format!("extracting {} to {}", original_path.display(), dst.display()));
             if !t!(member.unpack_in(dst)) {
-                panic!("path traversal attack ??");
+                eprintln!("path traversal attack ??");
+                crate::detail_exit(1);
             }
             let src_path = dst.join(original_path);
             if src_path.is_dir() && dst_path.exists() {
@@ -1343,7 +1359,10 @@ impl<'a> Builder<'a> {
                 // This is the intended out directory for compiler documentation.
                 Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
                 Mode::Std => out_dir.join(target.triple).join("doc"),
-                _ => panic!("doc mode {:?} not expected", mode),
+                _ => {
+                    eprintln!("doc mode {:?} not expected", mode);
+                    crate::detail_exit(1);
+                },
             };
             let rustdoc = self.rustdoc(compiler);
             self.clear_if_dirty(&my_out, &rustdoc);
@@ -2115,7 +2134,8 @@ impl<'a> Builder<'a> {
                 for el in stack.iter().rev() {
                     out += &format!("\t{:?}\n", el);
                 }
-                panic!("{}", out);
+                eprintln!("{}", out);
+                crate::detail_exit(1);
             }
             if let Some(out) = self.cache.get(&step) {
                 self.verbose_than(1, &format!("{}c {:?}", "  ".repeat(stack.len()), step));

@@ -284,11 +284,12 @@ pub fn forcing_clang_based_tests() -> bool {
             "0" | "no" | "off" => false,
             other => {
                 // Let's make sure typos don't go unnoticed
-                panic!(
+                eprintln!(
                     "Unrecognized option '{}' set in \
                         RUSTBUILD_FORCE_CLANG_BASED_TESTS",
                     other
-                )
+                );
+                crate::detail_exit(1);
             }
         }
     } else {
@@ -324,10 +325,11 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     let abs_path = builder.src.join(path);
     let exists = abs_path.is_dir() || abs_path.is_file();
     if !exists {
-        panic!(
+        eprintln!(
             "Invalid test suite filter \"{}\": file or directory does not exist",
             abs_path.display()
         );
+        crate::detail_exit(1);
     }
     // Since test suite paths are themselves directories, if we don't
     // specify a directory or file, we'll get an empty string here
@@ -425,11 +427,12 @@ pub fn output(cmd: &mut Command) -> String {
         Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
     };
     if !output.status.success() {
-        panic!(
+        eprintln!(
             "command did not execute successfully: {:?}\n\
              expected success, got: {}",
             cmd, output.status
         );
+        crate::detail_exit(1);
     }
     String::from_utf8(output.stdout).unwrap()
 }
@@ -450,7 +453,10 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
     let threshold = mtime(dst);
     let meta = match fs::metadata(src) {
         Ok(meta) => meta,
-        Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
+        Err(e) => {
+            eprintln!("source {:?} failed to get metadata: {}", src, e);
+            crate::detail_exit(1);
+        },
     };
     if meta.is_dir() {
         dir_up_to_date(src, threshold)
@@ -480,7 +486,8 @@ fn fail(s: &str) -> ! {
 /// FIXME: this shouldn't exist.
 pub(crate) fn absolute(path: &Path) -> PathBuf {
     if path.as_os_str().is_empty() {
-        panic!("can't make empty path absolute");
+        eprintln!("can't make empty path absolute");
+        crate::detail_exit(1);
     }
     #[cfg(unix)]
     {
@@ -597,11 +604,10 @@ pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
 
     let clang_rt_builtins = output(&mut builtins_locator);
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
-    assert!(
-        clang_rt_builtins.exists(),
-        "`clang-cl` must correctly locate the library runtime directory"
-    );
-
+    if !clang_rt_builtins.exists(){
+        eprintln!("`clang-cl` must correctly locate the library runtime directory");
+        crate::detail_exit(1);
+    }
     // - the profiler runtime will be located in the same directory as the builtins lib, like
     // `$LLVM_DISTRO_ROOT/lib/clang/$LLVM_VERSION/lib/windows`.
     let clang_rt_dir = clang_rt_builtins.parent().expect("The clang lib folder should exist");

@@ -19,7 +19,8 @@ pub fn instrument_with_bolt_inplace(path: &Path) {
         .expect("Could not instrument artifact using BOLT");
 
     if !status.success() {
-        panic!("Could not instrument {} with BOLT, exit code {:?}", path.display(), status.code());
+        eprintln!("Could not instrument {} with BOLT, exit code {:?}", path.display(), status.code());
+        crate::detail_exit(1);
     }
 
     std::fs::copy(&instrumented_path, path).expect("Cannot copy instrumented artifact");
@@ -63,7 +64,8 @@ pub fn optimize_library_with_bolt_inplace(path: &Path, profile_path: &Path) {
         .expect("Could not optimize artifact using BOLT");
 
     if !status.success() {
-        panic!("Could not optimize {} with BOLT, exit code {:?}", path.display(), status.code());
+        eprintln!("Could not optimize {} with BOLT, exit code {:?}", path.display(), status.code());
+        crate::detail_exit(1)
     }
 
     std::fs::copy(&optimized_path, path).expect("Cannot copy optimized artifact");

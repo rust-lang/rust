@@ -136,7 +136,10 @@ pub fn read_commit_info_file(root: &Path) -> Option<Info> {
                 sha: sha.to_owned(),
                 short_sha: short_sha.to_owned(),
             },
-            _ => panic!("the `git-comit-info` file is malformed"),
+            _ => {
+                eprintln!("the `git-comit-info` file is malformed");
+                crate::detail_exit(1);  
+            },
         };
         Some(info)
     } else {

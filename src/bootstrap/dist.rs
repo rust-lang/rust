@@ -148,7 +148,8 @@ fn find_files(files: &[&str], path: &[PathBuf]) -> Vec<PathBuf> {
         if let Some(file_path) = file_path {
             found.push(file_path);
         } else {
-            panic!("Could not find '{}' in {:?}", file, path);
+            eprintln!("Could not find '{}' in {:?}", file, path);
+            crate::detail_exit(1);
         }
     }
 

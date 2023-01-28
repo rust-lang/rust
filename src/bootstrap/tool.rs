@@ -56,7 +56,10 @@ impl Step for ToolBuild {
             }
             Mode::ToolStd => builder.ensure(compile::Std::new(compiler, target)),
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
-            _ => panic!("unexpected Mode for tool build"),
+            _ => {
+                eprintln!("unexpected Mode for tool build");
+                crate::detail_exit(1);
+            },
         }
 
         let cargo = prepare_tool_cargo(
@@ -198,7 +201,8 @@ impl Step for ToolBuild {
                       that will update the dependency graph to ensure that \
                       these crates all share the same feature set"
             );
-            panic!("tools should not compile multiple copies of the same crate");
+            eprintln!("tools should not compile multiple copies of the same crate");
+            crate::detail_exit(1);
         }
 
         builder.save_toolstate(
@@ -504,7 +508,8 @@ impl Step for Rustdoc {
         let target_compiler = self.compiler;
         if target_compiler.stage == 0 {
             if !target_compiler.is_snapshot(builder) {
-                panic!("rustdoc in stage 0 must be snapshot rustdoc");
+                eprintln!("rustdoc in stage 0 must be snapshot rustdoc");
+                crate::detail_exit(1);
             }
             return builder.initial_rustc.with_file_name(exe("rustdoc", target_compiler.host));
         }

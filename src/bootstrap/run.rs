@@ -64,10 +64,12 @@ impl Step for BuildManifest {
         // (https://github.com/rust-lang/promote-release).
         let mut cmd = builder.tool_cmd(Tool::BuildManifest);
         let sign = builder.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
-            panic!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n")
+            eprintln!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n");
+            crate::detail_exit(1);
         });
         let addr = builder.config.dist_upload_addr.as_ref().unwrap_or_else(|| {
-            panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
+            eprintln!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n");
+            crate::detail_exit(1);
         });
 
         let today = output(Command::new("date").arg("+%Y-%m-%d"));

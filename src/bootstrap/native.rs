@@ -144,7 +144,7 @@ pub(crate) fn detect_llvm_sha(config: &crate::config::Config, is_git: bool) -> S
         eprintln!("help: maybe your repository history is too shallow?");
         eprintln!("help: consider disabling `download-ci-llvm`");
         eprintln!("help: or fetch enough history to include one upstream commit");
-        panic!();
+        crate::detail_exit(1); 
     }
 
     llvm_sha
@@ -334,7 +334,8 @@ impl Step for Llvm {
 
         builder.update_submodule(&Path::new("src").join("llvm-project"));
         if builder.llvm_link_shared() && target.contains("windows") {
-            panic!("shared linking to LLVM is not currently supported on {}", target.triple);
+            eprintln!("shared linking to LLVM is not currently supported on {}", target.triple);
+            crate::detail_exit(1);
         }
 
         builder.info(&format!("Building LLVM for {}", target));
@@ -520,7 +521,8 @@ impl Step for Llvm {
                 let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
                 let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
                 if !builder.config.dry_run && !clang_tblgen.exists() {
-                    panic!("unable to find {}", clang_tblgen.display());
+                    eprintln!("unable to find {}", clang_tblgen.display());
+                    crate::detail_exit(1);
                 }
                 cfg.define("CLANG_TABLEGEN", clang_tblgen);
             }
@@ -623,7 +625,8 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=13.0\n\n", version)
+    eprintln!("\n\nbad LLVM version: {}, need >=13.0\n\n", version);
+    crate::detail_exit(1);
 }
 
 fn configure_cmake(
@@ -1197,7 +1200,8 @@ impl HashStamp {
             Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
             Err(e) if e.kind() == io::ErrorKind::NotFound => false,
             Err(e) => {
-                panic!("failed to read stamp file `{}`: {}", self.path.display(), e);
+                eprintln!("failed to read stamp file `{}`: {}", self.path.display(), e);
+                crate::detail_exit(1);
             }
         }
     }

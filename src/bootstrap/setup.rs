@@ -331,7 +331,10 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
         let src = config.src.join("src").join("etc").join("pre-push.sh");
         let git =
             t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
-                assert!(output.status.success(), "failed to run `git`");
+                if !output.status.success(){
+                    eprintln!("failed to run `git`");
+                    crate::detail_exit(1);
+                }
                 PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
             }));
         let dst = git.join("hooks").join("pre-push");

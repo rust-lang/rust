@@ -107,7 +107,8 @@ impl BuildMetrics {
             Ok(contents) => t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations,
             Err(err) => {
                 if err.kind() != std::io::ErrorKind::NotFound {
-                    panic!("failed to open existing metrics file at {}: {err}", dest.display());
+                    eprintln!("failed to open existing metrics file at {}: {err}", dest.display());
+                    crate::detail_exit(1);
                 }
                 Vec::new()
             }

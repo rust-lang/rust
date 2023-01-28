@@ -469,10 +469,12 @@ impl Build {
             .to_path_buf();
         if !bootstrap_out.join(exe("rustc", config.build)).exists() && !cfg!(test) {
             // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
-            panic!(
+            eprintln!(
                 "`rustc` not found in {}, run `cargo build --bins` before `cargo run`",
                 bootstrap_out.display()
-            )
+            );
+            crate::detail_exit(1);
+        
         }
 
         if rust_info.is_from_tarball() && config.description.is_none() {
@@ -597,7 +599,10 @@ impl Build {
         let actual_hash = recorded
             .split_whitespace()
             .nth(2)
-            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+            .unwrap_or_else(|| {
+                eprintln!("unexpected output `{}`", recorded);
+                crate::detail_exit(1);
+            });
 
         // update_submodule
         if actual_hash == checked_out_hash.trim_end() {
@@ -1352,8 +1357,8 @@ impl Build {
                 return stripped.to_owned();
             }
         }
-
-        panic!("failed to find version in {}'s Cargo.toml", package)
+        eprintln!("failed to find version in {}'s Cargo.toml", package);
+        crate::detail_exit(1);
     }
 
     /// Returns `true` if unstable features should be enabled for the compiler
@@ -1465,7 +1470,8 @@ impl Build {
             // just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {
-                panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
+                eprintln!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e);
+                crate::detail_exit(1);
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
             let atime = FileTime::from_last_access_time(&metadata);
@@ -1537,7 +1543,8 @@ impl Build {
         self.verbose_than(1, &format!("Install {:?} to {:?}", src, dst));
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
-            panic!("Error: File \"{}\" not found!", src.display());
+            eprintln!("Error: File \"{}\" not found!", src.display());
+            crate::detail_exit(1);
         }
         self.copy_internal(src, &dst, true);
         chmod(&dst, perms);
@@ -1575,7 +1582,10 @@ impl Build {
         let iter = match fs::read_dir(dir) {
             Ok(v) => v,
             Err(_) if self.config.dry_run => return vec![].into_iter(),
-            Err(err) => panic!("could not read dir {:?}: {:?}", dir, err),
+            Err(err) => {
+                eprintln!("could not read dir {:?}: {:?}", dir, err);
+                crate::detail_exit(1);
+            },
         };
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
     }
@@ -1592,7 +1602,10 @@ impl Build {
         if self.config.dry_run {
             return;
         }
-        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+        fs::remove_file(f).unwrap_or_else(|_| {
+            eprintln!("failed to remove {:?}", f);
+            crate::detail_exit(1);
+        });
     }
 
     /// Returns if config.ninja is enabled, and checks for ninja existence,
@@ -1651,7 +1664,8 @@ fn chmod(_path: &Path, _perms: u32) {}
 fn detail_exit(code: i32) -> ! {
     // if in test and code is an error code, panic with status code provided
     if cfg!(test) && code != 0 {
-        panic!("status code: {}", code);
+        eprintln!("status code: {}", code);
+        crate::detail_exit(1);
     } else {
         //otherwise,exit with provided status code
         std::process::exit(code);

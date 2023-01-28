@@ -362,7 +362,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                     );
                 }
             } else if verbose {
-                panic!("No paths available for subcommand `{}`", subcommand.as_str());
+                eprint!("No paths available for subcommand `{}`", subcommand.as_str());
+                crate::detail_exit(exit_code);
             }
             crate::detail_exit(exit_code);
         };

@@ -490,7 +490,10 @@ impl Merge for TomlConfig {
         do_merge(&mut self.llvm, llvm);
         do_merge(&mut self.rust, rust);
         do_merge(&mut self.dist, dist);
-        assert!(target.is_none(), "merging target-specific config is not currently supported");
+        if !target.is_none() {
+            eprintln!("merging target-specific config is not currently supported");
+            crate::detail_exit(1);
+        }
     }
 }
 
@@ -1089,7 +1092,13 @@ impl Config {
             config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
-                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
+                    match s == "if-available" {
+                        false => {
+                            eprintln!("unknown option `{}` for download-ci-llvm", s);
+                            crate::detail_exit(1);
+                        }
+                        true => {},
+                    };
                     crate::native::is_ci_llvm_available(&config, llvm_assertions.unwrap_or(false))
                 }
                 Some(StringOrBool::Bool(b)) => b,
@@ -1398,7 +1407,7 @@ impl Config {
             eprintln!(
                 "help: either use git or ensure that {src}/src/ci/channel contains the name of the channel to use"
             );
-            panic!();
+            crate::detail_exit(1);
         }
     }
 
@@ -1429,7 +1438,10 @@ impl Config {
 
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
-        assert!(self.llvm_from_ci);
+        if !self.llvm_from_ci {
+            eprintln!("LLVM CI root is not available");
+            crate::detail_exit(1);
+        }
         self.out.join(&*self.build.triple).join("ci-llvm")
     }
 
@@ -1564,7 +1576,8 @@ fn download_ci_rustc_commit(
         Some(StringOrBool::Bool(true)) => false,
         Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
         Some(StringOrBool::String(other)) => {
-            panic!("unrecognized option for download-rustc: {}", other)
+            eprintln!("unrecognized option for download-rustc: {}", other);
+            crate::detail_exit(1);
         }
     };
 
@@ -1747,7 +1760,8 @@ fn download_component(
     builder.download_component(&format!("{base_url}/{url}"), &tarball, "");
     if let Some(sha256) = checksum {
         if !builder.verify(&tarball, sha256) {
-            panic!("failed to verify {}", tarball.display());
+            eprintln!("failed to verify {}", tarball.display());
+            crate::detail_exit(1);
         }
     }
 

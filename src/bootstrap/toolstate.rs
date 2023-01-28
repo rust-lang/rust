@@ -320,7 +320,8 @@ fn checkout_toolstate_repo() {
         Err(_) => false,
     };
     if !success {
-        panic!("git clone unsuccessful (status: {:?})", status);
+        eprintln!("git clone unsuccessful (status: {:?})", status);
+        crate::detail_exit(1);
     }
 }
 
@@ -333,7 +334,8 @@ fn prepare_toolstate_config(token: &str) {
             Err(_) => false,
         };
         if !success {
-            panic!("git config key={} value={} failed (status: {:?})", key, value, status);
+            eprintln!("git config key={} value={} failed (status: {:?})", key, value, status);
+            crate::detail_exit(1);
         }
     }
 
@@ -422,18 +424,23 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
             .arg("origin")
             .arg("master")
             .status());
-        assert!(status.success());
+        if !status.success() {
+            crate::detail_exit(1);
+        }
         let status = t!(Command::new("git")
             .current_dir(TOOLSTATE_DIR)
             .arg("reset")
             .arg("--hard")
             .arg("origin/master")
             .status());
-        assert!(status.success());
+        if !status.success() {
+            crate::detail_exit(1);
+        }
     }
 
     if !success {
-        panic!("Failed to update toolstate repository with new data");
+        eprintln!("Failed to update toolstate repository with new data");
+        crate::detail_exit(1);
     }
 }
 

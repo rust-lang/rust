@@ -39,7 +39,10 @@ impl From<Kind> for TestKind {
         match kind {
             Kind::Test => TestKind::Test,
             Kind::Bench => TestKind::Bench,
-            _ => panic!("unexpected kind in crate: {:?}", kind),
+            _ => {
+                eprintln!("unexpected kind in crate: {:?}", kind);
+                crate::detail_exit(1);
+            },
         }
     }
 }
@@ -113,10 +116,11 @@ impl Step for Linkcheck {
         // documentation built for each will contain broken links to
         // docs built for the other platform (e.g. rustc linking to cargo)
         if (hosts != targets) && !hosts.is_empty() && !targets.is_empty() {
-            panic!(
+            eprintln!(
                 "Linkcheck currently does not support builds with different hosts and targets.
 You can skip linkcheck with --exclude src/tools/linkchecker"
             );
+            crate::detail_exit(1);
         }
 
         builder.info(&format!("Linkcheck ({})", host));
@@ -191,7 +195,8 @@ impl Step for HtmlCheck {
             eprintln!(
                 "Note that `tidy` is not the in-tree `src/tools/tidy` but needs to be installed"
             );
-            panic!("Cannot run html-check tests");
+            eprintln!("Cannot run html-check tests");
+            crate::detail_exit(1);
         }
         // Ensure that a few different kinds of documentation are available.
         builder.default_doc(&[]);
@@ -540,7 +545,12 @@ impl Step for Miri {
             builder.verbose(&format!("running: {:?}", cargo));
             let out =
                 cargo.output().expect("We already ran `cargo miri setup` before and that worked");
-            assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
+            
+            if !out.status.success() {
+                eprintln!("`cargo miri setup` returned with non-0 exit code");
+                crate::detail_exit(1);
+            }
+
             // Output is "<sysroot>\n".
             let stdout = String::from_utf8(out.stdout)
                 .expect("`cargo miri setup` stdout is not valid UTF-8");
@@ -814,7 +824,8 @@ impl Step for RustdocJSStd {
                 {
                     if !p.ends_with(".js") {
                         eprintln!("A non-js file was given: `{}`", path.display());
-                        panic!("Cannot run rustdoc-js-std tests");
+                        eprintln!("Cannot run rustdoc-js-std tests");
+                        crate::detail_exit(1);
                     }
                     command.arg("--test-file").arg(path);
                 }
@@ -959,7 +970,8 @@ impl Step for RustdocGUI {
                     "If you want to install the `{0}` dependency, run `npm install {0}`",
                     "browser-ui-test",
                 );
-                panic!("Cannot run rustdoc-gui tests");
+                eprintln!("Cannot run rustdoc-gui tests");
+                crate::detail_exit(1);
             }
         }
 
@@ -1009,7 +1021,8 @@ impl Step for RustdocGUI {
             if let Some(p) = util::is_valid_test_suite_arg(path, "src/test/rustdoc-gui", builder) {
                 if !p.ends_with(".goml") {
                     eprintln!("A non-goml file was given: `{}`", path.display());
-                    panic!("Cannot run rustdoc-gui tests");
+                    eprintln!("Cannot run rustdoc-gui tests");
+                    crate::detail_exit(1);
                 }
                 if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
                     command.arg("--file").arg(name);
@@ -1445,7 +1458,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 String::from_utf8_lossy(&output.stdout)
                     .lines()
                     .next()
-                    .unwrap_or_else(|| panic!("{:?} failed {:?}", cmd, output))
+                    .unwrap_or_else(|| {
+                        eprintln!("{:?} failed {:?}", cmd, output);
+                        crate::detail_exit(1);
+                    })
                     .to_string()
             })
         };
@@ -1540,7 +1556,12 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 let llvm_bin_path = llvm_config
                     .parent()
                     .expect("Expected llvm-config to be contained in directory");
-                assert!(llvm_bin_path.is_dir());
+
+                if !llvm_bin_path.is_dir() {
+                    eprintln!("Expected llvm-bin-path to be contained in directory");
+                    crate::detail_exit(1);
+                }
+
                 cmd.arg("--llvm-bin-dir").arg(llvm_bin_path);
 
                 // If LLD is available, add it to the PATH
@@ -2021,7 +2042,10 @@ impl Step for Crate {
             Mode::Rustc => {
                 compile::rustc_cargo(builder, &mut cargo, target);
             }
-            _ => panic!("can only test libraries"),
+            _ => {
+                eprintln!("can only test libraries");
+                crate::detail_exit(1);
+            },
         };
 
         // Build up the base `cargo test` command.
