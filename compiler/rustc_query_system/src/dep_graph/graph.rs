@@ -6,6 +6,7 @@ use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
+use rustc_data_structures::OnDrop;
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use smallvec::{smallvec, SmallVec};
@@ -676,49 +677,19 @@ impl<K: DepKind> DepGraph<K> {
             None => {}
         }
 
-        let mut stack = smallvec![prev_index];
-        let _backtrace_print =
-            MarkingStack { stack: &mut stack, sess: qcx.dep_context().sess(), graph: data };
+        let backtrace = backtrace_printer(qcx.dep_context().sess(), data, prev_index);
 
         // This DepNode and the corresponding query invocation existed
         // in the previous compilation session too, so we can try to
         // mark it as green by recursively marking all of its
         // dependencies green.
         let ret = self
-            .try_mark_previous_green(qcx, data, prev_index, &dep_node, _backtrace_print.stack)
+            .try_mark_previous_green(qcx, data, prev_index, &dep_node)
             .map(|dep_node_index| (prev_index, dep_node_index));
 
         // We succeeded, no backtrace.
-        std::mem::forget(_backtrace_print);
+        backtrace.disable();
         return ret;
-
-        /// Remember the stack of queries we are forcing in the event of an incr. comp. panic.
-        struct MarkingStack<'a, 'v, K: DepKind> {
-            stack: &'v mut SmallVec<[SerializedDepNodeIndex; 8]>,
-            sess: &'a rustc_session::Session,
-            graph: &'a DepGraphData<K>,
-        }
-
-        impl<'a, 'v, K: DepKind> Drop for MarkingStack<'a, 'v, K> {
-            /// Print the forcing backtrace.
-            #[inline(never)]
-            #[cold]
-            fn drop(&mut self) {
-                for &frame in self.stack.iter().rev() {
-                    let node = self.graph.previous.index_to_node(frame);
-                    // Do not try to rely on DepNode's Debug implementation,
-                    // since it may panic.
-                    let diag = rustc_errors::Diagnostic::new(
-                        rustc_errors::Level::FailureNote,
-                        &format!(
-                            "encountered while trying to mark dependency green: {:?}({})",
-                            node.kind, node.hash
-                        ),
-                    );
-                    self.sess.diagnostic().force_print_diagnostic(diag);
-                }
-            }
-        }
     }
 
     #[instrument(skip(self, qcx, data, parent_dep_node_index), level = "debug")]
@@ -728,7 +699,6 @@ impl<K: DepKind> DepGraph<K> {
         data: &DepGraphData<K>,
         parent_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
-        stack: &mut SmallVec<[SerializedDepNodeIndex; 8]>,
     ) -> Option<()> {
         let dep_dep_node_color = data.colors.get(parent_dep_node_index);
         let dep_dep_node = &data.previous.index_to_node(parent_dep_node_index);
@@ -761,7 +731,7 @@ impl<K: DepKind> DepGraph<K> {
             );
 
             let node_index =
-                self.try_mark_previous_green(qcx, data, parent_dep_node_index, dep_dep_node, stack);
+                self.try_mark_previous_green(qcx, data, parent_dep_node_index, dep_dep_node);
 
             if node_index.is_some() {
                 debug!("managed to MARK dependency {dep_dep_node:?} as green",);
@@ -817,7 +787,6 @@ impl<K: DepKind> DepGraph<K> {
         data: &DepGraphData<K>,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
-        stack: &mut SmallVec<[SerializedDepNodeIndex; 8]>,
     ) -> Option<DepNodeIndex> {
         #[cfg(not(parallel_compiler))]
         {
@@ -833,9 +802,10 @@ impl<K: DepKind> DepGraph<K> {
         let prev_deps = data.previous.edge_targets_from(prev_dep_node_index);
 
         for &dep_dep_node_index in prev_deps {
-            stack.push(dep_dep_node_index);
-            self.try_mark_parent_green(qcx, data, dep_dep_node_index, dep_node, stack)?;
-            stack.pop();
+            let backtrace = backtrace_printer(qcx.dep_context().sess(), data, dep_dep_node_index);
+            let success = self.try_mark_parent_green(qcx, data, dep_dep_node_index, dep_node);
+            backtrace.disable();
+            success?;
         }
 
         // If we got here without hitting a `return` that means that all
@@ -1404,4 +1374,27 @@ impl DepNodeColorMap {
             Ordering::Release,
         )
     }
+}
+
+fn backtrace_printer<'a, K: DepKind>(
+    sess: &'a rustc_session::Session,
+    graph: &'a DepGraphData<K>,
+    node: SerializedDepNodeIndex,
+) -> OnDrop<impl Fn() + 'a> {
+    OnDrop(
+        #[inline(never)]
+        #[cold]
+        move || {
+            let node = graph.previous.index_to_node(node);
+            // Do not try to rely on DepNode's Debug implementation, since it may panic.
+            let diag = rustc_errors::Diagnostic::new(
+                rustc_errors::Level::FailureNote,
+                &format!(
+                    "encountered while trying to mark dependency green: {:?}({})",
+                    node.kind, node.hash
+                ),
+            );
+            sess.diagnostic().force_print_diagnostic(diag);
+        },
+    )
 }
