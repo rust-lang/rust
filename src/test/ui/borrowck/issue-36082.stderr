@@ -4,7 +4,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let val: &_ = x.borrow().0;
    |                   ^^^^^^^^^^  - temporary value is freed at the end of this statement
    |                   |
-   |                   creates a temporary which is freed while still in use
+   |                   creates a temporary value which is freed while still in use
 ...
 LL |     println!("{}", val);
    |                    --- borrow later used here

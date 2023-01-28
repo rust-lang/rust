@@ -1,4 +1,3 @@
-// compile-flags:-Ztreat-err-as-bug=5
 #[derive(Debug)]
 enum MyError {
     NotFound { key: Vec<u8> },

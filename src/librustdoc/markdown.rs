@@ -53,7 +53,7 @@ pub(crate) fn render<P: AsRef<Path>>(
 
     let mut css = String::new();
     for name in &options.markdown_css {
-        write!(css, r#"<link rel="stylesheet" type="text/css" href="{name}">"#)
+        write!(css, r#"<link rel="stylesheet" href="{name}">"#)
             .expect("Writing to a String can't fail");
     }
 

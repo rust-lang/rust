@@ -24,7 +24,8 @@ where
 fn covariant(
     v: &'static Foo<for<'a> fn(&'a ())>
 ) -> &'static Foo<fn(&'static ())> {
-    v //~ ERROR mismatched types
+    v
+    //~^ ERROR mismatched types
 }
 
 fn main() {

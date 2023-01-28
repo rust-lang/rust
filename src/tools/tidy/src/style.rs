@@ -15,9 +15,10 @@
 //!
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
+// ignore-tidy-dbg
 
 use crate::walk::{filter_dirs, walk};
-use regex::Regex;
+use regex::{Regex, RegexSet};
 use std::path::Path;
 
 /// Error code markdown is restricted to 80 columns because they can be
@@ -60,7 +61,7 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
 // Intentionally written in decimal rather than hex
 const PROBLEMATIC_CONSTS: &[u32] = &[
     184594741, 2880289470, 2881141438, 2965027518, 2976579765, 3203381950, 3405691582, 3405697037,
-    3735927486, 4027431614, 4276992702,
+    3735927486, 3735932941, 4027431614, 4276992702,
 ];
 
 /// Parser states for `line_is_url`.
@@ -225,6 +226,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:x}", v)))
         .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:X}", v)))
         .collect();
+    let problematic_regex = RegexSet::new(problematic_consts_strings.as_slice()).unwrap();
     walk(path, &mut skip, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
@@ -277,14 +279,50 @@ pub fn check(path: &Path, bad: &mut bool) {
         let mut skip_leading_newlines =
             contains_ignore_directive(can_contain, &contents, "leading-newlines");
         let mut skip_copyright = contains_ignore_directive(can_contain, &contents, "copyright");
+        let mut skip_dbg = contains_ignore_directive(can_contain, &contents, "dbg");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;
         let mut last_safety_comment = false;
+        let is_test = file.components().any(|c| c.as_os_str() == "tests");
+        // scanning the whole file for multiple needles at once is more efficient than
+        // executing lines times needles separate searches.
+        let any_problematic_line = problematic_regex.is_match(contents);
         for (i, line) in contents.split('\n').enumerate() {
+            if line.is_empty() {
+                if i == 0 {
+                    leading_new_lines = true;
+                }
+                trailing_new_lines += 1;
+                continue;
+            } else {
+                trailing_new_lines = 0;
+            }
+
+            let trimmed = line.trim();
+
+            if !trimmed.starts_with("//") {
+                lines += 1;
+            }
+
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
+
+            if trimmed.contains("dbg!")
+                && !trimmed.starts_with("//")
+                && !file
+                    .ancestors()
+                    .any(|a| a.ends_with("src/test") || a.ends_with("library/alloc/tests"))
+                && filename != "tests.rs"
+            {
+                suppressible_tidy_err!(
+                    err,
+                    skip_dbg,
+                    "`dbg!` macro is intended as a debugging tool. It should not be in version control."
+                )
+            }
+
             if !under_rustfmt
                 && line.chars().count() > max_columns
                 && !long_line_is_ok(&extension, is_error_code, max_columns, line)
@@ -308,28 +346,29 @@ pub fn check(path: &Path, bad: &mut bool) {
                 suppressible_tidy_err!(err, skip_cr, "CR character");
             }
             if filename != "style.rs" {
-                if line.contains("TODO") {
+                if trimmed.contains("TODO") {
                     err("TODO is deprecated; use FIXME")
                 }
-                if line.contains("//") && line.contains(" XXX") {
+                if trimmed.contains("//") && trimmed.contains(" XXX") {
                     err("XXX is deprecated; use FIXME")
                 }
-                for s in problematic_consts_strings.iter() {
-                    if line.contains(s) {
-                        err("Don't use magic numbers that spell things (consider 0x12345678)");
+                if any_problematic_line {
+                    for s in problematic_consts_strings.iter() {
+                        if trimmed.contains(s) {
+                            err("Don't use magic numbers that spell things (consider 0x12345678)");
+                        }
                     }
                 }
             }
-            let is_test = || file.components().any(|c| c.as_os_str() == "tests");
             // for now we just check libcore
-            if line.contains("unsafe {") && !line.trim().starts_with("//") && !last_safety_comment {
-                if file.components().any(|c| c.as_os_str() == "core") && !is_test() {
+            if trimmed.contains("unsafe {") && !trimmed.starts_with("//") && !last_safety_comment {
+                if file.components().any(|c| c.as_os_str() == "core") && !is_test {
                     suppressible_tidy_err!(err, skip_undocumented_unsafe, "undocumented unsafe");
                 }
             }
-            if line.contains("// SAFETY:") {
+            if trimmed.contains("// SAFETY:") {
                 last_safety_comment = true;
-            } else if line.trim().starts_with("//") || line.trim().is_empty() {
+            } else if trimmed.starts_with("//") || trimmed.is_empty() {
                 // keep previous value
             } else {
                 last_safety_comment = false;
@@ -337,7 +376,8 @@ pub fn check(path: &Path, bad: &mut bool) {
             if (line.starts_with("// Copyright")
                 || line.starts_with("# Copyright")
                 || line.starts_with("Copyright"))
-                && (line.contains("Rust Developers") || line.contains("Rust Project Developers"))
+                && (trimmed.contains("Rust Developers")
+                    || trimmed.contains("Rust Project Developers"))
             {
                 suppressible_tidy_err!(
                     err,
@@ -350,18 +390,6 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
             if filename.ends_with(".cpp") && line.contains("llvm_unreachable") {
                 err(LLVM_UNREACHABLE_INFO);
-            }
-            if line.is_empty() {
-                if i == 0 {
-                    leading_new_lines = true;
-                }
-                trailing_new_lines += 1;
-            } else {
-                trailing_new_lines = 0;
-            }
-
-            if !line.trim().starts_with("//") {
-                lines += 1;
             }
         }
         if leading_new_lines {

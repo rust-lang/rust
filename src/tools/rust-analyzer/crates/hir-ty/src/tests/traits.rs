@@ -163,15 +163,97 @@ fn test() {
 }
 
 #[test]
+fn infer_try() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:core
+fn test() {
+    let r: Result<i32, u64> = Result::Ok(1);
+    let v = r?;
+    v;
+} //^ i32
+
+//- /core.rs crate:core
+pub mod ops {
+    pub trait Try {
+        type Ok;
+        type Error;
+    }
+}
+
+pub mod result {
+    pub enum Result<O, E> {
+        Ok(O),
+        Err(E)
+    }
+
+    impl<O, E> crate::ops::Try for Result<O, E> {
+        type Ok = O;
+        type Error = E;
+    }
+}
+
+pub mod prelude {
+    pub mod rust_2018 {
+        pub use crate::{result::*, ops::*};
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn infer_try_trait_v2() {
     check_types(
         r#"
-//- minicore: try
-fn test() -> core::ops::ControlFlow<u32, f32> {
-    let r: core::ops::ControlFlow<u32, f32> = core::ops::ControlFlow::Continue(1.0);
+//- /main.rs crate:main deps:core
+fn test() {
+    let r: Result<i32, u64> = Result::Ok(1);
     let v = r?;
-      //^ f32
-    r
+    v;
+} //^ i32
+
+//- /core.rs crate:core
+mod ops {
+    mod try_trait {
+        pub trait Try: FromResidual {
+            type Output;
+            type Residual;
+        }
+        pub trait FromResidual<R = <Self as Try>::Residual> {}
+    }
+
+    pub use self::try_trait::FromResidual;
+    pub use self::try_trait::Try;
+}
+
+mod convert {
+    pub trait From<T> {}
+    impl<T> From<T> for T {}
+}
+
+pub mod result {
+    use crate::convert::From;
+    use crate::ops::{Try, FromResidual};
+
+    pub enum Infallible {}
+    pub enum Result<O, E> {
+        Ok(O),
+        Err(E)
+    }
+
+    impl<O, E> Try for Result<O, E> {
+        type Output = O;
+        type Error = Result<Infallible, E>;
+    }
+
+    impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {}
+}
+
+pub mod prelude {
+    pub mod rust_2018 {
+        pub use crate::result::*;
+    }
 }
 "#,
     );
@@ -1624,7 +1706,7 @@ fn where_clause_trait_in_scope_for_method_resolution() {
     check_types(
         r#"
 mod foo {
-    trait Trait {
+    pub trait Trait {
         fn foo(&self) -> u32 { 0 }
     }
 }
@@ -1641,7 +1723,7 @@ fn super_trait_method_resolution() {
     check_infer(
         r#"
 mod foo {
-    trait SuperTrait {
+    pub trait SuperTrait {
         fn foo(&self) -> u32 {}
     }
 }
@@ -1653,15 +1735,15 @@ fn test<T: Trait1, U: Trait2>(x: T, y: U) {
     y.foo();
 }"#,
         expect![[r#"
-            49..53 'self': &Self
-            62..64 '{}': u32
-            181..182 'x': T
-            187..188 'y': U
-            193..222 '{     ...o(); }': ()
-            199..200 'x': T
-            199..206 'x.foo()': u32
-            212..213 'y': U
-            212..219 'y.foo()': u32
+            53..57 'self': &Self
+            66..68 '{}': u32
+            185..186 'x': T
+            191..192 'y': U
+            197..226 '{     ...o(); }': ()
+            203..204 'x': T
+            203..210 'x.foo()': u32
+            216..217 'y': U
+            216..223 'y.foo()': u32
         "#]],
     );
 }
@@ -1672,7 +1754,7 @@ fn super_trait_impl_trait_method_resolution() {
         r#"
 //- minicore: sized
 mod foo {
-    trait SuperTrait {
+    pub trait SuperTrait {
         fn foo(&self) -> u32 {}
     }
 }
@@ -1682,12 +1764,12 @@ fn test(x: &impl Trait1) {
     x.foo();
 }"#,
         expect![[r#"
-            49..53 'self': &Self
-            62..64 '{}': u32
-            115..116 'x': &impl Trait1
-            132..148 '{     ...o(); }': ()
-            138..139 'x': &impl Trait1
-            138..145 'x.foo()': u32
+            53..57 'self': &Self
+            66..68 '{}': u32
+            119..120 'x': &impl Trait1
+            136..152 '{     ...o(); }': ()
+            142..143 'x': &impl Trait1
+            142..149 'x.foo()': u32
         "#]],
     );
 }
@@ -3879,5 +3961,126 @@ fn g(t: &(dyn T + Send)) {
     f(t);
 }
         "#,
+    );
+}
+
+#[test]
+fn gats_in_path() {
+    check_types(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+trait PointerFamily {
+    type Pointer<T>: Deref<Target = T>;
+}
+
+fn f<P: PointerFamily>(p: P::Pointer<i32>) {
+    let a = *p;
+      //^ i32
+}
+fn g<P: PointerFamily>(p: <P as PointerFamily>::Pointer<i32>) {
+    let a = *p;
+      //^ i32
+}
+        "#,
+    );
+}
+
+#[test]
+fn gats_with_impl_trait() {
+    // FIXME: the last function (`fn i()`) is not valid Rust as of this writing because you cannot
+    // specify the same associated type multiple times even if their arguments are different (c.f.
+    // `fn h()`, which is valid). Reconsider how to treat these invalid types.
+    check_types(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+trait Trait {
+    type Assoc<T>: Deref<Target = T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<T>(v: impl Trait) {
+    let a = v.get::<i32>().deref();
+      //^ &i32
+    let a = v.get::<T>().deref();
+      //^ &T
+}
+fn g<'a, T: 'a>(v: impl Trait<Assoc<T> = &'a T>) {
+    let a = v.get::<T>();
+      //^ &T
+    let a = v.get::<()>();
+      //^ Trait::Assoc<(), impl Trait<Assoc<T> = &T>>
+}
+fn h<'a>(v: impl Trait<Assoc<i32> = &'a i32> + Trait<Assoc<i64> = &'a i64>) {
+    let a = v.get::<i32>();
+      //^ &i32
+    let a = v.get::<i64>();
+      //^ &i64
+}
+fn i<'a>(v: impl Trait<Assoc<i32> = &'a i32, Assoc<i64> = &'a i64>) {
+    let a = v.get::<i32>();
+      //^ &i32
+    let a = v.get::<i64>();
+      //^ &i64
+}
+    "#,
+    );
+}
+
+#[test]
+fn gats_with_dyn() {
+    // This test is here to keep track of how we infer things despite traits with GATs being not
+    // object-safe currently.
+    // FIXME: reconsider how to treat these invalid types.
+    check_infer_with_mismatches(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+trait Trait {
+    type Assoc<T>: Deref<Target = T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
+    v.get::<i32>().deref();
+}
+    "#,
+        expect![[r#"
+            90..94 'self': &Self
+            127..128 'v': &(dyn Trait<Assoc<i32> = &i32>)
+            164..195 '{     ...f(); }': ()
+            170..171 'v': &(dyn Trait<Assoc<i32> = &i32>)
+            170..184 'v.get::<i32>()': &i32
+            170..192 'v.get:...eref()': &i32
+        "#]],
+    );
+}
+
+#[test]
+fn gats_in_associated_type_binding() {
+    check_types(
+        r#"
+trait Trait {
+    type Assoc<T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<T>(t: T)
+where
+    T: Trait<Assoc<i32> = u32>,
+    T: Trait<Assoc<isize> = usize>,
+{
+    let a = t.get::<i32>();
+      //^ u32
+    let a = t.get::<isize>();
+      //^ usize
+    let a = t.get::<()>();
+      //^ Trait::Assoc<(), T>
+}
+
+    "#,
     );
 }

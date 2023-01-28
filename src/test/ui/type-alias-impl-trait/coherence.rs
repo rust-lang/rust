@@ -12,6 +12,6 @@ fn use_alias<T>(val: T) -> AliasOfForeignType<T> {
 }
 
 impl<T> foreign_crate::ForeignTrait for AliasOfForeignType<T> {}
-//~^ ERROR cannot implement trait on type alias impl trait
+//~^ ERROR only traits defined in the current crate can be implemented for arbitrary types
 
 fn main() {}

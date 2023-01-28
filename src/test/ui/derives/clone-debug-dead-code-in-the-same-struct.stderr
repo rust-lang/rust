@@ -1,4 +1,4 @@
-error: fields `field1`, `field2`, `field3` and `field4` are never read
+error: fields `field1`, `field2`, `field3`, and `field4` are never read
   --> $DIR/clone-debug-dead-code-in-the-same-struct.rs:6:5
    |
 LL | pub struct Whatever {

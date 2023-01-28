@@ -73,7 +73,10 @@ impl DefMap {
     pub(crate) fn resolve_visibility(
         &self,
         db: &dyn DefDatabase,
+        // module to import to
         original_module: LocalModuleId,
+        // pub(path)
+        //     ^^^^ this
         visibility: &RawVisibility,
     ) -> Option<Visibility> {
         let mut vis = match visibility {
@@ -115,6 +118,7 @@ impl DefMap {
         &self,
         db: &dyn DefDatabase,
         mode: ResolveMode,
+        // module to import to
         mut original_module: LocalModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
@@ -361,6 +365,9 @@ impl DefMap {
                     );
                 }
             };
+
+            curr_per_ns = curr_per_ns
+                .filter_visibility(|vis| vis.is_visible_from_def_map(db, self, original_module));
         }
 
         ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None, Some(self.krate))

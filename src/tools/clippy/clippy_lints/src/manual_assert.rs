@@ -2,7 +2,7 @@ use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{root_macro_call, FormatArgsExpn};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{peel_blocks_with_stmt, span_extract_comment, sugg};
+use clippy_utils::{is_else_clause, peel_blocks_with_stmt, span_extract_comment, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -47,6 +47,10 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
             if cx.tcx.item_name(macro_call.def_id) == sym::panic;
             if !cx.tcx.sess.source_map().is_multiline(cond.span);
             if let Some(format_args) = FormatArgsExpn::find_nested(cx, then, macro_call.expn);
+            // Don't change `else if foo { panic!(..) }` to `else { assert!(foo, ..) }` as it just
+            // shuffles the condition around.
+            // Should this have a config value?
+            if !is_else_clause(cx.tcx, expr);
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let format_args_snip = snippet_with_applicability(cx, format_args.inputs_span(), "..", &mut applicability);

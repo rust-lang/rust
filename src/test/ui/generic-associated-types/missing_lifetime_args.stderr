@@ -11,7 +11,7 @@ LL |     type Y<'a, 'b>;
    |          ^ --  --
 help: add missing lifetime arguments
    |
-LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y<'c, 'd> = (&'c u32, &'d u32)>>) {}
+LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y<'_, '_> = (&'c u32, &'d u32)>>) {}
    |                                ~~~~~~~~~
 
 error[E0107]: this struct takes 3 lifetime arguments but 2 lifetime arguments were supplied
@@ -47,7 +47,7 @@ LL | struct Foo<'a, 'b, 'c> {
    |        ^^^ --  --  --
 help: add missing lifetime arguments
    |
-LL | fn f<'a>(_arg: Foo<'a, 'b, 'c>) {}
+LL | fn f<'a>(_arg: Foo<'a, 'a, 'a>) {}
    |                      ++++++++
 
 error: aborting due to 3 previous errors

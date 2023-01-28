@@ -8,7 +8,7 @@ LL |     foo(s);
    |         ^ value used here after partial move
    |
    = note: partial move occurs because value has type `S`, which does not implement the `Copy` trait
-help: borrow this field in the pattern to avoid moving `s.0`
+help: borrow this binding in the pattern to avoid moving the value
    |
 LL |     if let Some(ref x) = s {
    |                 +++
@@ -23,7 +23,7 @@ LL |     bar(e);
    |         ^ value used here after partial move
    |
    = note: partial move occurs because value has type `S`, which does not implement the `Copy` trait
-help: borrow this field in the pattern to avoid moving `e.s`
+help: borrow this binding in the pattern to avoid moving the value
    |
 LL |     let E::V { s: ref x } = e;
    |                   +++

@@ -5,7 +5,7 @@ LL |   pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
    |              -- lifetime `'a` defined here
 LL | /     bar.call((
 LL | |         &id(()),
-   | |          ^^^^^^ creates a temporary which is freed while still in use
+   | |          ^^^^^^ creates a temporary value which is freed while still in use
 LL | |     ));
    | |      -- temporary value is freed at the end of this statement
    | |______|

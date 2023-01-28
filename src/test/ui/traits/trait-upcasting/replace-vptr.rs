@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(trait_upcasting)]
-#![allow(incomplete_features)]
 
 trait A {
     fn foo_a(&self);

@@ -6,6 +6,12 @@ LL | macro_rules! m { ($x:lifetime) => { } }
 ...
 LL |     m!(a);
    |        ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$x:lifetime`
+  --> $DIR/macro-non-lifetime.rs:3:19
+   |
+LL | macro_rules! m { ($x:lifetime) => { } }
+   |                   ^^^^^^^^^^^
 
 error: aborting due to previous error
 

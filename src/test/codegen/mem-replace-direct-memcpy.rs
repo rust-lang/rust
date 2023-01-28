@@ -18,7 +18,7 @@ pub fn replace_byte(dst: &mut u8, src: u8) -> u8 {
 // CHECK-NOT: call void @llvm.memcpy
 // CHECK: ; core::mem::replace
 // CHECK-NOT: call void @llvm.memcpy
-// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %dest, i{{.*}} 1, i1 false)
+// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %{{.*}}, i{{.*}} 1, i1 false)
 // CHECK-NOT: call void @llvm.memcpy
-// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %dest, {{i8\*|ptr}} align 1 %src{{.*}}, i{{.*}} 1, i1 false)
+// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 1 %{{.*}}, {{i8\*|ptr}} align 1 %{{.*}}, i{{.*}} 1, i1 false)
 // CHECK-NOT: call void @llvm.memcpy

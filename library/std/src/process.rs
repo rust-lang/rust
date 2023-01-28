@@ -362,6 +362,10 @@ impl Read for ChildStdout {
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
     }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_to_end(buf)
+    }
 }
 
 impl AsInner<AnonPipe> for ChildStdout {
@@ -907,10 +911,8 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
-        self.inner
-            .spawn(imp::Stdio::MakePipe, false)
-            .map(Child::from_inner)
-            .and_then(|p| p.wait_with_output())
+        let (status, stdout, stderr) = self.inner.output()?;
+        Ok(Output { status: ExitStatus(status), stdout, stderr })
     }
 
     /// Executes a command as a child process, waiting for it to finish and
@@ -1036,6 +1038,15 @@ impl fmt::Debug for Command {
     /// Format the program and arguments of a Command for display. Any
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
+    ///
+    /// The default format approximates a shell invocation of the program along with its
+    /// arguments. It does not include most of the other command properties. The output is not guaranteed to work
+    /// (e.g. due to lack of shell-escaping or differences in path resolution)
+    /// On some platforms you can use [the alternate syntax] to show more fields.
+    ///
+    /// Note that the debug implementation is platform-specific.
+    ///
+    /// [the alternate syntax]: fmt#sign0
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
@@ -2153,18 +2164,11 @@ pub fn id() -> u32 {
 /// to provide similar functionality.
 #[cfg_attr(not(test), lang = "termination")]
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
-#[rustc_on_unimplemented(
-    on(
-        all(not(bootstrap), cause = "MainFunctionType"),
-        message = "`main` has invalid return type `{Self}`",
-        label = "`main` can only return types that implement `{Termination}`"
-    ),
-    on(
-        bootstrap,
-        message = "`main` has invalid return type `{Self}`",
-        label = "`main` can only return types that implement `{Termination}`"
-    )
-)]
+#[rustc_on_unimplemented(on(
+    cause = "MainFunctionType",
+    message = "`main` has invalid return type `{Self}`",
+    label = "`main` can only return types that implement `{Termination}`"
+))]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.

@@ -1,5 +1,5 @@
 // stderr-per-bitwidth
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, ptr_metadata)]
 #![allow(invalid_value)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
@@ -46,5 +46,12 @@ const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
 struct RestrictedRange2(u32);
 const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
 //~^ ERROR it is undefined behavior to use this value
+
+const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
+//~^ ERROR it is undefined behavior to use this value
+    let x: &dyn Send = &42;
+    let meta = std::ptr::metadata(x);
+    mem::transmute((0_usize, meta))
+};
 
 fn main() {}

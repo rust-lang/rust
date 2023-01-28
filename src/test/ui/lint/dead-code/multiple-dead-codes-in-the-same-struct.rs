@@ -7,7 +7,7 @@ struct Bar {
     b: usize, //~ ERROR field `b` is never read
     #[deny(dead_code)]
     c: usize, //~ ERROR fields `c` and `e` are never read
-    d: usize, //~ WARN fields `d`, `f` and `g` are never read
+    d: usize, //~ WARN fields `d`, `f`, and `g` are never read
     #[deny(dead_code)]
     e: usize,
     f: usize,

@@ -12,7 +12,7 @@
       bb0: {
           StorageLive(_3);                 // scope 0 at $DIR/deaggregator_test_enum_2.rs:+1:8: +1:9
           _3 = _1;                         // scope 0 at $DIR/deaggregator_test_enum_2.rs:+1:8: +1:9
-          switchInt(move _3) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/deaggregator_test_enum_2.rs:+1:8: +1:9
+          switchInt(move _3) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/deaggregator_test_enum_2.rs:+1:8: +1:9
       }
   
       bb1: {

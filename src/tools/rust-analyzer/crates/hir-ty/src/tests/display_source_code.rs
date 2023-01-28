@@ -196,3 +196,34 @@ fn test(
 "#,
     );
 }
+
+#[test]
+fn projection_type_correct_arguments_order() {
+    check_types_source_code(
+        r#"
+trait Foo<T> {
+    type Assoc<U>;
+}
+fn f<T: Foo<i32>>(a: T::Assoc<usize>) {
+    a;
+  //^ <T as Foo<i32>>::Assoc<usize>
+}
+"#,
+    );
+}
+
+#[test]
+fn generic_associated_type_binding_in_impl_trait() {
+    check_types_source_code(
+        r#"
+//- minicore: sized
+trait Foo<T> {
+    type Assoc<U>;
+}
+fn f(a: impl Foo<i8, Assoc<i16> = i32>) {
+    a;
+  //^ impl Foo<i8, Assoc<i16> = i32>
+}
+        "#,
+    );
+}

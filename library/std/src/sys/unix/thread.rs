@@ -136,8 +136,10 @@ impl Thread {
 
         unsafe {
             // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20.
-            let name = truncate_cstr(name, TASK_COMM_LEN);
-            libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
+            let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
+            let res = libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
+            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -151,8 +153,10 @@ impl Thread {
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
     pub fn set_name(name: &CStr) {
         unsafe {
-            let name = truncate_cstr(name, libc::MAXTHREADNAMESIZE);
-            libc::pthread_setname_np(name.as_ptr());
+            let name = truncate_cstr::<{ libc::MAXTHREADNAMESIZE }>(name);
+            let res = libc::pthread_setname_np(name.as_ptr());
+            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -160,11 +164,12 @@ impl Thread {
     pub fn set_name(name: &CStr) {
         unsafe {
             let cname = CStr::from_bytes_with_nul_unchecked(b"%s\0".as_slice());
-            libc::pthread_setname_np(
+            let res = libc::pthread_setname_np(
                 libc::pthread_self(),
                 cname.as_ptr(),
                 name.as_ptr() as *mut libc::c_void,
             );
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -177,9 +182,8 @@ impl Thread {
         }
 
         if let Some(f) = pthread_setname_np.get() {
-            unsafe {
-                f(libc::pthread_self(), name.as_ptr());
-            }
+            let res = unsafe { f(libc::pthread_self(), name.as_ptr()) };
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -281,17 +285,12 @@ impl Drop for Thread {
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "watchos"))]
-fn truncate_cstr(cstr: &CStr, max_with_nul: usize) -> crate::borrow::Cow<'_, CStr> {
-    use crate::{borrow::Cow, ffi::CString};
-
-    if cstr.to_bytes_with_nul().len() > max_with_nul {
-        let bytes = cstr.to_bytes()[..max_with_nul - 1].to_vec();
-        // SAFETY: the non-nul bytes came straight from a CStr.
-        // (CString will add the terminating nul.)
-        Cow::Owned(unsafe { CString::from_vec_unchecked(bytes) })
-    } else {
-        Cow::Borrowed(cstr)
+fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
+    let mut result = [0; MAX_WITH_NUL];
+    for (src, dst) in cstr.to_bytes().iter().zip(&mut result[..MAX_WITH_NUL - 1]) {
+        *dst = *src as libc::c_char;
     }
+    result
 }
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
@@ -506,7 +505,7 @@ mod cgroups {
                     let limit = raw_quota.next()?;
                     let period = raw_quota.next()?;
                     match (limit.parse::<usize>(), period.parse::<usize>()) {
-                        (Ok(limit), Ok(period)) => {
+                        (Ok(limit), Ok(period)) if period > 0 => {
                             quota = quota.min(limit / period);
                         }
                         _ => {}
@@ -566,7 +565,7 @@ mod cgroups {
                 let period = parse_file("cpu.cfs_period_us");
 
                 match (limit, period) {
-                    (Some(limit), Some(period)) => quota = quota.min(limit / period),
+                    (Some(limit), Some(period)) if period > 0 => quota = quota.min(limit / period),
                     _ => {}
                 }
 
@@ -654,7 +653,10 @@ pub mod guard {
 ))]
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
-    use libc::{mmap, mprotect};
+    #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+    use libc::{mmap as mmap64, mprotect};
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    use libc::{mmap64, mprotect};
     use libc::{MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE};
 
     use crate::io;
@@ -804,7 +806,7 @@ pub mod guard {
             // read/write permissions and only then mprotect() it to
             // no permissions at all. See issue #50313.
             let stackptr = get_stack_start_aligned()?;
-            let result = mmap(
+            let result = mmap64(
                 stackptr,
                 page_size,
                 PROT_READ | PROT_WRITE,

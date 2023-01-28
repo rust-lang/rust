@@ -5,10 +5,12 @@
 
 use core::alloc::Layout;
 
-#[alloc_error_handler] //~ ERROR the `#[alloc_error_handler]` attribute is an experimental feature
+#[alloc_error_handler] //~ ERROR use of unstable library feature 'alloc_error_handler'
 fn oom(info: Layout) -> ! {
     loop {}
 }
 
 #[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! { loop {} }
+fn panic(_: &core::panic::PanicInfo) -> ! {
+    loop {}
+}

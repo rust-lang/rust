@@ -801,7 +801,7 @@ fn test_ty() {
     assert_eq!(stringify_ty!(*const T), "*const T");
     assert_eq!(stringify_ty!(*mut T), "*mut T");
 
-    // TyKind::Rptr
+    // TyKind::Ref
     assert_eq!(stringify_ty!(&T), "&T");
     assert_eq!(stringify_ty!(&mut T), "&mut T");
     assert_eq!(stringify_ty!(&'a T), "&'a T");

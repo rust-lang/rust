@@ -112,10 +112,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     _ => unreachable!(),
                 };
 
-                let ty = fx.clif_type(res_lane_ty).unwrap();
-
-                let res_lane = fx.bcx.ins().bint(ty, res_lane);
-                fx.bcx.ins().ineg(res_lane)
+                bool_to_zero_or_max_uint(fx, res_lane_ty, res_lane)
             });
         }
 
@@ -716,7 +713,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let res_type =
                 Type::int_with_byte_size(u16::try_from(expected_bytes).unwrap()).unwrap();
-            let mut res = fx.bcx.ins().iconst(res_type, 0);
+            let mut res = type_zero_value(&mut fx.bcx, res_type);
 
             let lanes = match fx.tcx.sess.target.endian {
                 Endian::Big => Box::new(0..lane_count) as Box<dyn Iterator<Item = u64>>,

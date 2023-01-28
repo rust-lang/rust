@@ -368,10 +368,6 @@ impl Definitions {
         LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }
     }
 
-    pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
-        self.table.def_path_hashes.indices().map(|local_def_index| LocalDefId { local_def_index })
-    }
-
     #[inline(always)]
     pub fn local_def_path_hash_to_def_id(
         &self,
@@ -388,6 +384,10 @@ impl Definitions {
 
     pub fn def_path_hash_to_def_index_map(&self) -> &DefPathHashMap {
         &self.table.def_path_hash_to_index
+    }
+
+    pub fn num_definitions(&self) -> usize {
+        self.table.def_path_hashes.len()
     }
 }
 

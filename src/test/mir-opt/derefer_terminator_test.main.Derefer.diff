@@ -54,11 +54,11 @@
           _6 = &_7;                        // scope 2 at $DIR/derefer_terminator_test.rs:+3:18: +3:21
           _5 = &_6;                        // scope 2 at $DIR/derefer_terminator_test.rs:+3:17: +3:21
           _4 = &_5;                        // scope 2 at $DIR/derefer_terminator_test.rs:+3:15: +3:22
--         switchInt((*(*(*(*_4))))) -> [false: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
+-         switchInt((*(*(*(*_4))))) -> [0: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
 +         _10 = deref_copy (*_4);          // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
 +         _11 = deref_copy (*_10);         // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
 +         _12 = deref_copy (*_11);         // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
-+         switchInt((*_12)) -> [false: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
++         switchInt((*_12)) -> [0: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
       }
   
       bb3: {

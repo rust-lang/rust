@@ -37,6 +37,11 @@ LL |     let mut t: T = (0, Box::new(0)); drop(t);
    |         move occurs because `t` has type `(u32, Box<u32>)`, which does not implement the `Copy` trait
 LL |     t.0 = 10; t.1 = Box::new(20);
    |     ^^^^^^^^ value partially assigned here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let mut t: T = (0, Box::new(0)); drop(t.clone());
+   |                                            ++++++++
 
 error[E0381]: partially assigned binding `s` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:123:5
@@ -77,6 +82,11 @@ LL |     let mut t: T = (0, Box::new(0)); drop(t);
    |         move occurs because `t` has type `(u32, Box<u32>)`, which does not implement the `Copy` trait
 LL |     t.0 = 10;
    |     ^^^^^^^^ value partially assigned here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let mut t: T = (0, Box::new(0)); drop(t.clone());
+   |                                            ++++++++
 
 error[E0381]: partially assigned binding `s` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:149:5
@@ -208,6 +218,11 @@ LL |         c2 => {
    |         -- value moved here
 LL |             c.0 = 2;
    |             ^^^^^^^ value partially assigned here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref c2 => {
+   |         +++
 
 error[E0382]: assign to part of moved value: `c`
   --> $DIR/issue-21232-partial-init-and-use.rs:255:13
@@ -219,6 +234,11 @@ LL |         c2 => {
    |         -- value moved here
 LL |             (c.1).0 = 2;
    |             ^^^^^^^^^^^ value partially assigned here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref c2 => {
+   |         +++
 
 error[E0382]: assign to part of moved value: `c.1`
   --> $DIR/issue-21232-partial-init-and-use.rs:263:13
@@ -229,6 +249,10 @@ LL |             ((c.1).1).0 = 3;
    |             ^^^^^^^^^^^^^^^ value partially assigned here after move
    |
    = note: move occurs because `c.1` has type `(i32, (i32, String))`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref c2 => {
+   |         +++
 
 error: aborting due to 23 previous errors
 

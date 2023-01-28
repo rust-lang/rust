@@ -16,6 +16,14 @@ LL |         drop_unsized(y);
    |                      - value moved here
 LL |         drop_unsized(y);
    |                      ^ value used here after move
+   |
+note: consider changing this parameter type in function `drop_unsized` to borrow instead if owning the value isn't necessary
+  --> $DIR/double-move.rs:14:31
+   |
+LL | fn drop_unsized<T: ?Sized>(_: T) {}
+   |    ------------               ^ this parameter takes ownership of the value
+   |    |
+   |    in this function
 
 error[E0382]: use of moved value: `x`
   --> $DIR/double-move.rs:27:22
@@ -47,7 +55,7 @@ LL |         y.foo();
 LL |         y.foo();
    |         ^ value used here after move
    |
-note: this function takes ownership of the receiver `self`, which moves `y`
+note: `Foo::foo` takes ownership of the receiver `self`, which moves `y`
   --> $DIR/double-move.rs:5:12
    |
 LL |     fn foo(self) -> String;

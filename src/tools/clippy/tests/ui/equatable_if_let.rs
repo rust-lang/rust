@@ -23,6 +23,11 @@ struct Struct {
     b: bool,
 }
 
+struct NoPartialEqStruct {
+    a: i32,
+    b: bool,
+}
+
 enum NotPartialEq {
     A,
     B,
@@ -47,6 +52,7 @@ fn main() {
     let e = Enum::UnitVariant;
     let f = NotPartialEq::A;
     let g = NotStructuralEq::A;
+    let h = NoPartialEqStruct { a: 2, b: false };
 
     // true
 
@@ -70,6 +76,7 @@ fn main() {
     if let NotStructuralEq::A = g {}
     if let Some(NotPartialEq::A) = Some(f) {}
     if let Some(NotStructuralEq::A) = Some(g) {}
+    if let NoPartialEqStruct { a: 2, b: false } = h {}
 
     macro_rules! m1 {
         (x) => {

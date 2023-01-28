@@ -18,9 +18,9 @@ fn returns_fn_ptr() -> _ {
 fn returns_closure() -> _ {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types [E0121]
 //~| NOTE not allowed in type signatures
-//~| HELP consider using an `Fn`, `FnMut`, or `FnOnce` trait bound
-//~| NOTE for more information on `Fn` traits and closure types, see
-//        https://doc.rust-lang.org/book/ch13-01-closures.html
+//~| HELP replace with an appropriate return type
+//~| SUGGESTION impl Fn() -> i32
+//~| NOTE for more information on `Fn` traits and closure types
     || 0
 }
 

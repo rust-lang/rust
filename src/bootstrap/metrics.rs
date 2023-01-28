@@ -97,7 +97,7 @@ impl BuildMetrics {
             cpu_threads_count: system.cpus().len(),
             cpu_model: system.cpus()[0].brand().into(),
 
-            memory_total_bytes: system.total_memory() * 1024,
+            memory_total_bytes: system.total_memory(),
         };
         let steps = std::mem::take(&mut state.finished_steps);
 

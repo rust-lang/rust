@@ -408,6 +408,27 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_match_to_let_else() {
+    check_doc_test(
+        "convert_match_to_let_else",
+        r#####"
+//- minicore: option
+fn foo(opt: Option<()>) {
+    let val = $0match opt {
+        Some(it) => it,
+        None => return,
+    };
+}
+"#####,
+        r#####"
+fn foo(opt: Option<()>) {
+    let Some(val) = opt else { return };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_named_struct_to_tuple_struct() {
     check_doc_test(
         "convert_named_struct_to_tuple_struct",
@@ -720,7 +741,7 @@ mod m {
     fn frobnicate() {}
 }
 fn main() {
-    m::frobnicate$0() {}
+    m::frobnicate$0();
 }
 "#####,
         r#####"
@@ -728,7 +749,7 @@ mod m {
     $0pub(crate) fn frobnicate() {}
 }
 fn main() {
-    m::frobnicate() {}
+    m::frobnicate();
 }
 "#####,
     )

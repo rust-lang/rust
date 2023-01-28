@@ -5,7 +5,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, DelayDm};
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{
@@ -23,9 +22,7 @@ pub(crate) fn orphan_check_impl(
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-    if let Some(err) = trait_ref.error_reported() {
-        return Err(err);
-    }
+    trait_ref.error_reported()?;
 
     let ret = do_orphan_check_impl(tcx, trait_ref, impl_def_id);
     if tcx.trait_is_auto(trait_ref.def_id) {
@@ -49,66 +46,14 @@ fn do_orphan_check_impl<'tcx>(
     let sp = tcx.def_span(def_id);
     let tr = impl_.of_trait.as_ref().unwrap();
 
-    // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,
-    // and #84660 where it would otherwise allow unsoundness.
-    if trait_ref.has_opaque_types() {
-        trace!("{:#?}", item);
-        // First we find the opaque type in question.
-        for ty in trait_ref.substs {
-            for ty in ty.walk() {
-                let ty::subst::GenericArgKind::Type(ty) = ty.unpack() else { continue };
-                let ty::Opaque(def_id, _) = *ty.kind() else { continue };
-                trace!(?def_id);
-
-                // Then we search for mentions of the opaque type's type alias in the HIR
-                struct SpanFinder<'tcx> {
-                    sp: Span,
-                    def_id: DefId,
-                    tcx: TyCtxt<'tcx>,
-                }
-                impl<'v, 'tcx> hir::intravisit::Visitor<'v> for SpanFinder<'tcx> {
-                    #[instrument(level = "trace", skip(self, _id))]
-                    fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
-                        // You can't mention an opaque type directly, so we look for type aliases
-                        if let hir::def::Res::Def(hir::def::DefKind::TyAlias, def_id) = path.res {
-                            // And check if that type alias's type contains the opaque type we're looking for
-                            for arg in self.tcx.type_of(def_id).walk() {
-                                if let GenericArgKind::Type(ty) = arg.unpack() {
-                                    if let ty::Opaque(def_id, _) = *ty.kind() {
-                                        if def_id == self.def_id {
-                                            // Finally we update the span to the mention of the type alias
-                                            self.sp = path.span;
-                                            return;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        hir::intravisit::walk_path(self, path)
-                    }
-                }
-
-                let mut visitor = SpanFinder { sp, def_id, tcx };
-                hir::intravisit::walk_item(&mut visitor, item);
-                let reported = tcx
-                    .sess
-                    .struct_span_err(visitor.sp, "cannot implement trait on type alias impl trait")
-                    .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
-                    .emit();
-                return Err(reported);
-            }
-        }
-        span_bug!(sp, "opaque type not found, but `has_opaque_types` is set")
-    }
-
-    match traits::orphan_check(tcx, item.def_id.to_def_id()) {
+    match traits::orphan_check(tcx, item.owner_id.to_def_id()) {
         Ok(()) => {}
         Err(err) => emit_orphan_check_error(
             tcx,
             sp,
             item.span,
             tr.path.span,
-            trait_ref.self_ty(),
+            trait_ref,
             impl_.self_ty.span,
             &impl_.generics,
             err,
@@ -209,11 +154,12 @@ fn emit_orphan_check_error<'tcx>(
     sp: Span,
     full_impl_span: Span,
     trait_span: Span,
-    self_ty: Ty<'tcx>,
+    trait_ref: ty::TraitRef<'tcx>,
     self_ty_span: Span,
     generics: &hir::Generics<'tcx>,
     err: traits::OrphanCheckErr<'tcx>,
 ) -> Result<!, ErrorGuaranteed> {
+    let self_ty = trait_ref.self_ty();
     Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
             let msg = match self_ty.kind() {
@@ -239,11 +185,26 @@ fn emit_orphan_check_error<'tcx>(
                     ty::Adt(def, _) => tcx.mk_adt(*def, ty::List::empty()),
                     _ => ty,
                 };
-                let this = "this".to_string();
-                let (ty, postfix) = match &ty.kind() {
-                    ty::Slice(_) => (this, " because slices are always foreign"),
-                    ty::Array(..) => (this, " because arrays are always foreign"),
-                    ty::Tuple(..) => (this, " because tuples are always foreign"),
+                let msg = |ty: &str, postfix: &str| {
+                    format!("{ty} is not defined in the current crate{postfix}")
+                };
+
+                let this = |name: &str| {
+                    if !trait_ref.def_id.is_local() && !is_target_ty {
+                        msg("this", &format!(" because this is a foreign trait"))
+                    } else {
+                        msg("this", &format!(" because {name} are always foreign"))
+                    }
+                };
+                let msg = match &ty.kind() {
+                    ty::Slice(_) => this("slices"),
+                    ty::Array(..) => this("arrays"),
+                    ty::Tuple(..) => this("tuples"),
+                    ty::Alias(ty::Opaque, ..) => {
+                        "type alias impl trait is treated as if it were foreign, \
+                        because its hidden type could be from a foreign crate"
+                            .to_string()
+                    }
                     ty::RawPtr(ptr_ty) => {
                         emit_newtype_suggestion_for_raw_ptr(
                             full_impl_span,
@@ -253,12 +214,11 @@ fn emit_orphan_check_error<'tcx>(
                             &mut err,
                         );
 
-                        (format!("`{}`", ty), " because raw pointers are always foreign")
+                        msg(&format!("`{ty}`"), " because raw pointers are always foreign")
                     }
-                    _ => (format!("`{}`", ty), ""),
+                    _ => msg(&format!("`{ty}`"), ""),
                 };
 
-                let msg = format!("{} is not defined in the current crate{}", ty, postfix);
                 if is_target_ty {
                     // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
                     err.span_label(self_ty_span, &msg);
@@ -347,7 +307,7 @@ fn emit_newtype_suggestion_for_raw_ptr(
     diag: &mut Diagnostic,
 ) {
     if !self_ty.needs_subst() {
-        let mut_key = if ptr_ty.mutbl == rustc_middle::mir::Mutability::Mut { "mut " } else { "" };
+        let mut_key = ptr_ty.mutbl.prefix_str();
         let msg_sugg = "consider introducing a new wrapper type".to_owned();
         let sugg = vec![
             (

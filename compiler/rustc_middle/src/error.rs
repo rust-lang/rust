@@ -55,3 +55,20 @@ pub struct ConstEvalNonIntError {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(middle_strict_coherence_needs_negative_coherence)]
+pub(crate) struct StrictCoherenceNeedsNegativeCoherence {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub attr_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_const_not_used_in_type_alias)]
+pub(super) struct ConstNotUsedTraitAlias {
+    pub ct: String,
+    #[primary_span]
+    pub span: Span,
+}

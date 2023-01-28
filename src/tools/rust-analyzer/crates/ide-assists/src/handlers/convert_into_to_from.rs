@@ -86,9 +86,9 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
         impl_.syntax().text_range(),
         |builder| {
             builder.replace(src_type.syntax().text_range(), dest_type.to_string());
-            builder.replace(ast_trait.syntax().text_range(), format!("From<{}>", src_type));
+            builder.replace(ast_trait.syntax().text_range(), format!("From<{src_type}>"));
             builder.replace(into_fn_return.syntax().text_range(), "-> Self");
-            builder.replace(into_fn_params.syntax().text_range(), format!("(val: {})", src_type));
+            builder.replace(into_fn_params.syntax().text_range(), format!("(val: {src_type})"));
             builder.replace(into_fn_name.syntax().text_range(), "from");
 
             for s in selfs {

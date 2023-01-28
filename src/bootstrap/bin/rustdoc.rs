@@ -55,13 +55,9 @@ fn main() {
         arg.push(&linker);
         cmd.arg(arg);
     }
-    if env::var_os("RUSTDOC_FUSE_LD_LLD").is_some() {
+    if let Ok(no_threads) = env::var("RUSTDOC_LLD_NO_THREADS") {
         cmd.arg("-Clink-arg=-fuse-ld=lld");
-        if cfg!(windows) {
-            cmd.arg("-Clink-arg=-Wl,/threads:1");
-        } else {
-            cmd.arg("-Clink-arg=-Wl,--threads=1");
-        }
+        cmd.arg(format!("-Clink-arg=-Wl,{}", no_threads));
     }
     // Cargo doesn't pass RUSTDOCFLAGS to proc_macros:
     // https://github.com/rust-lang/cargo/issues/4423

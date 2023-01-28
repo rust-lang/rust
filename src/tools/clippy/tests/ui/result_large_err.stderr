@@ -42,13 +42,29 @@ LL | pub fn param_large_error<R>() -> Result<(), (u128, R, FullyDefinedLargeErro
 error: the `Err`-variant returned from this function is very large
   --> $DIR/result_large_err.rs:48:34
    |
+LL |     _Omg([u8; 512]),
+   |     --------------- the largest variant contains at least 512 bytes
+...
 LL |     pub fn large_enum_error() -> Result<(), Self> {
-   |                                  ^^^^^^^^^^^^^^^^ the `Err`-variant is at least 513 bytes
+   |                                  ^^^^^^^^^^^^^^^^
    |
    = help: try reducing the size of `LargeErrorVariants<()>`, for example by boxing large elements or replacing it with `Box<LargeErrorVariants<()>>`
 
 error: the `Err`-variant returned from this function is very large
-  --> $DIR/result_large_err.rs:54:25
+  --> $DIR/result_large_err.rs:60:30
+   |
+LL |     _Biggest([u8; 1024]),
+   |     -------------------- the largest variant contains at least 1024 bytes
+LL |     _AlsoBig([u8; 512]),
+   |     ------------------- the variant `_AlsoBig` contains at least 512 bytes
+...
+LL |     fn large_enum_error() -> Result<(), Self> {
+   |                              ^^^^^^^^^^^^^^^^
+   |
+   = help: try reducing the size of `MultipleLargeVariants`, for example by boxing large elements or replacing it with `Box<MultipleLargeVariants>`
+
+error: the `Err`-variant returned from this function is very large
+  --> $DIR/result_large_err.rs:66:25
    |
 LL |     fn large_error() -> Result<(), [u8; 512]> {
    |                         ^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes
@@ -56,7 +72,7 @@ LL |     fn large_error() -> Result<(), [u8; 512]> {
    = help: try reducing the size of `[u8; 512]`, for example by boxing large elements or replacing it with `Box<[u8; 512]>`
 
 error: the `Err`-variant returned from this function is very large
-  --> $DIR/result_large_err.rs:73:29
+  --> $DIR/result_large_err.rs:85:29
    |
 LL | pub fn large_union_err() -> Result<(), FullyDefinedUnionError> {
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes
@@ -64,7 +80,7 @@ LL | pub fn large_union_err() -> Result<(), FullyDefinedUnionError> {
    = help: try reducing the size of `FullyDefinedUnionError`, for example by boxing large elements or replacing it with `Box<FullyDefinedUnionError>`
 
 error: the `Err`-variant returned from this function is very large
-  --> $DIR/result_large_err.rs:82:40
+  --> $DIR/result_large_err.rs:94:40
    |
 LL | pub fn param_large_union<T: Copy>() -> Result<(), UnionError<T>> {
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes
@@ -72,7 +88,7 @@ LL | pub fn param_large_union<T: Copy>() -> Result<(), UnionError<T>> {
    = help: try reducing the size of `UnionError<T>`, for example by boxing large elements or replacing it with `Box<UnionError<T>>`
 
 error: the `Err`-variant returned from this function is very large
-  --> $DIR/result_large_err.rs:91:34
+  --> $DIR/result_large_err.rs:103:34
    |
 LL | pub fn array_error_subst<U>() -> Result<(), ArrayError<i32, U>> {
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 128 bytes
@@ -80,12 +96,12 @@ LL | pub fn array_error_subst<U>() -> Result<(), ArrayError<i32, U>> {
    = help: try reducing the size of `ArrayError<i32, U>`, for example by boxing large elements or replacing it with `Box<ArrayError<i32, U>>`
 
 error: the `Err`-variant returned from this function is very large
-  --> $DIR/result_large_err.rs:95:31
+  --> $DIR/result_large_err.rs:107:31
    |
 LL | pub fn array_error<T, U>() -> Result<(), ArrayError<(i32, T), U>> {
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 128 bytes
    |
    = help: try reducing the size of `ArrayError<(i32, T), U>`, for example by boxing large elements or replacing it with `Box<ArrayError<(i32, T), U>>`
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 

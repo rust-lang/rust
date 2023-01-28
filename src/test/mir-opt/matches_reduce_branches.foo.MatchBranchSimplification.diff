@@ -11,12 +11,12 @@
       bb0: {
           StorageLive(_2);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _3 = discriminant(_1);           // scope 0 at $DIR/matches_reduce_branches.rs:+1:17: +1:20
--         switchInt(move _3) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-         switchInt(move _3) -> [0: bb2, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 +         StorageLive(_4);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 +         _4 = move _3;                    // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 +         _2 = Eq(_4, const 0_isize);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 +         StorageDead(_4);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-+         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
++         switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       }
   
       bb1: {
@@ -30,7 +30,7 @@
 -     }
 - 
 -     bb3: {
--         switchInt(move _2) -> [false: bb5, otherwise: bb4]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-         switchInt(move _2) -> [0: bb5, otherwise: bb4]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 -     }
 - 
 -     bb4: {

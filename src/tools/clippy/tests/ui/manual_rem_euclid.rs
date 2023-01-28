@@ -1,7 +1,6 @@
 // run-rustfix
 // aux-build:macro_rules.rs
 
-#![feature(custom_inner_attributes)]
 #![warn(clippy::manual_rem_euclid)]
 
 #[macro_use]
@@ -55,31 +54,27 @@ pub const fn const_rem_euclid_4(num: i32) -> i32 {
     ((num % 4) + 4) % 4
 }
 
+#[clippy::msrv = "1.37"]
 pub fn msrv_1_37() {
-    #![clippy::msrv = "1.37"]
-
     let x: i32 = 10;
     let _: i32 = ((x % 4) + 4) % 4;
 }
 
+#[clippy::msrv = "1.38"]
 pub fn msrv_1_38() {
-    #![clippy::msrv = "1.38"]
-
     let x: i32 = 10;
     let _: i32 = ((x % 4) + 4) % 4;
 }
 
 // For const fns:
+#[clippy::msrv = "1.51"]
 pub const fn msrv_1_51() {
-    #![clippy::msrv = "1.51"]
-
     let x: i32 = 10;
     let _: i32 = ((x % 4) + 4) % 4;
 }
 
+#[clippy::msrv = "1.52"]
 pub const fn msrv_1_52() {
-    #![clippy::msrv = "1.52"]
-
     let x: i32 = 10;
     let _: i32 = ((x % 4) + 4) % 4;
 }

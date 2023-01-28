@@ -78,7 +78,7 @@ fn arg_scalar_pair<C>(
 where
     C: HasDataLayout,
 {
-    data = arg_scalar(cx, &scalar1, offset, data);
+    data = arg_scalar(cx, scalar1, offset, data);
     match (scalar1.primitive(), scalar2.primitive()) {
         (abi::F32, _) => offset += Reg::f32().size,
         (_, abi::F64) => offset += Reg::f64().size,
@@ -87,10 +87,10 @@ where
         _ => {}
     }
 
-    if (offset.raw % 4) != 0 && scalar2.primitive().is_float() {
-        offset.raw += 4 - (offset.raw % 4);
+    if (offset.bytes() % 4) != 0 && scalar2.primitive().is_float() {
+        offset += Size::from_bytes(4 - (offset.bytes() % 4));
     }
-    data = arg_scalar(cx, &scalar2, offset, data);
+    data = arg_scalar(cx, scalar2, offset, data);
     return data;
 }
 
@@ -169,14 +169,14 @@ where
                     has_float: false,
                     arg_attribute: ArgAttribute::default(),
                 },
-                Size { raw: 0 },
+                Size::ZERO,
             );
 
             if data.has_float {
                 // Structure { float, int, int } doesn't like to be handled like
                 // { float, long int }. Other way around it doesn't mind.
                 if data.last_offset < arg.layout.size
-                    && (data.last_offset.raw % 8) != 0
+                    && (data.last_offset.bytes() % 8) != 0
                     && data.prefix_index < data.prefix.len()
                 {
                     data.prefix[data.prefix_index] = Some(Reg::i32());
@@ -185,7 +185,7 @@ where
                 }
 
                 let mut rest_size = arg.layout.size - data.last_offset;
-                if (rest_size.raw % 8) != 0 && data.prefix_index < data.prefix.len() {
+                if (rest_size.bytes() % 8) != 0 && data.prefix_index < data.prefix.len() {
                     data.prefix[data.prefix_index] = Some(Reg::i32());
                     rest_size = rest_size - Reg::i32().size;
                 }
@@ -214,13 +214,13 @@ where
     C: HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {
-        classify_arg(cx, &mut fn_abi.ret, Size { raw: 32 });
+        classify_arg(cx, &mut fn_abi.ret, Size::from_bytes(32));
     }
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg(cx, arg, Size { raw: 16 });
+        classify_arg(cx, arg, Size::from_bytes(16));
     }
 }

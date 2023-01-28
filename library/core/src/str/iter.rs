@@ -585,16 +585,17 @@ where
 impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
     #[inline]
     fn get_end(&mut self) -> Option<&'a str> {
-        if !self.finished && (self.allow_trailing_empty || self.end - self.start > 0) {
+        if !self.finished {
             self.finished = true;
-            // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-            unsafe {
-                let string = self.matcher.haystack().get_unchecked(self.start..self.end);
-                Some(string)
+
+            if self.allow_trailing_empty || self.end - self.start > 0 {
+                // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+                let string = unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) };
+                return Some(string);
             }
-        } else {
-            None
         }
+
+        None
     }
 
     #[inline]
@@ -716,14 +717,14 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
     }
 
     #[inline]
-    fn as_str(&self) -> &'a str {
+    fn remainder(&self) -> Option<&'a str> {
         // `Self::get_end` doesn't change `self.start`
         if self.finished {
-            return "";
+            return None;
         }
 
         // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-        unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) }
+        Some(unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) })
     }
 }
 
@@ -746,44 +747,48 @@ generate_pattern_iterators! {
 }
 
 impl<'a, P: Pattern<'a>> Split<'a, P> {
-    /// Returns remainder of the split string
+    /// Returns remainder of the split string.
+    ///
+    /// If the iterator is empty, returns `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_as_str)]
+    /// #![feature(str_split_remainder)]
     /// let mut split = "Mary had a little lamb".split(' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// assert_eq!(split.remainder(), Some("Mary had a little lamb"));
     /// split.next();
-    /// assert_eq!(split.as_str(), "had a little lamb");
+    /// assert_eq!(split.remainder(), Some("had a little lamb"));
     /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
+    /// assert_eq!(split.remainder(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
+    #[unstable(feature = "str_split_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
+        self.0.remainder()
     }
 }
 
 impl<'a, P: Pattern<'a>> RSplit<'a, P> {
-    /// Returns remainder of the split string
+    /// Returns remainder of the split string.
+    ///
+    /// If the iterator is empty, returns `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_as_str)]
+    /// #![feature(str_split_remainder)]
     /// let mut split = "Mary had a little lamb".rsplit(' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// assert_eq!(split.remainder(), Some("Mary had a little lamb"));
     /// split.next();
-    /// assert_eq!(split.as_str(), "Mary had a little");
+    /// assert_eq!(split.remainder(), Some("Mary had a little"));
     /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
+    /// assert_eq!(split.remainder(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
+    #[unstable(feature = "str_split_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
+        self.0.remainder()
     }
 }
 
@@ -806,44 +811,48 @@ generate_pattern_iterators! {
 }
 
 impl<'a, P: Pattern<'a>> SplitTerminator<'a, P> {
-    /// Returns remainder of the split string
+    /// Returns remainder of the split string.
+    ///
+    /// If the iterator is empty, returns `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_as_str)]
+    /// #![feature(str_split_remainder)]
     /// let mut split = "A..B..".split_terminator('.');
-    /// assert_eq!(split.as_str(), "A..B..");
+    /// assert_eq!(split.remainder(), Some("A..B.."));
     /// split.next();
-    /// assert_eq!(split.as_str(), ".B..");
+    /// assert_eq!(split.remainder(), Some(".B.."));
     /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
+    /// assert_eq!(split.remainder(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
+    #[unstable(feature = "str_split_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
+        self.0.remainder()
     }
 }
 
 impl<'a, P: Pattern<'a>> RSplitTerminator<'a, P> {
-    /// Returns remainder of the split string
+    /// Returns remainder of the split string.
+    ///
+    /// If the iterator is empty, returns `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_as_str)]
+    /// #![feature(str_split_remainder)]
     /// let mut split = "A..B..".rsplit_terminator('.');
-    /// assert_eq!(split.as_str(), "A..B..");
+    /// assert_eq!(split.remainder(), Some("A..B.."));
     /// split.next();
-    /// assert_eq!(split.as_str(), "A..B");
+    /// assert_eq!(split.remainder(), Some("A..B"));
     /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
+    /// assert_eq!(split.remainder(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
+    #[unstable(feature = "str_split_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
+        self.0.remainder()
     }
 }
 
@@ -905,8 +914,8 @@ impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
     }
 
     #[inline]
-    fn as_str(&self) -> &'a str {
-        self.iter.as_str()
+    fn remainder(&self) -> Option<&'a str> {
+        self.iter.remainder()
     }
 }
 
@@ -929,44 +938,48 @@ generate_pattern_iterators! {
 }
 
 impl<'a, P: Pattern<'a>> SplitN<'a, P> {
-    /// Returns remainder of the split string
+    /// Returns remainder of the split string.
+    ///
+    /// If the iterator is empty, returns `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_as_str)]
+    /// #![feature(str_split_remainder)]
     /// let mut split = "Mary had a little lamb".splitn(3, ' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// assert_eq!(split.remainder(), Some("Mary had a little lamb"));
     /// split.next();
-    /// assert_eq!(split.as_str(), "had a little lamb");
+    /// assert_eq!(split.remainder(), Some("had a little lamb"));
     /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
+    /// assert_eq!(split.remainder(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
+    #[unstable(feature = "str_split_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
+        self.0.remainder()
     }
 }
 
 impl<'a, P: Pattern<'a>> RSplitN<'a, P> {
-    /// Returns remainder of the split string
+    /// Returns remainder of the split string.
+    ///
+    /// If the iterator is empty, returns `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_as_str)]
+    /// #![feature(str_split_remainder)]
     /// let mut split = "Mary had a little lamb".rsplitn(3, ' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// assert_eq!(split.remainder(), Some("Mary had a little lamb"));
     /// split.next();
-    /// assert_eq!(split.as_str(), "Mary had a little");
+    /// assert_eq!(split.remainder(), Some("Mary had a little"));
     /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
+    /// assert_eq!(split.remainder(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
+    #[unstable(feature = "str_split_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
+        self.0.remainder()
     }
 }
 
@@ -1239,22 +1252,22 @@ impl<'a> SplitWhitespace<'a> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_whitespace_as_str)]
+    /// #![feature(str_split_whitespace_remainder)]
     ///
     /// let mut split = "Mary had a little lamb".split_whitespace();
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// assert_eq!(split.remainder(), Some("Mary had a little lamb"));
     ///
     /// split.next();
-    /// assert_eq!(split.as_str(), "had a little lamb");
+    /// assert_eq!(split.remainder(), Some("had a little lamb"));
     ///
     /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
+    /// assert_eq!(split.remainder(), None);
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "str_split_whitespace_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.inner.iter.as_str()
+    #[unstable(feature = "str_split_whitespace_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
+        self.inner.iter.remainder()
     }
 }
 
@@ -1290,32 +1303,34 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 impl FusedIterator for SplitAsciiWhitespace<'_> {}
 
 impl<'a> SplitAsciiWhitespace<'a> {
-    /// Returns remainder of the split string
+    /// Returns remainder of the split string.
+    ///
+    /// If the iterator is empty, returns `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_whitespace_as_str)]
+    /// #![feature(str_split_whitespace_remainder)]
     ///
     /// let mut split = "Mary had a little lamb".split_ascii_whitespace();
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// assert_eq!(split.remainder(), Some("Mary had a little lamb"));
     ///
     /// split.next();
-    /// assert_eq!(split.as_str(), "had a little lamb");
+    /// assert_eq!(split.remainder(), Some("had a little lamb"));
     ///
     /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
+    /// assert_eq!(split.remainder(), None);
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "str_split_whitespace_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
+    #[unstable(feature = "str_split_whitespace_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
         if self.inner.iter.iter.finished {
-            return "";
+            return None;
         }
 
         // SAFETY: Slice is created from str.
-        unsafe { crate::str::from_utf8_unchecked(&self.inner.iter.iter.v) }
+        Some(unsafe { crate::str::from_utf8_unchecked(&self.inner.iter.iter.v) })
     }
 }
 
@@ -1358,23 +1373,25 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
 impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
 
 impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
-    /// Returns remainder of the split string
+    /// Returns remainder of the split string.
+    ///
+    /// If the iterator is empty, returns `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_inclusive_as_str)]
+    /// #![feature(str_split_inclusive_remainder)]
     /// let mut split = "Mary had a little lamb".split_inclusive(' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    /// assert_eq!(split.remainder(), Some("Mary had a little lamb"));
     /// split.next();
-    /// assert_eq!(split.as_str(), "had a little lamb");
+    /// assert_eq!(split.remainder(), Some("had a little lamb"));
     /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
+    /// assert_eq!(split.remainder(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
+    #[unstable(feature = "str_split_inclusive_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
+        self.0.remainder()
     }
 }
 

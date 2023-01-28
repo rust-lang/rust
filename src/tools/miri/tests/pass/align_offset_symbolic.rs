@@ -1,4 +1,7 @@
 //@compile-flags: -Zmiri-symbolic-alignment-check
+#![feature(strict_provenance)]
+
+use std::ptr;
 
 fn test_align_offset() {
     let d = Box::new([0u32; 4]);
@@ -16,6 +19,9 @@ fn test_align_offset() {
     assert_eq!(raw.wrapping_offset(2).align_offset(2), 0);
     assert_eq!(raw.wrapping_offset(2).align_offset(4), 2);
     assert_eq!(raw.wrapping_offset(2).align_offset(8), usize::MAX); // requested alignment higher than allocation alignment
+
+    let p = ptr::invalid::<()>(1);
+    assert_eq!(p.align_offset(1), 0);
 }
 
 fn test_align_to() {

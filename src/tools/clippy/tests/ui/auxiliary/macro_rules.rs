@@ -142,8 +142,10 @@ macro_rules! equatable_if_let {
 }
 
 #[macro_export]
-macro_rules! almost_complete_letter_range {
+macro_rules! almost_complete_range {
     () => {
         let _ = 'a'..'z';
+        let _ = 'A'..'Z';
+        let _ = '0'..'9';
     };
 }

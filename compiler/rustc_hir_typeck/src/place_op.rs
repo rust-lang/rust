@@ -90,8 +90,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
-        err.emit();
-        Some((self.tcx.ty_error(), self.tcx.ty_error()))
+        let reported = err.emit();
+        Some((
+            self.tcx.ty_error_with_guaranteed(reported),
+            self.tcx.ty_error_with_guaranteed(reported),
+        ))
     }
 
     /// To type-check `base_expr[index_expr]`, we progressively autoderef
@@ -222,7 +225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         imm_tr.and_then(|trait_did| {
             self.lookup_method_in_trait(
-                span,
+                self.misc(span),
                 Ident::with_dummy_span(imm_op),
                 trait_did,
                 base_ty,
@@ -261,7 +264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         mut_tr.and_then(|trait_did| {
             self.lookup_method_in_trait(
-                span,
+                self.misc(span),
                 Ident::with_dummy_span(mut_op),
                 trait_did,
                 base_ty,

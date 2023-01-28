@@ -12,9 +12,6 @@ LL |     opts.get(opt.as_ref());
              where T: ?Sized;
 note: required by a bound in `HashMap::<K, V, S>::get`
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-   |
-LL |         K: Borrow<Q>,
-   |            ^^^^^^^^^ required by this bound in `HashMap::<K, V, S>::get`
 help: consider specifying the generic argument
    |
 LL |     opts.get::<Q>(opt.as_ref());
@@ -51,7 +48,10 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
            - impl From<NonZeroU32> for u32;
            - impl From<bool> for u32;
            - impl From<char> for u32;
-           and 3 more
+           - impl From<u16> for u32;
+           - impl From<u8> for u32;
+           - impl<T> From<!> for T;
+           - impl<T> From<T> for T;
 help: try using a fully qualified path to specify the expected types
    |
 LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(<u32 as Into<T>>::into(0u32))).collect();

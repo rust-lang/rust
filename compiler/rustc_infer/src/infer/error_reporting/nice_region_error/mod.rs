@@ -10,6 +10,7 @@ pub mod find_anon_type;
 mod mismatched_static_lifetime;
 mod named_anon_conflict;
 mod placeholder_error;
+mod placeholder_relation;
 mod static_impl_trait;
 mod trait_impl_difference;
 mod util;
@@ -52,7 +53,9 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
     pub fn try_report_from_nll(&self) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         // Due to the improved diagnostics returned by the MIR borrow checker, only a subset of
         // the nice region errors are required when running under the MIR borrow checker.
-        self.try_report_named_anon_conflict().or_else(|| self.try_report_placeholder_conflict())
+        self.try_report_named_anon_conflict()
+            .or_else(|| self.try_report_placeholder_conflict())
+            .or_else(|| self.try_report_placeholder_relation())
     }
 
     pub fn try_report(&self) -> Option<ErrorGuaranteed> {

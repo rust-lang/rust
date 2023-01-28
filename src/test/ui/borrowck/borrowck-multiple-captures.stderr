@@ -40,6 +40,11 @@ LL |     thread::spawn(move|| {
 ...
 LL |         drop(x1);
    |              -- use occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x1.clone());
+   |            ++++++++
 
 error[E0382]: use of moved value: `x2`
   --> $DIR/borrowck-multiple-captures.rs:27:19
@@ -53,6 +58,11 @@ LL |     thread::spawn(move|| {
 ...
 LL |         drop(x2);
    |              -- use occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x2.clone());
+   |            ++++++++
 
 error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-multiple-captures.rs:41:14
@@ -100,6 +110,11 @@ LL |     thread::spawn(move|| {
 LL |
 LL |         drop(x);
    |              - use occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x.clone());
+   |           ++++++++
 
 error: aborting due to 8 previous errors
 

@@ -42,16 +42,17 @@
 //! wildcards, see [`SplitWildcard`]; for integer ranges, see [`SplitIntRange`]; for slices, see
 //! [`SplitVarLenSlice`].
 
-use self::Constructor::*;
-use self::SliceKind::*;
+use std::cell::Cell;
+use std::cmp::{self, max, min, Ordering};
+use std::fmt;
+use std::iter::once;
+use std::ops::RangeInclusive;
 
-use super::compare_const_vals;
-use super::usefulness::{MatchCheckCtxt, PatCtxt};
+use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::captures::Captures;
-use rustc_index::vec::Idx;
-
 use rustc_hir::{HirId, RangeEnd};
+use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, Field};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
@@ -61,12 +62,11 @@ use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
 
-use smallvec::{smallvec, SmallVec};
-use std::cell::Cell;
-use std::cmp::{self, max, min, Ordering};
-use std::fmt;
-use std::iter::{once, IntoIterator};
-use std::ops::RangeInclusive;
+use self::Constructor::*;
+use self::SliceKind::*;
+
+use super::compare_const_vals;
+use super::usefulness::{MatchCheckCtxt, PatCtxt};
 
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
 fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
@@ -147,11 +147,7 @@ impl IntRange {
                         // straight to the result, after doing a bit of checking. (We
                         // could remove this branch and just fall through, which
                         // is more general but much slower.)
-                        if let Ok(Ok(bits)) = scalar.to_bits_or_ptr_internal(target_size) {
-                            return Some(bits);
-                        } else {
-                            return None;
-                        }
+                        return scalar.to_bits_or_ptr_internal(target_size).unwrap().left();
                     }
                     mir::ConstantKind::Ty(c) => match c.kind() {
                         ty::ConstKind::Value(_) => bug!(
@@ -408,7 +404,7 @@ impl SplitIntRange {
     }
 
     /// Iterate over the contained ranges.
-    fn iter<'a>(&'a self) -> impl Iterator<Item = IntRange> + Captures<'a> {
+    fn iter(&self) -> impl Iterator<Item = IntRange> + Captures<'_> {
         use IntBorder::*;
 
         let self_range = Self::to_borders(self.range.clone());
@@ -616,7 +612,7 @@ impl SplitVarLenSlice {
     }
 
     /// Iterate over the partition of this slice.
-    fn iter<'a>(&'a self) -> impl Iterator<Item = Slice> + Captures<'a> {
+    fn iter(&self) -> impl Iterator<Item = Slice> + Captures<'_> {
         let smaller_lengths = match self.array_len {
             // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
             // is fixed-length or variable-length, it will be the only relevant slice to output

@@ -299,7 +299,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 };
                 kind!("Float(_, {float_ty})");
             },
-            LitKind::ByteStr(ref vec) => {
+            LitKind::ByteStr(ref vec, _) => {
                 bind!(self, vec);
                 kind!("ByteStr(ref {vec})");
                 chain!(self, "let [{:?}] = **{vec}", vec.value);

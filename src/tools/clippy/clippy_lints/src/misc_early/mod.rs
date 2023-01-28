@@ -9,7 +9,8 @@ mod zero_prefixed_literal;
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{Expr, ExprKind, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
+use rustc_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
+use rustc_ast::token;
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
@@ -374,42 +375,43 @@ impl EarlyLintPass for MiscEarlyLints {
             return;
         }
 
-        if let ExprKind::Lit(ref lit) = expr.kind {
-            MiscEarlyLints::check_lit(cx, lit);
+        if let ExprKind::Lit(lit) = expr.kind {
+            MiscEarlyLints::check_lit(cx, lit, expr.span);
         }
         double_neg::check(cx, expr);
     }
 }
 
 impl MiscEarlyLints {
-    fn check_lit(cx: &EarlyContext<'_>, lit: &Lit) {
+    fn check_lit(cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
         // We test if first character in snippet is a number, because the snippet could be an expansion
         // from a built-in macro like `line!()` or a proc-macro like `#[wasm_bindgen]`.
         // Note that this check also covers special case that `line!()` is eagerly expanded by compiler.
         // See <https://github.com/rust-lang/rust-clippy/issues/4507> for a regression.
         // FIXME: Find a better way to detect those cases.
-        let lit_snip = match snippet_opt(cx, lit.span) {
+        let lit_snip = match snippet_opt(cx, span) {
             Some(snip) if snip.chars().next().map_or(false, |c| c.is_ascii_digit()) => snip,
             _ => return,
         };
 
-        if let LitKind::Int(value, lit_int_type) = lit.kind {
+        let lit_kind = LitKind::from_token_lit(lit);
+        if let Ok(LitKind::Int(value, lit_int_type)) = lit_kind {
             let suffix = match lit_int_type {
                 LitIntType::Signed(ty) => ty.name_str(),
                 LitIntType::Unsigned(ty) => ty.name_str(),
                 LitIntType::Unsuffixed => "",
             };
-            literal_suffix::check(cx, lit, &lit_snip, suffix, "integer");
+            literal_suffix::check(cx, span, &lit_snip, suffix, "integer");
             if lit_snip.starts_with("0x") {
-                mixed_case_hex_literals::check(cx, lit, suffix, &lit_snip);
+                mixed_case_hex_literals::check(cx, span, suffix, &lit_snip);
             } else if lit_snip.starts_with("0b") || lit_snip.starts_with("0o") {
                 // nothing to do
             } else if value != 0 && lit_snip.starts_with('0') {
-                zero_prefixed_literal::check(cx, lit, &lit_snip);
+                zero_prefixed_literal::check(cx, span, &lit_snip);
             }
-        } else if let LitKind::Float(_, LitFloatType::Suffixed(float_ty)) = lit.kind {
+        } else if let Ok(LitKind::Float(_, LitFloatType::Suffixed(float_ty))) = lit_kind {
             let suffix = float_ty.name_str();
-            literal_suffix::check(cx, lit, &lit_snip, suffix, "float");
+            literal_suffix::check(cx, span, &lit_snip, suffix, "float");
         }
     }
 }

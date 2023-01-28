@@ -194,7 +194,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
 
                                         for val in values {
                                             if let Some(LitKind::Str(s, _)) =
-                                                val.literal().map(|lit| &lit.kind)
+                                                val.lit().map(|lit| &lit.kind)
                                             {
                                                 ident_values.insert(s.to_string());
                                             } else {
@@ -304,7 +304,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 parse_sess_created(&mut sess.parse_sess);
             }
 
-            let temps_dir = sess.opts.unstable_opts.temps_dir.as_ref().map(|o| PathBuf::from(&o));
+            let temps_dir = sess.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
 
             let compiler = Compiler {
                 sess: Lrc::new(sess),

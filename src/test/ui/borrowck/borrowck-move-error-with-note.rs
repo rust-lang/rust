@@ -1,3 +1,5 @@
+// run-rustfix
+#![allow(unused)]
 enum Foo {
     Foo1(Box<u32>, Box<u32>),
     Foo2(Box<u32>),

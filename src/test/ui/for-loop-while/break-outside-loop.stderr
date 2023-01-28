@@ -9,11 +9,11 @@ LL |             break 'lab;
    |
    = note: labels are unreachable through functions, closures, async blocks and modules
 
-error[E0268]: `break` outside of a loop
+error[E0268]: `break` outside of a loop or labeled block
   --> $DIR/break-outside-loop.rs:10:15
    |
 LL |     let pth = break;
-   |               ^^^^^ cannot `break` outside of a loop
+   |               ^^^^^ cannot `break` outside of a loop or labeled block
 
 error[E0268]: `continue` outside of a loop
   --> $DIR/break-outside-loop.rs:11:17
@@ -38,11 +38,11 @@ LL |             if cond() { break }
 LL |             if cond() { continue }
    |                         ^^^^^^^^ cannot `continue` inside of a closure
 
-error[E0268]: `break` outside of a loop
+error[E0268]: `break` outside of a loop or labeled block
   --> $DIR/break-outside-loop.rs:24:25
    |
 LL |     let unconstrained = break;
-   |                         ^^^^^ cannot `break` outside of a loop
+   |                         ^^^^^ cannot `break` outside of a loop or labeled block
 
 error[E0267]: `break` inside of a closure
   --> $DIR/break-outside-loop.rs:30:13

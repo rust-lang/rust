@@ -19,7 +19,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
-use rustc_target::spec::TargetTriple;
+use rustc_target::spec::{Target, TargetTriple};
 use tempfile::Builder as TempFileBuilder;
 
 use std::env;
@@ -293,6 +293,16 @@ struct UnusedExterns {
     unused_extern_names: Vec<String>,
 }
 
+fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
+    let exe_suffix = match target {
+        TargetTriple::TargetTriple(_) => Target::expect_builtin(target).options.exe_suffix,
+        TargetTriple::TargetJson { contents, .. } => {
+            Target::from_json(contents.parse().unwrap()).unwrap().0.options.exe_suffix
+        }
+    };
+    input + &exe_suffix
+}
+
 fn run_test(
     test: &str,
     crate_name: &str,
@@ -313,7 +323,9 @@ fn run_test(
     let (test, line_offset, supports_color) =
         make_test(test, Some(crate_name), lang_string.test_harness, opts, edition, Some(test_id));
 
-    let output_file = outdir.path().join("rust_out");
+    // Make sure we emit well-formed executable names for our target.
+    let rust_out = add_exe_suffix("rust_out".to_owned(), &target);
+    let output_file = outdir.path().join(rust_out);
 
     let rustc_binary = rustdoc_options
         .test_builder
@@ -551,6 +563,7 @@ pub(crate) fn make_test(
                 false,
                 Some(80),
                 false,
+                false,
             )
             .supports_color();
 
@@ -563,6 +576,7 @@ pub(crate) fn make_test(
                 false,
                 false,
                 None,
+                false,
                 false,
             );
 
@@ -747,6 +761,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
                 false,
                 None,
+                false,
                 false,
             );
 
@@ -1290,7 +1305,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) {
-        self.visit_testable(v.ident.to_string(), v.id, v.span, |this| {
+        self.visit_testable(v.ident.to_string(), v.hir_id, v.span, |this| {
             intravisit::walk_variant(this, v);
         });
     }

@@ -3,11 +3,9 @@ error[E0599]: no method named `finish` found for struct `DefaultHasher` in the c
    |
 LL |     h.finish()
    |       ^^^^^^ method not found in `DefaultHasher`
+  --> $SRC_DIR/core/src/hash/mod.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/hash/mod.rs:LL:COL
-   |
-LL |     fn finish(&self) -> u64;
-   |        ------ the method is available for `DefaultHasher` here
+   = note: the method is available for `DefaultHasher` here
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:

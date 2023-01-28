@@ -1,5 +1,5 @@
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:12:13
+  --> $DIR/large_moves.rs:13:13
    |
 LL |       let x = async {
    |  _____________^
@@ -18,7 +18,7 @@ LL | #![deny(large_assignments)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:18:14
+  --> $DIR/large_moves.rs:19:14
    |
 LL |     let z = (x, 42);
    |              ^ value moved from here
@@ -26,7 +26,7 @@ LL |     let z = (x, 42);
    = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:18:13
+  --> $DIR/large_moves.rs:19:13
    |
 LL |     let z = (x, 42);
    |             ^^^^^^^ value moved from here
@@ -34,7 +34,7 @@ LL |     let z = (x, 42);
    = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:20:13
+  --> $DIR/large_moves.rs:21:13
    |
 LL |     let a = z.0;
    |             ^^^ value moved from here

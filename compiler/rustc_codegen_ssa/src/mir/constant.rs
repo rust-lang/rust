@@ -42,7 +42,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         self.cx.tcx().const_eval_resolve(ty::ParamEnv::reveal_all(), uv, None).map_err(|err| {
-            self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
+            match err {
+                ErrorHandled::Reported(_) => {
+                    self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
+                }
+                ErrorHandled::TooGeneric => {
+                    span_bug!(constant.span, "codegen encountered polymorphic constant: {:?}", err);
+                }
+            }
             err
         })
     }

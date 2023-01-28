@@ -6,7 +6,7 @@
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_def::{path::ModPath, TraitId};
+use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
@@ -33,7 +33,6 @@ diagnostics![
     BreakOutsideOfLoop,
     InactiveCode,
     IncorrectCase,
-    IncorrectTryExpr,
     InvalidDeriveTarget,
     MacroError,
     MalformedDerive,
@@ -41,7 +40,6 @@ diagnostics![
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
-    NotImplemented,
     NoSuchField,
     ReplaceFilterMapNextWithFindMap,
     TypeMismatch,
@@ -154,16 +152,6 @@ pub struct MismatchedArgCount {
     pub call_expr: InFile<AstPtr<ast::Expr>>,
     pub expected: usize,
     pub found: usize,
-}
-#[derive(Debug)]
-pub struct IncorrectTryExpr {
-    pub expr: InFile<AstPtr<ast::Expr>>,
-}
-#[derive(Debug)]
-pub struct NotImplemented {
-    pub expr: InFile<AstPtr<ast::Expr>>,
-    pub trait_: TraitId,
-    pub ty: Type,
 }
 
 #[derive(Debug)]

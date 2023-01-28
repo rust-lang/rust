@@ -1,6 +1,7 @@
 // ignore-tidy-linelength
 // stderr-per-bitwidth
 #![allow(invalid_value)]
+#![feature(const_ptr_read)]
 
 use std::mem;
 
@@ -33,11 +34,9 @@ const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
 
 const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
 //~^ ERROR evaluation of constant value failed
-//~| ERROR evaluation of constant value failed
 
 const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
 //~^ ERROR evaluation of constant value failed
-//~| ERROR evaluation of constant value failed
 
 const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
 //~^ ERROR it is undefined behavior to use this value
@@ -58,5 +57,13 @@ const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
 //~^ ERROR it is undefined behavior to use this value
 const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
 //~^ ERROR it is undefined behavior to use this value
+
+
+const UNALIGNED_READ: () = unsafe {
+    let x = &[0u8; 4];
+    let ptr = x.as_ptr().cast::<u32>();
+    ptr.read(); //~ inside `UNALIGNED_READ`
+};
+
 
 fn main() {}

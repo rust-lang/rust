@@ -7,6 +7,11 @@ extern crate rustc_serialize;
 
 use rustc_macros::{Decodable, Encodable};
 
+// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// files.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
+
 pub const other: u8 = 1;
 pub const f: u8 = 1;
 pub const d: u8 = 1;

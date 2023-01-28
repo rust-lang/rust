@@ -1,16 +1,16 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::higher;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, msrvs, path_to_local};
+use clippy_utils::{get_parent_expr, in_constant, is_integer_const, path_to_local};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use std::cmp::Ordering;
@@ -161,12 +161,12 @@ declare_clippy_lint! {
 }
 
 pub struct Ranges {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl Ranges {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -181,7 +181,7 @@ impl_lint_pass!(Ranges => [
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref op, l, r) = expr.kind {
-            if meets_msrv(self.msrv, msrvs::RANGE_CONTAINS) {
+            if self.msrv.meets(msrvs::RANGE_CONTAINS) {
                 check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
             }
         }

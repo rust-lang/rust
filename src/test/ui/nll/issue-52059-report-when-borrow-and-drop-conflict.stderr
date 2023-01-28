@@ -36,7 +36,11 @@ LL |     let p = s.url; p
    |             |
    |             cannot move out of here
    |             move occurs because `s.url` has type `&mut String`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&s.url`
+   |
+help: consider borrowing here
+   |
+LL |     let p = &s.url; p
+   |             +
 
 error: aborting due to 4 previous errors
 

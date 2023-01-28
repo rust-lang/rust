@@ -222,6 +222,7 @@ fn main() {
         .file("llvm-wrapper/RustWrapper.cpp")
         .file("llvm-wrapper/ArchiveWrapper.cpp")
         .file("llvm-wrapper/CoverageMappingWrapper.cpp")
+        .file("llvm-wrapper/SymbolWrapper.cpp")
         .file("llvm-wrapper/Linker.cpp")
         .cpp(true)
         .cpp_link_stdlib(None) // we handle this below
@@ -237,18 +238,20 @@ fn main() {
 
     if !is_crossed {
         cmd.arg("--system-libs");
-    } else if target.contains("windows-gnu") {
-        println!("cargo:rustc-link-lib=shell32");
-        println!("cargo:rustc-link-lib=uuid");
-    } else if target.contains("netbsd") || target.contains("haiku") || target.contains("darwin") {
-        println!("cargo:rustc-link-lib=z");
-    } else if target.starts_with("arm")
+    }
+
+    if (target.starts_with("arm") && !target.contains("freebsd"))
         || target.starts_with("mips-")
         || target.starts_with("mipsel-")
         || target.starts_with("powerpc-")
     {
         // 32-bit targets need to link libatomic.
         println!("cargo:rustc-link-lib=atomic");
+    } else if target.contains("windows-gnu") {
+        println!("cargo:rustc-link-lib=shell32");
+        println!("cargo:rustc-link-lib=uuid");
+    } else if target.contains("netbsd") || target.contains("haiku") || target.contains("darwin") {
+        println!("cargo:rustc-link-lib=z");
     }
     cmd.args(&components);
 
@@ -334,7 +337,7 @@ fn main() {
         "c++"
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required
-        "stdc++_pic"
+        "stdc++_p"
     } else if llvm_use_libcxx.is_some() {
         "c++"
     } else {

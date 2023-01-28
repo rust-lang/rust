@@ -18,9 +18,7 @@ LL |
 LL |     1_u32
    |     ----- return type was inferred to be `u32` here
    |
-   = help: the following other types implement trait `Traitor<N, M>`:
-             <u32 as Traitor<N, 2>>
-             <u64 as Traitor<1, 2>>
+   = help: the trait `Traitor<N, 2>` is implemented for `u32`
 
 error[E0277]: the trait bound `u64: Traitor` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:21:13
@@ -31,9 +29,7 @@ LL |
 LL |     1_u64
    |     ----- return type was inferred to be `u64` here
    |
-   = help: the following other types implement trait `Traitor<N, M>`:
-             <u32 as Traitor<N, 2>>
-             <u64 as Traitor<1, 2>>
+   = help: the trait `Traitor<1, 2>` is implemented for `u64`
 
 error: aborting due to 3 previous errors
 

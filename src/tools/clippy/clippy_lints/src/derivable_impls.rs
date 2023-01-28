@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
                 self_ty,
                 ..
             }) = item.kind;
-            if !cx.tcx.has_attr(item.def_id.to_def_id(), sym::automatically_derived);
+            if !cx.tcx.has_attr(item.owner_id.to_def_id(), sym::automatically_derived);
             if !item.span.from_expansion();
             if let Some(def_id) = trait_ref.trait_def_id();
             if cx.tcx.is_diagnostic_item(sym::Default, def_id);
@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir);
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
-            if let Some(adt_def) = cx.tcx.type_of(item.def_id).ty_adt_def();
+            if let Some(adt_def) = cx.tcx.type_of(item.owner_id).ty_adt_def();
             if let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|attr| attr.doc_str().is_some());
             if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);

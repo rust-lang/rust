@@ -15,5 +15,5 @@ trait Const {
 impl<T> Const for T {}
 
 pub fn main() -> () {
-    dbg!(i32::CONSTANT); //~ ERROR erroneous constant used
+    dbg!(i32::CONSTANT); //~ constant
 }

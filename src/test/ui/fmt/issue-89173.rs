@@ -10,5 +10,5 @@ fn main() {
     //~| NOTE: argument never used
     //~| NOTE: argument never used
     //~| NOTE: format specifiers use curly braces, and you have to use a positional or named parameter for the width
-    //~| NOTE: printf formatting not supported
+    //~| NOTE: printf formatting is not supported
 }

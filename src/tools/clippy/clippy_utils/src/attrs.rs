@@ -125,19 +125,19 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
     }
 }
 
-pub fn get_unique_inner_attr(sess: &Session, attrs: &[ast::Attribute], name: &'static str) -> Option<ast::Attribute> {
-    let mut unique_attr = None;
+pub fn get_unique_attr<'a>(
+    sess: &'a Session,
+    attrs: &'a [ast::Attribute],
+    name: &'static str,
+) -> Option<&'a ast::Attribute> {
+    let mut unique_attr: Option<&ast::Attribute> = None;
     for attr in get_attr(sess, attrs, name) {
-        match attr.style {
-            ast::AttrStyle::Inner if unique_attr.is_none() => unique_attr = Some(attr.clone()),
-            ast::AttrStyle::Inner => {
-                sess.struct_span_err(attr.span, &format!("`{name}` is defined multiple times"))
-                    .span_note(unique_attr.as_ref().unwrap().span, "first definition found here")
-                    .emit();
-            },
-            ast::AttrStyle::Outer => {
-                sess.span_err(attr.span, format!("`{name}` cannot be an outer attribute"));
-            },
+        if let Some(duplicate) = unique_attr {
+            sess.struct_span_err(attr.span, &format!("`{name}` is defined multiple times"))
+                .span_note(duplicate.span, "first definition found here")
+                .emit();
+        } else {
+            unique_attr = Some(attr);
         }
     }
     unique_attr

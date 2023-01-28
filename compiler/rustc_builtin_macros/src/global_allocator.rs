@@ -20,27 +20,23 @@ pub fn expand(
     check_builtin_macro_attribute(ecx, meta_item, sym::global_allocator);
 
     let orig_item = item.clone();
-    let not_static = || {
-        ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
-        vec![orig_item.clone()]
-    };
 
     // Allow using `#[global_allocator]` on an item statement
     // FIXME - if we get deref patterns, use them to reduce duplication here
-    let (item, is_stmt, ty_span) = match &item {
-        Annotatable::Item(item) => match item.kind {
-            ItemKind::Static(ref ty, ..) => (item, false, ecx.with_def_site_ctxt(ty.span)),
-            _ => return not_static(),
-        },
-        Annotatable::Stmt(stmt) => match &stmt.kind {
-            StmtKind::Item(item_) => match item_.kind {
-                ItemKind::Static(ref ty, ..) => (item_, true, ecx.with_def_site_ctxt(ty.span)),
-                _ => return not_static(),
-            },
-            _ => return not_static(),
-        },
-        _ => return not_static(),
-    };
+    let (item, is_stmt, ty_span) =
+        if let Annotatable::Item(item) = &item
+            && let ItemKind::Static(ty, ..) = &item.kind
+        {
+            (item, false, ecx.with_def_site_ctxt(ty.span))
+        } else if let Annotatable::Stmt(stmt) = &item
+            && let StmtKind::Item(item) = &stmt.kind
+            && let ItemKind::Static(ty, ..) = &item.kind
+        {
+            (item, true, ecx.with_def_site_ctxt(ty.span))
+        } else {
+            ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
+            return vec![orig_item];
+        };
 
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
@@ -115,9 +111,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn attrs(&self) -> AttrVec {
-        let special = sym::rustc_std_internal_symbol;
-        let special = self.cx.meta_word(self.span, special);
-        thin_vec![self.cx.attribute(special)]
+        thin_vec![self.cx.attr_word(sym::rustc_std_internal_symbol, self.span)]
     }
 
     fn arg_ty(

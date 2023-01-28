@@ -7,14 +7,14 @@ use crate::errors::{
 use crate::Session;
 use rustc_ast as ast;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use std::path::{Path, PathBuf};
 
 pub fn out_filename(
     sess: &Session,
     crate_type: CrateType,
     outputs: &OutputFilenames,
-    crate_name: &str,
+    crate_name: Symbol,
 ) -> PathBuf {
     let default_filename = filename_for_input(sess, crate_type, crate_name, outputs);
     let out_filename = outputs
@@ -45,9 +45,9 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) -> String {
-    let validate = |s: String, span: Option<Span>| {
-        validate_crate_name(sess, &s, span);
+pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) -> Symbol {
+    let validate = |s: Symbol, span: Option<Span>| {
+        validate_crate_name(sess, s, span);
         s
     };
 
@@ -59,38 +59,39 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
         sess.find_by_name(attrs, sym::crate_name).and_then(|at| at.value_str().map(|s| (at, s)));
 
     if let Some(ref s) = sess.opts.crate_name {
+        let s = Symbol::intern(s);
         if let Some((attr, name)) = attr_crate_name {
-            if name.as_str() != s {
+            if name != s {
                 sess.emit_err(CrateNameDoesNotMatch { span: attr.span, s, name });
             }
         }
-        return validate(s.clone(), None);
+        return validate(s, None);
     }
 
     if let Some((attr, s)) = attr_crate_name {
-        return validate(s.to_string(), Some(attr.span));
+        return validate(s, Some(attr.span));
     }
     if let Input::File(ref path) = *input {
         if let Some(s) = path.file_stem().and_then(|s| s.to_str()) {
             if s.starts_with('-') {
                 sess.emit_err(CrateNameInvalid { s });
             } else {
-                return validate(s.replace('-', "_"), None);
+                return validate(Symbol::intern(&s.replace('-', "_")), None);
             }
         }
     }
 
-    "rust_out".to_string()
+    Symbol::intern("rust_out")
 }
 
-pub fn validate_crate_name(sess: &Session, s: &str, sp: Option<Span>) {
+pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
     let mut err_count = 0;
     {
         if s.is_empty() {
             err_count += 1;
             sess.emit_err(CrateNameEmpty { span: sp });
         }
-        for c in s.chars() {
+        for c in s.as_str().chars() {
             if c.is_alphanumeric() {
                 continue;
             }
@@ -109,7 +110,7 @@ pub fn validate_crate_name(sess: &Session, s: &str, sp: Option<Span>) {
 
 pub fn filename_for_metadata(
     sess: &Session,
-    crate_name: &str,
+    crate_name: Symbol,
     outputs: &OutputFilenames,
 ) -> PathBuf {
     // If the command-line specified the path, use that directly.
@@ -132,7 +133,7 @@ pub fn filename_for_metadata(
 pub fn filename_for_input(
     sess: &Session,
     crate_type: CrateType,
-    crate_name: &str,
+    crate_name: Symbol,
     outputs: &OutputFilenames,
 ) -> PathBuf {
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);

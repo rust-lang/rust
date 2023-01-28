@@ -209,17 +209,19 @@ impl ast::String {
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
         let mut buf = String::new();
-        let mut text_iter = text.chars();
+        let mut prev_end = 0;
         let mut has_error = false;
         unescape_literal(text, Mode::Str, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
             (Ok(c), false) => buf.push(c),
-            (Ok(c), true) if char_range.len() == 1 && Some(c) == text_iter.next() => (),
+            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+                prev_end = char_range.end
+            }
             (Ok(c), true) => {
                 buf.reserve_exact(text.len());
-                buf.push_str(&text[..char_range.start]);
+                buf.push_str(&text[..prev_end]);
                 buf.push(c);
             }
             (Err(_), _) => has_error = true,
@@ -252,17 +254,19 @@ impl ast::ByteString {
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
         let mut buf: Vec<u8> = Vec::new();
-        let mut text_iter = text.chars();
+        let mut prev_end = 0;
         let mut has_error = false;
         unescape_literal(text, Mode::ByteStr, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
             (Ok(c), false) => buf.push(c as u8),
-            (Ok(c), true) if char_range.len() == 1 && Some(c) == text_iter.next() => (),
+            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+                prev_end = char_range.end
+            }
             (Ok(c), true) => {
                 buf.reserve_exact(text.len());
-                buf.extend_from_slice(text[..char_range.start].as_bytes());
+                buf.extend_from_slice(text[..prev_end].as_bytes());
                 buf.push(c as u8);
             }
             (Err(_), _) => has_error = true,
@@ -445,6 +449,36 @@ mod tests {
         check_string_value(r"\foobar", None);
         check_string_value(r"\nfoobar", "\nfoobar");
         check_string_value(r"C:\\Windows\\System32\\", "C:\\Windows\\System32\\");
+        check_string_value(r"\x61bcde", "abcde");
+        check_string_value(
+            r"a\
+bcde", "abcde",
+        );
+    }
+
+    fn check_byte_string_value<'a, const N: usize>(
+        lit: &str,
+        expected: impl Into<Option<&'a [u8; N]>>,
+    ) {
+        assert_eq!(
+            ast::ByteString { syntax: make::tokens::literal(&format!("b\"{}\"", lit)) }
+                .value()
+                .as_deref(),
+            expected.into().map(|value| &value[..])
+        );
+    }
+
+    #[test]
+    fn test_byte_string_escape() {
+        check_byte_string_value(r"foobar", b"foobar");
+        check_byte_string_value(r"\foobar", None::<&[u8; 0]>);
+        check_byte_string_value(r"\nfoobar", b"\nfoobar");
+        check_byte_string_value(r"C:\\Windows\\System32\\", b"C:\\Windows\\System32\\");
+        check_byte_string_value(r"\x61bcde", b"abcde");
+        check_byte_string_value(
+            r"a\
+bcde", b"abcde",
+        );
     }
 
     #[test]

@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 fn main() {
     0o1.0; //~ ERROR: octal float literal is not supported
     0o2f32; //~ ERROR: octal float literal is not supported
@@ -14,6 +16,12 @@ fn main() {
     9900000000000000000000000000999999999999999999999999999999;
     //~^ ERROR: integer literal is too large
     9900000000000000000000000000999999999999999999999999999999;
+    //~^ ERROR: integer literal is too large
+    0b111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111110;
+    //~^ ERROR: integer literal is too large
+    0o37777777777777777777777777777777777777777770;
+    //~^ ERROR: integer literal is too large
+    0xffffffffffffffffffffffffffffffff0;
     //~^ ERROR: integer literal is too large
     0x; //~ ERROR: no valid digits
     0xu32; //~ ERROR: no valid digits

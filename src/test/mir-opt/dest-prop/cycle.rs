@@ -1,5 +1,5 @@
 //! Tests that cyclic assignments don't hang DestinationPropagation, and result in reasonable code.
-// compile-flags: -Zunsound-mir-opts
+// unit-test: DestinationPropagation
 fn val() -> i32 {
     1
 }

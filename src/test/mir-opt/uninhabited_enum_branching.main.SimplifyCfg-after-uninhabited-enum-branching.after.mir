@@ -18,7 +18,7 @@ fn main() -> () {
         Deinit(_2);                      // scope 0 at $DIR/uninhabited_enum_branching.rs:+1:11: +1:19
         discriminant(_2) = 2;            // scope 0 at $DIR/uninhabited_enum_branching.rs:+1:11: +1:19
         _3 = discriminant(_2);           // scope 0 at $DIR/uninhabited_enum_branching.rs:+1:11: +1:19
-        switchInt(move _3) -> [2_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/uninhabited_enum_branching.rs:+1:5: +1:19
+        switchInt(move _3) -> [2: bb1, otherwise: bb2]; // scope 0 at $DIR/uninhabited_enum_branching.rs:+1:5: +1:19
     }
 
     bb1: {
@@ -36,7 +36,7 @@ fn main() -> () {
         Deinit(_7);                      // scope 0 at $DIR/uninhabited_enum_branching.rs:+7:11: +7:19
         discriminant(_7) = 0;            // scope 0 at $DIR/uninhabited_enum_branching.rs:+7:11: +7:19
         _8 = discriminant(_7);           // scope 0 at $DIR/uninhabited_enum_branching.rs:+7:11: +7:19
-        switchInt(move _8) -> [4_isize: bb5, 5_isize: bb3, otherwise: bb4]; // scope 0 at $DIR/uninhabited_enum_branching.rs:+7:5: +7:19
+        switchInt(move _8) -> [4: bb5, 5: bb3, otherwise: bb4]; // scope 0 at $DIR/uninhabited_enum_branching.rs:+7:5: +7:19
     }
 
     bb2: {

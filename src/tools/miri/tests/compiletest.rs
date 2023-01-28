@@ -1,5 +1,5 @@
 use colored::*;
-use regex::Regex;
+use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
 use ui_test::{color_eyre::Result, Config, Mode, OutputConflictHandling};
@@ -129,8 +129,8 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
 
 macro_rules! regexes {
     ($name:ident: $($regex:expr => $replacement:expr,)*) => {lazy_static::lazy_static! {
-        static ref $name: Vec<(Regex, &'static str)> = vec![
-            $((Regex::new($regex).unwrap(), $replacement),)*
+        static ref $name: Vec<(Regex, &'static [u8])> = vec![
+            $((Regex::new($regex).unwrap(), $replacement.as_bytes()),)*
         ];
     }};
 }

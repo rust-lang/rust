@@ -114,7 +114,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                     traits::ObligationCause::dummy_with_span(field_ty_span),
                     param_env,
                     ty,
-                    tcx.lang_items().copy_trait().unwrap(),
+                    tcx.require_lang_item(LangItem::Copy, Some(span)),
                 ) {
                     let error_predicate = error.obligation.predicate;
                     // Only note if it's not the root obligation, otherwise it's trivial and
@@ -128,11 +128,11 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                             .or_default()
                             .push(error.obligation.cause.span);
                     }
-                    if let ty::PredicateKind::Trait(ty::TraitPredicate {
+                    if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
                         trait_ref,
                         polarity: ty::ImplPolarity::Positive,
                         ..
-                    }) = error_predicate.kind().skip_binder()
+                    })) = error_predicate.kind().skip_binder()
                     {
                         let ty = trait_ref.self_ty();
                         if let ty::Param(_) = ty.kind() {
@@ -171,7 +171,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     }
 }
 
-fn visit_implementation_of_coerce_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
+fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}", impl_did);
 
     // Just compute this for the side-effects, in particular reporting
@@ -181,7 +181,7 @@ fn visit_implementation_of_coerce_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_did: Loc
     tcx.at(span).coerce_unsized_info(impl_did);
 }
 
-fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
+fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
     let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
@@ -315,18 +315,17 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                             cause.clone(),
                             dispatch_from_dyn_trait,
                             0,
-                            field.ty(tcx, substs_a),
-                            &[field.ty(tcx, substs_b).into()],
+                            [field.ty(tcx, substs_a), field.ty(tcx, substs_b)],
                         )
                     }),
                 );
                 if !errors.is_empty() {
-                    infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+                    infcx.err_ctxt().report_fulfillment_errors(&errors, None);
                 }
 
                 // Finally, resolve all regions.
                 let outlives_env = OutlivesEnvironment::new(param_env);
-                infcx.check_region_obligations_and_report_errors(impl_did, &outlives_env);
+                let _ = infcx.check_region_obligations_and_report_errors(impl_did, &outlives_env);
             }
         }
         _ => {
@@ -371,7 +370,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                        mt_b: ty::TypeAndMut<'tcx>,
                        mk_ptr: &dyn Fn(Ty<'tcx>) -> Ty<'tcx>| {
-        if (mt_a.mutbl, mt_b.mutbl) == (hir::Mutability::Not, hir::Mutability::Mut) {
+        if mt_a.mutbl < mt_b.mutbl {
             infcx
                 .err_ctxt()
                 .report_mismatched_types(
@@ -558,15 +557,15 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     // Register an obligation for `A: Trait<B>`.
     let cause = traits::ObligationCause::misc(span, impl_hir_id);
     let predicate =
-        predicate_for_trait_def(tcx, param_env, cause, trait_def_id, 0, source, &[target.into()]);
+        predicate_for_trait_def(tcx, param_env, cause, trait_def_id, 0, [source, target]);
     let errors = traits::fully_solve_obligation(&infcx, predicate);
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
     }
 
     // Finally, resolve all regions.
     let outlives_env = OutlivesEnvironment::new(param_env);
-    infcx.check_region_obligations_and_report_errors(impl_did, &outlives_env);
+    let _ = infcx.check_region_obligations_and_report_errors(impl_did, &outlives_env);
 
     CoerceUnsizedInfo { custom_kind: kind }
 }

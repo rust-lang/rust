@@ -1,4 +1,4 @@
-use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+use core::task::{Poll, RawWaker, RawWakerVTable, Waker};
 
 #[test]
 fn poll_const() {
@@ -21,9 +21,5 @@ fn waker_const() {
 
     static WAKER: Waker = unsafe { Waker::from_raw(VOID_WAKER) };
 
-    static CONTEXT: Context<'static> = Context::from_waker(&WAKER);
-
-    static WAKER_REF: &'static Waker = CONTEXT.waker();
-
-    WAKER_REF.wake_by_ref();
+    WAKER.wake_by_ref();
 }

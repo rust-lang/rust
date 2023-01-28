@@ -30,12 +30,7 @@ error: asm outputs are not allowed with the `noreturn` option
 LL |               asm!("", $in(x) x, $out(x) x, $lateout(x) x, $inout(x) x, $inlateout(x) x,
    |                                  ^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^^^^^
 ...
-LL |       m!(in out lateout inout inlateout const sym
-   |  _____-
-   | |_____|
-   | |_____|
-   | |_____|
-   | |
+LL | /     m!(in out lateout inout inlateout const sym
 LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack att_syntax options);
    | |                                           -

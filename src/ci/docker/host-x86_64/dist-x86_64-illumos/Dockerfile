@@ -11,7 +11,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       libgmp-dev \
       libmpfr-dev \
-      libmpc-dev
+      libmpc-dev \
+      && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/illumos-toolchain.sh /tmp/
 

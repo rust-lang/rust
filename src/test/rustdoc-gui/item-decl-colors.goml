@@ -1,4 +1,9 @@
 // This test ensures that the color of the items in the type decl are working as expected.
+
+// We need to disable this check because `implementors/test_docs/trait.TraitWithoutGenerics.js`
+// doesn't exist.
+fail-on-request-error: false
+
 define-function: (
     "check-colors",
     (
@@ -25,7 +30,7 @@ define-function: (
         ("assert-css", (".item-decl .primitive", {"color": |primitive_color|}, ALL)),
         ("goto", "file://" + |DOC_PATH| + "/test_docs/trait.TraitWithoutGenerics.html"),
         ("assert-css", (".item-decl .constant", {"color": |constant_color|}, ALL)),
-        ("assert-css", (".item-decl .fnname", {"color": |fn_color|}, ALL)),
+        ("assert-css", (".item-decl .fn", {"color": |fn_color|}, ALL)),
         ("assert-css", (".item-decl .associatedtype", {"color": |assoc_type_color|}, ALL)),
     ],
 )

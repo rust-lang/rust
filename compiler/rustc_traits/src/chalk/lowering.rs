@@ -66,15 +66,6 @@ impl<'tcx> LowerInto<'tcx, SubstsRef<'tcx>> for &chalk_ir::Substitution<RustInte
     }
 }
 
-impl<'tcx> LowerInto<'tcx, chalk_ir::AliasTy<RustInterner<'tcx>>> for ty::ProjectionTy<'tcx> {
-    fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::AliasTy<RustInterner<'tcx>> {
-        chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-            associated_ty_id: chalk_ir::AssocTypeId(self.item_def_id),
-            substitution: self.substs.lower_into(interner),
-        })
-    }
-}
-
 impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'tcx>>>>
     for ChalkEnvironmentAndGoal<'tcx>
 {
@@ -89,24 +80,32 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                     chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(ty.lower_into(interner)))
                 }
-                ty::PredicateKind::Trait(predicate) => chalk_ir::DomainGoal::FromEnv(
-                    chalk_ir::FromEnv::Trait(predicate.trait_ref.lower_into(interner)),
-                ),
-                ty::PredicateKind::RegionOutlives(predicate) => chalk_ir::DomainGoal::Holds(
-                    chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
-                        a: predicate.0.lower_into(interner),
-                        b: predicate.1.lower_into(interner),
-                    }),
-                ),
-                ty::PredicateKind::TypeOutlives(predicate) => chalk_ir::DomainGoal::Holds(
-                    chalk_ir::WhereClause::TypeOutlives(chalk_ir::TypeOutlives {
-                        ty: predicate.0.lower_into(interner),
-                        lifetime: predicate.1.lower_into(interner),
-                    }),
-                ),
-                ty::PredicateKind::Projection(predicate) => chalk_ir::DomainGoal::Holds(
-                    chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)),
-                ),
+                ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) => {
+                    chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Trait(
+                        predicate.trait_ref.lower_into(interner),
+                    ))
+                }
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => {
+                    chalk_ir::DomainGoal::Holds(chalk_ir::WhereClause::LifetimeOutlives(
+                        chalk_ir::LifetimeOutlives {
+                            a: predicate.0.lower_into(interner),
+                            b: predicate.1.lower_into(interner),
+                        },
+                    ))
+                }
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => {
+                    chalk_ir::DomainGoal::Holds(chalk_ir::WhereClause::TypeOutlives(
+                        chalk_ir::TypeOutlives {
+                            ty: predicate.0.lower_into(interner),
+                            lifetime: predicate.1.lower_into(interner),
+                        },
+                    ))
+                }
+                ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => {
+                    chalk_ir::DomainGoal::Holds(chalk_ir::WhereClause::AliasEq(
+                        predicate.lower_into(interner),
+                    ))
+                }
                 ty::PredicateKind::WellFormed(arg) => match arg.unpack() {
                     ty::GenericArgKind::Type(ty) => chalk_ir::DomainGoal::WellFormed(
                         chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
@@ -121,6 +120,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::ConstEquate(..) => bug!("unexpected predicate {}", predicate),
             };
             let value = chalk_ir::ProgramClauseImplication {
@@ -148,12 +148,12 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             collect_bound_vars(interner, interner.tcx, self.kind());
 
         let value = match predicate {
-            ty::PredicateKind::Trait(predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) => {
                 chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(
                     chalk_ir::WhereClause::Implemented(predicate.trait_ref.lower_into(interner)),
                 ))
             }
-            ty::PredicateKind::RegionOutlives(predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => {
                 chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(
                     chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
                         a: predicate.0.lower_into(interner),
@@ -161,7 +161,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                     }),
                 ))
             }
-            ty::PredicateKind::TypeOutlives(predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => {
                 chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(
                     chalk_ir::WhereClause::TypeOutlives(chalk_ir::TypeOutlives {
                         ty: predicate.0.lower_into(interner),
@@ -169,7 +169,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                     }),
                 ))
             }
-            ty::PredicateKind::Projection(predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => {
                 chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(
                     chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)),
                 ))
@@ -212,6 +212,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::ConstEquate(..) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::empty(interner))
             }
@@ -245,7 +246,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::AliasEq<RustInterner<'tcx>>>
         // FIXME(associated_const_equality): teach chalk about terms for alias eq.
         chalk_ir::AliasEq {
             ty: self.term.ty().unwrap().lower_into(interner),
-            alias: self.projection_ty.lower_into(interner),
+            alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
+                associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.def_id),
+                substitution: self.projection_ty.substs.lower_into(interner),
+            }),
         }
     }
 }
@@ -343,8 +347,13 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             ty::Tuple(types) => {
                 chalk_ir::TyKind::Tuple(types.len(), types.as_substs().lower_into(interner))
             }
-            ty::Projection(proj) => chalk_ir::TyKind::Alias(proj.lower_into(interner)),
-            ty::Opaque(def_id, substs) => {
+            ty::Alias(ty::Projection, ty::AliasTy { def_id, substs, .. }) => {
+                chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
+                    associated_ty_id: chalk_ir::AssocTypeId(def_id),
+                    substitution: substs.lower_into(interner),
+                }))
+            }
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
                     opaque_ty_id: chalk_ir::OpaqueTyId(def_id),
                     substitution: substs.lower_into(interner),
@@ -411,7 +420,11 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             TyKind::Closure(closure, substitution) => {
                 ty::Closure(closure.0, substitution.lower_into(interner))
             }
-            TyKind::Generator(..) => unimplemented!(),
+            TyKind::Generator(generator, substitution) => ty::Generator(
+                generator.0,
+                substitution.lower_into(interner),
+                ast::Movability::Static,
+            ),
             TyKind::GeneratorWitness(..) => unimplemented!(),
             TyKind::Never => ty::Never,
             TyKind::Tuple(_len, substitution) => {
@@ -428,13 +441,14 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 mutbl.lower_into(interner),
             ),
             TyKind::Str => ty::Str,
-            TyKind::OpaqueType(opaque_ty, substitution) => {
-                ty::Opaque(opaque_ty.0, substitution.lower_into(interner))
-            }
-            TyKind::AssociatedType(assoc_ty, substitution) => ty::Projection(ty::ProjectionTy {
-                substs: substitution.lower_into(interner),
-                item_def_id: assoc_ty.0,
-            }),
+            TyKind::OpaqueType(opaque_ty, substitution) => ty::Alias(
+                ty::Opaque,
+                interner.tcx.mk_alias_ty(opaque_ty.0, substitution.lower_into(interner)),
+            ),
+            TyKind::AssociatedType(assoc_ty, substitution) => ty::Alias(
+                ty::Projection,
+                interner.tcx.mk_alias_ty(assoc_ty.0, substitution.lower_into(interner)),
+            ),
             TyKind::Foreign(def_id) => ty::Foreign(def_id.0),
             TyKind::Error => return interner.tcx.ty_error(),
             TyKind::Placeholder(placeholder) => ty::Placeholder(ty::Placeholder {
@@ -442,13 +456,20 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 name: ty::BoundVar::from_usize(placeholder.idx),
             }),
             TyKind::Alias(alias_ty) => match alias_ty {
-                chalk_ir::AliasTy::Projection(projection) => ty::Projection(ty::ProjectionTy {
-                    item_def_id: projection.associated_ty_id.0,
-                    substs: projection.substitution.lower_into(interner),
-                }),
-                chalk_ir::AliasTy::Opaque(opaque) => {
-                    ty::Opaque(opaque.opaque_ty_id.0, opaque.substitution.lower_into(interner))
-                }
+                chalk_ir::AliasTy::Projection(projection) => ty::Alias(
+                    ty::Projection,
+                    interner.tcx.mk_alias_ty(
+                        projection.associated_ty_id.0,
+                        projection.substitution.lower_into(interner),
+                    ),
+                ),
+                chalk_ir::AliasTy::Opaque(opaque) => ty::Alias(
+                    ty::Opaque,
+                    interner.tcx.mk_alias_ty(
+                        opaque.opaque_ty_id.0,
+                        opaque.substitution.lower_into(interner),
+                    ),
+                ),
             },
             TyKind::Function(_quantified_ty) => unimplemented!(),
             TyKind::BoundVar(_bound) => ty::Bound(
@@ -498,18 +519,15 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                 ty::DebruijnIndex::from_u32(var.debruijn.depth()),
                 ty::BoundRegion {
                     var: ty::BoundVar::from_usize(var.index),
-                    kind: ty::BrAnon(var.index as u32),
+                    kind: ty::BrAnon(var.index as u32, None),
                 },
             ),
             chalk_ir::LifetimeData::InferenceVar(_var) => unimplemented!(),
             chalk_ir::LifetimeData::Placeholder(p) => ty::RePlaceholder(ty::Placeholder {
                 universe: ty::UniverseIndex::from_usize(p.ui.counter),
-                name: ty::BoundRegionKind::BrAnon(p.idx as u32),
+                name: ty::BoundRegionKind::BrAnon(p.idx as u32, None),
             }),
             chalk_ir::LifetimeData::Static => return interner.tcx.lifetimes.re_static,
-            chalk_ir::LifetimeData::Empty(_) => {
-                bug!("Chalk should not have been passed an empty lifetime.")
-            }
             chalk_ir::LifetimeData::Erased => return interner.tcx.lifetimes.re_erased,
             chalk_ir::LifetimeData::Phantom(void, _) => match *void {},
         };
@@ -546,7 +564,7 @@ impl<'tcx> LowerInto<'tcx, ty::Const<'tcx>> for &chalk_ir::Const<RustInterner<'t
             chalk_ir::ConstValue::Placeholder(_p) => unimplemented!(),
             chalk_ir::ConstValue::Concrete(c) => ty::ConstKind::Value(c.interned),
         };
-        interner.tcx.mk_const(ty::ConstS { ty, kind })
+        interner.tcx.mk_const(kind, ty)
     }
 }
 
@@ -602,22 +620,22 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
         let (predicate, binders, _named_regions) =
             collect_bound_vars(interner, interner.tcx, self.kind());
         let value = match predicate {
-            ty::PredicateKind::Trait(predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) => {
                 Some(chalk_ir::WhereClause::Implemented(predicate.trait_ref.lower_into(interner)))
             }
-            ty::PredicateKind::RegionOutlives(predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => {
                 Some(chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
                     a: predicate.0.lower_into(interner),
                     b: predicate.1.lower_into(interner),
                 }))
             }
-            ty::PredicateKind::TypeOutlives(predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => {
                 Some(chalk_ir::WhereClause::TypeOutlives(chalk_ir::TypeOutlives {
                     ty: predicate.0.lower_into(interner),
                     lifetime: predicate.1.lower_into(interner),
                 }))
             }
-            ty::PredicateKind::Projection(predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => {
                 Some(chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)))
             }
             ty::PredicateKind::WellFormed(_ty) => None,
@@ -628,6 +646,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                 bug!("unexpected predicate {}", &self)
             }
@@ -637,7 +656,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
 }
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<RustInterner<'tcx>>>>
-    for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
+    for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>
 {
     fn lower_into(
         self,
@@ -676,7 +695,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                     binders.clone(),
                     chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq {
                         alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-                            associated_ty_id: chalk_ir::AssocTypeId(predicate.item_def_id),
+                            associated_ty_id: chalk_ir::AssocTypeId(predicate.def_id),
                             substitution: interner
                                 .tcx
                                 .mk_substs_trait(self_ty, predicate.substs)
@@ -692,7 +711,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                         trait_id: chalk_ir::TraitId(def_id),
                         substitution: interner
                             .tcx
-                            .mk_substs_trait(self_ty, &[])
+                            .mk_substs_trait(self_ty, [])
                             .lower_into(interner),
                     }),
                 ),
@@ -737,26 +756,31 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
         let (predicate, binders, _named_regions) =
             collect_bound_vars(interner, interner.tcx, self.kind());
         match predicate {
-            ty::PredicateKind::Trait(predicate) => Some(chalk_ir::Binders::new(
-                binders,
-                chalk_solve::rust_ir::InlineBound::TraitBound(
-                    predicate.trait_ref.lower_into(interner),
-                ),
-            )),
-            ty::PredicateKind::Projection(predicate) => Some(chalk_ir::Binders::new(
-                binders,
-                chalk_solve::rust_ir::InlineBound::AliasEqBound(predicate.lower_into(interner)),
-            )),
-            ty::PredicateKind::TypeOutlives(_predicate) => None,
+            ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) => {
+                Some(chalk_ir::Binders::new(
+                    binders,
+                    chalk_solve::rust_ir::InlineBound::TraitBound(
+                        predicate.trait_ref.lower_into(interner),
+                    ),
+                ))
+            }
+            ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => {
+                Some(chalk_ir::Binders::new(
+                    binders,
+                    chalk_solve::rust_ir::InlineBound::AliasEqBound(predicate.lower_into(interner)),
+                ))
+            }
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_predicate)) => None,
             ty::PredicateKind::WellFormed(_ty) => None,
 
-            ty::PredicateKind::RegionOutlives(..)
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                 bug!("unexpected predicate {}", &self)
             }
@@ -827,7 +851,7 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
         let (trait_ref, own_substs) = self.projection_ty.trait_ref_and_own_substs(interner.tcx);
         chalk_solve::rust_ir::AliasEqBound {
             trait_bound: trait_ref.lower_into(interner),
-            associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.item_def_id),
+            associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.def_id),
             parameters: own_substs.iter().map(|arg| arg.lower_into(interner)).collect(),
             value: self.term.ty().unwrap().lower_into(interner),
         }
@@ -933,7 +957,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
                     }
                 }
 
-                ty::BoundRegionKind::BrAnon(var) => match self.parameters.entry(var) {
+                ty::BoundRegionKind::BrAnon(var, _) => match self.parameters.entry(var) {
                     Entry::Vacant(entry) => {
                         entry.insert(chalk_ir::VariableKind::Lifetime);
                     }
@@ -991,13 +1015,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
             ty::ReLateBound(index, br) if index == self.binder_index => match br.kind {
                 ty::BrNamed(def_id, _name) => match self.named_parameters.get(&def_id) {
                     Some(idx) => {
-                        let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx) };
+                        let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx, None) };
                         return self.tcx.mk_region(ty::ReLateBound(index, new_br));
                     }
                     None => panic!("Missing `BrNamed`."),
                 },
                 ty::BrEnv => unimplemented!(),
-                ty::BrAnon(_) => {}
+                ty::BrAnon(..) => {}
             },
             _ => (),
         };
@@ -1072,14 +1096,16 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
                 Some(idx) => {
                     let br = ty::BoundRegion {
                         var: ty::BoundVar::from_u32(*idx),
-                        kind: ty::BrAnon(*idx),
+                        kind: ty::BrAnon(*idx, None),
                     };
                     self.tcx.mk_region(ty::ReLateBound(self.binder_index, br))
                 }
                 None => {
                     let idx = self.named_regions.len() as u32;
-                    let br =
-                        ty::BoundRegion { var: ty::BoundVar::from_u32(idx), kind: ty::BrAnon(idx) };
+                    let br = ty::BoundRegion {
+                        var: ty::BoundVar::from_u32(idx),
+                        kind: ty::BrAnon(idx, None),
+                    };
                     self.named_regions.insert(_re.def_id, idx);
                     self.tcx.mk_region(ty::ReLateBound(self.binder_index, br))
                 }
@@ -1156,7 +1182,7 @@ impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
     fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
             ty::RePlaceholder(p) if p.universe == self.universe_index => {
-                if let ty::BoundRegionKind::BrAnon(anon) = p.name {
+                if let ty::BoundRegionKind::BrAnon(anon, _) = p.name {
                     self.next_anon_region_placeholder = self.next_anon_region_placeholder.max(anon);
                 }
             }

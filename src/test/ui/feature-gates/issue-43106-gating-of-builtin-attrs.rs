@@ -1,6 +1,6 @@
 //~ NOTE not a function
 //~| NOTE not a foreign function or static
-//~| NOTE not a function or static
+//~| NOTE cannot be applied to crates
 //~| NOTE not an `extern` block
 // This test enumerates as many compiler-builtin ungated attributes as
 // possible (that is, all the mutually compatible ones), and checks

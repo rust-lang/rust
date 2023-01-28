@@ -2,12 +2,12 @@
 // as `mut` through a closure. Also test that we CAN mutate a moved copy,
 // unless this is a `Fn` closure. Issue #16749.
 
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, tuple_trait)]
 
 use std::mem;
 
-fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
-fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
+fn to_fn<A:std::marker::Tuple,F:Fn<A>>(f: F) -> F { f }
+fn to_fn_mut<A:std::marker::Tuple,F:FnMut<A>>(f: F) -> F { f }
 
 fn a() {
     let n = 0;

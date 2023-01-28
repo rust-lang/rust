@@ -42,9 +42,9 @@ impl<'a> Parser<'a> {
                 token::Comma | token::Ident(..) | token::Interpolated(..) => true,
                 _ => token.can_begin_type(),
             },
-            NonterminalKind::Block => match token.kind {
+            NonterminalKind::Block => match &token.kind {
                 token::OpenDelim(Delimiter::Brace) => true,
-                token::Interpolated(ref nt) => !matches!(
+                token::Interpolated(nt) => !matches!(
                     **nt,
                     token::NtItem(_)
                         | token::NtPat(_)
@@ -56,16 +56,16 @@ impl<'a> Parser<'a> {
                 ),
                 _ => false,
             },
-            NonterminalKind::Path | NonterminalKind::Meta => match token.kind {
+            NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
                 token::ModSep | token::Ident(..) => true,
-                token::Interpolated(ref nt) => match **nt {
+                token::Interpolated(nt) => match **nt {
                     token::NtPath(_) | token::NtMeta(_) => true,
                     _ => may_be_ident(&nt),
                 },
                 _ => false,
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
-                match token.kind {
+                match &token.kind {
                 token::Ident(..) |                          // box, ref, mut, and other identifiers (can stricten)
                 token::OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
                 token::OpenDelim(Delimiter::Bracket) |      // slice pattern
@@ -80,13 +80,13 @@ impl<'a> Parser<'a> {
                 token::BinOp(token::Shl) => true,           // path (double UFCS)
                 // leading vert `|` or-pattern
                 token::BinOp(token::Or) =>  matches!(kind, NonterminalKind::PatWithOr {..}),
-                token::Interpolated(ref nt) => may_be_ident(nt),
+                token::Interpolated(nt) => may_be_ident(nt),
                 _ => false,
             }
             }
-            NonterminalKind::Lifetime => match token.kind {
+            NonterminalKind::Lifetime => match &token.kind {
                 token::Lifetime(_) => true,
-                token::Interpolated(ref nt) => {
+                token::Interpolated(nt) => {
                     matches!(**nt, token::NtLifetime(_))
                 }
                 _ => false,

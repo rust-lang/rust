@@ -61,18 +61,18 @@ impl<K: DepKind> DepNode<K> {
     /// Creates a new, parameterless DepNode. This method will assert
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
-    pub fn new_no_params<Ctxt>(tcx: Ctxt, kind: K) -> DepNode<K>
+    pub fn new_no_params<Tcx>(tcx: Tcx, kind: K) -> DepNode<K>
     where
-        Ctxt: super::DepContext<DepKind = K>,
+        Tcx: super::DepContext<DepKind = K>,
     {
         debug_assert_eq!(tcx.fingerprint_style(kind), FingerprintStyle::Unit);
         DepNode { kind, hash: Fingerprint::ZERO.into() }
     }
 
-    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
+    pub fn construct<Tcx, Key>(tcx: Tcx, kind: K, arg: &Key) -> DepNode<K>
     where
-        Ctxt: super::DepContext<DepKind = K>,
-        Key: DepNodeParams<Ctxt>,
+        Tcx: super::DepContext<DepKind = K>,
+        Key: DepNodeParams<Tcx>,
     {
         let hash = arg.to_fingerprint(tcx);
         let dep_node = DepNode { kind, hash: hash.into() };
@@ -93,9 +93,9 @@ impl<K: DepKind> DepNode<K> {
     /// Construct a DepNode from the given DepKind and DefPathHash. This
     /// method will assert that the given DepKind actually requires a
     /// single DefId/DefPathHash parameter.
-    pub fn from_def_path_hash<Ctxt>(tcx: Ctxt, def_path_hash: DefPathHash, kind: K) -> Self
+    pub fn from_def_path_hash<Tcx>(tcx: Tcx, def_path_hash: DefPathHash, kind: K) -> Self
     where
-        Ctxt: super::DepContext<DepKind = K>,
+        Tcx: super::DepContext<DepKind = K>,
     {
         debug_assert!(tcx.fingerprint_style(kind) == FingerprintStyle::DefPathHash);
         DepNode { kind, hash: def_path_hash.0.into() }
@@ -108,18 +108,18 @@ impl<K: DepKind> fmt::Debug for DepNode<K> {
     }
 }
 
-pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
+pub trait DepNodeParams<Tcx: DepContext>: fmt::Debug + Sized {
     fn fingerprint_style() -> FingerprintStyle;
 
     /// This method turns the parameters of a DepNodeConstructor into an opaque
     /// Fingerprint to be used in DepNode.
     /// Not all DepNodeParams support being turned into a Fingerprint (they
     /// don't need to if the corresponding DepNode is anonymous).
-    fn to_fingerprint(&self, _: Ctxt) -> Fingerprint {
+    fn to_fingerprint(&self, _: Tcx) -> Fingerprint {
         panic!("Not implemented. Accidentally called on anonymous node?")
     }
 
-    fn to_debug_str(&self, _: Ctxt) -> String {
+    fn to_debug_str(&self, _: Tcx) -> String {
         format!("{:?}", self)
     }
 
@@ -129,10 +129,10 @@ pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
     /// `fingerprint_style()` is not `FingerprintStyle::Opaque`.
     /// It is always valid to return `None` here, in which case incremental
     /// compilation will treat the query as having changed instead of forcing it.
-    fn recover(tcx: Ctxt, dep_node: &DepNode<Ctxt::DepKind>) -> Option<Self>;
+    fn recover(tcx: Tcx, dep_node: &DepNode<Tcx::DepKind>) -> Option<Self>;
 }
 
-impl<Ctxt: DepContext, T> DepNodeParams<Ctxt> for T
+impl<Tcx: DepContext, T> DepNodeParams<Tcx> for T
 where
     T: for<'a> HashStable<StableHashingContext<'a>> + fmt::Debug,
 {
@@ -142,7 +142,7 @@ where
     }
 
     #[inline(always)]
-    default fn to_fingerprint(&self, tcx: Ctxt) -> Fingerprint {
+    default fn to_fingerprint(&self, tcx: Tcx) -> Fingerprint {
         tcx.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
             self.hash_stable(&mut hcx, &mut hasher);
@@ -151,12 +151,12 @@ where
     }
 
     #[inline(always)]
-    default fn to_debug_str(&self, _: Ctxt) -> String {
+    default fn to_debug_str(&self, _: Tcx) -> String {
         format!("{:?}", *self)
     }
 
     #[inline(always)]
-    default fn recover(_: Ctxt, _: &DepNode<Ctxt::DepKind>) -> Option<Self> {
+    default fn recover(_: Tcx, _: &DepNode<Tcx::DepKind>) -> Option<Self> {
         None
     }
 }
@@ -166,7 +166,7 @@ where
 /// Information is retrieved by indexing the `DEP_KINDS` array using the integer value
 /// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
 /// jump table instead of large matches.
-pub struct DepKindStruct<CTX: DepContext> {
+pub struct DepKindStruct<Tcx: DepContext> {
     /// Anonymous queries cannot be replayed from one compiler invocation to the next.
     /// When their result is needed, it is recomputed. They are useful for fine-grained
     /// dependency tracking, and caching within one compiler invocation.
@@ -216,10 +216,10 @@ pub struct DepKindStruct<CTX: DepContext> {
     /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
     /// is actually a `DefPathHash`, and can therefore just look up the corresponding
     /// `DefId` in `tcx.def_path_hash_to_def_id`.
-    pub force_from_dep_node: Option<fn(tcx: CTX, dep_node: DepNode<CTX::DepKind>) -> bool>,
+    pub force_from_dep_node: Option<fn(tcx: Tcx, dep_node: DepNode<Tcx::DepKind>) -> bool>,
 
     /// Invoke a query to put the on-disk cached value in memory.
-    pub try_load_from_on_disk_cache: Option<fn(CTX, DepNode<CTX::DepKind>)>,
+    pub try_load_from_on_disk_cache: Option<fn(Tcx, DepNode<Tcx::DepKind>)>,
 }
 
 /// A "work product" corresponds to a `.o` (or other) file that we

@@ -29,7 +29,7 @@
   
       bb1: {
           _3 = discriminant(_2);           // scope 2 at $DIR/unreachable_diverging.rs:+2:12: +2:22
-          switchInt(move _3) -> [1_isize: bb2, otherwise: bb6]; // scope 2 at $DIR/unreachable_diverging.rs:+2:12: +2:22
+          switchInt(move _3) -> [1: bb2, otherwise: bb6]; // scope 2 at $DIR/unreachable_diverging.rs:+2:12: +2:22
       }
   
       bb2: {
@@ -38,7 +38,7 @@
           StorageLive(_5);                 // scope 2 at $DIR/unreachable_diverging.rs:+3:9: +5:10
           StorageLive(_6);                 // scope 2 at $DIR/unreachable_diverging.rs:+3:12: +3:13
           _6 = _1;                         // scope 2 at $DIR/unreachable_diverging.rs:+3:12: +3:13
-          switchInt(move _6) -> [false: bb4, otherwise: bb3]; // scope 2 at $DIR/unreachable_diverging.rs:+3:12: +3:13
+          switchInt(move _6) -> [0: bb4, otherwise: bb3]; // scope 2 at $DIR/unreachable_diverging.rs:+3:12: +3:13
       }
   
       bb3: {

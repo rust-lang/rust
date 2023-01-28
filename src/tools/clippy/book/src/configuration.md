@@ -11,8 +11,8 @@ disallowed-names = ["toto", "tata", "titi"]
 cognitive-complexity-threshold = 30
 ```
 
-See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which
-lints can be configured and the meaning of the variables.
+See the [list of configurable lints](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration),
+the lint descriptions contain the names and meanings of these configuration variables.
 
 To deactivate the "for further information visit *lint-link*" message you can define the `CLIPPY_DISABLE_DOCS_LINKS`
 environment variable.
@@ -72,7 +72,7 @@ minimum supported Rust version (MSRV) in the clippy configuration file.
 msrv = "1.30.0"
 ```
 
-The MSRV can also be specified as an inner attribute, like below.
+The MSRV can also be specified as an attribute, like below.
 
 ```rust
 #![feature(custom_inner_attributes)]

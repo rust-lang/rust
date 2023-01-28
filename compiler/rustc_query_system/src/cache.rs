@@ -26,7 +26,7 @@ impl<Key, Value> Cache<Key, Value> {
 }
 
 impl<Key: Eq + Hash, Value: Clone> Cache<Key, Value> {
-    pub fn get<CTX: DepContext>(&self, key: &Key, tcx: CTX) -> Option<Value> {
+    pub fn get<Tcx: DepContext>(&self, key: &Key, tcx: Tcx) -> Option<Value> {
         Some(self.hashmap.borrow().get(key)?.get(tcx))
     }
 
@@ -46,7 +46,7 @@ impl<T: Clone> WithDepNode<T> {
         WithDepNode { dep_node, cached_value }
     }
 
-    pub fn get<CTX: DepContext>(&self, tcx: CTX) -> T {
+    pub fn get<Tcx: DepContext>(&self, tcx: Tcx) -> T {
         tcx.dep_graph().read_index(self.dep_node);
         self.cached_value.clone()
     }

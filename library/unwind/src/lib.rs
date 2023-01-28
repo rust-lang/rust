@@ -15,7 +15,6 @@ cfg_if::cfg_if! {
         target_os = "espidf",
     ))] {
         // These "unix" family members do not have unwinder.
-        // Note this also matches x86_64-unknown-none-linuxkernel.
     } else if #[cfg(any(
         unix,
         windows,
@@ -105,6 +104,26 @@ extern "C" {}
 #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
 extern "C" {}
 
-#[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
-#[link(name = "unwind", kind = "static", modifiers = "-bundle")]
+#[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
+#[link(name = "gcc_s")]
+extern "C" {}
+
+#[cfg(all(target_os = "openbsd", target_arch = "sparc64"))]
+#[link(name = "gcc")]
+extern "C" {}
+
+#[cfg(all(target_os = "openbsd", not(target_arch = "sparc64")))]
+#[link(name = "c++abi")]
+extern "C" {}
+
+#[cfg(any(target_os = "solaris", target_os = "illumos"))]
+#[link(name = "gcc_s")]
+extern "C" {}
+
+#[cfg(target_os = "dragonfly")]
+#[link(name = "gcc_pic")]
+extern "C" {}
+
+#[cfg(target_os = "haiku")]
+#[link(name = "gcc_s")]
 extern "C" {}

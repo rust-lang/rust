@@ -13,7 +13,7 @@ fn main() {
         //~^ERROR: evaluation of constant value failed
     };
     const _BAD2: () = {
-        intrinsics::assert_uninit_valid::<&'static i32>();
+        intrinsics::assert_mem_uninitialized_valid::<&'static i32>();
         //~^ERROR: evaluation of constant value failed
     };
     const _BAD3: () = {

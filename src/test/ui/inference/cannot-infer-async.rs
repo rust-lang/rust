@@ -10,6 +10,7 @@ fn main() {
     let fut = async {
         make_unit()?;
 
-        Ok(()) //~ ERROR type annotations needed
+        Ok(())
+        //~^ ERROR type annotations needed
     };
 }

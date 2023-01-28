@@ -490,7 +490,7 @@ impl UseTree {
                 );
                 result.path.push(UseSegment { kind, version });
             }
-            UseTreeKind::Simple(ref rename, ..) => {
+            UseTreeKind::Simple(ref rename) => {
                 // If the path has leading double colons and is composed of only 2 segments, then we
                 // bypass the call to path_to_imported_ident which would get only the ident and
                 // lose the path root, e.g., `that` in `::that`.

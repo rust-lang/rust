@@ -21,8 +21,8 @@ LL |         let mut N;
    |
 help: consider giving `N` an explicit type
    |
-LL |         let mut N: _;
-   |                  +++
+LL |         let mut N: /* Type */;
+   |                  ++++++++++++
 
 error: aborting due to 3 previous errors
 

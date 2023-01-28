@@ -20,6 +20,7 @@ extern crate rustc_middle;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKindStruct};
+use rustc_middle::query::Key;
 use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
 use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine};
 use rustc_middle::ty::TyCtxt;
@@ -32,11 +33,7 @@ use rustc_query_system::query::*;
 #[cfg(parallel_compiler)]
 pub use rustc_query_system::query::{deadlock, QueryContext};
 
-mod keys;
-use keys::Key;
-
 pub use rustc_query_system::query::QueryConfig;
-pub(crate) use rustc_query_system::query::{QueryDescription, QueryVTable};
 
 mod on_disk_cache;
 pub use on_disk_cache::OnDiskCache;

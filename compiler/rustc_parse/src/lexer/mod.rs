@@ -175,19 +175,9 @@ impl<'a> StringReader<'a> {
                         if string == "_" {
                             self.sess
                                 .span_diagnostic
-                                .struct_span_warn(
+                                .struct_span_err(
                                     self.mk_sp(suffix_start, self.pos),
                                     "underscore literal suffix is not allowed",
-                                )
-                                .warn(
-                                    "this was previously accepted by the compiler but is \
-                                       being phased out; it will become a hard error in \
-                                       a future release!",
-                                )
-                                .note(
-                                    "see issue #42326 \
-                                     <https://github.com/rust-lang/rust/issues/42326> \
-                                     for more information",
                                 )
                                 .emit();
                             None
@@ -363,55 +353,55 @@ impl<'a> StringReader<'a> {
     fn cook_lexer_literal(
         &self,
         start: BytePos,
-        suffix_start: BytePos,
+        end: BytePos,
         kind: rustc_lexer::LiteralKind,
     ) -> (token::LitKind, Symbol) {
-        // prefix means `"` or `br"` or `r###"`, ...
-        let (lit_kind, mode, prefix_len, postfix_len) = match kind {
+        match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
                     self.sess.span_diagnostic.span_fatal_with_code(
-                        self.mk_sp(start, suffix_start),
+                        self.mk_sp(start, end),
                         "unterminated character literal",
                         error_code!(E0762),
                     )
                 }
-                (token::Char, Mode::Char, 1, 1) // ' '
+                self.cook_quoted(token::Char, Mode::Char, start, end, 1, 1) // ' '
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
                     self.sess.span_diagnostic.span_fatal_with_code(
-                        self.mk_sp(start + BytePos(1), suffix_start),
+                        self.mk_sp(start + BytePos(1), end),
                         "unterminated byte constant",
                         error_code!(E0763),
                     )
                 }
-                (token::Byte, Mode::Byte, 2, 1) // b' '
+                self.cook_quoted(token::Byte, Mode::Byte, start, end, 2, 1) // b' '
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
                     self.sess.span_diagnostic.span_fatal_with_code(
-                        self.mk_sp(start, suffix_start),
+                        self.mk_sp(start, end),
                         "unterminated double quote string",
                         error_code!(E0765),
                     )
                 }
-                (token::Str, Mode::Str, 1, 1) // " "
+                self.cook_quoted(token::Str, Mode::Str, start, end, 1, 1) // " "
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
                     self.sess.span_diagnostic.span_fatal_with_code(
-                        self.mk_sp(start + BytePos(1), suffix_start),
+                        self.mk_sp(start + BytePos(1), end),
                         "unterminated double quote byte string",
                         error_code!(E0766),
                     )
                 }
-                (token::ByteStr, Mode::ByteStr, 2, 1) // b" "
+                self.cook_quoted(token::ByteStr, Mode::ByteStr, start, end, 2, 1) // b" "
             }
             rustc_lexer::LiteralKind::RawStr { n_hashes } => {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
-                    (token::StrRaw(n_hashes), Mode::RawStr, 2 + n, 1 + n) // r##" "##
+                    let kind = token::StrRaw(n_hashes);
+                    self.cook_quoted(kind, Mode::RawStr, start, end, 2 + n, 1 + n) // r##" "##
                 } else {
                     self.report_raw_str_error(start, 1);
                 }
@@ -419,56 +409,59 @@ impl<'a> StringReader<'a> {
             rustc_lexer::LiteralKind::RawByteStr { n_hashes } => {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
-                    (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n) // br##" "##
+                    let kind = token::ByteStrRaw(n_hashes);
+                    self.cook_quoted(kind, Mode::RawByteStr, start, end, 3 + n, 1 + n) // br##" "##
                 } else {
                     self.report_raw_str_error(start, 2);
                 }
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
-                return if empty_int {
+                if empty_int {
                     self.sess
                         .span_diagnostic
                         .struct_span_err_with_code(
-                            self.mk_sp(start, suffix_start),
+                            self.mk_sp(start, end),
                             "no valid digits found for number",
                             error_code!(E0768),
                         )
                         .emit();
                     (token::Integer, sym::integer(0))
                 } else {
-                    self.validate_int_literal(base, start, suffix_start);
-                    (token::Integer, self.symbol_from_to(start, suffix_start))
-                };
+                    if matches!(base, Base::Binary | Base::Octal) {
+                        let base = base as u32;
+                        let s = self.str_from_to(start + BytePos(2), end);
+                        for (idx, c) in s.char_indices() {
+                            if c != '_' && c.to_digit(base).is_none() {
+                                self.err_span_(
+                                    start + BytePos::from_usize(2 + idx),
+                                    start + BytePos::from_usize(2 + idx + c.len_utf8()),
+                                    &format!("invalid digit for a base {} literal", base),
+                                );
+                            }
+                        }
+                    }
+                    (token::Integer, self.symbol_from_to(start, end))
+                }
             }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
                 if empty_exponent {
                     self.err_span_(start, self.pos, "expected at least one digit in exponent");
                 }
-
                 match base {
-                    Base::Hexadecimal => self.err_span_(
-                        start,
-                        suffix_start,
-                        "hexadecimal float literal is not supported",
-                    ),
+                    Base::Hexadecimal => {
+                        self.err_span_(start, end, "hexadecimal float literal is not supported")
+                    }
                     Base::Octal => {
-                        self.err_span_(start, suffix_start, "octal float literal is not supported")
+                        self.err_span_(start, end, "octal float literal is not supported")
                     }
                     Base::Binary => {
-                        self.err_span_(start, suffix_start, "binary float literal is not supported")
+                        self.err_span_(start, end, "binary float literal is not supported")
                     }
-                    _ => (),
+                    _ => {}
                 }
-
-                let id = self.symbol_from_to(start, suffix_start);
-                return (token::Float, id);
+                (token::Float, self.symbol_from_to(start, end))
             }
-        };
-        let content_start = start + BytePos(prefix_len);
-        let content_end = suffix_start - BytePos(postfix_len);
-        let id = self.symbol_from_to(content_start, content_end);
-        self.validate_literal_escape(mode, content_start, content_end, prefix_len, postfix_len);
-        (lit_kind, id)
+        }
     }
 
     #[inline]
@@ -659,24 +652,30 @@ impl<'a> StringReader<'a> {
         )
     }
 
-    fn validate_literal_escape(
+    fn cook_quoted(
         &self,
+        kind: token::LitKind,
         mode: Mode,
-        content_start: BytePos,
-        content_end: BytePos,
+        start: BytePos,
+        end: BytePos,
         prefix_len: u32,
         postfix_len: u32,
-    ) {
+    ) -> (token::LitKind, Symbol) {
+        let mut has_fatal_err = false;
+        let content_start = start + BytePos(prefix_len);
+        let content_end = end - BytePos(postfix_len);
         let lit_content = self.str_from_to(content_start, content_end);
         unescape::unescape_literal(lit_content, mode, &mut |range, result| {
             // Here we only check for errors. The actual unescaping is done later.
             if let Err(err) = result {
-                let span_with_quotes = self
-                    .mk_sp(content_start - BytePos(prefix_len), content_end + BytePos(postfix_len));
+                let span_with_quotes = self.mk_sp(start, end);
                 let (start, end) = (range.start as u32, range.end as u32);
                 let lo = content_start + BytePos(start);
                 let hi = lo + BytePos(end - start);
                 let span = self.mk_sp(lo, hi);
+                if err.is_fatal() {
+                    has_fatal_err = true;
+                }
                 emit_unescape_error(
                     &self.sess.span_diagnostic,
                     lit_content,
@@ -688,22 +687,13 @@ impl<'a> StringReader<'a> {
                 );
             }
         });
-    }
 
-    fn validate_int_literal(&self, base: Base, content_start: BytePos, content_end: BytePos) {
-        let base = match base {
-            Base::Binary => 2,
-            Base::Octal => 8,
-            _ => return,
-        };
-        let s = self.str_from_to(content_start + BytePos(2), content_end);
-        for (idx, c) in s.char_indices() {
-            let idx = idx as u32;
-            if c != '_' && c.to_digit(base).is_none() {
-                let lo = content_start + BytePos(2 + idx);
-                let hi = content_start + BytePos(2 + idx + c.len_utf8() as u32);
-                self.err_span_(lo, hi, &format!("invalid digit for a base {} literal", base));
-            }
+        // We normally exclude the quotes for the symbol, but for errors we
+        // include it because it results in clearer error messages.
+        if !has_fatal_err {
+            (kind, Symbol::intern(lit_content))
+        } else {
+            (token::Err, self.symbol_from_to(start, end))
         }
     }
 }

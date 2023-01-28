@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=4
+// compile-flags: -Z mir-opt-level=4 -Zunsound-mir-opts
 
 // EMIT_MIR lower_array_len_e2e.array_bound.PreCodegen.after.mir
 pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {

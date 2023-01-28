@@ -12,8 +12,8 @@ LL |     let x = |_| {};
    |
 help: consider giving this closure parameter an explicit type
    |
-LL |     let x = |_: _| {};
-   |               +++
+LL |     let x = |_: /* Type */| {};
+   |               ++++++++++++
 
 error[E0282]: type annotations needed
   --> $DIR/unknown_type_for_closure.rs:10:14

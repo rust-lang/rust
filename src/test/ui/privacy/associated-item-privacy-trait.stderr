@@ -31,7 +31,7 @@ LL |     priv_trait::mac!();
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: associated constant `<Pub as PrivTr>::CONST` is private
+error: associated constant `PrivTr::CONST` is private
   --> $DIR/associated-item-privacy-trait.rs:21:9
    |
 LL |         <Pub as PrivTr>::CONST;
@@ -42,7 +42,7 @@ LL |     priv_trait::mac!();
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: associated type `<Pub as PrivTr>::AssocTy` is private
+error: associated type `PrivTr::AssocTy` is private
   --> $DIR/associated-item-privacy-trait.rs:23:16
    |
 LL |         let _: <Pub as PrivTr>::AssocTy;

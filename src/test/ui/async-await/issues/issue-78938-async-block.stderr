@@ -1,8 +1,8 @@
 error[E0373]: async block may outlive the current function, but it borrows `room_ref`, which is owned by the current function
-  --> $DIR/issue-78938-async-block.rs:8:39
+  --> $DIR/issue-78938-async-block.rs:8:33
    |
 LL |       let gameloop_handle = spawn(async {
-   |  _______________________________________^
+   |  _________________________________^
 LL | |         game_loop(Arc::clone(&room_ref))
    | |                               -------- `room_ref` is borrowed here
 LL | |     });

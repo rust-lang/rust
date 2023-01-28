@@ -9,7 +9,7 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
           _1 = const false;                // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
--         switchInt(const false) -> [false: bb3, otherwise: bb1]; // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
+-         switchInt(const false) -> [0: bb3, otherwise: bb1]; // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
 +         goto -> bb3;                     // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
       }
   

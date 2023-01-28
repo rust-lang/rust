@@ -99,7 +99,7 @@ pub use num::FloatToInt;
 /// ```
 #[stable(feature = "convert_id", since = "1.33.0")]
 #[rustc_const_stable(feature = "const_identity", since = "1.33.0")]
-#[inline]
+#[inline(always)]
 pub const fn identity<T>(x: T) -> T {
     x
 }
@@ -789,6 +789,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsRef<[T]> for [T] {
+    #[inline(always)]
     fn as_ref(&self) -> &[T] {
         self
     }
@@ -796,6 +797,7 @@ impl<T> AsRef<[T]> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsMut<[T]> for [T] {
+    #[inline(always)]
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
@@ -803,7 +805,7 @@ impl<T> AsMut<[T]> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for str {
-    #[inline]
+    #[inline(always)]
     fn as_ref(&self) -> &str {
         self
     }
@@ -811,7 +813,7 @@ impl AsRef<str> for str {
 
 #[stable(feature = "as_mut_str_for_str", since = "1.51.0")]
 impl AsMut<str> for str {
-    #[inline]
+    #[inline(always)]
     fn as_mut(&mut self) -> &mut str {
         self
     }

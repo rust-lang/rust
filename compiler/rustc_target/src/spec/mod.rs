@@ -34,7 +34,8 @@
 //! the target's settings, though `target-feature` and `link-args` will *add*
 //! to the list specified by the target, rather than replace.
 
-use crate::abi::Endian;
+use crate::abi::call::Conv;
+use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
 use crate::json::{Json, ToJson};
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
@@ -44,9 +45,7 @@ use rustc_span::symbol::{sym, Symbol};
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -57,9 +56,9 @@ use rustc_macros::HashStable_Generic;
 pub mod abi;
 pub mod crt_objects;
 
+mod aix_base;
 mod android_base;
 mod apple_base;
-mod apple_sdk_base;
 mod avr_gnu_base;
 mod bpf_base;
 mod dragonfly_base;
@@ -71,11 +70,11 @@ mod illumos_base;
 mod l4re_base;
 mod linux_base;
 mod linux_gnu_base;
-mod linux_kernel_base;
 mod linux_musl_base;
 mod linux_uclibc_base;
 mod msvc_base;
 mod netbsd_base;
+mod nto_qnx_base;
 mod openbsd_base;
 mod redox_base;
 mod solaris_base;
@@ -115,7 +114,7 @@ pub enum Lld {
 /// relevant now.
 ///
 /// The second goal is to keep the number of flavors to the minimum if possible.
-/// LLD somewhat forces our hand here because that linker is self-sufficent only if its executable
+/// LLD somewhat forces our hand here because that linker is self-sufficient only if its executable
 /// (`argv[0]`) is named in specific way, otherwise it doesn't work and requires a
 /// `-flavor LLD_FLAVOR` argument to choose which logic to use. Our shipped `rust-lld` in
 /// particular is not named in such specific way, so it needs the flavor option, so we make our
@@ -803,7 +802,7 @@ impl ToJson for StackProbeType {
 
 bitflags::bitflags! {
     #[derive(Default, Encodable, Decodable)]
-    pub struct SanitizerSet: u8 {
+    pub struct SanitizerSet: u16 {
         const ADDRESS = 1 << 0;
         const LEAK    = 1 << 1;
         const MEMORY  = 1 << 2;
@@ -812,6 +811,7 @@ bitflags::bitflags! {
         const CFI     = 1 << 5;
         const MEMTAG  = 1 << 6;
         const SHADOWCALLSTACK = 1 << 7;
+        const KCFI    = 1 << 8;
     }
 }
 
@@ -823,6 +823,7 @@ impl SanitizerSet {
         Some(match self {
             SanitizerSet::ADDRESS => "address",
             SanitizerSet::CFI => "cfi",
+            SanitizerSet::KCFI => "kcfi",
             SanitizerSet::LEAK => "leak",
             SanitizerSet::MEMORY => "memory",
             SanitizerSet::MEMTAG => "memtag",
@@ -858,6 +859,7 @@ impl IntoIterator for SanitizerSet {
         [
             SanitizerSet::ADDRESS,
             SanitizerSet::CFI,
+            SanitizerSet::KCFI,
             SanitizerSet::LEAK,
             SanitizerSet::MEMORY,
             SanitizerSet::MEMTAG,
@@ -1003,7 +1005,7 @@ macro_rules! supported_targets {
             $(
                 #[test] // `#[test]`
                 fn $module() {
-                    tests_impl::test_target(super::$module::target(), $triple);
+                    tests_impl::test_target(super::$module::target());
                 }
             )+
         }
@@ -1027,6 +1029,7 @@ supported_targets! {
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
     ("powerpc-unknown-linux-gnuspe", powerpc_unknown_linux_gnuspe),
     ("powerpc-unknown-linux-musl", powerpc_unknown_linux_musl),
+    ("powerpc64-ibm-aix", powerpc64_ibm_aix),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64-unknown-linux-musl", powerpc64_unknown_linux_musl),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
@@ -1070,8 +1073,6 @@ supported_targets! {
     ("armv7-linux-androideabi", armv7_linux_androideabi),
     ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
-
-    ("x86_64-unknown-none-linuxkernel", x86_64_unknown_none_linuxkernel),
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("armv6-unknown-freebsd", armv6_unknown_freebsd),
@@ -1222,6 +1223,7 @@ supported_targets! {
     ("armv7a-kmc-solid_asp3-eabihf", armv7a_kmc_solid_asp3_eabihf),
 
     ("mipsel-sony-psp", mipsel_sony_psp),
+    ("mipsel-sony-psx", mipsel_sony_psx),
     ("mipsel-unknown-none", mipsel_unknown_none),
     ("thumbv4t-none-eabi", thumbv4t_none_eabi),
     ("armv4t-none-eabi", armv4t_none_eabi),
@@ -1239,12 +1241,17 @@ supported_targets! {
 
     ("aarch64-nintendo-switch-freestanding", aarch64_nintendo_switch_freestanding),
 
+    ("armv7-sony-vita-newlibeabihf", armv7_sony_vita_newlibeabihf),
+
     ("armv7-unknown-linux-uclibceabi", armv7_unknown_linux_uclibceabi),
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
 
     ("x86_64-unknown-none", x86_64_unknown_none),
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
+
+    ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx_710),
+    ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1311,6 +1318,35 @@ pub struct Target {
     pub data_layout: StaticCow<str>,
     /// Optional settings with defaults.
     pub options: TargetOptions,
+}
+
+impl Target {
+    pub fn parse_data_layout(&self) -> Result<TargetDataLayout, TargetDataLayoutErrors<'_>> {
+        let mut dl = TargetDataLayout::parse_from_llvm_datalayout_string(&self.data_layout)?;
+
+        // Perform consistency checks against the Target information.
+        if dl.endian != self.endian {
+            return Err(TargetDataLayoutErrors::InconsistentTargetArchitecture {
+                dl: dl.endian.as_str(),
+                target: self.endian.as_str(),
+            });
+        }
+
+        let target_pointer_width: u64 = self.pointer_width.into();
+        if dl.pointer_size.bits() != target_pointer_width {
+            return Err(TargetDataLayoutErrors::InconsistentTargetPointerWidth {
+                pointer_size: dl.pointer_size.bits(),
+                target: self.pointer_width,
+            });
+        }
+
+        dl.c_enum_min_size = match Integer::from_size(Size::from_bits(self.c_enum_min_bits)) {
+            Ok(bits) => bits,
+            Err(err) => return Err(TargetDataLayoutErrors::InvalidBitsSize { err }),
+        };
+
+        Ok(dl)
+    }
 }
 
 pub trait HasTargetSpec {
@@ -1452,6 +1488,9 @@ pub struct TargetOptions {
     pub families: StaticCow<[StaticCow<str>]>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
+    /// Whether the target toolchain is like AIX's. Linker options on AIX are special and it uses
+    /// XCOFF as binary format. Defaults to false.
+    pub is_like_aix: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
     /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     /// Also indiates whether to use Apple-specific ABI changes, such as extending function
@@ -1526,9 +1565,9 @@ pub struct TargetOptions {
 
     /// Flag indicating whether #[thread_local] is available for this target.
     pub has_thread_local: bool,
-    // This is mainly for easy compatibility with emscripten.
-    // If we give emcc .o files that are actually .bc files it
-    // will 'just work'.
+    /// This is mainly for easy compatibility with emscripten.
+    /// If we give emcc .o files that are actually .bc files it
+    /// will 'just work'.
     pub obj_is_bitcode: bool,
     /// Whether the target requires that emitted object code includes bitcode.
     pub forces_embed_bitcode: bool,
@@ -1667,6 +1706,14 @@ pub struct TargetOptions {
     /// Whether the target supports stack canary checks. `true` by default,
     /// since this is most common among tier 1 and tier 2 targets.
     pub supports_stack_protector: bool,
+
+    /// The name of entry function.
+    /// Default value is "main"
+    pub entry_name: StaticCow<str>,
+
+    /// The ABI of entry function.
+    /// Default value is `Conv::C`, i.e. C call convention
+    pub entry_abi: Conv,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -1807,6 +1854,7 @@ impl Default for TargetOptions {
             staticlib_suffix: ".a".into(),
             families: cvs![],
             abi_return_struct_as_int: false,
+            is_like_aix: false,
             is_like_osx: false,
             is_like_solaris: false,
             is_like_windows: false,
@@ -1883,6 +1931,8 @@ impl Default for TargetOptions {
             c_enum_min_bits: 32,
             generate_arange_section: true,
             supports_stack_protector: true,
+            entry_name: "main".into(),
+            entry_abi: Conv::C,
         }
     }
 }
@@ -1914,6 +1964,7 @@ impl Target {
                 Abi::Stdcall { unwind }
             }
             Abi::System { unwind } => Abi::C { unwind },
+            Abi::EfiApi if self.arch == "arm" => Abi::Aapcs { unwind: false },
             Abi::EfiApi if self.arch == "x86_64" => Abi::Win64 { unwind: false },
             Abi::EfiApi => Abi::C { unwind: false },
 
@@ -1940,8 +1991,10 @@ impl Target {
             | PlatformIntrinsic
             | Unadjusted
             | Cdecl { .. }
-            | EfiApi
             | RustCold => true,
+            EfiApi => {
+                ["arm", "aarch64", "riscv32", "riscv64", "x86", "x86_64"].contains(&&self.arch[..])
+            }
             X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
             Aapcs { .. } => "arm" == self.arch,
             CCmseNonSecureCall => ["arm", "aarch64"].contains(&&self.arch[..]),
@@ -2240,7 +2293,7 @@ impl Target {
                     } else {
                         return Some(Err(format!(
                             "'{}' is not a valid value for lld-flavor. \
-                             Use 'darwin', 'gnu', 'link' or 'wasm.",
+                             Use 'darwin', 'gnu', 'link' or 'wasm'.",
                             s)))
                     }
                     Some(Ok(()))
@@ -2277,6 +2330,7 @@ impl Target {
                             base.$key_name |= match s.as_str() {
                                 Some("address") => SanitizerSet::ADDRESS,
                                 Some("cfi") => SanitizerSet::CFI,
+                                Some("kcfi") => SanitizerSet::KCFI,
                                 Some("leak") => SanitizerSet::LEAK,
                                 Some("memory") => SanitizerSet::MEMORY,
                                 Some("memtag") => SanitizerSet::MEMTAG,
@@ -2400,6 +2454,18 @@ impl Target {
                     }
                 }
             } );
+            ($key_name:ident, Conv) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
+                    match Conv::from_str(s) {
+                        Ok(c) => {
+                            base.$key_name = c;
+                            Some(Ok(()))
+                        }
+                        Err(e) => Some(Err(e))
+                    }
+                })).unwrap_or(Ok(()))
+            } );
         }
 
         if let Some(j) = obj.remove("target-endian") {
@@ -2461,6 +2527,7 @@ impl Target {
         key!(staticlib_suffix);
         key!(families, TargetFamilies);
         key!(abi_return_struct_as_int, bool);
+        key!(is_like_aix, bool);
         key!(is_like_osx, bool);
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
@@ -2519,6 +2586,8 @@ impl Target {
         key!(c_enum_min_bits, u64);
         key!(generate_arange_section, bool);
         key!(supports_stack_protector, bool);
+        key!(entry_name);
+        key!(entry_abi, Conv)?;
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
@@ -2593,7 +2662,7 @@ impl Target {
 
                 // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
                 // as a fallback.
-                let rustlib_path = crate::target_rustlib_path(&sysroot, &target_triple);
+                let rustlib_path = crate::target_rustlib_path(sysroot, target_triple);
                 let p = PathBuf::from_iter([
                     Path::new(sysroot),
                     Path::new(&rustlib_path),
@@ -2712,6 +2781,7 @@ impl ToJson for Target {
         target_option_val!(staticlib_suffix);
         target_option_val!(families, "target-family");
         target_option_val!(abi_return_struct_as_int);
+        target_option_val!(is_like_aix);
         target_option_val!(is_like_osx);
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
@@ -2769,6 +2839,8 @@ impl ToJson for Target {
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);
         target_option_val!(supports_stack_protector);
+        target_option_val!(entry_name);
+        target_option_val!(entry_abi);
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());

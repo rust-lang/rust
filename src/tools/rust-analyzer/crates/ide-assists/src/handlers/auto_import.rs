@@ -127,10 +127,12 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         .sort_by_key(|import| Reverse(relevance_score(ctx, import, current_module.as_ref())));
 
     for import in proposed_imports {
+        let import_path = import.import_path;
+
         acc.add_group(
             &group_label,
             AssistId("auto_import", AssistKind::QuickFix),
-            format!("Import `{}`", import.import_path),
+            format!("Import `{import_path}`"),
             range,
             |builder| {
                 let scope = match scope.clone() {
@@ -138,7 +140,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                     ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
                     ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
                 };
-                insert_use(&scope, mod_path_to_ast(&import.import_path), &ctx.config.insert_use);
+                insert_use(&scope, mod_path_to_ast(&import_path), &ctx.config.insert_use);
             },
         );
     }

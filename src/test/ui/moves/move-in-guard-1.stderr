@@ -8,6 +8,18 @@ LL |         (1, _) if take(x) => (),
    |                        - value moved here
 LL |         (_, 2) if take(x) => (),
    |                        ^ value used here after move
+   |
+note: consider changing this parameter type in function `take` to borrow instead if owning the value isn't necessary
+  --> $DIR/move-in-guard-1.rs:15:15
+   |
+LL | fn take<T>(_: T) -> bool { false }
+   |    ----       ^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         (1, _) if take(x.clone()) => (),
+   |                         ++++++++
 
 error: aborting due to previous error
 

@@ -9,5 +9,4 @@ trait AnotherTrait {}
 impl<T: Send> AnotherTrait for T {}
 impl AnotherTrait for OpaqueType {}
 //~^ ERROR conflicting implementations of trait `AnotherTrait` for type `OpaqueType`
-//~| ERROR cannot implement trait on type alias impl trait
 fn main() {}

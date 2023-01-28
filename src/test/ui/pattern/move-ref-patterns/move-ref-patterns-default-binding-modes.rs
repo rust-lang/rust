@@ -7,8 +7,4 @@ fn main() {
     let p = (U, U);
     let (a, mut b) = &p;
     //~^ ERROR cannot move out of a shared reference
-
-    let mut p = (U, U);
-    let (a, mut b) = &mut p;
-    //~^ ERROR cannot move out of a mutable reference
 }

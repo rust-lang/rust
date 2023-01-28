@@ -23,6 +23,7 @@ const LICENSES: &[&str] = &[
     "MIT OR Apache-2.0 OR Zlib",                // tinyvec_macros
     "MIT OR Zlib OR Apache-2.0",                // miniz_oxide
     "(MIT OR Apache-2.0) AND Unicode-DFS-2016", // unicode_ident
+    "Unicode-DFS-2016",                         // tinystr and icu4x
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -30,23 +31,27 @@ const LICENSES: &[&str] = &[
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
 const EXCEPTIONS: &[(&str, &str)] = &[
-    ("mdbook", "MPL-2.0"),            // mdbook
-    ("openssl", "Apache-2.0"),        // cargo, mdbook
-    ("colored", "MPL-2.0"),           // rustfmt
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // cargo/... (because of serde)
-    ("bytesize", "Apache-2.0"),       // cargo
-    ("im-rc", "MPL-2.0+"),            // cargo
-    ("sized-chunks", "MPL-2.0+"),     // cargo via im-rc
-    ("bitmaps", "MPL-2.0+"),          // cargo via im-rc
-    ("instant", "BSD-3-Clause"),      // rustc_driver/tracing-subscriber/parking_lot
-    ("snap", "BSD-3-Clause"),         // rustc
+    ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
+    ("mdbook", "MPL-2.0"),                                   // mdbook
+    ("openssl", "Apache-2.0"),                               // cargo, mdbook
+    ("colored", "MPL-2.0"),                                  // rustfmt
+    ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
+    ("bytesize", "Apache-2.0"),                              // cargo
+    ("im-rc", "MPL-2.0+"),                                   // cargo
+    ("sized-chunks", "MPL-2.0+"),                            // cargo via im-rc
+    ("bitmaps", "MPL-2.0+"),                                 // cargo via im-rc
+    ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),    // cargo via pasetors
+    ("subtle", "BSD-3-Clause"),                              // cargo via pasetors
+    ("instant", "BSD-3-Clause"), // rustc_driver/tracing-subscriber/parking_lot
+    ("snap", "BSD-3-Clause"),    // rustc
     ("fluent-langneg", "Apache-2.0"), // rustc (fluent translations)
-    ("self_cell", "Apache-2.0"),      // rustc (fluent translations)
+    ("self_cell", "Apache-2.0"), // rustc (fluent translations)
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
     ("dunce", "CC0-1.0"),            // cargo (dev dependency)
     ("similar", "Apache-2.0"),       // cargo (dev dependency)
     ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
+    ("dissimilar", "Apache-2.0"),    // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
@@ -54,6 +59,7 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-egraph", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-isle", "Apache-2.0 WITH LLVM-exception"),
@@ -64,6 +70,7 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("mach", "BSD-2-Clause"),
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
+    ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
 ];
 
 const EXCEPTIONS_BOOTSTRAP: &[(&str, &str)] = &[
@@ -85,11 +92,13 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "aho-corasick",
     "annotate-snippets",
     "ansi_term",
+    "ar_archive_writer",
     "arrayvec",
     "atty",
     "autocfg",
     "bitflags",
     "block-buffer",
+    "bumpalo", // Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "cc",
     "cfg-if",
     "chalk-derive",
@@ -97,6 +106,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "chalk-ir",
     "chalk-solve",
     "chrono",
+    "convert_case", // dependency of derive_more
     "compiler_builtins",
     "cpufeatures",
     "crc32fast",
@@ -107,14 +117,17 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crypto-common",
     "cstr",
     "datafrog",
-    "difference",
+    "derive_more",
     "digest",
+    "displaydoc",
+    "dissimilar",
     "dlmalloc",
     "either",
     "ena",
     "env_logger",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
+    "fastrand",
     "filetime",
     "fixedbitset",
     "flate2",
@@ -130,6 +143,11 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "hashbrown",
     "hermit-abi",
     "humantime",
+    "icu_list",
+    "icu_locid",
+    "icu_provider",
+    "icu_provider_adapters",
+    "icu_provider_macros",
     "if_chain",
     "indexmap",
     "instant",
@@ -138,10 +156,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "itertools",
     "itoa",
     "jobserver",
+    "js-sys", // Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "lazy_static",
     "libc",
     "libloading",
     "libz-sys",
+    "litemap",
     "lock_api",
     "log",
     "matchers",
@@ -205,6 +225,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "snap",
     "stable_deref_trait",
     "stacker",
+    "static_assertions",
+    "subtle", // dependency of cargo (via pasetors)
     "syn",
     "synstructure",
     "tempfile",
@@ -225,6 +247,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "tracing-log",
     "tracing-subscriber",
     "tracing-tree",
+    "twox-hash",
     "type-map",
     "typenum",
     "unic-char-property",
@@ -246,19 +269,32 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "valuable",
     "version_check",
     "wasi",
+    // vvv Included in Cargo's dep graph but only activated on wasm32-*-unknown.
+    "wasm-bindgen",
+    "wasm-bindgen-backend",
+    "wasm-bindgen-macro",
+    "wasm-bindgen-macro-support",
+    "wasm-bindgen-shared",
+    // ^^^ Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
+    "writeable",
     // this is a false-positive: it's only used by rustfmt, but because it's enabled through a
     // feature, tidy thinks it's used by rustc as well.
     "yansi-term",
+    "yoke",
+    "yoke-derive",
+    "zerofrom",
+    "zerofrom-derive",
+    "zerovec",
+    "zerovec-derive",
 ];
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "ahash",
     "anyhow",
-    "ar",
     "arrayvec",
     "autocfg",
     "bumpalo",
@@ -269,6 +305,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-codegen",
     "cranelift-codegen-meta",
     "cranelift-codegen-shared",
+    "cranelift-egraph",
     "cranelift-entity",
     "cranelift-frontend",
     "cranelift-isle",
@@ -277,6 +314,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-native",
     "cranelift-object",
     "crc32fast",
+    "fallible-iterator",
     "fxhash",
     "getrandom",
     "gimli",
@@ -293,9 +331,11 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "region",
     "slice-group-by",
     "smallvec",
+    "stable_deref_trait",
     "target-lexicon",
     "version_check",
     "wasi",
+    "wasmtime-jit-icache-coherence",
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",

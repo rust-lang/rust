@@ -1,35 +1,35 @@
 error[E0308]: mismatched types
-  --> $DIR/type-ascription-soundness.rs:7:17
+  --> $DIR/type-ascription-soundness.rs:7:31
    |
-LL |     let ref x = arr: &[u8];
-   |                 ^^^ expected slice `[u8]`, found array `[u8; 3]`
-   |
-   = note: expected reference `&[u8]`
-              found reference `&[u8; 3]`
-
-error[E0308]: mismatched types
-  --> $DIR/type-ascription-soundness.rs:8:21
-   |
-LL |     let ref mut x = arr: &[u8];
-   |                     ^^^ expected slice `[u8]`, found array `[u8; 3]`
+LL |     let ref x = type_ascribe!(arr, &[u8]);
+   |                               ^^^ expected slice `[u8]`, found array `[u8; 3]`
    |
    = note: expected reference `&[u8]`
               found reference `&[u8; 3]`
 
 error[E0308]: mismatched types
-  --> $DIR/type-ascription-soundness.rs:9:11
+  --> $DIR/type-ascription-soundness.rs:8:35
    |
-LL |     match arr: &[u8] {
-   |           ^^^ expected slice `[u8]`, found array `[u8; 3]`
+LL |     let ref mut x = type_ascribe!(arr, &[u8]);
+   |                                   ^^^ expected slice `[u8]`, found array `[u8; 3]`
    |
    = note: expected reference `&[u8]`
               found reference `&[u8; 3]`
 
 error[E0308]: mismatched types
-  --> $DIR/type-ascription-soundness.rs:12:17
+  --> $DIR/type-ascription-soundness.rs:9:25
    |
-LL |     let _len = (arr: &[u8]).len();
-   |                 ^^^ expected slice `[u8]`, found array `[u8; 3]`
+LL |     match type_ascribe!(arr, &[u8]) {
+   |                         ^^^ expected slice `[u8]`, found array `[u8; 3]`
+   |
+   = note: expected reference `&[u8]`
+              found reference `&[u8; 3]`
+
+error[E0308]: mismatched types
+  --> $DIR/type-ascription-soundness.rs:12:30
+   |
+LL |     let _len = type_ascribe!(arr, &[u8]).len();
+   |                              ^^^ expected slice `[u8]`, found array `[u8; 3]`
    |
    = note: expected reference `&[u8]`
               found reference `&[u8; 3]`

@@ -15,42 +15,42 @@ fn main() {
         drop(non_clone);
     };
     check_copy(&inner_non_clone);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Copy` is not satisfied
+    //~^ ERROR : Copy` is not satisfied
     check_clone(&inner_non_clone);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Clone` is not satisfied
+    //~^ ERROR : Clone` is not satisfied
 
     let non_clone = NonClone;
     let outer_non_clone = async move {
         drop(non_clone);
     };
     check_copy(&outer_non_clone);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Copy` is not satisfied
+    //~^ ERROR : Copy` is not satisfied
     check_clone(&outer_non_clone);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Clone` is not satisfied
+    //~^ ERROR : Clone` is not satisfied
 
     let maybe_copy_clone = async move {};
     check_copy(&maybe_copy_clone);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Copy` is not satisfied
+    //~^ ERROR : Copy` is not satisfied
     check_clone(&maybe_copy_clone);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Clone` is not satisfied
+    //~^ ERROR : Clone` is not satisfied
 
     let inner_non_clone_fn = the_inner_non_clone_fn();
     check_copy(&inner_non_clone_fn);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Copy` is not satisfied
+    //~^ ERROR : Copy` is not satisfied
     check_clone(&inner_non_clone_fn);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Clone` is not satisfied
+    //~^ ERROR : Clone` is not satisfied
 
     let outer_non_clone_fn = the_outer_non_clone_fn(NonClone);
     check_copy(&outer_non_clone_fn);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Copy` is not satisfied
+    //~^ ERROR : Copy` is not satisfied
     check_clone(&outer_non_clone_fn);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Clone` is not satisfied
+    //~^ ERROR : Clone` is not satisfied
 
     let maybe_copy_clone_fn = the_maybe_copy_clone_fn();
     check_copy(&maybe_copy_clone_fn);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Copy` is not satisfied
+    //~^ ERROR : Copy` is not satisfied
     check_clone(&maybe_copy_clone_fn);
-    //~^ ERROR the trait bound `impl Future<Output = ()>: Clone` is not satisfied
+    //~^ ERROR : Clone` is not satisfied
 }
 
 async fn the_inner_non_clone_fn() {
@@ -64,8 +64,7 @@ async fn the_outer_non_clone_fn(non_clone: NonClone) {
     drop(non_clone);
 }
 
-async fn the_maybe_copy_clone_fn() {
-}
+async fn the_maybe_copy_clone_fn() {}
 
 fn check_copy<T: Copy>(_x: &T) {}
 fn check_clone<T: Clone>(_x: &T) {}

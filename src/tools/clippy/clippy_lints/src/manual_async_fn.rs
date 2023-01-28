@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     AsyncGeneratorKind, Block, Body, Closure, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound,
-    HirId, IsAsync, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
+    HirId, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
     ) {
         if_chain! {
             if let Some(header) = kind.header();
-            if header.asyncness == IsAsync::NotAsync;
+            if !header.asyncness.is_async();
             // Check that this function returns `impl Future`
             if let FnRetTy::Return(ret_ty) = decl.output;
             if let Some((trait_ref, output_lifetimes)) = future_trait_ref(cx, ret_ty);
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                                 let help = format!("make the function `async` and {ret_sugg}");
                                 diag.span_suggestion(
                                     header_span,
-                                    &help,
+                                    help,
                                     format!("async {}{ret_snip}", &header_snip[..ret_pos]),
                                     Applicability::MachineApplicable
                                 );
@@ -118,7 +118,7 @@ fn future_trait_ref<'tcx>(
                 .iter()
                 .filter_map(|bound| {
                     if let GenericArg::Lifetime(lt) = bound {
-                        Some(lt.name)
+                        Some(lt.res)
                     } else {
                         None
                     }
@@ -152,8 +152,8 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
     let input_lifetimes: Vec<LifetimeName> = inputs
         .iter()
         .filter_map(|ty| {
-            if let TyKind::Rptr(lt, _) = ty.kind {
-                Some(lt.name)
+            if let TyKind::Ref(lt, _) = ty.kind {
+                Some(lt.res)
             } else {
                 None
             }
@@ -177,7 +177,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
         if let Some(args) = cx
             .tcx
             .lang_items()
-            .from_generator_fn()
+            .identity_future_fn()
             .and_then(|def_id| match_function_call_with_def_id(cx, block_expr, def_id));
         if args.len() == 1;
         if let Expr {

@@ -75,13 +75,13 @@ LL |     ABORT();
    = note: inside `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::sys_common::backtrace::__rust_end_short_backtrace::<[closure@std::rt::begin_panic<&str>::{closure#0}], !>` at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
-note: inside `<Foo as std::ops::Drop>::drop` at RUSTLIB/std/src/panic.rs:LL:CC
+note: inside `<Foo as std::ops::Drop>::drop`
   --> $DIR/double_panic.rs:LL:CC
    |
 LL |         panic!("second");
    | ^
    = note: inside `std::ptr::drop_in_place::<Foo> - shim(Some(Foo))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-note: inside `main` at $DIR/double_panic.rs:LL:CC
+note: inside `main`
   --> $DIR/double_panic.rs:LL:CC
    |
 LL | }

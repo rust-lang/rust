@@ -29,6 +29,7 @@ mod layout;
 mod layout_sanity_check;
 mod needs_drop;
 pub mod representability;
+mod structural_match;
 mod ty;
 
 pub fn provide(providers: &mut Providers) {
@@ -42,4 +43,5 @@ pub fn provide(providers: &mut Providers) {
     representability::provide(providers);
     ty::provide(providers);
     instance::provide(providers);
+    structural_match::provide(providers);
 }

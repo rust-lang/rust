@@ -150,8 +150,12 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n = 23 + 85;
 
     // Unary
-    _n = -1;
-    _n = -(-1);
+    _n = -2147483647;
+    _n = -i32::MAX;
+    _n = -i32::MIN;
+    _n = -&2147483647;
+    _n = -&i32::MAX;
+    _n = -&i32::MIN;
 }
 
 pub fn runtime_ops() {

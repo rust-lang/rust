@@ -14,7 +14,7 @@ pub struct PartiallyUninit {
 
 // CHECK: [[FULLY_UNINIT:@[0-9]+]] = private unnamed_addr constant <{ [10 x i8] }> undef
 
-// CHECK: [[PARTIALLY_UNINIT:@[0-9]+]] = private unnamed_addr constant <{ [4 x i8], [12 x i8] }> <{ [4 x i8] c"\EF\BE\AD\DE", [12 x i8] undef }>, align 4
+// CHECK: [[PARTIALLY_UNINIT:@[0-9]+]] = private unnamed_addr constant <{ [4 x i8], [12 x i8] }> <{ [4 x i8] c"{{\\EF\\BE\\AD\\DE|\\DE\\AD\\BE\\EF}}", [12 x i8] undef }>, align 4
 
 // This shouldn't contain undef, since it contains more chunks
 // than the default value of uninit_const_chunk_threshold.

@@ -7,10 +7,7 @@ LL | struct Foo<'a, T> {
 LL |     bar: &'a mut T
    |     ^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `&mut T`
    |
-   = help: the following other types implement trait `Clone`:
-             &T
-             *const T
-             *mut T
+   = help: the trait `Clone` is implemented for `&T`
    = note: `Clone` is implemented for `&T`, but not for `&mut T`
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 

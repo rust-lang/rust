@@ -34,9 +34,9 @@ pub fn disable_localization(linker: &mut Command) {
     linker.env("VSLANG", "1033");
 }
 
-// The third parameter is for env vars, used on windows to set up the
-// path for MSVC to find its DLLs, and gcc to find its bundled
-// toolchain
+/// The third parameter is for env vars, used on windows to set up the
+/// path for MSVC to find its DLLs, and gcc to find its bundled
+/// toolchain
 pub fn get_linker<'a>(
     sess: &'a Session,
     linker: &Path,
@@ -108,7 +108,7 @@ pub fn get_linker<'a>(
     if sess.target.is_like_msvc {
         if let Some(ref tool) = msvc_tool {
             cmd.args(tool.args());
-            for &(ref k, ref v) in tool.env() {
+            for (k, v) in tool.env() {
                 if k == "PATH" {
                     new_path.extend(env::split_paths(v));
                     msvc_changed_path = true;
@@ -515,7 +515,7 @@ impl<'a> Linker for GccLinker<'a> {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = find_native_static_library(lib, Some(verbatim), search_path, &self.sess);
+            let lib = find_native_static_library(lib, verbatim, search_path, &self.sess);
             self.linker_arg(&lib);
         }
     }
@@ -1260,11 +1260,11 @@ impl<'a> Linker for WasmLd<'a> {
     }
 
     fn link_whole_staticlib(&mut self, lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {
-        self.cmd.arg("-l").arg(lib);
+        self.cmd.arg("--whole-archive").arg("-l").arg(lib).arg("--no-whole-archive");
     }
 
     fn link_whole_rlib(&mut self, lib: &Path) {
-        self.cmd.arg(lib);
+        self.cmd.arg("--whole-archive").arg(lib).arg("--no-whole-archive");
     }
 
     fn gc_sections(&mut self, _keep_metadata: bool) {

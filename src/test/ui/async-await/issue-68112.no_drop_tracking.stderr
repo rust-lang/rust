@@ -59,10 +59,10 @@ LL | fn make_non_send_future2() -> impl Future<Output = Arc<RefCell<i32>>> {
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: required because it captures the following types: `ResumeTy`, `impl Future<Output = Arc<RefCell<i32>>>`, `()`, `i32`, `Ready<i32>`
 note: required because it's used within this `async` block
-  --> $DIR/issue-68112.rs:60:26
+  --> $DIR/issue-68112.rs:60:20
    |
 LL |       let send_fut = async {
-   |  __________________________^
+   |  ____________________^
 LL | |         let non_send_fut = make_non_send_future2();
 LL | |         let _ = non_send_fut.await;
 LL | |         ready(0).await;

@@ -1,6 +1,7 @@
 #![deny(unused_must_use)]
 
 #[must_use]
+#[derive(Clone, Copy)]
 struct S;
 
 struct A;
@@ -34,6 +35,10 @@ fn array_of_arrays_of_arrays() -> [[[S; 1]; 2]; 1] {
     [[[S], [S]]]
 }
 
+fn usize_max() -> [S; usize::MAX] {
+    [S; usize::MAX]
+}
+
 fn main() {
     empty(); // ok
     singleton(); //~ ERROR unused array of `S` that must be used
@@ -44,4 +49,6 @@ fn main() {
     //~^ ERROR unused array of boxed `T` trait objects in tuple element 1 that must be used
     array_of_arrays_of_arrays();
     //~^ ERROR unused array of arrays of arrays of `S` that must be used
+    usize_max();
+    //~^ ERROR unused array of `S` that must be used
 }

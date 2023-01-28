@@ -149,7 +149,7 @@ pub(crate) fn clif_int_or_float_cast(
         }
 
         let is_not_nan = fx.bcx.ins().fcmp(FloatCC::Equal, from, from);
-        let zero = fx.bcx.ins().iconst(to_ty, 0);
+        let zero = type_zero_value(&mut fx.bcx, to_ty);
         fx.bcx.ins().select(is_not_nan, val, zero)
     } else if from_ty.is_float() && to_ty.is_float() {
         // float -> float

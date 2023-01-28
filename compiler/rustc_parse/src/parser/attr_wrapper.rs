@@ -5,9 +5,9 @@ use rustc_ast::tokenstream::{AttrTokenTree, DelimSpan, LazyAttrTokenStream, Spac
 use rustc_ast::{self as ast};
 use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_errors::PResult;
-use rustc_span::{sym, Span};
+use rustc_session::parse::ParseSess;
+use rustc_span::{sym, Span, DUMMY_SP};
 
-use std::convert::TryInto;
 use std::ops::Range;
 
 /// A wrapper type to ensure that the parser handles outer attributes correctly.
@@ -39,12 +39,17 @@ impl AttrWrapper {
     pub fn empty() -> AttrWrapper {
         AttrWrapper { attrs: AttrVec::new(), start_pos: usize::MAX }
     }
-    // FIXME: Delay span bug here?
-    pub(crate) fn take_for_recovery(self) -> AttrVec {
+
+    pub(crate) fn take_for_recovery(self, sess: &ParseSess) -> AttrVec {
+        sess.span_diagnostic.delay_span_bug(
+            self.attrs.get(0).map(|attr| attr.span).unwrap_or(DUMMY_SP),
+            "AttrVec is taken for recovery but no error is produced",
+        );
+
         self.attrs
     }
 
-    // Prepend `self.attrs` to `attrs`.
+    /// Prepend `self.attrs` to `attrs`.
     // FIXME: require passing an NT to prevent misuse of this method
     pub(crate) fn prepend_to_nt_inner(self, attrs: &mut AttrVec) {
         let mut self_attrs = self.attrs;

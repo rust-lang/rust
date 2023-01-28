@@ -7,6 +7,9 @@
 use crate::ty::{self, print::describe_as_module, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 
+mod keys;
+pub use keys::Key;
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -30,7 +33,7 @@ rustc_queries! {
     }
 
     query resolver_for_lowering(_: ()) -> &'tcx Steal<ty::ResolverAstLowering> {
-        eval_always
+        feedable
         no_hash
         desc { "getting the resolver for lowering" }
     }
@@ -40,6 +43,8 @@ rustc_queries! {
     /// This span is meant for dep-tracking rather than diagnostics. It should not be used outside
     /// of rustc_middle::hir::source_map.
     query source_span(key: LocalDefId) -> Span {
+        // Accesses untracked data
+        eval_always
         desc { "getting the source span" }
     }
 
@@ -164,7 +169,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query collect_trait_impl_trait_tys(key: DefId)
+    query collect_return_position_impl_trait_in_trait_tys(key: DefId)
         -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>
     {
         desc { "comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process" }
@@ -271,6 +276,10 @@ rustc_queries! {
         desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
     }
 
+    /// Look up all native libraries this crate depends on.
+    /// These are assembled from the following places:
+    /// - `extern` blocks (depending on their `link` attributes)
+    /// - the `libs` (`-l`) option
     query native_libraries(_: CrateNum) -> Vec<NativeLib> {
         arena_cache
         desc { "looking up the native libraries of a linked crate" }
@@ -393,7 +402,7 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const(
         key: DefId
-    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<ty::Const<'tcx>>, ErrorGuaranteed> {
         desc {
             |tcx| "building an abstract representation for `{}`", tcx.def_path_str(key),
         }
@@ -402,20 +411,11 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const_of_const_arg(
         key: (LocalDefId, DefId)
-    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<ty::Const<'tcx>>, ErrorGuaranteed> {
         desc {
             |tcx|
             "building an abstract representation for the const argument `{}`",
             tcx.def_path_str(key.0.to_def_id()),
-        }
-    }
-
-    query try_unify_abstract_consts(key:
-        ty::ParamEnvAnd<'tcx, (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>
-    )>) -> bool {
-        desc {
-            |tcx| "trying to unify the generic constants `{}` and `{}`",
-            tcx.def_path_str(key.value.0.def.did), tcx.def_path_str(key.value.1.def.did)
         }
     }
 
@@ -564,7 +564,7 @@ rustc_queries! {
 
     /// Returns the inferred outlives predicates (e.g., for `struct
     /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
-    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, Span)] {
         desc { |tcx| "computing inferred outlives predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -912,7 +912,7 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    query used_trait_imports(key: LocalDefId) -> &'tcx FxHashSet<LocalDefId> {
+    query used_trait_imports(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
         desc { |tcx| "finding used_trait_imports `{}`", tcx.def_path_str(key.to_def_id()) }
         cache_on_disk_if { true }
     }
@@ -1065,10 +1065,10 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
     }
 
-    /// Performs part of the privacy check and computes "access levels".
-    query privacy_access_levels(_: ()) -> &'tcx AccessLevels {
+    /// Performs part of the privacy check and computes effective visibilities.
+    query effective_visibilities(_: ()) -> &'tcx EffectiveVisibilities {
         eval_always
-        desc { "checking privacy access levels" }
+        desc { "checking effective visibilities" }
     }
     query check_private_in_public(_: ()) -> () {
         eval_always
@@ -1111,6 +1111,7 @@ rustc_queries! {
         desc { |tcx| "looking up span for `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// Gets the span for the identifier of the definition.
@@ -1391,6 +1392,13 @@ rustc_queries! {
         desc { "checking if the crate has_global_allocator" }
         separate_provide_extern
     }
+    query has_alloc_error_handler(_: CrateNum) -> bool {
+        // This query depends on untracked global state in CStore
+        eval_always
+        fatal_cycle
+        desc { "checking if the crate has_alloc_error_handler" }
+        separate_provide_extern
+    }
     query has_panic_handler(_: CrateNum) -> bool {
         fatal_cycle
         desc { "checking if the crate has_panic_handler" }
@@ -1532,6 +1540,7 @@ rustc_queries! {
         desc { "available upstream drop-glue for `{:?}`", substs }
     }
 
+    /// Returns a list of all `extern` blocks of a crate.
     query foreign_modules(_: CrateNum) -> FxHashMap<DefId, ForeignModule> {
         arena_cache
         desc { "looking up the foreign modules of a linked crate" }
@@ -1543,9 +1552,12 @@ rustc_queries! {
     query entry_fn(_: ()) -> Option<(DefId, EntryFnType)> {
         desc { "looking up the entry function of a crate" }
     }
+
+    /// Finds the `rustc_proc_macro_decls` item of a crate.
     query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
-        desc { "looking up the derive registrar for a crate" }
+        desc { "looking up the proc macro declarations for a crate" }
     }
+
     // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.
     // Changing the name should cause a compiler error, but in case that changes, be aware.
     query crate_hash(_: CrateNum) -> Svh {
@@ -1553,17 +1565,24 @@ rustc_queries! {
         desc { "looking up the hash a crate" }
         separate_provide_extern
     }
+
+    /// Gets the hash for the host proc macro. Used to support -Z dual-proc-macro.
     query crate_host_hash(_: CrateNum) -> Option<Svh> {
         eval_always
         desc { "looking up the hash of a host version of a crate" }
         separate_provide_extern
     }
+
+    /// Gets the extra data to put in each output filename for a crate.
+    /// For example, compiling the `foo` crate with `extra-filename=-a` creates a `libfoo-b.rlib` file.
     query extra_filename(_: CrateNum) -> String {
         arena_cache
         eval_always
         desc { "looking up the extra filename for a crate" }
         separate_provide_extern
     }
+
+    /// Gets the paths where the crate came from in the file system.
     query crate_extern_paths(_: CrateNum) -> Vec<PathBuf> {
         arena_cache
         eval_always
@@ -1587,23 +1606,15 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Get the corresponding native library from the `native_libraries` query
     query native_library(def_id: DefId) -> Option<&'tcx NativeLib> {
         desc { |tcx| "getting the native library for `{}`", tcx.def_path_str(def_id) }
     }
 
-    /// Does lifetime resolution, but does not descend into trait items. This
-    /// should only be used for resolving lifetimes of on trait definitions,
-    /// and is used to avoid cycles. Importantly, `resolve_lifetimes` still visits
-    /// the same lifetimes and is responsible for diagnostics.
-    /// See `rustc_resolve::late::lifetimes for details.
-    query resolve_lifetimes_trait_definition(_: LocalDefId) -> ResolveLifetimes {
-        arena_cache
-        desc { "resolving lifetimes for a trait definition" }
-    }
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes for details.
-    query resolve_lifetimes(_: LocalDefId) -> ResolveLifetimes {
+    query resolve_lifetimes(_: hir::OwnerId) -> ResolveLifetimes {
         arena_cache
         desc { "resolving lifetimes" }
     }
@@ -1634,6 +1645,8 @@ rustc_queries! {
     /// a generic type parameter will panic if you call this method on it:
     ///
     /// ```
+    /// use std::fmt::Debug;
+    ///
     /// pub trait Foo<T: Debug> {}
     /// ```
     ///
@@ -1705,7 +1718,7 @@ rustc_queries! {
     }
 
     /// Returns the lang items defined in another crate by loading it from metadata.
-    query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, usize)] {
+    query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, LangItem)] {
         desc { "calculating the lang items defined in a crate" }
         separate_provide_extern
     }
@@ -1760,6 +1773,10 @@ rustc_queries! {
     query allocator_kind(_: ()) -> Option<AllocatorKind> {
         eval_always
         desc { "getting the allocator kind for the current crate" }
+    }
+    query alloc_error_handler_kind(_: ()) -> Option<AllocatorKind> {
+        eval_always
+        desc { "alloc error handler kind for the current crate" }
     }
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
@@ -2054,19 +2071,8 @@ rustc_queries! {
         remap_env_constness
     }
 
-    query normalize_opaque_types(key: &'tcx ty::List<ty::Predicate<'tcx>>) -> &'tcx ty::List<ty::Predicate<'tcx>> {
-        desc { "normalizing opaque types in `{:?}`", key }
-    }
-
-    /// Checks whether a type is definitely uninhabited. This is
-    /// conservative: for some types that are uninhabited we return `false`,
-    /// but we only return `true` for types that are definitely uninhabited.
-    /// `ty.conservative_is_privately_uninhabited` implies that any value of type `ty`
-    /// will be `Abi::Uninhabited`. (Note that uninhabited types may have nonzero
-    /// size, to account for partial initialisation. See #49298 for details.)
-    query conservative_is_privately_uninhabited(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-        desc { "conservatively checking if `{}` is privately uninhabited", key.value }
-        remap_env_constness
+    query reveal_opaque_types_in_bounds(key: &'tcx ty::List<ty::Predicate<'tcx>>) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+        desc { "revealing opaque types in `{:?}`", key }
     }
 
     query limits(key: ()) -> Limits {
@@ -2111,7 +2117,7 @@ rustc_queries! {
         desc { "checking to see if `{}` permits being left zeroed", key.ty }
     }
 
-    query compare_assoc_const_impl_item_with_trait_item(
+    query compare_impl_const(
         key: (LocalDefId, DefId)
     ) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking assoc const `{}` has the same type as trait item", tcx.def_path_str(key.0.to_def_id()) }

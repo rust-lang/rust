@@ -29,9 +29,10 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, BindingMode, BuiltinAttr, Callable, ConstParam, Crate, DeriveHelper, Field, Function,
-    HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef,
-    Name, Path, ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    Access, Adjust, AutoBorrow, BindingMode, BuiltinAttr, Callable, ConstParam, Crate,
+    DeriveHelper, Field, Function, HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local,
+    Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, ToolModule, Trait, Type,
+    TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -333,9 +334,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_trait(trait_)
     }
 
-    // FIXME: Figure out a nice interface to inspect adjustments
-    pub fn is_implicit_reborrow(&self, expr: &ast::Expr) -> Option<Mutability> {
-        self.imp.is_implicit_reborrow(expr)
+    pub fn expr_adjustments(&self, expr: &ast::Expr) -> Option<Vec<Adjust>> {
+        self.imp.expr_adjustments(expr)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo> {
@@ -1067,8 +1067,29 @@ impl<'db> SemanticsImpl<'db> {
         }
     }
 
-    fn is_implicit_reborrow(&self, expr: &ast::Expr) -> Option<Mutability> {
-        self.analyze(expr.syntax())?.is_implicit_reborrow(self.db, expr)
+    fn expr_adjustments(&self, expr: &ast::Expr) -> Option<Vec<Adjust>> {
+        let mutability = |m| match m {
+            hir_ty::Mutability::Not => Mutability::Shared,
+            hir_ty::Mutability::Mut => Mutability::Mut,
+        };
+        self.analyze(expr.syntax())?.expr_adjustments(self.db, expr).map(|it| {
+            it.iter()
+                .map(|adjust| match adjust.kind {
+                    hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
+                    hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
+                        Adjust::Deref(Some(OverloadedDeref(mutability(m))))
+                    }
+                    hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
+                    hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {
+                        Adjust::Borrow(AutoBorrow::RawPtr(mutability(m)))
+                    }
+                    hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::Ref(m)) => {
+                        Adjust::Borrow(AutoBorrow::Ref(mutability(m)))
+                    }
+                    hir_ty::Adjust::Pointer(pc) => Adjust::Pointer(pc),
+                })
+                .collect()
+        })
     }
 
     fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo> {

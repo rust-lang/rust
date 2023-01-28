@@ -6,6 +6,12 @@ LL | macro_rules! accept_pat {
 ...
 LL | accept_pat!(p | q);
    |               ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$p:pat`
+  --> $DIR/or-patterns-syntactic-fail-2018.rs:9:6
+   |
+LL |     ($p:pat) => {};
+   |      ^^^^^^
 
 error: no rules expected the token `|`
   --> $DIR/or-patterns-syntactic-fail-2018.rs:13:13
@@ -15,6 +21,12 @@ LL | macro_rules! accept_pat {
 ...
 LL | accept_pat!(|p| q);
    |             ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$p:pat`
+  --> $DIR/or-patterns-syntactic-fail-2018.rs:9:6
+   |
+LL |     ($p:pat) => {};
+   |      ^^^^^^
 
 error: aborting due to 2 previous errors
 

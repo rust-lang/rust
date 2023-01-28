@@ -66,8 +66,8 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         use rustc_span::BytePos;
 
-        fn suggestion<'tcx>(
-            cx: &LateContext<'tcx>,
+        fn suggestion(
+            cx: &LateContext<'_>,
             diag: &mut Diagnostic,
             generics_span: Span,
             generics_suggestion_span: Span,
@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
             }
         }
 
-        if !cx.access_levels.is_exported(item.def_id.def_id) {
+        if !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
             return;
         }
 

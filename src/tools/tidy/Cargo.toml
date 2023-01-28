@@ -7,8 +7,12 @@ autobins = false
 [dependencies]
 cargo_metadata = "0.14"
 regex = "1"
+miropt-test-tools = { path = "../miropt-test-tools" }
 lazy_static = "1"
 walkdir = "2"
+ignore = "0.4.18"
+semver = "1.0.14"
+termcolor = "1.1.3"
 
 [[bin]]
 name = "rust-tidy"

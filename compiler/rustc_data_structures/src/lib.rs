@@ -22,6 +22,7 @@
 #![feature(new_uninit)]
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
+#![feature(negative_impls)]
 #![feature(test)]
 #![feature(thread_id_value)]
 #![feature(vec_into_raw_parts)]
@@ -86,6 +87,7 @@ pub mod steal;
 pub mod tagged_ptr;
 pub mod temp_dir;
 pub mod unhash;
+pub mod unord;
 
 pub use ena::undo_log;
 pub use ena::unify;

@@ -1,3 +1,4 @@
+// run-rustfix
 struct X {
     x: String,
 }
@@ -10,7 +11,7 @@ impl Drop for X {
 
 fn unwrap(x: X) -> String {
     let X { x: y } = x; //~ ERROR cannot move out of type
-    y
+    y.to_string()
 }
 
 fn main() {

@@ -4,7 +4,7 @@ use crate::ptr;
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.
-#[cfg(all(any(
+#[cfg(any(
     target_arch = "x86",
     target_arch = "arm",
     target_arch = "mips",
@@ -16,9 +16,9 @@ use crate::ptr;
     target_arch = "hexagon",
     all(target_arch = "riscv32", not(target_os = "espidf")),
     all(target_arch = "xtensa", not(target_os = "espidf")),
-)))]
+))]
 pub const MIN_ALIGN: usize = 8;
-#[cfg(all(any(
+#[cfg(any(
     target_arch = "x86_64",
     target_arch = "aarch64",
     target_arch = "mips64",
@@ -26,13 +26,13 @@ pub const MIN_ALIGN: usize = 8;
     target_arch = "sparc64",
     target_arch = "riscv64",
     target_arch = "wasm64",
-)))]
+))]
 pub const MIN_ALIGN: usize = 16;
 // The allocator on the esp-idf platform guarantees 4 byte alignment.
-#[cfg(all(any(
+#[cfg(any(
     all(target_arch = "riscv32", target_os = "espidf"),
     all(target_arch = "xtensa", target_os = "espidf"),
-)))]
+))]
 pub const MIN_ALIGN: usize = 4;
 
 pub unsafe fn realloc_fallback(

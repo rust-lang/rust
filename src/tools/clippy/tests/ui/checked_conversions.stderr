@@ -1,5 +1,5 @@
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:17:13
+  --> $DIR/checked_conversions.rs:16:13
    |
 LL |     let _ = value <= (u32::max_value() as i64) && value >= 0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u32::try_from(value).is_ok()`
@@ -7,97 +7,97 @@ LL |     let _ = value <= (u32::max_value() as i64) && value >= 0;
    = note: `-D clippy::checked-conversions` implied by `-D warnings`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:18:13
+  --> $DIR/checked_conversions.rs:17:13
    |
 LL |     let _ = value <= (u32::MAX as i64) && value >= 0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u32::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:22:13
+  --> $DIR/checked_conversions.rs:21:13
    |
 LL |     let _ = value <= i64::from(u16::max_value()) && value >= 0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u16::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:23:13
+  --> $DIR/checked_conversions.rs:22:13
    |
 LL |     let _ = value <= i64::from(u16::MAX) && value >= 0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u16::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:27:13
+  --> $DIR/checked_conversions.rs:26:13
    |
 LL |     let _ = value <= (u8::max_value() as isize) && value >= 0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u8::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:28:13
+  --> $DIR/checked_conversions.rs:27:13
    |
 LL |     let _ = value <= (u8::MAX as isize) && value >= 0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u8::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:34:13
+  --> $DIR/checked_conversions.rs:33:13
    |
 LL |     let _ = value <= (i32::max_value() as i64) && value >= (i32::min_value() as i64);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:35:13
+  --> $DIR/checked_conversions.rs:34:13
    |
 LL |     let _ = value <= (i32::MAX as i64) && value >= (i32::MIN as i64);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:39:13
+  --> $DIR/checked_conversions.rs:38:13
    |
 LL |     let _ = value <= i64::from(i16::max_value()) && value >= i64::from(i16::min_value());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i16::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:40:13
+  --> $DIR/checked_conversions.rs:39:13
    |
 LL |     let _ = value <= i64::from(i16::MAX) && value >= i64::from(i16::MIN);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i16::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:46:13
+  --> $DIR/checked_conversions.rs:45:13
    |
 LL |     let _ = value <= i32::max_value() as u32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:47:13
+  --> $DIR/checked_conversions.rs:46:13
    |
 LL |     let _ = value <= i32::MAX as u32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:51:13
+  --> $DIR/checked_conversions.rs:50:13
    |
 LL |     let _ = value <= isize::max_value() as usize && value as i32 == 5;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `isize::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:52:13
+  --> $DIR/checked_conversions.rs:51:13
    |
 LL |     let _ = value <= isize::MAX as usize && value as i32 == 5;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `isize::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:56:13
+  --> $DIR/checked_conversions.rs:55:13
    |
 LL |     let _ = value <= u16::max_value() as u32 && value as i32 == 5;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u16::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:57:13
+  --> $DIR/checked_conversions.rs:56:13
    |
 LL |     let _ = value <= u16::MAX as u32 && value as i32 == 5;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u16::try_from(value).is_ok()`
 
 error: checked cast can be simplified
-  --> $DIR/checked_conversions.rs:92:13
+  --> $DIR/checked_conversions.rs:89:13
    |
 LL |     let _ = value <= (u32::MAX as i64) && value >= 0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u32::try_from(value).is_ok()`

@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(custom_inner_attributes)]
 #![warn(clippy::cloned_instead_of_copied)]
 #![allow(unused)]
 
@@ -17,23 +16,20 @@ fn main() {
     let _ = Some(&String::new()).cloned();
 }
 
+#[clippy::msrv = "1.34"]
 fn msrv_1_34() {
-    #![clippy::msrv = "1.34"]
-
     let _ = [1].iter().cloned();
     let _ = Some(&1).cloned();
 }
 
+#[clippy::msrv = "1.35"]
 fn msrv_1_35() {
-    #![clippy::msrv = "1.35"]
-
     let _ = [1].iter().cloned();
     let _ = Some(&1).cloned(); // Option::copied needs 1.35
 }
 
+#[clippy::msrv = "1.36"]
 fn msrv_1_36() {
-    #![clippy::msrv = "1.36"]
-
     let _ = [1].iter().cloned(); // Iterator::copied needs 1.36
     let _ = Some(&1).cloned();
 }

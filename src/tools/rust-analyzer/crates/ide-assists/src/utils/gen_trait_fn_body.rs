@@ -41,7 +41,7 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let mut arms = vec![];
             for variant in list.variants() {
                 let name = variant.name()?;
-                let variant_name = make::ext::path_from_idents(["Self", &format!("{}", name)])?;
+                let variant_name = make::ext::path_from_idents(["Self", &format!("{name}")])?;
 
                 match variant.field_list() {
                     // => match self { Self::Name { x } => Self::Name { x: x.clone() } }
@@ -70,7 +70,7 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         let mut pats = vec![];
                         let mut fields = vec![];
                         for (i, _) in list.fields().enumerate() {
-                            let field_name = format!("arg{}", i);
+                            let field_name = format!("arg{i}");
                             let pat = make::ident_pat(false, false, make::name(&field_name));
                             pats.push(pat.into());
 
@@ -118,7 +118,7 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     let mut fields = vec![];
                     for (i, _) in field_list.fields().enumerate() {
                         let f_path = make::expr_path(make::ext::ident_path("self"));
-                        let target = make::expr_field(f_path, &format!("{}", i));
+                        let target = make::expr_field(f_path, &format!("{i}"));
                         fields.push(gen_clone_call(target));
                     }
                     let struct_name = make::expr_path(make::ext::ident_path("Self"));
@@ -151,7 +151,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let mut arms = vec![];
             for variant in list.variants() {
                 let name = variant.name()?;
-                let variant_name = make::ext::path_from_idents(["Self", &format!("{}", name)])?;
+                let variant_name = make::ext::path_from_idents(["Self", &format!("{name}")])?;
                 let target = make::expr_path(make::ext::ident_path("f"));
 
                 match variant.field_list() {
@@ -159,7 +159,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         // => f.debug_struct(name)
                         let target = make::expr_path(make::ext::ident_path("f"));
                         let method = make::name_ref("debug_struct");
-                        let struct_name = format!("\"{}\"", name);
+                        let struct_name = format!("\"{name}\"");
                         let args = make::arg_list(Some(make::expr_literal(&struct_name).into()));
                         let mut expr = make::expr_method_call(target, method, args);
 
@@ -173,8 +173,8 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
                             // => <expr>.field("field_name", field)
                             let method_name = make::name_ref("field");
-                            let name = make::expr_literal(&(format!("\"{}\"", field_name))).into();
-                            let path = &format!("{}", field_name);
+                            let name = make::expr_literal(&(format!("\"{field_name}\""))).into();
+                            let path = &format!("{field_name}");
                             let path = make::expr_path(make::ext::ident_path(path));
                             let args = make::arg_list(vec![name, path]);
                             expr = make::expr_method_call(expr, method_name, args);
@@ -192,13 +192,13 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         // => f.debug_tuple(name)
                         let target = make::expr_path(make::ext::ident_path("f"));
                         let method = make::name_ref("debug_tuple");
-                        let struct_name = format!("\"{}\"", name);
+                        let struct_name = format!("\"{name}\"");
                         let args = make::arg_list(Some(make::expr_literal(&struct_name).into()));
                         let mut expr = make::expr_method_call(target, method, args);
 
                         let mut pats = vec![];
                         for (i, _) in list.fields().enumerate() {
-                            let name = format!("arg{}", i);
+                            let name = format!("arg{i}");
 
                             // create a field pattern for use in `MyStruct(fields..)`
                             let field_name = make::name(&name);
@@ -222,7 +222,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         arms.push(make::match_arm(Some(pat.into()), None, expr));
                     }
                     None => {
-                        let fmt_string = make::expr_literal(&(format!("\"{}\"", name))).into();
+                        let fmt_string = make::expr_literal(&(format!("\"{name}\""))).into();
                         let args = make::arg_list([target, fmt_string]);
                         let macro_name = make::expr_path(make::ext::ident_path("write"));
                         let macro_call = make::expr_macro_call(macro_name, args);
@@ -244,7 +244,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         }
 
         ast::Adt::Struct(strukt) => {
-            let name = format!("\"{}\"", annotated_name);
+            let name = format!("\"{annotated_name}\"");
             let args = make::arg_list(Some(make::expr_literal(&name).into()));
             let target = make::expr_path(make::ext::ident_path("f"));
 
@@ -258,10 +258,10 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     let mut expr = make::expr_method_call(target, method, args);
                     for field in field_list.fields() {
                         let name = field.name()?;
-                        let f_name = make::expr_literal(&(format!("\"{}\"", name))).into();
+                        let f_name = make::expr_literal(&(format!("\"{name}\""))).into();
                         let f_path = make::expr_path(make::ext::ident_path("self"));
                         let f_path = make::expr_ref(f_path, false);
-                        let f_path = make::expr_field(f_path, &format!("{}", name));
+                        let f_path = make::expr_field(f_path, &format!("{name}"));
                         let args = make::arg_list([f_name, f_path]);
                         expr = make::expr_method_call(expr, make::name_ref("field"), args);
                     }
@@ -275,7 +275,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     for (i, _) in field_list.fields().enumerate() {
                         let f_path = make::expr_path(make::ext::ident_path("self"));
                         let f_path = make::expr_ref(f_path, false);
-                        let f_path = make::expr_field(f_path, &format!("{}", i));
+                        let f_path = make::expr_field(f_path, &format!("{i}"));
                         let method = make::name_ref("field");
                         expr = make::expr_method_call(expr, method, make::arg_list(Some(f_path)));
                     }
@@ -379,7 +379,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 let mut stmts = vec![];
                 for (i, _) in field_list.fields().enumerate() {
                     let base = make::expr_path(make::ext::ident_path("self"));
-                    let target = make::expr_field(base, &format!("{}", i));
+                    let target = make::expr_field(base, &format!("{i}"));
                     stmts.push(gen_hash_call(target));
                 }
                 make::block_expr(stmts, None).indent(ast::edit::IndentLevel(1))
@@ -453,10 +453,10 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         for field in list.fields() {
                             let field_name = field.name()?.to_string();
 
-                            let l_name = &format!("l_{}", field_name);
+                            let l_name = &format!("l_{field_name}");
                             l_fields.push(gen_record_pat_field(&field_name, l_name));
 
-                            let r_name = &format!("r_{}", field_name);
+                            let r_name = &format!("r_{field_name}");
                             r_fields.push(gen_record_pat_field(&field_name, r_name));
 
                             let lhs = make::expr_path(make::ext::ident_path(l_name));
@@ -484,12 +484,12 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         let mut r_fields = vec![];
 
                         for (i, _) in list.fields().enumerate() {
-                            let field_name = format!("{}", i);
+                            let field_name = format!("{i}");
 
-                            let l_name = format!("l{}", field_name);
+                            let l_name = format!("l{field_name}");
                             l_fields.push(gen_tuple_field(&l_name));
 
-                            let r_name = format!("r{}", field_name);
+                            let r_name = format!("r{field_name}");
                             r_fields.push(gen_tuple_field(&r_name));
 
                             let lhs = make::expr_path(make::ext::ident_path(&l_name));
@@ -548,7 +548,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             Some(ast::FieldList::TupleFieldList(field_list)) => {
                 let mut expr = None;
                 for (i, _) in field_list.fields().enumerate() {
-                    let idx = format!("{}", i);
+                    let idx = format!("{i}");
                     let lhs = make::expr_path(make::ext::ident_path("self"));
                     let lhs = make::expr_field(lhs, &idx);
                     let rhs = make::expr_path(make::ext::ident_path("other"));
@@ -628,7 +628,7 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             Some(ast::FieldList::TupleFieldList(field_list)) => {
                 let mut exprs = vec![];
                 for (i, _) in field_list.fields().enumerate() {
-                    let idx = format!("{}", i);
+                    let idx = format!("{i}");
                     let lhs = make::expr_path(make::ext::ident_path("self"));
                     let lhs = make::expr_field(lhs, &idx);
                     let rhs = make::expr_path(make::ext::ident_path("other"));

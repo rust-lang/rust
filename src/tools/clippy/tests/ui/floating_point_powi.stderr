@@ -42,5 +42,47 @@ error: multiply and add expressions can be calculated more efficiently and accur
 LL |     let _ = (x + y.powi(2)).sqrt();
    |             ^^^^^^^^^^^^^^^ help: consider using: `y.mul_add(y, x)`
 
-error: aborting due to 7 previous errors
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> $DIR/floating_point_powi.rs:18:13
+   |
+LL |     let _ = (x - 1.0).powi(2) - y;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x - 1.0).mul_add(x - 1.0, -y)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> $DIR/floating_point_powi.rs:19:13
+   |
+LL |     let _ = (x - 1.0).powi(2) - y + 3.0;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x - 1.0).mul_add(x - 1.0, -y)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> $DIR/floating_point_powi.rs:20:13
+   |
+LL |     let _ = (x - 1.0).powi(2) - (y + 3.0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x - 1.0).mul_add(x - 1.0, -(y + 3.0))`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> $DIR/floating_point_powi.rs:21:13
+   |
+LL |     let _ = x - (y + 1.0).powi(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(y + 1.0).mul_add(-(y + 1.0), x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> $DIR/floating_point_powi.rs:22:13
+   |
+LL |     let _ = x - (3.0 * y).powi(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(3.0 * y).mul_add(-(3.0 * y), x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> $DIR/floating_point_powi.rs:23:13
+   |
+LL |     let _ = x - (y + 1.0 + x).powi(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(y + 1.0 + x).mul_add(-(y + 1.0 + x), x)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> $DIR/floating_point_powi.rs:24:13
+   |
+LL |     let _ = x - (y + 1.0 + 2.0).powi(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(y + 1.0 + 2.0).mul_add(-(y + 1.0 + 2.0), x)`
+
+error: aborting due to 14 previous errors
 

@@ -1,5 +1,5 @@
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:13:5
+  --> $DIR/could_be_const.rs:12:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         Self { guess: 42 }
@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:17:5
+  --> $DIR/could_be_const.rs:16:5
    |
 LL | /     fn const_generic_params<'a, T, const N: usize>(&self, b: &'a [T; N]) -> &'a [T; N] {
 LL | |         b
@@ -17,7 +17,7 @@ LL | |     }
    | |_____^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:23:1
+  --> $DIR/could_be_const.rs:22:1
    |
 LL | / fn one() -> i32 {
 LL | |     1
@@ -25,7 +25,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:28:1
+  --> $DIR/could_be_const.rs:27:1
    |
 LL | / fn two() -> i32 {
 LL | |     let abc = 2;
@@ -34,7 +34,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:34:1
+  --> $DIR/could_be_const.rs:33:1
    |
 LL | / fn string() -> String {
 LL | |     String::new()
@@ -42,7 +42,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:39:1
+  --> $DIR/could_be_const.rs:38:1
    |
 LL | / unsafe fn four() -> i32 {
 LL | |     4
@@ -50,7 +50,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:44:1
+  --> $DIR/could_be_const.rs:43:1
    |
 LL | / fn generic<T>(t: T) -> T {
 LL | |     t
@@ -58,7 +58,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:52:1
+  --> $DIR/could_be_const.rs:51:1
    |
 LL | / fn generic_arr<T: Copy>(t: [T; 1]) -> T {
 LL | |     t[0]
@@ -66,7 +66,7 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:65:9
+  --> $DIR/could_be_const.rs:64:9
    |
 LL | /         pub fn b(self, a: &A) -> B {
 LL | |             B
@@ -74,7 +74,7 @@ LL | |         }
    | |_________^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:75:5
+  --> $DIR/could_be_const.rs:73:5
    |
 LL | /     fn const_fn_stabilized_before_msrv(byte: u8) {
 LL | |         byte.is_ascii_digit();
@@ -82,11 +82,9 @@ LL | |     }
    | |_____^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:86:1
+  --> $DIR/could_be_const.rs:84:1
    |
 LL | / fn msrv_1_46() -> i32 {
-LL | |     #![clippy::msrv = "1.46"]
-LL | |
 LL | |     46
 LL | | }
    | |_^

@@ -10,7 +10,6 @@
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::RangeEnd;
 use rustc_index::newtype_index;
@@ -36,9 +35,8 @@ macro_rules! thir_with_elements {
         $(
             newtype_index! {
                 #[derive(HashStable)]
-                pub struct $id {
-                    DEBUG_FORMAT = $format
-                }
+                #[debug_format = $format]
+                pub struct $id {}
             }
         )*
 
@@ -751,7 +749,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
-                    if variant.ctor_kind == CtorKind::Fictive {
+                    if variant.ctor.is_none() {
                         write!(f, " {{ ")?;
 
                         let mut printed = 0;

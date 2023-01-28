@@ -1,5 +1,5 @@
 error: casting the result of `i32::abs()` to u32
-  --> $DIR/cast_abs_to_unsigned.rs:9:18
+  --> $DIR/cast_abs_to_unsigned.rs:8:18
    |
 LL |     let y: u32 = x.abs() as u32;
    |                  ^^^^^^^^^^^^^^ help: replace with: `x.unsigned_abs()`
@@ -7,103 +7,103 @@ LL |     let y: u32 = x.abs() as u32;
    = note: `-D clippy::cast-abs-to-unsigned` implied by `-D warnings`
 
 error: casting the result of `i32::abs()` to usize
-  --> $DIR/cast_abs_to_unsigned.rs:13:20
+  --> $DIR/cast_abs_to_unsigned.rs:12:20
    |
 LL |     let _: usize = a.abs() as usize;
    |                    ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `i32::abs()` to usize
-  --> $DIR/cast_abs_to_unsigned.rs:14:20
+  --> $DIR/cast_abs_to_unsigned.rs:13:20
    |
 LL |     let _: usize = a.abs() as _;
    |                    ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `i32::abs()` to usize
-  --> $DIR/cast_abs_to_unsigned.rs:15:13
+  --> $DIR/cast_abs_to_unsigned.rs:14:13
    |
 LL |     let _ = a.abs() as usize;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `i64::abs()` to usize
-  --> $DIR/cast_abs_to_unsigned.rs:18:13
+  --> $DIR/cast_abs_to_unsigned.rs:17:13
    |
 LL |     let _ = a.abs() as usize;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `i64::abs()` to u8
-  --> $DIR/cast_abs_to_unsigned.rs:19:13
+  --> $DIR/cast_abs_to_unsigned.rs:18:13
    |
 LL |     let _ = a.abs() as u8;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `i64::abs()` to u16
-  --> $DIR/cast_abs_to_unsigned.rs:20:13
+  --> $DIR/cast_abs_to_unsigned.rs:19:13
    |
 LL |     let _ = a.abs() as u16;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `i64::abs()` to u32
-  --> $DIR/cast_abs_to_unsigned.rs:21:13
+  --> $DIR/cast_abs_to_unsigned.rs:20:13
    |
 LL |     let _ = a.abs() as u32;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `i64::abs()` to u64
-  --> $DIR/cast_abs_to_unsigned.rs:22:13
+  --> $DIR/cast_abs_to_unsigned.rs:21:13
    |
 LL |     let _ = a.abs() as u64;
    |             ^^^^^^^^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `i64::abs()` to u128
-  --> $DIR/cast_abs_to_unsigned.rs:23:13
+  --> $DIR/cast_abs_to_unsigned.rs:22:13
    |
 LL |     let _ = a.abs() as u128;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `isize::abs()` to usize
-  --> $DIR/cast_abs_to_unsigned.rs:26:13
+  --> $DIR/cast_abs_to_unsigned.rs:25:13
    |
 LL |     let _ = a.abs() as usize;
    |             ^^^^^^^^^^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `isize::abs()` to u8
-  --> $DIR/cast_abs_to_unsigned.rs:27:13
+  --> $DIR/cast_abs_to_unsigned.rs:26:13
    |
 LL |     let _ = a.abs() as u8;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `isize::abs()` to u16
-  --> $DIR/cast_abs_to_unsigned.rs:28:13
+  --> $DIR/cast_abs_to_unsigned.rs:27:13
    |
 LL |     let _ = a.abs() as u16;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `isize::abs()` to u32
-  --> $DIR/cast_abs_to_unsigned.rs:29:13
+  --> $DIR/cast_abs_to_unsigned.rs:28:13
    |
 LL |     let _ = a.abs() as u32;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `isize::abs()` to u64
-  --> $DIR/cast_abs_to_unsigned.rs:30:13
+  --> $DIR/cast_abs_to_unsigned.rs:29:13
    |
 LL |     let _ = a.abs() as u64;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `isize::abs()` to u128
-  --> $DIR/cast_abs_to_unsigned.rs:31:13
+  --> $DIR/cast_abs_to_unsigned.rs:30:13
    |
 LL |     let _ = a.abs() as u128;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
 error: casting the result of `i64::abs()` to u32
-  --> $DIR/cast_abs_to_unsigned.rs:33:13
+  --> $DIR/cast_abs_to_unsigned.rs:32:13
    |
 LL |     let _ = (x as i64 - y as i64).abs() as u32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `(x as i64 - y as i64).unsigned_abs()`
 
 error: casting the result of `i32::abs()` to u32
-  --> $DIR/cast_abs_to_unsigned.rs:47:23
+  --> $DIR/cast_abs_to_unsigned.rs:44:23
    |
 LL |     assert_eq!(10u32, x.abs() as u32);
    |                       ^^^^^^^^^^^^^^ help: replace with: `x.unsigned_abs()`

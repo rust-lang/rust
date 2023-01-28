@@ -9,7 +9,7 @@ LL |         let mut order = unsafe { memcmp(left.as_ptr(), right.as_ptr(), len)
    = note: BACKTRACE:
    = note: inside `<u8 as core::slice::cmp::SliceOrd>::compare` at RUSTLIB/core/src/slice/cmp.rs:LL:CC
    = note: inside `core::slice::cmp::<impl std::cmp::Ord for [u8]>::cmp` at RUSTLIB/core/src/slice/cmp.rs:LL:CC
-note: inside `main` at $DIR/uninit_buffer.rs:LL:CC
+note: inside `main`
   --> $DIR/uninit_buffer.rs:LL:CC
    |
 LL |         drop(slice1.cmp(slice2));

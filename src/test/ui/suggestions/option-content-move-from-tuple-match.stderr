@@ -9,6 +9,11 @@ LL |         (None, &c) => &c.unwrap(),
    |                 |
    |                 data moved here
    |                 move occurs because `c` has type `Option<String>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         (None, &ref c) => &c.unwrap(),
+   |                 +++
 
 error: aborting due to previous error
 

@@ -1,10 +1,10 @@
-use std::convert::TryInto;
-
+use super::Const;
 use crate::mir;
 use crate::mir::interpret::{AllocId, ConstValue, Scalar};
+use crate::ty::abstract_const::CastKind;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
-use crate::ty::{self, TyCtxt, TypeVisitable};
+use crate::ty::{self, List, Ty, TyCtxt, TypeVisitable};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
@@ -47,6 +47,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 /// Represents a constant in Rust.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(derive_more::From)]
 pub enum ConstKind<'tcx> {
     /// A const generic parameter.
     Param(ty::ParamConst),
@@ -69,8 +70,30 @@ pub enum ConstKind<'tcx> {
 
     /// A placeholder for a const which could not be computed; this is
     /// propagated to avoid useless error messages.
-    Error(ty::DelaySpanBugEmitted),
+    #[from(ignore)]
+    Error(ErrorGuaranteed),
+
+    /// Expr which contains an expression which has partially evaluated items.
+    Expr(Expr<'tcx>),
 }
+
+impl<'tcx> From<ty::ConstVid<'tcx>> for ConstKind<'tcx> {
+    fn from(const_vid: ty::ConstVid<'tcx>) -> Self {
+        InferConst::Var(const_vid).into()
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
+pub enum Expr<'tcx> {
+    Binop(mir::BinOp, Const<'tcx>, Const<'tcx>),
+    UnOp(mir::UnOp, Const<'tcx>),
+    FunctionCall(Const<'tcx>, &'tcx List<Const<'tcx>>),
+    Cast(CastKind, Const<'tcx>, Ty<'tcx>),
+}
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(Expr<'_>, 24);
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstKind<'_>, 32);
@@ -226,7 +249,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // (which may be identity substs, see above),
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ValTree(val?))),
-                        Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => None,
+                        Err(ErrorHandled::TooGeneric) => None,
                         Err(ErrorHandled::Reported(e)) => Some(Err(e)),
                     }
                 }
@@ -237,7 +260,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // (which may be identity substs, see above),
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ConstVal(val))),
-                        Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => None,
+                        Err(ErrorHandled::TooGeneric) => None,
                         Err(ErrorHandled::Reported(e)) => Some(Err(e)),
                     }
                 }

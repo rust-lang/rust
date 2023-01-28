@@ -1,14 +1,12 @@
 use crate::expand::{AstFragment, AstFragmentKind};
-
 use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::Ident;
-
 use smallvec::{smallvec, SmallVec};
-
-use rustc_data_structures::fx::FxHashMap;
+use thin_vec::ThinVec;
 
 pub fn placeholder(
     kind: AstFragmentKind,
@@ -17,8 +15,12 @@ pub fn placeholder(
 ) -> AstFragment {
     fn mac_placeholder() -> P<ast::MacCall> {
         P(ast::MacCall {
-            path: ast::Path { span: DUMMY_SP, segments: Vec::new(), tokens: None },
-            args: P(ast::MacArgs::Empty),
+            path: ast::Path { span: DUMMY_SP, segments: ThinVec::new(), tokens: None },
+            args: P(ast::DelimArgs {
+                dspan: ast::tokenstream::DelimSpan::dummy(),
+                delim: ast::MacDelimiter::Parenthesis,
+                tokens: ast::tokenstream::TokenStream::new(Vec::new()),
+            }),
             prior_type_ascription: None,
         })
     }

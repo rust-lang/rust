@@ -1,4 +1,4 @@
-// compile-flags: -Z print-type-sizes
+// compile-flags: -Z print-type-sizes --crate-type=lib
 // build-pass
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.
@@ -11,7 +11,7 @@
 // It avoids using u64/i64 because on some targets that is only 4-byte
 // aligned (while on most it is 8-byte aligned) and so the resulting
 // padding and overall computed sizes can be quite different.
-#![feature(start)]
+
 #![allow(dead_code)]
 
 #[repr(align(16))]
@@ -24,15 +24,9 @@ enum E {
 }
 
 #[derive(Default)]
-struct S {
+pub struct S {
     a: i32,
     b: i32,
     c: A,
     d: i8,
-}
-
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
-    let _s: S = Default::default();
-    0
 }

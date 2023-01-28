@@ -113,12 +113,12 @@ impl ProcMacroSrv {
 
     fn expander(&mut self, path: &Path) -> Result<&dylib::Expander, String> {
         let time = fs::metadata(path).and_then(|it| it.modified()).map_err(|err| {
-            format!("Failed to get file metadata for {}: {:?}", path.display(), err)
+            format!("Failed to get file metadata for {}: {}", path.display(), err)
         })?;
 
         Ok(match self.expanders.entry((path.to_path_buf(), time)) {
             Entry::Vacant(v) => v.insert(dylib::Expander::new(path).map_err(|err| {
-                format!("Cannot create expander for {}: {:?}", path.display(), err)
+                format!("Cannot create expander for {}: {}", path.display(), err)
             })?),
             Entry::Occupied(e) => e.into_mut(),
         })

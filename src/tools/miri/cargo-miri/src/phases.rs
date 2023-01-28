@@ -34,7 +34,7 @@ Examples:
 "#;
 
 fn show_help() {
-    println!("{}", CARGO_MIRI_HELP);
+    println!("{CARGO_MIRI_HELP}");
 }
 
 fn show_version() {
@@ -52,7 +52,7 @@ fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut
     let path = args.next().expect("`--extern` should be followed by a filename");
     if let Some(lib) = path.strip_suffix(".rlib") {
         // If this is an rlib, make it an rmeta.
-        cmd.arg(format!("{}.rmeta", lib));
+        cmd.arg(format!("{lib}.rmeta"));
     } else {
         // Some other extern file (e.g. a `.so`). Forward unchanged.
         cmd.arg(path);
@@ -94,7 +94,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let target = target.as_ref().unwrap_or(host);
 
     // We always setup.
-    setup(&subcommand, target, &rustc_version);
+    setup(&subcommand, target, &rustc_version, verbose);
 
     // Invoke actual cargo for the job, but with different flags.
     // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
@@ -236,22 +236,36 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
         is_bin || is_test
     }
 
-    fn out_filename(prefix: &str, suffix: &str) -> PathBuf {
-        if let Some(out_dir) = get_arg_flag_value("--out-dir") {
-            let mut path = PathBuf::from(out_dir);
-            path.push(format!(
-                "{}{}{}{}",
-                prefix,
-                get_arg_flag_value("--crate-name").unwrap(),
-                // This is technically a `-C` flag but the prefix seems unique enough...
-                // (and cargo passes this before the filename so it should be unique)
-                get_arg_flag_value("extra-filename").unwrap_or_default(),
-                suffix,
-            ));
-            path
+    fn out_filenames() -> Vec<PathBuf> {
+        if let Some(out_file) = get_arg_flag_value("-o") {
+            // `-o` has precedence over `--out-dir`.
+            vec![PathBuf::from(out_file)]
         } else {
-            let out_file = get_arg_flag_value("-o").unwrap();
-            PathBuf::from(out_file)
+            let out_dir = get_arg_flag_value("--out-dir").unwrap_or_default();
+            let path = PathBuf::from(out_dir);
+            // Ask rustc for the filename (since that is target-dependent).
+            let mut rustc = miri_for_host(); // sysroot doesn't matter for this so we just use the host
+            rustc.arg("--print").arg("file-names");
+            for flag in ["--crate-name", "--crate-type", "--target"] {
+                for val in get_arg_flag_values(flag) {
+                    rustc.arg(flag).arg(val);
+                }
+            }
+            // This is technically passed as `-C extra-filename=...`, but the prefix seems unique
+            // enough... (and cargo passes this before the filename so it should be unique)
+            if let Some(extra) = get_arg_flag_value("extra-filename") {
+                rustc.arg("-C").arg(format!("extra-filename={extra}"));
+            }
+            rustc.arg("-");
+
+            let output = rustc.output().expect("cannot run rustc to determine file name");
+            assert!(
+                output.status.success(),
+                "rustc failed when determining file name:\n{output:?}"
+            );
+            let output =
+                String::from_utf8(output.stdout).expect("rustc returned non-UTF-8 filename");
+            output.lines().filter(|l| !l.is_empty()).map(|l| path.join(l)).collect()
         }
     }
 
@@ -267,23 +281,28 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     let info_query = get_arg_flag_value("--print").is_some() || has_arg_flag("-vV");
 
     let store_json = |info: CrateRunInfo| {
-        // Create a stub .d file to stop Cargo from "rebuilding" the crate:
-        // https://github.com/rust-lang/miri/issues/1724#issuecomment-787115693
-        // As we store a JSON file instead of building the crate here, an empty file is fine.
-        let dep_info_name = out_filename("", ".d");
-        if verbose > 0 {
-            eprintln!("[cargo-miri rustc] writing stub dep-info to `{}`", dep_info_name.display());
+        if get_arg_flag_value("--emit").unwrap_or_default().split(',').any(|e| e == "dep-info") {
+            // Create a stub .d file to stop Cargo from "rebuilding" the crate:
+            // https://github.com/rust-lang/miri/issues/1724#issuecomment-787115693
+            // As we store a JSON file instead of building the crate here, an empty file is fine.
+            let dep_info_name = format!(
+                "{}/{}{}.d",
+                get_arg_flag_value("--out-dir").unwrap(),
+                get_arg_flag_value("--crate-name").unwrap(),
+                get_arg_flag_value("extra-filename").unwrap_or_default(),
+            );
+            if verbose > 0 {
+                eprintln!("[cargo-miri rustc] writing stub dep-info to `{dep_info_name}`");
+            }
+            File::create(dep_info_name).expect("failed to create fake .d file");
         }
-        File::create(dep_info_name).expect("failed to create fake .d file");
 
-        let filename = out_filename("", "");
-        if verbose > 0 {
-            eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
+        for filename in out_filenames() {
+            if verbose > 0 {
+                eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
+            }
+            info.store(&filename);
         }
-        info.store(&filename);
-        // For Windows, do the same thing again with `.exe` appended to the filename.
-        // (Need to do this here as cargo moves that "binary" to a different place before running it.)
-        info.store(&out_filename("", ".exe"));
     };
 
     let runnable_crate = !info_query && is_runnable_crate();
@@ -322,11 +341,14 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
 
             // Alter the `-o` parameter so that it does not overwrite the JSON file we stored above.
             let mut args = env.args;
+            let mut out_filename = None;
             for i in 0..args.len() {
                 if args[i] == "-o" {
+                    out_filename = Some(args[i + 1].clone());
                     args[i + 1].push_str(".miri");
                 }
             }
+            let out_filename = out_filename.expect("rustdoc must pass `-o`");
 
             cmd.args(&args);
             cmd.env("MIRI_BE_RUSTC", "target");
@@ -336,10 +358,10 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                     "[cargo-miri rustc inside rustdoc] captured input:\n{}",
                     std::str::from_utf8(&env.stdin).unwrap()
                 );
-                eprintln!("[cargo-miri rustc inside rustdoc] going to run:\n{:?}", cmd);
+                eprintln!("[cargo-miri rustc inside rustdoc] going to run:\n{cmd:?}");
             }
 
-            exec_with_pipe(cmd, &env.stdin, format!("{}.stdin", out_filename("", "").display()));
+            exec_with_pipe(cmd, &env.stdin, format!("{out_filename}.stdin"));
         }
 
         return;
@@ -374,7 +396,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                         val.push("metadata");
                     }
                 }
-                cmd.arg(format!("{}={}", emit_flag, val.join(",")));
+                cmd.arg(format!("{emit_flag}={}", val.join(",")));
             } else if arg == "--extern" {
                 // Patch `--extern` filenames, since Cargo sometimes passes stub `.rlib` files:
                 // https://github.com/rust-lang/miri/issues/1705
@@ -421,15 +443,12 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     // Create a stub .rlib file if "link" was requested by cargo.
     // This is necessary to prevent cargo from doing rebuilds all the time.
     if emit_link_hack {
-        // Some platforms prepend "lib", some do not... let's just create both files.
-        File::create(out_filename("lib", ".rlib")).expect("failed to create fake .rlib file");
-        File::create(out_filename("", ".rlib")).expect("failed to create fake .rlib file");
-        // Just in case this is a cdylib or staticlib, also create those fake files.
-        File::create(out_filename("lib", ".so")).expect("failed to create fake .so file");
-        File::create(out_filename("lib", ".a")).expect("failed to create fake .a file");
-        File::create(out_filename("lib", ".dylib")).expect("failed to create fake .dylib file");
-        File::create(out_filename("", ".dll")).expect("failed to create fake .dll file");
-        File::create(out_filename("", ".lib")).expect("failed to create fake .lib file");
+        for filename in out_filenames() {
+            if verbose > 0 {
+                eprintln!("[cargo-miri rustc] creating fake lib file at `{}`", filename.display());
+            }
+            File::create(filename).expect("failed to create fake lib file");
+        }
     }
 
     debug_cmd("[cargo-miri rustc]", verbose, &cmd);
@@ -485,8 +504,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
                 continue;
             } else if verbose > 0 {
                 eprintln!(
-                    "[cargo-miri runner] Overwriting run-time env var {:?}={:?} with build-time value {:?}",
-                    name, old_val, val
+                    "[cargo-miri runner] Overwriting run-time env var {name:?}={old_val:?} with build-time value {val:?}"
                 );
             }
         }
@@ -528,14 +546,14 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     cmd.args(binary_args);
 
     // Make sure we use the build-time working directory for interpreting Miri/rustc arguments.
-    // But then we need to switch to the run-time one, which we instruct Miri do do by setting `MIRI_CWD`.
+    // But then we need to switch to the run-time one, which we instruct Miri to do by setting `MIRI_CWD`.
     cmd.current_dir(info.current_dir);
     cmd.env("MIRI_CWD", env::current_dir().unwrap());
 
     // Run it.
     debug_cmd("[cargo-miri runner]", verbose, &cmd);
     match phase {
-        RunnerPhase::Rustdoc => exec_with_pipe(cmd, &info.stdin, format!("{}.stdin", binary)),
+        RunnerPhase::Rustdoc => exec_with_pipe(cmd, &info.stdin, format!("{binary}.stdin")),
         RunnerPhase::Cargo => exec(cmd),
     }
 }

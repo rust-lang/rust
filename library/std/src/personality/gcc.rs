@@ -219,7 +219,7 @@ cfg_if::cfg_if! {
         }
 
         cfg_if::cfg_if! {
-            if #[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))] {
+            if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
                 // On x86_64 MinGW targets, the unwinding mechanism is SEH however the unwind
                 // handler data (aka LSDA) uses GCC-compatible encoding.
                 #[lang = "eh_personality"]

@@ -21,11 +21,11 @@ mod ptr_as_ptr;
 mod unnecessary_cast;
 mod utils;
 
-use clippy_utils::{is_hir_ty_cfg_dependant, meets_msrv, msrvs};
+use clippy_utils::is_hir_ty_cfg_dependant;
+use clippy_utils::msrvs::{self, Msrv};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
@@ -593,7 +593,7 @@ declare_clippy_lint! {
     /// let _: *mut [u8] = std::ptr::slice_from_raw_parts_mut(ptr, len);
     /// ```
     /// [safety requirements]: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
-    #[clippy::version = "1.64.0"]
+    #[clippy::version = "1.65.0"]
     pub CAST_SLICE_FROM_RAW_PARTS,
     suspicious,
     "casting a slice created from a pointer and length to a slice pointer"
@@ -641,19 +641,19 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let _: = 0_u64;
     /// ```
-    #[clippy::version = "1.64.0"]
+    #[clippy::version = "1.66.0"]
     pub CAST_NAN_TO_INT,
     suspicious,
     "casting a known floating-point NaN into an integer"
 }
 
 pub struct Casts {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl Casts {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -686,7 +686,7 @@ impl_lint_pass!(Casts => [
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !in_external_macro(cx.sess(), expr.span) {
-            ptr_as_ptr::check(cx, expr, self.msrv);
+            ptr_as_ptr::check(cx, expr, &self.msrv);
         }
 
         if expr.span.from_expansion() {
@@ -705,7 +705,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
                 return;
             }
-            cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, self.msrv);
+            cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, &self.msrv);
             as_ptr_cast_mut::check(cx, expr, cast_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
@@ -717,16 +717,16 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);
                     cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
-                    cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
+                    cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
                     cast_nan_to_int::check(cx, expr, cast_expr, cast_from, cast_to);
                 }
-                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
+                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_expr, cast_from);
             }
 
             as_underscore::check(cx, expr, cast_to_hir);
 
-            if meets_msrv(self.msrv, msrvs::BORROW_AS_PTR) {
+            if self.msrv.meets(msrvs::BORROW_AS_PTR) {
                 borrow_as_ptr::check(cx, expr, cast_expr, cast_to_hir);
             }
         }
@@ -734,8 +734,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         cast_ref_to_mut::check(cx, expr);
         cast_ptr_alignment::check(cx, expr);
         char_lit_as_u8::check(cx, expr);
-        ptr_as_ptr::check(cx, expr, self.msrv);
-        cast_slice_different_sizes::check(cx, expr, self.msrv);
+        ptr_as_ptr::check(cx, expr, &self.msrv);
+        cast_slice_different_sizes::check(cx, expr, &self.msrv);
     }
 
     extract_msrv_attr!(LateContext);

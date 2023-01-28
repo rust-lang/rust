@@ -1,4 +1,5 @@
 use crate::marker::Destruct;
+use crate::marker::Tuple;
 
 /// Struct representing a closure with mutably borrowed data.
 ///
@@ -45,7 +46,7 @@ impl<'a, CapturedData: ?Sized, Function> ConstFnMutClosure<&'a mut CapturedData,
 macro_rules! impl_fn_mut_tuple {
     ($($var:ident)*) => {
         #[allow(unused_parens)]
-        impl<'a, $($var,)* ClosureArguments, Function, ClosureReturnValue> const
+        impl<'a, $($var,)* ClosureArguments: Tuple, Function, ClosureReturnValue> const
             FnOnce<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>
         where
             Function: ~const Fn(($(&mut $var),*), ClosureArguments) -> ClosureReturnValue+ ~const Destruct,
@@ -57,7 +58,7 @@ macro_rules! impl_fn_mut_tuple {
             }
         }
         #[allow(unused_parens)]
-        impl<'a, $($var,)* ClosureArguments, Function, ClosureReturnValue> const
+        impl<'a, $($var,)* ClosureArguments: Tuple, Function, ClosureReturnValue> const
             FnMut<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>
         where
             Function: ~const Fn(($(&mut $var),*), ClosureArguments)-> ClosureReturnValue,

@@ -109,8 +109,9 @@ pub struct InferenceBadError<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum SourceKindSubdiag<'a> {
-    #[suggestion_verbose(
+    #[suggestion(
         infer_source_kind_subdiag_let,
+        style = "verbose",
         code = ": {type_name}",
         applicability = "has-placeholders"
     )]
@@ -135,8 +136,9 @@ pub enum SourceKindSubdiag<'a> {
         parent_prefix: String,
         parent_name: String,
     },
-    #[suggestion_verbose(
+    #[suggestion(
         infer_source_kind_subdiag_generic_suggestion,
+        style = "verbose",
         code = "::<{args}>",
         applicability = "has-placeholders"
     )]
@@ -150,8 +152,9 @@ pub enum SourceKindSubdiag<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum SourceKindMultiSuggestion<'a> {
-    #[multipart_suggestion_verbose(
+    #[multipart_suggestion(
         infer_source_kind_fully_qualified,
+        style = "verbose",
         applicability = "has-placeholders"
     )]
     FullyQualified {
@@ -163,8 +166,9 @@ pub enum SourceKindMultiSuggestion<'a> {
         adjustment: &'a str,
         successor_pos: &'a str,
     },
-    #[multipart_suggestion_verbose(
+    #[multipart_suggestion(
         infer_source_kind_closure_return,
+        style = "verbose",
         applicability = "has-placeholders"
     )]
     ClosureReturn {
@@ -174,6 +178,18 @@ pub enum SourceKindMultiSuggestion<'a> {
         #[suggestion_part(code = " }}")]
         end_span: Option<Span>,
     },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    infer_suggest_add_let_for_letchains,
+    style = "verbose",
+    applicability = "machine-applicable",
+    code = "let "
+)]
+pub(crate) struct SuggAddLetForLetChains {
+    #[primary_span]
+    pub span: Span,
 }
 
 impl<'a> SourceKindMultiSuggestion<'a> {
@@ -353,13 +369,13 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
     {
         let mut mk_suggestion = || {
             let (
-                hir::Ty { kind: hir::TyKind::Rptr(lifetime_sub, _), .. },
-                hir::Ty { kind: hir::TyKind::Rptr(lifetime_sup, _), .. },
+                hir::Ty { kind: hir::TyKind::Ref(lifetime_sub, _), .. },
+                hir::Ty { kind: hir::TyKind::Ref(lifetime_sup, _), .. },
             ) = (self.ty_sub, self.ty_sup) else {
                 return false;
             };
 
-            if !lifetime_sub.name.is_anonymous() || !lifetime_sup.name.is_anonymous() {
+            if !lifetime_sub.is_anonymous() || !lifetime_sup.is_anonymous() {
                 return false;
             };
 
@@ -391,20 +407,20 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
             let suggestion_param_name =
                 suggestion_param_name.map(|n| n.to_string()).unwrap_or_else(|| "'a".to_owned());
 
-            debug!(?lifetime_sup.span);
-            debug!(?lifetime_sub.span);
-            let make_suggestion = |span: rustc_span::Span| {
-                if span.is_empty() {
-                    (span, format!("{}, ", suggestion_param_name))
-                } else if let Ok("&") = self.tcx.sess.source_map().span_to_snippet(span).as_deref()
-                {
-                    (span.shrink_to_hi(), format!("{} ", suggestion_param_name))
+            debug!(?lifetime_sup.ident.span);
+            debug!(?lifetime_sub.ident.span);
+            let make_suggestion = |ident: Ident| {
+                let sugg = if ident.name == kw::Empty {
+                    format!("{}, ", suggestion_param_name)
+                } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
+                    format!("{} ", suggestion_param_name)
                 } else {
-                    (span, suggestion_param_name.clone())
-                }
+                    suggestion_param_name.clone()
+                };
+                (ident.span, sugg)
             };
             let mut suggestions =
-                vec![make_suggestion(lifetime_sub.span), make_suggestion(lifetime_sup.span)];
+                vec![make_suggestion(lifetime_sub.ident), make_suggestion(lifetime_sup.ident)];
 
             if introduce_new {
                 let new_param_suggestion = if let Some(first) =
@@ -478,8 +494,9 @@ pub enum ImplicitStaticLifetimeSubdiag {
         #[primary_span]
         span: Span,
     },
-    #[suggestion_verbose(
+    #[suggestion(
         infer_implicit_static_lifetime_suggestion,
+        style = "verbose",
         code = " + '_",
         applicability = "maybe-incorrect"
     )]
@@ -500,6 +517,6 @@ pub struct MismatchedStaticLifetime<'a> {
     pub expl: Option<note_and_explain::RegionExplanation<'a>>,
     #[subdiagnostic]
     pub does_not_outlive_static_from_impl: DoesNotOutliveStaticFromImpl,
-    #[subdiagnostic(eager)]
+    #[subdiagnostic]
     pub implicit_static_lifetimes: Vec<ImplicitStaticLifetimeSubdiag>,
 }

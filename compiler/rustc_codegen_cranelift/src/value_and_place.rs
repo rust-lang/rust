@@ -19,7 +19,7 @@ fn codegen_field<'tcx>(
     };
 
     if let Some(extra) = extra {
-        if !field_layout.is_unsized() {
+        if field_layout.is_sized() {
             return simple(fx);
         }
         match field_layout.ty.kind() {
@@ -108,8 +108,8 @@ impl<'tcx> CValue<'tcx> {
     }
 
     // FIXME remove
-    // Forces the data value of a dyn* value to the stack and returns a pointer to it as well as the
-    // vtable pointer.
+    /// Forces the data value of a dyn* value to the stack and returns a pointer to it as well as the
+    /// vtable pointer.
     pub(crate) fn dyn_star_force_data_on_stack(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
@@ -364,7 +364,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         if layout.size.bytes() == 0 {
             return CPlace {
                 inner: CPlaceInner::Addr(Pointer::dangling(layout.align.pref), None),
@@ -392,7 +392,7 @@ impl<'tcx> CPlace<'tcx> {
         local: Local,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        let var = Variable::with_u32(fx.next_ssa_var);
+        let var = Variable::from_u32(fx.next_ssa_var);
         fx.next_ssa_var += 1;
         fx.bcx.declare_var(var, fx.clif_type(layout.ty).unwrap());
         CPlace { inner: CPlaceInner::Var(local, var), layout }
@@ -403,9 +403,9 @@ impl<'tcx> CPlace<'tcx> {
         local: Local,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        let var1 = Variable::with_u32(fx.next_ssa_var);
+        let var1 = Variable::from_u32(fx.next_ssa_var);
         fx.next_ssa_var += 1;
-        let var2 = Variable::with_u32(fx.next_ssa_var);
+        let var2 = Variable::from_u32(fx.next_ssa_var);
         fx.next_ssa_var += 1;
 
         let (ty1, ty2) = fx.clif_pair_type(layout.ty).unwrap();
@@ -515,9 +515,7 @@ impl<'tcx> CPlace<'tcx> {
                 | (types::F32, types::I32)
                 | (types::I64, types::F64)
                 | (types::F64, types::I64) => fx.bcx.ins().bitcast(dst_ty, data),
-                _ if src_ty.is_vector() && dst_ty.is_vector() => {
-                    fx.bcx.ins().raw_bitcast(dst_ty, data)
-                }
+                _ if src_ty.is_vector() && dst_ty.is_vector() => fx.bcx.ins().bitcast(dst_ty, data),
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
                     // FIXME do something more efficient for transmutes between vectors and integers.
                     let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
@@ -590,7 +588,10 @@ impl<'tcx> CPlace<'tcx> {
                 return;
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
-                let (data1, data2) = CValue(from.0, dst_layout).load_scalar_pair(fx);
+                let (ptr, meta) = from.force_stack(fx);
+                assert!(meta.is_none());
+                let (data1, data2) =
+                    CValue(CValueInner::ByRef(ptr, None), dst_layout).load_scalar_pair(fx);
                 let (dst_ty1, dst_ty2) = fx.clif_pair_type(self.layout().ty).unwrap();
                 transmute_value(fx, var1, data1, dst_ty1);
                 transmute_value(fx, var2, data2, dst_ty2);
@@ -825,7 +826,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &FunctionCx<'_, '_, 'tcx>,
         variant: VariantIdx,
     ) -> Self {
-        assert!(!self.layout().is_unsized());
+        assert!(self.layout().is_sized());
         let layout = self.layout().for_variant(fx, variant);
         CPlace { inner: self.inner, layout }
     }

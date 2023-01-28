@@ -1,11 +1,11 @@
 error: stripping a prefix manually
-  --> $DIR/manual_strip.rs:8:24
+  --> $DIR/manual_strip.rs:7:24
    |
 LL |         str::to_string(&s["ab".len()..]);
    |                        ^^^^^^^^^^^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/manual_strip.rs:7:5
+  --> $DIR/manual_strip.rs:6:5
    |
 LL |     if s.starts_with("ab") {
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,13 +21,13 @@ LL ~         <stripped>.to_string();
    |
 
 error: stripping a suffix manually
-  --> $DIR/manual_strip.rs:16:24
+  --> $DIR/manual_strip.rs:15:24
    |
 LL |         str::to_string(&s[..s.len() - "bc".len()]);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the suffix was tested here
-  --> $DIR/manual_strip.rs:15:5
+  --> $DIR/manual_strip.rs:14:5
    |
 LL |     if s.ends_with("bc") {
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -42,13 +42,13 @@ LL ~         <stripped>.to_string();
    |
 
 error: stripping a prefix manually
-  --> $DIR/manual_strip.rs:25:24
+  --> $DIR/manual_strip.rs:24:24
    |
 LL |         str::to_string(&s[1..]);
    |                        ^^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/manual_strip.rs:24:5
+  --> $DIR/manual_strip.rs:23:5
    |
 LL |     if s.starts_with('a') {
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -60,13 +60,13 @@ LL ~         <stripped>.to_string();
    |
 
 error: stripping a prefix manually
-  --> $DIR/manual_strip.rs:32:24
+  --> $DIR/manual_strip.rs:31:24
    |
 LL |         str::to_string(&s[prefix.len()..]);
    |                        ^^^^^^^^^^^^^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/manual_strip.rs:31:5
+  --> $DIR/manual_strip.rs:30:5
    |
 LL |     if s.starts_with(prefix) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -77,13 +77,13 @@ LL ~         str::to_string(<stripped>);
    |
 
 error: stripping a prefix manually
-  --> $DIR/manual_strip.rs:38:24
+  --> $DIR/manual_strip.rs:37:24
    |
 LL |         str::to_string(&s[PREFIX.len()..]);
    |                        ^^^^^^^^^^^^^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/manual_strip.rs:37:5
+  --> $DIR/manual_strip.rs:36:5
    |
 LL |     if s.starts_with(PREFIX) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,13 +95,13 @@ LL ~         str::to_string(<stripped>);
    |
 
 error: stripping a prefix manually
-  --> $DIR/manual_strip.rs:45:24
+  --> $DIR/manual_strip.rs:44:24
    |
 LL |         str::to_string(&TARGET[prefix.len()..]);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/manual_strip.rs:44:5
+  --> $DIR/manual_strip.rs:43:5
    |
 LL |     if TARGET.starts_with(prefix) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,13 +112,13 @@ LL ~         str::to_string(<stripped>);
    |
 
 error: stripping a prefix manually
-  --> $DIR/manual_strip.rs:51:9
+  --> $DIR/manual_strip.rs:50:9
    |
 LL |         s1[2..].to_uppercase();
    |         ^^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/manual_strip.rs:50:5
+  --> $DIR/manual_strip.rs:49:5
    |
 LL |     if s1.starts_with("ab") {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -129,13 +129,13 @@ LL ~         <stripped>.to_uppercase();
    |
 
 error: stripping a prefix manually
-  --> $DIR/manual_strip.rs:83:9
+  --> $DIR/manual_strip.rs:80:9
    |
 LL |         s[1..].to_string();
    |         ^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/manual_strip.rs:82:5
+  --> $DIR/manual_strip.rs:79:5
    |
 LL |     if s.starts_with('a') {
    |     ^^^^^^^^^^^^^^^^^^^^^^

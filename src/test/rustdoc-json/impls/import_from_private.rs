@@ -8,7 +8,7 @@ mod bar {
     pub struct Baz;
     // @set impl = "$.index[*][?(@.kind=='impl')].id"
     impl Baz {
-        // @set doit = "$.index[*][?(@.kind=='method')].id"
+        // @set doit = "$.index[*][?(@.kind=='function')].id"
         pub fn doit() {}
     }
 }

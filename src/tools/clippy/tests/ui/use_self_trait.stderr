@@ -84,5 +84,17 @@ error: unnecessary structure name repetition
 LL |     fn mul(self, rhs: Bad) -> Bad {
    |                               ^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 14 previous errors
+error: unnecessary structure name repetition
+  --> $DIR/use_self_trait.rs:50:9
+   |
+LL |         Bad
+   |         ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self_trait.rs:147:13
+   |
+LL |             std::fmt::Error // Should lint
+   |             ^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 16 previous errors
 

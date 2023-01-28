@@ -93,7 +93,7 @@ use super::{
     vector_clock::{VClock, VTimestamp, VectorIdx},
 };
 
-pub type AllocExtra = StoreBufferAlloc;
+pub type AllocState = StoreBufferAlloc;
 
 // Each store buffer must be bounded otherwise it will grow indefinitely.
 // However, bounding the store buffer means restricting the amount of weak
@@ -109,7 +109,7 @@ pub struct StoreBufferAlloc {
 }
 
 impl VisitTags for StoreBufferAlloc {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let Self { store_buffers } = self;
         for val in store_buffers
             .borrow()
@@ -258,7 +258,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
             // The thread index and timestamp of the initialisation write
             // are never meaningfully used, so it's fine to leave them as 0
             store_index: VectorIdx::from(0),
-            timestamp: 0,
+            timestamp: VTimestamp::ZERO,
             val: init,
             is_seqcst: false,
             load_info: RefCell::new(LoadInfo::default()),

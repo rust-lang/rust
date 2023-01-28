@@ -1,6 +1,6 @@
 # `*-unknown-uefi`
 
-**Tier: 3**
+**Tier: 2**
 
 Unified Extensible Firmware Interface (UEFI) targets for application, driver,
 and core UEFI binaries.
@@ -72,28 +72,14 @@ target = ["x86_64-unknown-uefi"]
 
 ## Building Rust programs
 
-Rust does not yet ship pre-compiled artifacts for this target. To compile for
-this target, you will either need to build Rust with the target enabled (see
-"Building rust for UEFI targets" above), or build your own copy of `core` by
-using `build-std`, `cargo-buildx`, or similar.
-
-A native build with the unstable `build-std`-feature can be achieved via:
+Starting with Rust 1.67, precompiled artifacts are provided via
+`rustup`. For example, to use `x86_64-unknown-uefi`:
 
 ```sh
-cargo +nightly build \
-    -Zbuild-std=core,compiler_builtins \
-    -Zbuild-std-features=compiler-builtins-mem \
-    --target x86_64-unknown-uefi
-```
-
-Alternatively, you can install `cargo-xbuild` via
-`cargo install --force cargo-xbuild` and build for the UEFI targets via:
-
-```sh
-cargo \
-    +nightly \
-    xbuild \
-    --target x86_64-unknown-uefi
+# install cross-compile toolchain
+rustup target add x86_64-unknown-uefi
+# target flag may be used with any cargo or rustc command
+cargo build --target x86_64-unknown-uefi
 ```
 
 ## Testing
@@ -167,18 +153,10 @@ The following code is a valid UEFI application returning immediately upon
 execution with an exit code of 0. A panic handler is provided. This is executed
 by rust on panic. For simplicity, we simply end up in an infinite loop.
 
-Note that as of rust-1.31.0, all features used here are stabilized. No unstable
-features are required, nor do we rely on nightly compilers. However, if you do
-not compile rustc for the UEFI targets, you need a nightly compiler to support
-the `-Z build-std` flag.
-
 This example can be compiled as binary crate via `cargo`:
 
 ```sh
-cargo +nightly build \
-    -Zbuild-std=core,compiler_builtins \
-    -Zbuild-std-features=compiler-builtins-mem \
-    --target x86_64-unknown-uefi
+cargo build --target x86_64-unknown-uefi
 ```
 
 ```rust,ignore (platform-specific,eh-personality-is-unstable)

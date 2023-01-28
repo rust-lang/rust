@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // can't be implemented for unsafe new
                             return;
                         }
-                        if cx.tcx.is_doc_hidden(impl_item.def_id.def_id) {
+                        if cx.tcx.is_doc_hidden(impl_item.owner_id.def_id) {
                             // shouldn't be implemented when it is hidden in docs
                             return;
                         }
@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                         if_chain! {
                             if sig.decl.inputs.is_empty();
                             if name == sym::new;
-                            if cx.access_levels.is_reachable(impl_item.def_id.def_id);
+                            if cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id);
                             let self_def_id = cx.tcx.hir().get_parent_item(id);
                             let self_ty = cx.tcx.type_of(self_def_id);
                             if self_ty == return_ty(cx, id);

@@ -14,7 +14,7 @@
 -         _2 = Ne(move _3, const false);   // scope 0 at $DIR/not_equal_false.rs:+1:8: +1:18
 +         _2 = move _3;                    // scope 0 at $DIR/not_equal_false.rs:+1:8: +1:18
           StorageDead(_3);                 // scope 0 at $DIR/not_equal_false.rs:+1:17: +1:18
-          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/not_equal_false.rs:+1:8: +1:18
+          switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/not_equal_false.rs:+1:8: +1:18
       }
   
       bb1: {

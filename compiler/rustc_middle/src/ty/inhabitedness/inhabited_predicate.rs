@@ -41,6 +41,13 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         self.apply_inner(tcx, param_env, &|_| Err(())).ok()
     }
 
+    /// Same as `apply`, but `NotInModule(_)` predicates yield `false`. That is,
+    /// privately uninhabited types are considered always uninhabited.
+    pub fn apply_ignore_module(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> bool {
+        let Ok(result) = self.apply_inner::<!>(tcx, param_env, &|_| Ok(true));
+        result
+    }
+
     fn apply_inner<E>(
         self,
         tcx: TyCtxt<'tcx>,

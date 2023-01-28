@@ -42,7 +42,7 @@ error[E0308]: mismatched types
   --> $DIR/wrap-suggestion-privacy.rs:22:17
    |
 LL |     needs_ready(Some(0));
-   |     ----------- ^^^^^^^ expected struct `std::future::Ready`, found enum `Option`
+   |     ----------- ^^^^^^^ expected struct `Ready`, found enum `Option`
    |     |
    |     arguments to this function are incorrect
    |

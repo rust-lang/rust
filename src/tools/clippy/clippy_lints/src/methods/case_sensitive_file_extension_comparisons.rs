@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::is_type_lang_item;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
-use rustc_span::{source_map::Spanned, symbol::sym, Span};
+use rustc_span::{source_map::Spanned, Span};
 
 use super::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS;
 
@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(
         if ext_str.chars().skip(1).all(|c| c.is_uppercase() || c.is_ascii_digit())
             || ext_str.chars().skip(1).all(|c| c.is_lowercase() || c.is_ascii_digit());
         let recv_ty = cx.typeck_results().expr_ty(recv).peel_refs();
-        if recv_ty.is_str() || is_type_diagnostic_item(cx, recv_ty, sym::String);
+        if recv_ty.is_str() || is_type_lang_item(cx, recv_ty, LangItem::String);
         then {
             span_lint_and_help(
                 cx,

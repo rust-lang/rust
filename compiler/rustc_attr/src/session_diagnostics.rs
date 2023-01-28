@@ -41,7 +41,7 @@ pub(crate) struct IncorrectMetaItem {
     pub span: Span,
 }
 
-// Error code: E0541
+/// Error code: E0541
 pub(crate) struct UnknownMetaItem<'a> {
     pub span: Span,
     pub item: String,
@@ -200,7 +200,7 @@ pub(crate) struct InvalidReprHintNoValue {
     pub name: String,
 }
 
-// Error code: E0565
+/// Error code: E0565
 pub(crate) struct UnsupportedLiteral {
     pub span: Span,
     pub reason: UnsupportedLiteralReason,

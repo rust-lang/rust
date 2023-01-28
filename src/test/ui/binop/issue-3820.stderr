@@ -11,11 +11,8 @@ note: an implementation of `Mul<_>` might be missing for `Thing`
    |
 LL | struct Thing {
    | ^^^^^^^^^^^^ must implement `Mul<_>`
-note: the following trait must be implemented
+note: the trait `Mul` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | pub trait Mul<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

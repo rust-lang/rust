@@ -1,5 +1,5 @@
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:15:5
+  --> $DIR/bool_to_int_with_if.rs:16:5
    |
 LL | /     if a {
 LL | |         1
@@ -12,7 +12,7 @@ LL | |     };
    = note: `-D clippy::bool-to-int-with-if` implied by `-D warnings`
 
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:20:5
+  --> $DIR/bool_to_int_with_if.rs:21:5
    |
 LL | /     if a {
 LL | |         0
@@ -24,7 +24,7 @@ LL | |     };
    = note: `!a as i32` or `(!a).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:25:5
+  --> $DIR/bool_to_int_with_if.rs:26:5
    |
 LL | /     if !a {
 LL | |         1
@@ -36,7 +36,7 @@ LL | |     };
    = note: `!a as i32` or `(!a).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:30:5
+  --> $DIR/bool_to_int_with_if.rs:31:5
    |
 LL | /     if a || b {
 LL | |         1
@@ -48,7 +48,7 @@ LL | |     };
    = note: `(a || b) as i32` or `(a || b).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:35:5
+  --> $DIR/bool_to_int_with_if.rs:36:5
    |
 LL | /     if cond(a, b) {
 LL | |         1
@@ -60,7 +60,7 @@ LL | |     };
    = note: `cond(a, b) as i32` or `cond(a, b).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:40:5
+  --> $DIR/bool_to_int_with_if.rs:41:5
    |
 LL | /     if x + y < 4 {
 LL | |         1
@@ -72,7 +72,7 @@ LL | |     };
    = note: `(x + y < 4) as i32` or `(x + y < 4).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:49:12
+  --> $DIR/bool_to_int_with_if.rs:50:12
    |
 LL |       } else if b {
    |  ____________^
@@ -85,7 +85,7 @@ LL | |     };
    = note: `b as i32` or `b.into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:58:12
+  --> $DIR/bool_to_int_with_if.rs:59:12
    |
 LL |       } else if b {
    |  ____________^
@@ -98,7 +98,7 @@ LL | |     };
    = note: `!b as i32` or `(!b).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:116:5
+  --> $DIR/bool_to_int_with_if.rs:119:5
    |
 LL |     if a { 1 } else { 0 }
    |     ^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `u8::from(a)`

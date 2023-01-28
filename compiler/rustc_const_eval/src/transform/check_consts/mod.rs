@@ -62,7 +62,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     }
 
     fn is_async(&self) -> bool {
-        self.tcx.asyncness(self.def_id()) == hir::IsAsync::Async
+        self.tcx.asyncness(self.def_id()).is_async()
     }
 }
 
@@ -75,14 +75,14 @@ pub fn rustc_allow_const_fn_unstable(
     attr::rustc_allow_const_fn_unstable(&tcx.sess, attrs).any(|name| name == feature_gate)
 }
 
-// Returns `true` if the given `const fn` is "const-stable".
-//
-// Panics if the given `DefId` does not refer to a `const fn`.
-//
-// Const-stability is only relevant for `const fn` within a `staged_api` crate. Only "const-stable"
-// functions can be called in a const-context by users of the stable compiler. "const-stable"
-// functions are subject to more stringent restrictions than "const-unstable" functions: They
-// cannot use unstable features and can only call other "const-stable" functions.
+/// Returns `true` if the given `const fn` is "const-stable".
+///
+/// Panics if the given `DefId` does not refer to a `const fn`.
+///
+/// Const-stability is only relevant for `const fn` within a `staged_api` crate. Only "const-stable"
+/// functions can be called in a const-context by users of the stable compiler. "const-stable"
+/// functions are subject to more stringent restrictions than "const-unstable" functions: They
+/// cannot use unstable features and can only call other "const-stable" functions.
 pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // A default body in a `#[const_trait]` is not const-stable because const
     // trait fns currently cannot be const-stable. We shouldn't

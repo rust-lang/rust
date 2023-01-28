@@ -279,8 +279,6 @@ pub mod known {
         RangeToInclusive,
         RangeTo,
         Range,
-        Residual,
-        FromResidual,
         Neg,
         Not,
         None,

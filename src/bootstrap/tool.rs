@@ -75,7 +75,7 @@ impl Step for ToolBuild {
 
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
-        let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
+        let is_expected = compile::stream_cargo(builder, cargo, &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
             match tool {
                 "rls" | "cargo" | "clippy-driver" | "miri" | "rustfmt" => {}
@@ -384,6 +384,8 @@ bootstrap_tool!(
     HtmlChecker, "src/tools/html-checker", "html-checker";
     BumpStage0, "src/tools/bump-stage0", "bump-stage0";
     ReplaceVersionPlaceholder, "src/tools/replace-version-placeholder", "replace-version-placeholder";
+    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
+    GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
@@ -527,7 +529,7 @@ impl Step for Rustdoc {
         builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
         // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
         // compiler, since you do just as much work.
-        if !builder.config.dry_run && builder.download_rustc() && build_compiler.stage == 0 {
+        if !builder.config.dry_run() && builder.download_rustc() && build_compiler.stage == 0 {
             println!(
                 "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
             );
@@ -750,19 +752,9 @@ impl Step for RustAnalyzerProcMacroSrv {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-
         // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
-            .default_condition(
-                builder.config.extended
-                    && builder.config.tools.as_ref().map_or(true, |tools| {
-                        tools.iter().any(|tool| {
-                            tool == "rust-analyzer" || tool == "rust-analyzer-proc-macro-srv"
-                        })
-                    }),
-            )
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -799,10 +791,9 @@ macro_rules! tool_extended {
        $($name:ident,
        $path:expr,
        $tool_name:expr,
-       stable = $stable:expr,
-       $(in_tree = $in_tree:expr,)?
-       $(tool_std = $tool_std:literal,)?
-       $extra_deps:block;)+) => {
+       stable = $stable:expr
+       $(,tool_std = $tool_std:literal)?
+       ;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
@@ -844,7 +835,6 @@ macro_rules! tool_extended {
 
             #[allow(unused_mut)]
             fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
-                $extra_deps
                 $builder.ensure(ToolBuild {
                     compiler: $sel.compiler,
                     target: $sel.target,
@@ -853,11 +843,7 @@ macro_rules! tool_extended {
                     path: $path,
                     extra_features: $sel.extra_features,
                     is_optional_tool: true,
-                    source_type: if false $(|| $in_tree)* {
-                        SourceType::InTree
-                    } else {
-                        SourceType::Submodule
-                    },
+                    source_type: SourceType::InTree,
                 })
             }
         }
@@ -870,17 +856,17 @@ macro_rules! tool_extended {
 // Note: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
 // invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
-    Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
-    CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
-    Clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
-    Miri, "src/tools/miri", "miri", stable=false, in_tree=true, {};
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, in_tree=true, {};
+    Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
+    CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true;
+    Clippy, "src/tools/clippy", "clippy-driver", stable=true;
+    Miri, "src/tools/miri", "miri", stable=false;
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=true;
     // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
     // and this is close enough for now.
-    Rls, "src/tools/rls", "rls", stable=true, in_tree=true, tool_std=true, {};
-    RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, tool_std=true, {};
-    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
+    Rls, "src/tools/rls", "rls", stable=true, tool_std=true;
+    RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, tool_std=true;
+    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true;
 );
 
 impl<'a> Builder<'a> {

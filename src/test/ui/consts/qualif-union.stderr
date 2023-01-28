@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/qualif-union.rs:28:26
    |
 LL |     let _: &'static _ = &C1;
-   |            ----------    ^^ creates a temporary which is freed while still in use
+   |            ----------    ^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 ...
@@ -13,7 +13,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/qualif-union.rs:29:26
    |
 LL |     let _: &'static _ = &C2;
-   |            ----------    ^^ creates a temporary which is freed while still in use
+   |            ----------    ^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 ...
@@ -24,7 +24,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/qualif-union.rs:30:26
    |
 LL |     let _: &'static _ = &C3;
-   |            ----------    ^^ creates a temporary which is freed while still in use
+   |            ----------    ^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 ...
@@ -35,7 +35,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/qualif-union.rs:31:26
    |
 LL |     let _: &'static _ = &C4;
-   |            ----------    ^^ creates a temporary which is freed while still in use
+   |            ----------    ^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL |     let _: &'static _ = &C5;
@@ -46,7 +46,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/qualif-union.rs:32:26
    |
 LL |     let _: &'static _ = &C5;
-   |            ----------    ^^ creates a temporary which is freed while still in use
+   |            ----------    ^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL | }

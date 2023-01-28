@@ -15,18 +15,18 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         for id in tcx.hir().items() {
             if matches!(
-                tcx.def_kind(id.def_id),
+                tcx.def_kind(id.owner_id),
                 DefKind::TyAlias | DefKind::Enum | DefKind::Struct | DefKind::Union
             ) {
-                for attr in tcx.get_attrs(id.def_id.to_def_id(), sym::rustc_layout) {
-                    dump_layout_of(tcx, id.def_id.def_id, attr);
+                for attr in tcx.get_attrs(id.owner_id.to_def_id(), sym::rustc_layout) {
+                    dump_layout_of(tcx, id.owner_id.def_id, attr);
                 }
             }
         }
     }
 }
 
-fn dump_layout_of<'tcx>(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId, attr: &Attribute) {
+fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
     let tcx = tcx;
     let param_env = tcx.param_env(item_def_id);
     let ty = tcx.type_of(item_def_id);

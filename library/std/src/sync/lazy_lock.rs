@@ -6,7 +6,9 @@ use crate::sync::OnceLock;
 
 /// A value which is initialized on the first access.
 ///
-/// This type is a thread-safe `Lazy`, and can be used in statics.
+/// This type is a thread-safe [`LazyCell`], and can be used in statics.
+///
+/// [`LazyCell`]: crate::cell::LazyCell
 ///
 /// # Examples
 ///
@@ -44,17 +46,15 @@ pub struct LazyLock<T, F = fn() -> T> {
     cell: OnceLock<T>,
     init: Cell<Option<F>>,
 }
-
-impl<T, F> LazyLock<T, F> {
+impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// Creates a new lazy value with the given initializing
     /// function.
+    #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new(f: F) -> LazyLock<T, F> {
         LazyLock { cell: OnceLock::new(), init: Cell::new(Some(f)) }
     }
-}
 
-impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// Forces the evaluation of this lazy value and
     /// returns a reference to result. This is equivalent
     /// to the `Deref` impl, but is explicit.
@@ -71,6 +71,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// assert_eq!(LazyLock::force(&lazy), &92);
     /// assert_eq!(&*lazy, &92);
     /// ```
+    #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn force(this: &LazyLock<T, F>) -> &T {
         this.cell.get_or_init(|| match this.init.take() {
@@ -83,6 +84,8 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 #[unstable(feature = "once_cell", issue = "74465")]
 impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     type Target = T;
+
+    #[inline]
     fn deref(&self) -> &T {
         LazyLock::force(self)
     }
@@ -91,6 +94,7 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
 #[unstable(feature = "once_cell", issue = "74465")]
 impl<T: Default> Default for LazyLock<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
+    #[inline]
     fn default() -> LazyLock<T> {
         LazyLock::new(T::default)
     }

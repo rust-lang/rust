@@ -11,7 +11,7 @@ struct SingleUnused(i32, [u8; LEN], String);
 //~| HELP: consider changing the field to be of unit type
 
 struct MultipleUnused(i32, f32, String, u8);
-//~^ ERROR: fields `0`, `1`, `2` and `3` are never read
+//~^ ERROR: fields `0`, `1`, `2`, and `3` are never read
 //~| NOTE: fields in this struct
 //~| HELP: consider changing the fields to be of unit type
 

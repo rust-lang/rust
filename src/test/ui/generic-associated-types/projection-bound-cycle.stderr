@@ -1,14 +1,8 @@
-error[E0275]: overflow evaluating the requirement `<T as Foo>::Item: Sized`
-  --> $DIR/projection-bound-cycle.rs:45:18
+error[E0275]: overflow evaluating the requirement `<Number as Foo>::Item == _`
+  --> $DIR/projection-bound-cycle.rs:26:5
    |
-LL |     type Assoc = OnlySized<<T as Foo>::Item>;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: required by a bound in `OnlySized`
-  --> $DIR/projection-bound-cycle.rs:29:18
-   |
-LL | struct OnlySized<T> where T: Sized { f: T }
-   |                  ^ required by this bound in `OnlySized`
+LL |     type Item = str where str: Sized;
+   |     ^^^^^^^^^
 
 error: aborting due to previous error
 

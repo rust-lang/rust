@@ -8,7 +8,7 @@ LL | #![feature(unsized_locals)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0508]: cannot move out of type `[A]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:10:11
+  --> $DIR/move-out-of-slice-2.rs:11:11
    |
 LL |     match *a {
    |           ^^ cannot move out of here
@@ -18,9 +18,14 @@ LL |         [a @ ..] => {}
    |          |
    |          data moved here
    |          move occurs because `a` has type `[A]`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         [ref a @ ..] => {}
+   |          +++
 
 error[E0508]: cannot move out of type `[A]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:16:11
+  --> $DIR/move-out-of-slice-2.rs:17:11
    |
 LL |     match *b {
    |           ^^ cannot move out of here
@@ -30,9 +35,14 @@ LL |         [_, _, b @ .., _] => {}
    |                |
    |                data moved here
    |                move occurs because `b` has type `[A]`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         [_, _, ref b @ .., _] => {}
+   |                +++
 
 error[E0508]: cannot move out of type `[C]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:24:11
+  --> $DIR/move-out-of-slice-2.rs:25:11
    |
 LL |     match *c {
    |           ^^ cannot move out of here
@@ -42,9 +52,14 @@ LL |         [c @ ..] => {}
    |          |
    |          data moved here
    |          move occurs because `c` has type `[C]`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         [ref c @ ..] => {}
+   |          +++
 
 error[E0508]: cannot move out of type `[C]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:30:11
+  --> $DIR/move-out-of-slice-2.rs:31:11
    |
 LL |     match *d {
    |           ^^ cannot move out of here
@@ -54,6 +69,11 @@ LL |         [_, _, d @ .., _] => {}
    |                |
    |                data moved here
    |                move occurs because `d` has type `[C]`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         [_, _, ref d @ .., _] => {}
+   |                +++
 
 error: aborting due to 4 previous errors; 1 warning emitted
 

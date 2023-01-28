@@ -1,6 +1,5 @@
-use crate::leb128::{self, max_leb128_len};
+use crate::leb128::{self, largest_max_leb128_len};
 use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, Write};
 use std::mem::MaybeUninit;
@@ -32,7 +31,7 @@ impl MemEncoder {
 
 macro_rules! write_leb128 {
     ($enc:expr, $value:expr, $int_ty:ty, $fun:ident) => {{
-        const MAX_ENCODED_LEN: usize = max_leb128_len!($int_ty);
+        const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
         let old_len = $enc.data.len();
 
         if MAX_ENCODED_LEN > $enc.data.capacity() - old_len {
@@ -155,19 +154,19 @@ impl Encoder for MemEncoder {
 
 pub type FileEncodeResult = Result<usize, io::Error>;
 
-// `FileEncoder` encodes data to file via fixed-size buffer.
-//
-// When encoding large amounts of data to a file, using `FileEncoder` may be
-// preferred over using `MemEncoder` to encode to a `Vec`, and then writing the
-// `Vec` to file, as the latter uses as much memory as there is encoded data,
-// while the former uses the fixed amount of memory allocated to the buffer.
-// `FileEncoder` also has the advantage of not needing to reallocate as data
-// is appended to it, but the disadvantage of requiring more error handling,
-// which has some runtime overhead.
+/// `FileEncoder` encodes data to file via fixed-size buffer.
+///
+/// When encoding large amounts of data to a file, using `FileEncoder` may be
+/// preferred over using `MemEncoder` to encode to a `Vec`, and then writing the
+/// `Vec` to file, as the latter uses as much memory as there is encoded data,
+/// while the former uses the fixed amount of memory allocated to the buffer.
+/// `FileEncoder` also has the advantage of not needing to reallocate as data
+/// is appended to it, but the disadvantage of requiring more error handling,
+/// which has some runtime overhead.
 pub struct FileEncoder {
-    // The input buffer. For adequate performance, we need more control over
-    // buffering than `BufWriter` offers. If `BufWriter` ever offers a raw
-    // buffer access API, we can use it, and remove `buf` and `buffered`.
+    /// The input buffer. For adequate performance, we need more control over
+    /// buffering than `BufWriter` offers. If `BufWriter` ever offers a raw
+    /// buffer access API, we can use it, and remove `buf` and `buffered`.
     buf: Box<[MaybeUninit<u8>]>,
     buffered: usize,
     flushed: usize,
@@ -186,12 +185,12 @@ impl FileEncoder {
     pub fn with_capacity<P: AsRef<Path>>(path: P, capacity: usize) -> io::Result<Self> {
         // Require capacity at least as large as the largest LEB128 encoding
         // here, so that we don't have to check or handle this on every write.
-        assert!(capacity >= max_leb128_len());
+        assert!(capacity >= largest_max_leb128_len());
 
         // Require capacity small enough such that some capacity checks can be
         // done using guaranteed non-overflowing add rather than sub, which
         // shaves an instruction off those code paths (on x86 at least).
-        assert!(capacity <= usize::MAX - max_leb128_len());
+        assert!(capacity <= usize::MAX - largest_max_leb128_len());
 
         // Create the file for reading and writing, because some encoders do both
         // (e.g. the metadata encoder when -Zmeta-stats is enabled)
@@ -411,7 +410,7 @@ impl Drop for FileEncoder {
 
 macro_rules! file_encoder_write_leb128 {
     ($enc:expr, $value:expr, $int_ty:ty, $fun:ident) => {{
-        const MAX_ENCODED_LEN: usize = max_leb128_len!($int_ty);
+        const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
 
         // We ensure this during `FileEncoder` construction.
         debug_assert!($enc.capacity() >= MAX_ENCODED_LEN);
@@ -711,7 +710,7 @@ impl<'a> Decodable<MemDecoder<'a>> for Vec<u8> {
     }
 }
 
-// An integer that will always encode to 8 bytes.
+/// An integer that will always encode to 8 bytes.
 pub struct IntEncodedWithFixedSize(pub u64);
 
 impl IntEncodedWithFixedSize {

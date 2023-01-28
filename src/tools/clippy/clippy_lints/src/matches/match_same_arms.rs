@@ -282,7 +282,7 @@ impl<'a> NormalizedPat<'a> {
                 // TODO: Handle negative integers. They're currently treated as a wild match.
                 ExprKind::Lit(lit) => match lit.node {
                     LitKind::Str(sym, _) => Self::LitStr(sym),
-                    LitKind::ByteStr(ref bytes) => Self::LitBytes(bytes),
+                    LitKind::ByteStr(ref bytes, _) => Self::LitBytes(bytes),
                     LitKind::Byte(val) => Self::LitInt(val.into()),
                     LitKind::Char(val) => Self::LitInt(val.into()),
                     LitKind::Int(val, _) => Self::LitInt(val),

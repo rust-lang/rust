@@ -17,7 +17,7 @@ const COPY_ZERO: () = unsafe {
     // Since we are not copying anything, this should be allowed.
     let src = ();
     let mut dst = ();
-    copy_nonoverlapping(&src as *const _ as *const i32, &mut dst as *mut _ as *mut i32, 0);
+    copy_nonoverlapping(&src as *const _ as *const u8, &mut dst as *mut _ as *mut u8, 0);
 };
 
 const COPY_OOB_1: () = unsafe {

@@ -532,7 +532,7 @@ struct VarField<'tcx> {
 }
 
 /// Match on `((_LOCAL as Variant).FIELD: TY)`.
-fn match_variant_field_place<'tcx>(place: Place<'tcx>) -> Option<(Local, VarField<'tcx>)> {
+fn match_variant_field_place(place: Place<'_>) -> Option<(Local, VarField<'_>)> {
     match place.as_ref() {
         PlaceRef {
             local,

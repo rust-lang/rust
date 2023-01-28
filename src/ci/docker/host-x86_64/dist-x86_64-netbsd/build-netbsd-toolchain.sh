@@ -25,19 +25,19 @@ cd netbsd
 
 mkdir -p /x-tools/x86_64-unknown-netbsd/sysroot
 
-URL=https://ci-mirrors.rust-lang.org/rustc
+# URL=https://ci-mirrors.rust-lang.org/rustc
 
-# Originally from ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-$BSD/source/sets/*.tgz
-curl $URL/2018-03-01-netbsd-src.tgz | tar xzf -
-curl $URL/2018-03-01-netbsd-gnusrc.tgz | tar xzf -
-curl $URL/2018-03-01-netbsd-sharesrc.tgz | tar xzf -
-curl $URL/2018-03-01-netbsd-syssrc.tgz | tar xzf -
+SOURCE_URL=https://cdn.netbsd.org/pub/NetBSD/NetBSD-9.0/source/sets
+curl $SOURCE_URL/src.tgz | tar xzf -
+curl $SOURCE_URL/gnusrc.tgz | tar xzf -
+curl $SOURCE_URL/sharesrc.tgz | tar xzf -
+curl $SOURCE_URL/syssrc.tgz | tar xzf -
 
-# Originally from ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-$BSD/amd64/binary/sets/*.tgz
-curl $URL/2018-03-01-netbsd-base.tgz | \
-  tar xzf - -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib ./lib
-curl $URL/2018-03-01-netbsd-comp.tgz | \
-  tar xzf - -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib
+BINARY_URL=https://cdn.netbsd.org/pub/NetBSD/NetBSD-9.0/amd64/binary/sets
+curl $BINARY_URL/base.tar.xz | \
+  tar xJf - -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib ./lib
+curl $BINARY_URL/comp.tar.xz | \
+  tar xJf - -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib
 
 cd usr/src
 

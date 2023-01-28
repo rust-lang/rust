@@ -32,6 +32,12 @@ assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[text()='In test_docs']/pa
 click: "body"
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 
+// Open the sidebar menu, and make sure pressing Escape closes it.
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"left": "0px"})
+press-key: "Escape"
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+
 // Check that the topbar is visible
 assert-property: (".mobile-topbar", {"clientHeight": "45"})
 
@@ -48,23 +54,35 @@ compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topb
 
 // Now checking the background color of the sidebar.
 show-text: true
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
-reload:
 
-// Open the sidebar menu.
-click: ".sidebar-menu-toggle"
-assert-css: (".sidebar", {"background-color": "rgb(80, 80, 80)", "color": "rgb(221, 221, 221)"})
+define-function: (
+    "check-colors",
+    (theme, color, background),
+    [
+        ("local-storage", {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}),
+        ("reload"),
 
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "ayu"}
-reload:
+        // Open the sidebar menu.
+        ("click", ".sidebar-menu-toggle"),
+        ("assert-css", (".sidebar", {
+            "background-color": |background|,
+            "color": |color|,
+        })),
+    ],
+)
 
-// Open the sidebar menu.
-click: ".sidebar-menu-toggle"
-assert-css: (".sidebar", {"background-color": "rgb(20, 25, 31)", "color": "rgb(197, 197, 197)"})
-
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "light"}
-reload:
-
-// Open the sidebar menu.
-click: ".sidebar-menu-toggle"
-assert-css: (".sidebar", {"background-color": "rgb(245, 245, 245)", "color": "rgb(0, 0, 0)"})
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "rgb(197, 197, 197)",
+    "background": "rgb(20, 25, 31)",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "rgb(221, 221, 221)",
+    "background": "rgb(80, 80, 80)",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "rgb(0, 0, 0)",
+    "background": "rgb(245, 245, 245)",
+})

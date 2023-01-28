@@ -129,7 +129,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
 
                 if arg_snippets_without_empty_blocks.is_empty() {
                     db.multipart_suggestion(
-                        &format!("use {singular}unit literal{plural} instead"),
+                        format!("use {singular}unit literal{plural} instead"),
                         args_to_recover
                             .iter()
                             .map(|arg| (arg.span, "()".to_string()))
@@ -142,7 +142,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                     let it_or_them = if plural { "them" } else { "it" };
                     db.span_suggestion(
                         expr.span,
-                        &format!(
+                        format!(
                             "{or}move the expression{empty_or_s} in front of the call and replace {it_or_them} with the unit literal `()`"
                         ),
                         sugg,

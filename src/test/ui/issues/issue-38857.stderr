@@ -12,9 +12,6 @@ LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!()
    |
 note: the module `sys` is defined here
   --> $SRC_DIR/std/src/lib.rs:LL:COL
-   |
-LL | mod sys;
-   | ^^^^^^^
 
 error: aborting due to 2 previous errors
 

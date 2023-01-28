@@ -261,7 +261,7 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::SwitchInt { targets: _, ref discr, switch_ty: _ } => {
+                mir::TerminatorKind::SwitchInt { targets: _, ref discr } => {
                     let mut applier = BackwardSwitchIntEdgeEffectsApplier {
                         body,
                         pred,
@@ -287,7 +287,7 @@ impl Direction for Backward {
                 | mir::TerminatorKind::InlineAsm { cleanup: Some(unwind), .. }
                     if unwind == bb =>
                 {
-                    if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
+                    if dead_unwinds.map_or(true, |dead| !dead.contains(pred)) {
                         propagate(pred, exit_state);
                     }
                 }
@@ -577,7 +577,7 @@ impl Direction for Forward {
                 }
             }
 
-            SwitchInt { ref targets, ref discr, switch_ty: _ } => {
+            SwitchInt { ref targets, ref discr } => {
                 let mut applier = ForwardSwitchIntEdgeEffectsApplier {
                     exit_state,
                     targets,

@@ -85,7 +85,7 @@ impl UniversalRegionRelations<'_> {
     /// outlives `fr` and (b) is not local.
     ///
     /// (*) If there are multiple competing choices, we return all of them.
-    pub(crate) fn non_local_upper_bounds<'a>(&'a self, fr: RegionVid) -> Vec<RegionVid> {
+    pub(crate) fn non_local_upper_bounds(&self, fr: RegionVid) -> Vec<RegionVid> {
         debug!("non_local_upper_bound(fr={:?})", fr);
         let res = self.non_local_bounds(&self.inverse_outlives, fr);
         assert!(!res.is_empty(), "can't find an upper bound!?");
@@ -148,9 +148,9 @@ impl UniversalRegionRelations<'_> {
     /// Helper for `non_local_upper_bounds` and `non_local_lower_bounds`.
     /// Repeatedly invokes `postdom_parent` until we find something that is not
     /// local. Returns `None` if we never do so.
-    fn non_local_bounds<'a>(
+    fn non_local_bounds(
         &self,
-        relation: &'a TransitiveRelation<RegionVid>,
+        relation: &TransitiveRelation<RegionVid>,
         fr0: RegionVid,
     ) -> Vec<RegionVid> {
         // This method assumes that `fr0` is one of the universally
@@ -247,12 +247,13 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     .and(type_op::normalize::Normalize::new(ty))
                     .fully_perform(self.infcx)
                     .unwrap_or_else(|_| {
-                        self.infcx
+                        let reported = self
+                            .infcx
                             .tcx
                             .sess
                             .delay_span_bug(span, &format!("failed to normalize {:?}", ty));
                         TypeOpOutput {
-                            output: self.infcx.tcx.ty_error(),
+                            output: self.infcx.tcx.ty_error_with_guaranteed(reported),
                             constraints: None,
                             error_info: None,
                         }

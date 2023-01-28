@@ -3,8 +3,6 @@ use crate::sync::atomic::{AtomicU32, Ordering::Relaxed};
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
 use crate::time::Duration;
 
-pub type MovableCondvar = Condvar;
-
 pub struct Condvar {
     // The value of this atomic is simply incremented on every notification.
     // This is used by `.wait()` to not miss any notifications after
@@ -21,12 +19,12 @@ impl Condvar {
     // All the memory orderings here are `Relaxed`,
     // because synchronization is done by unlocking and locking the mutex.
 
-    pub unsafe fn notify_one(&self) {
+    pub fn notify_one(&self) {
         self.futex.fetch_add(1, Relaxed);
         futex_wake(&self.futex);
     }
 
-    pub unsafe fn notify_all(&self) {
+    pub fn notify_all(&self) {
         self.futex.fetch_add(1, Relaxed);
         futex_wake_all(&self.futex);
     }

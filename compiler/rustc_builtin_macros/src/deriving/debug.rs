@@ -13,6 +13,7 @@ pub fn expand_deriving_debug(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     // &mut ::std::fmt::Formatter
     let fmtr = Ref(Box::new(Path(path_std!(fmt::Formatter))), ast::Mutability::Mut);
@@ -22,7 +23,6 @@ pub fn expand_deriving_debug(
         path: path_std!(fmt::Debug),
         skip_path_as_bound: false,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::fmt,
@@ -37,6 +37,7 @@ pub fn expand_deriving_debug(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }
@@ -116,8 +117,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         // `let names: &'static _ = &["field1", "field2"];`
         let names_let = if is_struct {
             let lt_static = Some(cx.lifetime_static(span));
-            let ty_static_ref =
-                cx.ty_rptr(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
+            let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
             Some(cx.stmt_let_ty(
                 span,
                 false,
@@ -137,13 +137,13 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         );
         let ty_slice = cx.ty(
             span,
-            ast::TyKind::Slice(cx.ty_rptr(span, ty_dyn_debug, None, ast::Mutability::Not)),
+            ast::TyKind::Slice(cx.ty_ref(span, ty_dyn_debug, None, ast::Mutability::Not)),
         );
         let values_let = cx.stmt_let_ty(
             span,
             false,
             Ident::new(sym::values, span),
-            Some(cx.ty_rptr(span, ty_slice, None, ast::Mutability::Not)),
+            Some(cx.ty_ref(span, ty_slice, None, ast::Mutability::Not)),
             cx.expr_array_ref(span, value_exprs),
         );
 

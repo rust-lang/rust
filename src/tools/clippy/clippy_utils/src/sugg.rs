@@ -176,25 +176,27 @@ impl<'a> Sugg<'a> {
     }
 
     /// Prepare a suggestion from an expression.
-    pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
+    pub fn ast(
+        cx: &EarlyContext<'_>,
+        expr: &ast::Expr,
+        default: &'a str,
+        ctxt: SyntaxContext,
+        app: &mut Applicability,
+    ) -> Self {
         use rustc_ast::ast::RangeLimits;
 
-        let snippet_without_expansion = |cx, span: Span, default| {
-            if span.from_expansion() {
-                snippet_with_macro_callsite(cx, span, default)
-            } else {
-                snippet(cx, span, default)
-            }
-        };
-
         match expr.kind {
+            _ if expr.span.ctxt() != ctxt => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
             ast::ExprKind::AddrOf(..)
             | ast::ExprKind::Box(..)
             | ast::ExprKind::Closure { .. }
             | ast::ExprKind::If(..)
             | ast::ExprKind::Let(..)
             | ast::ExprKind::Unary(..)
-            | ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet_without_expansion(cx, expr.span, default)),
+            | ast::ExprKind::Match(..) => match snippet_with_context(cx, expr.span, ctxt, default, app) {
+                (snip, false) => Sugg::MaybeParen(snip),
+                (snip, true) => Sugg::NonParen(snip),
+            },
             ast::ExprKind::Async(..)
             | ast::ExprKind::Block(..)
             | ast::ExprKind::Break(..)
@@ -207,6 +209,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::InlineAsm(..)
             | ast::ExprKind::ConstBlock(..)
             | ast::ExprKind::Lit(..)
+            | ast::ExprKind::IncludedBytes(..)
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::MacCall(..)
             | ast::ExprKind::MethodCall(..)
@@ -223,45 +226,49 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
-            | ast::ExprKind::Err => Sugg::NonParen(snippet_without_expansion(cx, expr.span, default)),
+            | ast::ExprKind::Err => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
                 AssocOp::DotDot,
-                lhs.as_ref()
-                    .map_or("".into(), |lhs| snippet_without_expansion(cx, lhs.span, default)),
-                rhs.as_ref()
-                    .map_or("".into(), |rhs| snippet_without_expansion(cx, rhs.span, default)),
+                lhs.as_ref().map_or("".into(), |lhs| {
+                    snippet_with_context(cx, lhs.span, ctxt, default, app).0
+                }),
+                rhs.as_ref().map_or("".into(), |rhs| {
+                    snippet_with_context(cx, rhs.span, ctxt, default, app).0
+                }),
             ),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::Closed) => Sugg::BinOp(
                 AssocOp::DotDotEq,
-                lhs.as_ref()
-                    .map_or("".into(), |lhs| snippet_without_expansion(cx, lhs.span, default)),
-                rhs.as_ref()
-                    .map_or("".into(), |rhs| snippet_without_expansion(cx, rhs.span, default)),
+                lhs.as_ref().map_or("".into(), |lhs| {
+                    snippet_with_context(cx, lhs.span, ctxt, default, app).0
+                }),
+                rhs.as_ref().map_or("".into(), |rhs| {
+                    snippet_with_context(cx, rhs.span, ctxt, default, app).0
+                }),
             ),
             ast::ExprKind::Assign(ref lhs, ref rhs, _) => Sugg::BinOp(
                 AssocOp::Assign,
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, rhs.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, rhs.span, ctxt, default, app).0,
             ),
             ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => Sugg::BinOp(
                 astbinop2assignop(op),
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, rhs.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, rhs.span, ctxt, default, app).0,
             ),
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => Sugg::BinOp(
                 AssocOp::from_ast_binop(op.node),
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, rhs.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, rhs.span, ctxt, default, app).0,
             ),
             ast::ExprKind::Cast(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::As,
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, ty.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, ty.span, ctxt, default, app).0,
             ),
             ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::Colon,
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, ty.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, ty.span, ctxt, default, app).0,
             ),
         }
     }
@@ -800,14 +807,14 @@ pub struct DerefClosure {
 /// Returns `None` if no such use cases have been triggered in closure body
 ///
 /// note: this only works on single line immutable closures with exactly one input parameter.
-pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
+pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Option<DerefClosure> {
     if let hir::ExprKind::Closure(&Closure { fn_decl, body, .. }) = closure.kind {
         let closure_body = cx.tcx.hir().body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`
-        let closure_arg_is_type_annotated_double_ref = if let TyKind::Rptr(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind
+        let closure_arg_is_type_annotated_double_ref = if let TyKind::Ref(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind
         {
-            matches!(ty.kind, TyKind::Rptr(_, MutTy { .. }))
+            matches!(ty.kind, TyKind::Ref(_, MutTy { .. }))
         } else {
             false
         };

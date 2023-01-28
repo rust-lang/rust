@@ -12,8 +12,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    self, Binder, Const, ExistentialPredicate, FloatTy, FnSig, IntTy, List, Region, RegionKind,
-    TermKind, Ty, TyCtxt, UintTy,
+    self, Const, ExistentialPredicate, FloatTy, FnSig, IntTy, List, Region, RegionKind, TermKind,
+    Ty, TyCtxt, UintTy,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
@@ -99,13 +99,8 @@ fn is_c_void_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Adt(adt_def, ..) => {
             let def_id = adt_def.0.did;
             let crate_name = tcx.crate_name(def_id.krate);
-            if tcx.item_name(def_id).as_str() == "c_void"
+            tcx.item_name(def_id).as_str() == "c_void"
                 && (crate_name == sym::core || crate_name == sym::std || crate_name == sym::libc)
-            {
-                true
-            } else {
-                false
-            }
         }
         _ => false,
     }
@@ -169,6 +164,7 @@ fn encode_const<'tcx>(
 
 /// Encodes a FnSig using the Itanium C++ ABI with vendor extended type qualifiers and types for
 /// Rust types that are not used at the FFI boundary.
+#[instrument(level = "trace", skip(tcx, dict))]
 fn encode_fnsig<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_sig: &FnSig<'tcx>,
@@ -226,7 +222,7 @@ fn encode_fnsig<'tcx>(
 /// Rust types that are not used at the FFI boundary.
 fn encode_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicate: Binder<'tcx, ExistentialPredicate<'tcx>>,
+    predicate: ty::PolyExistentialPredicate<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
@@ -240,7 +236,7 @@ fn encode_predicate<'tcx>(
             s.push_str(&encode_substs(tcx, trait_ref.substs, dict, options));
         }
         ty::ExistentialPredicate::Projection(projection) => {
-            let name = encode_ty_name(tcx, projection.item_def_id);
+            let name = encode_ty_name(tcx, projection.def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
             s.push_str(&encode_substs(tcx, projection.substs, dict, options));
             match projection.term.unpack() {
@@ -261,14 +257,13 @@ fn encode_predicate<'tcx>(
 /// Rust types that are not used at the FFI boundary.
 fn encode_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: &List<Binder<'tcx, ExistentialPredicate<'tcx>>>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     // <predicate1[..predicateN]>E as part of vendor extended type
     let mut s = String::new();
-    let predicates: Vec<Binder<'tcx, ExistentialPredicate<'tcx>>> =
-        predicates.iter().map(|predicate| predicate).collect();
+    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates.iter().collect();
     for predicate in predicates {
         s.push_str(&encode_predicate(tcx, predicate, dict, options));
     }
@@ -322,7 +317,7 @@ fn encode_substs<'tcx>(
 ) -> String {
     // [I<subst1..substN>E] as part of vendor extended type
     let mut s = String::new();
-    let substs: Vec<GenericArg<'_>> = substs.iter().map(|subst| subst).collect();
+    let substs: Vec<GenericArg<'_>> = substs.iter().collect();
     if !substs.is_empty() {
         s.push('I');
         for subst in substs {
@@ -344,7 +339,7 @@ fn encode_substs<'tcx>(
 }
 
 /// Encodes a ty:Ty name, including its crate and path disambiguators and names.
-fn encode_ty_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
+fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     // Encode <name> for use in u<length><name>[I<element-type1..element-typeN>E], where
     // <element-type> is <subst>, using v0's <path> without v0's extended form of paths:
     //
@@ -646,10 +641,9 @@ fn encode_ty<'tcx>(
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::Infer(..)
-        | ty::Opaque(..)
+        | ty::Alias(..)
         | ty::Param(..)
-        | ty::Placeholder(..)
-        | ty::Projection(..) => {
+        | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
     };
@@ -660,6 +654,7 @@ fn encode_ty<'tcx>(
 // Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms all
 // c_void types into unit types unconditionally, and generalizes all pointers if
 // TransformTyOptions::GENERALIZE_POINTERS option is set.
+#[instrument(level = "trace", skip(tcx))]
 fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptions) -> Ty<'tcx> {
     let mut ty = ty;
 
@@ -704,11 +699,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                         tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.is_zst());
                     !is_zst
                 });
-                if field.is_none() {
-                    // Transform repr(transparent) types without non-ZST field into ()
-                    ty = tcx.mk_unit();
-                } else {
-                    let ty0 = tcx.type_of(field.unwrap().did);
+                if let Some(field) = field {
+                    let ty0 = tcx.bound_type_of(field.did).subst(tcx, substs);
                     // Generalize any repr(transparent) user-defined type that is either a pointer
                     // or reference, and either references itself or any other type that contains or
                     // references itself, to avoid a reference cycle.
@@ -721,6 +713,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     } else {
                         ty = transform_ty(tcx, ty0, options);
                     }
+                } else {
+                    // Transform repr(transparent) types without non-ZST field into ()
+                    ty = tcx.mk_unit();
                 }
             } else {
                 ty = tcx.mk_adt(*adt_def, transform_substs(tcx, substs, options));
@@ -799,10 +794,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::Infer(..)
-        | ty::Opaque(..)
+        | ty::Alias(..)
         | ty::Param(..)
-        | ty::Placeholder(..)
-        | ty::Projection(..) => {
+        | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
         }
     }
@@ -835,6 +829,7 @@ fn transform_substs<'tcx>(
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor
 /// extended type qualifiers and types for Rust types that are not used at the FFI boundary.
+#[instrument(level = "trace", skip(tcx))]
 pub fn typeid_for_fnabi<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,

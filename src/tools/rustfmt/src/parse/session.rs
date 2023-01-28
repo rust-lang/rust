@@ -134,6 +134,7 @@ fn default_handler(
             false,
             None,
             false,
+            false,
         ))
     };
     Handler::with_emitter(

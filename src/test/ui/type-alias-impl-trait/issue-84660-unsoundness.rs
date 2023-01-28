@@ -13,14 +13,14 @@ trait Trait<T, In> {
     fn convert(i: In) -> Self::Out;
 }
 
-impl<In, Out> Trait<Bar, In> for Out { //~ ERROR cannot implement trait
+impl<In, Out> Trait<Bar, In> for Out {
     type Out = Out;
     fn convert(_i: In) -> Self::Out {
         unreachable!();
     }
 }
 
-impl<In, Out> Trait<(), In> for Out {
+impl<In, Out> Trait<(), In> for Out { //~ ERROR conflicting implementations of trait `Trait<Bar, _>`
     type Out = In;
     fn convert(i: In) -> Self::Out {
         i

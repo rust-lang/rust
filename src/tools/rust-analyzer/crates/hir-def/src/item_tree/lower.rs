@@ -451,15 +451,7 @@ impl<'a> Ctx<'a> {
                 .collect()
         });
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
-        let res = Trait {
-            name,
-            visibility,
-            generic_params,
-            is_auto,
-            is_unsafe,
-            items: items.unwrap_or_default(),
-            ast_id,
-        };
+        let res = Trait { name, visibility, generic_params, is_auto, is_unsafe, items, ast_id };
         Some(id(self.data().traits.alloc(res)))
     }
 
@@ -662,8 +654,12 @@ fn desugar_future_path(orig: TypeRef) -> Path {
     let mut generic_args: Vec<_> =
         std::iter::repeat(None).take(path.segments().len() - 1).collect();
     let mut last = GenericArgs::empty();
-    let binding =
-        AssociatedTypeBinding { name: name![Output], type_ref: Some(orig), bounds: Vec::new() };
+    let binding = AssociatedTypeBinding {
+        name: name![Output],
+        args: None,
+        type_ref: Some(orig),
+        bounds: Vec::new(),
+    };
     last.bindings.push(binding);
     generic_args.push(Some(Interned::new(last)));
 

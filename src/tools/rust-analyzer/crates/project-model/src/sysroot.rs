@@ -64,14 +64,15 @@ impl Sysroot {
         self.by_name("proc_macro")
     }
 
-    pub fn crates<'a>(&'a self) -> impl Iterator<Item = SysrootCrate> + ExactSizeIterator + 'a {
+    pub fn crates(&self) -> impl Iterator<Item = SysrootCrate> + ExactSizeIterator + '_ {
         self.crates.iter().map(|(id, _data)| id)
     }
 }
 
 impl Sysroot {
+    /// Attempts to discover the toolchain's sysroot from the given `dir`.
     pub fn discover(dir: &AbsPath, extra_env: &FxHashMap<String, String>) -> Result<Sysroot> {
-        tracing::debug!("Discovering sysroot for {}", dir.display());
+        tracing::debug!("discovering sysroot for {}", dir.display());
         let sysroot_dir = discover_sysroot_dir(dir, extra_env)?;
         let sysroot_src_dir =
             discover_sysroot_src_dir_or_add_component(&sysroot_dir, dir, extra_env)?;
@@ -83,11 +84,10 @@ impl Sysroot {
         cargo_toml: &ManifestPath,
         extra_env: &FxHashMap<String, String>,
     ) -> Option<ManifestPath> {
-        tracing::debug!("Discovering rustc source for {}", cargo_toml.display());
+        tracing::debug!("discovering rustc source for {}", cargo_toml.display());
         let current_dir = cargo_toml.parent();
-        discover_sysroot_dir(current_dir, extra_env)
-            .ok()
-            .and_then(|sysroot_dir| get_rustc_src(&sysroot_dir))
+        let sysroot_dir = discover_sysroot_dir(current_dir, extra_env).ok()?;
+        get_rustc_src(&sysroot_dir)
     }
 
     pub fn with_sysroot_dir(sysroot_dir: AbsPathBuf) -> Result<Sysroot> {
@@ -128,14 +128,18 @@ impl Sysroot {
         }
 
         if let Some(alloc) = sysroot.by_name("alloc") {
-            if let Some(core) = sysroot.by_name("core") {
-                sysroot.crates[alloc].deps.push(core);
+            for dep in ALLOC_DEPS.trim().lines() {
+                if let Some(dep) = sysroot.by_name(dep) {
+                    sysroot.crates[alloc].deps.push(dep)
+                }
             }
         }
 
         if let Some(proc_macro) = sysroot.by_name("proc_macro") {
-            if let Some(std) = sysroot.by_name("std") {
-                sysroot.crates[proc_macro].deps.push(std);
+            for dep in PROC_MACRO_DEPS.trim().lines() {
+                if let Some(dep) = sysroot.by_name(dep) {
+                    sysroot.crates[proc_macro].deps.push(dep)
+                }
             }
         }
 
@@ -189,6 +193,7 @@ fn discover_sysroot_src_dir(sysroot_path: &AbsPathBuf) -> Option<AbsPathBuf> {
 
     get_rust_src(sysroot_path)
 }
+
 fn discover_sysroot_src_dir_or_add_component(
     sysroot_path: &AbsPathBuf,
     current_dir: &AbsPath,
@@ -199,6 +204,7 @@ fn discover_sysroot_src_dir_or_add_component(
             let mut rustup = Command::new(toolchain::rustup());
             rustup.envs(extra_env);
             rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
+            tracing::info!("adding rust-src component by {:?}", rustup);
             utf8_stdout(rustup).ok()?;
             get_rust_src(sysroot_path)
         })
@@ -217,7 +223,7 @@ try installing the Rust source the same way you installed rustc",
 fn get_rustc_src(sysroot_path: &AbsPath) -> Option<ManifestPath> {
     let rustc_src = sysroot_path.join("lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml");
     let rustc_src = ManifestPath::try_from(rustc_src).ok()?;
-    tracing::debug!("Checking for rustc source code: {}", rustc_src.display());
+    tracing::debug!("checking for rustc source code: {}", rustc_src.display());
     if fs::metadata(&rustc_src).is_ok() {
         Some(rustc_src)
     } else {
@@ -227,7 +233,7 @@ fn get_rustc_src(sysroot_path: &AbsPath) -> Option<ManifestPath> {
 
 fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
     let rust_src = sysroot_path.join("lib/rustlib/src/rust/library");
-    tracing::debug!("Checking sysroot: {}", rust_src.display());
+    tracing::debug!("checking sysroot library: {}", rust_src.display());
     if fs::metadata(&rust_src).is_ok() {
         Some(rust_src)
     } else {
@@ -237,6 +243,7 @@ fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
 
 const SYSROOT_CRATES: &str = "
 alloc
+backtrace
 core
 panic_abort
 panic_unwind
@@ -244,17 +251,19 @@ proc_macro
 profiler_builtins
 std
 stdarch/crates/std_detect
-term
 test
 unwind";
 
+const ALLOC_DEPS: &str = "core";
+
 const STD_DEPS: &str = "
 alloc
-core
-panic_abort
 panic_unwind
+panic_abort
+core
 profiler_builtins
+unwind
 std_detect
-term
-test
-unwind";
+test";
+
+const PROC_MACRO_DEPS: &str = "std";

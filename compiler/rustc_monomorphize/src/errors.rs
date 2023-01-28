@@ -32,12 +32,6 @@ pub struct TypeLengthLimit {
     pub type_length: usize,
 }
 
-#[derive(Diagnostic)]
-#[diag(monomorphize_requires_lang_item)]
-pub struct RequiresLangItem {
-    pub lang_item: String,
-}
-
 pub struct UnusedGenericParams {
     pub span: Span,
     pub param_spans: Vec<Span>,
@@ -45,6 +39,7 @@ pub struct UnusedGenericParams {
 }
 
 impl IntoDiagnostic<'_> for UnusedGenericParams {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -81,4 +76,10 @@ pub struct SymbolAlreadyDefined {
     #[primary_span]
     pub span: Option<Span>,
     pub symbol: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_couldnt_dump_mono_stats)]
+pub struct CouldntDumpMonoStats {
+    pub error: String,
 }

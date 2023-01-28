@@ -73,7 +73,6 @@ pub enum IpAddr {
 /// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Ipv4Addr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
     octets: [u8; 4],
@@ -156,7 +155,6 @@ pub struct Ipv4Addr {
 /// assert_eq!(localhost.is_loopback(), true);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Ipv6Addr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
     octets: [u8; 16],
@@ -1197,6 +1195,9 @@ impl Ipv6Addr {
 
     /// An IPv6 address representing localhost: `::1`.
     ///
+    /// This corresponds to constant `IN6ADDR_LOOPBACK_INIT` or `in6addr_loopback` in other
+    /// languages.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1205,10 +1206,14 @@ impl Ipv6Addr {
     /// let addr = Ipv6Addr::LOCALHOST;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// ```
+    #[doc(alias = "IN6ADDR_LOOPBACK_INIT")]
+    #[doc(alias = "in6addr_loopback")]
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const LOCALHOST: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
 
     /// An IPv6 address representing the unspecified address: `::`
+    ///
+    /// This corresponds to constant `IN6ADDR_ANY_INIT` or `in6addr_any` in other languages.
     ///
     /// # Examples
     ///
@@ -1218,6 +1223,8 @@ impl Ipv6Addr {
     /// let addr = Ipv6Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
     /// ```
+    #[doc(alias = "IN6ADDR_ANY_INIT")]
+    #[doc(alias = "in6addr_any")]
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const UNSPECIFIED: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
 

@@ -8,6 +8,7 @@
 // ignore-powerpc
 // ignore-powerpc64
 // ignore-riscv64 see codegen/riscv-abi
+// ignore-s390x
 // ignore-windows
 // See repr-transparent.rs
 

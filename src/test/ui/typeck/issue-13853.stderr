@@ -5,7 +5,7 @@ LL |     fn nodes<'a, I: Iterator<Item=&'a N>>(&self) -> I
    |                  - this type parameter              - expected `I` because of return type
 ...
 LL |         self.iter()
-   |         ^^^^^^^^^^^ expected type parameter `I`, found struct `std::slice::Iter`
+   |         ^^^^^^^^^^^ expected type parameter `I`, found struct `Iter`
    |
    = note: expected type parameter `I`
                       found struct `std::slice::Iter<'_, N>`

@@ -227,25 +227,25 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
         // `skip_params` is either `0` or `1` to skip the `self` parameter in trait functions.
         // It can't be renamed, and it can't be removed without removing it from multiple functions.
         let (fn_id, fn_kind, skip_params) = match get_parent_node(cx.tcx, body.value.hir_id) {
-            Some(Node::Item(i)) => (i.def_id.to_def_id(), FnKind::Fn, 0),
+            Some(Node::Item(i)) => (i.owner_id.to_def_id(), FnKind::Fn, 0),
             Some(Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Fn(ref sig, _),
-                def_id,
+                owner_id,
                 ..
             })) => (
-                def_id.to_def_id(),
+                owner_id.to_def_id(),
                 FnKind::TraitFn,
                 usize::from(sig.decl.implicit_self.has_implicit_self()),
             ),
             Some(Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(ref sig, _),
-                def_id,
+                owner_id,
                 ..
             })) => {
                 #[allow(trivial_casts)]
-                if let Some(Node::Item(item)) = get_parent_node(cx.tcx, def_id.into())
-                    && let Some(trait_ref) = cx.tcx.impl_trait_ref(item.def_id)
-                    && let Some(trait_item_id) = cx.tcx.associated_item(def_id).trait_item_def_id
+                if let Some(Node::Item(item)) = get_parent_node(cx.tcx, owner_id.into())
+                    && let Some(trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
+                    && let Some(trait_item_id) = cx.tcx.associated_item(owner_id).trait_item_def_id
                 {
                     (
                         trait_item_id,
@@ -253,7 +253,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                         usize::from(sig.decl.implicit_self.has_implicit_self()),
                     )
                 } else {
-                    (def_id.to_def_id(), FnKind::Fn, 0)
+                    (owner_id.to_def_id(), FnKind::Fn, 0)
                 }
             },
             _ => return,

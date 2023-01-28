@@ -42,6 +42,7 @@ const _: () =
     {
         extern crate proc_macro;
         #[rustc_proc_macro_decls]
+        #[used]
         #[allow(deprecated)]
         static _DECLS: &[proc_macro::bridge::client::ProcMacro] = &[];
     };

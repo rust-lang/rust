@@ -1,86 +1,74 @@
+use crate::core::DocContext;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
-use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
-use rustc_middle::ty::{TyCtxt, Visibility};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
+use rustc_middle::ty::TyCtxt;
 
 // FIXME: this may not be exhaustive, but is sufficient for rustdocs current uses
 
+#[derive(Default)]
+pub(crate) struct RustdocEffectiveVisibilities {
+    extern_public: FxHashSet<DefId>,
+}
+
+macro_rules! define_method {
+    ($method:ident) => {
+        pub(crate) fn $method(&self, tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+            match def_id.as_local() {
+                Some(def_id) => tcx.effective_visibilities(()).$method(def_id),
+                None => self.extern_public.contains(&def_id),
+            }
+        }
+    };
+}
+
+impl RustdocEffectiveVisibilities {
+    define_method!(is_directly_public);
+    define_method!(is_exported);
+    define_method!(is_reachable);
+}
+
+pub(crate) fn lib_embargo_visit_item(cx: &mut DocContext<'_>, def_id: DefId) {
+    assert!(!def_id.is_local());
+    LibEmbargoVisitor {
+        tcx: cx.tcx,
+        extern_public: &mut cx.cache.effective_visibilities.extern_public,
+        visited_mods: Default::default(),
+    }
+    .visit_item(def_id)
+}
+
 /// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
 /// specific rustdoc annotations into account (i.e., `doc(hidden)`)
-pub(crate) struct LibEmbargoVisitor<'a, 'tcx> {
+struct LibEmbargoVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    // Accessibility levels for reachable nodes
-    access_levels: &'a mut AccessLevels<DefId>,
-    // Previous accessibility level, None means unreachable
-    prev_level: Option<AccessLevel>,
+    // Effective visibilities for reachable nodes
+    extern_public: &'a mut FxHashSet<DefId>,
     // Keeps track of already visited modules, in case a module re-exports its parent
     visited_mods: FxHashSet<DefId>,
 }
 
-impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
-    pub(crate) fn new(cx: &'a mut crate::core::DocContext<'tcx>) -> LibEmbargoVisitor<'a, 'tcx> {
-        LibEmbargoVisitor {
-            tcx: cx.tcx,
-            access_levels: &mut cx.cache.access_levels,
-            prev_level: Some(AccessLevel::Public),
-            visited_mods: FxHashSet::default(),
-        }
-    }
-
-    pub(crate) fn visit_lib(&mut self, cnum: CrateNum) {
-        let did = cnum.as_def_id();
-        self.update(did, Some(AccessLevel::Public));
-        self.visit_mod(did);
-    }
-
-    // Updates node level and returns the updated level
-    fn update(&mut self, did: DefId, level: Option<AccessLevel>) -> Option<AccessLevel> {
-        let is_hidden = self.tcx.is_doc_hidden(did);
-
-        let old_level = self.access_levels.get_access_level(did);
-        // Accessibility levels can only grow
-        if level > old_level && !is_hidden {
-            self.access_levels.set_access_level(
-                did,
-                || Visibility::Restricted(CRATE_DEF_ID),
-                level.unwrap(),
-            );
-            level
-        } else {
-            old_level
-        }
-    }
-
-    pub(crate) fn visit_mod(&mut self, def_id: DefId) {
+impl LibEmbargoVisitor<'_, '_> {
+    fn visit_mod(&mut self, def_id: DefId) {
         if !self.visited_mods.insert(def_id) {
             return;
         }
 
         for item in self.tcx.module_children(def_id).iter() {
             if let Some(def_id) = item.res.opt_def_id() {
-                if self.tcx.def_key(def_id).parent.map_or(false, |d| d == def_id.index)
-                    || item.vis.is_public()
-                {
-                    self.visit_item(item.res);
+                if item.vis.is_public() {
+                    self.visit_item(def_id);
                 }
             }
         }
     }
 
-    fn visit_item(&mut self, res: Res<!>) {
-        let def_id = res.def_id();
-        let vis = self.tcx.visibility(def_id);
-        let inherited_item_level = if vis.is_public() { self.prev_level } else { None };
-
-        let item_level = self.update(def_id, inherited_item_level);
-
-        if let Res::Def(DefKind::Mod, _) = res {
-            let orig_level = self.prev_level;
-
-            self.prev_level = item_level;
-            self.visit_mod(def_id);
-            self.prev_level = orig_level;
+    fn visit_item(&mut self, def_id: DefId) {
+        if !self.tcx.is_doc_hidden(def_id) {
+            self.extern_public.insert(def_id);
+            if self.tcx.def_kind(def_id) == DefKind::Mod {
+                self.visit_mod(def_id);
+            }
         }
     }
 }

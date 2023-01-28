@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(custom_inner_attributes)]
 #![allow(
     clippy::cast_lossless,
     unused,
@@ -78,16 +77,14 @@ pub const fn issue_8898(i: u32) -> bool {
     i <= i32::MAX as u32
 }
 
+#[clippy::msrv = "1.33"]
 fn msrv_1_33() {
-    #![clippy::msrv = "1.33"]
-
     let value: i64 = 33;
     let _ = value <= (u32::MAX as i64) && value >= 0;
 }
 
+#[clippy::msrv = "1.34"]
 fn msrv_1_34() {
-    #![clippy::msrv = "1.34"]
-
     let value: i64 = 34;
     let _ = u32::try_from(value).is_ok();
 }

@@ -11,7 +11,6 @@ use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, Operand, Terminator, TerminatorKind, RETURN_PLACE};
 use rustc_middle::ty::{self, DeducedParamAttrs, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
-use rustc_span::DUMMY_SP;
 
 /// A visitor that determines which arguments have been mutated. We can't use the mutability field
 /// on LocalDecl for this because it has no meaning post-optimization.
@@ -111,15 +110,16 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
 
         if let TerminatorKind::Call { ref args, .. } = terminator.kind {
             for arg in args {
-                if let Operand::Move(_) = *arg {
-                    // ArgumentChecker panics if a direct move of an argument from a caller to a
-                    // callee was detected.
-                    //
-                    // If, in the future, MIR optimizations cause arguments to be moved directly
-                    // from callers to callees, change the panic to instead add the argument in
-                    // question to `mutating_uses`.
-                    ArgumentChecker::new(self.mutable_args.domain_size())
-                        .visit_operand(arg, location)
+                if let Operand::Move(place) = *arg {
+                    let local = place.local;
+                    if place.is_indirect()
+                        || local == RETURN_PLACE
+                        || local.index() > self.mutable_args.domain_size()
+                    {
+                        continue;
+                    }
+
+                    self.mutable_args.insert(local.index() - 1);
                 }
             }
         };
@@ -128,37 +128,8 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
     }
 }
 
-/// A visitor that simply panics if a direct move of an argument from a caller to a callee was
-/// detected.
-struct ArgumentChecker {
-    /// The number of arguments to the calling function.
-    arg_count: usize,
-}
-
-impl ArgumentChecker {
-    /// Creates a new ArgumentChecker.
-    fn new(arg_count: usize) -> Self {
-        Self { arg_count }
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for ArgumentChecker {
-    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
-        // Check to make sure that, if this local is an argument, we didn't move directly from it.
-        if matches!(context, PlaceContext::NonMutatingUse(NonMutatingUseContext::Move))
-            && local != RETURN_PLACE
-            && local.index() <= self.arg_count
-        {
-            // If, in the future, MIR optimizations cause arguments to be moved directly from
-            // callers to callees, change this panic to instead add the argument in question to
-            // `mutating_uses`.
-            panic!("Detected a direct move from a caller's argument to a callee's argument!")
-        }
-    }
-}
-
 /// Returns true if values of a given type will never be passed indirectly, regardless of ABI.
-fn type_will_always_be_passed_directly<'tcx>(ty: Ty<'tcx>) -> bool {
+fn type_will_always_be_passed_directly(ty: Ty<'_>) -> bool {
     matches!(
         ty.kind(),
         ty::Bool
@@ -232,7 +203,7 @@ pub fn deduced_param_attrs<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [Ded
         body.local_decls.iter().skip(1).take(body.arg_count).enumerate().map(
             |(arg_index, local_decl)| DeducedParamAttrs {
                 read_only: !deduce_read_only.mutable_args.contains(arg_index)
-                    && local_decl.ty.is_freeze(tcx.at(DUMMY_SP), ParamEnv::reveal_all()),
+                    && local_decl.ty.is_freeze(tcx, ParamEnv::reveal_all()),
             },
         ),
     );

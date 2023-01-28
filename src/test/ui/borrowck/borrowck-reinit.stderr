@@ -8,6 +8,11 @@ LL |     drop(x);
    |          - value moved here
 LL |     let _ = (1,x);
    |                ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x.clone());
+   |           ++++++++
 
 error: aborting due to previous error
 

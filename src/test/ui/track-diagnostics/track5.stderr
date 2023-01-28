@@ -1,0 +1,9 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/track5.rs:LL:CC
+   |
+LL | }
+   | ^ unexpected closing delimiter
+-Ztrack-diagnostics: created at compiler/rustc_parse/src/lexer/tokentrees.rs:LL:CC
+
+error: aborting due to previous error
+

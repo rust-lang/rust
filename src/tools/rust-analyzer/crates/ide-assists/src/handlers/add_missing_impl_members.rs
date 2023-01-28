@@ -196,6 +196,7 @@ trait Foo {
     type Output;
 
     const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn foo(&self);
     fn bar(&self);
@@ -213,6 +214,7 @@ trait Foo {
     type Output;
 
     const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn foo(&self);
     fn bar(&self);
@@ -226,7 +228,7 @@ impl Foo for S {
 
     $0type Output;
 
-    const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn foo(&self) {
         todo!()
@@ -379,14 +381,14 @@ impl Foo for S {
             r#"
 mod foo {
     pub struct Bar;
-    trait Foo { fn foo(&self, bar: Bar); }
+    pub trait Foo { fn foo(&self, bar: Bar); }
 }
 struct S;
 impl foo::Foo for S { $0 }"#,
             r#"
 mod foo {
     pub struct Bar;
-    trait Foo { fn foo(&self, bar: Bar); }
+    pub trait Foo { fn foo(&self, bar: Bar); }
 }
 struct S;
 impl foo::Foo for S {
@@ -439,14 +441,14 @@ impl bar::Foo for S {
             r#"
 mod foo {
     pub struct Bar<T>;
-    trait Foo { fn foo(&self, bar: Bar<u32>); }
+    pub trait Foo { fn foo(&self, bar: Bar<u32>); }
 }
 struct S;
 impl foo::Foo for S { $0 }"#,
             r#"
 mod foo {
     pub struct Bar<T>;
-    trait Foo { fn foo(&self, bar: Bar<u32>); }
+    pub trait Foo { fn foo(&self, bar: Bar<u32>); }
 }
 struct S;
 impl foo::Foo for S {
@@ -464,14 +466,14 @@ impl foo::Foo for S {
             r#"
 mod foo {
     pub struct Bar<T>;
-    trait Foo<T> { fn foo(&self, bar: Bar<T>); }
+    pub trait Foo<T> { fn foo(&self, bar: Bar<T>); }
 }
 struct S;
 impl foo::Foo<u32> for S { $0 }"#,
             r#"
 mod foo {
     pub struct Bar<T>;
-    trait Foo<T> { fn foo(&self, bar: Bar<T>); }
+    pub trait Foo<T> { fn foo(&self, bar: Bar<T>); }
 }
 struct S;
 impl foo::Foo<u32> for S {
@@ -489,7 +491,7 @@ impl foo::Foo<u32> for S {
             add_missing_impl_members,
             r#"
 mod foo {
-    trait Foo<T> { fn foo(&self, bar: T); }
+    pub trait Foo<T> { fn foo(&self, bar: T); }
     pub struct Param;
 }
 struct Param;
@@ -497,7 +499,7 @@ struct S;
 impl foo::Foo<Param> for S { $0 }"#,
             r#"
 mod foo {
-    trait Foo<T> { fn foo(&self, bar: T); }
+    pub trait Foo<T> { fn foo(&self, bar: T); }
     pub struct Param;
 }
 struct Param;
@@ -518,7 +520,7 @@ impl foo::Foo<Param> for S {
 mod foo {
     pub struct Bar<T>;
     impl Bar<T> { type Assoc = u32; }
-    trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
+    pub trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
 }
 struct S;
 impl foo::Foo for S { $0 }"#,
@@ -526,7 +528,7 @@ impl foo::Foo for S { $0 }"#,
 mod foo {
     pub struct Bar<T>;
     impl Bar<T> { type Assoc = u32; }
-    trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
+    pub trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
 }
 struct S;
 impl foo::Foo for S {
@@ -545,7 +547,7 @@ impl foo::Foo for S {
 mod foo {
     pub struct Bar<T>;
     pub struct Baz;
-    trait Foo { fn foo(&self, bar: Bar<Baz>); }
+    pub trait Foo { fn foo(&self, bar: Bar<Baz>); }
 }
 struct S;
 impl foo::Foo for S { $0 }"#,
@@ -553,7 +555,7 @@ impl foo::Foo for S { $0 }"#,
 mod foo {
     pub struct Bar<T>;
     pub struct Baz;
-    trait Foo { fn foo(&self, bar: Bar<Baz>); }
+    pub trait Foo { fn foo(&self, bar: Bar<Baz>); }
 }
 struct S;
 impl foo::Foo for S {
@@ -571,14 +573,14 @@ impl foo::Foo for S {
             r#"
 mod foo {
     pub trait Fn<Args> { type Output; }
-    trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
+    pub trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
 }
 struct S;
 impl foo::Foo for S { $0 }"#,
             r#"
 mod foo {
     pub trait Fn<Args> { type Output; }
-    trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
+    pub trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
 }
 struct S;
 impl foo::Foo for S {
@@ -658,6 +660,7 @@ trait Foo {
     type Output;
 
     const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn valid(some: u32) -> bool { false }
     fn foo(some: u32) -> bool;
@@ -669,13 +672,16 @@ trait Foo {
     type Output;
 
     const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn valid(some: u32) -> bool { false }
     fn foo(some: u32) -> bool;
 }
 struct S;
 impl Foo for S {
-    $0fn valid(some: u32) -> bool { false }
+    $0const CONST: usize = 42;
+
+    fn valid(some: u32) -> bool { false }
 }"#,
         )
     }

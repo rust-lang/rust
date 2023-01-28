@@ -1,5 +1,5 @@
-// We want to control preemption here.
-//@compile-flags: -Zmiri-preemption-rate=0
+// We want to control preemption here. Stacked borrows interferes by having its own accesses.
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
@@ -23,7 +23,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             let atomic_ref = &mut *c.0;
-            *atomic_ref.get_mut() //~ ERROR: Data race detected between Read on thread `<unnamed>` and Atomic Store on thread `<unnamed>`
+            *atomic_ref.get_mut() //~ ERROR: Data race detected between (1) Atomic Store on thread `<unnamed>` and (2) Read on thread `<unnamed>`
         });
 
         j1.join().unwrap();

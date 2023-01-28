@@ -79,6 +79,10 @@ LL |     let ref a @ box b = Box::new(NC);
    |         value borrowed here after move
    |
    = note: move occurs because value has type `NC`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref a @ box ref b = Box::new(NC);
+   |                     +++
 
 error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-at-and-box.rs:38:9

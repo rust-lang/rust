@@ -3,7 +3,7 @@ error: lifetime may not live long enough
    |
 LL | fn coupled_wilds_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
    |                      -- lifetime `'a` defined here
-LL |     let ((y, _z),) = ((s, _x),): (PairCoupledTypes<_>,);
+LL |     let ((y, _z),) = type_ascribe!(((s, _x),), (PairCoupledTypes<_>,));
 LL |     y
    |     ^ returning this value requires that `'a` must outlive `'static`
 
@@ -12,7 +12,7 @@ error: lifetime may not live long enough
    |
 LL | fn coupled_regions_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
    |                        -- lifetime `'a` defined here
-LL |     let ((y, _z),) = ((s, _x),): (PairCoupledRegions<_>,);
+LL |     let ((y, _z),) = type_ascribe!(((s, _x),), (PairCoupledRegions<_>,));
 LL |     y
    |     ^ returning this value requires that `'a` must outlive `'static`
 

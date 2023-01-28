@@ -1493,11 +1493,13 @@ mod prim_ref {}
 /// However, a direct cast back is not possible. You need to use `transmute`:
 ///
 /// ```rust
+/// # #[cfg(not(miri))] { // FIXME: use strict provenance APIs once they are stable, then remove this `cfg`
 /// # let fnptr: fn(i32) -> i32 = |x| x+2;
 /// # let fnptr_addr = fnptr as usize;
 /// let fnptr = fnptr_addr as *const ();
 /// let fnptr: fn(i32) -> i32 = unsafe { std::mem::transmute(fnptr) };
 /// assert_eq!(fnptr(40), 42);
+/// # }
 /// ```
 ///
 /// Crucially, we `as`-cast to a raw pointer before `transmute`ing to a function pointer.

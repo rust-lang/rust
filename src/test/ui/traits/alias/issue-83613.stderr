@@ -6,18 +6,6 @@ LL | impl<T: Send> AnotherTrait for T {}
 LL | impl AnotherTrait for OpaqueType {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `OpaqueType`
 
-error: cannot implement trait on type alias impl trait
-  --> $DIR/issue-83613.rs:10:23
-   |
-LL | impl AnotherTrait for OpaqueType {}
-   |                       ^^^^^^^^^^
-   |
-note: type alias impl trait defined here
-  --> $DIR/issue-83613.rs:4:19
-   |
-LL | type OpaqueType = impl OpaqueTrait;
-   |                   ^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0119`.

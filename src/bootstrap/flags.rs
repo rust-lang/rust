@@ -130,6 +130,7 @@ pub enum Subcommand {
         test_args: Vec<String>,
     },
     Clean {
+        paths: Vec<PathBuf>,
         all: bool,
     },
     Dist {
@@ -140,9 +141,10 @@ pub enum Subcommand {
     },
     Run {
         paths: Vec<PathBuf>,
+        args: Vec<String>,
     },
     Setup {
-        profile: Profile,
+        profile: Option<PathBuf>,
     },
 }
 
@@ -342,28 +344,40 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             Kind::Format => {
                 opts.optflag("", "check", "check formatting instead of applying.");
             }
+            Kind::Run => {
+                opts.optmulti("", "args", "arguments for the tool", "ARGS");
+            }
             _ => {}
         };
 
         // fn usage()
         let usage = |exit_code: i32, opts: &Options, verbose: bool, subcommand_help: &str| -> ! {
-            let config = Config::parse(&["build".to_string()]);
-            let build = Build::new(config);
-            let paths = Builder::get_help(&build, subcommand);
-
             println!("{}", opts.usage(subcommand_help));
-            if let Some(s) = paths {
-                if verbose {
+            if verbose {
+                // We have an unfortunate situation here: some Steps use `builder.in_tree_crates` to determine their paths.
+                // To determine those crates, we need to run `cargo metadata`, which means we need all submodules to be checked out.
+                // That takes a while to run, so only do it when paths were explicitly requested, not on all CLI errors.
+                // `Build::new` won't load submodules for the `setup` command.
+                let cmd = if verbose {
+                    println!("note: updating submodules before printing available paths");
+                    "build"
+                } else {
+                    "setup"
+                };
+                let config = Config::parse(&[cmd.to_string()]);
+                let build = Build::new(config);
+                let paths = Builder::get_help(&build, subcommand);
+
+                if let Some(s) = paths {
                     println!("{}", s);
                 } else {
-                    println!(
-                        "Run `./x.py {} -h -v` to see a list of available paths.",
-                        subcommand.as_str()
-                    );
+                    panic!("No paths available for subcommand `{}`", subcommand.as_str());
                 }
-            } else if verbose {
-                eprint!("No paths available for subcommand `{}`", subcommand.as_str());
-                crate::detail_exit(exit_code);
+            } else {
+                println!(
+                    "Run `./x.py {} -h -v` to see a list of available paths.",
+                    subcommand.as_str()
+                );
             }
             crate::detail_exit(exit_code);
         };
@@ -598,14 +612,7 @@ Arguments:
                 open: matches.opt_present("open"),
                 json: matches.opt_present("json"),
             },
-            Kind::Clean => {
-                if !paths.is_empty() {
-                    println!("\nclean does not take a path argument\n");
-                    usage(1, &opts, verbose, &subcommand_help);
-                }
-
-                Subcommand::Clean { all: matches.opt_present("all") }
-            }
+            Kind::Clean => Subcommand::Clean { all: matches.opt_present("all"), paths },
             Kind::Format => Subcommand::Format { check: matches.opt_present("check"), paths },
             Kind::Dist => Subcommand::Dist { paths },
             Kind::Install => Subcommand::Install { paths },
@@ -614,25 +621,26 @@ Arguments:
                     println!("\nrun requires at least a path!\n");
                     usage(1, &opts, verbose, &subcommand_help);
                 }
-                Subcommand::Run { paths }
+                Subcommand::Run { paths, args: matches.opt_strs("args") }
             }
             Kind::Setup => {
                 let profile = if paths.len() > 1 {
-                    println!("\nat most one profile can be passed to setup\n");
+                    eprintln!("\nerror: At most one profile can be passed to setup\n");
                     usage(1, &opts, verbose, &subcommand_help)
                 } else if let Some(path) = paths.pop() {
                     let profile_string = t!(path.into_os_string().into_string().map_err(
                         |path| format!("{} is not a valid UTF8 string", path.to_string_lossy())
                     ));
 
-                    profile_string.parse().unwrap_or_else(|err| {
+                    let profile = profile_string.parse().unwrap_or_else(|err| {
                         eprintln!("error: {}", err);
                         eprintln!("help: the available profiles are:");
                         eprint!("{}", Profile::all_for_help("- "));
                         crate::detail_exit(1);
-                    })
+                    });
+                    Some(profile)
                 } else {
-                    t!(crate::setup::interactive_path())
+                    None
                 };
                 Subcommand::Setup { profile }
             }
@@ -722,16 +730,12 @@ impl Subcommand {
     }
 
     pub fn test_args(&self) -> Vec<&str> {
-        let mut args = vec![];
-
         match *self {
             Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
-                args.extend(test_args.iter().flat_map(|s| s.split_whitespace()))
+                test_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
-            _ => (),
+            _ => vec![],
         }
-
-        args
     }
 
     pub fn rustc_args(&self) -> Vec<&str> {
@@ -739,7 +743,16 @@ impl Subcommand {
             Subcommand::Test { ref rustc_args, .. } => {
                 rustc_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
-            _ => Vec::new(),
+            _ => vec![],
+        }
+    }
+
+    pub fn args(&self) -> Vec<&str> {
+        match *self {
+            Subcommand::Run { ref args, .. } => {
+                args.iter().flat_map(|s| s.split_whitespace()).collect()
+            }
+            _ => vec![],
         }
     }
 

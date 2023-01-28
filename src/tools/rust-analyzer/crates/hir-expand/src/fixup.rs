@@ -4,6 +4,7 @@ use std::mem;
 
 use mbe::{SyntheticToken, SyntheticTokenId, TokenMap};
 use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
 use syntax::{
     ast::{self, AstNode, HasLoopBody},
     match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
@@ -292,25 +293,34 @@ pub(crate) fn reverse_fixups(
     token_map: &TokenMap,
     undo_info: &SyntaxFixupUndoInfo,
 ) {
-    tt.token_trees.retain(|tt| match tt {
-        tt::TokenTree::Leaf(leaf) => {
-            token_map.synthetic_token_id(leaf.id()).is_none()
-                || token_map.synthetic_token_id(leaf.id()) != Some(EMPTY_ID)
-        }
-        tt::TokenTree::Subtree(st) => st.delimiter.map_or(true, |d| {
-            token_map.synthetic_token_id(d.id).is_none()
-                || token_map.synthetic_token_id(d.id) != Some(EMPTY_ID)
-        }),
-    });
-    tt.token_trees.iter_mut().for_each(|tt| match tt {
-        tt::TokenTree::Subtree(tt) => reverse_fixups(tt, token_map, undo_info),
-        tt::TokenTree::Leaf(leaf) => {
-            if let Some(id) = token_map.synthetic_token_id(leaf.id()) {
-                let original = &undo_info.original[id.0 as usize];
-                *tt = tt::TokenTree::Subtree(original.clone());
+    let tts = std::mem::take(&mut tt.token_trees);
+    tt.token_trees = tts
+        .into_iter()
+        .filter(|tt| match tt {
+            tt::TokenTree::Leaf(leaf) => token_map.synthetic_token_id(leaf.id()) != Some(EMPTY_ID),
+            tt::TokenTree::Subtree(st) => {
+                st.delimiter.map_or(true, |d| token_map.synthetic_token_id(d.id) != Some(EMPTY_ID))
             }
-        }
-    });
+        })
+        .flat_map(|tt| match tt {
+            tt::TokenTree::Subtree(mut tt) => {
+                reverse_fixups(&mut tt, token_map, undo_info);
+                SmallVec::from_const([tt.into()])
+            }
+            tt::TokenTree::Leaf(leaf) => {
+                if let Some(id) = token_map.synthetic_token_id(leaf.id()) {
+                    let original = undo_info.original[id.0 as usize].clone();
+                    if original.delimiter.is_none() {
+                        original.token_trees.into()
+                    } else {
+                        SmallVec::from_const([original.into()])
+                    }
+                } else {
+                    SmallVec::from_const([leaf.into()])
+                }
+            }
+        })
+        .collect();
 }
 
 #[cfg(test)]
@@ -318,6 +328,31 @@ mod tests {
     use expect_test::{expect, Expect};
 
     use super::reverse_fixups;
+
+    // The following three functions are only meant to check partial structural equivalence of
+    // `TokenTree`s, see the last assertion in `check()`.
+    fn check_leaf_eq(a: &tt::Leaf, b: &tt::Leaf) -> bool {
+        match (a, b) {
+            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.text == b.text,
+            (tt::Leaf::Punct(a), tt::Leaf::Punct(b)) => a.char == b.char,
+            (tt::Leaf::Ident(a), tt::Leaf::Ident(b)) => a.text == b.text,
+            _ => false,
+        }
+    }
+
+    fn check_subtree_eq(a: &tt::Subtree, b: &tt::Subtree) -> bool {
+        a.delimiter.map(|it| it.kind) == b.delimiter.map(|it| it.kind)
+            && a.token_trees.len() == b.token_trees.len()
+            && a.token_trees.iter().zip(&b.token_trees).all(|(a, b)| check_tt_eq(a, b))
+    }
+
+    fn check_tt_eq(a: &tt::TokenTree, b: &tt::TokenTree) -> bool {
+        match (a, b) {
+            (tt::TokenTree::Leaf(a), tt::TokenTree::Leaf(b)) => check_leaf_eq(a, b),
+            (tt::TokenTree::Subtree(a), tt::TokenTree::Subtree(b)) => check_subtree_eq(a, b),
+            _ => false,
+        }
+    }
 
     #[track_caller]
     fn check(ra_fixture: &str, mut expect: Expect) {
@@ -331,17 +366,15 @@ mod tests {
             fixups.append,
         );
 
-        let mut actual = tt.to_string();
-        actual.push('\n');
+        let actual = format!("{}\n", tt);
 
         expect.indent(false);
         expect.assert_eq(&actual);
 
         // the fixed-up tree should be syntactically valid
         let (parse, _) = mbe::token_tree_to_syntax_node(&tt, ::mbe::TopEntryPoint::MacroItems);
-        assert_eq!(
-            parse.errors(),
-            &[],
+        assert!(
+            parse.errors().is_empty(),
             "parse has syntax errors. parse tree:\n{:#?}",
             parse.syntax_node()
         );
@@ -349,9 +382,12 @@ mod tests {
         reverse_fixups(&mut tt, &tmap, &fixups.undo_info);
 
         // the fixed-up + reversed version should be equivalent to the original input
-        // (but token IDs don't matter)
+        // modulo token IDs and `Punct`s' spacing.
         let (original_as_tt, _) = mbe::syntax_node_to_token_tree(&parsed.syntax_node());
-        assert_eq!(tt.to_string(), original_as_tt.to_string());
+        assert!(
+            check_subtree_eq(&tt, &original_as_tt),
+            "different token tree: {tt:?}, {original_as_tt:?}"
+        );
     }
 
     #[test]
@@ -468,7 +504,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a .__ra_fixup}
+fn foo () {a . __ra_fixup}
 "#]],
         )
     }
@@ -482,7 +518,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a .__ra_fixup ;}
+fn foo () {a . __ra_fixup ;}
 "#]],
         )
     }
@@ -497,7 +533,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a .__ra_fixup ; bar () ;}
+fn foo () {a . __ra_fixup ; bar () ;}
 "#]],
         )
     }
@@ -525,7 +561,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {let x = a .__ra_fixup ;}
+fn foo () {let x = a . __ra_fixup ;}
 "#]],
         )
     }
@@ -541,7 +577,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a .b ; bar () ;}
+fn foo () {a . b ; bar () ;}
 "#]],
         )
     }

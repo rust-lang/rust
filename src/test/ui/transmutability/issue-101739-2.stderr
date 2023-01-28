@@ -8,12 +8,6 @@ LL | /             ASSUME_LIFETIMES,
 LL | |             ASSUME_VALIDITY,
 LL | |             ASSUME_VISIBILITY,
    | |_____________________________- help: remove these generic arguments
-   |
-note: trait defined here, with at most 3 generic parameters: `Src`, `Context`, `ASSUME`
-  --> $SRC_DIR/core/src/mem/transmutability.rs:LL:COL
-   |
-LL | pub unsafe trait BikeshedIntrinsicFrom<Src, Context, const ASSUME: Assume = { Assume::NOTHING }>
-   |                  ^^^^^^^^^^^^^^^^^^^^^ ---  -------  ------------------------------------------
 
 error: aborting due to previous error
 

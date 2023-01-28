@@ -58,24 +58,25 @@ pub struct NoValueInOnUnimplemented {
     pub span: Span,
 }
 
-pub struct NegativePositiveConflict<'a> {
+pub struct NegativePositiveConflict<'tcx> {
     pub impl_span: Span,
-    pub trait_desc: &'a str,
-    pub self_desc: &'a Option<String>,
+    pub trait_desc: ty::TraitRef<'tcx>,
+    pub self_ty: Option<Ty<'tcx>>,
     pub negative_impl_span: Result<Span, Symbol>,
     pub positive_impl_span: Result<Span, Symbol>,
 }
 
 impl IntoDiagnostic<'_> for NegativePositiveConflict<'_> {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_err(fluent::trait_selection_negative_positive_conflict);
-        diag.set_arg("trait_desc", self.trait_desc);
+        diag.set_arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
         diag.set_arg(
             "self_desc",
-            self.self_desc.clone().map_or_else(|| String::from("none"), |ty| ty),
+            self.self_ty.map_or_else(|| "none".to_string(), |ty| ty.to_string()),
         );
         diag.set_span(self.impl_span);
         diag.code(rustc_errors::error_code!(E0751));

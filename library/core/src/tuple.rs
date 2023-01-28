@@ -22,7 +22,8 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:PartialEq),+> PartialEq for ($($T,)+)
+            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+            impl<$($T: ~const PartialEq),+> const PartialEq for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
             {
@@ -40,7 +41,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Eq),+> Eq for ($($T,)+)
+            impl<$($T: Eq),+> Eq for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
             {}
@@ -49,7 +50,8 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+)
+            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+            impl<$($T: ~const PartialOrd + ~const PartialEq),+> const PartialOrd for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
             {
@@ -79,7 +81,8 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Ord),+> Ord for ($($T,)+)
+            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+            impl<$($T: ~const Ord),+> const Ord for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
             {

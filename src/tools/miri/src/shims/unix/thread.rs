@@ -19,7 +19,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let func_arg = this.read_immediate(arg)?;
 
-        this.start_thread(
+        this.start_regular_thread(
             Some(thread_info_place),
             start_routine,
             Abi::C { unwind: false },
@@ -42,7 +42,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("Miri supports pthread_join only with retval==NULL");
         }
 
-        let thread_id = this.read_scalar(thread)?.to_machine_usize(this)?;
+        let thread_id = this.read_machine_usize(thread)?;
         this.join_thread_exclusive(thread_id.try_into().expect("thread ID should fit in u32"))?;
 
         Ok(0)
@@ -51,7 +51,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn pthread_detach(&mut self, thread: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let thread_id = this.read_scalar(thread)?.to_machine_usize(this)?;
+        let thread_id = this.read_machine_usize(thread)?;
         this.detach_thread(
             thread_id.try_into().expect("thread ID should fit in u32"),
             /*allow_terminated_joined*/ false,
@@ -67,10 +67,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(Scalar::from_machine_usize(thread_id.into(), this))
     }
 
+    /// Set the name of the current thread. `max_name_len` is the maximal length of the name
+    /// including the null terminator.
     fn pthread_setname_np(
         &mut self,
         thread: Scalar<Provenance>,
         name: Scalar<Provenance>,
+        max_name_len: usize,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
@@ -78,9 +81,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let name = name.to_pointer(this)?;
 
         let name = this.read_c_str(name)?.to_owned();
+
+        // Comparing with `>=` to account for null terminator.
+        if name.len() >= max_name_len {
+            return Ok(this.eval_libc("ERANGE"));
+        }
+
         this.set_thread_name(thread, name);
 
         Ok(Scalar::from_u32(0))
+    }
+
+    fn pthread_getname_np(
+        &mut self,
+        thread: Scalar<Provenance>,
+        name_out: Scalar<Provenance>,
+        len: Scalar<Provenance>,
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        let this = self.eval_context_mut();
+
+        let thread = ThreadId::try_from(thread.to_machine_usize(this)?).unwrap();
+        let name_out = name_out.to_pointer(this)?;
+        let len = len.to_machine_usize(this)?;
+
+        let name = this.get_thread_name(thread).to_owned();
+        let (success, _written) = this.write_c_str(&name, name_out, len)?;
+
+        Ok(if success { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") })
     }
 
     fn sched_yield(&mut self) -> InterpResult<'tcx, i32> {

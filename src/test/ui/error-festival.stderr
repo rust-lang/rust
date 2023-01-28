@@ -41,11 +41,8 @@ note: an implementation of `Not` might be missing for `Question`
    |
 LL | enum Question {
    | ^^^^^^^^^^^^^ must implement `Not`
-note: the following trait must be implemented
+note: the trait `Not` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL | pub trait Not {
-   | ^^^^^^^^^^^^^
 
 error[E0604]: only `u8` can be cast as `char`, not `u32`
   --> $DIR/error-festival.rs:25:5

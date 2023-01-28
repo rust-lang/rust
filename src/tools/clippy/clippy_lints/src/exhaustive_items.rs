@@ -73,7 +73,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if_chain! {
             if let ItemKind::Enum(..) | ItemKind::Struct(..) = item.kind;
-            if cx.access_levels.is_exported(item.def_id.def_id);
+            if cx.effective_visibilities.is_exported(item.owner_id.def_id);
             let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|a| a.has_name(sym::non_exhaustive));
             then {

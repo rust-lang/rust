@@ -1,0 +1,29 @@
+error: expected identifier, found number literal
+  --> $DIR/issue-104088.rs:6:9
+   |
+LL |     let 1x = 123;
+   |         ^^ identifiers cannot start with a number
+
+error: expected identifier, found number literal
+  --> $DIR/issue-104088.rs:11:9
+   |
+LL |     let 2x: i32 = 123;
+   |         ^^ identifiers cannot start with a number
+
+error: expected identifier, found number literal
+  --> $DIR/issue-104088.rs:22:9
+   |
+LL |     let 23name = 123;
+   |         ^^^^^^ identifiers cannot start with a number
+
+error[E0308]: mismatched types
+  --> $DIR/issue-104088.rs:16:12
+   |
+LL |     if let 2e1 = 123 {
+   |            ^^^   --- this expression has type `{integer}`
+   |            |
+   |            expected integer, found floating-point number
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -26,4 +26,7 @@ fn main() {
             panic!("p4 {var}");
         }
     }
+
+    assert!(var == 1, "p5 {}", var);
+    debug_assert!(var == 1, "p6 {}", var);
 }

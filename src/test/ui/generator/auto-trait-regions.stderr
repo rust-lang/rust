@@ -4,7 +4,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |         let a = A(&mut true, &mut true, No);
    |                        ^^^^                - temporary value is freed at the end of this statement
    |                        |
-   |                        creates a temporary which is freed while still in use
+   |                        creates a temporary value which is freed while still in use
 ...
 LL |         assert_foo(a);
    |                    - borrow later used here
@@ -17,7 +17,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |         let a = A(&mut true, &mut true, No);
    |                                   ^^^^     - temporary value is freed at the end of this statement
    |                                   |
-   |                                   creates a temporary which is freed while still in use
+   |                                   creates a temporary value which is freed while still in use
 ...
 LL |         assert_foo(a);
    |                    - borrow later used here

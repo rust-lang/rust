@@ -55,7 +55,7 @@ impl EarlyLintPass for CrateInMacroDef {
         if_chain! {
             if item.attrs.iter().any(is_macro_export);
             if let ItemKind::MacroDef(macro_def) = &item.kind;
-            let tts = macro_def.body.inner_tokens();
+            let tts = macro_def.body.tokens.clone();
             if let Some(span) = contains_unhygienic_crate_reference(&tts);
             then {
                 span_lint_and_sugg(

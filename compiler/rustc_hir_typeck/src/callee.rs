@@ -4,9 +4,9 @@ use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
 use crate::type_error_struct;
 use rustc_ast::util::parser::PREC_POSTFIX;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, StashKey};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::{self, Namespace, Res};
+use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::{
     infer,
@@ -30,7 +30,7 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
-use std::iter;
+use std::{iter, slice};
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -129,6 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         output
     }
 
+    #[instrument(level = "debug", skip(self, call_expr, callee_expr, arg_exprs, autoderef), ret)]
     fn try_overloaded_call_step(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
@@ -138,10 +139,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<CallStep<'tcx>> {
         let adjusted_ty =
             self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
-        debug!(
-            "try_overloaded_call_step(call_expr={:?}, adjusted_ty={:?})",
-            call_expr, adjusted_ty
-        );
 
         // If the callee is a bare function or a closure, then we're all set.
         match *adjusted_ty.kind() {
@@ -182,12 +179,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Hack: we know that there are traits implementing Fn for &F
             // where F:Fn and so forth. In the particular case of types
-            // like `x: &mut FnMut()`, if there is a call `x()`, we would
-            // normally translate to `FnMut::call_mut(&mut x, ())`, but
-            // that winds up requiring `mut x: &mut FnMut()`. A little
-            // over the top. The simplest fix by far is to just ignore
-            // this case and deref again, so we wind up with
-            // `FnMut::call_mut(&mut *x, ())`.
+            // like `f: &mut FnMut()`, if there is a call `f()`, we would
+            // normally translate to `FnMut::call_mut(&mut f, ())`, but
+            // that winds up potentially requiring the user to mark their
+            // variable as `mut` which feels unnecessary and unexpected.
+            //
+            //     fn foo(f: &mut impl FnMut()) { f() }
+            //            ^ without this hack `f` would have to be declared as mutable
+            //
+            // The simplest fix by far is to just ignore this case and deref again,
+            // so we wind up with `FnMut::call_mut(&mut *f, ())`.
             ty::Ref(..) if autoderef.step_count() == 0 => {
                 return None;
             }
@@ -230,22 +231,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ] {
             let Some(trait_def_id) = opt_trait_def_id else { continue };
 
-            let opt_input_types = opt_arg_exprs.map(|arg_exprs| {
-                [self.tcx.mk_tup(arg_exprs.iter().map(|e| {
+            let opt_input_type = opt_arg_exprs.map(|arg_exprs| {
+                self.tcx.mk_tup(arg_exprs.iter().map(|e| {
                     self.next_ty_var(TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeInference,
                         span: e.span,
                     })
-                }))]
+                }))
             });
-            let opt_input_types = opt_input_types.as_ref().map(AsRef::as_ref);
 
             if let Some(ok) = self.lookup_method_in_trait(
-                call_expr.span,
+                self.misc(call_expr.span),
                 method_name,
                 trait_def_id,
                 adjusted_ty,
-                opt_input_types,
+                opt_input_type.as_ref().map(slice::from_ref),
             ) {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
@@ -261,15 +261,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return None;
                     };
 
-                    let mutbl = match mutbl {
-                        hir::Mutability::Not => AutoBorrowMutability::Not,
-                        hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                            // For initial two-phase borrow
-                            // deployment, conservatively omit
-                            // overloaded function call ops.
-                            allow_two_phase_borrow: AllowTwoPhase::No,
-                        },
-                    };
+                    // For initial two-phase borrow
+                    // deployment, conservatively omit
+                    // overloaded function call ops.
+                    let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::No);
+
                     autoref = Some(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                         target: method.sig.inputs()[0],
@@ -383,6 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         predicates.predicates.iter().zip(&predicates.spans)
                     {
                         let obligation = Obligation::new(
+                            self.tcx,
                             ObligationCause::dummy_with_span(callee_expr.span),
                             self.param_env,
                             *predicate,
@@ -402,6 +399,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::FnPtr(sig) => (sig, None),
             _ => {
+                for arg in arg_exprs {
+                    self.check_expr(arg);
+                }
+
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
                     && let [segment] = path.segments
                     && let Some(mut diag) = self
@@ -427,21 +428,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
+                let err = self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
 
-                // This is the "default" function signature, used in case of error.
-                // In that case, we check each argument against "error" in order to
-                // set up all the node type bindings.
-                (
-                    ty::Binder::dummy(self.tcx.mk_fn_sig(
-                        self.err_args(arg_exprs.len()).into_iter(),
-                        self.tcx.ty_error(),
-                        false,
-                        hir::Unsafety::Normal,
-                        abi::Abi::Rust,
-                    )),
-                    None,
-                )
+                return self.tcx.ty_error_with_guaranteed(err);
             }
         };
 
@@ -451,7 +440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
         let fn_sig = self.replace_bound_vars_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig);
-        let fn_sig = self.normalize_associated_types_in(call_expr.span, fn_sig);
+        let fn_sig = self.normalize(call_expr.span, fn_sig);
 
         // Call the generic checker.
         let expected_arg_tys = self.expected_inputs_for_expected_output(
@@ -471,6 +460,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             def_id,
         );
 
+        if fn_sig.abi == abi::Abi::RustCall {
+            let sp = arg_exprs.last().map_or(call_expr.span, |expr| expr.span);
+            if let Some(ty) = fn_sig.inputs().last().copied() {
+                self.register_bound(
+                    ty,
+                    self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
+                    traits::ObligationCause::new(sp, self.body_id, traits::RustCall),
+                );
+            } else {
+                self.tcx.sess.span_err(
+                        sp,
+                        "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+                    );
+            }
+        }
+
         fn_sig.output()
     }
 
@@ -485,13 +490,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Option<Ty<'tcx>> {
         if let [callee_expr, rest @ ..] = arg_exprs {
-            let callee_ty = self.check_expr(callee_expr);
+            let callee_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr)?;
+
             // First, do a probe with `IsSuggestion(true)` to avoid emitting
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
             let Ok(pick) = self
             .probe_for_name(
-                call_expr.span,
                 Mode::MethodCall,
                 segment.ident,
                 IsSuggestion(true),
@@ -509,7 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 callee_expr,
                 call_expr,
                 callee_ty,
-                pick,
+                &pick,
                 segment,
             );
             if pick.illegal_sized_bound.is_some() {
@@ -579,10 +584,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_expr: &'tcx hir::Expr<'tcx>,
         callee_ty: Ty<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
-    ) {
+    ) -> ErrorGuaranteed {
         let mut unit_variant = None;
         if let hir::ExprKind::Path(qpath) = &callee_expr.kind
-            && let Res::Def(def::DefKind::Ctor(kind, def::CtorKind::Const), _)
+            && let Res::Def(def::DefKind::Ctor(kind, CtorKind::Const), _)
                 = self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
             // Only suggest removing parens if there are no arguments
             && arg_exprs.is_empty()
@@ -708,7 +713,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(span, label);
             }
         }
-        err.emit();
+        err.emit()
     }
 
     fn confirm_deferred_closure_call(

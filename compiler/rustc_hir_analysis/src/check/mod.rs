@@ -63,7 +63,7 @@ a type parameter).
 */
 
 mod check;
-mod compare_method;
+mod compare_impl_item;
 pub mod dropck;
 pub mod intrinsic;
 pub mod intrinsicck;
@@ -94,7 +94,7 @@ use std::num::NonZeroU32;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
-use self::compare_method::collect_trait_impl_trait_tys;
+use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
 
 pub fn provide(providers: &mut Providers) {
@@ -103,8 +103,8 @@ pub fn provide(providers: &mut Providers) {
         adt_destructor,
         check_mod_item_types,
         region_scope_tree,
-        collect_trait_impl_trait_tys,
-        compare_assoc_const_impl_item_with_trait_item: compare_method::raw_compare_const_impl,
+        collect_return_position_impl_trait_in_trait_tys,
+        compare_impl_const: compare_impl_item::compare_impl_const_raw,
         ..*providers
     };
 }
@@ -115,10 +115,10 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
 /// expressions.
-fn get_owner_return_paths<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn get_owner_return_paths(
+    tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> Option<(LocalDefId, ReturnsVisitor<'tcx>)> {
+) -> Option<(LocalDefId, ReturnsVisitor<'_>)> {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
     tcx.hir().find_by_def_id(parent_id).and_then(|node| node.body_id()).map(|body_id| {
@@ -159,7 +159,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
-        && alloc.inner().provenance().len() != 0
+        && alloc.inner().provenance().ptrs().len() != 0
     {
         let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
@@ -309,7 +309,7 @@ fn bounds_from_generic_predicates<'tcx>(
         debug!("predicate {:?}", predicate);
         let bound_predicate = predicate.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(trait_predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
                 if Some(def_id) != tcx.lang_items().sized_trait() {
@@ -318,7 +318,7 @@ fn bounds_from_generic_predicates<'tcx>(
                     entry.push(trait_predicate.def_id());
                 }
             }
-            ty::PredicateKind::Projection(projection_pred) => {
+            ty::PredicateKind::Clause(ty::Clause::Projection(projection_pred)) => {
                 projections.push(bound_predicate.rebind(projection_pred));
             }
             _ => {}
@@ -352,11 +352,7 @@ fn bounds_from_generic_predicates<'tcx>(
         // insert the associated types where they correspond, but for now let's be "lazy" and
         // propose this instead of the following valid resugaring:
         // `T: Trait, Trait::Assoc = K` → `T: Trait<Assoc = K>`
-        where_clauses.push(format!(
-            "{} = {}",
-            tcx.def_path_str(p.projection_ty.item_def_id),
-            p.term,
-        ));
+        where_clauses.push(format!("{} = {}", tcx.def_path_str(p.projection_ty.def_id), p.term));
     }
     let where_clauses = if where_clauses.is_empty() {
         String::new()

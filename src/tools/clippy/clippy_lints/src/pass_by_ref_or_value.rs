@@ -139,7 +139,7 @@ impl<'tcx> PassByRefOrValue {
     }
 
     fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
-        if self.avoid_breaking_exported_api && cx.access_levels.is_exported(def_id) {
+        if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
             return;
         }
 
@@ -184,7 +184,7 @@ impl<'tcx> PassByRefOrValue {
                     if is_copy(cx, ty)
                         && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
                         && size <= self.ref_min_size
-                        && let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind
+                        && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
                         if let Some(typeck) = cx.maybe_typeck_results() {
                             // Don't lint if an unsafe pointer is created.
@@ -261,7 +261,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         if let hir::TraitItemKind::Fn(method_sig, _) = &item.kind {
-            self.check_poly_fn(cx, item.def_id.def_id, method_sig.decl, None);
+            self.check_poly_fn(cx, item.owner_id.def_id, method_sig.decl, None);
         }
     }
 

@@ -3,7 +3,6 @@ use crate::fx::FxHashMap;
 use arrayvec::ArrayVec;
 use std::fmt;
 use std::hash::Hash;
-use std::iter::FromIterator;
 use std::ops::Index;
 
 // For pointer-sized arguments arrays

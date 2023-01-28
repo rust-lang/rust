@@ -30,8 +30,6 @@ impl Trait for Struct {
     // @has - '//*[@id="method.b"]/../../div[@class="docblock"]' 'These docs contain'
     // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/a' 'reference link'
     // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/a/@href' 'https://example.com'
-    // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/a' 'Read more'
-    // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/a/@href' 'trait.Trait.html#tymethod.b'
     fn b() {}
 
     // @!has - '//*[@id="method.c"]/../../div[@class="docblock"]' 'code block'

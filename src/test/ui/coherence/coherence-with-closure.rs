@@ -8,7 +8,6 @@ fn defining_use() -> OpaqueClosure {
 struct Wrapper<T>(T);
 trait Trait {}
 impl Trait for Wrapper<OpaqueClosure> {}
-//~^ ERROR cannot implement trait on type alias impl trait
 impl<T: Sync> Trait for Wrapper<T> {}
 //~^ ERROR conflicting implementations of trait `Trait` for type `Wrapper<OpaqueClosure>`
 

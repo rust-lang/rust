@@ -1834,6 +1834,20 @@ impl<'a, T> ChunksExact<'a, T> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.chunks_exact(2);
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// assert_eq!(iter.next(), Some(&['l', 'o'][..]));
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// assert_eq!(iter.next(), Some(&['r', 'e'][..]));
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// ```
     #[must_use]
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     pub fn remainder(&self) -> &'a [T] {
@@ -2869,7 +2883,7 @@ unsafe impl<T> Sync for RChunksMut<'_, T> where T: Sync {}
 /// ```
 ///
 /// [`rchunks_exact`]: slice::rchunks_exact
-/// [`remainder`]: ChunksExact::remainder
+/// [`remainder`]: RChunksExact::remainder
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -2892,6 +2906,20 @@ impl<'a, T> RChunksExact<'a, T> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.rchunks_exact(2);
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// assert_eq!(iter.next(), Some(&['e', 'm'][..]));
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// assert_eq!(iter.next(), Some(&['o', 'r'][..]));
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// ```
     #[must_use]
     #[stable(feature = "rchunks", since = "1.31.0")]
     pub fn remainder(&self) -> &'a [T] {
@@ -3031,7 +3059,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExact<'a, T> {
 /// ```
 ///
 /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
-/// [`into_remainder`]: ChunksExactMut::into_remainder
+/// [`into_remainder`]: RChunksExactMut::into_remainder
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]

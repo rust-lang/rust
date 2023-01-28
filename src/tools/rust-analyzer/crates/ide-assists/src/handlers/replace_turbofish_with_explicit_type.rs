@@ -79,7 +79,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
             "Replace turbofish with explicit type",
             TextRange::new(initializer_start, turbofish_range.end()),
             |builder| {
-                builder.insert(ident_range.end(), format!(": {}", returned_type));
+                builder.insert(ident_range.end(), format!(": {returned_type}"));
                 builder.delete(turbofish_range);
             },
         );

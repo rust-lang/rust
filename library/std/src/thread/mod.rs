@@ -124,9 +124,8 @@
 //!
 //! ## Stack size
 //!
-//! The default stack size for spawned threads is 2 MiB, though this particular stack size is
-//! subject to change in the future. There are two ways to manually specify the stack size for
-//! spawned threads:
+//! The default stack size is platform-dependent and subject to change. Currently it is 2MB on all
+//! Tier-1 platforms. There are two ways to manually specify the stack size for spawned threads:
 //!
 //! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
 //! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
@@ -174,7 +173,7 @@ use crate::sync::Arc;
 use crate::sys::thread as imp;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
-use crate::sys_common::thread_parker::Parker;
+use crate::sys_common::thread_parking::Parker;
 use crate::sys_common::{AsInner, IntoInner};
 use crate::time::Duration;
 
@@ -1217,7 +1216,7 @@ impl Thread {
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
             addr_of_mut!((*ptr).name).write(name);
             addr_of_mut!((*ptr).id).write(ThreadId::new());
-            Parker::new(addr_of_mut!((*ptr).parker));
+            Parker::new_in_place(addr_of_mut!((*ptr).parker));
             Pin::new_unchecked(arc.assume_init())
         };
 
