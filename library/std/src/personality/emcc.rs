@@ -1,7 +1,7 @@
 //! On Emscripten Rust panics are wrapped in C++ exceptions, so we just forward
 //! to `__gxx_personality_v0` which is provided by Emscripten.
 
-use libc::c_int;
+use crate::ffi::c_int;
 use unwind as uw;
 
 // This is required by the compiler to exist (e.g., it's a lang item), but it's

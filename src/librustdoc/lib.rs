@@ -6,7 +6,6 @@
 #![feature(array_methods)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(is_terminal)]
 #![feature(let_chains)]

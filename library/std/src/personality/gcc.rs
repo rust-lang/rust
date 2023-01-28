@@ -37,7 +37,8 @@
 //! and the last personality routine transfers control to the catch block.
 
 use super::dwarf::eh::{self, EHAction, EHContext};
-use libc::{c_int, uintptr_t};
+use crate::ffi::c_int;
+use libc::uintptr_t;
 use unwind as uw;
 
 // Register ids were lifted from LLVM's TargetLowering::getExceptionPointerRegister()

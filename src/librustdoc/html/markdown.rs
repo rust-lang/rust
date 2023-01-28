@@ -1188,18 +1188,18 @@ fn markdown_summary_with_limit(
             Event::Start(tag) => match tag {
                 Tag::Emphasis => buf.open_tag("em"),
                 Tag::Strong => buf.open_tag("strong"),
-                Tag::CodeBlock(..) => return ControlFlow::BREAK,
+                Tag::CodeBlock(..) => return ControlFlow::Break(()),
                 _ => {}
             },
             Event::End(tag) => match tag {
                 Tag::Emphasis | Tag::Strong => buf.close_tag(),
-                Tag::Paragraph | Tag::Heading(..) => return ControlFlow::BREAK,
+                Tag::Paragraph | Tag::Heading(..) => return ControlFlow::Break(()),
                 _ => {}
             },
             Event::HardBreak | Event::SoftBreak => buf.push(" ")?,
             _ => {}
         };
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     });
 
     (buf.finish(), stopped_early)
