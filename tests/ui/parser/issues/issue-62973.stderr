@@ -2,8 +2,10 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-62973.rs:8:2
    |
 LL | fn p() { match s { v, E { [) {) }
-   |        -         - unclosed delimiter
-   |        |
+   |        -         -         -  - missing open `(` for this delimiter
+   |        |         |         |
+   |        |         |         missing open `(` for this delimiter
+   |        |         unclosed delimiter
    |        unclosed delimiter
 LL |
 LL |
@@ -13,8 +15,10 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-62973.rs:8:2
    |
 LL | fn p() { match s { v, E { [) {) }
-   |        -         - unclosed delimiter
-   |        |
+   |        -         -         -  - missing open `(` for this delimiter
+   |        |         |         |
+   |        |         |         missing open `(` for this delimiter
+   |        |         unclosed delimiter
    |        unclosed delimiter
 LL |
 LL |
