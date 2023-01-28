@@ -446,7 +446,7 @@ define_Conf! {
     ///
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     (allow_mixed_uninlined_format_args: bool = true),
-    /// Lint: INDEXING_SLICING
+    /// Lint: INDEXING_SLICING.
     ///
     /// Whether to suppress a restriction lint in constant code. In same
     /// cases the restructured operation might not be unavoidable, as the

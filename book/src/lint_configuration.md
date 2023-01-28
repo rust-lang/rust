@@ -526,7 +526,7 @@ Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)
 
 
 ### suppress-restriction-lint-in-const
-In same
+Whether to suppress a restriction lint in constant code. In same
 cases the restructured operation might not be unavoidable, as the
 suggested counterparts are unavailable in constant code. This
 configuration will cause restriction lints to trigger even
