@@ -1,28 +1,28 @@
-error: [-, -, -]
+error: [+, +, +]
   --> $DIR/variance-regions-direct.rs:9:1
    |
 LL | struct Test2<'a, 'b, 'c> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [+, +, +]
+error: [-, -, -]
   --> $DIR/variance-regions-direct.rs:18:1
    |
 LL | struct Test3<'a, 'b, 'c> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [-, o]
+error: [+, o]
   --> $DIR/variance-regions-direct.rs:27:1
    |
 LL | struct Test4<'a, 'b:'a> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [+, o]
+error: [-, o]
   --> $DIR/variance-regions-direct.rs:35:1
    |
 LL | struct Test5<'a, 'b:'a> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [-, o]
+error: [+, o]
   --> $DIR/variance-regions-direct.rs:45:1
    |
 LL | struct Test6<'a, 'b:'a> {
@@ -34,7 +34,7 @@ error: [*]
 LL | struct Test7<'a> {
    | ^^^^^^^^^^^^^^^^
 
-error: [+, -, o]
+error: [-, +, o]
   --> $DIR/variance-regions-direct.rs:59:1
    |
 LL | enum Test8<'a, 'b, 'c:'b> {

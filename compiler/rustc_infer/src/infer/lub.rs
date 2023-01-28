@@ -79,7 +79,8 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
         debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
 
         let origin = Subtype(Box::new(self.fields.trace.clone()));
-        Ok(self.fields.infcx.inner.borrow_mut().unwrap_region_constraints().lub_regions(
+        // LUB(&'static u8, &'a u8) == &RegionGLB('static, 'a) u8 == &'a u8
+        Ok(self.fields.infcx.inner.borrow_mut().unwrap_region_constraints().glb_regions(
             self.tcx(),
             origin,
             a,
