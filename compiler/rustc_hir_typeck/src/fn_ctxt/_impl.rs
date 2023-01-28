@@ -517,16 +517,73 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
+        if self.tcx.sess.opts.unstable_opts.drop_tracking_mir {
+            self.save_generator_interior_predicates(def_id);
+            return;
+        }
+
+        self.select_obligations_where_possible(|_| {});
+
         let mut generators = self.deferred_generator_interiors.borrow_mut();
-        for (body_id, interior, kind) in generators.drain(..) {
-            self.select_obligations_where_possible(|_| {});
+        for (_, body_id, interior, kind) in generators.drain(..) {
             crate::generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
+            self.select_obligations_where_possible(|_| {});
+        }
+    }
+
+    /// Unify the inference variables corresponding to generator witnesses, and save all the
+    /// predicates that were stalled on those inference variables.
+    ///
+    /// This process allows to conservatively save all predicates that do depend on the generator
+    /// interior types, for later processing by `check_generator_obligations`.
+    ///
+    /// We must not attempt to select obligations after this method has run, or risk query cycle
+    /// ICE.
+    #[instrument(level = "debug", skip(self))]
+    fn save_generator_interior_predicates(&self, def_id: DefId) {
+        // Try selecting all obligations that are not blocked on inference variables.
+        // Once we start unifying generator witnesses, trying to select obligations on them will
+        // trigger query cycle ICEs, as doing so requires MIR.
+        self.select_obligations_where_possible(|_| {});
+
+        let generators = std::mem::take(&mut *self.deferred_generator_interiors.borrow_mut());
+        debug!(?generators);
+
+        for &(expr_hir_id, body_id, interior, _) in generators.iter() {
+            let expr_def_id = self.tcx.hir().local_def_id(expr_hir_id);
+            debug!(?expr_def_id);
+
+            // Create the `GeneratorWitness` type that we will unify with `interior`.
+            let substs = ty::InternalSubsts::identity_for_item(
+                self.tcx,
+                self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
+            );
+            let witness = self.tcx.mk_generator_witness_mir(expr_def_id.to_def_id(), substs);
+
+            // Unify `interior` with `witness` and collect all the resulting obligations.
+            let span = self.tcx.hir().body(body_id).value.span;
+            let ok = self
+                .at(&self.misc(span), self.param_env)
+                .eq(interior, witness)
+                .expect("Failed to unify generator interior type");
+            let mut obligations = ok.obligations;
+
+            // Also collect the obligations that were unstalled by this unification.
+            obligations
+                .extend(self.fulfillment_cx.borrow_mut().drain_unstalled_obligations(&self.infcx));
+
+            let obligations = obligations.into_iter().map(|o| (o.predicate, o.cause)).collect();
+            debug!(?obligations);
+            self.typeck_results
+                .borrow_mut()
+                .generator_interior_predicates
+                .insert(expr_def_id, obligations);
         }
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub(in super::super) fn select_all_obligations_or_error(&self) {
-        let mut errors = self.fulfillment_cx.borrow_mut().select_all_or_error(&self);
+    pub(in super::super) fn report_ambiguity_errors(&self) {
+        let mut errors = self.fulfillment_cx.borrow_mut().collect_remaining_errors();
 
         if !errors.is_empty() {
             self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);

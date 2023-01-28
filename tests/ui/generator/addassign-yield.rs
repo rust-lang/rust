@@ -1,3 +1,6 @@
+// revisions: no_drop_tracking drop_tracking drop_tracking_mir
+// [drop_tracking] compile-flags: -Zdrop-tracking
+// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 // run-pass
 // Regression test for broken MIR error (#61442)
 // Due to the two possible evaluation orders for

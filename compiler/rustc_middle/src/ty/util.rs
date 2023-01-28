@@ -615,6 +615,36 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Return the set of types that should be taken into accound when checking
+    /// trait bounds on a generator's internal state.
+    pub fn generator_hidden_types(
+        self,
+        def_id: DefId,
+    ) -> impl Iterator<Item = ty::EarlyBinder<Ty<'tcx>>> {
+        let generator_layout = &self.mir_generator_witnesses(def_id);
+        generator_layout
+            .field_tys
+            .iter()
+            .filter(|decl| !decl.ignore_for_traits)
+            .map(|decl| ty::EarlyBinder(decl.ty))
+    }
+
+    /// Normalizes all opaque types in the given value, replacing them
+    /// with their underlying types.
+    pub fn expand_opaque_types(self, val: Ty<'tcx>) -> Ty<'tcx> {
+        let mut visitor = OpaqueTypeExpander {
+            seen_opaque_tys: FxHashSet::default(),
+            expanded_cache: FxHashMap::default(),
+            primary_def_id: None,
+            found_recursion: false,
+            found_any_recursion: false,
+            check_recursion: false,
+            expand_generators: false,
+            tcx: self,
+        };
+        val.fold_with(&mut visitor)
+    }
+
     /// Expands the given impl trait type, stopping if the type is recursive.
     #[instrument(skip(self), level = "debug", ret)]
     pub fn try_expand_impl_trait_type(
@@ -629,6 +659,7 @@ impl<'tcx> TyCtxt<'tcx> {
             found_recursion: false,
             found_any_recursion: false,
             check_recursion: true,
+            expand_generators: true,
             tcx: self,
         };
 
@@ -741,6 +772,7 @@ struct OpaqueTypeExpander<'tcx> {
     primary_def_id: Option<DefId>,
     found_recursion: bool,
     found_any_recursion: bool,
+    expand_generators: bool,
     /// Whether or not to check for recursive opaque types.
     /// This is `true` when we're explicitly checking for opaque type
     /// recursion, and 'false' otherwise to avoid unnecessary work.
@@ -777,6 +809,37 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
             None
         }
     }
+
+    fn expand_generator(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) -> Option<Ty<'tcx>> {
+        if self.found_any_recursion {
+            return None;
+        }
+        let substs = substs.fold_with(self);
+        if !self.check_recursion || self.seen_opaque_tys.insert(def_id) {
+            let expanded_ty = match self.expanded_cache.get(&(def_id, substs)) {
+                Some(expanded_ty) => *expanded_ty,
+                None => {
+                    for bty in self.tcx.generator_hidden_types(def_id) {
+                        let hidden_ty = bty.subst(self.tcx, substs);
+                        self.fold_ty(hidden_ty);
+                    }
+                    let expanded_ty = self.tcx.mk_generator_witness_mir(def_id, substs);
+                    self.expanded_cache.insert((def_id, substs), expanded_ty);
+                    expanded_ty
+                }
+            };
+            if self.check_recursion {
+                self.seen_opaque_tys.remove(&def_id);
+            }
+            Some(expanded_ty)
+        } else {
+            // If another opaque type that we contain is recursive, then it
+            // will report the error, so we don't have to.
+            self.found_any_recursion = true;
+            self.found_recursion = def_id == *self.primary_def_id.as_ref().unwrap();
+            None
+        }
+    }
 }
 
 impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
@@ -785,13 +848,19 @@ impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *t.kind() {
+        let mut t = if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *t.kind() {
             self.expand_opaque_ty(def_id, substs).unwrap_or(t)
-        } else if t.has_opaque_types() {
+        } else if t.has_opaque_types() || t.has_generators() {
             t.super_fold_with(self)
         } else {
             t
+        };
+        if self.expand_generators {
+            if let ty::GeneratorWitnessMIR(def_id, substs) = *t.kind() {
+                t = self.expand_generator(def_id, substs).unwrap_or(t);
+            }
         }
+        t
     }
 }
 
@@ -896,6 +965,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Foreign(_)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
@@ -935,6 +1005,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Foreign(_)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
@@ -1062,7 +1133,10 @@ impl<'tcx> Ty<'tcx> {
                 false
             }
 
-            ty::Foreign(_) | ty::GeneratorWitness(..) | ty::Error(_) => false,
+            ty::Foreign(_)
+            | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
+            | ty::Error(_) => false,
         }
     }
 
@@ -1158,6 +1232,7 @@ pub fn needs_drop_components<'tcx>(
         | ty::FnPtr(_)
         | ty::Char
         | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..)
         | ty::RawPtr(_)
         | ty::Ref(..)
         | ty::Str => Ok(SmallVec::new()),
@@ -1228,7 +1303,11 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
 
         // Not trivial because they have components, and instead of looking inside,
         // we'll just perform trait selection.
-        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(_) | ty::Adt(..) => false,
+        ty::Closure(..)
+        | ty::Generator(..)
+        | ty::GeneratorWitness(_)
+        | ty::GeneratorWitnessMIR(..)
+        | ty::Adt(..) => false,
 
         ty::Array(ty, _) | ty::Slice(ty) => is_trivially_const_drop(ty),
 
@@ -1289,6 +1368,7 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
         found_recursion: false,
         found_any_recursion: false,
         check_recursion: false,
+        expand_generators: false,
         tcx,
     };
     val.fold_with(&mut visitor)

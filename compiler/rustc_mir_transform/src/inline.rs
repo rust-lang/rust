@@ -947,12 +947,12 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                             return;
                         };
 
-                        let Some(&f_ty) = layout.field_tys.get(local) else {
+                        let Some(f_ty) = layout.field_tys.get(local) else {
                             self.validation = Err("malformed MIR");
                             return;
                         };
 
-                        f_ty
+                        f_ty.ty
                     } else {
                         let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index()) else {
                             self.validation = Err("malformed MIR");

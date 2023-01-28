@@ -109,6 +109,13 @@ where
 
             for component in components {
                 match *component.kind() {
+                    // The information required to determine whether a generator has drop is
+                    // computed on MIR, while this very method is used to build MIR.
+                    // To avoid cycles, we consider that generators always require drop.
+                    ty::Generator(..) if tcx.sess.opts.unstable_opts.drop_tracking_mir => {
+                        return Some(Err(AlwaysRequiresDrop));
+                    }
+
                     _ if component.is_copy_modulo_regions(tcx, self.param_env) => (),
 
                     ty::Closure(_, substs) => {

@@ -123,6 +123,7 @@ pub fn provide(providers: &mut Providers) {
         mir_drops_elaborated_and_const_checked,
         mir_for_ctfe,
         mir_for_ctfe_of_const_arg,
+        mir_generator_witnesses: generator::mir_generator_witnesses,
         optimized_mir,
         is_mir_available,
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
@@ -425,6 +426,9 @@ fn mir_drops_elaborated_and_const_checked(
         return tcx.mir_drops_elaborated_and_const_checked(def);
     }
 
+    if tcx.generator_kind(def.did).is_some() {
+        tcx.ensure().mir_generator_witnesses(def.did);
+    }
     let mir_borrowck = tcx.mir_borrowck_opt_const_arg(def);
 
     let is_fn_like = tcx.def_kind(def.did).is_fn_like();

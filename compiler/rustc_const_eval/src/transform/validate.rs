@@ -372,12 +372,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 return;
                             };
 
-                            let Some(&f_ty) = layout.field_tys.get(local) else {
+                            let Some(f_ty) = layout.field_tys.get(local) else {
                                 self.fail(location, format!("Out of bounds local {:?} for {:?}", local, parent_ty));
                                 return;
                             };
 
-                            f_ty
+                            f_ty.ty
                         } else {
                             let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index()) else {
                                 fail_out_of_bounds(self, location);

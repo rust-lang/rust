@@ -343,6 +343,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 substs.lower_into(interner),
             ),
             ty::GeneratorWitness(_) => unimplemented!(),
+            ty::GeneratorWitnessMIR(..) => unimplemented!(),
             ty::Never => chalk_ir::TyKind::Never,
             ty::Tuple(types) => {
                 chalk_ir::TyKind::Tuple(types.len(), types.as_substs().lower_into(interner))

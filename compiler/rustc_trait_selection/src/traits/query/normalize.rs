@@ -216,12 +216,16 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         let substs = substs.try_fold_with(self)?;
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
-                            self.infcx.err_ctxt().report_overflow_error(
-                                &ty,
-                                self.cause.span,
-                                true,
-                                |_| {},
-                            );
+                            // A closure or generator may have itself as in its upvars.
+                            // This should be checked handled by the recursion check for opaque
+                            // types, but we may end up here before that check can happen.
+                            // In that case, we delay a bug to mark the trip, and continue without
+                            // revealing the opaque.
+                            self.infcx
+                                .err_ctxt()
+                                .build_overflow_error(&ty, self.cause.span, true)
+                                .delay_as_bug();
+                            return ty.try_super_fold_with(self);
                         }
 
                         let generic_ty = self.tcx().bound_type_of(def_id);

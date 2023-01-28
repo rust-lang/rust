@@ -57,6 +57,8 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
         }
 
+        ty::GeneratorWitnessMIR(..) => todo!(),
+
         // For `PhantomData<T>`, we pass `T`.
         ty::Adt(def, substs) if def.is_phantom_data() => Ok(vec![substs.type_at(0)]),
 
@@ -88,6 +90,7 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Ref(..)
         | ty::Generator(..)
         | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..)
         | ty::Array(..)
         | ty::Closure(..)
         | ty::Never
@@ -173,6 +176,8 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::GeneratorWitness(types) => {
             Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
         }
+
+        ty::GeneratorWitnessMIR(..) => todo!(),
     }
 }
 
@@ -215,6 +220,7 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Dynamic(_, _, _)
         | ty::Generator(_, _, _)
         | ty::GeneratorWitness(_)
+        | ty::GeneratorWitnessMIR(..)
         | ty::Never
         | ty::Tuple(_)
         | ty::Alias(_, _)

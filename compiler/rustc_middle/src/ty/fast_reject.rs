@@ -32,6 +32,7 @@ pub enum SimplifiedType {
     ClosureSimplifiedType(DefId),
     GeneratorSimplifiedType(DefId),
     GeneratorWitnessSimplifiedType(usize),
+    GeneratorWitnessMIRSimplifiedType(DefId),
     FunctionSimplifiedType(usize),
     PlaceholderSimplifiedType,
 }
@@ -108,6 +109,7 @@ pub fn simplify_type<'tcx>(
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
         ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
         ty::GeneratorWitness(tys) => Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len())),
+        ty::GeneratorWitnessMIR(def_id, _) => Some(GeneratorWitnessMIRSimplifiedType(def_id)),
         ty::Never => Some(NeverSimplifiedType),
         ty::Tuple(tys) => Some(TupleSimplifiedType(tys.len())),
         ty::FnPtr(f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
@@ -139,7 +141,8 @@ impl SimplifiedType {
             | ForeignSimplifiedType(d)
             | TraitSimplifiedType(d)
             | ClosureSimplifiedType(d)
-            | GeneratorSimplifiedType(d) => Some(d),
+            | GeneratorSimplifiedType(d)
+            | GeneratorWitnessMIRSimplifiedType(d) => Some(d),
             _ => None,
         }
     }
@@ -208,6 +211,7 @@ impl DeepRejectCtxt {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Infer(_) => bug!("unexpected impl_ty: {impl_ty}"),
@@ -306,7 +310,7 @@ impl DeepRejectCtxt {
 
             ty::Error(_) => true,
 
-            ty::GeneratorWitness(..) | ty::Bound(..) => {
+            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) | ty::Bound(..) => {
                 bug!("unexpected obligation type: {:?}", obligation_ty)
             }
         }

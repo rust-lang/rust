@@ -201,6 +201,7 @@ TrivialTypeTraversalAndLiftImpls! {
     bool,
     usize,
     ::rustc_target::abi::VariantIdx,
+    u16,
     u32,
     u64,
     String,
@@ -655,6 +656,9 @@ impl<'tcx> TypeSuperFoldable<'tcx> for Ty<'tcx> {
                 ty::Generator(did, substs.try_fold_with(folder)?, movability)
             }
             ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
+            ty::GeneratorWitnessMIR(did, substs) => {
+                ty::GeneratorWitnessMIR(did, substs.try_fold_with(folder)?)
+            }
             ty::Closure(did, substs) => ty::Closure(did, substs.try_fold_with(folder)?),
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
 
@@ -700,6 +704,7 @@ impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
             }
             ty::Generator(_did, ref substs, _) => substs.visit_with(visitor),
             ty::GeneratorWitness(ref types) => types.visit_with(visitor),
+            ty::GeneratorWitnessMIR(_did, ref substs) => substs.visit_with(visitor),
             ty::Closure(_did, ref substs) => substs.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
 

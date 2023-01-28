@@ -101,6 +101,18 @@ pub trait InferCtxtExt<'tcx> {
 }
 
 pub trait TypeErrCtxtExt<'tcx> {
+    fn build_overflow_error<T>(
+        &self,
+        predicate: &T,
+        span: Span,
+        suggest_increasing_limit: bool,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
+    where
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
+
     fn report_overflow_error<T>(
         &self,
         predicate: &T,
@@ -484,6 +496,26 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
+        let mut err = self.build_overflow_error(predicate, span, suggest_increasing_limit);
+        mutate(&mut err);
+        err.emit();
+
+        self.tcx.sess.abort_if_errors();
+        bug!();
+    }
+
+    fn build_overflow_error<T>(
+        &self,
+        predicate: &T,
+        span: Span,
+        suggest_increasing_limit: bool,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
+    where
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+    {
         let predicate = self.resolve_vars_if_possible(predicate.clone());
         let mut pred_str = predicate.to_string();
 
@@ -511,11 +543,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             self.suggest_new_overflow_limit(&mut err);
         }
 
-        mutate(&mut err);
-
-        err.emit();
-        self.tcx.sess.abort_if_errors();
-        bug!();
+        err
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -1891,6 +1919,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Generator(..) => Some(16),
                 ty::Foreign(..) => Some(17),
                 ty::GeneratorWitness(..) => Some(18),
+                ty::GeneratorWitnessMIR(..) => Some(19),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }

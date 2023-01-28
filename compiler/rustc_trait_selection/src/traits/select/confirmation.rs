@@ -13,7 +13,7 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::{
     self, Binder, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
-    ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt,
+    ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
@@ -1284,6 +1284,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::GeneratorWitness(tys) => {
                     stack.extend(tcx.erase_late_bound_regions(tys).to_vec());
+                }
+                ty::GeneratorWitnessMIR(def_id, substs) => {
+                    let tcx = self.tcx();
+                    stack.extend(tcx.generator_hidden_types(def_id).map(|bty| {
+                        let ty = bty.subst(tcx, substs);
+                        debug_assert!(!ty.has_late_bound_regions());
+                        ty
+                    }))
                 }
 
                 // If we have a projection type, make sure to normalize it so we replace it

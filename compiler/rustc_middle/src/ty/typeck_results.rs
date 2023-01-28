@@ -1,6 +1,7 @@
 use crate::{
     hir::place::Place as HirPlace,
     infer::canonical::Canonical,
+    traits::ObligationCause,
     ty::{
         self, tls, BindingMode, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData,
         GenericArgKind, InternalSubsts, SubstsRef, Ty, UserSubsts,
@@ -193,6 +194,11 @@ pub struct TypeckResults<'tcx> {
     /// that are live across the yield of this generator (if a generator).
     pub generator_interior_types: ty::Binder<'tcx, Vec<GeneratorInteriorTypeCause<'tcx>>>,
 
+    /// Stores the predicates that apply on generator witness types.
+    /// formatting modified file tests/ui/generator/retain-resume-ref.rs
+    pub generator_interior_predicates:
+        FxHashMap<LocalDefId, Vec<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
+
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
     /// as `&[u8]`, depending on the pattern in which they are used.
     /// This hashset records all instances where we behave
@@ -271,6 +277,7 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
             generator_interior_types: ty::Binder::dummy(Default::default()),
+            generator_interior_predicates: Default::default(),
             treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
         }

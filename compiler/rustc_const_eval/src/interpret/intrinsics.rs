@@ -101,6 +101,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(_, _)
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_) => ConstValue::from_machine_usize(0u64, &tcx),

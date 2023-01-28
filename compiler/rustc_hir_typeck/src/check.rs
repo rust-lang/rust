@@ -130,7 +130,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let gen_ty = if let (Some(_), Some(gen_kind)) = (can_be_generator, body.generator_kind) {
         let interior = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
-        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior, gen_kind));
+        fcx.deferred_generator_interiors.borrow_mut().push((fn_id, body.id(), interior, gen_kind));
 
         let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
         Some(GeneratorTypes {

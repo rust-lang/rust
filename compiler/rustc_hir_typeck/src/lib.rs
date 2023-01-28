@@ -294,14 +294,24 @@ fn typeck_with_fallback<'tcx>(
         // Before the generator analysis, temporary scopes shall be marked to provide more
         // precise information on types to be captured.
         fcx.resolve_rvalue_scopes(def_id.to_def_id());
-        fcx.resolve_generator_interiors(def_id.to_def_id());
 
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
             let ty = fcx.normalize(span, ty);
             fcx.require_type_is_sized(ty, span, code);
         }
 
-        fcx.select_all_obligations_or_error();
+        fcx.select_obligations_where_possible(|_| {});
+
+        debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+
+        // This must be the last thing before `report_ambiguity_errors`.
+        fcx.resolve_generator_interiors(def_id.to_def_id());
+
+        debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+
+        if let None = fcx.infcx.tainted_by_errors() {
+            fcx.report_ambiguity_errors();
+        }
 
         if let None = fcx.infcx.tainted_by_errors() {
             fcx.check_transmutes();

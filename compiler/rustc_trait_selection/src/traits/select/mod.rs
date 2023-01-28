@@ -2066,6 +2066,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2182,6 +2183,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Where(ty::Binder::bind_with_vars(witness_tys.to_vec(), all_vars))
             }
 
+            ty::GeneratorWitnessMIR(def_id, ref substs) => {
+                let hidden_types = bind_generator_hidden_types_above(
+                    self.infcx,
+                    def_id,
+                    substs,
+                    obligation.predicate.bound_vars(),
+                );
+                Where(hidden_types)
+            }
+
             ty::Closure(_, substs) => {
                 // (*) binder moved here
                 let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
@@ -2277,6 +2288,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::GeneratorWitness(types) => {
                 debug_assert!(!types.has_escaping_bound_vars());
                 types.map_bound(|types| types.to_vec())
+            }
+
+            ty::GeneratorWitnessMIR(def_id, ref substs) => {
+                bind_generator_hidden_types_above(self.infcx, def_id, substs, t.bound_vars())
             }
 
             // For `PhantomData<T>`, we pass `T`.
@@ -2920,4 +2935,57 @@ pub enum ProjectionMatchesProjection {
     Yes,
     Ambiguous,
     No,
+}
+
+/// Replace all regions inside the generator interior with late bound regions.
+/// Note that each region slot in the types gets a new fresh late bound region, which means that
+/// none of the regions inside relate to any other, even if typeck had previously found constraints
+/// that would cause them to be related.
+#[instrument(level = "trace", skip(infcx), ret)]
+fn bind_generator_hidden_types_above<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    def_id: DefId,
+    substs: ty::SubstsRef<'tcx>,
+    bound_vars: &ty::List<ty::BoundVariableKind>,
+) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
+    let tcx = infcx.tcx;
+    let mut seen_tys = FxHashSet::default();
+
+    let considering_regions = infcx.considering_regions;
+
+    let num_bound_variables = bound_vars.len() as u32;
+    let mut counter = num_bound_variables;
+
+    let hidden_types: Vec<_> = tcx
+        .generator_hidden_types(def_id)
+        // Deduplicate tys to avoid repeated work.
+        .filter(|bty| seen_tys.insert(*bty))
+        .map(|bty| {
+            let mut ty = bty.subst(tcx, substs);
+
+            // Only remap erased regions if we use them.
+            if considering_regions {
+                ty = tcx.fold_regions(ty, |mut r, current_depth| {
+                    if let ty::ReErased = r.kind() {
+                        let br = ty::BoundRegion {
+                            var: ty::BoundVar::from_u32(counter),
+                            kind: ty::BrAnon(counter, None),
+                        };
+                        counter += 1;
+                        r = tcx.mk_region(ty::ReLateBound(current_depth, br));
+                    }
+                    r
+                })
+            }
+
+            ty
+        })
+        .collect();
+    if considering_regions {
+        debug_assert!(!hidden_types.has_erased_regions());
+    }
+    let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.iter().chain(
+        (num_bound_variables..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i, None))),
+    ));
+    ty::Binder::bind_with_vars(hidden_types, bound_vars)
 }
