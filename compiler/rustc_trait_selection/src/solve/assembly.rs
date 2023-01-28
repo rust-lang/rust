@@ -76,7 +76,7 @@ pub(super) enum CandidateSource {
     ///     let _y = x.clone();
     /// }
     /// ```
-    AliasBound(),
+    AliasBound,
 }
 
 pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
@@ -340,15 +340,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Alias(_, alias_ty) => alias_ty,
         };
 
-        for (_, (assumption, _)) in self
+        for (assumption, _) in self
             .tcx()
             .bound_explicit_item_bounds(alias_ty.def_id)
             .subst_iter_copied(self.tcx(), alias_ty.substs)
-            .enumerate()
         {
             match G::consider_assumption(self, goal, assumption) {
                 Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound(), result })
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result })
                 }
                 Err(NoSolution) => (),
             }
