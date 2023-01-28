@@ -178,6 +178,7 @@ The minimum rust version that the project supports
 * [derivable_impls](https://rust-lang.github.io/rust-clippy/master/index.html#derivable_impls)
 * [manual_is_ascii_check](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_ascii_check)
 * [manual_rem_euclid](https://rust-lang.github.io/rust-clippy/master/index.html#manual_rem_euclid)
+* [manual_retain](https://rust-lang.github.io/rust-clippy/master/index.html#manual_retain)
 
 
 ### cognitive-complexity-threshold
