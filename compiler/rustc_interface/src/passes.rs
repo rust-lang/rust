@@ -798,14 +798,12 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         }
     });
 
-    if tcx.sess.opts.unstable_opts.drop_tracking_mir {
-        tcx.hir().par_body_owners(|def_id| {
-            if let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id) {
-                tcx.ensure().mir_generator_witnesses(def_id);
-                tcx.ensure().check_generator_obligations(def_id);
-            }
-        });
-    }
+    tcx.hir().par_body_owners(|def_id| {
+        if let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id) {
+            tcx.ensure().mir_generator_witnesses(def_id);
+            tcx.ensure().check_generator_obligations(def_id);
+        }
+    });
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));

@@ -779,6 +779,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         | ty::Str
         | ty::Never
         | ty::Foreign(..)
+        | ty::GeneratorWitnessMIR(..)
         | ty::GeneratorWitness(..) => {}
 
         ty::Bool => {
@@ -973,12 +974,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             );
         }
 
-        ty::Bound(..)
-        | ty::Error(..)
-        | ty::GeneratorWitnessMIR(..)
-        | ty::Infer(..)
-        | ty::Param(..)
-        | ty::Placeholder(..) => {
+        ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
         }
     }

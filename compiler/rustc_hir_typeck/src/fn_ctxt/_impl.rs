@@ -510,25 +510,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
-        if self.tcx.sess.opts.unstable_opts.drop_tracking_mir {
-            self.save_generator_interior_predicates(def_id);
-            return;
-        }
-
-        self.select_obligations_where_possible(|_| {});
-
-        let mut generators = self.deferred_generator_interiors.borrow_mut();
-        for (generator_def_id, body_id, interior, kind) in generators.drain(..) {
-            crate::generator_interior::resolve_interior(
-                self,
-                def_id,
-                generator_def_id,
-                body_id,
-                interior,
-                kind,
-            );
-            self.select_obligations_where_possible(|_| {});
-        }
+        self.save_generator_interior_predicates(def_id);
     }
 
     /// Unify the inference variables corresponding to generator witnesses, and save all the

@@ -1439,7 +1439,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
             if let DefKind::Generator = def_kind {
-                self.encode_info_for_generator(local_id);
+                let data = self.tcx.generator_kind(def_id).unwrap();
+                record!(self.tables.generator_kind[def_id] <- data);
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
@@ -1612,8 +1613,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
-                if tcx.sess.opts.unstable_opts.drop_tracking_mir
-                    && let DefKind::Generator = self.tcx.def_kind(def_id)
+                if let DefKind::Generator = self.tcx.def_kind(def_id)
                     && let Some(witnesses) = tcx.mir_generator_witnesses(def_id)
                 {
                     record!(self.tables.mir_generator_witnesses[def_id.to_def_id()] <- witnesses);
@@ -1639,6 +1639,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
+
+            if let DefKind::Generator = self.tcx.def_kind(def_id)
+                && let Some(witnesses) = tcx.mir_generator_witnesses(def_id)
+            {
+                record!(self.tables.mir_generator_witnesses[def_id.to_def_id()] <- witnesses);
+            }
 
             let instance = ty::InstanceDef::Item(def_id.to_def_id());
             let unused = tcx.unused_generic_params(instance);
@@ -1710,15 +1716,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
         self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn encode_info_for_generator(&mut self, def_id: LocalDefId) {
-        let typeck_result: &'tcx ty::TypeckResults<'tcx> = self.tcx.typeck(def_id);
-        let data = self.tcx.generator_kind(def_id).unwrap();
-        let generator_diagnostic_data = typeck_result.get_generator_diagnostic_data();
-        record!(self.tables.generator_kind[def_id.to_def_id()] <- data);
-        record!(self.tables.generator_diagnostic_data[def_id.to_def_id()]  <- generator_diagnostic_data);
     }
 
     fn encode_native_libraries(&mut self) -> LazyArray<NativeLib> {
