@@ -311,6 +311,10 @@ fn check_uninlined_args(
     // in those cases, make the code suggestion hidden
     let multiline_fix = fixes.iter().any(|(span, _)| cx.sess().source_map().is_multiline(*span));
 
+    // Suggest removing each argument only once, for example in `format!("{0} {0}", arg)`.
+    fixes.sort_unstable_by_key(|(span, _)| *span);
+    fixes.dedup_by_key(|(span, _)| *span);
+
     span_lint_and_then(
         cx,
         UNINLINED_FORMAT_ARGS,

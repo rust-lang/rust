@@ -629,19 +629,27 @@ impl Diagnostic {
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
-        assert!(!suggestion.is_empty());
-        debug_assert!(
-            !(suggestion.iter().any(|(sp, text)| sp.is_empty() && text.is_empty())),
-            "Span must not be empty and have no suggestion"
+        let mut parts = suggestion
+            .into_iter()
+            .map(|(span, snippet)| SubstitutionPart { snippet, span })
+            .collect::<Vec<_>>();
+
+        parts.sort_unstable_by_key(|part| part.span);
+
+        assert!(!parts.is_empty());
+        debug_assert_eq!(
+            parts.iter().find(|part| part.span.is_empty() && part.snippet.is_empty()),
+            None,
+            "Span must not be empty and have no suggestion",
+        );
+        debug_assert_eq!(
+            parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
+            None,
+            "suggestion must not have overlapping parts",
         );
 
         self.push_suggestion(CodeSuggestion {
-            substitutions: vec![Substitution {
-                parts: suggestion
-                    .into_iter()
-                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
-                    .collect(),
-            }],
+            substitutions: vec![Substitution { parts }],
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
             style,
             applicability,
@@ -802,25 +810,34 @@ impl Diagnostic {
         suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
-        let suggestions: Vec<_> = suggestions.into_iter().collect();
-        debug_assert!(
-            !(suggestions
-                .iter()
-                .flatten()
-                .any(|(sp, suggestion)| sp.is_empty() && suggestion.is_empty())),
-            "Span must not be empty and have no suggestion"
-        );
+        let substitutions = suggestions
+            .into_iter()
+            .map(|sugg| {
+                let mut parts = sugg
+                    .into_iter()
+                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                    .collect::<Vec<_>>();
+
+                parts.sort_unstable_by_key(|part| part.span);
+
+                assert!(!parts.is_empty());
+                debug_assert_eq!(
+                    parts.iter().find(|part| part.span.is_empty() && part.snippet.is_empty()),
+                    None,
+                    "Span must not be empty and have no suggestion",
+                );
+                debug_assert_eq!(
+                    parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
+                    None,
+                    "suggestion must not have overlapping parts",
+                );
+
+                Substitution { parts }
+            })
+            .collect();
 
         self.push_suggestion(CodeSuggestion {
-            substitutions: suggestions
-                .into_iter()
-                .map(|sugg| Substitution {
-                    parts: sugg
-                        .into_iter()
-                        .map(|(span, snippet)| SubstitutionPart { snippet, span })
-                        .collect(),
-                })
-                .collect(),
+            substitutions,
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
             style: SuggestionStyle::ShowCode,
             applicability,

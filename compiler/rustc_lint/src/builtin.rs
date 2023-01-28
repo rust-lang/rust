@@ -2175,13 +2175,31 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     dropped_predicate_count += 1;
                 }
 
-                if drop_predicate && !in_where_clause {
-                    lint_spans.push(predicate_span);
-                } else if drop_predicate && i + 1 < num_predicates {
-                    // If all the bounds on a predicate were inferable and there are
-                    // further predicates, we want to eat the trailing comma.
-                    let next_predicate_span = hir_generics.predicates[i + 1].span();
-                    where_lint_spans.push(predicate_span.to(next_predicate_span.shrink_to_lo()));
+                if drop_predicate {
+                    if !in_where_clause {
+                        lint_spans.push(predicate_span);
+                    } else if predicate_span.from_expansion() {
+                        // Don't try to extend the span if it comes from a macro expansion.
+                        where_lint_spans.push(predicate_span);
+                    } else if i + 1 < num_predicates {
+                        // If all the bounds on a predicate were inferable and there are
+                        // further predicates, we want to eat the trailing comma.
+                        let next_predicate_span = hir_generics.predicates[i + 1].span();
+                        if next_predicate_span.from_expansion() {
+                            where_lint_spans.push(predicate_span);
+                        } else {
+                            where_lint_spans
+                                .push(predicate_span.to(next_predicate_span.shrink_to_lo()));
+                        }
+                    } else {
+                        // Eat the optional trailing comma after the last predicate.
+                        let where_span = hir_generics.where_clause_span;
+                        if where_span.from_expansion() {
+                            where_lint_spans.push(predicate_span);
+                        } else {
+                            where_lint_spans.push(predicate_span.to(where_span.shrink_to_hi()));
+                        }
+                    }
                 } else {
                     where_lint_spans.extend(self.consolidate_outlives_bound_spans(
                         predicate_span.shrink_to_lo(),
@@ -2224,6 +2242,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 } else {
                     Applicability::MaybeIncorrect
                 };
+
+                // Due to macros, there might be several predicates with the same span
+                // and we only want to suggest removing them once.
+                lint_spans.sort_unstable();
+                lint_spans.dedup();
 
                 cx.emit_spanned_lint(
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
