@@ -330,3 +330,8 @@ infer_ril_static_introduced_by = "`'static` lifetime requirement introduced by t
 
 infer_where_remove = remove the `where` clause
 infer_where_copy_predicates = copy the `where` clause predicates from the trait
+
+infer_srs_remove_and_box = consider removing this semicolon and boxing the expressions
+infer_srs_remove = consider removing this semicolon
+infer_srs_add = consider returning the local binding `{$ident}`
+infer_srs_add_one = consider returning one of these bindings

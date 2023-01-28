@@ -1006,3 +1006,47 @@ pub enum WhereClauseSuggestions {
         trait_predicates: String,
     },
 }
+
+#[derive(Subdiagnostic)]
+pub enum SuggestRemoveSemiOrReturnBinding {
+    #[multipart_suggestion(infer_srs_remove_and_box, applicability = "machine-applicable")]
+    RemoveAndBox {
+        #[suggestion_part(code = "Box::new(")]
+        first_lo: Span,
+        #[suggestion_part(code = ")")]
+        first_hi: Span,
+        #[suggestion_part(code = "Box::new(")]
+        second_lo: Span,
+        #[suggestion_part(code = ")")]
+        second_hi: Span,
+        #[suggestion_part(code = "")]
+        sp: Span,
+    },
+    #[suggestion(
+        infer_srs_remove,
+        style = "short",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    Remove {
+        #[primary_span]
+        sp: Span,
+    },
+    #[suggestion(
+        infer_srs_add,
+        style = "verbose",
+        code = "{code}",
+        applicability = "maybe-incorrect"
+    )]
+    Add {
+        #[primary_span]
+        sp: Span,
+        code: String,
+        ident: Ident,
+    },
+    #[note(infer_srs_add_one)]
+    AddOne {
+        #[primary_span]
+        spans: MultiSpan,
+    },
+}

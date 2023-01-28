@@ -11,21 +11,20 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TypeVisitable};
 use rustc_span::{sym, BytePos, Span};
 
-use crate::errors::SuggAddLetForLetChains;
+use crate::errors::{SuggAddLetForLetChains, SuggestRemoveSemiOrReturnBinding};
 
 use super::TypeErrCtxt;
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub(super) fn suggest_remove_semi_or_return_binding(
         &self,
-        err: &mut Diagnostic,
         first_id: Option<hir::HirId>,
         first_ty: Ty<'tcx>,
         first_span: Span,
         second_id: Option<hir::HirId>,
         second_ty: Ty<'tcx>,
         second_span: Span,
-    ) {
+    ) -> Option<SuggestRemoveSemiOrReturnBinding> {
         let remove_semicolon = [
             (first_id, self.resolve_vars_if_possible(second_ty)),
             (second_id, self.resolve_vars_if_possible(first_ty)),
@@ -37,35 +36,29 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         });
         match remove_semicolon {
             Some((sp, StatementAsExpression::NeedsBoxing)) => {
-                err.multipart_suggestion(
-                    "consider removing this semicolon and boxing the expressions",
-                    vec![
-                        (first_span.shrink_to_lo(), "Box::new(".to_string()),
-                        (first_span.shrink_to_hi(), ")".to_string()),
-                        (second_span.shrink_to_lo(), "Box::new(".to_string()),
-                        (second_span.shrink_to_hi(), ")".to_string()),
-                        (sp, String::new()),
-                    ],
-                    Applicability::MachineApplicable,
-                );
+                Some(SuggestRemoveSemiOrReturnBinding::RemoveAndBox {
+                    first_lo: first_span.shrink_to_lo(),
+                    first_hi: first_span.shrink_to_hi(),
+                    second_lo: second_span.shrink_to_lo(),
+                    second_hi: second_span.shrink_to_hi(),
+                    sp,
+                })
             }
             Some((sp, StatementAsExpression::CorrectType)) => {
-                err.span_suggestion_short(
-                    sp,
-                    "consider removing this semicolon",
-                    "",
-                    Applicability::MachineApplicable,
-                );
+                Some(SuggestRemoveSemiOrReturnBinding::Remove { sp })
             }
             None => {
+                let mut ret = None;
                 for (id, ty) in [(first_id, second_ty), (second_id, first_ty)] {
                     if let Some(id) = id
                         && let hir::Node::Block(blk) = self.tcx.hir().get(id)
-                        && self.consider_returning_binding(blk, ty, err)
+                        && let Some(diag) = self.consider_returning_binding_diag(blk, ty)
                     {
+                        ret = Some(diag);
                         break;
                     }
                 }
+                ret
             }
         }
     }
@@ -655,16 +648,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     /// Suggest returning a local binding with a compatible type if the block
     /// has no return expression.
-    pub fn consider_returning_binding(
+    pub fn consider_returning_binding_diag(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
-        err: &mut Diagnostic,
-    ) -> bool {
+    ) -> Option<SuggestRemoveSemiOrReturnBinding> {
         let blk = blk.innermost_block();
         // Do not suggest if we have a tail expr.
         if blk.expr.is_some() {
-            return false;
+            return None;
         }
         let mut shadowed = FxIndexSet::default();
         let mut candidate_idents = vec![];
@@ -733,7 +725,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         match &candidate_idents[..] {
             [(ident, _ty)] => {
                 let sm = self.tcx.sess.source_map();
-                if let Some(stmt) = blk.stmts.last() {
+                let (span, sugg) = if let Some(stmt) = blk.stmts.last() {
                     let stmt_span = sm.stmt_span(stmt.span, blk.span);
                     let sugg = if sm.is_multiline(blk.span)
                         && let Some(spacing) = sm.indentation_before(stmt_span)
@@ -742,12 +734,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     } else {
                         format!(" {ident}")
                     };
-                    err.span_suggestion_verbose(
-                        stmt_span.shrink_to_hi(),
-                        format!("consider returning the local binding `{ident}`"),
-                        sugg,
-                        Applicability::MaybeIncorrect,
-                    );
+                    (stmt_span.shrink_to_hi(), sugg)
                 } else {
                     let sugg = if sm.is_multiline(blk.span)
                         && let Some(spacing) = sm.indentation_before(blk.span.shrink_to_lo())
@@ -757,21 +744,34 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         format!(" {ident} ")
                     };
                     let left_span = sm.span_through_char(blk.span, '{').shrink_to_hi();
-                    err.span_suggestion_verbose(
+                    (
                         sm.span_extend_while(left_span, |c| c.is_whitespace()).unwrap_or(left_span),
-                        format!("consider returning the local binding `{ident}`"),
                         sugg,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                true
+                    )
+                };
+                Some(SuggestRemoveSemiOrReturnBinding::Add { sp: span, code: sugg, ident: *ident })
             }
             values if (1..3).contains(&values.len()) => {
                 let spans = values.iter().map(|(ident, _)| ident.span).collect::<Vec<_>>();
-                err.span_note(spans, "consider returning one of these bindings");
+                Some(SuggestRemoveSemiOrReturnBinding::AddOne { spans: spans.into() })
+            }
+            _ => None,
+        }
+    }
+
+    pub fn consider_returning_binding(
+        &self,
+        blk: &'tcx hir::Block<'tcx>,
+        expected_ty: Ty<'tcx>,
+        err: &mut Diagnostic,
+    ) -> bool {
+        let diag = self.consider_returning_binding_diag(blk, expected_ty);
+        match diag {
+            Some(diag) => {
+                err.subdiagnostic(diag);
                 true
             }
-            _ => false,
+            None => false,
         }
     }
 }
