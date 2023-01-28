@@ -48,75 +48,6 @@ impl fmt::Display for AllocError {
     }
 }
 
-/// `CoAllocPref` values indicate a type's preference for coallocation (in either user space, or
-/// `std` space). Used as a `const` generic parameter type (usually called `CO_ALLOC_PREF`).
-///
-/// The actual value may be overriden by the allocator. See also `CoAllocMetaNumSlotsPref` and
-/// `co_alloc_pref` macro .
-///
-/// This type  WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
-/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence:
-/// - DO NOT construct instances, but use `co_alloc_pref` macro together with constants
-/// `CO_ALLOC_PREF_YES` and `CO_ALLOC_PREF_NO`;
-/// - DO NOT hard code any values; and
-/// - DO NOT mix this/cast this with/to `usize` (nor any other integers).
-///
-/// @FIXME CO_ALLOC_PREF_DEFAULT - as a separate constant, or a "keyword" recognized by
-/// `co_alloc_pref`  macro?
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-pub type CoAllocPref = usize;
-
-/// `CoAllocMetaNumSlotsPref` values indicate a type prefers to coallocate by carrying metadata, or
-/// not. (In either user space, or `std` space). Used as an argument to macro call of
-/// `co_alloc_pref`, which generates a `CoAllocPref` value.
-///
-/// Currently this indicates only the (preferred) number of `CoAllocMetaBase` slots being used
-/// (either 1 = coallocation, or 0 = no coallocation). However, in the future this type may have
-/// other properties (serving as extra hints to the allocator).
-///
-/// The actual value may be overriden by the allocator. For example, if the allocator doesn't
-/// support coallocation, then whether this value prefers to coallocate or not makes no difference.
-///
-/// This type  WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
-/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence:
-/// - DO NOT mix this/cast this with/to `isize` (nor any other integers); and
-/// - DO NOT hard code any values, but use `CO_ALLOC_PREF_YES` and `CO_ALLOC_PREF_NO`.
-///
-/// Currently this type is intentionally not `usize`. Why? This helps to prevent mistakes when one
-/// would use `CO_ALLOC_PREF_YES` or `CO_ALLOC_PREF_NO` in place of `CoAllocPref` vales.
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-pub type CoAllocMetaNumSlotsPref = isize;
-
-/// "Yes" as a type's preference for coallocation (in either user space, or `std` space).
-///
-/// It may be overriden by the allocator. For example, if the allocator doesn't support
-/// coallocation, then this value makes no difference.
-///
-/// This constant and its type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
-/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence DO NOT hard
-/// code/replace/mix this any other values/parameters.
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-pub const CO_ALLOC_PREF_YES: CoAllocMetaNumSlotsPref = 1;
-
-/// "No" as a type's preference for coallocation (in either user space, or `std` space).
-///
-/// Any allocator is required to respect this. Even if the allocator does support coallocation, it
-/// will not coallocate types that use this value.
-///
-/// This constant and its type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
-/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence DO NOT hard
-/// code/replace/mix this any other values/parameters.
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-pub const CO_ALLOC_PREF_NO: CoAllocMetaNumSlotsPref = 0;
-
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[macro_export]
-macro_rules! co_alloc_pref {
-    ($coop_pref:expr) => {
-        if ::alloc::alloc::Global::CO_ALLOC_META_NUM_SLOTS && ($coop_pref) { 1 } else { 0 }
-    };
-}
-
 /// (Non-Null) Pointer and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[derive(Clone, Copy, Debug)]
@@ -134,6 +65,7 @@ pub struct SliceAndMeta<M: CoAllocMetaBase> {
     pub meta: M,
 }
 
+// @FIXME Move to library/alloc - if possible:
 #[unstable(feature = "global_co_alloc_short_term_pref", issue = "none")]
 //pub const SHORT_TERM_VEC_PREFERS_COOP: bool = true;
 #[macro_export]
@@ -154,8 +86,56 @@ pub type SliceAndMetaResult<M> = Result<SliceAndMeta<M>, AllocError>;
 pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
     coop_preferred: bool,
 ) -> usize {
-    if coop_preferred { A::CO_ALLOC_META_NUM_SLOTS } else { 0 }
+    if coop_preferred { A::CO_ALLOC_META_NUM_SLOTS as usize } else { 0 }
 }
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub trait CoAllocMetaBase: Clone + Copy {
+    /// NOT for public use. This MAY BE REMOVED or CHANGED.
+    ///
+    /// For EXPERIMENTATION only.
+    const ZERO_METAS: [Self; 0];
+    const ONE_METAS: [Self; 1];
+
+    /// NOT for public use. This MAY BE REMOVED or CHANGED.
+    ///
+    /// For EXPERIMENTATION only.
+    fn new_plain() -> Self;
+}
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[derive(Clone, Copy, Debug)]
+pub struct CoAllocMetaPlain {}
+
+const CO_ALLOC_META_PLAIN: CoAllocMetaPlain = CoAllocMetaPlain {};
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+impl CoAllocMetaBase for CoAllocMetaPlain {
+    const ZERO_METAS: [Self; 0] = [];
+    const ONE_METAS: [Self; 1] = [CO_ALLOC_META_PLAIN];
+
+    fn new_plain() -> Self {
+        CO_ALLOC_META_PLAIN
+    }
+}
+
+/// Whether an `Allocator` implementation supports coallocation.
+/// 
+/// This type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
+/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence:
+/// - DO NOT mix this/cast this with/to `u8`, `u16`, (nor any other integer); and
+/// - DO NOT hard code any values, but use `CO_ALLOCATOR_SUPPORTS_META_YES` and `CO_ALLOCATOR_SUPPORTS_META_NO`.
+/// 
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub type CoAllocatorMetaNumSlots = u32;
+
+/// Indicating that an Allocator supports coallocation (if a type of the allocated instances supports it, too).
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub const CO_ALLOCATOR_SUPPORTS_META_YES: CoAllocatorMetaNumSlots = 1;
+
+/// Indicating that an Allocator does not support coallocation.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub const CO_ALLOCATOR_SUPPORTS_META_NO: CoAllocatorMetaNumSlots = 0;
 
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
 /// data described via [`Layout`][].
@@ -216,17 +196,15 @@ pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[const_trait]
 pub unsafe trait Allocator {
-    //const fn is_co_allocator() -> bool {false} Can't have: const type Xyz;
-    /// If this is any type with non-zero size, then the actual `Allocator` implementation supports
-    /// cooperative functions (`co_*`) as first class citizens.
-    //type IsCoAllocator = (); It applies to the global (default) allocator only. And/or System
-    // allocator?! @FIXME
     /// NOT for public use. MAY CHANGE.
-    ///
-    /// Either 0 or 1.
-    const CO_ALLOC_META_NUM_SLOTS: usize = 0;
+    const CO_ALLOC_META_NUM_SLOTS: CoAllocatorMetaNumSlots = CO_ALLOCATOR_SUPPORTS_META_NO;
 
-    /// NOT for public use. The default value MAY be REMOVED or CHANGED.
+    /// Type to store coallocation metadata (if both the allocator and the heap-based type support
+    /// coallocation, and if coallocation is used).
+    /// 
+    /// If this is any type with non-zero size, then the actual `Allocator` implementation supports
+    /// cooperative functions (`co_*`) as first class citizens. NOT for public use. The default
+    /// value MAY be REMOVED or CHANGED.
     ///
     /// @FIXME Validate (preferrable at compile time, otherwise as a test) that this type's
     /// alignment <= `usize` alignment.
@@ -656,35 +634,5 @@ where
     ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
-    }
-}
-
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-pub trait CoAllocMetaBase: Clone + Copy {
-    /// NOT for public use. This MAY BE REMOVED or CHANGED.
-    ///
-    /// For EXPERIMENTATION only.
-    const ZERO_METAS: [Self; 0];
-    const ONE_METAS: [Self; 1];
-
-    /// NOT for public use. This MAY BE REMOVED or CHANGED.
-    ///
-    /// For EXPERIMENTATION only.
-    fn new_plain() -> Self;
-}
-
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-#[derive(Clone, Copy, Debug)]
-pub struct CoAllocMetaPlain {}
-
-const CO_ALLOC_META_PLAIN: CoAllocMetaPlain = CoAllocMetaPlain {};
-
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]
-impl CoAllocMetaBase for CoAllocMetaPlain {
-    const ZERO_METAS: [Self; 0] = [];
-    const ONE_METAS: [Self; 1] = [CO_ALLOC_META_PLAIN];
-
-    fn new_plain() -> Self {
-        CO_ALLOC_META_PLAIN
     }
 }

@@ -125,37 +125,113 @@ macro_rules! __rust_force_expr {
     };
 }
 
-/// Default coallocation "cooperation" (`COOP_PREF`) generic parameter.
+// ----- CoAlloc constant-like macros:
+/// "Yes" as a type's preference for coallocation (in either user space, or `std` space).
 ///
-/// NOT for public use. It's exported only so that library/proc_macro (and other internals) can use
-/// this.
+/// It may be overriden by the allocator. For example, if the allocator doesn't support
+/// coallocation, then this value makes no difference.
 ///
-// FIXME replace with a `const` (or some kind of compile time preference) once a related ICE is
-// fixed. Then move the const to a submodule, for example alloc::co_alloc.
-#[unstable(feature = "global_co_alloc_default", issue = "none")]
+/// This constant and its type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
+/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence DO NOT hard
+/// code/replace/mix this any other values/parameters.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[macro_export]
-macro_rules! CO_ALLOC_PREF_DEFAULT {
+macro_rules! CO_ALLOC_PREF_META_YES {
     () => {
-        true
+        (1 as $crate::co_alloc::CoAllocMetaNumSlotsPref)
     };
 }
-// -\---> replace with something like: pub const DEFAULT_COOP_PREF: bool = true;
+
+/// "No" as a type's preference for coallocation (in either user space, or `std` space).
+///
+/// Any allocator is required to respect this. Even if the allocator does support coallocation, it
+/// will not coallocate types that use this value.
+///
+/// This constant and its type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
+/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence DO NOT hard
+/// code/replace/mix this any other values/parameters.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[macro_export]
+macro_rules! CO_ALLOC_PREF_META_NO {
+    () => {
+        (0 as $crate::co_alloc::CoAllocMetaNumSlotsPref)
+    };
+}
+
+/// Default preference for coallocation (in either user space, or `std` space).
+/// 
+/// Possible values are only: `CO_ALLOC_PREF_META_YES` and `CO_ALLOC_PREF_META_NO`. See their
+/// documentation.
+///
+/// This value and its type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
+/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence DO NOT hard
+/// code/replace/mix this any other values/parameters.
+/// 
+/// (@FIXME) This WILL BE BECOME OBSOLETE and it WILL BE REPLACED with a `const` (and/or some kind
+/// of compile time preference) once a related ICE is fixed (@FIXME add the ICE link here). Then
+/// consider moving such a `const` to a submodule, for example `::alloc::co_alloc`.
+#[unstable(feature = "global_co_alloc_default", issue = "none")]
+#[macro_export]
+macro_rules! CO_ALLOC_PREF_META_DEFAULT {
+    () => {
+        (0 as $crate::co_alloc::CoAllocMetaNumSlotsPref)
+    };
+}
+
+/// Default [::alloc::CoAllocPref] value/config, based on `CO_ALLOC_PREF_META_DEFAULT`.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[macro_export]
+macro_rules! CO_ALLOC_PREF_DEFAULT {
+    () => { $crate::co_alloc_pref!($crate::CO_ALLOC_PREF_META_DEFAULT!()) };
+}
+
+// ------ CoAlloc preference/config conversion macros:
+/// Create a `CoAllocPref` value based on the given parameter(s). For now, only one parameter is
+/// supported, and it's required: `meta_pref`.
+/// 
+/// @param `meta_pref` is one of: `CO_ALLOC_PREF_META_YES, CO_ALLOC_PREF_META_NO,
+/// CO_ALLOC_PREF_META_DEFAULT`.
+/// 
+/// @return `CoAllocPref` value
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[macro_export]
+macro_rules! co_alloc_pref {
+    // ($meta_pref + (0 as CoAllocMetaNumSlotsPref)) ensures that $meta_pref is of type
+    // `CoAllocMetaNumSlotsPref`. Otherwise the casting of the result to `CoAllocPref` would not
+    // report the incorrect type of $meta_pref (if $meta_pref were some other integer, casting would
+    // compile, and we would not be notified).
+    ($meta_pref:expr) => {
+        (($meta_pref + (0 as $crate::co_alloc::CoAllocMetaNumSlotsPref)) as $crate::co_alloc::CoAllocPref)
+    };
+}
 
 /// Return 0 or 1, indicating whether to use coallocation metadata (or not) with the given allocator
-/// type `alloc` and cooperation preference `coop_pref`.
+/// type `alloc` and cooperation preference `co_alloc_pref`.
 ///
-/// NOT for public use. Param `coop_pref` - can override the allocator's default preference for
+/// NOT for public use. Param `co_alloc_pref` - can override the allocator's default preference for
 /// cooperation, or can make the type not cooperative, regardless of whether allocator `A` is
 /// cooperative.
+/// 
+/// @param `alloc` Allocator (implementation) type. @param `co_alloc_pref` The heap-based type's
+/// preference for coallocation, as an [::alloc::CoAllocPref] value.
+/// 
+/// The type of second parameter `co_alloc_pref` WILL CHANGE. DO NOT hardcode/cast/mix that type.
+/// Instead, use [::alloc::CoAllocPref].
+/// 
 // FIXME replace the macro with an (updated version of the below) `const` function). Only once
 // generic_const_exprs is stable (that is, when consumer crates don't need to declare
-// generic_const_exprs feature anymore). Then move the function to a submodule, for example
-// ::alloc::co_alloc.
+// generic_const_exprs feature anymore). Then consider moving the function to a submodule, for
+// example ::alloc::co_alloc.
 #[unstable(feature = "global_co_alloc", issue = "none")]
 #[macro_export]
 macro_rules! meta_num_slots {
-    ($alloc:ty, $coop_pref:expr) => {
-        if ($alloc::CO_ALLOC_META_NUM_SLOTS) && ($coop_pref) { 1 } else { 0 }
+    // This "validates" types of both params - to prevent mix ups.
+    ($alloc:ty, $co_alloc_pref:expr) => {
+        (
+            ((<$alloc>::CO_ALLOC_META_NUM_SLOTS + (0 as ::core::alloc::CoAllocatorMetaNumSlots))
+            as $crate::co_alloc::CoAllocPref)
+        * ($co_alloc_pref + (0 as $crate::co_alloc::CoAllocPref))
+         as usize)
     };
 }
 // -\---> replace with something like:
@@ -171,46 +247,46 @@ pub const fn meta_num_slots<A: Allocator>(
 /// Like `meta_num_slots`, but for the default coallocation preference (`DEFAULT_COOP_PREF`).
 ///
 /// Return 0 or 1, indicating whether to use coallocation metadata (or not) with the given allocator
-/// type `alloc` and the default cooperation preference (`DEFAULT_COOP_PREF()!`).
+/// type `alloc` and the default coallocation preference (`DEFAULT_COOP_PREF()!`).
 ///
-/// NOT for public use.
 // FIXME replace the macro with a `const` function. Only once generic_const_exprs is stable (that
-// is, when consumer crates don't need to declare generic_const_exprs feature anymore). Then move
-// the function to a submodule, for example ::alloc::co_alloc.
+// is, when consumer crates don't need to declare generic_const_exprs feature anymore). Then
+// consider moving the function to a submodule, for example ::alloc::co_alloc.
 #[unstable(feature = "global_co_alloc", issue = "none")]
 #[macro_export]
 macro_rules! meta_num_slots_default {
     // Can't generate if ... {1} else {0}
     // because it's "overly complex generic constant".
     ($alloc:ty) => {
-        if (<$alloc>::CO_ALLOC_META_NUM_SLOTS) && (DEFAULT_COOP_PREF!()) { 1 } else { 0 }
+        $crate::meta_num_slots!( $alloc, $crate::CO_ALLOC_PREF_DEFAULT!() )
     };
 }
 
-/// NOT for public use.
-// See above.
+/// Like `meta_num_slots`, but for the default coallocation preference (`DEFAULT_COOP_PREF`).
+///
+/// Return 0 or 1, indicating whether to use coallocation metadata (or not) with the global allocator
+/// type `alloc` and the given coallocation preference `co_alloc_`.
+///
+// FIXME replace the macro with a `const` function. Only once generic_const_exprs is stable (that
+// is, when consumer crates don't need to declare `generic_const_exprs` feature anymore). Then
+// consider moving the function to a submodule, for example ::alloc::co_alloc. See above.
 #[unstable(feature = "global_co_alloc", issue = "none")]
 #[macro_export]
 macro_rules! meta_num_slots_global {
-    ($coop_pref:expr) => {
-        if ::alloc::alloc::Global::CO_ALLOC_META_NUM_SLOTS && ($coop_pref) { 1 } else { 0 }
+    ($co_alloc_pref:expr) => {
+        $crate::meta_num_slots!( $crate::alloc::Global, $co_alloc_pref)
     };
 }
 
-/// Like `meta_num_slots`, but for Global allocator and default coallocation preference
-/// (`DEFAULT_COOP_PREF`).
+/// Like `meta_num_slots`, but for `Global allocator and default coallocation preference
+/// (`CO_ALLOC_PREF_DEFAULT`).
 ///
-/// NOT for public use.
-// @FIXME once generic_const_exprs is stable, replace this with a `const` function. Then move the
-// function to a submodule, for example alloc::co_alloc. See above.
+// @FIXME once generic_const_exprs is stable, replace this with a `const` function. Then consider
+// moving the function to a submodule, for example alloc::co_alloc. See above.
 #[unstable(feature = "global_co_alloc", issue = "none")]
 #[macro_export]
 macro_rules! meta_num_slots_default_global {
     () => {
-        if ::alloc::alloc::Global::CO_ALLOC_META_NUM_SLOTS && (DEFAULT_COOP_PREF!()) {
-            1
-        } else {
-            0
-        }
+        $crate::meta_num_slots!( $crate::alloc::Global, $crate::CO_ALLOC_PREF_DEFAULT!())
     };
 }
