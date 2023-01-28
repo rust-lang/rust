@@ -168,6 +168,7 @@ The minimum rust version that the project supports
 * [manual_let_else](https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else)
 * [unchecked_duration_subtraction](https://rust-lang.github.io/rust-clippy/master/index.html#unchecked_duration_subtraction)
 * [collapsible_str_replace](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_str_replace)
+* [seek_from_current](https://rust-lang.github.io/rust-clippy/master/index.html#seek_from_current)
 
 
 ### cognitive-complexity-threshold
