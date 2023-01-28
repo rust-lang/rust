@@ -80,6 +80,7 @@ mod asm;
 mod block;
 mod errors;
 mod expr;
+mod format;
 mod index;
 mod item;
 mod lifetime_collector;
@@ -118,7 +119,6 @@ struct LoweringContext<'a, 'hir> {
 
     current_hir_id_owner: hir::OwnerId,
     item_local_id_counter: hir::ItemLocalId,
-    local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
     trait_map: FxHashMap<ItemLocalId, Box<[TraitCandidate]>>,
 
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
@@ -296,7 +296,7 @@ impl std::fmt::Display for ImplTraitPosition {
             ImplTraitPosition::ImplReturn => "`impl` method return",
         };
 
-        write!(f, "{}", name)
+        write!(f, "{name}")
     }
 }
 
@@ -416,8 +416,8 @@ fn compute_hir_hash(
 
 pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     let sess = tcx.sess;
-    let krate = tcx.untracked_crate.steal();
-    let mut resolver = tcx.resolver_for_lowering(()).steal();
+    tcx.ensure().output_filenames(());
+    let (mut resolver, krate) = tcx.resolver_for_lowering(()).steal();
 
     let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);
     let mut owners = IndexVec::from_fn_n(
@@ -503,7 +503,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn orig_local_def_id(&self, node: NodeId) -> LocalDefId {
         self.orig_opt_local_def_id(node)
-            .unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+            .unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
@@ -524,7 +524,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
     }
 
     /// Get the previously recorded `to` local def id given the `from` local def id, obtained using
@@ -566,7 +566,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_node_ids = std::mem::take(&mut self.node_id_to_local_id);
-        let current_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
         let current_trait_map = std::mem::take(&mut self.trait_map);
         let current_owner =
             std::mem::replace(&mut self.current_hir_id_owner, hir::OwnerId { def_id });
@@ -593,7 +592,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.attrs = current_attrs;
         self.bodies = current_bodies;
         self.node_id_to_local_id = current_node_ids;
-        self.local_id_to_def_id = current_id_to_def_id;
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
@@ -628,7 +626,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
         let attrs = std::mem::take(&mut self.attrs);
         let mut bodies = std::mem::take(&mut self.bodies);
-        let local_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
         let trait_map = std::mem::take(&mut self.trait_map);
 
         #[cfg(debug_assertions)]
@@ -644,13 +641,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
         let (nodes, parenting) =
             index::index_hir(self.tcx.sess, &*self.tcx.definitions_untracked(), node, &bodies);
-        let nodes = hir::OwnerNodes {
-            hash_including_bodies,
-            hash_without_bodies,
-            nodes,
-            bodies,
-            local_id_to_def_id,
-        };
+        let nodes = hir::OwnerNodes { hash_including_bodies, hash_without_bodies, nodes, bodies };
         let attrs = {
             let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
@@ -663,7 +654,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
     }
 
-    /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate
+    /// Hash the HIR node twice, one deep and one shallow hash. This allows to differentiate
     /// queries which depend on the full HIR tree and those which only depend on the item signature.
     fn hash_owner(
         &mut self,
@@ -709,7 +700,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 assert_ne!(local_id, hir::ItemLocalId::new(0));
                 if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
                     self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
-                    self.local_id_to_def_id.insert(local_id, def_id);
                 }
 
                 if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
@@ -1194,7 +1184,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: &ImplTraitContext,
     ) -> hir::Ty<'hir> {
         // Check whether we should interpret this as a bare trait object.
-        // This check mirrors the one in late resolution.  We only introduce this special case in
+        // This check mirrors the one in late resolution. We only introduce this special case in
         // the rare occurrence we need to lower `Fresh` anonymous lifetimes.
         // The other cases when a qpath should be opportunistically made a trait object are handled
         // by `ty_path`.
@@ -1402,7 +1392,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Given a function definition like:
     ///
     /// ```rust
-    /// use std::fmt::Debug;
     /// fn test<'a, T: Debug>(x: &'a T) -> impl Debug + 'a {
     ///     x
     /// }
@@ -1410,16 +1399,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ///
     /// we will create a TAIT definition in the HIR like
     ///
-    /// ```ignore (cannot-test-this-because-type)
+    /// ```
     /// type TestReturn<'a, T, 'x> = impl Debug + 'x
     /// ```
-    /// and return a type like `TestReturn<'a, 'x, 'T>`, so that the function looks like:
+    ///
+    /// and return a type like `TestReturn<'static, T, 'a>`, so that the function looks like:
     ///
     /// ```rust
-    /// #![feature(type_alias_impl_trait)]
-    /// use std::fmt::Debug;
-    /// type TestReturn<'a, 'x, T> = impl Debug + 'x;
-    /// fn test<'a, 'x, T: Debug>(x: &'a T) -> TestReturn<'a, 'x, T>{}
+    /// fn test<'a, T: Debug>(x: &'a T) -> TestReturn<'static, T, 'a>
     /// ```
     ///
     /// Note the subtlety around type parameters! The new TAIT, `TestReturn`, inherits all the
@@ -1922,7 +1909,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             this.with_remapping(new_remapping, |this| {
                 // We have to be careful to get elision right here. The
                 // idea is that we create a lifetime parameter for each
-                // lifetime in the return type.  So, given a return type
+                // lifetime in the return type. So, given a return type
                 // like `async fn foo(..) -> &[&u32]`, we lower to `impl
                 // Future<Output = &'1 [ &'2 u32 ]>`.
                 //
@@ -2016,7 +2003,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Create the `Foo<...>` reference itself. Note that the `type
         // Foo = impl Trait` is, internally, created as a child of the
-        // async fn, so the *type parameters* are inherited.  It's
+        // async fn, so the *type parameters* are inherited. It's
         // only the lifetime parameters that we must supply.
         let opaque_ty_ref = hir::TyKind::OpaqueDef(
             hir::ItemId { owner_id: hir::OwnerId { def_id: opaque_ty_def_id } },
@@ -2200,7 +2187,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_trait_ref(&mut self, p: &TraitRef, itctx: &ImplTraitContext) -> hir::TraitRef<'hir> {
         let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
             hir::QPath::Resolved(None, path) => path,
-            qpath => panic!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
+            qpath => panic!("lower_trait_ref: unexpected QPath `{qpath:?}`"),
         };
         hir::TraitRef { path, hir_ref_id: self.lower_node_id(p.ref_id) }
     }
