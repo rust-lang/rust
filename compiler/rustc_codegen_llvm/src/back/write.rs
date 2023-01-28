@@ -5,6 +5,9 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::consts;
+use crate::errors::{
+    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, WithLlvmError, WriteBytecode,
+};
 use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -37,10 +40,10 @@ use std::slice;
 use std::str;
 use std::sync::Arc;
 
-pub fn llvm_err(handler: &rustc_errors::Handler, msg: &str) -> FatalError {
+pub fn llvm_err<'a>(handler: &rustc_errors::Handler, err: LlvmError<'a>) -> FatalError {
     match llvm::last_error() {
-        Some(err) => handler.fatal(&format!("{}: {}", msg, err)),
-        None => handler.fatal(msg),
+        Some(llvm_err) => handler.emit_almost_fatal(WithLlvmError(err, llvm_err)),
+        None => handler.emit_almost_fatal(err),
     }
 }
 
@@ -85,10 +88,9 @@ pub fn write_output_file<'ll>(
             }
         }
 
-        result.into_result().map_err(|()| {
-            let msg = format!("could not write output to {}", output.display());
-            llvm_err(handler, &msg)
-        })
+        result
+            .into_result()
+            .map_err(|()| llvm_err(handler, LlvmError::WriteOutput { path: output }))
     }
 }
 
@@ -98,7 +100,7 @@ pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm:
     // system/tcx is set up.
     let features = llvm_util::global_llvm_features(sess, false);
     target_machine_factory(sess, config::OptLevel::No, &features)(config)
-        .unwrap_or_else(|err| llvm_err(sess.diagnostic(), &err).raise())
+        .unwrap_or_else(|err| llvm_err(sess.diagnostic(), err).raise())
 }
 
 pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut llvm::TargetMachine {
@@ -117,7 +119,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut ll
         tcx.backend_optimization_level(()),
         tcx.global_backend_features(()),
     )(config)
-    .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise())
+    .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), err).raise())
 }
 
 pub fn to_llvm_opt_settings(
@@ -240,9 +242,7 @@ pub fn target_machine_factory(
             )
         };
 
-        tm.ok_or_else(|| {
-            format!("Could not create LLVM TargetMachine for triple: {}", triple.to_str().unwrap())
-        })
+        tm.ok_or_else(|| LlvmError::CreateTargetMachine { triple: triple.clone() })
     })
 }
 
@@ -355,25 +355,28 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
             };
 
             if enabled {
-                diag_handler.note_without_error(&format!(
-                    "{}:{}:{}: {}: {}",
-                    opt.filename, opt.line, opt.column, opt.pass_name, opt.message,
-                ));
+                diag_handler.emit_note(FromLlvmOptimizationDiag {
+                    filename: &opt.filename,
+                    line: opt.line,
+                    column: opt.column,
+                    pass_name: &opt.pass_name,
+                    message: &opt.message,
+                });
             }
         }
         llvm::diagnostic::PGO(diagnostic_ref) | llvm::diagnostic::Linker(diagnostic_ref) => {
-            let msg = llvm::build_string(|s| {
+            let message = llvm::build_string(|s| {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             })
             .expect("non-UTF8 diagnostic");
-            diag_handler.warn(&msg);
+            diag_handler.emit_warning(FromLlvmDiag { message });
         }
         llvm::diagnostic::Unsupported(diagnostic_ref) => {
-            let msg = llvm::build_string(|s| {
+            let message = llvm::build_string(|s| {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             })
             .expect("non-UTF8 diagnostic");
-            diag_handler.err(&msg);
+            diag_handler.emit_err(FromLlvmDiag { message });
         }
         llvm::diagnostic::UnknownDiagnostic(..) => {}
     }
@@ -494,7 +497,7 @@ pub(crate) unsafe fn llvm_optimize(
         llvm_plugins.as_ptr().cast(),
         llvm_plugins.len(),
     );
-    result.into_result().map_err(|()| llvm_err(diag_handler, "failed to run LLVM passes"))
+    result.into_result().map_err(|()| llvm_err(diag_handler, LlvmError::RunLlvmPasses))
 }
 
 // Unsafe due to LLVM calls.
@@ -547,8 +550,7 @@ pub(crate) fn link(
         let _timer = cgcx.prof.generic_activity_with_arg("LLVM_link_module", &*module.name);
         let buffer = ModuleBuffer::new(module.module_llvm.llmod());
         linker.add(buffer.data()).map_err(|()| {
-            let msg = format!("failed to serialize module {:?}", module.name);
-            llvm_err(diag_handler, &msg)
+            llvm_err(diag_handler, LlvmError::SerializeModule { name: &module.name })
         })?;
     }
     drop(linker);
@@ -626,9 +628,8 @@ pub(crate) unsafe fn codegen(
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_bitcode", &*module.name);
-                if let Err(e) = fs::write(&bc_out, data) {
-                    let msg = format!("failed to write bytecode to {}: {}", bc_out.display(), e);
-                    diag_handler.err(&msg);
+                if let Err(err) = fs::write(&bc_out, data) {
+                    diag_handler.emit_err(WriteBytecode { path: &bc_out, err });
                 }
             }
 
@@ -678,10 +679,9 @@ pub(crate) unsafe fn codegen(
                 record_artifact_size(&cgcx.prof, "llvm_ir", &out);
             }
 
-            result.into_result().map_err(|()| {
-                let msg = format!("failed to write LLVM IR to {}", out.display());
-                llvm_err(diag_handler, &msg)
-            })?;
+            result
+                .into_result()
+                .map_err(|()| llvm_err(diag_handler, LlvmError::WriteIr { path: &out }))?;
         }
 
         if config.emit_asm {
@@ -749,8 +749,8 @@ pub(crate) unsafe fn codegen(
 
             EmitObj::Bitcode => {
                 debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-                if let Err(e) = link_or_copy(&bc_out, &obj_out) {
-                    diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
+                if let Err(err) = link_or_copy(&bc_out, &obj_out) {
+                    diag_handler.emit_err(CopyBitcode { err });
                 }
 
                 if !config.emit_bc {

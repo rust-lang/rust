@@ -731,3 +731,5 @@ passes_proc_macro_missing_args = mismatched {$kind} signature
 passes_proc_macro_invalid_abi = proc macro functions may not be `extern "{$abi}"`
 
 passes_proc_macro_unsafe = proc macro functions may not be `unsafe`
+
+passes_skipping_const_checks = skipping const checks

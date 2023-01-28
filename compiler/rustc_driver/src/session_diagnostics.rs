@@ -38,3 +38,30 @@ pub(crate) struct UnprettyDumpFail {
     pub path: String,
     pub err: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(driver_ice)]
+pub(crate) struct Ice;
+
+#[derive(Diagnostic)]
+#[diag(driver_ice_bug_report)]
+pub(crate) struct IceBugReport<'a> {
+    pub bug_report_url: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(driver_ice_version)]
+pub(crate) struct IceVersion<'a> {
+    pub version: &'a str,
+    pub triple: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(driver_ice_flags)]
+pub(crate) struct IceFlags {
+    pub flags: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(driver_ice_exclude_cargo_defaults)]
+pub(crate) struct IceExcludeCargoDefaults;

@@ -1,4 +1,4 @@
-use rustc_errors::{IntoDiagnosticArg, MultiSpan};
+use rustc_errors::MultiSpan;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{GenericArg, Ty};
 use rustc_span::Span;
@@ -126,18 +126,6 @@ pub(crate) enum LifetimeReturnCategoryErr<'a> {
         free_region_name: &'a RegionName,
         outlived_fr_name: RegionName,
     },
-}
-
-impl IntoDiagnosticArg for &RegionName {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
-        format!("{}", self).into_diagnostic_arg()
-    }
-}
-
-impl IntoDiagnosticArg for RegionName {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
-        format!("{}", self).into_diagnostic_arg()
-    }
 }
 
 #[derive(Subdiagnostic)]

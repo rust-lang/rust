@@ -375,3 +375,9 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
         }
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(session_optimization_fuel_exhausted)]
+pub struct OptimisationFuelExhausted {
+    pub msg: String,
+}

@@ -4,7 +4,7 @@ use crate::errors::{
     ArgumentNotAttributes, AttrNoArguments, AttributeMetaItem, AttributeSingleWord,
     AttributesWrongForm, CannotBeNameOfMacro, ExpectedCommaInList, HelperAttributeNameInvalid,
     MacroBodyStability, MacroConstStability, NotAMetaItem, OnlyOneArgument, OnlyOneWord,
-    ResolveRelativePath, TakesNoArguments,
+    ResolveRelativePath, TakesNoArguments, TraceMacro,
 };
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
@@ -1142,8 +1142,8 @@ impl<'a> ExtCtxt<'a> {
         self.sess.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
     pub fn trace_macros_diag(&mut self) {
-        for (sp, notes) in self.expansions.iter() {
-            let mut db = self.sess.parse_sess.span_diagnostic.span_note_diag(*sp, "trace_macro");
+        for (span, notes) in self.expansions.iter() {
+            let mut db = self.sess.parse_sess.create_note(TraceMacro { span: *span });
             for note in notes {
                 db.note(note);
             }

@@ -89,3 +89,5 @@ session_int_literal_too_large = integer literal is too large
 
 session_invalid_int_literal_width = invalid width `{$width}` for integer literal
     .help = valid widths are 8, 16, 32, 64 and 128
+
+session_optimization_fuel_exhausted = optimization-fuel-exhausted: {$msg}
