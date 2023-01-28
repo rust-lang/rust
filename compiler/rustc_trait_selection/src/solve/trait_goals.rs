@@ -65,7 +65,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx> {
-        if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred() {
+        if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
+            && poly_trait_pred.def_id() == goal.predicate.def_id()
+        {
             // FIXME: Constness and polarity
             ecx.infcx.probe(|_| {
                 let assumption_trait_pred =

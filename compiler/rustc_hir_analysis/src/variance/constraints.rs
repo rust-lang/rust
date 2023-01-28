@@ -225,8 +225,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Ref(region, ty, mutbl) => {
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(current, region, contra);
+                self.add_constraints_from_region(current, region, variance);
                 self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
@@ -258,9 +257,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Dynamic(data, r, _) => {
-                // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(current, r, contra);
+                // The type `dyn Trait<T> +'a` is covariant w/r/t `'a`:
+                self.add_constraints_from_region(current, r, variance);
 
                 if let Some(poly_trait_ref) = data.principal() {
                     self.add_constraints_from_invariant_substs(

@@ -663,13 +663,13 @@ where
         debug!(?v_b);
 
         if self.ambient_covariance() {
-            // Covariance: a <= b. Hence, `b: a`.
-            self.push_outlives(v_b, v_a, self.ambient_variance_info);
+            // Covariant: &'a u8 <: &'b u8. Hence, `'a: 'b`.
+            self.push_outlives(v_a, v_b, self.ambient_variance_info);
         }
 
         if self.ambient_contravariance() {
-            // Contravariant: b <= a. Hence, `a: b`.
-            self.push_outlives(v_a, v_b, self.ambient_variance_info);
+            // Contravariant: &'b u8 <: &'a u8. Hence, `'b: 'a`.
+            self.push_outlives(v_b, v_a, self.ambient_variance_info);
         }
 
         Ok(a)

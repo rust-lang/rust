@@ -443,12 +443,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             if a_repr == b_repr =>
         {
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
-                relation.relate_with_variance(
-                    ty::Contravariant,
-                    ty::VarianceDiagInfo::default(),
-                    a_region,
-                    b_region,
-                )
+                relation.relate(a_region, b_region)
             })?;
             Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
@@ -497,12 +492,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         }
 
         (&ty::Ref(a_r, a_ty, a_mutbl), &ty::Ref(b_r, b_ty, b_mutbl)) => {
-            let r = relation.relate_with_variance(
-                ty::Contravariant,
-                ty::VarianceDiagInfo::default(),
-                a_r,
-                b_r,
-            )?;
+            let r = relation.relate(a_r, b_r)?;
             let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
             let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
             let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;

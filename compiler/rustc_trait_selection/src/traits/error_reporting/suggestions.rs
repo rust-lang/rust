@@ -3807,13 +3807,13 @@ fn hint_missing_borrow<'tcx>(
     err: &mut Diagnostic,
 ) {
     let found_args = match found.kind() {
-        ty::FnPtr(f) => f.inputs().skip_binder().iter(),
+        ty::FnPtr(f) => infcx.replace_bound_vars_with_placeholders(*f).inputs().iter(),
         kind => {
             span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
         }
     };
     let expected_args = match expected.kind() {
-        ty::FnPtr(f) => f.inputs().skip_binder().iter(),
+        ty::FnPtr(f) => infcx.replace_bound_vars_with_placeholders(*f).inputs().iter(),
         kind => {
             span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
         }
@@ -3824,12 +3824,12 @@ fn hint_missing_borrow<'tcx>(
 
     let args = fn_decl.inputs.iter().map(|ty| ty);
 
-    fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
-        let mut refs = 0;
+    fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, Vec<hir::Mutability>) {
+        let mut refs = vec![];
 
-        while let ty::Ref(_, new_ty, _) = ty.kind() {
+        while let ty::Ref(_, new_ty, mutbl) = ty.kind() {
             ty = *new_ty;
-            refs += 1;
+            refs.push(*mutbl);
         }
 
         (ty, refs)
@@ -3843,11 +3843,21 @@ fn hint_missing_borrow<'tcx>(
         let (expected_ty, expected_refs) = get_deref_type_and_refs(*expected_arg);
 
         if infcx.can_eq(param_env, found_ty, expected_ty).is_ok() {
-            if found_refs < expected_refs {
-                to_borrow.push((arg.span.shrink_to_lo(), "&".repeat(expected_refs - found_refs)));
-            } else if found_refs > expected_refs {
+            // FIXME: This could handle more exotic cases like mutability mismatches too!
+            if found_refs.len() < expected_refs.len()
+                && found_refs[..] == expected_refs[expected_refs.len() - found_refs.len()..]
+            {
+                to_borrow.push((
+                    arg.span.shrink_to_lo(),
+                    expected_refs[..expected_refs.len() - found_refs.len()]
+                        .iter()
+                        .map(|mutbl| format!("&{}", mutbl.prefix_str()))
+                        .collect::<Vec<_>>()
+                        .join(""),
+                ));
+            } else if found_refs.len() > expected_refs.len() {
                 let mut span = arg.span.shrink_to_lo();
-                let mut left = found_refs - expected_refs;
+                let mut left = found_refs.len() - expected_refs.len();
                 let mut ty = arg;
                 while let hir::TyKind::Ref(_, mut_ty) = &ty.kind && left > 0 {
                     span = span.with_hi(mut_ty.ty.span.lo());
