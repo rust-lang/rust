@@ -27,7 +27,7 @@ use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
@@ -37,7 +37,7 @@ use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECT
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
@@ -54,7 +54,7 @@ use std::slice;
 pub struct PathSeg(pub DefId, pub usize);
 
 pub trait AstConv<'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
+    fn tcx(&self) -> TyCtxt<'tcx>;
 
     fn item_def_id(&self) -> DefId;
 
@@ -131,6 +131,8 @@ pub trait AstConv<'tcx> {
     {
         self
     }
+
+    fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
 }
 
 #[derive(Debug)]
@@ -2132,48 +2134,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     )
                     .emit() // Already reported in an earlier stage.
                 } else {
-                    // Find all the `impl`s that `qself_ty` has for any trait that has the
-                    // associated type, so that we suggest the right one.
-                    let infcx = tcx.infer_ctxt().build();
-                    // We create a fresh `ty::ParamEnv` instead of the one for `self.item_def_id()`
-                    // to avoid a cycle error in `src/test/ui/resolve/issue-102946.rs`.
-                    let param_env = ty::ParamEnv::empty();
-                    let traits: Vec<_> = self
-                        .tcx()
-                        .all_traits()
-                        .filter(|trait_def_id| {
-                            // Consider only traits with the associated type
-                            tcx.associated_items(*trait_def_id)
-                                .in_definition_order()
-                                .any(|i| {
-                                    i.kind.namespace() == Namespace::TypeNS
-                                        && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
-                                        && matches!(i.kind, ty::AssocKind::Type)
-                                })
-                            // Consider only accessible traits
-                            && tcx.visibility(*trait_def_id)
-                                .is_accessible_from(self.item_def_id(), tcx)
-                            && tcx.all_impls(*trait_def_id)
-                                .any(|impl_def_id| {
-                                    let trait_ref = tcx.impl_trait_ref(impl_def_id);
-                                    trait_ref.map_or(false, |trait_ref| {
-                                        let impl_ = trait_ref.subst(
-                                            tcx,
-                                            infcx.fresh_substs_for_item(span, impl_def_id),
-                                        );
-                                        infcx
-                                            .can_eq(
-                                                param_env,
-                                                tcx.erase_regions(impl_.self_ty()),
-                                                tcx.erase_regions(qself_ty),
-                                            )
-                                            .is_ok()
-                                    })
-                                    && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
-                                })
-                        })
-                        .map(|trait_def_id| tcx.def_path_str(trait_def_id))
-                        .collect();
+                    let traits: Vec<_> =
+                        self.probe_traits_that_match_assoc_ty(qself_ty, assoc_ident);
 
                     // Don't print `TyErr` to the user.
                     self.report_ambiguous_associated_type(
@@ -2230,6 +2192,60 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             );
         }
         Ok((ty, DefKind::AssocTy, assoc_ty_did))
+    }
+
+    fn probe_traits_that_match_assoc_ty(
+        &self,
+        qself_ty: Ty<'tcx>,
+        assoc_ident: Ident,
+    ) -> Vec<String> {
+        let tcx = self.tcx();
+
+        // In contexts that have no inference context, just make a new one.
+        // We do need a local variable to store it, though.
+        let infcx_;
+        let infcx = if let Some(infcx) = self.infcx() {
+            infcx
+        } else {
+            assert!(!qself_ty.needs_infer());
+            infcx_ = tcx.infer_ctxt().build();
+            &infcx_
+        };
+
+        tcx.all_traits()
+            .filter(|trait_def_id| {
+                // Consider only traits with the associated type
+                tcx.associated_items(*trait_def_id)
+                        .in_definition_order()
+                        .any(|i| {
+                            i.kind.namespace() == Namespace::TypeNS
+                                && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
+                                && matches!(i.kind, ty::AssocKind::Type)
+                        })
+                    // Consider only accessible traits
+                    && tcx.visibility(*trait_def_id)
+                        .is_accessible_from(self.item_def_id(), tcx)
+                    && tcx.all_impls(*trait_def_id)
+                        .any(|impl_def_id| {
+                            let trait_ref = tcx.impl_trait_ref(impl_def_id);
+                            trait_ref.map_or(false, |trait_ref| {
+                                let impl_ = trait_ref.subst(
+                                    tcx,
+                                    infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id),
+                                );
+                                infcx
+                                    .can_eq(
+                                        ty::ParamEnv::empty(),
+                                        tcx.erase_regions(impl_.self_ty()),
+                                        tcx.erase_regions(qself_ty),
+                                    )
+                                    .is_ok()
+                            })
+                            && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
+                        })
+            })
+            .map(|trait_def_id| tcx.def_path_str(trait_def_id))
+            .collect()
     }
 
     fn lookup_assoc_ty(
