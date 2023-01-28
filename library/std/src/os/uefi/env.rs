@@ -1,5 +1,7 @@
 //! UEFI-specific extensions to the primitives in `std::env` module
 
+#![unstable(feature = "uefi_std", issue = "100499")]
+
 use crate::ffi::c_void;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
@@ -22,21 +24,18 @@ static GLOBALS: OnceLock<(AtomicPtr<c_void>, AtomicPtr<c_void>)> = OnceLock::new
 /// standard library is loaded.
 ///
 /// This function must not be called more than once.
-#[unstable(feature = "uefi_std", issue = "100499")]
 pub unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull<c_void>) {
     GLOBALS.set((AtomicPtr::new(system_table.as_ptr()), AtomicPtr::new(handle.as_ptr()))).unwrap()
 }
 
 /// Get the SystemTable Pointer.
-/// Note: This function panics if the System Table and Image Handle is Not initialized
-#[unstable(feature = "uefi_std", issue = "100499")]
+/// Note: This function panics if the System Table or Image Handle is not initialized
 pub fn system_table() -> NonNull<c_void> {
     try_system_table().unwrap()
 }
 
-/// Get the SystemHandle Pointer.
-/// Note: This function panics if the System Table and Image Handle is Not initialized
-#[unstable(feature = "uefi_std", issue = "100499")]
+/// Get the ImageHandle Pointer.
+/// Note: This function panics if the System Table or Image Handle is not initialized
 pub fn image_handle() -> NonNull<c_void> {
     try_image_handle().unwrap()
 }

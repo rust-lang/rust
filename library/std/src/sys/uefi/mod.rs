@@ -47,7 +47,7 @@ pub mod thread_local_key;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 
-pub(crate) mod common;
+pub(crate) mod helpers;
 
 #[cfg(test)]
 mod tests;
@@ -60,18 +60,20 @@ pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
 }
 
-// SAFETY: must be called only once during runtime initialization.
-// SAFETY: argc must be 2.
-// SAFETY: argv must be &[Handle, *mut SystemTable].
-pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
+/// # SAFETY
+/// - must be called only once during runtime initialization.
+/// - argc must be 2.
+/// - argv must be &[Handle, *mut SystemTable].
+pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     assert_eq!(argc, 2);
     let image_handle = unsafe { NonNull::new(*argv as *mut crate::ffi::c_void).unwrap() };
     let system_table = unsafe { NonNull::new(*argv.add(1) as *mut crate::ffi::c_void).unwrap() };
     unsafe { crate::os::uefi::env::init_globals(image_handle, system_table) };
 }
 
-// SAFETY: must be called only once during runtime cleanup.
-// NOTE: this is not guaranteed to run, for example when the program aborts.
+/// # SAFETY
+/// this is not guaranteed to run, for example when the program aborts.
+/// - must be called only once during runtime cleanup.
 pub unsafe fn cleanup() {}
 
 #[inline]
@@ -89,7 +91,7 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
     use r_efi::efi::Status;
 
     if let Ok(code) = usize::try_from(code) {
-        common::status_to_io_error(Status::from_usize(code)).kind()
+        helpers::status_to_io_error(Status::from_usize(code)).kind()
     } else {
         ErrorKind::Uncategorized
     }
@@ -97,7 +99,7 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
 
 pub fn abort_internal() -> ! {
     if let (Some(boot_services), Some(handle)) =
-        (common::try_boot_services(), uefi::env::try_image_handle())
+        (helpers::try_boot_services(), uefi::env::try_image_handle())
     {
         let _ = unsafe {
             ((*boot_services.as_ptr()).exit)(
@@ -130,9 +132,9 @@ fn get_random() -> Option<(u64, u64)> {
     use r_efi::protocols::rng;
 
     let mut buf = [0u8; 16];
-    let handles = common::locate_handles(rng::PROTOCOL_GUID).ok()?;
+    let handles = helpers::locate_handles(rng::PROTOCOL_GUID).ok()?;
     for handle in handles {
-        if let Ok(protocol) = common::open_protocol::<rng::Protocol>(handle, rng::PROTOCOL_GUID) {
+        if let Ok(protocol) = helpers::open_protocol::<rng::Protocol>(handle, rng::PROTOCOL_GUID) {
             let r = unsafe {
                 ((*protocol.as_ptr()).get_rng)(
                     protocol.as_ptr(),

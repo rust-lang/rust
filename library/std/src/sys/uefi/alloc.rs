@@ -13,11 +13,8 @@ unsafe impl GlobalAlloc for System {
             Some(x) => x.as_ptr() as *mut _,
         };
 
-        if layout.size() > 0 {
-            unsafe { r_efi_alloc::raw::alloc(system_table, layout, MEMORY_TYPE) }
-        } else {
-            layout.dangling().as_ptr()
-        }
+        // The caller must ensure non-0 layout
+        unsafe { r_efi_alloc::raw::alloc(system_table, layout, MEMORY_TYPE) }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -25,8 +22,7 @@ unsafe impl GlobalAlloc for System {
             None => handle_alloc_error(layout),
             Some(x) => x.as_ptr() as *mut _,
         };
-        if layout.size() > 0 {
-            unsafe { r_efi_alloc::raw::dealloc(system_table, ptr, layout) }
-        }
+        // The caller must ensure non-0 layout
+        unsafe { r_efi_alloc::raw::dealloc(system_table, ptr, layout) }
     }
 }

@@ -1,16 +1,25 @@
 //! Contains most of the shared UEFI specific stuff. Some of this might be moved to `std::os::uefi`
 //! if needed but no point in adding extra public API when there is not Std support for UEFI in the
 //! first place
+//!
+//! Some Nomenclature
+//! * Protocol:
+//! - Protocols serve to enable communication between separately built modules, including drivers.
+//! - Every protocol has a GUID associated with it. The GUID serves as the name for the protocol.
+//! - Protocols are produced and consumed.
+//! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
 use r_efi::efi::Guid;
 
 use crate::io::{self, const_io_error};
-use crate::mem::MaybeUninit;
+use crate::mem::{size_of, MaybeUninit};
 use crate::os::uefi;
 use crate::ptr::NonNull;
 
-// Locate handles with a particular protocol GUID
+/// Locate Handles with a particular Protocol GUID
 /// Implemented using `EFI_BOOT_SERVICES.LocateHandles()`
+///
+/// Returns an array of [Handles](r_efi::efi::Handle) that support a specified protocol.
 pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ffi::c_void>>> {
     fn inner(
         guid: &mut Guid,
@@ -34,6 +43,8 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
     let boot_services = boot_services();
     let mut buf_len = 0usize;
 
+    // This should always fail since the size of buffer is 0. This call should update the buf_len
+    // variable with the required buffer length
     match inner(&mut guid, boot_services, &mut buf_len, crate::ptr::null_mut()) {
         Ok(()) => unreachable!(),
         Err(e) => match e.kind() {
@@ -44,21 +55,23 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
 
     // The returned buf_len is in bytes
     let mut buf: Vec<r_efi::efi::Handle> =
-        Vec::with_capacity(buf_len / crate::mem::size_of::<r_efi::efi::Handle>());
+        Vec::with_capacity(buf_len / size_of::<r_efi::efi::Handle>());
     match inner(&mut guid, boot_services, &mut buf_len, buf.as_mut_ptr()) {
         Ok(()) => {
-            // SAFETY: This is safe because the call will succeed only if buf_len >= required
-            // length. Also, on success, the `buf_len` is updated with the size of bufferv (in
-            // bytes) written
-            unsafe { buf.set_len(buf_len / crate::mem::size_of::<r_efi::efi::Handle>()) };
-            Ok(buf.iter().filter_map(|x| NonNull::new(*x)).collect())
+            // This is safe because the call will succeed only if buf_len >= required length.
+            // Also, on success, the `buf_len` is updated with the size of bufferv (in bytes) written
+            unsafe { buf.set_len(buf_len / size_of::<r_efi::efi::Handle>()) };
+            Ok(buf.into_iter().filter_map(|x| NonNull::new(x)).collect())
         }
         Err(e) => Err(e),
     }
 }
 
-/// Open Protocol on a handle
-/// Implemented using `EFI_BOOT_SERVICES.OpenProtocol()`
+/// Open Protocol on a handle.
+/// Internally just a call to `EFI_BOOT_SERVICES.OpenProtocol()`.
+///
+/// Queries a handle to determine if it supports a specified protocol. If the protocol is
+/// supported by the handle, it opens the protocol on behalf of the calling agent.
 pub(crate) fn open_protocol<T>(
     handle: NonNull<crate::ffi::c_void>,
     mut protocol_guid: Guid,
@@ -256,9 +269,7 @@ pub(crate) fn status_to_io_error(s: r_efi::efi::Status) -> io::Error {
 
 /// Get the BootServices Pointer.
 pub(crate) fn boot_services() -> NonNull<r_efi::efi::BootServices> {
-    let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table().cast();
-    let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
-    NonNull::new(boot_services).unwrap()
+    try_boot_services().unwrap()
 }
 /// Get the BootServices Pointer.
 /// This function is mostly intended for places where panic is not an option

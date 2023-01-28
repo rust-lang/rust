@@ -19,7 +19,7 @@ Available targets:
 ## Requirements
 
 All UEFI targets can be used as `no-std` environments via cross-compilation.
-Support for `std` is present, but incomplete and extreamly new. `alloc` is supported if
+Support for `std` is present, but incomplete and extremely new. `alloc` is supported if
 an allocator is provided by the user or if using std. No host tools are supported.
 
 The UEFI environment resembles the environment for Microsoft Windows, with some
@@ -238,22 +238,22 @@ This section contains information on how to use std on UEFI.
 The building std part is pretty much the same as the official [docs](https://rustc-dev-guide.rust-lang.org/getting-started.html).
 The linker that should be used is `rust-lld`. Here is a sample `config.toml`:
 ```toml
-[llvm]
-download-ci-llvm = false
 [rust]
 lld = true
-[target.x86_64-unknown-uefi]
-linker = "rust-lld"
 ```
 Then just build using `x.py`:
 ```sh
-./x.py build --target x86_64-unknown-uefi
+./x.py build --target x86_64-unknown-uefi --stage 1
+```
+Alternatively, it is possible to use the `build-std` feature. However, you must use a toolchain which has the UEFI std patches.
+Then just build the project using the following command:
+```sh
+cargo build --target x86_64-unknown-uefi -Zbuild-std=std,panic_abort
 ```
 
 ### Std Requirements
 The current std has a few basic requirements to function:
-1. Memory Allocation Services (`EFI_BOOT_SERVICES.AllocatePool()` and
-   `EFI_BOOT_SERVICES.FreePool()`) are available.
+1. Memory Allocation Services (`EFI_BOOT_SERVICES.AllocatePool()` and `EFI_BOOT_SERVICES.FreePool()`) are available. This should be true in  in the Driver Execution Environment or later.
 If the above requirement is satisfied, the Rust code will reach `main`.
 Now we will discuss what the different modules of std use in UEFI.
 
@@ -261,21 +261,19 @@ Now we will discuss what the different modules of std use in UEFI.
 #### alloc
 - Implemented using `EFI_BOOT_SERVICES.AllocatePool()` and `EFI_BOOT_SERVICES.FreePool()`.
 - Passes all the tests.
-- Some Quirks:
-  - Currently uses `EfiLoaderData` as the `EFI_ALLOCATE_POOL->PoolType`.
+- Currently uses `EfiLoaderData` as the `EFI_ALLOCATE_POOL->PoolType`.
 #### cmath
 - Provided by compiler-builtins.
 #### env
-- Just some global consants.
+- Just some global constants.
 #### locks
-- Uses `unsupported/locks`.
-- They should work for a platform without threads according to docs.
+- The provided locks should work on all standard single-threaded UEFI implementations.
 #### os_str
-- Uses WTF-8 from windows.
+- While the strings in UEFI should be valid UCS-2, in practice, many implementations just do not care and use UTF-16 strings.
+- Thus, the current implementation supports full UTF-16 strings.
 
 ## Example: Hello World With std
-The following code is a valid UEFI application showing stdio in UEFI. It also
-uses `alloc` type `OsString` and `Vec`.
+The following code features a valid UEFI application, including stdio and `alloc` (`OsString` and `Vec`):
 
 This example can be compiled as binary crate via `cargo` using the toolchain
 compiled from the above source (named custom):
@@ -286,15 +284,21 @@ cargo +custom build --target x86_64-unknown-uefi
 
 ```rust,ignore (platform-specific)
 use r_efi::efi;
-use std::os::uefi::ffi::OsStrExt;
-use std::{ffi::OsString, panic};
+use std::{
+  ffi::OsString,
+  os::uefi::{env, ffi::OsStrExt}
+};
 
 pub fn main() {
-  let st = std::os::uefi::env::system_table().as_ptr() as *mut efi::SystemTable;
+  let st = env::system_table().as_ptr() as *mut efi::SystemTable;
   let mut s: Vec<u16> = OsString::from("Hello World!\n").encode_wide().collect();
   s.push(0);
   let r =
-      unsafe { ((*(*st).con_out).output_string)((*st).con_out, s.as_ptr() as *mut efi::Char16) };
+      unsafe {
+        let con_out: *mut simple_text_output::Protocol = (*st).con_out;
+        let output_string: extern "efiapi" fn(_: *mut simple_text_output::Protocol, *mut u16) = (*con_out).output_string;
+        output_string(con_out, s.as_ptr() as *mut efi::Char16)
+      };
   assert!(!r.is_error())
 }
 ```
