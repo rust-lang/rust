@@ -31,7 +31,6 @@ pub use generics::*;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -452,18 +451,6 @@ pub struct CReaderCacheKey {
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
-
-impl<'tcx> TyCtxt<'tcx> {
-    /// A "bool" type used in rustc_mir_transform unit tests when we
-    /// have not spun up a TyCtxt.
-    pub const BOOL_TY_FOR_UNIT_TESTING: Ty<'tcx> =
-        Ty(Interned::new_unchecked(&WithCachedTypeInfo {
-            internee: ty::Bool,
-            stable_hash: Fingerprint::ZERO,
-            flags: TypeFlags::empty(),
-            outer_exclusive_binder: DebruijnIndex::from_usize(0),
-        }));
-}
 
 impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
