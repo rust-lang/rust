@@ -82,7 +82,7 @@ mod tests;
 
 use core::any::Any;
 use event::{CompletedTest, TestEvent};
-use helpers::concurrency::get_concurrency;
+use helpers::concurrency::{get_concurrency, supports_threads};
 use helpers::exit_code::get_exit_code;
 use helpers::shuffle::{get_shuffle_seed, shuffle_tests};
 use options::RunStrategy;
@@ -592,8 +592,7 @@ pub fn run_test(
         // If the platform is single-threaded we're just going to run
         // the test synchronously, regardless of the concurrency
         // level.
-        let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
-        if supports_threads {
+        if supports_threads() {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
             let mut runtest = Arc::new(Mutex::new(Some(runtest)));
             let runtest2 = runtest.clone();
