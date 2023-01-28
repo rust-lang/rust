@@ -1530,7 +1530,7 @@ impl<T: ?Sized> Clone for Arc<T> {
     fn clone_from(&mut self, source: &Self) {
         // If `self` and `source` share the same resource, nothing else needs
         // to happen
-        if self.ptr != other.ptr {
+        if self.ptr != source.ptr {
             *self = source.clone()
         }
     }
