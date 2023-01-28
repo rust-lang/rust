@@ -1872,12 +1872,14 @@ fn check_must_not_suspend_def(
     data: SuspendCheckData<'_>,
 ) -> bool {
     if let Some(attr) = tcx.get_attr(def_id, sym::must_not_suspend) {
-        let msg = format!(
-            "{}`{}`{} held across a suspend point, but should not be",
-            data.descr_pre,
-            tcx.def_path_str(def_id),
-            data.descr_post,
-        );
+        let msg = rustc_errors::DelayDm(|| {
+            format!(
+                "{}`{}`{} held across a suspend point, but should not be",
+                data.descr_pre,
+                tcx.def_path_str(def_id),
+                data.descr_post,
+            )
+        });
         tcx.struct_span_lint_hir(
             rustc_session::lint::builtin::MUST_NOT_SUSPEND,
             hir_id,
