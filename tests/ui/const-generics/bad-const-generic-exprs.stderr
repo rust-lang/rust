@@ -42,18 +42,118 @@ help: expressions must be enclosed in braces to be used as const generic argumen
 LL |     let _: Wow<{ A.0 }>;
    |                +     +
 
+error: expected type, found `]`
+  --> $DIR/bad-const-generic-exprs.rs:16:17
+   |
+LL |     let _: Wow<[]>;
+   |                 ^ expected type
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ [] }>;
+   |                +    +
+
 error: expected type, found `12`
   --> $DIR/bad-const-generic-exprs.rs:19:17
    |
 LL |     let _: Wow<[12]>;
    |                 ^^ expected type
 
-error[E0747]: type provided when a constant was expected
+error: invalid const generic expression
   --> $DIR/bad-const-generic-exprs.rs:19:16
    |
 LL |     let _: Wow<[12]>;
    |                ^^^^
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ [12] }>;
+   |                +      +
 
-error: aborting due to 6 previous errors
+error: expected type, found `0`
+  --> $DIR/bad-const-generic-exprs.rs:23:17
+   |
+LL |     let _: Wow<[0, 1, 3]>;
+   |                 ^ expected type
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ [0, 1, 3] }>;
+   |                +           +
 
-For more information about this error, try `rustc --explain E0747`.
+error: expected type, found `0xff`
+  --> $DIR/bad-const-generic-exprs.rs:26:17
+   |
+LL |     let _: Wow<[0xff; 8]>;
+   |                 ^^^^ expected type
+
+error: invalid const generic expression
+  --> $DIR/bad-const-generic-exprs.rs:26:16
+   |
+LL |     let _: Wow<[0xff; 8]>;
+   |                ^^^^^^^^^
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ [0xff; 8] }>;
+   |                +           +
+
+error: expected type, found `1`
+  --> $DIR/bad-const-generic-exprs.rs:30:17
+   |
+LL |     let _: Wow<[1, 2]>; // Regression test for issue #81698.
+   |                 ^ expected type
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ [1, 2] }>; // Regression test for issue #81698.
+   |                +        +
+
+error: expected type, found `0`
+  --> $DIR/bad-const-generic-exprs.rs:33:17
+   |
+LL |     let _: Wow<&0>;
+   |                 ^ expected type
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ &0 }>;
+   |                +    +
+
+error: expected type, found `""`
+  --> $DIR/bad-const-generic-exprs.rs:36:17
+   |
+LL |     let _: Wow<("", 0)>;
+   |                 ^^ expected type
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ ("", 0) }>;
+   |                +         +
+
+error: expected type, found `1`
+  --> $DIR/bad-const-generic-exprs.rs:39:17
+   |
+LL |     let _: Wow<(1 + 2) * 3>;
+   |                 ^ expected type
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ (1 + 2) * 3 }>;
+   |                +             +
+
+error: expected one of `,` or `>`, found `0`
+  --> $DIR/bad-const-generic-exprs.rs:43:17
+   |
+LL |     let _: Wow<!0>;
+   |         -       ^ expected one of `,` or `>`
+   |         |
+   |         while parsing the type for `_`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     let _: Wow<!>0>;
+   |                 +
+
+error: aborting due to 15 previous errors
+
