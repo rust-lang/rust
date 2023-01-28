@@ -79,7 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
             InlineAsmCtxt::new_in_fn(self.tcx, self.param_env, get_operand_ty)
-                .check_asm(asm, self.tcx.hir().local_def_id_to_hir_id(enclosing_id));
+                .check_asm(asm, enclosing_id);
         }
     }
 

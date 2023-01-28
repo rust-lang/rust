@@ -14,6 +14,7 @@ use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -1224,8 +1225,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl<'_>) {
-        let def_id = self.cx.tcx.hir().local_def_id(id);
+    fn check_foreign_fn(&mut self, def_id: LocalDefId, decl: &hir::FnDecl<'_>) {
         let sig = self.cx.tcx.fn_sig(def_id).subst_identity();
         let sig = self.cx.tcx.erase_late_bound_regions(sig);
 
@@ -1239,9 +1239,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_static(&mut self, id: hir::HirId, span: Span) {
-        let def_id = self.cx.tcx.hir().local_def_id(id);
-        let ty = self.cx.tcx.type_of(def_id);
+    fn check_foreign_static(&mut self, id: hir::OwnerId, span: Span) {
+        let ty = self.cx.tcx.type_of(id);
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
 
@@ -1261,10 +1260,10 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
         if !vis.is_internal_abi(abi) {
             match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                    vis.check_foreign_fn(it.hir_id(), decl);
+                    vis.check_foreign_fn(it.owner_id.def_id, decl);
                 }
                 hir::ForeignItemKind::Static(ref ty, _) => {
-                    vis.check_foreign_static(it.hir_id(), ty.span);
+                    vis.check_foreign_static(it.owner_id, ty.span);
                 }
                 hir::ForeignItemKind::Type => (),
             }
@@ -1280,7 +1279,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
         decl: &'tcx hir::FnDecl<'_>,
         _: &'tcx hir::Body<'_>,
         _: Span,
-        hir_id: hir::HirId,
+        id: LocalDefId,
     ) {
         use hir::intravisit::FnKind;
 
@@ -1292,7 +1291,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
 
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
         if !vis.is_internal_abi(abi) {
-            vis.check_foreign_fn(hir_id, decl);
+            vis.check_foreign_fn(id, decl);
         }
     }
 }

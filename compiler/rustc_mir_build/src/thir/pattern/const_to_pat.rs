@@ -5,7 +5,6 @@ use rustc_middle::mir::{self, Field};
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint;
-use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::Span;
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -190,11 +189,10 @@ impl<'tcx> ConstToPat<'tcx> {
         // using `PartialEq::eq` in this scenario in the past.)
         let partial_eq_trait_id =
             self.tcx().require_lang_item(hir::LangItem::PartialEq, Some(self.span));
-        let def_id = self.tcx().hir().opt_local_def_id(self.id).unwrap_or(CRATE_DEF_ID);
         let obligation: PredicateObligation<'_> = predicate_for_trait_def(
             self.tcx(),
             self.param_env,
-            ObligationCause::misc(self.span, def_id),
+            ObligationCause::misc(self.span, self.id.owner.def_id),
             partial_eq_trait_id,
             0,
             [ty, ty],

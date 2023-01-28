@@ -383,13 +383,10 @@ fn clean_middle_term<'tcx>(
 fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Term {
     match term {
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
-        hir::Term::Const(c) => {
-            let def_id = cx.tcx.hir().local_def_id(c.hir_id);
-            Term::Constant(clean_middle_const(
-                ty::Binder::dummy(ty::Const::from_anon_const(cx.tcx, def_id)),
-                cx,
-            ))
-        }
+        hir::Term::Const(c) => Term::Constant(clean_middle_const(
+            ty::Binder::dummy(ty::Const::from_anon_const(cx.tcx, c.def_id)),
+            cx,
+        )),
     }
 }
 
@@ -524,12 +521,11 @@ fn clean_generic_param<'tcx>(
     generics: Option<&hir::Generics<'tcx>>,
     param: &hir::GenericParam<'tcx>,
 ) -> GenericParamDef {
-    let did = cx.tcx.hir().local_def_id(param.hir_id);
     let (name, kind) = match param.kind {
         hir::GenericParamKind::Lifetime { .. } => {
             let outlives = if let Some(generics) = generics {
                 generics
-                    .outlives_for_param(did)
+                    .outlives_for_param(param.def_id)
                     .filter(|bp| !bp.in_where_clause)
                     .flat_map(|bp| bp.bounds)
                     .map(|bound| match bound {
@@ -545,7 +541,7 @@ fn clean_generic_param<'tcx>(
         hir::GenericParamKind::Type { ref default, synthetic } => {
             let bounds = if let Some(generics) = generics {
                 generics
-                    .bounds_for_param(did)
+                    .bounds_for_param(param.def_id)
                     .filter(|bp| bp.origin != PredicateOrigin::WhereClause)
                     .flat_map(|bp| bp.bounds)
                     .filter_map(|x| clean_generic_bound(x, cx))
@@ -556,7 +552,7 @@ fn clean_generic_param<'tcx>(
             (
                 param.name.ident().name,
                 GenericParamDefKind::Type {
-                    did: did.to_def_id(),
+                    did: param.def_id.to_def_id(),
                     bounds,
                     default: default.map(|t| clean_ty(t, cx)).map(Box::new),
                     synthetic,
@@ -566,12 +562,10 @@ fn clean_generic_param<'tcx>(
         hir::GenericParamKind::Const { ty, default } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
-                did: did.to_def_id(),
+                did: param.def_id.to_def_id(),
                 ty: Box::new(clean_ty(ty, cx)),
-                default: default.map(|ct| {
-                    let def_id = cx.tcx.hir().local_def_id(ct.hir_id);
-                    Box::new(ty::Const::from_anon_const(cx.tcx, def_id).to_string())
-                }),
+                default: default
+                    .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
             },
         ),
     };
@@ -1548,18 +1542,16 @@ fn maybe_expand_private_type_alias<'tcx>(
                     _ => None,
                 });
                 if let Some(lt) = lifetime {
-                    let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
                     let cleaned = if !lt.is_anonymous() {
                         clean_lifetime(lt, cx)
                     } else {
                         Lifetime::elided()
                     };
-                    substs.insert(lt_def_id.to_def_id(), SubstParam::Lifetime(cleaned));
+                    substs.insert(param.def_id.to_def_id(), SubstParam::Lifetime(cleaned));
                 }
                 indices.lifetimes += 1;
             }
             hir::GenericParamKind::Type { ref default, .. } => {
-                let ty_param_def_id = cx.tcx.hir().local_def_id(param.hir_id);
                 let mut j = 0;
                 let type_ = generic_args.args.iter().find_map(|arg| match arg {
                     hir::GenericArg::Type(ty) => {
@@ -1572,17 +1564,14 @@ fn maybe_expand_private_type_alias<'tcx>(
                     _ => None,
                 });
                 if let Some(ty) = type_ {
-                    substs.insert(ty_param_def_id.to_def_id(), SubstParam::Type(clean_ty(ty, cx)));
+                    substs.insert(param.def_id.to_def_id(), SubstParam::Type(clean_ty(ty, cx)));
                 } else if let Some(default) = *default {
-                    substs.insert(
-                        ty_param_def_id.to_def_id(),
-                        SubstParam::Type(clean_ty(default, cx)),
-                    );
+                    substs
+                        .insert(param.def_id.to_def_id(), SubstParam::Type(clean_ty(default, cx)));
                 }
                 indices.types += 1;
             }
             hir::GenericParamKind::Const { .. } => {
-                let const_param_def_id = cx.tcx.hir().local_def_id(param.hir_id);
                 let mut j = 0;
                 let const_ = generic_args.args.iter().find_map(|arg| match arg {
                     hir::GenericArg::Const(ct) => {
@@ -1596,7 +1585,7 @@ fn maybe_expand_private_type_alias<'tcx>(
                 });
                 if let Some(ct) = const_ {
                     substs.insert(
-                        const_param_def_id.to_def_id(),
+                        param.def_id.to_def_id(),
                         SubstParam::Constant(clean_const(ct, cx)),
                     );
                 }
@@ -1624,7 +1613,6 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             let length = match length {
                 hir::ArrayLen::Infer(_, _) => "_".to_string(),
                 hir::ArrayLen::Body(anon_const) => {
-                    let def_id = cx.tcx.hir().local_def_id(anon_const.hir_id);
                     // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
                     // as we currently do not supply the parent generics to anonymous constants
                     // but do allow `ConstKind::Param`.
@@ -1632,8 +1620,8 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     // `const_eval_poly` tries to first substitute generic parameters which
                     // results in an ICE while manually constructing the constant and using `eval`
                     // does nothing for `ConstKind::Param`.
-                    let ct = ty::Const::from_anon_const(cx.tcx, def_id);
-                    let param_env = cx.tcx.param_env(def_id);
+                    let ct = ty::Const::from_anon_const(cx.tcx, anon_const.def_id);
+                    let param_env = cx.tcx.param_env(anon_const.def_id);
                     print_const(cx, ct.eval(cx.tcx, param_env))
                 }
             };
@@ -1930,8 +1918,7 @@ fn clean_middle_opaque_bounds<'tcx>(
 }
 
 pub(crate) fn clean_field<'tcx>(field: &hir::FieldDef<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
-    let def_id = cx.tcx.hir().local_def_id(field.hir_id).to_def_id();
-    clean_field_with_def_id(def_id, field.ident.name, clean_ty(field.ty, cx), cx)
+    clean_field_with_def_id(field.def_id.to_def_id(), field.ident.name, clean_ty(field.ty, cx), cx)
 }
 
 pub(crate) fn clean_middle_field<'tcx>(field: &ty::FieldDef, cx: &mut DocContext<'tcx>) -> Item {
@@ -1981,10 +1968,8 @@ fn clean_variant_data<'tcx>(
     disr_expr: &Option<hir::AnonConst>,
     cx: &mut DocContext<'tcx>,
 ) -> Variant {
-    let discriminant = disr_expr.map(|disr| Discriminant {
-        expr: Some(disr.body),
-        value: cx.tcx.hir().local_def_id(disr.hir_id).to_def_id(),
-    });
+    let discriminant = disr_expr
+        .map(|disr| Discriminant { expr: Some(disr.body), value: disr.def_id.to_def_id() });
 
     let kind = match variant {
         hir::VariantData::Struct(..) => VariantKind::Struct(VariantStruct {

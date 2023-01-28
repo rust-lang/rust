@@ -40,8 +40,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         body: &'tcx hir::Body<'tcx>,
     ) -> &'tcx ty::TypeckResults<'tcx> {
-        let item_id = self.tcx.hir().body_owner(body.id());
-        let item_def_id = self.tcx.hir().local_def_id(item_id);
+        let item_def_id = self.tcx.hir().body_owner_def_id(body.id());
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is used for unit tests.
@@ -55,7 +54,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_def_id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
-                wbcx.visit_node_id(body.value.span, item_id);
+                let item_hir_id = self.tcx.hir().local_def_id_to_hir_id(item_def_id);
+                wbcx.visit_node_id(body.value.span, item_hir_id);
             }
             hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
         }

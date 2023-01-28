@@ -451,29 +451,23 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         // referenced by it should be considered as used.
         let in_pat = mem::replace(&mut self.in_pat, false);
 
-        self.live_symbols.insert(self.tcx.hir().local_def_id(c.hir_id));
+        self.live_symbols.insert(c.def_id);
         intravisit::walk_anon_const(self, c);
 
         self.in_pat = in_pat;
     }
 }
 
-fn has_allow_dead_code_or_lang_attr_helper(
-    tcx: TyCtxt<'_>,
-    id: hir::HirId,
-    lint: &'static lint::Lint,
-) -> bool {
-    let attrs = tcx.hir().attrs(id);
-    if tcx.sess.contains_name(attrs, sym::lang) {
+fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    if tcx.has_attr(def_id.to_def_id(), sym::lang) {
         return true;
     }
 
     // Stable attribute for #[lang = "panic_impl"]
-    if tcx.sess.contains_name(attrs, sym::panic_handler) {
+    if tcx.has_attr(def_id.to_def_id(), sym::panic_handler) {
         return true;
     }
 
-    let def_id = tcx.hir().local_def_id(id);
     if tcx.def_kind(def_id).has_codegen_attrs() {
         let cg_attrs = tcx.codegen_fn_attrs(def_id);
 
@@ -487,11 +481,8 @@ fn has_allow_dead_code_or_lang_attr_helper(
         }
     }
 
-    tcx.lint_level_at_node(lint, id).0 == lint::Allow
-}
-
-fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
-    has_allow_dead_code_or_lang_attr_helper(tcx, id, lint::builtin::DEAD_CODE)
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0 == lint::Allow
 }
 
 // These check_* functions seeds items that
@@ -513,7 +504,7 @@ fn check_item<'tcx>(
     struct_constructors: &mut FxHashMap<LocalDefId, LocalDefId>,
     id: hir::ItemId,
 ) {
-    let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, id.hir_id());
+    let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, id.owner_id.def_id);
     if allow_dead_code {
         worklist.push(id.owner_id.def_id);
     }
@@ -548,9 +539,7 @@ fn check_item<'tcx>(
 
             // And we access the Map here to get HirId from LocalDefId
             for id in local_def_ids {
-                if of_trait.is_some()
-                    || has_allow_dead_code_or_lang_attr(tcx, tcx.hir().local_def_id_to_hir_id(id))
-                {
+                if of_trait.is_some() || has_allow_dead_code_or_lang_attr(tcx, id) {
                     worklist.push(id);
                 }
             }
@@ -558,9 +547,9 @@ fn check_item<'tcx>(
         DefKind::Struct => {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::Struct(ref variant_data, _) = item.kind
-                && let Some(ctor_hir_id) = variant_data.ctor_hir_id()
+                && let Some(ctor_def_id) = variant_data.ctor_def_id()
             {
-                struct_constructors.insert(tcx.hir().local_def_id(ctor_hir_id), item.owner_id.def_id);
+                struct_constructors.insert(ctor_def_id, item.owner_id.def_id);
             }
         }
         DefKind::GlobalAsm => {
@@ -576,7 +565,7 @@ fn check_trait_item(tcx: TyCtxt<'_>, worklist: &mut Vec<LocalDefId>, id: hir::Tr
     if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
         let trait_item = tcx.hir().trait_item(id);
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
-            && has_allow_dead_code_or_lang_attr(tcx, trait_item.hir_id())
+            && has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
         {
             worklist.push(trait_item.owner_id.def_id);
         }
@@ -585,7 +574,7 @@ fn check_trait_item(tcx: TyCtxt<'_>, worklist: &mut Vec<LocalDefId>, id: hir::Tr
 
 fn check_foreign_item(tcx: TyCtxt<'_>, worklist: &mut Vec<LocalDefId>, id: hir::ForeignItemId) {
     if matches!(tcx.def_kind(id.owner_id), DefKind::Static(_) | DefKind::Fn)
-        && has_allow_dead_code_or_lang_attr(tcx, id.hir_id())
+        && has_allow_dead_code_or_lang_attr(tcx, id.owner_id.def_id)
     {
         worklist.push(id.owner_id.def_id);
     }
@@ -806,8 +795,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         if self.live_symbols.contains(&def_id) {
             return;
         }
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-        if has_allow_dead_code_or_lang_attr(self.tcx, hir_id) {
+        if has_allow_dead_code_or_lang_attr(self.tcx, def_id) {
             return;
         }
         let Some(name) = self.tcx.opt_item_name(def_id.to_def_id()) else {

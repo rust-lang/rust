@@ -56,9 +56,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{
-    Body, FnDecl, ForeignItemKind, GenericParamKind, HirId, Node, PatKind, PredicateOrigin,
-};
+use rustc_hir::{Body, FnDecl, ForeignItemKind, GenericParamKind, Node, PatKind, PredicateOrigin};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -583,12 +581,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
-        if method_context(cx, impl_item.hir_id()) == MethodLateContext::TraitImpl {
+        let context = method_context(cx, impl_item.owner_id.def_id);
+        if context == MethodLateContext::TraitImpl {
             return;
         }
 
         // If the method is an impl for an item with docs_hidden, don't doc.
-        if method_context(cx, impl_item.hir_id()) == MethodLateContext::PlainImpl {
+        if context == MethodLateContext::PlainImpl {
             let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
             let impl_ty = cx.tcx.type_of(parent);
             let outerdef = match impl_ty.kind() {
@@ -1296,19 +1295,18 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         _: &'tcx FnDecl<'_>,
         _: &'tcx Body<'_>,
         span: Span,
-        hir_id: HirId,
+        def_id: LocalDefId,
     ) {
         if fn_kind.asyncness() == IsAsync::Async
             && !cx.tcx.features().closure_track_caller
-            && let attrs = cx.tcx.hir().attrs(hir_id)
             // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr) = attrs.iter().find(|attr| attr.has_name(sym::track_caller))
-            {
-                cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
-                    label: span,
-                    parse_sess: &cx.tcx.sess.parse_sess,
-                });
-            }
+            && let Some(attr) = cx.tcx.get_attr(def_id.to_def_id(), sym::track_caller)
+        {
+            cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
+                label: span,
+                parse_sess: &cx.tcx.sess.parse_sess,
+            });
+        }
     }
 }
 
@@ -2684,7 +2682,7 @@ pub struct ClashingExternDeclarations {
     /// the symbol should be reported as a clashing declaration.
     // FIXME: Technically, we could just store a &'tcx str here without issue; however, the
     // `impl_lint_pass` macro doesn't currently support lints parametric over a lifetime.
-    seen_decls: FxHashMap<Symbol, HirId>,
+    seen_decls: FxHashMap<Symbol, hir::OwnerId>,
 }
 
 /// Differentiate between whether the name for an extern decl came from the link_name attribute or
@@ -2710,19 +2708,20 @@ impl ClashingExternDeclarations {
     pub(crate) fn new() -> Self {
         ClashingExternDeclarations { seen_decls: FxHashMap::default() }
     }
+
     /// Insert a new foreign item into the seen set. If a symbol with the same name already exists
     /// for the item, return its HirId without updating the set.
-    fn insert(&mut self, tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> Option<HirId> {
+    fn insert(&mut self, tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> Option<hir::OwnerId> {
         let did = fi.owner_id.to_def_id();
         let instance = Instance::new(did, ty::List::identity_for_item(tcx, did));
         let name = Symbol::intern(tcx.symbol_name(instance).name);
-        if let Some(&hir_id) = self.seen_decls.get(&name) {
+        if let Some(&existing_id) = self.seen_decls.get(&name) {
             // Avoid updating the map with the new entry when we do find a collision. We want to
             // make sure we're always pointing to the first definition as the previous declaration.
             // This lets us avoid emitting "knock-on" diagnostics.
-            Some(hir_id)
+            Some(existing_id)
         } else {
-            self.seen_decls.insert(name, fi.hir_id())
+            self.seen_decls.insert(name, fi.owner_id)
         }
     }
 
@@ -2949,16 +2948,16 @@ impl ClashingExternDeclarations {
 impl_lint_pass!(ClashingExternDeclarations => [CLASHING_EXTERN_DECLARATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
+    #[instrument(level = "trace", skip(self, cx))]
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, this_fi: &hir::ForeignItem<'_>) {
-        trace!("ClashingExternDeclarations: check_foreign_item: {:?}", this_fi);
         if let ForeignItemKind::Fn(..) = this_fi.kind {
             let tcx = cx.tcx;
-            if let Some(existing_hid) = self.insert(tcx, this_fi) {
-                let existing_decl_ty = tcx.type_of(tcx.hir().local_def_id(existing_hid));
+            if let Some(existing_did) = self.insert(tcx, this_fi) {
+                let existing_decl_ty = tcx.type_of(existing_did);
                 let this_decl_ty = tcx.type_of(this_fi.owner_id);
                 debug!(
                     "ClashingExternDeclarations: Comparing existing {:?}: {:?} to this {:?}: {:?}",
-                    existing_hid, existing_decl_ty, this_fi.owner_id, this_decl_ty
+                    existing_did, existing_decl_ty, this_fi.owner_id, this_decl_ty
                 );
                 // Check that the declarations match.
                 if !Self::structurally_same_type(
@@ -2967,7 +2966,7 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                     this_decl_ty,
                     CItemKind::Declaration,
                 ) {
-                    let orig_fi = tcx.hir().expect_foreign_item(existing_hid.expect_owner());
+                    let orig_fi = tcx.hir().expect_foreign_item(existing_did);
                     let orig = Self::name_of_extern_decl(tcx, orig_fi);
 
                     // We want to ensure that we use spans for both decls that include where the

@@ -829,7 +829,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         fd: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
         _: Span,
-        _: hir::HirId,
+        _: LocalDefId,
     ) {
         let output = match fd.output {
             hir::FnRetTy::DefaultReturn(_) => None,
@@ -1264,14 +1264,21 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             } else if let Some(body_id) = outermost_body {
                 let fn_id = self.tcx.hir().body_owner(body_id);
                 match self.tcx.hir().get(fn_id) {
-                    Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
+                    Node::Item(hir::Item { owner_id, kind: hir::ItemKind::Fn(..), .. })
                     | Node::TraitItem(hir::TraitItem {
-                        kind: hir::TraitItemKind::Fn(..), ..
+                        owner_id,
+                        kind: hir::TraitItemKind::Fn(..),
+                        ..
                     })
-                    | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. })
-                    | Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
-                        let scope = self.tcx.hir().local_def_id(fn_id);
-                        def = Region::Free(scope.to_def_id(), def.id().unwrap());
+                    | Node::ImplItem(hir::ImplItem {
+                        owner_id,
+                        kind: hir::ImplItemKind::Fn(..),
+                        ..
+                    }) => {
+                        def = Region::Free(owner_id.to_def_id(), def.id().unwrap());
+                    }
+                    Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) => {
+                        def = Region::Free(closure.def_id.to_def_id(), def.id().unwrap());
                     }
                     _ => {}
                 }
@@ -1658,10 +1665,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 /// "Constrained" basically means that it appears in any type but
 /// not amongst the inputs to a projection. In other words, `<&'a
 /// T as Trait<''b>>::Foo` does not constrain `'a` or `'b`.
-fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<LocalDefId>> {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let decl = tcx.hir().fn_decl_by_hir_id(hir_id)?;
-    let generics = tcx.hir().get_generics(def_id)?;
+fn is_late_bound_map(
+    tcx: TyCtxt<'_>,
+    owner_id: hir::OwnerId,
+) -> Option<&FxIndexSet<hir::ItemLocalId>> {
+    let decl = tcx.hir().fn_decl_by_hir_id(owner_id.into())?;
+    let generics = tcx.hir().get_generics(owner_id.def_id)?;
 
     let mut late_bound = FxIndexSet::default();
 
@@ -1695,24 +1704,22 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
             hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => continue,
         }
 
-        let param_def_id = tcx.hir().local_def_id(param.hir_id);
-
         // appears in the where clauses? early-bound.
-        if appears_in_where_clause.regions.contains(&param_def_id) {
+        if appears_in_where_clause.regions.contains(&param.def_id) {
             continue;
         }
 
         // does not appear in the inputs, but appears in the return type? early-bound.
-        if !constrained_by_input.regions.contains(&param_def_id)
-            && appears_in_output.regions.contains(&param_def_id)
+        if !constrained_by_input.regions.contains(&param.def_id)
+            && appears_in_output.regions.contains(&param.def_id)
         {
             continue;
         }
 
-        debug!("lifetime {:?} with id {:?} is late-bound", param.name.ident(), param.hir_id);
+        debug!("lifetime {:?} with id {:?} is late-bound", param.name.ident(), param.def_id);
 
-        let inserted = late_bound.insert(param_def_id);
-        assert!(inserted, "visited lifetime {:?} twice", param.hir_id);
+        let inserted = late_bound.insert(param.hir_id.local_id);
+        assert!(inserted, "visited lifetime {:?} twice", param.def_id);
     }
 
     debug!(?late_bound);
