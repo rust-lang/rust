@@ -1083,7 +1083,11 @@ impl<T> clone::Clone for Discriminant<T> {
 }
 
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-impl<T> cmp::PartialEq for Discriminant<T> {
+#[rustc_const_unstable(feature = "const_partial_eq_discriminant", issue = "none")]
+impl<T> const cmp::PartialEq for Discriminant<T>
+where
+    <T as DiscriminantKind>::Discriminant: ~const cmp::PartialEq,
+{
     fn eq(&self, rhs: &Self) -> bool {
         self.0 == rhs.0
     }
