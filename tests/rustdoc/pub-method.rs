@@ -10,8 +10,8 @@ pub fn bar() -> usize {
 }
 
 // @has foo/struct.Foo.html
-// @has - '//*[@class="method has-srclink"]' 'pub fn new()'
-// @has - '//*[@class="method has-srclink"]' 'fn not_pub()'
+// @has - '//*[@class="method"]' 'pub fn new()'
+// @has - '//*[@class="method"]' 'fn not_pub()'
 pub struct Foo(usize);
 
 impl Foo {
