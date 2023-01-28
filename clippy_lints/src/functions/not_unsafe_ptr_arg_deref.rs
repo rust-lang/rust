@@ -17,7 +17,7 @@ pub(super) fn check_fn<'tcx>(
     kind: intravisit::FnKind<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,
     body: &'tcx hir::Body<'tcx>,
-    hir_id: hir::HirId,
+    def_id: LocalDefId,
 ) {
     let unsafety = match kind {
         intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }) => unsafety,
@@ -25,7 +25,7 @@ pub(super) fn check_fn<'tcx>(
         intravisit::FnKind::Closure => return,
     };
 
-    check_raw_ptr(cx, unsafety, decl, body, cx.tcx.hir().local_def_id(hir_id));
+    check_raw_ptr(cx, unsafety, decl, body, def_id)
 }
 
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {

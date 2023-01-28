@@ -3412,7 +3412,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
 
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
-            let ret_ty = return_ty(cx, impl_item.hir_id());
+            let ret_ty = return_ty(cx, impl_item.owner_id);
 
             if contains_ty_adt_constructor_opaque(cx, ret_ty, self_ty) {
                 return;
@@ -3460,7 +3460,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if_chain! {
             if item.ident.name == sym::new;
             if let TraitItemKind::Fn(_, _) = item.kind;
-            let ret_ty = return_ty(cx, item.hir_id());
+            let ret_ty = return_ty(cx, item.owner_id);
             let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id())
                 .self_ty()
                 .skip_binder();

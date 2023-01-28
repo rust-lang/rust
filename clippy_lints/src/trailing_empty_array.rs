@@ -61,8 +61,7 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_
         if let rustc_hir::TyKind::Array(_, rustc_hir::ArrayLen::Body(length)) = last_field.ty.kind;
 
         // Then check if that that array zero-sized
-        let length_ldid = cx.tcx.hir().local_def_id(length.hir_id);
-        let length = Const::from_anon_const(cx.tcx, length_ldid);
+        let length = Const::from_anon_const(cx.tcx, length.def_id);
         let length = length.try_eval_usize(cx.tcx, cx.param_env);
         if let Some(length) = length;
         then {

@@ -5,10 +5,11 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::LangItem::{OptionSome, ResultOk};
-use rustc_hir::{Body, ExprKind, FnDecl, HirId, Impl, ItemKind, Node};
+use rustc_hir::{Body, ExprKind, FnDecl, Impl, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -77,12 +78,11 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         fn_decl: &FnDecl<'tcx>,
         body: &Body<'tcx>,
         span: Span,
-        hir_id: HirId,
+        def_id: LocalDefId,
     ) {
         // Abort if public function/method or closure.
         match fn_kind {
             FnKind::ItemFn(..) | FnKind::Method(..) => {
-                let def_id = cx.tcx.hir().local_def_id(hir_id);
                 if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
                     return;
                 }
@@ -91,6 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         }
 
         // Abort if the method is implementing a trait or of it a trait method.
+        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
         if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
             if matches!(
                 item.kind,
@@ -101,17 +102,18 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         }
 
         // Get the wrapper and inner types, if can't, abort.
-        let (return_type_label, lang_item, inner_type) = if let ty::Adt(adt_def, subst) = return_ty(cx, hir_id).kind() {
-            if cx.tcx.is_diagnostic_item(sym::Option, adt_def.did()) {
-                ("Option", OptionSome, subst.type_at(0))
-            } else if cx.tcx.is_diagnostic_item(sym::Result, adt_def.did()) {
-                ("Result", ResultOk, subst.type_at(0))
+        let (return_type_label, lang_item, inner_type) =
+            if let ty::Adt(adt_def, subst) = return_ty(cx, hir_id.expect_owner()).kind() {
+                if cx.tcx.is_diagnostic_item(sym::Option, adt_def.did()) {
+                    ("Option", OptionSome, subst.type_at(0))
+                } else if cx.tcx.is_diagnostic_item(sym::Result, adt_def.did()) {
+                    ("Result", ResultOk, subst.type_at(0))
+                } else {
+                    return;
+                }
             } else {
                 return;
-            }
-        } else {
-            return;
-        };
+            };
 
         // Check if all return expression respect the following condition and collect them.
         let mut suggs = Vec::new();

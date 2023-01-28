@@ -1,6 +1,6 @@
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
-use rustc_hir::def_id::{DefIdSet, LocalDefId};
+use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, def::Res, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::{
@@ -27,14 +27,14 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
-            check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
         } else if is_public && !is_proc_macro(cx.sess(), attrs) && !attrs.iter().any(|a| a.has_name(sym::no_mangle)) {
             check_must_use_candidate(
                 cx,
                 sig.decl,
                 cx.tcx.hir().body(*body_id),
                 item.span,
-                item.owner_id.def_id,
+                item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
                 "this function could have a `#[must_use]` attribute",
             );
@@ -49,7 +49,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let attr = cx.tcx.get_attr(item.owner_id.to_def_id(), sym::must_use);
         if let Some(attr) = attr {
-            check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
         } else if is_public
             && !is_proc_macro(cx.sess(), attrs)
             && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
@@ -59,7 +59,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
                 sig.decl,
                 cx.tcx.hir().body(*body_id),
                 item.span,
-                item.owner_id.def_id,
+                item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
                 "this method could have a `#[must_use]` attribute",
             );
@@ -75,7 +75,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let attr = cx.tcx.get_attr(item.owner_id.to_def_id(), sym::must_use);
         if let Some(attr) = attr {
-            check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
         } else if let hir::TraitFn::Provided(eid) = *eid {
             let body = cx.tcx.hir().body(eid);
             if attr.is_none() && is_public && !is_proc_macro(cx.sess(), attrs) {
@@ -84,7 +84,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
                     sig.decl,
                     body,
                     item.span,
-                    item.owner_id.def_id,
+                    item.owner_id,
                     item.span.with_hi(sig.decl.output.span().hi()),
                     "this method could have a `#[must_use]` attribute",
                 );
@@ -96,7 +96,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
 fn check_needless_must_use(
     cx: &LateContext<'_>,
     decl: &hir::FnDecl<'_>,
-    item_id: hir::HirId,
+    item_id: hir::OwnerId,
     item_span: Span,
     fn_header_span: Span,
     attr: &Attribute,
@@ -131,7 +131,7 @@ fn check_must_use_candidate<'tcx>(
     decl: &'tcx hir::FnDecl<'_>,
     body: &'tcx hir::Body<'_>,
     item_span: Span,
-    item_id: LocalDefId,
+    item_id: hir::OwnerId,
     fn_span: Span,
     msg: &str,
 ) {
@@ -139,8 +139,8 @@ fn check_must_use_candidate<'tcx>(
         || mutates_static(cx, body)
         || in_external_macro(cx.sess(), item_span)
         || returns_unit(decl)
-        || !cx.effective_visibilities.is_exported(item_id)
-        || is_must_use_ty(cx, return_ty(cx, cx.tcx.hir().local_def_id_to_hir_id(item_id)))
+        || !cx.effective_visibilities.is_exported(item_id.def_id)
+        || is_must_use_ty(cx, return_ty(cx, item_id))
     {
         return;
     }
