@@ -26,7 +26,7 @@ use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVari
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, BoundVar, List};
+use rustc_middle::ty::{self, List};
 use rustc_span::source_map::Span;
 
 pub use rustc_middle::infer::canonical::*;
@@ -87,12 +87,13 @@ impl<'tcx> InferCtxt<'tcx> {
         variables: &List<CanonicalVarInfo<'tcx>>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
-        let var_values: IndexVec<BoundVar, GenericArg<'tcx>> = variables
-            .iter()
-            .map(|info| self.instantiate_canonical_var(span, info, &universe_map))
-            .collect();
-
-        CanonicalVarValues { var_values }
+        CanonicalVarValues {
+            var_values: self.tcx.mk_substs(
+                variables
+                    .iter()
+                    .map(|info| self.instantiate_canonical_var(span, info, &universe_map)),
+            ),
+        }
     }
 
     /// Given the "info" about a canonical variable, creates a fresh

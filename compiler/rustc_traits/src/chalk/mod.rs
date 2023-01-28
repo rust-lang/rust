@@ -8,13 +8,10 @@ pub(crate) mod lowering;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use rustc_index::vec::IndexVec;
-
 use rustc_middle::infer::canonical::{CanonicalTyVarKind, CanonicalVarKind};
 use rustc_middle::traits::ChalkRustInterner;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, BoundVar, ParamTy, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{self, ParamTy, TyCtxt, TypeFoldable, TypeVisitable};
 
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalVarValues, Certainty, QueryRegionConstraints, QueryResponse,
@@ -100,11 +97,13 @@ pub(crate) fn evaluate_goal<'tcx>(
                          binders: chalk_ir::CanonicalVarKinds<_>| {
         use rustc_middle::infer::canonical::CanonicalVarInfo;
 
-        let mut var_values: IndexVec<BoundVar, GenericArg<'tcx>> = IndexVec::new();
         let mut reverse_param_substitutor = ReverseParamsSubstitutor::new(tcx, params);
-        subst.as_slice(interner).iter().for_each(|p| {
-            var_values.push(p.lower_into(interner).fold_with(&mut reverse_param_substitutor));
-        });
+        let var_values = tcx.mk_substs(
+            subst
+                .as_slice(interner)
+                .iter()
+                .map(|p| p.lower_into(interner).fold_with(&mut reverse_param_substitutor)),
+        );
         let variables: Vec<_> = binders
             .iter(interner)
             .map(|var| {
@@ -159,8 +158,7 @@ pub(crate) fn evaluate_goal<'tcx>(
                             max_universe: ty::UniverseIndex::from_usize(0),
                             variables: obligation.variables,
                             value: QueryResponse {
-                                var_values: CanonicalVarValues { var_values: IndexVec::new() }
-                                    .make_identity(tcx),
+                                var_values: CanonicalVarValues::dummy(),
                                 region_constraints: QueryRegionConstraints::default(),
                                 certainty: Certainty::Ambiguous,
                                 opaque_types: vec![],
