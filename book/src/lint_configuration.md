@@ -43,6 +43,7 @@ Please use that command to update the file and do not edit it by hand.
 | [allowed-scripts](#allowed-scripts) | `["Latin"]` |
 | [enable-raw-pointer-heuristic-for-send](#enable-raw-pointer-heuristic-for-send) | `true` |
 | [max-suggested-slice-pattern-length](#max-suggested-slice-pattern-length) | `3` |
+| [await-holding-invalid-types](#await-holding-invalid-types) | `[]` |
 | [max-include-file-size](#max-include-file-size) | `1000000` |
 | [allow-expect-in-tests](#allow-expect-in-tests) | `false` |
 | [allow-unwrap-in-tests](#allow-unwrap-in-tests) | `false` |
@@ -446,6 +447,14 @@ For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
 **Default Value:** `3` (`u64`)
 
 * [index_refutable_slice](https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice)
+
+
+### await-holding-invalid-types
+
+
+**Default Value:** `[]` (`Vec<crate::utils::conf::DisallowedPath>`)
+
+* [await_holding_invalid_type](https://rust-lang.github.io/rust-clippy/master/index.html#await_holding_invalid_type)
 
 
 ### max-include-file-size
