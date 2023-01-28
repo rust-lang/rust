@@ -256,3 +256,32 @@ pub struct MissingDocCodeExamples;
 #[derive(LintDiagnostic)]
 #[diag(rustdoc_private_doc_tests)]
 pub struct PrivateDocTests;
+
+#[derive(Diagnostic)]
+pub enum InvalidCfgError {
+    #[diag(rustdoc_cfg_unexpected_literal)]
+    UnexpectedLiteral {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(rustdoc_cfg_expected_single_identifier)]
+    ExpectedSingleIdentifier {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(rustdoc_cfg_option_value_not_string_literal)]
+    OptionValueNotStringLiteral {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(rustdoc_cfg_expected_one_cfg_pattern)]
+    ExpectedOneCfgPattern {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(rustdoc_cfg_invalid_predicate)]
+    InvalidPredicate {
+        #[primary_span]
+        span: Span,
+    },
+}

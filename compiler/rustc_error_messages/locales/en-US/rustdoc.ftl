@@ -134,3 +134,18 @@ rustdoc_missing_doc_code_examples =
 
 rustdoc_private_doc_tests =
     documentation test in private item
+
+rustdoc_cfg_unexpected_literal =
+    unexpected literal
+
+rustdoc_cfg_expected_single_identifier =
+    expected a single identifier
+
+rustdoc_cfg_option_value_not_string_literal =
+    value of cfg option should be a string literal
+
+rustdoc_cfg_expected_one_cfg_pattern =
+    expected 1 cfg-pattern
+
+rustdoc_cfg_invalid_predicate =
+    invalid predicate

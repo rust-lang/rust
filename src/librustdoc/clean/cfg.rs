@@ -13,8 +13,7 @@ use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 
-use rustc_span::Span;
-
+use crate::errors::InvalidCfgError;
 use crate::html::escape::Escape;
 
 #[cfg(test)]
@@ -36,12 +35,6 @@ pub(crate) enum Cfg {
     All(Vec<Cfg>),
 }
 
-#[derive(PartialEq, Debug)]
-pub(crate) struct InvalidCfgError {
-    pub(crate) msg: &'static str,
-    pub(crate) span: Span,
-}
-
 impl Cfg {
     /// Parses a `NestedMetaItem` into a `Cfg`.
     fn parse_nested(
@@ -51,7 +44,7 @@ impl Cfg {
         match nested_cfg {
             NestedMetaItem::MetaItem(ref cfg) => Cfg::parse_without(cfg, exclude),
             NestedMetaItem::Lit(ref lit) => {
-                Err(InvalidCfgError { msg: "unexpected literal", span: lit.span })
+                Err(InvalidCfgError::UnexpectedLiteral { span: lit.span })
             }
         }
     }
@@ -63,10 +56,7 @@ impl Cfg {
         let name = match cfg.ident() {
             Some(ident) => ident.name,
             None => {
-                return Err(InvalidCfgError {
-                    msg: "expected a single identifier",
-                    span: cfg.span,
-                });
+                return Err(InvalidCfgError::ExpectedSingleIdentifier { span: cfg.span });
             }
         };
         match cfg.kind {
@@ -79,12 +69,9 @@ impl Cfg {
                     let cfg = Cfg::Cfg(name, Some(value));
                     if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
                 }
-                _ => Err(InvalidCfgError {
-                    // FIXME: if the main #[cfg] syntax decided to support non-string literals,
-                    // this should be changed as well.
-                    msg: "value of cfg option should be a string literal",
-                    span: lit.span,
-                }),
+                // FIXME: if the main #[cfg] syntax decided to support non-string literals, this
+                // should be changed as well.
+                _ => Err(InvalidCfgError::OptionValueNotStringLiteral { span: lit.span }),
             },
             MetaItemKind::List(ref items) => {
                 let orig_len = items.len();
@@ -102,15 +89,12 @@ impl Cfg {
                                 return Ok(None);
                             }
                         } else {
-                            Err(InvalidCfgError { msg: "expected 1 cfg-pattern", span: cfg.span })
+                            Err(InvalidCfgError::ExpectedOneCfgPattern { span: cfg.span })
                         }
                     }
-                    _ => Err(InvalidCfgError { msg: "invalid predicate", span: cfg.span }),
+                    _ => Err(InvalidCfgError::InvalidPredicate { span: cfg.span }),
                 };
-                match ret {
-                    Ok(c) => Ok(Some(c)),
-                    Err(e) => Err(e),
-                }
+                ret.map(|c| Some(c))
             }
         }
     }
