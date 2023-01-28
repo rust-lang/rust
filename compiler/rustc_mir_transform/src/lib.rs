@@ -426,7 +426,7 @@ fn mir_drops_elaborated_and_const_checked(
         return tcx.mir_drops_elaborated_and_const_checked(def);
     }
 
-    if tcx.generator_kind(def.did).is_some() {
+    if tcx.generator_kind(def.did).is_some() && tcx.sess.opts.unstable_opts.drop_tracking_mir {
         tcx.ensure().mir_generator_witnesses(def.did);
     }
     let mir_borrowck = tcx.mir_borrowck_opt_const_arg(def);
