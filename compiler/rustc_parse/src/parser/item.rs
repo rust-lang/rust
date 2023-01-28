@@ -16,7 +16,10 @@ use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, Vari
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::{MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, IntoDiagnostic, PResult, StashKey};
+use rustc_errors::{
+    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
+    StashKey,
+};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
@@ -583,52 +586,103 @@ impl<'a> Parser<'a> {
 
         let polarity = self.parse_polarity();
 
+        let mut snapshot_before_last_ty = self.create_snapshot_for_diagnostic();
         // Parse both types and traits as a type, then reinterpret if necessary.
         let err_path = |span| ast::Path::from_ident(Ident::new(kw::Empty, span));
-        let ty_first = if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt)
-        {
-            let span = self.prev_token.span.between(self.token.span);
-            self.struct_span_err(span, "missing trait in a trait impl")
-                .span_suggestion(
+        let mut ty_first =
+            if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt) {
+                let span = self.prev_token.span.between(self.token.span);
+                self.struct_span_err(span, "missing trait in a trait impl")
+                    .span_suggestion(
+                        span,
+                        "add a trait here",
+                        " Trait ",
+                        Applicability::HasPlaceholders,
+                    )
+                    .span_suggestion(
+                        span.to(self.token.span),
+                        "for an inherent impl, drop this `for`",
+                        "",
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
+                P(Ty {
+                    kind: TyKind::Path(None, err_path(span)),
                     span,
-                    "add a trait here",
-                    " Trait ",
-                    Applicability::HasPlaceholders,
-                )
-                .span_suggestion(
-                    span.to(self.token.span),
-                    "for an inherent impl, drop this `for`",
-                    "",
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
-            P(Ty {
-                kind: TyKind::Path(None, err_path(span)),
-                span,
-                id: DUMMY_NODE_ID,
-                tokens: None,
-            })
-        } else {
-            self.parse_ty_with_generics_recovery(&generics)?
-        };
+                    id: DUMMY_NODE_ID,
+                    tokens: None,
+                })
+            } else {
+                self.parse_ty_with_generics_recovery(&generics)?
+            };
 
         // If `for` is missing we try to recover.
         let has_for = self.eat_keyword(kw::For);
         let missing_for_span = self.prev_token.span.between(self.token.span);
 
-        let ty_second = if self.token == token::DotDot {
+        let mut ty_second = if self.token == token::DotDot {
             // We need to report this error after `cfg` expansion for compatibility reasons
             self.bump(); // `..`, do not add it to expected tokens
             Some(self.mk_ty(self.prev_token.span, TyKind::Err))
         } else if has_for || self.token.can_begin_type() {
-            Some(self.parse_ty()?)
+            snapshot_before_last_ty = self.create_snapshot_for_diagnostic();
+            Some(self.parse_ty_no_anon_recovery()?)
         } else {
             None
         };
 
         generics.where_clause = self.parse_where_clause()?;
 
-        let impl_items = self.parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?;
+        let (mut impl_items, err) =
+            self.parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?;
+
+        if let Some(mut err) = err {
+            let mut snapshot = snapshot_before_last_ty;
+
+            if snapshot.can_start_anonymous_type() {
+                let recover_result = {
+                    let recover_last_ty = match snapshot.parse_ty() {
+                        Ok(ty) => Some(ty),
+                        Err(snapshot_err) => {
+                            snapshot_err.cancel();
+                            None
+                        }
+                    };
+
+                    let impl_items = match snapshot
+                        .parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))
+                    {
+                        Ok((impl_items, None)) => Some(impl_items),
+                        Ok((_, Some(snapshot_err))) => {
+                            snapshot_err.cancel();
+                            None
+                        }
+                        Err(snapshot_err) => {
+                            snapshot_err.cancel();
+                            None
+                        }
+                    };
+
+                    (recover_last_ty, impl_items)
+                };
+
+                if let (Some(recover_last_ty), Some(new_impl_items)) = recover_result {
+                    err.delay_as_bug();
+                    self.restore_snapshot(snapshot);
+
+                    if ty_second.is_some() {
+                        ty_second = Some(recover_last_ty);
+                    } else {
+                        ty_first = recover_last_ty;
+                    }
+                    impl_items = new_impl_items;
+                } else {
+                    err.emit();
+                }
+            } else {
+                err.emit();
+            }
+        }
 
         let item_kind = match ty_second {
             Some(ty_second) => {
@@ -688,20 +742,21 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &mut AttrVec,
         mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
-    ) -> PResult<'a, Vec<T>> {
+    ) -> PResult<'a, (Vec<T>, Option<DiagnosticBuilder<'a, ErrorGuaranteed>>)> {
         let open_brace_span = self.token.span;
 
         // Recover `impl Ty;` instead of `impl Ty {}`
         if self.token == TokenKind::Semi {
             self.sess.emit_err(UseEmptyBlockNotSemi { span: self.token.span });
             self.bump();
-            return Ok(vec![]);
+            return Ok((vec![], None));
         }
 
         self.expect(&token::OpenDelim(Delimiter::Brace))?;
         attrs.extend(self.parse_inner_attributes()?);
 
         let mut items = Vec::new();
+        let mut delayed_err = None;
         while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.recover_doc_comment_before_brace() {
                 continue;
@@ -763,20 +818,21 @@ impl<'a> Parser<'a> {
                             Applicability::MaybeIncorrect,
                         );
                     }
-                    err.emit();
+                    delayed_err = Some(err);
                     break;
                 }
                 Ok(Some(item)) => items.extend(item),
                 Err(mut err) => {
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
                     err.span_label(open_brace_span, "while parsing this item list starting here")
-                        .span_label(self.prev_token.span, "the item list ends here")
-                        .emit();
+                        .span_label(self.prev_token.span, "the item list ends here");
+
+                    delayed_err = Some(err);
                     break;
                 }
             }
         }
-        Ok(items)
+        Ok((items, delayed_err))
     }
 
     /// Recover on a doc comment before `}`.
@@ -872,7 +928,13 @@ impl<'a> Parser<'a> {
         } else {
             // It's a normal trait.
             generics.where_clause = self.parse_where_clause()?;
-            let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
+            let (items, err) =
+                self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
+
+            if let Some(mut err) = err {
+                err.emit();
+            }
+
             Ok((
                 ident,
                 ItemKind::Trait(Box::new(Trait { is_auto, unsafety, generics, bounds, items })),
@@ -1146,11 +1208,14 @@ impl<'a> Parser<'a> {
             unsafety = Unsafe::Yes(self.token.span);
             self.eat_keyword(kw::Unsafe);
         }
-        let module = ast::ForeignMod {
-            unsafety,
-            abi,
-            items: self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?,
-        };
+
+        let (items, err) =
+            self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?;
+        if let Some(mut err) = err {
+            err.emit();
+        }
+
+        let module = ast::ForeignMod { unsafety, abi, items };
         Ok((Ident::empty(), ItemKind::ForeignMod(module)))
     }
 
@@ -1537,7 +1602,7 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
-    fn parse_record_struct_body(
+    pub(crate) fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
         ident_span: Span,
@@ -1794,7 +1859,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
         self.expect_field_ty_separator()?;
-        let ty = self.parse_ty()?;
+        let ty = self.parse_ty_for_field_def()?;
         if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
             self.struct_span_err(self.token.span, "found single colon in a struct field type path")
                 .span_suggestion_verbose(
@@ -1835,79 +1900,86 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
-            let err = if self.check_fn_front_matter(false, Case::Sensitive) {
-                let inherited_vis = Visibility {
-                    span: rustc_span::DUMMY_SP,
-                    kind: VisibilityKind::Inherited,
-                    tokens: None,
-                };
-                // We use `parse_fn` to get a span for the function
-                let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
-                match self.parse_fn(
-                    &mut AttrVec::new(),
-                    fn_parse_mode,
-                    lo,
-                    &inherited_vis,
-                    Case::Insensitive,
-                ) {
-                    Ok(_) => {
-                        let mut err = self.struct_span_err(
-                            lo.to(self.prev_token.span),
-                            &format!("functions are not allowed in {adt_ty} definitions"),
-                        );
-                        err.help(
-                            "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
-                        );
-                        err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
-                        err
-                    }
-                    Err(err) => {
-                        err.cancel();
-                        self.restore_snapshot(snapshot);
-                        self.expected_ident_found()
-                    }
-                }
-            } else if self.eat_keyword(kw::Struct) {
-                match self.parse_item_struct() {
-                    Ok((ident, _)) => {
-                        let mut err = self.struct_span_err(
-                            lo.with_hi(ident.span.hi()),
-                            &format!("structs are not allowed in {adt_ty} definitions"),
-                        );
-                        err.help("consider creating a new `struct` definition instead of nesting");
-                        err
-                    }
-                    Err(err) => {
-                        err.cancel();
-                        self.restore_snapshot(snapshot);
-                        self.expected_ident_found()
-                    }
-                }
+
+            if ident.name == kw::Underscore {
+                self.sess.gated_spans.gate(sym::unnamed_fields, lo);
             } else {
-                let mut err = self.expected_ident_found();
-                if self.eat_keyword_noexpect(kw::Let)
-                    && let removal_span = self.prev_token.span.until(self.token.span)
-                    && let Ok(ident) = self.parse_ident_common(false)
-                        // Cancel this error, we don't need it.
-                        .map_err(|err| err.cancel())
-                    && self.token.kind == TokenKind::Colon
-                {
-                    err.span_suggestion(
-                        removal_span,
-                        "remove this `let` keyword",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
-                    err.note("the `let` keyword is not allowed in `struct` fields");
-                    err.note("see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information");
-                    err.emit();
-                    return Ok(ident);
+                let err = if self.check_fn_front_matter(false, Case::Sensitive) {
+                    let inherited_vis = Visibility {
+                        span: rustc_span::DUMMY_SP,
+                        kind: VisibilityKind::Inherited,
+                        tokens: None,
+                    };
+                    // We use `parse_fn` to get a span for the function
+                    let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
+                    match self.parse_fn(
+                        &mut AttrVec::new(),
+                        fn_parse_mode,
+                        lo,
+                        &inherited_vis,
+                        Case::Insensitive,
+                    ) {
+                        Ok(_) => {
+                            let mut err = self.struct_span_err(
+                                lo.to(self.prev_token.span),
+                                &format!("functions are not allowed in {adt_ty} definitions"),
+                            );
+                            err.help(
+                                "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
+                            );
+                            err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
+                            err
+                        }
+                        Err(err) => {
+                            err.cancel();
+                            self.restore_snapshot(snapshot);
+                            self.expected_ident_found()
+                        }
+                    }
+                } else if self.eat_keyword(kw::Struct) {
+                    match self.parse_item_struct() {
+                        Ok((ident, _)) => {
+                            let mut err = self.struct_span_err(
+                                lo.with_hi(ident.span.hi()),
+                                &format!("structs are not allowed in {adt_ty} definitions"),
+                            );
+                            err.help(
+                                "consider creating a new `struct` definition instead of nesting",
+                            );
+                            err
+                        }
+                        Err(err) => {
+                            err.cancel();
+                            self.restore_snapshot(snapshot);
+                            self.expected_ident_found()
+                        }
+                    }
                 } else {
-                    self.restore_snapshot(snapshot);
-                }
-                err
-            };
-            return Err(err);
+                    let mut err = self.expected_ident_found();
+                    if self.eat_keyword_noexpect(kw::Let)
+                        && let removal_span = self.prev_token.span.until(self.token.span)
+                        && let Ok(ident) = self.parse_ident_common(false)
+                            // Cancel this error, we don't need it.
+                            .map_err(|err| err.cancel())
+                        && self.token.kind == TokenKind::Colon
+                    {
+                        err.span_suggestion(
+                            removal_span,
+                            "remove this `let` keyword",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        );
+                        err.note("the `let` keyword is not allowed in `struct` fields");
+                        err.note("see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information");
+                        err.emit();
+                        return Ok(ident);
+                    } else {
+                        self.restore_snapshot(snapshot);
+                    }
+                    err
+                };
+                return Err(err);
+            }
         }
         self.bump();
         Ok(ident)

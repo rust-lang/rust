@@ -2072,6 +2072,10 @@ pub enum TyKind {
     Never,
     /// A tuple (`(A, B, C, D,...)`).
     Tup(Vec<P<Ty>>),
+    /// An anonymous struct type i.e. `struct { foo: Type }`
+    AnonymousStruct(Vec<FieldDef>, /* recovered */ bool),
+    /// An anonymous union type i.e. `union { bar: Type }`
+    AnonymousUnion(Vec<FieldDef>, /* recovered */ bool),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///

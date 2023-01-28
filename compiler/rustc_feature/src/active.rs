@@ -531,6 +531,8 @@ declare_features! (
     (active, type_changing_struct_update, "1.58.0", Some(86555), None),
     /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
     (active, unix_sigpipe, "1.65.0", Some(97889), None),
+    /// Allows unnamed fields of struct and union type
+    (incomplete, unnamed_fields, "1.68.0", Some(49804), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.

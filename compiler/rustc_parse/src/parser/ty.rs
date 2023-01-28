@@ -62,6 +62,13 @@ pub(super) enum RecoverAnonEnum {
     No,
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub(super) enum AllowAnonymousTypes {
+    Yes,
+    OnlyRecover,
+    No,
+}
+
 /// Signals whether parsing a type should recover `->`.
 ///
 /// More specifically, when parsing a function like:
@@ -120,6 +127,20 @@ impl<'a> Parser<'a> {
             None,
             RecoverQuestionMark::Yes,
             RecoverAnonEnum::No,
+            AllowAnonymousTypes::OnlyRecover,
+        )
+    }
+
+    pub(super) fn parse_ty_no_anon_recovery(&mut self) -> PResult<'a, P<Ty>> {
+        self.parse_ty_common(
+            AllowPlus::Yes,
+            AllowCVariadic::No,
+            RecoverQPath::Yes,
+            RecoverReturnSign::Yes,
+            None,
+            RecoverQuestionMark::Yes,
+            RecoverAnonEnum::No,
+            AllowAnonymousTypes::No,
         )
     }
 
@@ -135,6 +156,23 @@ impl<'a> Parser<'a> {
             Some(ty_params),
             RecoverQuestionMark::Yes,
             RecoverAnonEnum::No,
+            AllowAnonymousTypes::No,
+        )
+    }
+
+    /// Parse a type suitable for a field defintion.
+    /// The difference from `parse_ty` is that this version
+    /// allows anonymous structs and unions.
+    pub fn parse_ty_for_field_def(&mut self) -> PResult<'a, P<Ty>> {
+        self.parse_ty_common(
+            AllowPlus::Yes,
+            AllowCVariadic::No,
+            RecoverQPath::Yes,
+            RecoverReturnSign::Yes,
+            None,
+            RecoverQuestionMark::Yes,
+            RecoverAnonEnum::No,
+            AllowAnonymousTypes::Yes,
         )
     }
 
@@ -150,6 +188,7 @@ impl<'a> Parser<'a> {
             None,
             RecoverQuestionMark::Yes,
             RecoverAnonEnum::Yes,
+            AllowAnonymousTypes::OnlyRecover,
         )
     }
 
@@ -168,6 +207,7 @@ impl<'a> Parser<'a> {
             None,
             RecoverQuestionMark::Yes,
             RecoverAnonEnum::No,
+            AllowAnonymousTypes::OnlyRecover,
         )
     }
 
@@ -182,6 +222,7 @@ impl<'a> Parser<'a> {
             None,
             RecoverQuestionMark::No,
             RecoverAnonEnum::No,
+            AllowAnonymousTypes::OnlyRecover,
         )
     }
 
@@ -194,6 +235,7 @@ impl<'a> Parser<'a> {
             None,
             RecoverQuestionMark::No,
             RecoverAnonEnum::No,
+            AllowAnonymousTypes::OnlyRecover,
         )
     }
 
@@ -207,6 +249,7 @@ impl<'a> Parser<'a> {
             None,
             RecoverQuestionMark::Yes,
             RecoverAnonEnum::No,
+            AllowAnonymousTypes::OnlyRecover,
         )
     }
 
@@ -227,6 +270,7 @@ impl<'a> Parser<'a> {
                 None,
                 RecoverQuestionMark::Yes,
                 RecoverAnonEnum::Yes,
+                AllowAnonymousTypes::OnlyRecover,
             )?;
             FnRetTy::Ty(ty)
         } else if recover_return_sign.can_recover(&self.token.kind) {
@@ -249,6 +293,7 @@ impl<'a> Parser<'a> {
                 None,
                 RecoverQuestionMark::Yes,
                 RecoverAnonEnum::Yes,
+                AllowAnonymousTypes::OnlyRecover,
             )?;
             FnRetTy::Ty(ty)
         } else {
@@ -265,6 +310,7 @@ impl<'a> Parser<'a> {
         ty_generics: Option<&Generics>,
         recover_question_mark: RecoverQuestionMark,
         recover_anon_enum: RecoverAnonEnum,
+        allow_anonymous_types: AllowAnonymousTypes,
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
@@ -312,6 +358,10 @@ impl<'a> Parser<'a> {
             }
         } else if self.eat_keyword(kw::Impl) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
+        } else if allow_anonymous_types == AllowAnonymousTypes::Yes
+            && self.can_start_anonymous_type()
+        {
+            self.parse_anonymous_ty(lo)?
         } else if self.is_explicit_dyn_type() {
             self.parse_dyn_ty(&mut impl_dyn_multi)?
         } else if self.eat_lt() {
@@ -319,7 +369,24 @@ impl<'a> Parser<'a> {
             let (qself, path) = self.parse_qpath(PathStyle::Type)?;
             TyKind::Path(Some(qself), path)
         } else if self.check_path() {
-            self.parse_path_start_ty(lo, allow_plus, ty_generics)?
+            // `union` is a weak keyword, so it can possibly be a path
+            if allow_anonymous_types == AllowAnonymousTypes::OnlyRecover
+                && self.can_start_anonymous_type()
+            {
+                // If we can parse an anonymous type, do so and let
+                // ast validation error out later
+                let snapshot = self.create_snapshot_for_diagnostic();
+                match self.parse_anonymous_ty(lo) {
+                    Ok(ty) => ty,
+                    Err(err) => {
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                        self.parse_path_start_ty(lo, allow_plus, ty_generics)?
+                    }
+                }
+            } else {
+                self.parse_path_start_ty(lo, allow_plus, ty_generics)?
+            }
         } else if self.can_begin_bound() {
             self.parse_bare_trait_object(lo, allow_plus)?
         } else if self.eat(&token::DotDotDot) {
@@ -336,7 +403,27 @@ impl<'a> Parser<'a> {
             let mut err = self.struct_span_err(self.token.span, &msg);
             err.span_label(self.token.span, "expected type");
             self.maybe_annotate_with_ascription(&mut err, true);
-            return Err(err);
+
+            // `struct` is a strict keyword, so we can check it here as
+            // we will be erroring otherwise
+            // FIXME: or should we not?
+            if self.token.is_keyword(kw::Struct) {
+                // Recover the parser from anonymous types anywhere other than field types.
+                let snapshot = self.create_snapshot_for_diagnostic();
+                match self.parse_anonymous_ty(lo) {
+                    Ok(ty) => {
+                        err.delay_as_bug();
+                        ty
+                    }
+                    Err(snapshot_err) => {
+                        snapshot_err.cancel();
+                        self.restore_snapshot(snapshot);
+                        return Err(err);
+                    }
+                }
+            } else {
+                return Err(err);
+            }
         };
 
         let span = lo.to(self.prev_token.span);
@@ -370,6 +457,7 @@ impl<'a> Parser<'a> {
                     ty_generics,
                     recover_question_mark,
                     RecoverAnonEnum::No,
+                    AllowAnonymousTypes::OnlyRecover,
                 )?);
             }
             let mut err = self.struct_span_err(pipes, "anonymous enums are not supported");
@@ -393,6 +481,28 @@ impl<'a> Parser<'a> {
             return Ok(self.mk_ty(lo.to(self.prev_token.span), TyKind::Err));
         }
         if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
+    }
+
+    pub(crate) fn parse_anonymous_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
+        assert!(self.token.is_keyword(kw::Union) || self.token.is_keyword(kw::Struct));
+        let is_union = self.token.is_keyword(kw::Union);
+
+        let span = self.token.span;
+        self.bump();
+
+        // FIXME: does false go here
+        self.parse_record_struct_body(if is_union { "union" } else { "struct" }, span, false).map(
+            |(fields, recovered)| {
+                let span = lo.to(self.prev_token.span);
+                self.sess.gated_spans.gate(sym::unnamed_fields, span);
+                // These can be rejected during AST validation in `deny_anonymous_struct`.
+                return if is_union {
+                    TyKind::AnonymousUnion(fields, recovered)
+                } else {
+                    TyKind::AnonymousStruct(fields, recovered)
+                };
+            },
+        )
     }
 
     /// Parses either:
@@ -822,6 +932,12 @@ impl<'a> Parser<'a> {
         }
 
         Ok(bounds)
+    }
+
+    pub(super) fn can_start_anonymous_type(&mut self) -> bool {
+        (self.token.is_keyword(kw::Union)
+            && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace)))
+            || self.token.is_keyword(kw::Struct)
     }
 
     /// Can the current token begin a bound?
