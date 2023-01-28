@@ -219,8 +219,28 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
+            TyKind::AnonymousStruct(ref fields, ..) | TyKind::AnonymousUnion(ref fields, ..) => {
+                // self.with_banned_assoc_ty_bound(|this| {
+                    walk_list!(self, visit_struct_field_def, fields)
+                // });
+            }
             _ => visit::walk_ty(self, t),
         }
+    }
+
+    fn visit_struct_field_def(&mut self, field: &'a FieldDef) {
+        if let Some(ident) = field.ident {
+            if ident.name == kw::Underscore {
+                self.check_anonymous_field(field);
+                self.visit_vis(&field.vis);
+                self.visit_ident(ident);
+                self.visit_ty_common(&field.ty);
+                self.walk_ty(&field.ty);
+                walk_list!(self, visit_attribute, &field.attrs);
+                return;
+            }
+        }
+        self.visit_field_def(field);
     }
 
     fn err_handler(&self) -> &rustc_errors::Handler {
@@ -256,6 +276,66 @@ impl<'a> AstValidator<'a> {
                     report_err(pat.span, Some(ident), true)
                 }
                 _ => report_err(pat.span, None, false),
+            }
+        }
+    }
+
+    fn check_anonymous_field(&self, field: &FieldDef) {
+        let FieldDef { ty, .. } = field;
+        match &ty.kind {
+            TyKind::AnonymousStruct(..) | TyKind::AnonymousUnion(..) => {
+                // We already checked for `kw::Underscore` before calling this function,
+                // so skip the check
+            }
+            TyKind::Path(..) => {
+                // If the anonymous field contains a Path as type, we can't determine
+                // if the path is a valid struct or union, so skip the check
+            }
+            _ => {
+                let msg = "unnamed fields can only have struct or union types";
+                let label = "not a struct or union";
+                self.err_handler()
+                    .struct_span_err(field.span, msg)
+                    .span_label(ty.span, label)
+                    .emit();
+            }
+        }
+    }
+
+    fn deny_anonymous_struct(&self, ty: &Ty) {
+        match &ty.kind {
+            TyKind::AnonymousStruct(..) => {
+                self.err_handler()
+                    .struct_span_err(
+                        ty.span,
+                        "anonymous structs are not allowed outside of unnamed struct or union fields",
+                    )
+                    .span_label(ty.span, "anonymous struct declared here")
+                    .emit();
+            }
+            TyKind::AnonymousUnion(..) => {
+                self.err_handler()
+                    .struct_span_err(
+                        ty.span,
+                        "anonymous unions are not allowed outside of unnamed struct or union fields",
+                    )
+                    .span_label(ty.span, "anonymous union declared here")
+                    .emit();
+            }
+            _ => {}
+        }
+    }
+
+    fn deny_anonymous_field(&self, field: &FieldDef) {
+        if let Some(ident) = field.ident {
+            if ident.name == kw::Underscore {
+                self.err_handler()
+                    .struct_span_err(
+                        field.span,
+                        "anonymous fields are not allowed outside of structs or unions",
+                    )
+                    .span_label(ident.span, "anonymous field declared here")
+                    .emit();
             }
         }
     }
@@ -785,6 +865,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         self.visit_ty_common(ty);
+        self.deny_anonymous_struct(ty);
         self.walk_ty(ty)
     }
 
@@ -799,6 +880,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_field_def(&mut self, field: &'a FieldDef) {
+        self.deny_anonymous_field(field);
         visit::walk_field_def(self, field)
     }
 
@@ -991,9 +1073,41 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.check_mod_file_item_asciionly(item.ident);
                 }
             }
-            ItemKind::Union(vdata, ..) => {
+            ItemKind::Struct(vdata, generics) => match vdata {
+                // Duplicating the `Visitor` logic allows catching all cases
+                // of `Anonymous(Struct, Union)` outside of a field struct or union.
+                //
+                // Inside `visit_ty` the validator catches every `Anonymous(Struct, Union)` it
+                // encounters, and only on `ItemKind::Struct` and `ItemKind::Union`
+                // it uses `visit_ty_common`, which doesn't contain that specific check.
+                VariantData::Struct(fields, ..) => {
+                    self.visit_vis(&item.vis);
+                    self.visit_ident(item.ident);
+                    self.visit_generics(generics);
+                    // self.with_banned_assoc_ty_bound(|this| {
+                        walk_list!(self, visit_struct_field_def, fields);
+                    // });
+                    walk_list!(self, visit_attribute, &item.attrs);
+                    return;
+                }
+                _ => {}
+            },
+            ItemKind::Union(vdata, generics) => {
                 if vdata.fields().is_empty() {
                     self.err_handler().emit_err(errors::FieldlessUnion { span: item.span });
+                }
+                match vdata {
+                    VariantData::Struct(fields, ..) => {
+                        self.visit_vis(&item.vis);
+                        self.visit_ident(item.ident);
+                        self.visit_generics(generics);
+                        // self.with_banned_assoc_ty_bound(|this| {
+                            walk_list!(self, visit_struct_field_def, fields);
+                        // });
+                        walk_list!(self, visit_attribute, &item.attrs);
+                        return;
+                    }
+                    _ => {}
                 }
             }
             ItemKind::Const(box ConstItem { defaultness, expr: None, .. }) => {

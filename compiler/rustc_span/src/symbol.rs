@@ -1603,6 +1603,7 @@ symbols! {
         unix_sigpipe,
         unlikely,
         unmarked_api,
+        unnamed_fields,
         unpin,
         unreachable,
         unreachable_2015,

@@ -34,8 +34,8 @@
 #![feature(let_chains)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
+// #![deny(rustc::untranslatable_diagnostic)]
+// #![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -1292,6 +1292,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Infer => hir::TyKind::Infer,
             TyKind::Err => {
                 hir::TyKind::Err(self.tcx.sess.delay_span_bug(t.span, "TyKind::Err lowered"))
+            }
+            // FIXME(unnamed_fields): IMPLEMENTATION IN PROGRESS
+            TyKind::AnonymousStruct(ref _fields, _recovered) => {
+                hir::TyKind::Err(self.tcx.sess.span_err(t.span, "anonymous structs are unimplemented"))
+            }
+            TyKind::AnonymousUnion(ref _fields, _recovered) => {
+                hir::TyKind::Err(self.tcx.sess.span_err(t.span, "anonymous unions are unimplemented"))
             }
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),

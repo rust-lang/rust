@@ -443,7 +443,11 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_record_struct_body(&mut self, fields: &[ast::FieldDef], span: rustc_span::Span) {
+    pub(crate) fn print_record_struct_body(
+        &mut self,
+        fields: &[ast::FieldDef],
+        span: rustc_span::Span,
+    ) {
         self.nbsp();
         self.bopen();
 
