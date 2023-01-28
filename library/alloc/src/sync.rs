@@ -1525,6 +1525,15 @@ impl<T: ?Sized> Clone for Arc<T> {
 
         unsafe { Self::from_inner(self.ptr) }
     }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        // If `self` and `source` share the same resource, nothing else needs
+        // to happen
+        if self.ptr != other.ptr {
+            *self = source.clone()
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2329,6 +2338,15 @@ impl<T: ?Sized> Clone for Weak<T> {
         }
 
         Weak { ptr: self.ptr }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        // If `self` and `source` share the same resource, nothing else needs
+        // to happen
+        if self.ptr != other.ptr {
+            *self = source.clone()
+        }
     }
 }
 

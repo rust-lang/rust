@@ -1627,6 +1627,15 @@ impl<T: ?Sized> Clone for Rc<T> {
             Self::from_inner(self.ptr)
         }
     }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        // If `self` and `source` share ownership of the same value, no extra
+        // work needs to happen
+        if self.ptr != other.ptr {
+            *self = source.clone()
+        }
+    }
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -2557,6 +2566,15 @@ impl<T: ?Sized> Clone for Weak<T> {
             inner.inc_weak()
         }
         Weak { ptr: self.ptr }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        // If `self` and `source` share the same resource, nothing else needs
+        // to happen
+        if self.ptr != other.ptr {
+            *self = source.clone()
+        }
     }
 }
 
