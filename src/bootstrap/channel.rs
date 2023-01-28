@@ -138,8 +138,8 @@ pub fn read_commit_info_file(root: &Path) -> Option<Info> {
             },
             _ => {
                 eprintln!("the `git-comit-info` file is malformed");
-                crate::detail_exit(1);  
-            },
+                crate::detail_exit(1);
+            }
         };
         Some(info)
     } else {

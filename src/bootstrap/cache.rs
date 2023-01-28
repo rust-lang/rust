@@ -237,7 +237,7 @@ impl Cache {
             .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
             .downcast_mut::<HashMap<S, S::Output>>()
             .expect("invalid type mapped");
-        if stepcache.contains_key(&step){
+        if stepcache.contains_key(&step) {
             eprintln!("processing {:?} a second time", step);
             crate::detail_exit(1);
         }

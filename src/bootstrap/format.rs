@@ -116,7 +116,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         crate::detail_exit(1);
     });
     if !rustfmt_path.exists() {
-        eprintln!("{}",rustfmt_path.display());
+        eprintln!("{}", rustfmt_path.display());
         crate::detail_exit(1);
     }
     let src = build.src.clone();

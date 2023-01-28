@@ -132,8 +132,8 @@ impl TaskPath {
                     match kind {
                         None => {
                             eprintln!("Kind cannot be parsed");
-                            crate::detail_exit(1); 
-                        },
+                            crate::detail_exit(1);
+                        }
                         _ => {}
                     };
                     path = Path::new(found_prefix).join(components.as_path());
@@ -305,7 +305,6 @@ impl StepDescription {
                 eprintln!("{:?} should have at least one pathset", desc.name);
                 crate::detail_exit(1);
             }
-
         }
 
         if paths.is_empty() || builder.config.include_default_paths {
@@ -892,8 +891,8 @@ impl<'a> Builder<'a> {
                 Err(e) if e.kind() == ErrorKind::NotFound => return,
                 Err(e) => {
                     eprintln!("failed to access /etc/os-release: {}", e);
-                    crate::detail_exit(1);   
-                },
+                    crate::detail_exit(1);
+                }
                 Ok(f) => f,
             };
             if !BufReader::new(os_release).lines().any(|l| NIX_IDS.contains(&t!(l).trim())) {
@@ -982,11 +981,11 @@ impl<'a> Builder<'a> {
             Some(other) => {
                 eprintln!("unsupported protocol {} in {}", other, url);
                 crate::detail_exit(1);
-            },
+            }
             None => {
                 eprintln!("no protocol in {}", url);
                 crate::detail_exit(1);
-            },
+            }
         }
         t!(std::fs::rename(&tempfile, dest_path));
     }
@@ -1362,7 +1361,7 @@ impl<'a> Builder<'a> {
                 _ => {
                     eprintln!("doc mode {:?} not expected", mode);
                     crate::detail_exit(1);
-                },
+                }
             };
             let rustdoc = self.rustdoc(compiler);
             self.clear_if_dirty(&my_out, &rustdoc);

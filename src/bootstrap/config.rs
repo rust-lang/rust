@@ -1097,7 +1097,7 @@ impl Config {
                             eprintln!("unknown option `{}` for download-ci-llvm", s);
                             crate::detail_exit(1);
                         }
-                        true => {},
+                        true => {}
                     };
                     crate::native::is_ci_llvm_available(&config, llvm_assertions.unwrap_or(false))
                 }

@@ -19,7 +19,11 @@ pub fn instrument_with_bolt_inplace(path: &Path) {
         .expect("Could not instrument artifact using BOLT");
 
     if !status.success() {
-        eprintln!("Could not instrument {} with BOLT, exit code {:?}", path.display(), status.code());
+        eprintln!(
+            "Could not instrument {} with BOLT, exit code {:?}",
+            path.display(),
+            status.code()
+        );
         crate::detail_exit(1);
     }
 

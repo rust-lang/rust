@@ -206,17 +206,17 @@ than building it.
                 Some(libdir) => {
                     if fs::metadata(libdir.join("libc.a")).is_err() {
                         eprintln!("couldn't find libc.a in musl libdir: {}", libdir.display());
-                        crate::detail_exit(1);  
+                        crate::detail_exit(1);
                     }
                 }
-                None => { 
+                None => {
                     eprintln!(
-                    "when targeting MUSL either the rust.musl-root \
+                        "when targeting MUSL either the rust.musl-root \
                             option or the target.$TARGET.musl-root option must \
                             be specified in config.toml"
                     );
                     crate::detail_exit(1);
-            },
+                }
             }
         }
 

@@ -144,7 +144,7 @@ pub(crate) fn detect_llvm_sha(config: &crate::config::Config, is_git: bool) -> S
         eprintln!("help: maybe your repository history is too shallow?");
         eprintln!("help: consider disabling `download-ci-llvm`");
         eprintln!("help: or fetch enough history to include one upstream commit");
-        crate::detail_exit(1); 
+        crate::detail_exit(1);
     }
 
     llvm_sha

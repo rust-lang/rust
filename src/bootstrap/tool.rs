@@ -59,7 +59,7 @@ impl Step for ToolBuild {
             _ => {
                 eprintln!("unexpected Mode for tool build");
                 crate::detail_exit(1);
-            },
+            }
         }
 
         let cargo = prepare_tool_cargo(

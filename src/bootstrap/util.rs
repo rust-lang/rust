@@ -456,7 +456,7 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
         Err(e) => {
             eprintln!("source {:?} failed to get metadata: {}", src, e);
             crate::detail_exit(1);
-        },
+        }
     };
     if meta.is_dir() {
         dir_up_to_date(src, threshold)
@@ -604,7 +604,7 @@ pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
 
     let clang_rt_builtins = output(&mut builtins_locator);
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
-    if !clang_rt_builtins.exists(){
+    if !clang_rt_builtins.exists() {
         eprintln!("`clang-cl` must correctly locate the library runtime directory");
         crate::detail_exit(1);
     }

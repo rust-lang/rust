@@ -42,7 +42,7 @@ impl From<Kind> for TestKind {
             _ => {
                 eprintln!("unexpected kind in crate: {:?}", kind);
                 crate::detail_exit(1);
-            },
+            }
         }
     }
 }
@@ -545,7 +545,6 @@ impl Step for Miri {
             builder.verbose(&format!("running: {:?}", cargo));
             let out =
                 cargo.output().expect("We already ran `cargo miri setup` before and that worked");
-            
             if !out.status.success() {
                 eprintln!("`cargo miri setup` returned with non-0 exit code");
                 crate::detail_exit(1);
@@ -2045,7 +2044,7 @@ impl Step for Crate {
             _ => {
                 eprintln!("can only test libraries");
                 crate::detail_exit(1);
-            },
+            }
         };
 
         // Build up the base `cargo test` command.

@@ -501,10 +501,10 @@ fn apple_darwin_sign_file(file_path: &Path) {
         .arg(file_path)
         .status()
         .expect("failed to execute `codesign`");
-        if !status.success() {
-            eprintln!("failed to execute `codesign`");
-            crate::detail_exit(1);
-        }
+    if !status.success() {
+        eprintln!("failed to execute `codesign`");
+        crate::detail_exit(1);
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1013,7 +1013,7 @@ impl Step for CodegenBackend {
             None => {
                 eprintln!("no dylibs built for codegen backend?");
                 crate::detail_exit(1);
-            },
+            }
         };
         if let Some(f) = files.next() {
             eprintln!(
@@ -1529,7 +1529,7 @@ pub fn run_cargo(
             None => {
                 eprintln!("no output generated for {:?} {:?}", prefix, extension);
                 crate::detail_exit(1);
-            },
+            }
         };
         if is_dylib(path_to_add) {
             let candidate = format!("{}.lib", path_to_add);
@@ -1590,7 +1590,7 @@ pub fn stream_cargo(
         Err(e) => {
             eprintln!("failed to execute command: {:?}\nerror: {}", cargo, e);
             crate::detail_exit(1);
-        },
+        }
     };
 
     // Spawn Cargo slurping up its JSON output. We'll start building up the

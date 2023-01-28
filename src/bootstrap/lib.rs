@@ -474,7 +474,6 @@ impl Build {
                 bootstrap_out.display()
             );
             crate::detail_exit(1);
-        
         }
 
         if rust_info.is_from_tarball() && config.description.is_none() {
@@ -596,13 +595,10 @@ impl Build {
                 .arg(relative_path)
                 .current_dir(&self.config.src),
         );
-        let actual_hash = recorded
-            .split_whitespace()
-            .nth(2)
-            .unwrap_or_else(|| {
-                eprintln!("unexpected output `{}`", recorded);
-                crate::detail_exit(1);
-            });
+        let actual_hash = recorded.split_whitespace().nth(2).unwrap_or_else(|| {
+            eprintln!("unexpected output `{}`", recorded);
+            crate::detail_exit(1);
+        });
 
         // update_submodule
         if actual_hash == checked_out_hash.trim_end() {
@@ -1585,7 +1581,7 @@ impl Build {
             Err(err) => {
                 eprintln!("could not read dir {:?}: {:?}", dir, err);
                 crate::detail_exit(1);
-            },
+            }
         };
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
     }
