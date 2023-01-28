@@ -327,7 +327,7 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
         } else {
             match cx.tcx.item_name(macro_call.def_id) {
                 // `cfg!(debug_assertions)` in `debug_assert!`
-                sym::cfg => ControlFlow::CONTINUE,
+                sym::cfg => ControlFlow::Continue(()),
                 // assert!(other_macro!(..))
                 _ => ControlFlow::Break(true),
             }
