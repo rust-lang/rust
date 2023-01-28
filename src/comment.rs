@@ -801,6 +801,8 @@ impl<'a> CommentRewrite<'a> {
         // 2) The comment is not the start of a markdown header doc comment
         // 3) The comment width exceeds the shape's width
         // 4) No URLS were found in the comment
+        // If this changes, the documentation in ../Configurations.md#wrap_comments
+        // should be changed accordingly.
         let should_wrap_comment = self.fmt.config.wrap_comments()
             && !is_markdown_header_doc_comment
             && unicode_str_width(line) > self.fmt.shape.width
