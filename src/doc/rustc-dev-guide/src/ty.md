@@ -148,17 +148,35 @@ These methods all return a `Ty<'tcx>` – note that the lifetime you get back is
 arena that this `tcx` has access to. Types are always canonicalized and interned (so we never
 allocate exactly the same type twice).
 
-> N.B.
-> Because types are interned, it is possible to compare them for equality efficiently using `==`
-> – however, this is almost never what you want to do unless you happen to be hashing and looking
-> for duplicates. This is because often in Rust there are multiple ways to represent the same type,
-> particularly once inference is involved. If you are going to be testing for type equality, you
-> probably need to start looking into the inference code to do it right.
-
 You can also find various common types in the `tcx` itself by accessing its fields:
 `tcx.types.bool`, `tcx.types.char`, etc. (See [`CommonTypes`] for more.)
 
 [`CommonTypes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.CommonTypes.html
+
+<!-- N.B: This section is linked from the type comparison internal lint. -->
+## Comparing types
+
+Because types are interned, it is possible to compare them for equality efficiently using `==`
+– however, this is almost never what you want to do unless you happen to be hashing and looking
+for duplicates. This is because often in Rust there are multiple ways to represent the same type,
+particularly once inference is involved.
+
+For example, the type `{integer}` (an integer inference variable, the type of an integer
+literal like `0`) and `u8` should often be treated as equal when testing whether they
+can be assigned to each other (which is a common operation in diagnostics code).
+`==` on them will return `false` though, since they are different types.
+
+The simplest way to compare two types correctly requires an inference context (`infcx`).
+If you have one, you can use `infcx.can_eq(ty1, ty2)` to check whether the types can be made equal,
+so whether they can be assigned to each other.
+When working with an inference context, you have to be careful to ensure that potential inference
+variables inside the types actually belong to that inference context. If you are in a function
+that has access to an inference context already, this should be the case.
+
+Another consideration is normalization. Two types may actually be the same, but one is behind an associated type.
+To compare them correctly, you have to normalize the types first. <!-- FIXME: When do you have to worry about this? When not? -->
+
+<!-- What to do when you don't have an inference context available already? Just create one and hope all goes well? -->
 
 ## `ty::TyKind` Variants
 
