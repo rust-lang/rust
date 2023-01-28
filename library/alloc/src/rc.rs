@@ -1632,7 +1632,7 @@ impl<T: ?Sized> Clone for Rc<T> {
     fn clone_from(&mut self, source: &Self) {
         // If `self` and `source` share ownership of the same value, no extra
         // work needs to happen
-        if self.ptr != other.ptr {
+        if self.ptr != source.ptr {
             *self = source.clone()
         }
     }
