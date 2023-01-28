@@ -1,9 +1,8 @@
-use super::raw::RawFd;
-
+use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::fmt;
 use crate::marker::PhantomData;
 use crate::mem::forget;
-use crate::sys::fd::{AsRawFd, FromRawFd, IntoRawFd};
-use crate::sys::hermit::abi;
+use crate::os::hermit::abi;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// A borrowed file descriptor.
@@ -49,7 +48,6 @@ pub struct BorrowedFd<'fd> {
 #[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
 #[rustc_nonnull_optimization_guaranteed]
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[derive(Debug)]
 pub struct OwnedFd {
     fd: RawFd,
 }
@@ -68,6 +66,35 @@ impl BorrowedFd<'_> {
         assert!(fd != u32::MAX as RawFd);
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
         unsafe { Self { fd, _phantom: PhantomData } }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl Drop for OwnedFd {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            // Note that errors are ignored when closing a file descriptor. The
+            // reason for this is that if an error occurs we don't actually know if
+            // the file descriptor was closed or not, and if we retried (for
+            // something like EINTR), we might close another valid file descriptor
+            // opened after we closed ours.
+            let _ = abi::close(self.fd);
+        }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl fmt::Debug for BorrowedFd<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BorrowedFd").field("fd", &self.fd).finish()
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl fmt::Debug for OwnedFd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OwnedFd").field("fd", &self.fd).finish()
     }
 }
 
@@ -114,14 +141,6 @@ impl FromRawFd for OwnedFd {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-impl AsFd for crate::net::TcpStream {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        self.as_inner().socket().as_fd()
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::net::TcpStream> for OwnedFd {
     #[inline]
     fn from(tcp_stream: crate::net::TcpStream) -> OwnedFd {
@@ -136,14 +155,6 @@ impl From<OwnedFd> for crate::net::TcpStream {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
             owned_fd,
         ))))
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl AsFd for crate::net::TcpListener {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        self.as_inner().socket().as_fd()
     }
 }
 
@@ -166,14 +177,6 @@ impl From<OwnedFd> for crate::net::TcpListener {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-impl AsFd for crate::net::UdpSocket {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        self.as_inner().socket().as_fd()
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::net::UdpSocket> for OwnedFd {
     #[inline]
     fn from(udp_socket: crate::net::UdpSocket) -> OwnedFd {
@@ -191,21 +194,8 @@ impl From<OwnedFd> for crate::net::UdpSocket {
     }
 }
 
+/// A trait to borrow the file descriptor from an underlying object.
 #[stable(feature = "io_safety", since = "1.63.0")]
-impl Drop for OwnedFd {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            // Note that errors are ignored when closing a file descriptor. The
-            // reason for this is that if an error occurs we don't actually know if
-            // the file descriptor was closed or not, and if we retried (for
-            // something like EINTR), we might close another valid file descriptor
-            // opened after we closed ours.
-            let _ = abi::close(self.fd);
-        }
-    }
-}
-
 pub trait AsFd {
     /// Borrows the file descriptor.
     ///
@@ -227,6 +217,22 @@ pub trait AsFd {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
+impl<T: AsFd> AsFd for &T {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        T::as_fd(self)
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<T: AsFd> AsFd for &mut T {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        T::as_fd(self)
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for OwnedFd {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -234,5 +240,29 @@ impl AsFd for OwnedFd {
         // invariants, and the `BorrowdFd` is bounded by the lifetime
         // of `&self`.
         unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for crate::net::UdpSocket {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.as_inner().socket().as_fd()
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for crate::net::TcpListener {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.as_inner().socket().as_fd()
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for crate::net::TcpStream {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.as_inner().socket().as_fd()
     }
 }

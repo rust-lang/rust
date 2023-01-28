@@ -1,16 +1,13 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
-mod owned;
-mod raw;
-
 use crate::io::{self, Read};
+use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd};
 use crate::sys::cvt;
 use crate::sys::hermit::abi;
 use crate::sys::unsupported;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
-pub use self::owned::*;
-pub use self::raw::*;
+use crate::os::hermit::io::*;
 
 #[derive(Debug)]
 pub struct FileDesc {

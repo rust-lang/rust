@@ -57,9 +57,7 @@ pub mod locks {
 }
 
 use crate::io::ErrorKind;
-
-#[allow(unused_extern_crates)]
-pub extern crate hermit_abi as abi;
+use crate::os::hermit::abi;
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
