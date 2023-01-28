@@ -443,7 +443,7 @@ impl<'a> ShouldRun<'a> {
 
     // single alias, which does not correspond to any on-disk path
     pub fn alias(mut self, alias: &str) -> Self {
-        if !self.builder.src.join(alias).exists() {
+        if self.builder.src.join(alias).exists() {
             eprintln!("use `builder.path()` for real paths: {}", alias);
             crate::detail_exit(1);
         }
