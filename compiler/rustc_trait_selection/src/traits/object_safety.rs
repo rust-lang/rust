@@ -62,7 +62,7 @@ fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [Object
     )
 }
 
-fn is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
+fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
     let violations = tcx.object_safety_violations(trait_def_id);
 
     if violations.is_empty() {
@@ -884,5 +884,6 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { object_safety_violations, is_object_safe, ..*providers };
+    *providers =
+        ty::query::Providers { object_safety_violations, check_is_object_safe, ..*providers };
 }
