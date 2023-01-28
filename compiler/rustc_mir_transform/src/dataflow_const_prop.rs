@@ -37,9 +37,6 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
             return;
         }
 
-        // Decide which places to track during the analysis.
-        let map = Map::from_filter(tcx, body, Ty::is_scalar);
-
         // We want to have a somewhat linear runtime w.r.t. the number of statements/terminators.
         // Let's call this number `n`. Dataflow analysis has `O(h*n)` transfer function
         // applications, where `h` is the height of the lattice. Because the height of our lattice
@@ -48,10 +45,10 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
         // `O(num_nodes * tracked_places * n)` in terms of time complexity. Since the number of
         // map nodes is strongly correlated to the number of tracked places, this becomes more or
         // less `O(n)` if we place a constant limit on the number of tracked places.
-        if tcx.sess.mir_opt_level() < 4 && map.tracked_places() > PLACE_LIMIT {
-            debug!("aborted dataflow const prop due to too many tracked places");
-            return;
-        }
+        let place_limit = if tcx.sess.mir_opt_level() < 4 { Some(PLACE_LIMIT) } else { None };
+
+        // Decide which places to track during the analysis.
+        let map = Map::from_filter(tcx, body, Ty::is_scalar, place_limit);
 
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);

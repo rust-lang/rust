@@ -599,10 +599,11 @@ impl Map {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         filter: impl FnMut(Ty<'tcx>) -> bool,
+        place_limit: Option<usize>,
     ) -> Self {
         let mut map = Self::new();
         let exclude = excluded_locals(body);
-        map.register_with_filter(tcx, body, filter, exclude);
+        map.register_with_filter(tcx, body, filter, exclude, place_limit);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
@@ -614,12 +615,20 @@ impl Map {
         body: &Body<'tcx>,
         mut filter: impl FnMut(Ty<'tcx>) -> bool,
         exclude: BitSet<Local>,
+        place_limit: Option<usize>,
     ) {
         // We use this vector as stack, pushing and popping projections.
         let mut projection = Vec::new();
         for (local, decl) in body.local_decls.iter_enumerated() {
             if !exclude.contains(local) {
-                self.register_with_filter_rec(tcx, local, &mut projection, decl.ty, &mut filter);
+                self.register_with_filter_rec(
+                    tcx,
+                    local,
+                    &mut projection,
+                    decl.ty,
+                    &mut filter,
+                    place_limit,
+                );
             }
         }
     }
@@ -634,7 +643,12 @@ impl Map {
         projection: &mut Vec<PlaceElem<'tcx>>,
         ty: Ty<'tcx>,
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
+        place_limit: Option<usize>,
     ) {
+        if let Some(place_limit) = place_limit && self.value_count >= place_limit {
+            return
+        }
+
         // We know that the projection only contains trackable elements.
         let place = self.make_place(local, projection).unwrap();
 
@@ -672,13 +686,13 @@ impl Map {
                 projection.push(PlaceElem::Downcast(None, variant));
                 let _ = self.make_place(local, projection);
                 projection.push(PlaceElem::Field(field, ty));
-                self.register_with_filter_rec(tcx, local, projection, ty, filter);
+                self.register_with_filter_rec(tcx, local, projection, ty, filter, place_limit);
                 projection.pop();
                 projection.pop();
                 return;
             }
             projection.push(PlaceElem::Field(field, ty));
-            self.register_with_filter_rec(tcx, local, projection, ty, filter);
+            self.register_with_filter_rec(tcx, local, projection, ty, filter, place_limit);
             projection.pop();
         });
     }
