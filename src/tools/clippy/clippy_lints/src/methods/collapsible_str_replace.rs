@@ -54,7 +54,7 @@ fn collect_replace_calls<'tcx>(
                 from_args.push_front(from);
                 ControlFlow::Continue(())
             } else {
-                ControlFlow::BREAK
+                ControlFlow::Break(())
             }
         } else {
             ControlFlow::Continue(())

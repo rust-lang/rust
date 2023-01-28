@@ -1,6 +1,5 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(never_type)]
