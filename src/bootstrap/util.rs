@@ -24,12 +24,10 @@ use crate::config::{Config, TargetSelection};
 /// using a `Result` with `try!`, but this may change one day...
 #[macro_export]
 macro_rules! t {
-
     ($e:expr) => {
         match $e {
             Ok(e) => e,
             Err(e) => {
-                
                 eprintln!("{} failed with {}", stringify!($e), e);
                 $crate::detail_exit(1);
             }
@@ -42,7 +40,7 @@ macro_rules! t {
             Err(e) => {
                 eprintln!("{} failed with {} ({:?})", stringify!($e), e, $extra);
                 $crate::detail_exit(1);
-            },
+            }
         }
     };
 }
