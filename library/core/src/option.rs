@@ -2090,6 +2090,12 @@ impl<T: PartialEq> PartialEq for Option<T> {
     }
 }
 
+/// This specialization trait is a workaround for LLVM not currently (2023-01)
+/// being able to optimize this itself, even though Alive confirms that it would
+/// be legal to do so: <https://github.com/llvm/llvm-project/issues/52622>
+///
+/// Once that's fixed, `Option` should go back to deriving `PartialEq`, as
+/// it used to do before <https://github.com/rust-lang/rust/pull/103556>.
 #[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
 #[doc(hidden)]
 pub trait SpecOptionPartialEq: Sized {
