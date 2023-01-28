@@ -291,7 +291,7 @@ The minimum size (in bytes) to consider a type for passing by reference instead 
 
 **Default Value:** `256` (`u64`)
 
-* [large_type_pass_by_move](https://rust-lang.github.io/rust-clippy/master/index.html#large_type_pass_by_move)
+* [large_types_passed_by_value](https://rust-lang.github.io/rust-clippy/master/index.html#large_types_passed_by_value)
 
 
 ### too-many-lines-threshold

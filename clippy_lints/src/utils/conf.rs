@@ -323,7 +323,7 @@ define_Conf! {
     ///
     /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
     (trivial_copy_size_limit: Option<u64> = None),
-    /// Lint: LARGE_TYPE_PASS_BY_MOVE.
+    /// Lint: LARGE_TYPES_PASSED_BY_VALUE.
     ///
     /// The minimum size (in bytes) to consider a type for passing by reference instead of by value.
     (pass_by_value_size_limit: u64 = 256),
