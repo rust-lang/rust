@@ -175,6 +175,7 @@ The minimum rust version that the project supports
 * [transmute_ptr_to_ref](https://rust-lang.github.io/rust-clippy/master/index.html#transmute_ptr_to_ref)
 * [almost_complete_range](https://rust-lang.github.io/rust-clippy/master/index.html#almost_complete_range)
 * [needless_borrow](https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrow)
+* [derivable_impls](https://rust-lang.github.io/rust-clippy/master/index.html#derivable_impls)
 
 
 ### cognitive-complexity-threshold
