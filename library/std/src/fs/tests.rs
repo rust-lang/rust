@@ -12,6 +12,8 @@ use crate::time::{Duration, Instant};
 
 use rand::RngCore;
 
+#[cfg(target_os = "macos")]
+use crate::ffi::{c_char, c_int};
 #[cfg(unix)]
 use crate::os::unix::fs::symlink as symlink_dir;
 #[cfg(unix)]
@@ -24,8 +26,6 @@ use crate::os::windows::fs::{symlink_dir, symlink_file};
 use crate::sys::fs::symlink_junction;
 #[cfg(target_os = "macos")]
 use crate::sys::weak::weak;
-#[cfg(target_os = "macos")]
-use libc::{c_char, c_int};
 
 macro_rules! check {
     ($e:expr) => {
