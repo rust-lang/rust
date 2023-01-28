@@ -249,6 +249,8 @@ mod boxed {
     pub use std::boxed::Box;
 }
 pub mod borrow;
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub mod co_alloc;
 pub mod collections;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;
