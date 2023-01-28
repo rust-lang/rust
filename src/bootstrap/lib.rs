@@ -1431,6 +1431,13 @@ impl Build {
             return Vec::new();
         }
 
+        if !stamp.exists() {
+            eprintln!(
+                "Warning: Unable to find the stamp file, did you try to keep a nonexistent build stage?"
+            );
+            crate::detail_exit(1);
+        }
+
         let mut paths = Vec::new();
         let contents = t!(fs::read(stamp), &stamp);
         // This is the method we use for extracting paths from the stamp file passed to us. See
