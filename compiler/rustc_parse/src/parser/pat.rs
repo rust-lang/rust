@@ -1,5 +1,7 @@
 use super::{ForceCollect, Parser, PathStyle, TrailingToken};
-use crate::errors::RemoveLet;
+use crate::errors::{
+    InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, RemoveLet,
+};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
@@ -9,7 +11,7 @@ use rustc_ast::{
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -782,29 +784,16 @@ impl<'a> Parser<'a> {
     }
 
     fn error_inclusive_range_with_extra_equals(&self, span: Span) {
-        self.struct_span_err(span, "unexpected `=` after inclusive range")
-            .span_suggestion_short(span, "use `..=` instead", "..=", Applicability::MaybeIncorrect)
-            .note("inclusive ranges end with a single equals sign (`..=`)")
-            .emit();
+        self.sess.emit_err(InclusiveRangeExtraEquals { span });
     }
 
     fn error_inclusive_range_match_arrow(&self, span: Span) {
-        let without_eq = span.with_hi(span.hi() - rustc_span::BytePos(1));
-        self.struct_span_err(span, "unexpected `=>` after open range")
-            .span_suggestion_verbose(
-                without_eq.shrink_to_hi(),
-                "add a space between the pattern and `=>`",
-                " ",
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        let after_pat = span.with_hi(span.hi() - rustc_span::BytePos(1)).shrink_to_hi();
+        self.sess.emit_err(InclusiveRangeMatchArrow { span, after_pat });
     }
 
     fn error_inclusive_range_with_no_end(&self, span: Span) {
-        struct_span_err!(self.sess.span_diagnostic, span, E0586, "inclusive range with no end")
-            .span_suggestion_short(span, "use `..` instead", "..", Applicability::MachineApplicable)
-            .note("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)")
-            .emit();
+        self.sess.emit_err(InclusiveRangeNoEnd { span });
     }
 
     /// Parse a range-to pattern, `..X` or `..=X` where `X` remains to be parsed.
