@@ -26,13 +26,12 @@
       scope 3 (inlined core::num::<impl u32>::rotate_right) { // at $DIR/issue_101973.rs:14:18: 14:58
           debug self => _4;                // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
           debug n => _6;                   // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-          let mut _15: u32;                // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-          let mut _16: u32;                // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
       }
   
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:65
           StorageLive(_3);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:58
+          StorageLive(_4);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:17
           StorageLive(_12);                // scope 2 at $DIR/issue_101973.rs:7:12: 7:27
           StorageLive(_13);                // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
           _14 = CheckedShr(_1, const 0_i32); // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
@@ -62,6 +61,7 @@
           StorageDead(_13);                // scope 2 at $DIR/issue_101973.rs:7:26: 7:27
           _4 = BitOr(const 0_u32, move _12); // scope 2 at $DIR/issue_101973.rs:7:5: 7:27
           StorageDead(_12);                // scope 2 at $DIR/issue_101973.rs:7:26: 7:27
+          StorageLive(_6);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
           StorageLive(_7);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
           StorageLive(_8);                 // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
           _10 = CheckedShr(_1, const 8_i32); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
@@ -69,6 +69,8 @@
       }
   
       bb4: {
+          StorageDead(_6);                 // scope 0 at $DIR/issue_101973.rs:+1:57: +1:58
+          StorageDead(_4);                 // scope 0 at $DIR/issue_101973.rs:+1:57: +1:58
           _2 = move _3 as i32 (IntToInt);  // scope 0 at $DIR/issue_101973.rs:+1:5: +1:65
           StorageDead(_3);                 // scope 0 at $DIR/issue_101973.rs:+1:64: +1:65
           _0 = move _2 as i64 (IntToInt);  // scope 0 at $DIR/issue_101973.rs:+1:5: +1:72

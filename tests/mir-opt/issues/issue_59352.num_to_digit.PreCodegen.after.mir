@@ -5,15 +5,14 @@ fn num_to_digit(_1: char) -> u32 {
     let mut _0: u32;                     // return place in scope 0 at $DIR/issue_59352.rs:+0:35: +0:38
     let mut _2: std::option::Option<u32>; // in scope 0 at $DIR/issue_59352.rs:+2:26: +2:41
     let mut _3: u32;                     // in scope 0 at $DIR/issue_59352.rs:+2:12: +2:23
-    let mut _9: isize;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     scope 1 (inlined char::methods::<impl char>::is_digit) { // at $DIR/issue_59352.rs:14:12: 14:23
         debug self => _1;                // in scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         debug radix => _3;               // in scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         let mut _4: &std::option::Option<u32>; // in scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         let _5: std::option::Option<u32>; // in scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
-        let mut _6: char;                // in scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         scope 2 (inlined Option::<u32>::is_some) { // at $SRC_DIR/core/src/char/methods.rs:LL:COL
             debug self => _4;            // in scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
+            let mut _6: isize;           // in scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
         }
     }
     scope 3 (inlined #[track_caller] Option::<u32>::unwrap) { // at $DIR/issue_59352.rs:14:42: 14:50
@@ -29,9 +28,7 @@ fn num_to_digit(_1: char) -> u32 {
         StorageLive(_3);                 // scope 0 at $DIR/issue_59352.rs:+2:12: +2:23
         StorageLive(_4);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageLive(_5);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
-        StorageLive(_6);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
-        _6 = _1;                         // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
-        _5 = char::methods::<impl char>::to_digit(move _6, const 8_u32) -> bb5; // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
+        _5 = char::methods::<impl char>::to_digit(_1, const 8_u32) -> bb5; // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/char/methods.rs:LL:COL
                                          // + literal: Const { ty: fn(char, u32) -> Option<u32> {char::methods::<impl char>::to_digit}, val: Value(<ZST>) }
@@ -39,7 +36,7 @@ fn num_to_digit(_1: char) -> u32 {
 
     bb1: {
         StorageLive(_2);                 // scope 0 at $DIR/issue_59352.rs:+2:26: +2:41
-        _2 = char::methods::<impl char>::to_digit(move _1, const 8_u32) -> bb2; // scope 0 at $DIR/issue_59352.rs:+2:26: +2:41
+        _2 = char::methods::<impl char>::to_digit(_1, const 8_u32) -> bb2; // scope 0 at $DIR/issue_59352.rs:+2:26: +2:41
                                          // mir::Constant
                                          // + span: $DIR/issue_59352.rs:14:30: 14:38
                                          // + literal: Const { ty: fn(char, u32) -> Option<u32> {char::methods::<impl char>::to_digit}, val: Value(<ZST>) }
@@ -61,12 +58,11 @@ fn num_to_digit(_1: char) -> u32 {
 
     bb5: {
         _4 = &_5;                        // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
-        StorageDead(_6);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
-        _9 = discriminant((*_4));        // scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
+        _6 = discriminant((*_4));        // scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
         StorageDead(_4);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_5);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_3);                 // scope 0 at $DIR/issue_59352.rs:+2:12: +2:23
-        switchInt(move _9) -> [1: bb1, otherwise: bb3]; // scope 0 at $DIR/issue_59352.rs:+2:8: +2:23
+        switchInt(move _6) -> [1: bb1, otherwise: bb3]; // scope 0 at $DIR/issue_59352.rs:+2:8: +2:23
     }
 
     bb6: {
