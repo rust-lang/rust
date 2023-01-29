@@ -110,7 +110,7 @@ use std::fs::{self, File};
 use std::io;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::str;
 
 use build_helper::ci::CiEnv;
@@ -662,12 +662,32 @@ impl Build {
 
         // Try passing `--progress` to start, then run git again without if that fails.
         let update = |progress: bool| {
-            let mut git = Command::new("git");
+            // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
+            // even though that has no relation to the upstream for the submodule.
+            let current_branch = {
+                let output = self
+                    .config
+                    .git()
+                    .args(["symbolic-ref", "--short", "HEAD"])
+                    .stderr(Stdio::inherit())
+                    .output();
+                let output = t!(output);
+                if output.status.success() {
+                    Some(String::from_utf8(output.stdout).unwrap().trim().to_owned())
+                } else {
+                    None
+                }
+            };
+
+            let mut git = self.config.git();
+            if let Some(branch) = current_branch {
+                git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
+            }
             git.args(&["submodule", "update", "--init", "--recursive", "--depth=1"]);
             if progress {
                 git.arg("--progress");
             }
-            git.arg(relative_path).current_dir(&self.config.src);
+            git.arg(relative_path);
             git
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
