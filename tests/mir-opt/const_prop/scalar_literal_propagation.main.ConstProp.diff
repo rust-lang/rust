@@ -14,10 +14,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/scalar_literal_propagation.rs:+1:9: +1:10
           _1 = const 1_u32;                // scope 0 at $DIR/scalar_literal_propagation.rs:+1:13: +1:14
           StorageLive(_2);                 // scope 1 at $DIR/scalar_literal_propagation.rs:+2:5: +2:15
-          StorageLive(_3);                 // scope 1 at $DIR/scalar_literal_propagation.rs:+2:13: +2:14
--         _3 = _1;                         // scope 1 at $DIR/scalar_literal_propagation.rs:+2:13: +2:14
--         _2 = consume(move _3) -> bb1;    // scope 1 at $DIR/scalar_literal_propagation.rs:+2:5: +2:15
-+         _3 = const 1_u32;                // scope 1 at $DIR/scalar_literal_propagation.rs:+2:13: +2:14
+-         _2 = consume(_1) -> bb1;         // scope 1 at $DIR/scalar_literal_propagation.rs:+2:5: +2:15
 +         _2 = consume(const 1_u32) -> bb1; // scope 1 at $DIR/scalar_literal_propagation.rs:+2:5: +2:15
                                            // mir::Constant
                                            // + span: $DIR/scalar_literal_propagation.rs:4:5: 4:12
@@ -25,9 +22,7 @@
       }
   
       bb1: {
-          StorageDead(_3);                 // scope 1 at $DIR/scalar_literal_propagation.rs:+2:14: +2:15
           StorageDead(_2);                 // scope 1 at $DIR/scalar_literal_propagation.rs:+2:15: +2:16
-          StorageDead(_1);                 // scope 0 at $DIR/scalar_literal_propagation.rs:+3:1: +3:2
           return;                          // scope 0 at $DIR/scalar_literal_propagation.rs:+3:2: +3:2
       }
   }

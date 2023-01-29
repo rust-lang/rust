@@ -54,6 +54,7 @@ mod const_debuginfo;
 mod const_goto;
 mod const_prop;
 mod const_prop_lint;
+mod copy_prop;
 mod coverage;
 mod ctfe_limit;
 mod dataflow_const_prop;
@@ -87,6 +88,7 @@ mod required_consts;
 mod reveal_all;
 mod separate_const_switch;
 mod shim;
+mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
 pub mod simplify;
 mod simplify_branches;
@@ -563,6 +565,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &instcombine::InstCombine,
             &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::new("before-const-prop"),
+            &copy_prop::CopyProp,
             //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,

@@ -23,16 +23,13 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:9: +1:10
           StorageLive(_2);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
-          StorageLive(_3);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
           _8 = const _;                    // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
                                            // mir::Constant
                                            // + span: $DIR/bad_op_unsafe_oob_for_slices.rs:5:25: 5:35
                                            // + literal: Const { ty: &[i32; 3], val: Unevaluated(main, [], Some(promoted[0])) }
-          _3 = _8;                         // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
-          _2 = &raw const (*_3);           // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
+          _2 = &raw const (*_8);           // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
           _1 = move _2 as *const [i32] (Pointer(Unsize)); // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:25: +1:35
           StorageDead(_2);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:34: +1:35
-          StorageDead(_3);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:+1:35: +1:36
           StorageLive(_4);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:13: +3:15
           StorageLive(_5);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:23: +3:24
           _5 = const 3_usize;              // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:23: +3:24

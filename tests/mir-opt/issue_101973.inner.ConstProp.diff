@@ -15,7 +15,7 @@
       let mut _10: (u32, bool);            // in scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
       let mut _11: (u32, bool);            // in scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
       scope 1 (inlined imm8) {             // at $DIR/issue_101973.rs:14:5: 14:17
-          debug x => _5;                   // in scope 1 at $DIR/issue_101973.rs:5:13: 5:14
+          debug x => _1;                   // in scope 1 at $DIR/issue_101973.rs:5:13: 5:14
           let mut _12: u32;                // in scope 1 at $DIR/issue_101973.rs:7:12: 7:27
           let mut _13: u32;                // in scope 1 at $DIR/issue_101973.rs:7:12: 7:20
           let mut _14: (u32, bool);        // in scope 1 at $DIR/issue_101973.rs:7:12: 7:20
@@ -34,17 +34,14 @@
           StorageLive(_2);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:65
           StorageLive(_3);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:58
           StorageLive(_4);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:17
-          StorageLive(_5);                 // scope 0 at $DIR/issue_101973.rs:+1:10: +1:16
-          _5 = _1;                         // scope 0 at $DIR/issue_101973.rs:+1:10: +1:16
           StorageLive(_12);                // scope 2 at $DIR/issue_101973.rs:7:12: 7:27
           StorageLive(_13);                // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
-          _14 = CheckedShr(_5, const 0_i32); // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
+          _14 = CheckedShr(_1, const 0_i32); // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
           assert(!move (_14.1: bool), "attempt to shift right by `{}`, which would overflow", const 0_i32) -> bb3; // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
       }
   
       bb1: {
           _8 = move (_10.0: u32);          // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
-          StorageDead(_9);                 // scope 0 at $DIR/issue_101973.rs:+1:44: +1:45
           _7 = BitAnd(move _8, const 15_u32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
           StorageDead(_8);                 // scope 0 at $DIR/issue_101973.rs:+1:51: +1:52
           _11 = CheckedShl(_7, const 1_i32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
@@ -54,11 +51,7 @@
       bb2: {
           _6 = move (_11.0: u32);          // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
           StorageDead(_7);                 // scope 0 at $DIR/issue_101973.rs:+1:56: +1:57
-          StorageLive(_15);                // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-          _15 = _4;                        // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-          StorageLive(_16);                // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-          _16 = _6;                        // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-          _3 = rotate_right::<u32>(move _15, move _16) -> bb4; // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+          _3 = rotate_right::<u32>(_4, _6) -> bb4; // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
                                            // + literal: Const { ty: extern "rust-intrinsic" fn(u32, u32) -> u32 {rotate_right::<u32>}, val: Value(<ZST>) }
@@ -70,21 +63,14 @@
           StorageDead(_13);                // scope 2 at $DIR/issue_101973.rs:7:26: 7:27
           _4 = BitOr(const 0_u32, move _12); // scope 2 at $DIR/issue_101973.rs:7:5: 7:27
           StorageDead(_12);                // scope 2 at $DIR/issue_101973.rs:7:26: 7:27
-          StorageDead(_5);                 // scope 0 at $DIR/issue_101973.rs:+1:16: +1:17
           StorageLive(_6);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
           StorageLive(_7);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
           StorageLive(_8);                 // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
-          StorageLive(_9);                 // scope 0 at $DIR/issue_101973.rs:+1:33: +1:39
-          _9 = _1;                         // scope 0 at $DIR/issue_101973.rs:+1:33: +1:39
-          _10 = CheckedShr(_9, const 8_i32); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
+          _10 = CheckedShr(_1, const 8_i32); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
           assert(!move (_10.1: bool), "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1; // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
       }
   
       bb4: {
-          StorageDead(_16);                // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-          StorageDead(_15);                // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-          StorageDead(_6);                 // scope 0 at $DIR/issue_101973.rs:+1:57: +1:58
-          StorageDead(_4);                 // scope 0 at $DIR/issue_101973.rs:+1:57: +1:58
           _2 = move _3 as i32 (IntToInt);  // scope 0 at $DIR/issue_101973.rs:+1:5: +1:65
           StorageDead(_3);                 // scope 0 at $DIR/issue_101973.rs:+1:64: +1:65
           _0 = move _2 as i64 (IntToInt);  // scope 0 at $DIR/issue_101973.rs:+1:5: +1:72

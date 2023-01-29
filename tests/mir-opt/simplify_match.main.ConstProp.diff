@@ -10,13 +10,9 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/simplify_match.rs:+1:11: +1:31
           StorageLive(_2);                 // scope 0 at $DIR/simplify_match.rs:+1:17: +1:18
           _2 = const false;                // scope 0 at $DIR/simplify_match.rs:+1:21: +1:26
--         _1 = _2;                         // scope 1 at $DIR/simplify_match.rs:+1:28: +1:29
-+         _1 = const false;                // scope 1 at $DIR/simplify_match.rs:+1:28: +1:29
-          StorageDead(_2);                 // scope 0 at $DIR/simplify_match.rs:+1:30: +1:31
--         switchInt(_1) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_match.rs:+1:5: +1:31
+-         switchInt(_2) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_match.rs:+1:5: +1:31
 +         switchInt(const false) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_match.rs:+1:5: +1:31
       }
   
@@ -32,7 +28,6 @@
       }
   
       bb3: {
-          StorageDead(_1);                 // scope 0 at $DIR/simplify_match.rs:+5:1: +5:2
           return;                          // scope 0 at $DIR/simplify_match.rs:+5:2: +5:2
       }
   }
