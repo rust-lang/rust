@@ -17,10 +17,10 @@ pub(super) trait SpecFromIterNested<T, I> {
 }
 
 #[allow(unused_braces)]
-impl<T, I, const COOP_PREF: bool> SpecFromIterNested<T, I> for Vec<T, Global, COOP_PREF>
+impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIterNested<T, I> for Vec<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(CO_ALLOC_PREF)]:,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be
@@ -45,7 +45,7 @@ where
         };
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
-        <Vec<T, Global, COOP_PREF> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
+        <Vec<T, Global, CO_ALLOC_PREF> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
         vector
     }
 }

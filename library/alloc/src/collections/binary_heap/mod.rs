@@ -145,6 +145,7 @@
 
 use core::fmt;
 use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
+use crate::co_alloc::CoAllocPref;
 use core::mem::{self, swap, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
@@ -1525,17 +1526,17 @@ unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
 /// [`drain`]: BinaryHeap::drain
 #[stable(feature = "drain", since = "1.6.0")]
 #[derive(Debug)]
-pub struct Drain<'a, T: 'a, const COOP_PREF: bool>
+pub struct Drain<'a, T: 'a, const CO_ALLOC_PREF: CoAllocPref>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
+    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
-    iter: vec::Drain<'a, T, Global, COOP_PREF>,
+    iter: vec::Drain<'a, T, Global, CO_ALLOC_PREF>,
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, const COOP_PREF: bool> Iterator for Drain<'_, T, COOP_PREF>
+impl<T, const CO_ALLOC_PREF: CoAllocPref> Iterator for Drain<'_, T, CO_ALLOC_PREF>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
+    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
     type Item = T;
 
@@ -1551,9 +1552,9 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, const COOP_PREF: bool> DoubleEndedIterator for Drain<'_, T, COOP_PREF>
+impl<T, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator for Drain<'_, T, CO_ALLOC_PREF>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
+    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1562,9 +1563,9 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, const COOP_PREF: bool> ExactSizeIterator for Drain<'_, T, COOP_PREF>
+impl<T, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator for Drain<'_, T, CO_ALLOC_PREF>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
+    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
@@ -1572,8 +1573,8 @@ where
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, const COOP_PREF: bool> FusedIterator for Drain<'_, T, COOP_PREF> where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:
+impl<T, const CO_ALLOC_PREF: CoAllocPref> FusedIterator for Drain<'_, T, CO_ALLOC_PREF> where
+    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:
 {
 }
 
