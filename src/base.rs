@@ -794,6 +794,7 @@ fn codegen_stmt<'tcx>(
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
         | StatementKind::Deinit(_)
+        | StatementKind::ConstEvalCounter
         | StatementKind::Nop
         | StatementKind::FakeRead(..)
         | StatementKind::Retag { .. }
