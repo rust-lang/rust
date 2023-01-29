@@ -8,7 +8,7 @@ use crate::lint::{
 };
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::{Lock, Lrc, RefLock};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
@@ -32,7 +32,7 @@ pub type CrateCheckConfig = CheckCfg<Symbol>;
 /// used and should be feature gated accordingly in `check_crate`.
 #[derive(Default)]
 pub struct GatedSpans {
-    pub spans: Lock<FxHashMap<Symbol, Vec<Span>>>,
+    pub spans: RefLock<FxHashMap<Symbol, Vec<Span>>>,
 }
 
 impl GatedSpans {

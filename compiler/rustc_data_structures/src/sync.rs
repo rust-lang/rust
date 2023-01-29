@@ -18,8 +18,11 @@
 //! depending on the value of cfg!(parallel_compiler).
 
 use crate::owning_ref::{Erased, OwningRef};
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
+use std::mem;
+use std::num::NonZeroUsize;
 use std::ops::{Deref, DerefMut};
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
@@ -457,6 +460,91 @@ impl<T: Clone> Clone for Lock<T> {
     #[inline]
     fn clone(&self) -> Self {
         Lock::new(self.borrow().clone())
+    }
+}
+
+fn next() -> NonZeroUsize {
+    static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
+    NonZeroUsize::new(COUNTER.fetch_add(1, Ordering::SeqCst)).expect("more than usize::MAX threads")
+}
+
+pub(crate) fn get_thread_id() -> NonZeroUsize {
+    thread_local!(static THREAD_ID: NonZeroUsize = next());
+    THREAD_ID.with(|&x| x)
+}
+
+// `RefLock` is a thread-safe data structure because it can
+// only be used within the thread in which it was created.
+pub struct RefLock<T> {
+    val: RefCell<T>,
+    thread_id: NonZeroUsize,
+}
+
+impl<T> RefLock<T> {
+    #[inline(always)]
+    pub fn new(value: T) -> Self {
+        Self { val: RefCell::new(value), thread_id: get_thread_id() }
+    }
+
+    #[inline(always)]
+    fn assert_thread(&self) {
+        assert_eq!(get_thread_id(), self.thread_id);
+    }
+
+    #[inline(always)]
+    pub fn get_mut(&mut self) -> &mut T {
+        self.assert_thread();
+        self.val.get_mut()
+    }
+
+    #[inline(always)]
+    pub fn try_lock(&self) -> Option<RefMut<'_, T>> {
+        self.assert_thread();
+        self.val.try_borrow_mut().ok()
+    }
+
+    #[inline(always)]
+    #[track_caller]
+    pub fn lock(&self) -> RefMut<'_, T> {
+        self.assert_thread();
+        self.val.borrow_mut()
+    }
+
+    #[inline(always)]
+    #[track_caller]
+    pub fn with_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
+        f(&mut *self.lock())
+    }
+
+    #[inline(always)]
+    #[track_caller]
+    pub fn borrow(&self) -> RefMut<'_, T> {
+        self.lock()
+    }
+
+    #[inline(always)]
+    #[track_caller]
+    pub fn borrow_mut(&self) -> RefMut<'_, T> {
+        self.lock()
+    }
+}
+
+unsafe impl<T> std::marker::Sync for RefLock<T> {}
+
+impl<T> Drop for RefLock<T> {
+    fn drop(&mut self) {
+        if mem::needs_drop::<T>() {
+            if get_thread_id() != self.thread_id {
+                panic!("destructor of fragile object ran on wrong thread");
+            }
+        }
+    }
+}
+
+impl<T: Default> Default for RefLock<T> {
+    #[inline]
+    fn default() -> Self {
+        RefLock::new(T::default())
     }
 }
 
