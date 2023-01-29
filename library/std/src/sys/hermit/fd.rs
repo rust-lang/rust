@@ -92,3 +92,9 @@ impl AsRawFd for FileDesc {
         self.fd.as_raw_fd()
     }
 }
+
+impl IntoRawFd for FileDesc {
+    fn into_raw_fd(self) -> RawFd {
+        self.fd.into_raw_fd()
+    }
+}

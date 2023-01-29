@@ -4,6 +4,9 @@
 
 use crate::fs;
 use crate::io;
+#[cfg(target_os = "hermit")]
+use crate::os::hermit::io::OwnedFd;
+#[cfg(not(target_os = "hermit"))]
 use crate::os::raw;
 #[cfg(all(doc, not(target_arch = "wasm32")))]
 use crate::os::unix::io::AsFd;
@@ -12,11 +15,20 @@ use crate::os::unix::io::OwnedFd;
 #[cfg(target_os = "wasi")]
 use crate::os::wasi::io::OwnedFd;
 use crate::sys_common::{AsInner, IntoInner};
+#[cfg(target_os = "hermit")]
+use hermit_abi::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+#[cfg(not(target_os = "hermit"))]
+use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 
 /// Raw file descriptors.
 #[rustc_allowed_through_unstable_modules]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(target_os = "hermit"))]
 pub type RawFd = raw::c_int;
+#[rustc_allowed_through_unstable_modules]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(target_os = "hermit")]
+pub type RawFd = i32;
 
 /// A trait to extract the raw file descriptor from an underlying object.
 ///
@@ -177,7 +189,7 @@ impl IntoRawFd for fs::File {
 impl AsRawFd for io::Stdin {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDIN_FILENO
+        STDIN_FILENO
     }
 }
 
@@ -185,7 +197,7 @@ impl AsRawFd for io::Stdin {
 impl AsRawFd for io::Stdout {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDOUT_FILENO
+        STDOUT_FILENO
     }
 }
 
@@ -193,7 +205,7 @@ impl AsRawFd for io::Stdout {
 impl AsRawFd for io::Stderr {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDERR_FILENO
+        STDERR_FILENO
     }
 }
 
@@ -201,7 +213,7 @@ impl AsRawFd for io::Stderr {
 impl<'a> AsRawFd for io::StdinLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDIN_FILENO
+        STDIN_FILENO
     }
 }
 
@@ -209,7 +221,7 @@ impl<'a> AsRawFd for io::StdinLock<'a> {
 impl<'a> AsRawFd for io::StdoutLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDOUT_FILENO
+        STDOUT_FILENO
     }
 }
 
@@ -217,7 +229,7 @@ impl<'a> AsRawFd for io::StdoutLock<'a> {
 impl<'a> AsRawFd for io::StderrLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDERR_FILENO
+        STDERR_FILENO
     }
 }
 
