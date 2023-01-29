@@ -735,20 +735,31 @@ impl Map {
     }
 
     /// Locates the given place, if it exists in the tree.
-    pub fn find(&self, place: PlaceRef<'_>) -> Option<PlaceIndex> {
+    pub fn find_extra(
+        &self,
+        place: PlaceRef<'_>,
+        extra: impl IntoIterator<Item = TrackElem>,
+    ) -> Option<PlaceIndex> {
         let mut index = *self.locals.get(place.local)?.as_ref()?;
 
         for &elem in place.projection {
             index = self.apply(index, elem.try_into().ok()?)?;
+        }
+        for elem in extra {
+            index = self.apply(index, elem)?;
         }
 
         Some(index)
     }
 
     /// Locates the given place, if it exists in the tree.
+    pub fn find(&self, place: PlaceRef<'_>) -> Option<PlaceIndex> {
+        self.find_extra(place, [])
+    }
+
+    /// Locates the given place and applies `Discriminant`, if it exists in the tree.
     pub fn find_discr(&self, place: PlaceRef<'_>) -> Option<PlaceIndex> {
-        let index = self.find(place)?;
-        self.apply(index, TrackElem::Discriminant)
+        self.find_extra(place, [TrackElem::Discriminant])
     }
 
     /// Iterate over all direct children.
@@ -763,14 +774,14 @@ impl Map {
     ///
     /// `tail_elem` allows to support discriminants that are not a place in MIR, but that we track
     /// as such.
-    fn for_each_aliasing_place(
+    pub fn for_each_aliasing_place(
         &self,
         place: PlaceRef<'_>,
         tail_elem: Option<TrackElem>,
         f: &mut impl FnMut(PlaceIndex),
     ) {
         let Some(&Some(mut index)) = self.locals.get(place.local) else {
-            // The local is not tracked at all, nothing to invalidate.
+            // The local is not tracked at all, so it does not alias anything.
             return;
         };
         let elems = place
@@ -782,7 +793,7 @@ impl Map {
             let Ok(elem) = elem else { return };
             let sub = self.apply(index, elem);
             if let TrackElem::Variant(..) | TrackElem::Discriminant = elem {
-                // Writing to an enum variant field invalidates the other variants and the discriminant.
+                // Enum variant fields and enum discriminants alias each another.
                 self.for_each_variant_sibling(index, sub, f);
             }
             if let Some(sub) = sub {
@@ -795,7 +806,7 @@ impl Map {
     }
 
     /// Invoke the given function on all the descendants of the given place, except one branch.
-    pub fn for_each_variant_sibling(
+    fn for_each_variant_sibling(
         &self,
         parent: PlaceIndex,
         preserved_child: Option<PlaceIndex>,
