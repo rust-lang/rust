@@ -440,8 +440,19 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
     ) -> Result<(), FatalError> {
-    let unroll_loops =
-        opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+
+    // Enzyme:
+    // We want to simplify / optimize functions before AD.
+    // However, benchmarks show that optimizations increasing the code size
+    // tend to reduce AD performance. Therefore activate them first, then differentiate the code
+    // and finally re-optimize the module, now with all optimizations available.
+    // RIP compile time.
+    // let unroll_loops =
+    //     opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+    let unroll_loops = false;
+    let vectorize_slp = false;
+    let vectorize_loop = false;
+
     let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
@@ -489,8 +500,8 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         using_thin_buffers,
         config.merge_functions,
         unroll_loops,
-        config.vectorize_slp,
-        config.vectorize_loop,
+        vectorize_slp,
+        vectorize_loop,
         config.no_builtins,
         config.emit_lifetime_markers,
         sanitizer_options.as_ref(),
@@ -706,8 +717,9 @@ pub(crate) unsafe fn differentiate(
     let names: Vec<String> = diff_fncs.iter().map(|(_fnc, name)| name.clone()).collect();
     let tasks = &module.module_llvm.lldiff_items;
 
-    dbg!(names.len());
-    dbg!(tasks.len());
+    assert_eq!(names.len(), tasks.len());
+    // dbg!(names.len());
+    // dbg!(tasks.len());
     for (task, name) in tasks.iter().zip(names) {
         let res = enzyme_ad(llmod, llcx, &task, name);
         assert!(res.is_ok());
