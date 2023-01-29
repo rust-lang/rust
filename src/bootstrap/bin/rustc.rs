@@ -167,7 +167,6 @@ fn main() {
             let libdir_string = libdir.to_string_lossy();
             let (sysroot, _) = libdir_string.rsplit_once('/').unwrap();
             if !args.iter().any(|arg| arg == "--sysroot") {
-                eprintln!("passing clippy --sysroot {}", sysroot);
                 cmd.arg("--sysroot").arg(&sysroot);
             }
         }
