@@ -232,126 +232,33 @@ pub fn find_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
-) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>, Option<(DefaultBodyStability, Span)>)
-{
-    find_stability_generic(sess, attrs.iter(), item_sp)
-}
-
-fn find_stability_generic<'a, I>(
-    sess: &Session,
-    attrs_iter: I,
-    item_sp: Span,
-) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>, Option<(DefaultBodyStability, Span)>)
-where
-    I: Iterator<Item = &'a Attribute>,
-{
+) -> Option<(Stability, Span)> {
     let mut stab: Option<(Stability, Span)> = None;
-    let mut const_stab: Option<(ConstStability, Span)> = None;
-    let mut body_stab: Option<(DefaultBodyStability, Span)> = None;
-    let mut promotable = false;
     let mut allowed_through_unstable_modules = false;
 
-    for attr in attrs_iter {
-        if ![
-            sym::rustc_const_unstable,
-            sym::rustc_const_stable,
-            sym::unstable,
-            sym::stable,
-            sym::rustc_promotable,
-            sym::rustc_allowed_through_unstable_modules,
-            sym::rustc_default_body_unstable,
-        ]
-        .iter()
-        .any(|&s| attr.has_name(s))
-        {
-            continue; // not a stability level
-        }
-
-        let meta = attr.meta();
-
-        if attr.has_name(sym::rustc_promotable) {
-            promotable = true;
-        } else if attr.has_name(sym::rustc_allowed_through_unstable_modules) {
-            allowed_through_unstable_modules = true;
-        } else if let Some(meta) = &meta {
-            let meta_name = meta.name_or_empty();
-            match meta_name {
-                sym::rustc_const_unstable | sym::rustc_default_body_unstable | sym::unstable => {
-                    if meta_name == sym::unstable && stab.is_some() {
-                        handle_errors(
-                            &sess.parse_sess,
-                            attr.span,
-                            AttrError::MultipleStabilityLevels,
-                        );
-                        break;
-                    } else if meta_name == sym::rustc_const_unstable && const_stab.is_some() {
-                        handle_errors(
-                            &sess.parse_sess,
-                            attr.span,
-                            AttrError::MultipleStabilityLevels,
-                        );
-                        break;
-                    } else if meta_name == sym::rustc_default_body_unstable && body_stab.is_some() {
-                        handle_errors(
-                            &sess.parse_sess,
-                            attr.span,
-                            AttrError::MultipleStabilityLevels,
-                        );
-                        break;
-                    }
-
-                    if let Some((feature, level)) = parse_unstability(sess, attr) {
-                        if sym::unstable == meta_name {
-                            stab = Some((Stability { level, feature }, attr.span));
-                        } else if sym::rustc_const_unstable == meta_name {
-                            const_stab = Some((
-                                ConstStability { level, feature, promotable: false },
-                                attr.span,
-                            ));
-                        } else if sym::rustc_default_body_unstable == meta_name {
-                            body_stab = Some((DefaultBodyStability { level, feature }, attr.span));
-                        } else {
-                            unreachable!("Unknown stability attribute {meta_name}");
-                        }
-                    }
+    for attr in attrs {
+        match attr.name_or_empty() {
+            sym::rustc_allowed_through_unstable_modules => allowed_through_unstable_modules = true,
+            sym::unstable => {
+                if stab.is_some() {
+                    handle_errors(&sess.parse_sess, attr.span, AttrError::MultipleStabilityLevels);
+                    break;
                 }
-                sym::rustc_const_stable | sym::stable => {
-                    if meta_name == sym::stable && stab.is_some() {
-                        handle_errors(
-                            &sess.parse_sess,
-                            attr.span,
-                            AttrError::MultipleStabilityLevels,
-                        );
-                        break;
-                    } else if meta_name == sym::rustc_const_stable && const_stab.is_some() {
-                        handle_errors(
-                            &sess.parse_sess,
-                            attr.span,
-                            AttrError::MultipleStabilityLevels,
-                        );
-                        break;
-                    }
-                    if let Some((feature, level)) = parse_stability(sess, attr) {
-                        if sym::stable == meta_name {
-                            stab = Some((Stability { level, feature }, attr.span));
-                        } else {
-                            const_stab = Some((
-                                ConstStability { level, feature, promotable: false },
-                                attr.span,
-                            ));
-                        }
-                    }
+
+                if let Some((feature, level)) = parse_unstability(sess, attr) {
+                    stab = Some((Stability { level, feature }, attr.span));
                 }
-                _ => unreachable!(),
             }
-        }
-    }
-
-    // Merge the const-unstable info into the stability info
-    if promotable {
-        match &mut const_stab {
-            Some((stab, _)) => stab.promotable = promotable,
-            _ => _ = sess.emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp }),
+            sym::stable => {
+                if stab.is_some() {
+                    handle_errors(&sess.parse_sess, attr.span, AttrError::MultipleStabilityLevels);
+                    break;
+                }
+                if let Some((feature, level)) = parse_stability(sess, attr) {
+                    stab = Some((Stability { level, feature }, attr.span));
+                }
+            }
+            _ => {}
         }
     }
 
@@ -370,7 +277,80 @@ where
         }
     }
 
-    (stab, const_stab, body_stab)
+    stab
+}
+
+/// Collects stability info from all stability attributes in `attrs`.
+/// Returns `None` if no stability attributes are found.
+pub fn find_const_stability(
+    sess: &Session,
+    attrs: &[Attribute],
+    item_sp: Span,
+) -> Option<(ConstStability, Span)> {
+    let mut const_stab: Option<(ConstStability, Span)> = None;
+    let mut promotable = false;
+
+    for attr in attrs {
+        match attr.name_or_empty() {
+            sym::rustc_promotable => promotable = true,
+            sym::rustc_const_unstable => {
+                if const_stab.is_some() {
+                    handle_errors(&sess.parse_sess, attr.span, AttrError::MultipleStabilityLevels);
+                    break;
+                }
+
+                if let Some((feature, level)) = parse_unstability(sess, attr) {
+                    const_stab =
+                        Some((ConstStability { level, feature, promotable: false }, attr.span));
+                }
+            }
+            sym::rustc_const_stable => {
+                if const_stab.is_some() {
+                    handle_errors(&sess.parse_sess, attr.span, AttrError::MultipleStabilityLevels);
+                    break;
+                }
+                if let Some((feature, level)) = parse_stability(sess, attr) {
+                    const_stab =
+                        Some((ConstStability { level, feature, promotable: false }, attr.span));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Merge the const-unstable info into the stability info
+    if promotable {
+        match &mut const_stab {
+            Some((stab, _)) => stab.promotable = promotable,
+            _ => _ = sess.emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp }),
+        }
+    }
+
+    const_stab
+}
+
+/// Collects stability info from all stability attributes in `attrs`.
+/// Returns `None` if no stability attributes are found.
+pub fn find_body_stability(
+    sess: &Session,
+    attrs: &[Attribute],
+) -> Option<(DefaultBodyStability, Span)> {
+    let mut body_stab: Option<(DefaultBodyStability, Span)> = None;
+
+    for attr in attrs {
+        if attr.has_name(sym::rustc_default_body_unstable) {
+            if body_stab.is_some() {
+                handle_errors(&sess.parse_sess, attr.span, AttrError::MultipleStabilityLevels);
+                break;
+            }
+
+            if let Some((feature, level)) = parse_unstability(sess, attr) {
+                body_stab = Some((DefaultBodyStability { level, feature }, attr.span));
+            }
+        }
+    }
+
+    body_stab
 }
 
 fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, StabilityLevel)> {
