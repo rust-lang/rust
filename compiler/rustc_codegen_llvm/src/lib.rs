@@ -436,7 +436,6 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
         let cctype = get_scalar_cctype(id, tcx).unwrap();
         return llvm::TypeTree::from_type(cctype, llcx).only(-1);
     }
-    dbg!("not a scalar");
 
     if id.is_ref() {
         dbg!("a reference");
@@ -464,7 +463,38 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
     // dbg!(max_size);
 
     dbg!(id);
+
+
+    if id.is_box() {
+        dbg!("a box");
+        tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx).only(-1);
+        let inner_id = id.builtin_deref(true).unwrap().ty;
+        let inner_tt = get_enzyme_typtree(inner_id, llvm_data_layout, tcx, llcx);
+        tt.merge(inner_tt.only(-1));
+        println!("returning box tt: {}", tt);
+        return tt;
+    }
+
+    if id.is_adt() {
+        dbg!("an ADT");
+        let adt_def = id.ty_adt_def().unwrap();
+        if adt_def.is_struct() {
+            dbg!("a struct");
+            let (offsets, memory_index) = match fields {
+                FieldsShape::Arbitrary{ offsets: o, memory_index: m } => (o,m),
+                _ => panic!(""),
+            };
+            dbg!(offsets);
+            dbg!(memory_index);
+            unimplemented!("");
+        } else {
+            unimplemented!("adt that isn't a struct");
+        }
+    }
+
+
     if let FieldsShape::Array{stride, count} = fields {
+        dbg!("an array");
         let byte_stride = stride.bytes_usize();
         let byte_max_size = max_size.bytes_usize();
         let isize_count: isize = (*count).try_into().unwrap();
