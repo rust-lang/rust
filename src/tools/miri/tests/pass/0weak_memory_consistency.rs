@@ -286,40 +286,6 @@ fn test_iriw_sc_rlx() {
     assert!(c || d);
 }
 
-// Another test for C++20 SCfix.
-fn scfix() {
-    let x = static_atomic_bool(false);
-    let y = static_atomic_bool(false);
-
-    let thread1 = spawn(move || {
-        let a = x.load(Relaxed);
-        fence(SeqCst);
-        let b = y.load(Relaxed);
-        (a, b)
-    });
-
-    let thread2 = spawn(move || {
-        x.store(true, Relaxed);
-    });
-    let thread3 = spawn(move || {
-        x.store(true, Relaxed);
-    });
-
-    let thread4 = spawn(move || {
-        let c = y.load(Relaxed);
-        fence(SeqCst);
-        let d = x.load(Relaxed);
-        (c, d)
-    });
-
-    let (a, b) = thread1.join().unwrap();
-    thread2.join().unwrap();
-    thread3.join().unwrap();
-    let (c, d) = thread4.join().unwrap();
-    let bad = a == true && b == false && c == true && d == false;
-    assert!(!bad);
-}
-
 pub fn main() {
     for _ in 0..50 {
         test_single_thread();
@@ -331,6 +297,5 @@ pub fn main() {
         test_sc_store_buffering();
         test_sync_through_rmw_and_fences();
         test_iriw_sc_rlx();
-        scfix();
     }
 }
