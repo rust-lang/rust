@@ -1823,7 +1823,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         .trait_ref()
                         .and_then(|t| t.trait_def_id())
                         .map_or(false, |def_id| {
-                            fcx.tcx.object_safety_violations(def_id).is_empty()
+                            fcx.tcx.check_is_object_safe(def_id)
                         })
                 })
             }

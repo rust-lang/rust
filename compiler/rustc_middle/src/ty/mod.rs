@@ -2458,10 +2458,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
     }
 
-    pub fn is_object_safe(self, key: DefId) -> bool {
-        self.object_safety_violations(key).is_empty()
-    }
-
     #[inline]
     pub fn is_const_fn_raw(self, def_id: DefId) -> bool {
         matches!(

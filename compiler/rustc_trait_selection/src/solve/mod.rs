@@ -361,7 +361,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     }
 
     fn compute_object_safe_goal(&mut self, trait_def_id: DefId) -> QueryResult<'tcx> {
-        if self.tcx().is_object_safe(trait_def_id) {
+        if self.tcx().check_is_object_safe(trait_def_id) {
             self.make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)

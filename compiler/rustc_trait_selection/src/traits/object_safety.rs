@@ -62,6 +62,37 @@ fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [Object
     )
 }
 
+fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
+    let violations = tcx.object_safety_violations(trait_def_id);
+
+    if violations.is_empty() {
+        return true;
+    }
+
+    // If the trait contains any other violations, then let the error reporting path
+    // report it instead of emitting a warning here.
+    if violations.iter().all(|violation| {
+        matches!(
+            violation,
+            ObjectSafetyViolation::Method(_, MethodViolationCode::WhereClauseReferencesSelf, _)
+        )
+    }) {
+        for violation in violations {
+            if let ObjectSafetyViolation::Method(
+                _,
+                MethodViolationCode::WhereClauseReferencesSelf,
+                span,
+            ) = violation
+            {
+                lint_object_unsafe_trait(tcx, *span, trait_def_id, &violation);
+            }
+        }
+        return true;
+    }
+
+    false
+}
+
 /// We say a method is *vtable safe* if it can be invoked on a trait
 /// object. Note that object-safe traits can have some
 /// non-vtable-safe methods, so long as they require `Self: Sized` or
@@ -92,19 +123,6 @@ fn object_safety_violations_for_trait(
         .filter_map(|item| {
             object_safety_violation_for_method(tcx, trait_def_id, &item)
                 .map(|(code, span)| ObjectSafetyViolation::Method(item.name, code, span))
-        })
-        .filter(|violation| {
-            if let ObjectSafetyViolation::Method(
-                _,
-                MethodViolationCode::WhereClauseReferencesSelf,
-                span,
-            ) = violation
-            {
-                lint_object_unsafe_trait(tcx, *span, trait_def_id, &violation);
-                false
-            } else {
-                true
-            }
         })
         .collect();
 
@@ -866,5 +884,6 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { object_safety_violations, ..*providers };
+    *providers =
+        ty::query::Providers { object_safety_violations, check_is_object_safe, ..*providers };
 }
