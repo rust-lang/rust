@@ -3,6 +3,7 @@ use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
+use crate::co_alloc::CoAllocPref;
 use crate::raw_vec::RawVec;
 use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
@@ -32,9 +33,9 @@ use core::{alloc, array, fmt};
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-    const COOP_PREF: bool = { SHORT_TERM_VEC_PREFERS_COOP!() },
+    const CO_ALLOC_PREF: CoAllocPref = { SHORT_TERM_VEC_PREFERS_COOP!() },
 > where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     pub(super) buf: NonNull<T>,
     pub(super) phantom: PhantomData<T>,
@@ -49,18 +50,18 @@ pub struct IntoIter<
 }
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
-impl<T: fmt::Debug, A: Allocator, const COOP_PREF: bool> fmt::Debug for IntoIter<T, A, COOP_PREF>
+impl<T: fmt::Debug, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> fmt::Debug for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter").field(&self.as_slice()).finish()
     }
 }
 
-impl<T, A: Allocator, const COOP_PREF: bool> IntoIter<T, A, COOP_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     /// Returns the remaining items of this iterator as a slice.
     ///
@@ -131,11 +132,11 @@ where
         // this creates less assembly
         self.cap = 0;
         self.buf = unsafe {
-            // @FIXME The below if COOP_PREF {..} else {..}
+            // @FIXME The below if CO_ALLOC_PREF {..} else {..}
             // branching exists, because the following fails. Otherwise we'd have a snowball effect of wide spread of where...Global...
             //
-            // NonNull::new_unchecked(RawVec::<T, Global, COOP_PREF>::NEW.ptr())
-            if COOP_PREF {
+            // NonNull::new_unchecked(RawVec::<T, Global, CO_ALLOC_PREF>::NEW.ptr())
+            if CO_ALLOC_PREF {
                 NonNull::new_unchecked(RawVec::<T, Global, true>::NEW.ptr())
             } else {
                 NonNull::new_unchecked(RawVec::<T, Global, false>::NEW.ptr())
@@ -160,7 +161,7 @@ where
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub(crate) fn into_vecdeque(self) -> VecDeque<T, A, COOP_PREF> {
+    pub(crate) fn into_vecdeque(self) -> VecDeque<T, A, CO_ALLOC_PREF> {
         // Keep our `Drop` impl from dropping the elements and the allocator
         let mut this = ManuallyDrop::new(self);
 
@@ -187,9 +188,9 @@ where
 }
 
 #[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> AsRef<[T]> for IntoIter<T, A, COOP_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> AsRef<[T]> for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     fn as_ref(&self) -> &[T] {
         self.as_slice()
@@ -197,20 +198,20 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send, A: Allocator + Send, const COOP_PREF: bool> Send for IntoIter<T, A, COOP_PREF> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
+unsafe impl<T: Send, A: Allocator + Send, const CO_ALLOC_PREF: CoAllocPref> Send for IntoIter<T, A, CO_ALLOC_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:
 {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync, A: Allocator + Sync, const COOP_PREF: bool> Sync for IntoIter<T, A, COOP_PREF> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
+unsafe impl<T: Sync, A: Allocator + Sync, const CO_ALLOC_PREF: CoAllocPref> Sync for IntoIter<T, A, CO_ALLOC_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:
 {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> Iterator for IntoIter<T, A, COOP_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Iterator for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     type Item = T;
 
@@ -325,9 +326,9 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> DoubleEndedIterator for IntoIter<T, A, COOP_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -369,9 +370,9 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> ExactSizeIterator for IntoIter<T, A, COOP_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     fn is_empty(&self) -> bool {
         self.ptr == self.end
@@ -379,14 +380,14 @@ where
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, A: Allocator, const COOP_PREF: bool> FusedIterator for IntoIter<T, A, COOP_PREF> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> FusedIterator for IntoIter<T, A, CO_ALLOC_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:
 {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, A: Allocator, const COOP_PREF: bool> TrustedLen for IntoIter<T, A, COOP_PREF> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
+unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> TrustedLen for IntoIter<T, A, CO_ALLOC_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:
 {
 }
 
@@ -404,30 +405,30 @@ impl<T: Copy> NonDrop for T {}
 #[unstable(issue = "none", feature = "std_internals")]
 // TrustedRandomAccess (without NoCoerce) must not be implemented because
 // subtypes/supertypes of `T` might not be `NonDrop`
-unsafe impl<T, A: Allocator, const COOP_PREF: bool> TrustedRandomAccessNoCoerce
-    for IntoIter<T, A, COOP_PREF>
+unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> TrustedRandomAccessNoCoerce
+    for IntoIter<T, A, CO_ALLOC_PREF>
 where
     T: NonDrop,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
-impl<T: Clone, A: Allocator + Clone, const COOP_PREF: bool> Clone for IntoIter<T, A, COOP_PREF>
+impl<T: Clone, A: Allocator + Clone, const CO_ALLOC_PREF: CoAllocPref> Clone for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
         // @FIXME Remove the following extras - used for type checks only
         let slice = self.as_slice();
-        let vec: crate::vec::Vec<T, A, COOP_PREF> =
-            slice.to_vec_in::<A, COOP_PREF>(self.alloc.deref().clone());
-        let _iter: IntoIter<T, A, COOP_PREF> = vec.into_iter();
+        let vec: crate::vec::Vec<T, A, CO_ALLOC_PREF> =
+            slice.to_vec_in::<A, CO_ALLOC_PREF>(self.alloc.deref().clone());
+        let _iter: IntoIter<T, A, CO_ALLOC_PREF> = vec.into_iter();
 
-        //self.as_slice().to_vec_in::<A, COOP_PREF>(self.alloc.deref().clone()).into_iter()
+        //self.as_slice().to_vec_in::<A, CO_ALLOC_PREF>(self.alloc.deref().clone()).into_iter()
         loop {}
     }
     #[cfg(test)]
@@ -437,28 +438,28 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREF: bool> Drop for IntoIter<T, A, COOP_PREF>
+unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     fn drop(&mut self) {
-        struct DropGuard<'a, T, A: Allocator, const COOP_PREF: bool>(
-            &'a mut IntoIter<T, A, COOP_PREF>,
+        struct DropGuard<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+            &'a mut IntoIter<T, A, CO_ALLOC_PREF>,
         )
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:;
+            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:;
 
-        impl<T, A: Allocator, const COOP_PREF: bool> Drop for DropGuard<'_, T, A, COOP_PREF>
+        impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for DropGuard<'_, T, A, CO_ALLOC_PREF>
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
         {
             fn drop(&mut self) {
                 unsafe {
                     // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
                     let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
-                    // @FIXME pass true instead of COOP_PREF - use e.g.: if COOP_PREF {let _ = RawVec::<T, A, COOP_PREF>::from_raw_parts_in(..) } else { let _ = from_raw_parts_in_coop(...)} }
-                    let _ = RawVec::<T, A, COOP_PREF>::from_raw_parts_in(
+                    // @FIXME pass true instead of CO_ALLOC_PREF - use e.g.: if CO_ALLOC_PREF {let _ = RawVec::<T, A, CO_ALLOC_PREF>::from_raw_parts_in(..) } else { let _ = from_raw_parts_in_coop(...)} }
+                    let _ = RawVec::<T, A, CO_ALLOC_PREF>::from_raw_parts_in(
                         self.0.buf.as_ptr(),
                         self.0.cap,
                         alloc,
@@ -480,16 +481,16 @@ where
 // also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-unsafe impl<T, A: Allocator, const COOP_PREF: bool> InPlaceIterable for IntoIter<T, A, COOP_PREF> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:
+unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> InPlaceIterable for IntoIter<T, A, CO_ALLOC_PREF> where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:
 {
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-unsafe impl<T, A: Allocator, const COOP_PREF: bool> SourceIter for IntoIter<T, A, COOP_PREF>
+unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SourceIter for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
 {
     type Source = Self;
 

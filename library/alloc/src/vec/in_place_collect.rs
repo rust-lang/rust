@@ -153,10 +153,10 @@ pub(super) trait InPlaceIterableMarker {}
 impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
 
 #[allow(unused_braces)]
-impl<T, I, const COOP_PREF: bool> SpecFromIter<T, I> for Vec<T, Global, COOP_PREF>
+impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, I> for Vec<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T> + SourceIter<Source: AsVecIntoIter> + InPlaceIterableMarker,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREF)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(CO_ALLOC_PREF)]:,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // See "Layout constraints" section in the module documentation. We rely on const

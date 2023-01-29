@@ -79,16 +79,6 @@ macro_rules! SHORT_TERM_VEC_PREFERS_COOP {
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 pub type SliceAndMetaResult<M> = Result<SliceAndMeta<M>, AllocError>;
 
-// @FIXME REMOVE
-/// Return 0 or 1, indicating whether to use coallocation metadata or not. Param `coop_preferred` -
-/// if false, then this returns `0`, regardless of whether allocator `A` is cooperative.
-#[unstable(feature = "global_co_alloc", issue = "none")]
-pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
-    coop_preferred: bool,
-) -> usize {
-    if coop_preferred { A::CO_ALLOC_META_NUM_SLOTS as usize } else { 0 }
-}
-
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 pub trait CoAllocMetaBase: Clone + Copy {
     /// NOT for public use. This MAY BE REMOVED or CHANGED.
