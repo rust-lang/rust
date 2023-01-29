@@ -107,21 +107,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
-                let (dest, active_field_index) = match **kind {
-                    mir::AggregateKind::Adt(adt_did, variant_index, _, _, active_field_index) => {
-                        dest.codegen_set_discr(bx, variant_index);
-                        if bx.tcx().adt_def(adt_did).is_enum() {
-                            (dest.project_downcast(bx, variant_index), active_field_index)
-                        } else {
-                            (dest, active_field_index)
-                        }
+                let (variant_index, variant_dest, active_field_index) = match **kind {
+                    mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
+                        let variant_dest = dest.project_downcast(bx, variant_index);
+                        (variant_index, variant_dest, active_field_index)
                     }
-                    mir::AggregateKind::Generator(..) => {
-                        dest.codegen_set_discr(bx, VariantIdx::from_u32(0));
-                        (dest, None)
-                    }
-                    _ => (dest, None),
+                    _ => (VariantIdx::from_u32(0), dest, None),
                 };
+                if active_field_index.is_some() {
+                    assert_eq!(operands.len(), 1);
+                }
                 for (i, operand) in operands.iter().enumerate() {
                     let op = self.codegen_operand(bx, operand);
                     // Do not generate stores and GEPis for zero-sized fields.
@@ -129,13 +124,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let field_index = active_field_index.unwrap_or(i);
                         let field = if let mir::AggregateKind::Array(_) = **kind {
                             let llindex = bx.cx().const_usize(field_index as u64);
-                            dest.project_index(bx, llindex)
+                            variant_dest.project_index(bx, llindex)
                         } else {
-                            dest.project_field(bx, field_index)
+                            variant_dest.project_field(bx, field_index)
                         };
                         op.val.store(bx, field);
                     }
                 }
+                dest.codegen_set_discr(bx, variant_index);
             }
 
             _ => {
