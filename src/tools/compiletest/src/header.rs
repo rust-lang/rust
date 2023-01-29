@@ -926,7 +926,7 @@ pub fn make_test_description<R: Read>(
     cfg: Option<&str>,
 ) -> test::TestDesc {
     let mut ignore = false;
-    let ignore_message = None;
+    let mut ignore_message = None;
     let mut should_fail = false;
 
     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
@@ -966,41 +966,67 @@ pub fn make_test_description<R: Read>(
         if revision.is_some() && revision != cfg {
             return;
         }
+        macro_rules! reason {
+            ($e:expr) => {
+                ignore |= match $e {
+                    true => {
+                        ignore_message = Some(stringify!($e));
+                        true
+                    }
+                    false => ignore,
+                }
+            };
+        }
         ignore = match config.parse_cfg_name_directive(ln, "ignore") {
-            ParsedNameDirective::Match => true,
+            ParsedNameDirective::Match => {
+                ignore_message = Some("cfg -> ignore => Match");
+                true
+            }
             ParsedNameDirective::NoMatch => ignore,
         };
+
         if config.has_cfg_prefix(ln, "only") {
             ignore = match config.parse_cfg_name_directive(ln, "only") {
                 ParsedNameDirective::Match => ignore,
-                ParsedNameDirective::NoMatch => true,
+                ParsedNameDirective::NoMatch => {
+                    ignore_message = Some("cfg -> only => NoMatch");
+                    true
+                }
             };
         }
-        ignore |= ignore_llvm(config, ln);
-        ignore |=
-            config.run_clang_based_tests_with.is_none() && config.parse_needs_matching_clang(ln);
-        ignore |= !has_asm_support && config.parse_name_directive(ln, "needs-asm-support");
-        ignore |= !rustc_has_profiler_support && config.parse_needs_profiler_support(ln);
-        ignore |= !config.run_enabled() && config.parse_name_directive(ln, "needs-run-enabled");
-        ignore |= !rustc_has_sanitizer_support
-            && config.parse_name_directive(ln, "needs-sanitizer-support");
-        ignore |= !has_asan && config.parse_name_directive(ln, "needs-sanitizer-address");
-        ignore |= !has_cfi && config.parse_name_directive(ln, "needs-sanitizer-cfi");
-        ignore |= !has_kcfi && config.parse_name_directive(ln, "needs-sanitizer-kcfi");
-        ignore |= !has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak");
-        ignore |= !has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory");
-        ignore |= !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread");
-        ignore |= !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress");
-        ignore |= !has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag");
-        ignore |= !has_shadow_call_stack
-            && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack");
-        ignore |= !config.can_unwind() && config.parse_name_directive(ln, "needs-unwind");
-        ignore |= config.target == "wasm32-unknown-unknown"
-            && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS);
-        ignore |= config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln);
-        ignore |= config.debugger == Some(Debugger::Gdb) && ignore_gdb(config, ln);
-        ignore |= config.debugger == Some(Debugger::Lldb) && ignore_lldb(config, ln);
-        ignore |= !has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld");
+
+        reason!(ignore_llvm(config, ln));
+        reason!(
+            config.run_clang_based_tests_with.is_none() && config.parse_needs_matching_clang(ln)
+        );
+        reason!(!has_asm_support && config.parse_name_directive(ln, "needs-asm-support"));
+        reason!(!rustc_has_profiler_support && config.parse_needs_profiler_support(ln));
+        reason!(!config.run_enabled() && config.parse_name_directive(ln, "needs-run-enabled"));
+        reason!(
+            !rustc_has_sanitizer_support
+                && config.parse_name_directive(ln, "needs-sanitizer-support")
+        );
+        reason!(!has_asan && config.parse_name_directive(ln, "needs-sanitizer-address"));
+        reason!(!has_cfi && config.parse_name_directive(ln, "needs-sanitizer-cfi"));
+        reason!(!has_kcfi && config.parse_name_directive(ln, "needs-sanitizer-kcfi"));
+        reason!(!has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak"));
+        reason!(!has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory"));
+        reason!(!has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread"));
+        reason!(!has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress"));
+        reason!(!has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag"));
+        reason!(
+            !has_shadow_call_stack
+                && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack")
+        );
+        reason!(!config.can_unwind() && config.parse_name_directive(ln, "needs-unwind"));
+        reason!(
+            config.target == "wasm32-unknown-unknown"
+                && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
+        );
+        reason!(config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln));
+        reason!(config.debugger == Some(Debugger::Gdb) && ignore_gdb(config, ln));
+        reason!(config.debugger == Some(Debugger::Lldb) && ignore_lldb(config, ln));
+        reason!(!has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld"));
         should_fail |= config.parse_name_directive(ln, "should-fail");
     });
 
