@@ -820,17 +820,10 @@ class RustBuild(object):
             if os.path.exists(cargo_dir):
                 shutil.rmtree(cargo_dir)
 
-def bootstrap(help_triggered):
-    """Configure, fetch, build and run the initial bootstrap"""
-
-    # If the user is asking for help, let them know that the whole download-and-build
-    # process has to happen before anything is printed out.
-    if help_triggered:
-        print("info: Downloading and building bootstrap before processing --help")
-        print("      command. See src/bootstrap/README.md for help with common")
-        print("      commands.")
-
-    parser = argparse.ArgumentParser(description='Build rust')
+def parse_args():
+    """Parse the command line arguments that the python script needs."""
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('-h', '--help', action='store_true')
     parser.add_argument('--config')
     parser.add_argument('--build-dir')
     parser.add_argument('--build')
@@ -838,9 +831,10 @@ def bootstrap(help_triggered):
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
-    args = [a for a in sys.argv if a != '-h' and a != '--help']
-    args, _ = parser.parse_known_args(args)
+    return parser.parse_known_args(sys.argv)[0]
 
+def bootstrap(args):
+    """Configure, fetch, build and run the initial bootstrap"""
     # Configure initial bootstrap
     build = RustBuild()
     build.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
@@ -918,23 +912,30 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == 'help':
         sys.argv[1] = '-h'
 
-    help_triggered = (
-        '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
+    args = parse_args()
+    help_triggered = args.help or len(sys.argv) == 1
+
+    # If the user is asking for help, let them know that the whole download-and-build
+    # process has to happen before anything is printed out.
+    if help_triggered:
+        print(
+            "info: Downloading and building bootstrap before processing --help command.\n"
+            "      See src/bootstrap/README.md for help with common commands."
+        )
+
+    exit_code = 0
     try:
-        bootstrap(help_triggered)
-        if not help_triggered:
-            print("Build completed successfully in {}".format(
-                format_build_time(time() - start_time)))
+        bootstrap(args)
     except (SystemExit, KeyboardInterrupt) as error:
         if hasattr(error, 'code') and isinstance(error.code, int):
             exit_code = error.code
         else:
             exit_code = 1
             print(error)
-        if not help_triggered:
-            print("Build completed unsuccessfully in {}".format(
-                format_build_time(time() - start_time)))
-        sys.exit(exit_code)
+
+    if not help_triggered:
+        print("Build completed successfully in", format_build_time(time() - start_time))
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':
