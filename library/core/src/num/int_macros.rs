@@ -2574,12 +2574,13 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[rustc_allow_const_fn_unstable(const_cmp)]
         pub const fn signum(self) -> Self {
-            match self {
-                n if n > 0 =>  1,
-                0          =>  0,
-                _          => -1,
-            }
+            // Picking the right way to phrase this is complicated
+            // (<https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>)
+            // so delegate it to `Ord` which is already producing -1/0/+1
+            // exactly like we need and can be the place to deal with the complexity.
+            self.cmp(&0) as _
         }
 
         /// Returns `true` if `self` is positive and `false` if the number is zero or
