@@ -199,6 +199,17 @@ parse_match_arm_body_without_braces = `match` arm body without braces
         } with a body
     .suggestion_use_comma_not_semicolon = use a comma to end a `match` arm expression
 
+parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
+    .suggestion_remove_eq = use `..=` instead
+    .note = inclusive ranges end with a single equals sign (`..=`)
+
+parse_inclusive_range_match_arrow = unexpected `=>` after open range
+    .suggestion_add_space = add a space between the pattern and `=>`
+
+parse_inclusive_range_no_end = inclusive range with no end
+    .suggestion_open_range = use `..` instead
+    .note = inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
 parse_struct_literal_not_allowed_here = struct literals are not allowed here
     .suggestion = surround the struct literal with parentheses
 

@@ -78,7 +78,7 @@ pub(super) enum CandidateSource {
     ///     let _y = x.clone();
     /// }
     /// ```
-    AliasBound(usize),
+    AliasBound,
 }
 
 pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
@@ -242,8 +242,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
             // This doesn't work as long as we use `CandidateSource` in winnowing.
             let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-            // FIXME: This is broken if we care about the `usize` of `AliasBound` because the self type
-            // could be normalized to yet another projection with different item bounds.
             let normalized_candidates = self.assemble_and_evaluate_candidates(goal);
             for mut normalized_candidate in normalized_candidates {
                 normalized_candidate.result =
@@ -368,15 +366,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Alias(_, alias_ty) => alias_ty,
         };
 
-        for (i, (assumption, _)) in self
+        for (assumption, _) in self
             .tcx()
             .bound_explicit_item_bounds(alias_ty.def_id)
             .subst_iter_copied(self.tcx(), alias_ty.substs)
-            .enumerate()
         {
             match G::consider_assumption(self, goal, assumption) {
                 Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound(i), result })
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result })
                 }
                 Err(NoSolution) => (),
             }

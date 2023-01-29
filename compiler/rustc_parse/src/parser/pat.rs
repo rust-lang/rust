@@ -1,5 +1,7 @@
 use super::{ForceCollect, Parser, PathStyle, TrailingToken};
-use crate::errors::RemoveLet;
+use crate::errors::{
+    InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, RemoveLet,
+};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
@@ -9,7 +11,7 @@ use rustc_ast::{
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -746,47 +748,52 @@ impl<'a> Parser<'a> {
             // Parsing e.g. `X..`.
             if let RangeEnd::Included(_) = re.node {
                 // FIXME(Centril): Consider semantic errors instead in `ast_validation`.
-                self.inclusive_range_with_incorrect_end(re.span);
+                self.inclusive_range_with_incorrect_end();
             }
             None
         };
         Ok(PatKind::Range(Some(begin), end, re))
     }
 
-    pub(super) fn inclusive_range_with_incorrect_end(&mut self, span: Span) {
+    pub(super) fn inclusive_range_with_incorrect_end(&mut self) {
         let tok = &self.token;
-
+        let span = self.prev_token.span;
         // If the user typed "..==" instead of "..=", we want to give them
         // a specific error message telling them to use "..=".
+        // If they typed "..=>", suggest they use ".. =>".
         // Otherwise, we assume that they meant to type a half open exclusive
         // range and give them an error telling them to do that instead.
-        if matches!(tok.kind, token::Eq) && tok.span.lo() == span.hi() {
-            let span_with_eq = span.to(tok.span);
+        let no_space = tok.span.lo() == span.hi();
+        match tok.kind {
+            token::Eq if no_space => {
+                let span_with_eq = span.to(tok.span);
 
-            // Ensure the user doesn't receive unhelpful unexpected token errors
-            self.bump();
-            if self.is_pat_range_end_start(0) {
-                let _ = self.parse_pat_range_end().map_err(|e| e.cancel());
+                // Ensure the user doesn't receive unhelpful unexpected token errors
+                self.bump();
+                if self.is_pat_range_end_start(0) {
+                    let _ = self.parse_pat_range_end().map_err(|e| e.cancel());
+                }
+
+                self.error_inclusive_range_with_extra_equals(span_with_eq);
             }
-
-            self.error_inclusive_range_with_extra_equals(span_with_eq);
-        } else {
-            self.error_inclusive_range_with_no_end(span);
+            token::Gt if no_space => {
+                self.error_inclusive_range_match_arrow(span);
+            }
+            _ => self.error_inclusive_range_with_no_end(span),
         }
     }
 
     fn error_inclusive_range_with_extra_equals(&self, span: Span) {
-        self.struct_span_err(span, "unexpected `=` after inclusive range")
-            .span_suggestion_short(span, "use `..=` instead", "..=", Applicability::MaybeIncorrect)
-            .note("inclusive ranges end with a single equals sign (`..=`)")
-            .emit();
+        self.sess.emit_err(InclusiveRangeExtraEquals { span });
+    }
+
+    fn error_inclusive_range_match_arrow(&self, span: Span) {
+        let after_pat = span.with_hi(span.hi() - rustc_span::BytePos(1)).shrink_to_hi();
+        self.sess.emit_err(InclusiveRangeMatchArrow { span, after_pat });
     }
 
     fn error_inclusive_range_with_no_end(&self, span: Span) {
-        struct_span_err!(self.sess.span_diagnostic, span, E0586, "inclusive range with no end")
-            .span_suggestion_short(span, "use `..` instead", "..", Applicability::MachineApplicable)
-            .note("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)")
-            .emit();
+        self.sess.emit_err(InclusiveRangeNoEnd { span });
     }
 
     /// Parse a range-to pattern, `..X` or `..=X` where `X` remains to be parsed.

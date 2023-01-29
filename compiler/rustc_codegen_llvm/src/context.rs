@@ -191,7 +191,7 @@ pub unsafe fn create_module<'ll>(
         //
         // FIXME(#34960)
         let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
-        let custom_llvm_used = cfg_llvm_root.trim() != "";
+        let custom_llvm_used = !cfg_llvm_root.trim().is_empty();
 
         if !custom_llvm_used && target_data_layout != llvm_data_layout {
             bug!(

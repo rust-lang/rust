@@ -36,7 +36,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Arguments get assigned to by means of the function being called
     for arg in mir.args_iter() {
-        analyzer.assign(arg, mir::START_BLOCK.start_location());
+        analyzer.assign(arg, DefLocation::Argument);
     }
 
     // If there exists a local definition that dominates all uses of that local,
@@ -64,7 +64,22 @@ enum LocalKind {
     /// A scalar or a scalar pair local that is neither defined nor used.
     Unused,
     /// A scalar or a scalar pair local with a single definition that dominates all uses.
-    SSA(mir::Location),
+    SSA(DefLocation),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum DefLocation {
+    Argument,
+    Body(Location),
+}
+
+impl DefLocation {
+    fn dominates(self, location: Location, dominators: &Dominators<mir::BasicBlock>) -> bool {
+        match self {
+            DefLocation::Argument => true,
+            DefLocation::Body(def) => def.successor_within_block().dominates(location, dominators),
+        }
+    }
 }
 
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
@@ -74,17 +89,13 @@ struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 }
 
 impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
-    fn assign(&mut self, local: mir::Local, location: Location) {
+    fn assign(&mut self, local: mir::Local, location: DefLocation) {
         let kind = &mut self.locals[local];
         match *kind {
             LocalKind::ZST => {}
             LocalKind::Memory => {}
-            LocalKind::Unused => {
-                *kind = LocalKind::SSA(location);
-            }
-            LocalKind::SSA(_) => {
-                *kind = LocalKind::Memory;
-            }
+            LocalKind::Unused => *kind = LocalKind::SSA(location),
+            LocalKind::SSA(_) => *kind = LocalKind::Memory,
         }
     }
 
@@ -166,7 +177,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         debug!("visit_assign(place={:?}, rvalue={:?})", place, rvalue);
 
         if let Some(local) = place.as_local() {
-            self.assign(local, location);
+            self.assign(local, DefLocation::Body(location));
             if self.locals[local] != LocalKind::Memory {
                 let decl_span = self.fx.mir.local_decls[local].source_info.span;
                 if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
@@ -189,7 +200,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         match context {
             PlaceContext::MutatingUse(MutatingUseContext::Call)
             | PlaceContext::MutatingUse(MutatingUseContext::Yield) => {
-                self.assign(local, location);
+                self.assign(local, DefLocation::Body(location));
             }
 
             PlaceContext::NonUse(_) | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}

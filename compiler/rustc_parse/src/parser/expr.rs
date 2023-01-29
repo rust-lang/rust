@@ -3168,7 +3168,7 @@ impl<'a> Parser<'a> {
         limits: RangeLimits,
     ) -> ExprKind {
         if end.is_none() && limits == RangeLimits::Closed {
-            self.inclusive_range_with_incorrect_end(self.prev_token.span);
+            self.inclusive_range_with_incorrect_end();
             ExprKind::Err
         } else {
             ExprKind::Range(start, end, limits)

@@ -171,7 +171,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             (CandidateSource::Impl(_), _)
             | (CandidateSource::ParamEnv(_), _)
             | (CandidateSource::BuiltinImpl, _)
-            | (CandidateSource::AliasBound(_), _) => unimplemented!(),
+            | (CandidateSource::AliasBound, _) => unimplemented!(),
         }
     }
 }
