@@ -3,7 +3,7 @@
 use crate::co_alloc::CoAllocPref;
 use crate::meta_num_slots_default;
 use core::alloc::CoAllocMetaBase;
-use core::alloc::{self, LayoutError, PtrAndMeta};
+use core::alloc::{LayoutError, PtrAndMeta};
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
@@ -68,9 +68,10 @@ pub(crate) struct RawVec<
     //pub(crate) meta: [GlobalCoAllocMeta; {if core::any::TypeId::of::<A>()==core::any::TypeId::of::<Global>() {1} else {0}}],
     //pub(crate) meta: [GlobalCoAllocMeta; mem::size_of::<A::IsCoAllocator>()],
     pub(crate) metas:
-        [A::CoAllocMeta; alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)],
+        [A::CoAllocMeta; {crate::meta_num_slots!(A, CO_ALLOC_PREF)}],
 }
 
+#[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, Global, CO_ALLOC_PREF>
 where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
@@ -121,9 +122,10 @@ where
     }
 }
 
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     const fn new_plain_metas() -> [A::CoAllocMeta; { meta_num_slots_default!(A) }] {
         loop {}
@@ -151,7 +153,7 @@ where
             cap: 0,
             alloc,
             metas: [A::CoAllocMeta::new_plain(); // @FIXME CoAlloc
-                alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)],
+                {crate::meta_num_slots!(A, CO_ALLOC_PREF)}],
         }
     }
 
@@ -231,7 +233,7 @@ where
                 cap: capacity,
                 alloc,
                 metas: [A::CoAllocMeta::new_plain(); // @FIXME CoAlloc
-                    alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)],
+                    {crate::meta_num_slots!(A, CO_ALLOC_PREF)}],
             }
         }
     }
@@ -254,7 +256,7 @@ where
             cap: capacity,
             alloc,
             metas: [A::CoAllocMeta::new_plain(); //@FIXME CoAlloc
-                alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)],
+                {crate::meta_num_slots!(A, CO_ALLOC_PREF)}],
         }
     }
 
@@ -318,6 +320,7 @@ where
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[allow(unused_braces)]
     pub fn reserve(&mut self, len: usize, additional: usize) {
         // Callers expect this function to be very cheap when there is already sufficient capacity.
         // Therefore, we move all the resizing and error-handling logic from grow_amortized and
@@ -329,7 +332,7 @@ where
             len: usize,
             additional: usize,
         ) where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
         {
             handle_reserve(slf.grow_amortized(len, additional));
         }
@@ -403,9 +406,10 @@ where
     }
 }
 
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
@@ -526,9 +530,10 @@ where
     memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
 }
 
+#[allow(unused_braces)]
 unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for RawVec<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     default fn drop(&mut self) {

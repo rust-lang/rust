@@ -748,6 +748,7 @@ impl<T> Box<[T]> {
     }
 }
 
+#[allow(unused_braces)]
 impl<T, A: Allocator> Box<[T], A>
 where
     [(); {crate::meta_num_slots!(A, crate::CO_ALLOC_PREF_META_NO!())}]:,
@@ -1680,6 +1681,7 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_array_try_from_vec", since = "1.66.0")]
+#[allow(unused_braces)]
 impl<T, const N: usize, const CO_ALLOC_PREF: CoAllocPref> TryFrom<Vec<T, Global, CO_ALLOC_PREF>> for Box<[T; N]>
 where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
@@ -2041,6 +2043,7 @@ impl<I> FromIterator<I> for Box<[I]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
+#[allow(unused_braces)]
 impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A>
 where
     [(); {crate::meta_num_slots!(A, crate::CO_ALLOC_PREF_META_NO!())}]:,

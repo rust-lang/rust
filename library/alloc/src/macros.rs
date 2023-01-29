@@ -213,6 +213,14 @@ macro_rules! CO_ALLOC_PREF_DEFAULT {
     () => { $crate::CO_ALLOC_PREF_META_DEFAULT!() };
 }
 
+// @FIXME Move to library/alloc - if possible:
+#[unstable(feature = "global_co_alloc", issue = "none")]
+//pub const SHORT_TERM_VEC_CO_ALLOC_PREF: bool = true;
+#[macro_export]
+macro_rules! SHORT_TERM_VEC_CO_ALLOC_PREF {
+    () => { $crate::CO_ALLOC_PREF_META_NO!() };
+}
+
 // ------ CoAlloc preference/config conversion macros:
 
 /// Create a `CoAllocPref` value based on the given parameter(s). For now, only one parameter is
@@ -255,9 +263,11 @@ macro_rules! co_alloc_pref {
 #[macro_export]
 macro_rules! meta_num_slots {
     // This "validates" types of both params - to prevent mix ups.
+    // @FIXME remove this comment line: Removing/commenting out the part: <$alloc as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS +
+    // does NOT fix the ICE (unless there are multiple ICE's).
     ($alloc:ty, $co_alloc_pref:expr) => {
         (
-            ((<$alloc>::CO_ALLOC_META_NUM_SLOTS + (0 as ::core::alloc::CoAllocatorMetaNumSlots))
+            ((<$alloc as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS + (0 as ::core::alloc::CoAllocatorMetaNumSlots))0
             as usize)
         * ($co_alloc_pref + (0 as $crate::co_alloc::CoAllocPref))
          as usize)

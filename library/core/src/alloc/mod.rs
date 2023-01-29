@@ -65,16 +65,6 @@ pub struct SliceAndMeta<M: CoAllocMetaBase> {
     pub meta: M,
 }
 
-// @FIXME Move to library/alloc - if possible:
-#[unstable(feature = "global_co_alloc_short_term_pref", issue = "none")]
-//pub const SHORT_TERM_VEC_PREFERS_COOP: bool = true;
-#[macro_export]
-macro_rules! SHORT_TERM_VEC_PREFERS_COOP {
-    () => {
-        true
-    };
-}
-
 /// `Result` of `SliceAndMeta` or `AllocError`.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 pub type SliceAndMetaResult<M> = Result<SliceAndMeta<M>, AllocError>;

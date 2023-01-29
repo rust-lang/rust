@@ -1246,7 +1246,7 @@ impl<T> BinaryHeap<T> {
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     #[allow(unused_braces)]
-    pub fn drain(&mut self) -> Drain<'_, T, { SHORT_TERM_VEC_PREFERS_COOP!() }> {
+    pub fn drain(&mut self) -> Drain<'_, T, { SHORT_TERM_VEC_CO_ALLOC_PREF!() }> {
         Drain { iter: self.data.drain(..) }
     }
 
@@ -1526,6 +1526,7 @@ unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
 /// [`drain`]: BinaryHeap::drain
 #[stable(feature = "drain", since = "1.6.0")]
 #[derive(Debug)]
+#[allow(unused_braces)]
 pub struct Drain<'a, T: 'a, const CO_ALLOC_PREF: CoAllocPref>
 where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
@@ -1534,6 +1535,7 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
+#[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> Iterator for Drain<'_, T, CO_ALLOC_PREF>
 where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
@@ -1552,6 +1554,7 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
+#[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator for Drain<'_, T, CO_ALLOC_PREF>
 where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
@@ -1563,6 +1566,7 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
+#[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator for Drain<'_, T, CO_ALLOC_PREF>
 where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
@@ -1573,6 +1577,7 @@ where
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
+#[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> FusedIterator for Drain<'_, T, CO_ALLOC_PREF> where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:
 {

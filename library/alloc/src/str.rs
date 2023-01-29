@@ -18,6 +18,7 @@ use crate::alloc;
 use crate::alloc::Global;
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
+use crate::co_alloc::CoAllocPref;
 use crate::slice::{Concat, Join, SliceIndex};
 use crate::string::String;
 use crate::vec::Vec;
@@ -128,6 +129,7 @@ macro_rules! copy_slice_and_advance {
 // [T] and str both impl AsRef<[T]> for some T
 // => s.borrow().as_ref() and we always have slices
 #[cfg(not(no_global_oom_handling))]
+#[allow(unused_braces)]
 fn join_generic_copy<B, T, S, const CO_ALLOC_PREF: CoAllocPref>(
     slice: &[S],
     sep: &[T],
@@ -136,7 +138,7 @@ where
     T: Copy,
     B: AsRef<[T]> + ?Sized,
     S: Borrow<B>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
     let sep_len = sep.len();
     let mut iter = slice.iter();
