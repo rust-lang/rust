@@ -735,7 +735,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
             write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>");
         }
-        write!(w, "<section id=\"{}\" class=\"method has-srclink\">", id);
+        write!(w, "<section id=\"{}\" class=\"method\">", id);
         render_rightside(w, cx, m, t, RenderMode::Normal);
         write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(
