@@ -2223,7 +2223,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     );
 
                     match *ty.kind() {
-                        ty::Generator(did, ..) | ty::GeneratorWitnessMIR(did, _) => {
+                        ty::Generator(did, ..) => {
                             generator = generator.or(Some(did));
                             outer_generator = Some(did);
                         }
@@ -2253,7 +2253,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     );
 
                     match *ty.kind() {
-                        ty::Generator(did, ..) | ty::GeneratorWitnessMIR(did, ..) => {
+                        ty::Generator(did, ..) => {
                             generator = generator.or(Some(did));
                             outer_generator = Some(did);
                         }
@@ -2342,11 +2342,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             _ => return false,
         };
 
-        let generator_within_in_progress_typeck = match &self.typeck_results {
-            Some(t) => t.hir_owner.to_def_id() == generator_did_root,
-            _ => false,
-        };
-
         let mut interior_or_upvar_span = None;
 
         let from_awaited_ty = generator_data.get_from_await_ty(visitor, hir, ty_matches);
@@ -2366,35 +2361,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 *span,
                 Some((*scope_span, *yield_span, *expr, from_awaited_ty)),
             ));
-
-            if interior_or_upvar_span.is_none() && generator_data.is_foreign() {
-                interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(*span, None));
-            }
-        } else if self.tcx.sess.opts.unstable_opts.drop_tracking_mir
-            // Avoid disclosing internal information to downstream crates.
-            && generator_did.is_local()
-            // Try to avoid cycles.
-            && !generator_within_in_progress_typeck
-        {
-            let generator_info = &self.tcx.mir_generator_witnesses(generator_did);
-            debug!(?generator_info);
-
-            'find_source: for (variant, source_info) in
-                generator_info.variant_fields.iter().zip(&generator_info.variant_source_info)
-            {
-                debug!(?variant);
-                for &local in variant {
-                    let decl = &generator_info.field_tys[local];
-                    debug!(?decl);
-                    if ty_matches(ty::Binder::dummy(decl.ty)) && !decl.ignore_for_traits {
-                        interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(
-                            decl.source_info.span,
-                            Some((None, source_info.span, None, from_awaited_ty)),
-                        ));
-                        break 'find_source;
-                    }
-                }
-            }
         }
 
         if interior_or_upvar_span.is_none() {
@@ -3040,20 +3006,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     "required because it captures the following types: ".to_owned();
                                 for ty in bound_tys.skip_binder() {
                                     with_forced_trimmed_paths!(write!(msg, "`{}`, ", ty).unwrap());
-                                }
-                                err.note(msg.trim_end_matches(", "))
-                            }
-                            ty::GeneratorWitnessMIR(def_id, substs) => {
-                                use std::fmt::Write;
-
-                                // FIXME: this is kind of an unusual format for rustc, can we make it more clear?
-                                // Maybe we should just remove this note altogether?
-                                // FIXME: only print types which don't meet the trait requirement
-                                let mut msg =
-                                    "required because it captures the following types: ".to_owned();
-                                for bty in tcx.generator_hidden_types(*def_id) {
-                                    let ty = bty.subst(tcx, substs);
-                                    write!(msg, "`{}`, ", ty).unwrap();
                                 }
                                 err.note(msg.trim_end_matches(", "))
                             }

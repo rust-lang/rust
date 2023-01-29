@@ -551,7 +551,6 @@ impl<'tcx> WfPredicates<'tcx> {
                 | ty::Error(_)
                 | ty::Str
                 | ty::GeneratorWitness(..)
-                | ty::GeneratorWitnessMIR(..)
                 | ty::Never
                 | ty::Param(_)
                 | ty::Bound(..)

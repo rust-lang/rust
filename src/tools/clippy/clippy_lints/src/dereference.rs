@@ -1419,7 +1419,6 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
             | ty::FnDef(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Closure(..)
             | ty::Never
             | ty::Tuple(_)

@@ -1,5 +1,5 @@
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/issue-73741-type-err-drop-tracking.rs:11:7
+  --> $DIR/issue-73741-type-err-drop-tracking.rs:8:7
    |
 LL |     1 = 2;
    |     - ^

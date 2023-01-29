@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/auto-trait-regions.rs:48:24
+  --> $DIR/auto-trait-regions.rs:45:24
    |
 LL |         let a = A(&mut true, &mut true, No);
    |                        ^^^^                - temporary value is freed at the end of this statement
@@ -12,7 +12,7 @@ LL |         assert_foo(a);
    = note: consider using a `let` binding to create a longer lived value
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/auto-trait-regions.rs:48:35
+  --> $DIR/auto-trait-regions.rs:45:35
    |
 LL |         let a = A(&mut true, &mut true, No);
    |                                   ^^^^     - temporary value is freed at the end of this statement
@@ -25,7 +25,7 @@ LL |         assert_foo(a);
    = note: consider using a `let` binding to create a longer lived value
 
 error: implementation of `Foo` is not general enough
-  --> $DIR/auto-trait-regions.rs:34:5
+  --> $DIR/auto-trait-regions.rs:31:5
    |
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
@@ -34,7 +34,7 @@ LL |     assert_foo(gen);
    = note: ...but `Foo` is actually implemented for the type `&'static OnlyFooIfStaticRef`
 
 error: implementation of `Foo` is not general enough
-  --> $DIR/auto-trait-regions.rs:54:5
+  --> $DIR/auto-trait-regions.rs:51:5
    |
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough

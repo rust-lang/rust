@@ -902,8 +902,6 @@ pub enum LocalInfo<'tcx> {
     AggregateTemp,
     /// A temporary created during the pass `Derefer` to avoid it's retagging
     DerefTemp,
-    /// A temporary created for borrow checking.
-    FakeBorrow,
 }
 
 impl<'tcx> LocalDecl<'tcx> {

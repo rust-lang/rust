@@ -37,7 +37,7 @@ pub use self::chalk::{ChalkEnvironmentAndGoal, RustInterner as ChalkRustInterner
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable, Encodable, Decodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 pub enum Reveal {
     /// At type-checking time, we refuse to project any associated
     /// type that is marked `default`. Non-`default` ("final") types
@@ -90,8 +90,7 @@ pub enum Reveal {
 ///
 /// We do not want to intern this as there are a lot of obligation causes which
 /// only live for a short period of time.
-#[derive(Clone, Debug, PartialEq, Eq, Lift, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, Eq, Lift)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
@@ -198,16 +197,14 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct UnifyReceiverContext<'tcx> {
     pub assoc_item: ty::AssocItem,
     pub param_env: ty::ParamEnv<'tcx>,
     pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Lift, Default, HashStable)]
-#[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
+#[derive(Clone, PartialEq, Eq, Hash, Lift, Default)]
 pub struct InternedObligationCauseCode<'tcx> {
     /// `None` for `ObligationCauseCode::MiscObligation` (a common case, occurs ~60% of
     /// the time). `Some` otherwise.
@@ -242,8 +239,7 @@ impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from the span.
     MiscObligation,
@@ -451,8 +447,7 @@ pub enum ObligationCauseCode<'tcx> {
 /// This information is used to obtain an `hir::Ty`, which
 /// we can walk in order to obtain precise spans for any
 /// 'nested' types (e.g. `Foo` in `Option<Foo>`).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, Encodable, Decodable)]
-#[derive(TypeVisitable, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum WellFormedLoc {
     /// Use the type of the provided definition.
     Ty(LocalDefId),
@@ -469,8 +464,7 @@ pub enum WellFormedLoc {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct ImplDerivedObligationCause<'tcx> {
     pub derived: DerivedObligationCause<'tcx>,
     pub impl_def_id: DefId,
@@ -524,8 +518,7 @@ impl<'tcx> ty::Lift<'tcx> for StatementAsExpression {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct MatchExpressionArmCause<'tcx> {
     pub arm_block_id: Option<hir::HirId>,
     pub arm_ty: Ty<'tcx>,
@@ -541,7 +534,7 @@ pub struct MatchExpressionArmCause<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(Lift, TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
+#[derive(Lift, TypeFoldable, TypeVisitable)]
 pub struct IfExpressionCause<'tcx> {
     pub then_id: hir::HirId,
     pub else_id: hir::HirId,
@@ -551,8 +544,7 @@ pub struct IfExpressionCause<'tcx> {
     pub opt_suggest_box_span: Option<Span>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct DerivedObligationCause<'tcx> {
     /// The trait predicate of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to

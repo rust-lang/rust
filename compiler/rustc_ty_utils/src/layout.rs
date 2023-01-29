@@ -470,10 +470,7 @@ fn layout_of_uncached<'tcx>(
             return Err(LayoutError::Unknown(ty));
         }
 
-        ty::Placeholder(..)
-        | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..)
-        | ty::Infer(_) => {
+        ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) => {
             bug!("Layout::compute: unexpected type `{}`", ty)
         }
 
@@ -643,7 +640,7 @@ fn generator_layout<'tcx>(
 
     let promoted_layouts = ineligible_locals
         .iter()
-        .map(|local| subst_field(info.field_tys[local].ty))
+        .map(|local| subst_field(info.field_tys[local]))
         .map(|ty| tcx.mk_maybe_uninit(ty))
         .map(|ty| cx.layout_of(ty));
     let prefix_layouts = substs
@@ -713,7 +710,7 @@ fn generator_layout<'tcx>(
                     Assigned(_) => bug!("assignment does not match variant"),
                     Ineligible(_) => false,
                 })
-                .map(|local| subst_field(info.field_tys[*local].ty));
+                .map(|local| subst_field(info.field_tys[*local]));
 
             let mut variant = univariant_uninterned(
                 cx,
