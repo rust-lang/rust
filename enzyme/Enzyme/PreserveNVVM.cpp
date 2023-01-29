@@ -356,37 +356,39 @@ bool preserveNVVM(bool Begin, Function &F) {
   }
 
   for (auto G : toErase) {
-    if (auto V = F.getParent()->getGlobalVariable("llvm.used")) {
-      auto C = cast<ConstantArray>(V->getInitializer());
-      SmallVector<Constant *, 1> toKeep;
-      bool found = false;
-      for (unsigned i = 0; i < C->getNumOperands(); i++) {
-        Value *Op = C->getOperand(i)->stripPointerCasts();
-        if (Op == G)
-          found = true;
-        else
-          toKeep.push_back(C->getOperand(i));
-      }
-      if (found) {
-        if (toKeep.size()) {
-          auto CA = ConstantArray::get(
-              ArrayType::get(C->getType()->getElementType(), toKeep.size()),
-              toKeep);
-          GlobalVariable *NGV = new GlobalVariable(
-              CA->getType(), V->isConstant(), V->getLinkage(), CA, "",
-              V->getThreadLocalMode());
-          V->getParent()->getGlobalList().insert(V->getIterator(), NGV);
-          NGV->takeName(V);
-
-          // Nuke the old list, replacing any uses with the new one.
-          if (!V->use_empty()) {
-            Constant *VV = NGV;
-            if (VV->getType() != V->getType())
-              VV = ConstantExpr::getBitCast(VV, V->getType());
-            V->replaceAllUsesWith(VV);
-          }
+    for (auto name : {"llvm.used", "llvm.compiler.used"}) {
+      if (auto V = F.getParent()->getGlobalVariable(name)) {
+        auto C = cast<ConstantArray>(V->getInitializer());
+        SmallVector<Constant *, 1> toKeep;
+        bool found = false;
+        for (unsigned i = 0; i < C->getNumOperands(); i++) {
+          Value *Op = C->getOperand(i)->stripPointerCasts();
+          if (Op == G)
+            found = true;
+          else
+            toKeep.push_back(C->getOperand(i));
         }
-        V->eraseFromParent();
+        if (found) {
+          if (toKeep.size()) {
+            auto CA = ConstantArray::get(
+                ArrayType::get(C->getType()->getElementType(), toKeep.size()),
+                toKeep);
+            GlobalVariable *NGV = new GlobalVariable(
+                CA->getType(), V->isConstant(), V->getLinkage(), CA, "",
+                V->getThreadLocalMode());
+            V->getParent()->getGlobalList().insert(V->getIterator(), NGV);
+            NGV->takeName(V);
+
+            // Nuke the old list, replacing any uses with the new one.
+            if (!V->use_empty()) {
+              Constant *VV = NGV;
+              if (VV->getType() != V->getType())
+                VV = ConstantExpr::getBitCast(VV, V->getType());
+              V->replaceAllUsesWith(VV);
+            }
+          }
+          V->eraseFromParent();
+        }
       }
     }
     changed = true;
