@@ -726,7 +726,7 @@ impl<'a> CommentRewrite<'a> {
                 let code_block = match self.code_block_attr.as_ref().unwrap() {
                     CodeBlockAttribute::Rust
                         if self.fmt.config.format_code_in_doc_comments()
-                            && !self.code_block_buffer.is_empty() =>
+                            && !self.code_block_buffer.trim().is_empty() =>
                     {
                         let mut config = self.fmt.config.clone();
                         config.set().wrap_comments(false);
