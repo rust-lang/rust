@@ -438,6 +438,16 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
     }
     dbg!("not a scalar");
 
+    if id.is_ref() {
+        dbg!("a reference");
+        tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx).only(-1);
+        let inner_id = id.builtin_deref(true).unwrap().ty;
+        let inner_tt = get_enzyme_typtree(inner_id, llvm_data_layout, tcx, llcx);
+        tt.merge(inner_tt.only(-1));
+        println!("returning ptr tt: {}", tt);
+        return tt;
+    }
+
     let param_env_and = ParamEnvAnd {
         param_env: ty::ParamEnv::empty(),
         value: id,
@@ -446,12 +456,12 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
     assert!(layout.is_ok());
     let layout = layout.unwrap().layout;
     let fields = layout.fields();
-    let abi = layout.abi();
+    let _abi = layout.abi();
     let max_size = layout.size();
     dbg!(layout);
-    dbg!(fields);
-    dbg!(abi);
-    dbg!(max_size);
+    // dbg!(fields);
+    // dbg!(abi);
+    // dbg!(max_size);
 
     dbg!(id);
     if let FieldsShape::Array{stride, count} = fields {
@@ -463,7 +473,7 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
         assert!(byte_stride * *count as usize == byte_max_size);
         assert!(*count > 0); // return empty TT for empty?
         let sub_id = id.builtin_index().unwrap();
-        let sub_tt = get_enzyme_typtree(sub_id, llvm_data_layout, tcx, llcx);
+        let sub_tt = get_enzyme_typtree(sub_id, llvm_data_layout, tcx, llcx).data0();
         for i in 0isize..isize_count {
             println!("tt: {}", tt);
             println!("sub_tt: {}", sub_tt);
@@ -511,9 +521,14 @@ impl ModuleLlvm {
                     }
                     dbg!(fn_ty);
                     let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
-                    let tmp = fnc_binder.no_bound_vars();
-                    assert!(tmp.is_some());
-                    let x: ty::FnSig<'_> = tmp.unwrap();
+
+                    // TODO: verify.
+                    // I think we don't need lifetimes here, so skip_binder is valid?
+                    // let tmp = fnc_binder.no_bound_vars();
+                    // assert!(tmp.is_some());
+                    // let x: ty::FnSig<'_> = tmp.unwrap();
+                    let x: ty::FnSig<'_> = fnc_binder.skip_binder();
+
                     let output: Ty<'_> = x.output();
                     let inputs: &[Ty<'_>] = x.inputs();
                     let llvm_data_layout = llvm::LLVMGetDataLayoutStr(&*llmod_raw);

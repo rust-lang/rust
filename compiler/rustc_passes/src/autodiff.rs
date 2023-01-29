@@ -312,18 +312,18 @@ impl<'tcx> ItemLikeVisitor<'tcx> for AutodiffContext<'tcx> {
             };
 
             // skip beginning of function parameters, make sure they are the same
-            //  if &fn_args[..source_args.len()] != source_args {
-            //      tcx
-            //          .sess
-            //          .struct_span_err(
-            //              method.0.0.span,
-            //              "method has to begin with same arguments",
-            //              )
-            //          .span_label(method.0.0.span, "arguments differ")
-            //          .emit();
+            if method.1.inputs.len() != source_args.len() {
+                tcx
+                    .sess
+                    .struct_span_err(
+                        method.0.0.span,
+                        "need one activity for the return type + one for each input argument",
+                        )
+                    .span_label(method.0.0.span, "incorrect number of activity attributes")
+                    .emit();
 
-            //      return DiffItems::default();
-            //  }
+                return DiffItems::default();
+            }
             assert!(method.1.inputs.len() == source_args.len());
 
             elms.push(DiffItem {

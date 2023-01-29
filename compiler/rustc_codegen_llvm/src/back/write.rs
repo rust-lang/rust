@@ -12,7 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff};
+use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff, LLVMVoidTypeInContext};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -629,7 +629,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
 // As unsafe as it can be.
 #[allow(unused_variables)]
 #[allow(unused)]
-pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, tasks: &LLVMDiffItem, source: String) -> Result<(), FatalError> {
+pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, tasks: &LLVMDiffItem, source: String) -> Result<(), FatalError> {
 
     let autodiff_mode = tasks.mode;
     let rust_name = source;
@@ -664,9 +664,15 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, tasks: &LLVMDiffItem, sourc
     dbg!(res);
     let f_type = LLVMTypeOf(res);
     let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
-    if tasks.mode == DiffMode::Reverse {
+    let void_type = LLVMVoidTypeInContext(llcx);
+    if tasks.mode == DiffMode::Reverse && f_return_type != void_type{
+        dbg!("Reverse Mode sanitizer");
+        dbg!(f_type);
+        dbg!(f_return_type);
         let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
+        dbg!("checked");
         if num_elem_in_ret_struct == 1 {
+            dbg!("Unwrapping");
             let u_type = LLVMTypeOf(target_fnc);
             res = extract_return_type(llmod, res, u_type, rust_name2.clone());// TODO: check if name or name2
         }
@@ -694,6 +700,7 @@ pub(crate) unsafe fn differentiate(
     ) -> Result<(), FatalError> {
 
     let llmod = module.module_llvm.llmod();
+    let llcx = &module.module_llvm.llcx;
 
     dbg!(&diff_fncs);
     let names: Vec<String> = diff_fncs.iter().map(|(_fnc, name)| name.clone()).collect();
@@ -702,7 +709,7 @@ pub(crate) unsafe fn differentiate(
     dbg!(names.len());
     dbg!(tasks.len());
     for (task, name) in tasks.iter().zip(names) {
-        let res = enzyme_ad(llmod, &task, name);
+        let res = enzyme_ad(llmod, llcx, &task, name);
         assert!(res.is_ok());
     }
 

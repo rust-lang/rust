@@ -1076,13 +1076,25 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     fnc: &Value,
     input_activity: Vec<DiffActivity>,
     ret_activity: DiffActivity,
-    ret_primary_ret: bool,
+    mut ret_primary_ret: bool,
     diff_primary_ret: bool
     ) -> &Value{
 
     let ret_activity = cdiffe_from(ret_activity);
     assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
+
+    if ret_activity == CDIFFE_TYPE::DFT_DUP_ARG {
+        if ret_primary_ret != true {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = true;
+    } else if ret_activity == CDIFFE_TYPE::DFT_DUP_NONEED {
+        if ret_primary_ret != false {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = false;
+    }
 
     let tree_tmp =  TypeTree::new();
     let mut args_tree = vec![tree_tmp.inner; input_activity.len()];
