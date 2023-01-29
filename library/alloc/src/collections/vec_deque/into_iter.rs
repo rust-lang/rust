@@ -1,5 +1,5 @@
 use core::iter::{FusedIterator, TrustedLen};
-use core::{alloc, fmt};
+use core::fmt;
 use crate::co_alloc::CoAllocPref;
 
 use crate::alloc::{Allocator, Global};
@@ -15,16 +15,18 @@ use super::VecDeque;
 /// [`IntoIterator`]: core::iter::IntoIterator
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-    const CO_ALLOC_PREF: CoAllocPref = true,
+    const CO_ALLOC_PREF: CoAllocPref = {CO_ALLOC_PREF_DEFAULT!()},
 > where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     inner: VecDeque<T, A, CO_ALLOC_PREF>,
 }
 
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIter<T, A, CO_ALLOC_PREF>
 where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
@@ -39,6 +41,7 @@ where
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
+#[allow(unused_braces)]
 impl<T: fmt::Debug, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> fmt::Debug for IntoIter<T, A, CO_ALLOC_PREF>
 where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
@@ -49,6 +52,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Iterator for IntoIter<T, A, CO_ALLOC_PREF>
 where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
@@ -68,6 +72,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator for IntoIter<T, A, CO_ALLOC_PREF>
 where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
@@ -79,6 +84,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator for IntoIter<T, A, CO_ALLOC_PREF>
 where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
@@ -89,12 +95,14 @@ where
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> FusedIterator for IntoIter<T, A, CO_ALLOC_PREF> where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:
 {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+#[allow(unused_braces)]
 unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> TrustedLen for IntoIter<T, A, CO_ALLOC_PREF> where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:
 {

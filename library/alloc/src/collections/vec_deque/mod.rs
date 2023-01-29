@@ -8,7 +8,6 @@
 #![feature(global_co_alloc)]
 #![stable(feature = "rust1", since = "1.0.0")]
 use crate::CO_ALLOC_PREF_DEFAULT;
-use core::alloc;
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -100,7 +99,7 @@ pub struct VecDeque<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
     const CO_ALLOC_PREF: CoAllocPref = { CO_ALLOC_PREF_DEFAULT!() },
 > where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     // `self[0]`, if it exists, is `buf[head]`.
     // `head < buf.capacity()`, unless `buf.capacity() == 0` when `head == 0`.
@@ -113,9 +112,10 @@ pub struct VecDeque<
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T: Clone, A: Allocator + Clone, const CO_ALLOC_PREF: CoAllocPref> Clone for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn clone(&self) -> Self {
         let mut deq = Self::with_capacity_in(self.len(), self.allocator().clone());
@@ -130,9 +130,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn drop(&mut self) {
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
@@ -158,6 +159,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> Default for VecDeque<T, Global, CO_ALLOC_PREF>
 where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
@@ -169,9 +171,10 @@ where
     }
 }
 
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     /// Marginally more convenient
     #[inline]
@@ -463,15 +466,16 @@ where
     ) -> usize {
         struct Guard<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
         {
             deque: &'a mut VecDeque<T, A, CO_ALLOC_PREF>,
             written: usize,
         }
 
+        #[allow(unused_braces)]
         impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for Guard<'a, T, A, CO_ALLOC_PREF>
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
         {
             fn drop(&mut self) {
                 self.deque.len += self.written;
@@ -550,10 +554,11 @@ where
     }
 }
 
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
     /// Creates an empty deque.
     ///
@@ -570,7 +575,7 @@ where
     #[must_use]
     pub const fn new() -> VecDeque<T, Global, CO_ALLOC_PREF>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(CO_ALLOC_PREF)]:,
+        [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
     {
         // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
         VecDeque { head: 0, len: 0, buf: RawVec::NEW }
@@ -593,9 +598,10 @@ where
     }
 }
 
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     /// Creates an empty deque.
     ///
@@ -2631,9 +2637,10 @@ where
     }
 }
 
+#[allow(unused_braces)]
 impl<T: Clone, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     /// Modifies the deque in-place so that `len()` is equal to new_len,
     /// either by removing excess elements from the back or by appending clones of `value`
@@ -2678,10 +2685,11 @@ fn wrap_index(logical_index: usize, capacity: usize) -> usize {
     if logical_index >= capacity { logical_index - capacity } else { logical_index }
 }
 
+#[allow(unused_braces)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> PartialEq for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn eq(&self, other: &Self) -> bool {
         if self.len != other.len() {
@@ -2720,9 +2728,10 @@ where
     }
 }
 
+#[allow(unused_braces)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Eq for VecDeque<T, A, CO_ALLOC_PREF> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:
 {
 }
 
@@ -2734,9 +2743,10 @@ __impl_slice_eq1! { [const N: usize] VecDeque<T, A, CO_ALLOC_PREF>, &[U; N], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A, CO_ALLOC_PREF>, &mut [U; N], }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T: PartialOrd, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> PartialOrd for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
@@ -2744,9 +2754,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T: Ord, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Ord for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
@@ -2755,9 +2766,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T: Hash, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Hash for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_length_prefix(self.len);
@@ -2772,9 +2784,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Index<usize> for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     type Output = T;
 
@@ -2785,9 +2798,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IndexMut<usize> for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
@@ -2796,9 +2810,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> FromIterator<T> for VecDeque<T, Global, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T, Global, CO_ALLOC_PREF> {
         SpecFromIter::spec_from_iter(iter.into_iter())
@@ -2806,9 +2821,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIterator for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     type Item = T;
     type IntoIter = IntoIter<T, A, CO_ALLOC_PREF>;
@@ -2821,9 +2837,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIterator for &'a VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
@@ -2834,9 +2851,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIterator for &'a mut VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
@@ -2847,9 +2865,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Extend<T> for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter());
@@ -2867,10 +2886,11 @@ where
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
+#[allow(unused_braces)]
 impl<'a, T: 'a + Copy, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Extend<&'a T>
     for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter());
@@ -2888,9 +2908,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T: fmt::Debug, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> fmt::Debug for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
@@ -2898,11 +2919,12 @@ where
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref, const OTHER_CO_ALLOC_PREF: bool>
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref, const OTHER_CO_ALLOC_PREF: CoAllocPref>
     From<Vec<T, A, OTHER_CO_ALLOC_PREF>> for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(OTHER_CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); {crate::meta_num_slots!(A, OTHER_CO_ALLOC_PREF)}]:,
 {
     /// Turn a [`Vec<T>`] into a [`VecDeque<T>`].
     ///
@@ -2924,11 +2946,12 @@ where
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref, const VECDEQUE_CO_ALLOC_PREF: bool>
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref, const VECDEQUE_CO_ALLOC_PREF: CoAllocPref>
     From<VecDeque<T, A, VECDEQUE_CO_ALLOC_PREF>> for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(VECDEQUE_CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); {crate::meta_num_slots!(A, VECDEQUE_CO_ALLOC_PREF)}]:,
 {
     /// Turn a [`VecDeque<T>`] into a [`Vec<T>`].
     ///
@@ -2961,7 +2984,7 @@ where
     /// ```
     fn from(mut other: VecDeque<T, A, VECDEQUE_CO_ALLOC_PREF>) -> Self
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(VECDEQUE_CO_ALLOC_PREF)]:,
+        [(); {crate::meta_num_slots!(A, VECDEQUE_CO_ALLOC_PREF)}]:,
     {
         other.make_contiguous();
 
@@ -2982,6 +3005,7 @@ where
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
+#[allow(unused_braces)]
 impl<T, const N: usize, const CO_ALLOC_PREF: CoAllocPref> From<[T; N]> for VecDeque<T, Global, CO_ALLOC_PREF>
 where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,

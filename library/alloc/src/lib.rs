@@ -183,7 +183,6 @@
 #![feature(fundamental)]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![feature(global_co_alloc)]
-#![feature(global_co_alloc_short_term_pref)]
 #![feature(hashmap_internals)]
 #![feature(lang_items)]
 #![feature(global_co_alloc_default)]

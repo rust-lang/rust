@@ -9,6 +9,7 @@ use super::Vec;
 macro_rules! __impl_slice_eq1 {
     ([$($vars:tt)*] $lhs:ty, $rhs:ty, #[$stability:meta], $($constraints:tt)*) => {
         #[$stability]
+        #[allow(unused_braces)]
         impl<T, U, $($vars)*> PartialEq<$rhs> for $lhs
         where
             T: PartialEq<U>,
@@ -22,7 +23,7 @@ macro_rules! __impl_slice_eq1 {
     }
 }
 
-__impl_slice_eq1! { [A1: Allocator, A2: Allocator, const CO_ALLOC_PREF1: bool, const CO_ALLOC_PREF2: bool] Vec<T, A1, CO_ALLOC_PREF1>, Vec<U, A2, CO_ALLOC_PREF2>, #[stable(feature = "rust1", since = "1.0.0")], [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A1>(CO_ALLOC_PREF1)]:, [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A2>(CO_ALLOC_PREF2)]: }
+__impl_slice_eq1! { [A1: Allocator, A2: Allocator, const CO_ALLOC_PREF1: crate::co_alloc::CoAllocPref, const CO_ALLOC_PREF2: crate::co_alloc::CoAllocPref] Vec<T, A1, CO_ALLOC_PREF1>, Vec<U, A2, CO_ALLOC_PREF2>, #[stable(feature = "rust1", since = "1.0.0")], [(); {crate::meta_num_slots!(A1, CO_ALLOC_PREF1)}]:, [(); {crate::meta_num_slots!(A2, CO_ALLOC_PREF2)}]: }
 __impl_slice_eq1! { [A: Allocator, const CO_ALLOC_PREF: CoAllocPref] Vec<T, A, CO_ALLOC_PREF>, &[U], #[stable(feature = "rust1", since = "1.0.0")], [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]: }
 __impl_slice_eq1! { [A: Allocator, const CO_ALLOC_PREF: CoAllocPref] Vec<T, A, CO_ALLOC_PREF>, &mut [U], #[stable(feature = "rust1", since = "1.0.0")], [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]: }
 __impl_slice_eq1! { [A: Allocator, const CO_ALLOC_PREF: CoAllocPref] &[T], Vec<U, A, CO_ALLOC_PREF>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")], [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]: }

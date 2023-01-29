@@ -28,8 +28,8 @@ use crate::alloc::{self, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
-use crate::vec::Vec;
 use crate::co_alloc::CoAllocPref;
+use crate::vec::Vec;
 
 #[cfg(test)]
 mod tests;
@@ -93,11 +93,13 @@ pub(crate) mod hack {
     use core::alloc::Allocator;
 
     use crate::boxed::Box;
+    use crate::co_alloc::CoAllocPref;
     use crate::vec::Vec;
 
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
+    #[allow(unused_braces)]
     pub fn into_vec<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(b: Box<[T], A>) -> Vec<T, A, CO_ALLOC_PREF>
     where
         [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
@@ -111,6 +113,7 @@ pub(crate) mod hack {
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[allow(unused_braces)]
     pub fn to_vec<T: ConvertVec, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
         s: &[T],
         alloc: A,
@@ -122,6 +125,7 @@ pub(crate) mod hack {
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[allow(unused_braces)]
     pub trait ConvertVec {
         fn to_vec<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
             s: &[Self],
@@ -133,8 +137,10 @@ pub(crate) mod hack {
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[allow(unused_braces)]
     impl<T: Clone> ConvertVec for T {
         #[inline]
+        #[allow(unused_braces)]
         default fn to_vec<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
             s: &[Self],
             alloc: A,
@@ -142,6 +148,7 @@ pub(crate) mod hack {
         where
             [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
         {
+            #[allow(unused_braces)]
             struct DropGuard<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
             where
                 [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
@@ -184,6 +191,7 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
+        #[allow(unused_braces)]
         fn to_vec<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
             s: &[Self],
             alloc: A,
@@ -438,6 +446,7 @@ impl<T> [T] {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
+    #[allow(unused_braces)]
     #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -466,6 +475,7 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    #[allow(unused_braces)]
     pub fn to_vec_in<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(&self, alloc: A) -> Vec<T, A, CO_ALLOC_PREF>
     where
         T: Clone,
@@ -492,6 +502,7 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[allow(unused_braces)]
     pub fn into_vec<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(self: Box<Self, A>) -> Vec<T, A, CO_ALLOC_PREF>
     where
         [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
@@ -809,6 +820,7 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Borrow<[T]> for Vec<T, A, CO_ALLOC_PREF>
 where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
@@ -819,6 +831,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> BorrowMut<[T]> for Vec<T, A, CO_ALLOC_PREF>
 where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,

@@ -275,6 +275,7 @@ use crate::alloc::handle_alloc_error;
 use crate::alloc::{box_free, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
+use crate::co_alloc::CoAllocPref;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
@@ -1987,6 +1988,7 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
+#[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> From<Vec<T, Global, CO_ALLOC_PREF>> for Rc<[T]>
 where
     [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
@@ -2002,6 +2004,7 @@ where
     /// assert_eq!(vec![1, 2, 3], *shared);
     /// ```
     #[inline]
+    #[allow(unused_braces)]
     fn from(mut v: Vec<T, Global, CO_ALLOC_PREF>) -> Rc<[T]>
     where
         [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,

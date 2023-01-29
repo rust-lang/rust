@@ -1,9 +1,9 @@
-use core::alloc;
 use core::cmp;
 use core::iter::TrustedLen;
 use core::ptr;
 
 use crate::alloc::Global;
+use crate::co_alloc::CoAllocPref;
 use crate::raw_vec::RawVec;
 use crate::CO_ALLOC_PREF_DEFAULT;
 
@@ -20,7 +20,7 @@ pub(super) trait SpecFromIterNested<T, I> {
 impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIterNested<T, I> for Vec<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(CO_ALLOC_PREF)]:,
+    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be
