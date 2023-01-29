@@ -1128,8 +1128,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 "{place_name} {partially_str}moved due to this method call{loop_message}",
                             ),
                         );
+
                         let infcx = tcx.infer_ctxt().build();
+                        // Erase and shadow everything that could be passed to the new infcx.
                         let ty = tcx.erase_regions(moved_place.ty(self.body, tcx).ty);
+                        let method_substs = tcx.erase_regions(method_substs);
+
                         if let ty::Adt(def, substs) = ty.kind()
                             && Some(def.did()) == tcx.lang_items().pin_type()
                             && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
