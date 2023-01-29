@@ -3531,9 +3531,15 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Previously, there were very like checks being performed on `#[doc(..)]`
-    /// unlike the other attributes. It'll now catch all the issues that it
-    /// silently ignored previously.
+    /// Previously, incorrect usage of the `#[doc(..)]` attribute was not
+    /// being validated. Usually these should be rejected as a hard error,
+    /// but this lint was introduced to avoid breaking any existing
+    /// crates which included them.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard
+    /// error in the future. See [issue #82730] for more details.
+    ///
+    /// [issue #82730]: https://github.com/rust-lang/rust/issues/82730
     pub INVALID_DOC_ATTRIBUTES,
     Warn,
     "detects invalid `#[doc(...)]` attributes",
