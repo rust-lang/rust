@@ -173,6 +173,7 @@
     -Z                                 threads=val -- use a thread pool with N threads
     -Z                        time-llvm-passes=val -- measure time of each LLVM pass (default: no)
     -Z                             time-passes=val -- measure time of each rustc pass (default: no)
+    -Z                   tiny-const-eval-limit=val -- sets a tiny, non-configurable limit for const eval; useful for compiler tests
     -Z                               tls-model=val -- choose the TLS model to use (`rustc --print tls-models` for details)
     -Z                            trace-macros=val -- for every macro invocation, print its name and arguments (default: no)
     -Z                       track-diagnostics=val -- tracks where in rustc a diagnostic was emitted

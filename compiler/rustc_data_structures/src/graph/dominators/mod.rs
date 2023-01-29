@@ -135,7 +135,47 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         // This loop computes the semi[w] for w.
         semi[w] = w;
         for v in graph.predecessors(pre_order_to_real[w]) {
-            // Reachable vertices may have unreachable predecessors, so ignore any of them
+            // TL;DR: Reachable vertices may have unreachable predecessors, so ignore any of them.
+            //
+            // Ignore blocks which are not connected to the entry block.
+            //
+            // The algorithm that was used to traverse the graph and build the
+            // `pre_order_to_real` and `real_to_pre_order` vectors does so by
+            // starting from the entry block and following the successors.
+            // Therefore, any blocks not reachable from the entry block will be
+            // set to `None` in the `pre_order_to_real` vector.
+            //
+            // For example, in this graph, A and B should be skipped:
+            //
+            //           ┌─────┐
+            //           │     │
+            //           └──┬──┘
+            //              │
+            //           ┌──▼──┐              ┌─────┐
+            //           │     │              │  A  │
+            //           └──┬──┘              └──┬──┘
+            //              │                    │
+            //      ┌───────┴───────┐            │
+            //      │               │            │
+            //   ┌──▼──┐         ┌──▼──┐      ┌──▼──┐
+            //   │     │         │     │      │  B  │
+            //   └──┬──┘         └──┬──┘      └──┬──┘
+            //      │               └──────┬─────┘
+            //   ┌──▼──┐                   │
+            //   │     │                   │
+            //   └──┬──┘                ┌──▼──┐
+            //      │                   │     │
+            //      │                   └─────┘
+            //   ┌──▼──┐
+            //   │     │
+            //   └──┬──┘
+            //      │
+            //   ┌──▼──┐
+            //   │     │
+            //   └─────┘
+            //
+            // ...this may be the case if a MirPass modifies the CFG to remove
+            // or rearrange certain blocks/edges.
             let Some(v) = real_to_pre_order[v] else {
                 continue
             };
@@ -264,13 +304,18 @@ fn compress(
     }
 }
 
+/// Tracks the list of dominators for each node.
 #[derive(Clone, Debug)]
 pub struct Dominators<N: Idx> {
     post_order_rank: IndexVec<N, usize>,
+    // Even though we track only the immediate dominator of each node, it's
+    // possible to get its full list of dominators by looking up the dominator
+    // of each dominator. (See the `impl Iterator for Iter` definition).
     immediate_dominators: IndexVec<N, Option<N>>,
 }
 
 impl<Node: Idx> Dominators<Node> {
+    /// Whether the given Node has an immediate dominator.
     pub fn is_reachable(&self, node: Node) -> bool {
         self.immediate_dominators[node].is_some()
     }
@@ -280,6 +325,8 @@ impl<Node: Idx> Dominators<Node> {
         self.immediate_dominators[node].unwrap()
     }
 
+    /// Provides an iterator over each dominator up the CFG, for the given Node.
+    /// See the `impl Iterator for Iter` definition to understand how this works.
     pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
         assert!(self.is_reachable(node), "node {node:?} is not reachable");
         Iter { dominators: self, node: Some(node) }

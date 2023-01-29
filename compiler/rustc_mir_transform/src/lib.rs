@@ -55,6 +55,7 @@ mod const_goto;
 mod const_prop;
 mod const_prop_lint;
 mod coverage;
+mod ctfe_limit;
 mod dataflow_const_prop;
 mod dead_store_elimination;
 mod deaggregator;
@@ -409,6 +410,8 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
             );
         }
     }
+
+    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None);
 
     debug_assert!(!body.has_free_regions(), "Free regions in MIR for CTFE");
 

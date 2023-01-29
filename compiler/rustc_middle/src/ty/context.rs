@@ -77,6 +77,8 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 
+const TINY_CONST_EVAL_LIMIT: Limit = Limit(20);
+
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
     fn new(sess: &'tcx Session, data: Mmap, start_pos: usize) -> Self
@@ -1104,7 +1106,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn const_eval_limit(self) -> Limit {
-        self.limits(()).const_eval_limit
+        if self.sess.opts.unstable_opts.tiny_const_eval_limit {
+            TINY_CONST_EVAL_LIMIT
+        } else {
+            self.limits(()).const_eval_limit
+        }
     }
 
     pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {

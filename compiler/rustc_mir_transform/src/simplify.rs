@@ -517,7 +517,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
                 self.super_statement(statement, location);
             }
 
-            StatementKind::Nop => {}
+            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
 
             StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
 

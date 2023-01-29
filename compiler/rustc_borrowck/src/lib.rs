@@ -609,7 +609,8 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             StatementKind::AscribeUserType(..)
             // Doesn't have any language semantics
             | StatementKind::Coverage(..)
-            // Does not actually affect borrowck
+            // These do not actually affect borrowck
+            | StatementKind::ConstEvalCounter
             | StatementKind::StorageLive(..) => {}
             StatementKind::StorageDead(local) => {
                 self.access_place(

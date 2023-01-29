@@ -244,9 +244,15 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Called before a basic block terminator is executed.
-    /// You can use this to detect endlessly running programs.
     #[inline]
     fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called when the interpreter encounters a `StatementKind::ConstEvalCounter` instruction.
+    /// You can use this to detect long or endlessly running programs.
+    #[inline]
+    fn increment_const_eval_counter(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 

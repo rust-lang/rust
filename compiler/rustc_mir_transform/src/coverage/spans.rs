@@ -802,6 +802,8 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
         | StatementKind::StorageDead(_)
         // Coverage should not be encountered, but don't inject coverage coverage
         | StatementKind::Coverage(_)
+        // Ignore `ConstEvalCounter`s
+        | StatementKind::ConstEvalCounter
         // Ignore `Nop`s
         | StatementKind::Nop => None,
 
