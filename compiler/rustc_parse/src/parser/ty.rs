@@ -405,10 +405,9 @@ impl<'a> Parser<'a> {
             err.span_label(self.token.span, "expected type");
             // self.maybe_annotate_with_ascription(&mut err, true);
 
-            // `struct` is a strict keyword, so we can check it here as
-            // we will be erroring otherwise
-            // FIXME: or should we not?
-            if self.token.is_keyword(kw::Struct) {
+            if allow_anonymous_types == AllowAnonymousTypes::OnlyRecover
+                && self.token.is_keyword(kw::Struct)
+            {
                 // Recover the parser from anonymous types anywhere other than field types.
                 let snapshot = self.create_snapshot_for_diagnostic();
                 match self.parse_anonymous_ty(lo) {
