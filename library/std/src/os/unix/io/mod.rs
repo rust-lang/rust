@@ -56,13 +56,20 @@
 //!
 //! ## Required file-descriptor flags
 //!
-//! On Unix platforms, file descriptors that don't have the `O_CLOEXEC` flag
-//! set may be implicitly leaked into spawned child processes. This can be
-//! violate I/O safety, when the a file descriptor held in one part of the code
-//! is not intended to be exposed to child processes, and a spawn in another
-//! part of the code unknowingly exposes it. Consequently, Rust code that
-//! produces new `OwnedFd` or `BorrowedFd` values must either set the
-//! `O_CLOEXEC` flag, or be marked `unsafe`.
+//! On Unix platforms with the ability to spawn processes, file descriptors
+//! that don't have the `O_CLOEXEC` flag set may be implicitly leaked into
+//! spawned child processes. This can be violate I/O safety, when the a file
+//! descriptor held in one part of the code is not intended to be exposed to
+//! child processes, and a spawn in another part of the code unknowingly
+//! exposes it. Consequently, on these platforms, Rust code that produces new
+//! `OwnedFd` or `BorrowedFd` values must either set the `O_CLOEXEC` flag, or
+//! be marked `unsafe`.
+//!
+//! On platforms where it's possible to do so, the `O_CLOEXEC` flag must be set
+//! atomically by passing the appropriate flags to the OS API that creates the
+//! file descriptor. On some platforms though, it's not possible to do this for
+//! some resources, such as sockets or pipes. In these situations, `O_CLOEXEC`
+//! must be set as soon as possible after the new file descriptor.
 //!
 //! ## `/proc/self/mem` and similar OS features
 //!
