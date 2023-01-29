@@ -322,7 +322,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         match (candidate.source, other.source) {
             (CandidateSource::Impl(_), _)
             | (CandidateSource::ParamEnv(_), _)
-            | (CandidateSource::AliasBound(_), _)
+            | (CandidateSource::AliasBound, _)
             | (CandidateSource::BuiltinImpl, _) => unimplemented!(),
         }
     }
