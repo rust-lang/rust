@@ -5,7 +5,7 @@
 
 pub struct Foo;
 
-// @count foo/struct.Foo.html '//*[@class="impl-items"]//*[@class="method has-srclink"]' 2
+// @count foo/struct.Foo.html '//*[@class="impl-items"]//*[@class="method"]' 2
 // @!has - '//*[@class="impl-items"]//*[@class="method"]' 'mut'
 impl Foo {
     pub fn foo(mut self) {}

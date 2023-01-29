@@ -22,7 +22,7 @@ macro_rules! make {
         }
 
         // @has issue_33302/struct.S.html \
-        //        '//*[@class="impl has-srclink"]' 'impl T<[i32; 16]> for S'
+        //        '//*[@class="impl"]' 'impl T<[i32; 16]> for S'
         // @has - '//*[@id="associatedconstant.C"]' 'const C: [i32; 16]'
         // @has - '//*[@id="associatedconstant.D"]' 'const D: i32'
         impl T<[i32; ($n * $n)]> for S {
@@ -30,7 +30,7 @@ macro_rules! make {
         }
 
         // @has issue_33302/struct.S.html \
-        //        '//*[@class="impl has-srclink"]' 'impl T<[i32; 16]> for S'
+        //        '//*[@class="impl"]' 'impl T<[i32; 16]> for S'
         // @has - '//*[@id="associatedconstant.C-1"]' 'const C: (i32,)'
         // @has - '//*[@id="associatedconstant.D-1"]' 'const D: i32'
         impl T<(i32,)> for S {
@@ -38,7 +38,7 @@ macro_rules! make {
         }
 
         // @has issue_33302/struct.S.html \
-        //        '//*[@class="impl has-srclink"]' 'impl T<(i32, i32)> for S'
+        //        '//*[@class="impl"]' 'impl T<(i32, i32)> for S'
         // @has - '//*[@id="associatedconstant.C-2"]' 'const C: (i32, i32)'
         // @has - '//*[@id="associatedconstant.D-2"]' 'const D: i32'
         impl T<(i32, i32)> for S {

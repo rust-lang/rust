@@ -13,7 +13,7 @@
 // @has - '//section[@id="main-content"]//div[@class="docblock"]//p' 'this is a test!'
 
 // There should be only one implementation listed.
-// @count - '//*[@class="impl has-srclink"]' 1
+// @count - '//*[@class="impl"]' 1
 // @has - '//*[@id="impl-Foo%3C%26A%3E-for-%26B"]/*[@class="code-header"]' \
 //        'impl<A, B> Foo<&A> for &B'
 #[doc(primitive = "reference")]

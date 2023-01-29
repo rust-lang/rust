@@ -8,7 +8,7 @@ pub trait Bar {
     fn foo(foo: Self::Fuu);
 }
 
-// @has doc_assoc_item/struct.Foo.html '//*[@class="impl has-srclink"]' 'impl<T: Bar<Fuu = u32>> Foo<T>'
+// @has doc_assoc_item/struct.Foo.html '//*[@class="impl"]' 'impl<T: Bar<Fuu = u32>> Foo<T>'
 impl<T: Bar<Fuu = u32>> Foo<T> {
     pub fn new(t: T) -> Foo<T> {
         Foo {

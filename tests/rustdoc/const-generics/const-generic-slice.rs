@@ -5,7 +5,7 @@ pub trait Array {
 }
 
 // @has foo/trait.Array.html
-// @has - '//*[@class="impl has-srclink"]' 'impl<T, const N: usize> Array for [T; N]'
+// @has - '//*[@class="impl"]' 'impl<T, const N: usize> Array for [T; N]'
 impl<T, const N: usize> Array for [T; N] {
     type Item = T;
 }

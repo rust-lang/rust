@@ -1528,11 +1528,7 @@ fn render_impl(
                             })
                         })
                         .map(|item| format!("{}.{}", item.type_(), name));
-                    write!(
-                        w,
-                        "<section id=\"{}\" class=\"{}{} has-srclink\">",
-                        id, item_type, in_trait_class,
-                    );
+                    write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
                     render_rightside(w, cx, item, containing_item, render_mode);
                     if trait_.is_some() {
                         // Anchors are only used on trait impls.
@@ -1554,11 +1550,7 @@ fn render_impl(
             kind @ (clean::TyAssocConstItem(ty) | clean::AssocConstItem(ty, _)) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(
-                    w,
-                    "<section id=\"{}\" class=\"{}{} has-srclink\">",
-                    id, item_type, in_trait_class
-                );
+                write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
                 render_rightside(w, cx, item, containing_item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
@@ -1606,11 +1598,7 @@ fn render_impl(
             clean::AssocTypeItem(tydef, _bounds) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(
-                    w,
-                    "<section id=\"{}\" class=\"{}{} has-srclink\">",
-                    id, item_type, in_trait_class
-                );
+                write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
                     write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
@@ -1844,7 +1832,7 @@ pub(crate) fn render_impl_summary(
     } else {
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
-    write!(w, "<section id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
+    write!(w, "<section id=\"{}\" class=\"impl\"{}>", id, aliases);
     render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
     write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
     write!(w, "<h3 class=\"code-header\">");

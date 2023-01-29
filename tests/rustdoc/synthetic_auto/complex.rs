@@ -20,7 +20,7 @@ mod foo {
 }
 
 // @has complex/struct.NotOuter.html
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header"]' \
+// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<'a, T, K: ?Sized> Send for Outer<'a, T, K>where K: for<'b> Fn((&'b bool, &'a u8)) \
 // -> &'b i8, T: MyTrait<'a>, <T as MyTrait<'a>>::MyItem: Copy, 'a: 'static"
 
