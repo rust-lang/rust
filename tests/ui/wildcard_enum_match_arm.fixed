@@ -96,7 +96,7 @@ fn main() {
         }
         match Enum::A {
             Enum::A => (),
-            Enum::B | _ => (),
+            Enum::B | Enum::__Private => (),
         }
     }
 }

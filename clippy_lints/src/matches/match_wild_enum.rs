@@ -45,8 +45,12 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
 
     // Accumulate the variants which should be put in place of the wildcard because they're not
     // already covered.
-    let has_hidden = adt_def.variants().iter().any(|x| is_hidden(cx, x));
-    let mut missing_variants: Vec<_> = adt_def.variants().iter().filter(|x| !is_hidden(cx, x)).collect();
+    let has_hidden_external = adt_def.variants().iter().any(|x| is_hidden_and_external(cx, x));
+    let mut missing_variants: Vec<_> = adt_def
+        .variants()
+        .iter()
+        .filter(|x| !is_hidden_and_external(cx, x))
+        .collect();
 
     let mut path_prefix = CommonPrefixSearcher::None;
     for arm in arms {
@@ -133,7 +137,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
 
     match missing_variants.as_slice() {
         [] => (),
-        [x] if !adt_def.is_variant_list_non_exhaustive() && !has_hidden => span_lint_and_sugg(
+        [x] if !adt_def.is_variant_list_non_exhaustive() && !has_hidden_external => span_lint_and_sugg(
             cx,
             MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
             wildcard_span,
@@ -144,7 +148,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
         ),
         variants => {
             let mut suggestions: Vec<_> = variants.iter().copied().map(format_suggestion).collect();
-            let message = if adt_def.is_variant_list_non_exhaustive() || has_hidden {
+            let message = if adt_def.is_variant_list_non_exhaustive() || has_hidden_external {
                 suggestions.push("_".into());
                 "wildcard matches known variants and will also match future added variants"
             } else {
@@ -191,6 +195,7 @@ impl<'a> CommonPrefixSearcher<'a> {
     }
 }
 
-fn is_hidden(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
-    cx.tcx.is_doc_hidden(variant_def.def_id) || cx.tcx.has_attr(variant_def.def_id, sym::unstable)
+fn is_hidden_and_external(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
+    (cx.tcx.is_doc_hidden(variant_def.def_id) || cx.tcx.has_attr(variant_def.def_id, sym::unstable))
+        && variant_def.def_id.as_local().is_none()
 }
