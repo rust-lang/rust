@@ -399,52 +399,45 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 }
 
-fn get_scalar_cctype<'tcx>(ty: Ty<'_>, tcx: TyCtxt<'tcx>) -> Option<llvm::CConcreteType> {
-    let mut res = None;
-    if ty.is_integral() {
-        res = Some(llvm::CConcreteType::DT_Integer)
-    }
-    if ty.is_floating_point() {
-        res = match ty {
-            x if x == tcx.types.f32 => Some(llvm::CConcreteType::DT_Float ),
-            x if x == tcx.types.f64 => Some(llvm::CConcreteType::DT_Double),
-            _ => panic!("floatTy scalar that is neither f32 nor f64"),
-        };
-    };
-    res
-}
-
 pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
                                 tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context) -> TypeTree {
     let mut tt = TypeTree::new();
 
-    if id.is_scalar() && id.is_any_ptr() {
+    if id.is_unsafe_ptr() || id.is_ref() || id.is_box() {
         if  id.is_fn_ptr() {
-            unimplemented!("AH");
+            unimplemented!("what to do whith fn ptr?");
         }
-        dbg!("a pointer");
+
+        if id.is_unsafe_ptr() {
+            dbg!("a raw ptr");
+        } else if id.is_ref() {
+            dbg!("a ref");
+        } else {
+            dbg!("a box");
+        }
+
         tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx).only(-1);
         let inner_id = id.builtin_deref(true).unwrap().ty;
         let inner_tt = get_enzyme_typtree(inner_id, llvm_data_layout, tcx, llcx);
         tt.merge(inner_tt.only(-1));
-        println!("returning ptr tt: {}", tt);
+        println!("returning tt with indirection: {}", tt);
         return tt;
-
     }
-    if id.is_scalar() && !id.is_any_ptr(){
+
+    if id.is_scalar() {
+        assert!(!id.is_any_ptr());
         dbg!("a scalar");
-        let cctype = get_scalar_cctype(id, tcx).unwrap();
-        return llvm::TypeTree::from_type(cctype, llcx).only(-1);
-    }
-
-    if id.is_ref() {
-        dbg!("a reference");
-        tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx).only(-1);
-        let inner_id = id.builtin_deref(true).unwrap().ty;
-        let inner_tt = get_enzyme_typtree(inner_id, llvm_data_layout, tcx, llcx);
-        tt.merge(inner_tt.only(-1));
-        println!("returning ptr tt: {}", tt);
-        return tt;
+        let scalar_type = if id.is_integral() {
+            llvm::CConcreteType::DT_Integer
+        } else {
+            assert!(id.is_floating_point());
+            match id {
+                x if x == tcx.types.f32 => llvm::CConcreteType::DT_Float ,
+                x if x == tcx.types.f64 => llvm::CConcreteType::DT_Double,
+                _ => panic!("floatTy scalar that is neither f32 nor f64"),
+            }
+        };
+        return llvm::TypeTree::from_type(scalar_type, llcx).only(-1);
     }
 
     let param_env_and = ParamEnvAnd {
@@ -464,17 +457,6 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
 
     dbg!(id);
 
-
-    if id.is_box() {
-        dbg!("a box");
-        tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx).only(-1);
-        let inner_id = id.builtin_deref(true).unwrap().ty;
-        let inner_tt = get_enzyme_typtree(inner_id, llvm_data_layout, tcx, llcx);
-        tt.merge(inner_tt.only(-1));
-        println!("returning box tt: {}", tt);
-        return tt;
-    }
-
     if id.is_adt() {
         dbg!("an ADT");
         let adt_def = id.ty_adt_def().unwrap();
@@ -493,13 +475,16 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
     }
 
 
-    if let FieldsShape::Array{stride, count} = fields {
+    if id.is_array() {
+        let (stride, count) = match fields {
+            FieldsShape::Array{ stride: s, count: c } => (s,c),
+            _ => panic!(""),
+        };
         dbg!("an array");
         let byte_stride = stride.bytes_usize();
         let byte_max_size = max_size.bytes_usize();
         let isize_count: isize = (*count).try_into().unwrap();
 
-        dbg!("Handling array");
         assert!(byte_stride * *count as usize == byte_max_size);
         assert!(*count > 0); // return empty TT for empty?
         let sub_id = id.builtin_index().unwrap();
