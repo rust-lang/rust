@@ -1,4 +1,3 @@
-// ignore-windows
 // min-lldb-version: 310
 
 // compile-flags:-g
