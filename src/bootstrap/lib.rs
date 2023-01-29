@@ -1433,7 +1433,8 @@ impl Build {
 
         if !stamp.exists() {
             eprintln!(
-                "Warning: Unable to find the stamp file, did you try to keep a nonexistent build stage?"
+                "Error: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
+                stamp.display()
             );
             crate::detail_exit(1);
         }
