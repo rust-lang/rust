@@ -54,6 +54,16 @@ pub(crate) fn thir_body(
 
 pub(crate) fn thir_tree(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalDefId>) -> String {
     match thir_body(tcx, owner_def) {
+        Ok((thir, _)) => {
+            let thir = thir.steal();
+            tcx.thir_tree_representation(&thir)
+        }
+        Err(_) => "error".into(),
+    }
+}
+
+pub(crate) fn thir_flat(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalDefId>) -> String {
+    match thir_body(tcx, owner_def) {
         Ok((thir, _)) => format!("{:#?}", thir.steal()),
         Err(_) => "error".into(),
     }
