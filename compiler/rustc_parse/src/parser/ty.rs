@@ -1048,7 +1048,7 @@ impl<'a> Parser<'a> {
                 self.parse_remaining_bounds(bounds, true)?;
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
                 let sp = vec![lo, self.prev_token.span];
-                let sugg: Vec<_> = sp.iter().map(|sp| (*sp, String::new())).collect();
+                let sugg = vec![(lo, String::from(" ")), (self.prev_token.span, String::new())];
                 self.struct_span_err(sp, "incorrect braces around trait bounds")
                     .multipart_suggestion(
                         "remove the parentheses",
