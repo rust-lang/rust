@@ -1,9 +1,14 @@
 // MIR for `b::{closure#0}` 0 generator_resume
 /* generator_layout = GeneratorLayout {
     field_tys: {
-<<<<<<< master
         _0: GeneratorSavedTy {
-            ty: impl std::future::Future<Output = ()>,
+            ty: Alias(
+                Opaque,
+                AliasTy {
+                    substs: [],
+                    def_id: DefId(0:7 ~ async_await[672b]::a::{opaque#0}),
+                },
+            ),
             source_info: SourceInfo {
                 span: $DIR/async_await.rs:15:8: 15:14 (#9),
                 scope: scope[0],
@@ -11,29 +16,19 @@
             ignore_for_traits: false,
         },
         _1: GeneratorSavedTy {
-            ty: impl std::future::Future<Output = ()>,
+            ty: Alias(
+                Opaque,
+                AliasTy {
+                    substs: [],
+                    def_id: DefId(0:7 ~ async_await[672b]::a::{opaque#0}),
+                },
+            ),
             source_info: SourceInfo {
                 span: $DIR/async_await.rs:16:8: 16:14 (#12),
                 scope: scope[0],
             },
             ignore_for_traits: false,
         },
-=======
-        _0: Alias(
-            Opaque,
-            AliasTy {
-                substs: [],
-                def_id: DefId(0:7 ~ async_await[672b]::a::{opaque#0}),
-            },
-        ),
-        _1: Alias(
-            Opaque,
-            AliasTy {
-                substs: [],
-                def_id: DefId(0:7 ~ async_await[672b]::a::{opaque#0}),
-            },
-        ),
->>>>>>> mir printing changes
     },
     variant_fields: {
         Unresumed(0): [],

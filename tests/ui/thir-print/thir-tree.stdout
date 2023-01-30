@@ -3,7 +3,7 @@ params: [
 ]
 body:
     Expr {
-        ty: ()
+        ty: Tuple([])
         temp_lifetime: Some(Node(2))
         span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
         kind: 
@@ -12,7 +12,7 @@ body:
                 lint_level: Inherited
                 value:
                     Expr {
-                        ty: ()
+                        ty: Tuple([])
                         temp_lifetime: Some(Node(2))
                         span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
                         kind: 
@@ -21,7 +21,7 @@ body:
                                 lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree[8f1d]::main).2))
                                 value:
                                     Expr {
-                                        ty: ()
+                                        ty: Tuple([])
                                         temp_lifetime: Some(Node(2))
                                         span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
                                         kind: 
