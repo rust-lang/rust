@@ -488,7 +488,10 @@ impl<T> RefLock<T> {
 
     #[inline(always)]
     fn assert_thread(&self) {
+        #[cfg(parallel_compiler)]
         assert_eq!(get_thread_id(), self.thread_id);
+        #[cfg(not(parallel_compiler))]
+        return;
     }
 
     #[inline(always)]
