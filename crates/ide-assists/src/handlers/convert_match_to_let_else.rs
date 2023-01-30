@@ -32,16 +32,10 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
     let let_stmt: ast::LetStmt = ctx.find_node_at_offset()?;
     let binding = let_stmt.pat()?;
 
-    let initializer = match let_stmt.initializer() {
-        Some(ast::Expr::MatchExpr(it)) => it,
-        _ => return None,
-    };
+    let Some(ast::Expr::MatchExpr(initializer)) = let_stmt.initializer() else { return None };
     let initializer_expr = initializer.expr()?;
 
-    let (extracting_arm, diverging_arm) = match find_arms(ctx, &initializer) {
-        Some(it) => it,
-        None => return None,
-    };
+    let Some((extracting_arm, diverging_arm)) = find_arms(ctx, &initializer) else { return None };
     if extracting_arm.guard().is_some() {
         cov_mark::hit!(extracting_arm_has_guard);
         return None;
