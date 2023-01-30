@@ -1092,6 +1092,11 @@ impl<'a> State<'a> {
             ast::TyKind::CVarArgs => {
                 self.word("...");
             }
+            ast::TyKind::Pat(ty, pat) => {
+                self.print_type(ty);
+                self.word(" is ");
+                self.print_pat(pat);
+            }
         }
         self.end();
     }

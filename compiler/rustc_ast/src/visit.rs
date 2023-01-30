@@ -416,6 +416,10 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             }
             visitor.visit_path(path, typ.id);
         }
+        TyKind::Pat(ty, pat) => {
+            visitor.visit_ty(ty);
+            visitor.visit_pat(pat);
+        }
         TyKind::Array(ty, length) => {
             visitor.visit_ty(ty);
             visitor.visit_anon_const(length)
