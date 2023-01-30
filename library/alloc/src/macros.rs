@@ -262,15 +262,17 @@ macro_rules! co_alloc_pref {
 #[unstable(feature = "global_co_alloc", issue = "none")]
 #[macro_export]
 macro_rules! meta_num_slots {
+    // Generating, for example, (0 as usize), here, triggers an ICE.
+
     // This "validates" types of both params - to prevent mix ups.
     // @FIXME remove this comment line: Removing/commenting out the part: <$alloc as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS +
     // does NOT fix the ICE (unless there are multiple ICE's).
     ($alloc:ty, $co_alloc_pref:expr) => {
-        (
+        /*(
             ((<$alloc as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS + (0 as ::core::alloc::CoAllocatorMetaNumSlots))0
             as usize)
         * ($co_alloc_pref + (0 as $crate::co_alloc::CoAllocPref))
-         as usize)
+         as usize)*/0usize
     };
 }
 // -\---> replace with something like:
