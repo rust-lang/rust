@@ -20,6 +20,7 @@ pub fn expand_deriving_ord(
         span,
         path: path_std!(cmp::Ord),
         skip_path_as_bound: false,
+        needs_copy_as_bound_if_packed: true,
         additional_bounds: Vec::new(),
         supports_unions: false,
         methods: vec![MethodDef {
@@ -29,7 +30,7 @@ pub fn expand_deriving_ord(
             nonself_args: vec![(self_ref(), sym::other)],
             ret_ty: Path(path_std!(cmp::Ordering)),
             attributes: attrs,
-            unify_fieldless_variants: true,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| cs_cmp(a, b, c))),
         }],
         associated_types: Vec::new(),

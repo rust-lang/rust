@@ -1,4 +1,4 @@
-use super::method::probe::{IsSuggestion, Mode, ProbeScope};
+use super::method::probe::ProbeScope;
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
@@ -8,6 +8,7 @@ use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, 
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::{
     infer,
     traits::{self, Obligation},
@@ -25,7 +26,6 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -288,7 +288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_span: Span,
     ) {
         let hir = self.tcx.hir();
-        let parent_hir_id = hir.get_parent_node(hir_id);
+        let parent_hir_id = hir.parent_id(hir_id);
         let parent_node = hir.get(parent_hir_id);
         if let (
             hir::Node::Expr(hir::Expr {
@@ -303,7 +303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 // Actually need to unwrap a few more layers of HIR to get to
                 // the _real_ closure...
-                let async_closure = hir.get_parent_node(hir.get_parent_node(parent_hir_id));
+                let async_closure = hir.parent_id(hir.parent_id(parent_hir_id));
                 if let hir::Node::Expr(hir::Expr {
                     kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                     ..
@@ -336,7 +336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         callee_expr: &'tcx hir::Expr<'tcx>,
     ) -> bool {
-        let hir_id = self.tcx.hir().get_parent_node(call_expr.hir_id);
+        let hir_id = self.tcx.hir().parent_id(call_expr.hir_id);
         let parent_node = self.tcx.hir().get(hir_id);
         if let (
             hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Array(_), .. }),
@@ -367,7 +367,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, subst) => {
-                let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, subst);
+                let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, subst);
 
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output
@@ -375,14 +375,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses) {
                     let predicates = self.tcx.predicates_of(def_id);
                     let predicates = predicates.instantiate(self.tcx, subst);
-                    for (predicate, predicate_span) in
-                        predicates.predicates.iter().zip(&predicates.spans)
-                    {
+                    for (predicate, predicate_span) in predicates {
                         let obligation = Obligation::new(
                             self.tcx,
                             ObligationCause::dummy_with_span(callee_expr.span),
                             self.param_env,
-                            *predicate,
+                            predicate,
                         );
                         let result = self.evaluate_obligation(&obligation);
                         self.tcx
@@ -391,7 +389,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 callee_expr.span,
                                 &format!("evaluate({:?}) = {:?}", predicate, result),
                             )
-                            .span_label(*predicate_span, "predicate")
+                            .span_label(predicate_span, "predicate")
                             .emit();
                     }
                 }
@@ -496,15 +494,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
             let Ok(pick) = self
-            .probe_for_name(
-                Mode::MethodCall,
+            .lookup_probe_for_diagnostic(
                 segment.ident,
-                IsSuggestion(true),
                 callee_ty,
-                call_expr.hir_id,
+                call_expr,
                 // We didn't record the in scope traits during late resolution
                 // so we need to probe AllTraits unfortunately
                 ProbeScope::AllTraits,
+                expected.only_has_type(self),
             ) else {
                 return None;
             };
@@ -660,8 +657,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if !self.maybe_suggest_bad_array_definition(&mut err, call_expr, callee_expr) {
-            if let Some((maybe_def, output_ty, _)) =
-                self.extract_callable_info(callee_expr, callee_ty)
+            if let Some((maybe_def, output_ty, _)) = self.extract_callable_info(callee_ty)
                 && !self.type_is_sized_modulo_regions(self.param_env, output_ty, callee_expr.span)
             {
                 let descr = match maybe_def {

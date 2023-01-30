@@ -149,7 +149,7 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
     match name {
         // Stable
         "Rust" | "C" | "cdecl" | "stdcall" | "fastcall" | "aapcs" | "win64" | "sysv64"
-        | "system" => Ok(()),
+        | "system" | "efiapi" => Ok(()),
         "rust-intrinsic" => Err(AbiDisabled::Unstable {
             feature: sym::intrinsics,
             explain: "intrinsics are subject to change",
@@ -197,10 +197,6 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
         "avr-interrupt" | "avr-non-blocking-interrupt" => Err(AbiDisabled::Unstable {
             feature: sym::abi_avr_interrupt,
             explain: "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change",
-        }),
-        "efiapi" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_efiapi,
-            explain: "efiapi ABI is experimental and subject to change",
         }),
         "C-cmse-nonsecure-call" => Err(AbiDisabled::Unstable {
             feature: sym::abi_c_cmse_nonsecure_call,

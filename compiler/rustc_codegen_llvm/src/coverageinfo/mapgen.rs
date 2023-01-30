@@ -1,6 +1,5 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
-use crate::errors::InstrumentCoverageRequiresLLVM12;
 use crate::llvm;
 
 use llvm::coverageinfo::CounterMappingRegion;
@@ -8,7 +7,7 @@ use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression};
 use rustc_codegen_ssa::traits::{ConstMethods, CoverageInfoMethods};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefIdSet;
+use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -19,8 +18,8 @@ use std::ffi::CString;
 
 /// Generates and exports the Coverage Map.
 ///
-/// Rust Coverage Map generation supports LLVM Coverage Mapping Format versions
-/// 5 (LLVM 12, only) and 6 (zero-based encoded as 4 and 5, respectively), as defined at
+/// Rust Coverage Map generation supports LLVM Coverage Mapping Format version
+/// 6 (zero-based encoded as 5), as defined at
 /// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
 /// These versions are supported by the LLVM coverage tools (`llvm-profdata` and `llvm-cov`)
 /// bundled with Rust's fork of LLVM.
@@ -33,13 +32,10 @@ use std::ffi::CString;
 pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
-    // Ensure the installed version of LLVM supports at least Coverage Map
-    // Version 5 (encoded as a zero-based value: 4), which was introduced with
-    // LLVM 12.
+    // Ensure the installed version of LLVM supports Coverage Map Version 6
+    // (encoded as a zero-based value: 5), which was introduced with LLVM 13.
     let version = coverageinfo::mapping_version();
-    if version < 4 {
-        tcx.sess.emit_fatal(InstrumentCoverageRequiresLLVM12);
-    }
+    assert_eq!(version, 5, "The `CoverageMappingVersion` exposed by `llvm-wrapper` is out of sync");
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
 
@@ -61,7 +57,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         return;
     }
 
-    let mut mapgen = CoverageMapGenerator::new(tcx, version);
+    let mut mapgen = CoverageMapGenerator::new(tcx);
 
     // Encode coverage mappings and generate function records
     let mut function_data = Vec::new();
@@ -124,25 +120,18 @@ struct CoverageMapGenerator {
 }
 
 impl CoverageMapGenerator {
-    fn new(tcx: TyCtxt<'_>, version: u32) -> Self {
+    fn new(tcx: TyCtxt<'_>) -> Self {
         let mut filenames = FxIndexSet::default();
-        if version >= 5 {
-            // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
-            // requires setting the first filename to the compilation directory.
-            // Since rustc generates coverage maps with relative paths, the
-            // compilation directory can be combined with the relative paths
-            // to get absolute paths, if needed.
-            let working_dir = tcx
-                .sess
-                .opts
-                .working_dir
-                .remapped_path_if_available()
-                .to_string_lossy()
-                .to_string();
-            let c_filename =
-                CString::new(working_dir).expect("null error converting filename to C string");
-            filenames.insert(c_filename);
-        }
+        // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
+        // requires setting the first filename to the compilation directory.
+        // Since rustc generates coverage maps with relative paths, the
+        // compilation directory can be combined with the relative paths
+        // to get absolute paths, if needed.
+        let working_dir =
+            tcx.sess.opts.working_dir.remapped_path_if_available().to_string_lossy().to_string();
+        let c_filename =
+            CString::new(working_dir).expect("null error converting filename to C string");
+        filenames.insert(c_filename);
         Self { filenames }
     }
 
@@ -291,7 +280,7 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 
     let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
 
-    let eligible_def_ids: DefIdSet = tcx
+    let eligible_def_ids: Vec<DefId> = tcx
         .mir_keys(())
         .iter()
         .filter_map(|local_def_id| {
@@ -306,9 +295,8 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
                 DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator
             ) {
                 return None;
-            } else if ignore_unused_generics
-                && tcx.generics_of(def_id).requires_monomorphization(tcx)
-            {
+            }
+            if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
                 return None;
             }
             Some(local_def_id.to_def_id())
@@ -317,7 +305,9 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 
     let codegenned_def_ids = tcx.codegened_and_inlined_items(());
 
-    for &non_codegenned_def_id in eligible_def_ids.difference(codegenned_def_ids) {
+    for non_codegenned_def_id in
+        eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id))
+    {
         let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
 
         // If a function is marked `#[no_coverage]`, then skip generating a

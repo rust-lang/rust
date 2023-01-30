@@ -38,7 +38,7 @@ pub(super) fn index_hir<'hir>(
 ) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<LocalDefId, ItemLocalId>) {
     let mut nodes = IndexVec::new();
     // This node's parent should never be accessed: the owner's parent is computed by the
-    // hir_owner_parent query.  Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
+    // hir_owner_parent query. Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
     // used.
     nodes.push(Some(ParentedNode { parent: ItemLocalId::INVALID, node: item.into() }));
     let mut collector = NodeCollector {
@@ -273,19 +273,6 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.with_parent(tr.hir_ref_id, |this| {
             intravisit::walk_trait_ref(this, tr);
         });
-    }
-
-    fn visit_fn(
-        &mut self,
-        fk: intravisit::FnKind<'hir>,
-        fd: &'hir FnDecl<'hir>,
-        b: BodyId,
-        _: Span,
-        id: HirId,
-    ) {
-        assert_eq!(self.owner, id.owner);
-        assert_eq!(self.parent_node, id.local_id);
-        intravisit::walk_fn(self, fk, fd, b, id);
     }
 
     fn visit_block(&mut self, block: &'hir Block<'hir>) {

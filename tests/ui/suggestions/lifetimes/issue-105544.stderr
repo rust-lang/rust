@@ -1,0 +1,110 @@
+error[E0311]: the parameter type `impl Sized` may not live long enough
+  --> $DIR/issue-105544.rs:7:5
+   |
+LL |     (d, p)
+   |     ^^^^^^
+   |
+note: the parameter type `impl Sized` must be valid for the anonymous lifetime defined here...
+  --> $DIR/issue-105544.rs:5:26
+   |
+LL | fn foo(d: impl Sized, p: &mut ()) -> impl Sized + '_ {
+   |                          ^^^^^^^
+note: ...so that the type `impl Sized` will meet its required lifetime bounds
+  --> $DIR/issue-105544.rs:7:5
+   |
+LL |     (d, p)
+   |     ^^^^^^
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn foo<'a>(d: impl Sized + 'a, p: &'a mut ()) -> impl Sized + '_ {
+   |       ++++               ++++      ++
+
+error[E0309]: the parameter type `impl Sized` may not live long enough
+  --> $DIR/issue-105544.rs:14:5
+   |
+LL |     (d, p)
+   |     ^^^^^^ ...so that the type `impl Sized` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn foo1<'b>(d: impl Sized + 'b, p: &'b mut ()) -> impl Sized + '_ {
+   |                           ++++
+
+error[E0311]: the parameter type `impl Sized + 'a` may not live long enough
+  --> $DIR/issue-105544.rs:20:5
+   |
+LL |     (d, p)
+   |     ^^^^^^
+   |
+note: the parameter type `impl Sized + 'a` must be valid for the anonymous lifetime defined here...
+  --> $DIR/issue-105544.rs:18:36
+   |
+LL | fn foo2<'a>(d: impl Sized + 'a, p: &mut ()) -> impl Sized + '_ {
+   |                                    ^^^^^^^
+note: ...so that the type `impl Sized + 'a` will meet its required lifetime bounds
+  --> $DIR/issue-105544.rs:20:5
+   |
+LL |     (d, p)
+   |     ^^^^^^
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn foo2<'b, 'a>(d: impl Sized + 'a + 'b, p: &'b mut ()) -> impl Sized + '_ {
+   |         +++                        ++++      ++
+
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/issue-105544.rs:27:5
+   |
+LL |     (d, p)
+   |     ^^^^^^
+   |
+note: the parameter type `T` must be valid for the anonymous lifetime defined here...
+  --> $DIR/issue-105544.rs:25:28
+   |
+LL | fn bar<T : Sized>(d: T, p: & mut ()) -> impl Sized + '_ {
+   |                            ^^^^^^^^
+note: ...so that the type `T` will meet its required lifetime bounds
+  --> $DIR/issue-105544.rs:27:5
+   |
+LL |     (d, p)
+   |     ^^^^^^
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn bar<'a, T : Sized + 'a>(d: T, p: &'a mut ()) -> impl Sized + '_ {
+   |        +++           ++++            ++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/issue-105544.rs:34:5
+   |
+LL |     (d, p)
+   |     ^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn bar1<'b, T : Sized + 'b>(d: T, p: &'b mut ()) -> impl Sized + '_ {
+   |                       ++++
+
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/issue-105544.rs:40:5
+   |
+LL |     (d, p)
+   |     ^^^^^^
+   |
+note: the parameter type `T` must be valid for the anonymous lifetime defined here...
+  --> $DIR/issue-105544.rs:38:38
+   |
+LL | fn bar2<'a, T : Sized + 'a>(d: T, p: &mut ()) -> impl Sized + '_ {
+   |                                      ^^^^^^^
+note: ...so that the type `T` will meet its required lifetime bounds
+  --> $DIR/issue-105544.rs:40:5
+   |
+LL |     (d, p)
+   |     ^^^^^^
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn bar2<'b, 'a, T : Sized + 'a + 'b>(d: T, p: &'b mut ()) -> impl Sized + '_ {
+   |         +++                    ++++            ++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0309, E0311.
+For more information about an error, try `rustc --explain E0309`.

@@ -206,6 +206,7 @@ impl<'tcx> SymbolMangler<'tcx> {
     where
         T: TypeVisitable<'tcx>,
     {
+        // FIXME(non-lifetime-binders): What to do here?
         let regions = if value.has_late_bound_regions() {
             self.tcx.collect_referenced_late_bound_regions(value)
         } else {
@@ -489,6 +490,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             }
 
             ty::GeneratorWitness(_) => bug!("symbol_names: unexpected `GeneratorWitness`"),
+            ty::GeneratorWitnessMIR(..) => bug!("symbol_names: unexpected `GeneratorWitnessMIR`"),
         }
 
         // Only cache types that do not refer to an enclosing
@@ -609,7 +611,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     bits = val.unsigned_abs();
                 }
 
-                let _ = write!(self.out, "{:x}_", bits);
+                let _ = write!(self.out, "{bits:x}_");
             }
 
             // FIXME(valtrees): Remove the special case for `str`
@@ -637,7 +639,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
                                 // FIXME(eddyb) use a specialized hex-encoding loop.
                                 for byte in s.bytes() {
-                                    let _ = write!(self.out, "{:02x}", byte);
+                                    let _ = write!(self.out, "{byte:02x}");
                                 }
 
                                 self.push("_");

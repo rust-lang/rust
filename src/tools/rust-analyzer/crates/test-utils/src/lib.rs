@@ -146,8 +146,8 @@ pub fn extract_range_or_offset(text: &str) -> (RangeOrOffset, String) {
 
 /// Extracts ranges, marked with `<tag> </tag>` pairs from the `text`
 pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String>)>, String) {
-    let open = format!("<{}", tag);
-    let close = format!("</{}>", tag);
+    let open = format!("<{tag}");
+    let close = format!("</{tag}>");
     let mut ranges = Vec::new();
     let mut res = String::new();
     let mut stack = Vec::new();
@@ -169,8 +169,7 @@ pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String
                     stack.push((from, attr));
                 } else if text.starts_with(&close) {
                     text = &text[close.len()..];
-                    let (from, attr) =
-                        stack.pop().unwrap_or_else(|| panic!("unmatched </{}>", tag));
+                    let (from, attr) = stack.pop().unwrap_or_else(|| panic!("unmatched </{tag}>"));
                     let to = TextSize::of(&res);
                     ranges.push((TextRange::new(from, to), attr));
                 } else {
@@ -180,7 +179,7 @@ pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String
             }
         }
     }
-    assert!(stack.is_empty(), "unmatched <{}>", tag);
+    assert!(stack.is_empty(), "unmatched <{tag}>");
     ranges.sort_by_key(|r| (r.0.start(), r.0.end()));
     (ranges, res)
 }
@@ -397,7 +396,7 @@ pub fn skip_slow_tests() -> bool {
         eprintln!("ignoring slow test");
     } else {
         let path = project_root().join("./target/.slow_tests_cookie");
-        fs::write(&path, ".").unwrap();
+        fs::write(path, ".").unwrap();
     }
     should_skip
 }
@@ -413,8 +412,8 @@ pub fn format_diff(chunks: Vec<dissimilar::Chunk<'_>>) -> String {
     for chunk in chunks {
         let formatted = match chunk {
             dissimilar::Chunk::Equal(text) => text.into(),
-            dissimilar::Chunk::Delete(text) => format!("\x1b[41m{}\x1b[0m", text),
-            dissimilar::Chunk::Insert(text) => format!("\x1b[42m{}\x1b[0m", text),
+            dissimilar::Chunk::Delete(text) => format!("\x1b[41m{text}\x1b[0m"),
+            dissimilar::Chunk::Insert(text) => format!("\x1b[42m{text}\x1b[0m"),
         };
         buf.push_str(&formatted);
     }
@@ -480,7 +479,7 @@ pub fn try_ensure_file_contents(file: &Path, contents: &str) -> Result<(), ()> {
         }
         _ => (),
     }
-    let display_path = file.strip_prefix(&project_root()).unwrap_or(file);
+    let display_path = file.strip_prefix(project_root()).unwrap_or(file);
     eprintln!(
         "\n\x1b[31;1merror\x1b[0m: {} was not up-to-date, updating\n",
         display_path.display()

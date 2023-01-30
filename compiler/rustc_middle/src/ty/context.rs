@@ -2,6 +2,8 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
+pub mod tls;
+
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
@@ -51,7 +53,7 @@ use rustc_macros::HashStable;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-use rustc_session::config::{CrateType, OutputFilenames};
+use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::Limit;
@@ -74,7 +76,8 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
-use std::sync::Arc;
+
+const TINY_CONST_EVAL_LIMIT: Limit = Limit(20);
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
@@ -363,6 +366,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
         TyCtxtFeed { tcx: self, key: () }
     }
+    pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
+        TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
@@ -428,11 +434,6 @@ pub struct GlobalCtxt<'tcx> {
     pub consts: CommonConsts<'tcx>,
 
     untracked: Untracked,
-    /// Output of the resolver.
-    pub(crate) untracked_resolutions: ty::ResolverGlobalCtxt,
-    /// The entire crate as AST. This field serves as the input for the hir_crate query,
-    /// which lowers it from AST to HIR. It must not be read or used by anything else.
-    pub untracked_crate: Steal<Lrc<ast::Crate>>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -457,17 +458,11 @@ pub struct GlobalCtxt<'tcx> {
     /// Merge this with `selection_cache`?
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
 
-    /// The definite name of the current crate after taking into account
-    /// attributes, commandline parameters, etc.
-    crate_name: Symbol,
-
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
-
-    output_filenames: Arc<OutputFilenames>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -592,15 +587,11 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        untracked_resolutions: ty::ResolverGlobalCtxt,
         untracked: Untracked,
-        krate: Lrc<ast::Crate>,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
-        crate_name: Symbol,
-        output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
@@ -622,8 +613,6 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked,
-            untracked_resolutions,
-            untracked_crate: Steal::new(krate),
             on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),
@@ -632,10 +621,8 @@ impl<'tcx> TyCtxt<'tcx> {
             pred_rcache: Default::default(),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
-            crate_name,
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
-            output_filenames: Arc::new(output_filenames),
         }
     }
 
@@ -810,7 +797,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // statements within the query system and we'd run into endless
         // recursion otherwise.
         let (crate_name, stable_crate_id) = if def_id.is_local() {
-            (self.crate_name, self.sess.local_stable_crate_id())
+            (self.crate_name(LOCAL_CRATE), self.sess.local_stable_crate_id())
         } else {
             let cstore = &*self.untracked.cstore;
             (cstore.crate_name(def_id.krate), cstore.stable_crate_id(def_id.krate))
@@ -891,7 +878,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         // Leak a read lock once we start iterating on definitions, to prevent adding new ones
-        // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
+        // while iterating. If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.untracked.definitions.leak();
         definitions.def_path_table()
     }
@@ -903,7 +890,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // definitions change.
         self.ensure().hir_crate(());
         // Leak a read lock once we start iterating on definitions, to prevent adding new ones
-        // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
+        // while iterating. If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.untracked.definitions.leak();
         definitions.def_path_hash_to_def_index_map()
     }
@@ -1014,6 +1001,30 @@ impl<'tcx> TyCtxt<'tcx> {
         v.0
     }
 
+    /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in its return type and associated alias span when type alias is used
+    pub fn return_type_impl_or_dyn_traits_with_type_alias(
+        self,
+        scope_def_id: LocalDefId,
+    ) -> Option<(Vec<&'tcx hir::Ty<'tcx>>, Span)> {
+        let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
+        let mut v = TraitObjectVisitor(vec![], self.hir());
+        // when the return type is a type alias
+        if let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) = self.hir().fn_decl_by_hir_id(hir_id)
+            && let hir::TyKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: hir::def::Res::Def(DefKind::TyAlias, def_id), .. }, )) = hir_output.kind
+            && let Some(local_id) = def_id.as_local()
+            && let Some(alias_ty) = self.hir().get_by_def_id(local_id).alias_ty() // it is type alias
+            && let Some(alias_generics) = self.hir().get_by_def_id(local_id).generics()
+        {
+            v.visit_ty(alias_ty);
+            if !v.0.is_empty() {
+                return Some((v.0, alias_generics.span));
+            }
+        }
+        return None;
+    }
+
     pub fn return_type_impl_trait(self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
         // `type_of()` will fail on these (#55796, #86483), so only allow `fn`s or closures.
         match self.hir().get_by_def_id(scope_def_id) {
@@ -1095,7 +1106,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn const_eval_limit(self) -> Limit {
-        self.limits(()).const_eval_limit
+        if self.sess.opts.unstable_opts.tiny_const_eval_limit {
+            TINY_CONST_EVAL_LIMIT
+        } else {
+            self.limits(()).const_eval_limit
+        }
     }
 
     pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
@@ -1205,178 +1220,6 @@ CloneLiftImpls! { for<'tcx> {
     Constness, traits::WellFormedLoc, ImplPolarity, crate::mir::ReturnConstraint,
 } }
 
-pub mod tls {
-    use super::{ptr_eq, GlobalCtxt, TyCtxt};
-
-    use crate::dep_graph::TaskDepsRef;
-    use crate::ty::query;
-    use rustc_data_structures::sync::{self, Lock};
-    use rustc_errors::Diagnostic;
-    use std::mem;
-    use thin_vec::ThinVec;
-
-    #[cfg(not(parallel_compiler))]
-    use std::cell::Cell;
-
-    #[cfg(parallel_compiler)]
-    use rustc_rayon_core as rayon_core;
-
-    /// This is the implicit state of rustc. It contains the current
-    /// `TyCtxt` and query. It is updated when creating a local interner or
-    /// executing a new query. Whenever there's a `TyCtxt` value available
-    /// you should also have access to an `ImplicitCtxt` through the functions
-    /// in this module.
-    #[derive(Clone)]
-    pub struct ImplicitCtxt<'a, 'tcx> {
-        /// The current `TyCtxt`.
-        pub tcx: TyCtxt<'tcx>,
-
-        /// The current query job, if any. This is updated by `JobOwner::start` in
-        /// `ty::query::plumbing` when executing a query.
-        pub query: Option<query::QueryJobId>,
-
-        /// Where to store diagnostics for the current query job, if any.
-        /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
-        pub diagnostics: Option<&'a Lock<ThinVec<Diagnostic>>>,
-
-        /// Used to prevent queries from calling too deeply.
-        pub query_depth: usize,
-
-        /// The current dep graph task. This is used to add dependencies to queries
-        /// when executing them.
-        pub task_deps: TaskDepsRef<'a>,
-    }
-
-    impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
-        pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
-            let tcx = TyCtxt { gcx };
-            ImplicitCtxt {
-                tcx,
-                query: None,
-                diagnostics: None,
-                query_depth: 0,
-                task_deps: TaskDepsRef::Ignore,
-            }
-        }
-    }
-
-    /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
-    /// to `value` during the call to `f`. It is restored to its previous value after.
-    /// This is used to set the pointer to the new `ImplicitCtxt`.
-    #[cfg(parallel_compiler)]
-    #[inline]
-    fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
-        rayon_core::tlv::with(value, f)
-    }
-
-    /// Gets Rayon's thread-local variable, which is preserved for Rayon jobs.
-    /// This is used to get the pointer to the current `ImplicitCtxt`.
-    #[cfg(parallel_compiler)]
-    #[inline]
-    pub fn get_tlv() -> usize {
-        rayon_core::tlv::get()
-    }
-
-    #[cfg(not(parallel_compiler))]
-    thread_local! {
-        /// A thread local variable that stores a pointer to the current `ImplicitCtxt`.
-        static TLV: Cell<usize> = const { Cell::new(0) };
-    }
-
-    /// Sets TLV to `value` during the call to `f`.
-    /// It is restored to its previous value after.
-    /// This is used to set the pointer to the new `ImplicitCtxt`.
-    #[cfg(not(parallel_compiler))]
-    #[inline]
-    fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
-        let old = get_tlv();
-        let _reset = rustc_data_structures::OnDrop(move || TLV.with(|tlv| tlv.set(old)));
-        TLV.with(|tlv| tlv.set(value));
-        f()
-    }
-
-    /// Gets the pointer to the current `ImplicitCtxt`.
-    #[cfg(not(parallel_compiler))]
-    #[inline]
-    fn get_tlv() -> usize {
-        TLV.with(|tlv| tlv.get())
-    }
-
-    /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.
-    #[inline]
-    pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>, f: F) -> R
-    where
-        F: FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
-    {
-        set_tlv(context as *const _ as usize, || f(&context))
-    }
-
-    /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
-    #[inline]
-    pub fn with_context_opt<F, R>(f: F) -> R
-    where
-        F: for<'a, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'tcx>>) -> R,
-    {
-        let context = get_tlv();
-        if context == 0 {
-            f(None)
-        } else {
-            // We could get an `ImplicitCtxt` pointer from another thread.
-            // Ensure that `ImplicitCtxt` is `Sync`.
-            sync::assert_sync::<ImplicitCtxt<'_, '_>>();
-
-            unsafe { f(Some(&*(context as *const ImplicitCtxt<'_, '_>))) }
-        }
-    }
-
-    /// Allows access to the current `ImplicitCtxt`.
-    /// Panics if there is no `ImplicitCtxt` available.
-    #[inline]
-    pub fn with_context<F, R>(f: F) -> R
-    where
-        F: for<'a, 'tcx> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
-    {
-        with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
-    }
-
-    /// Allows access to the current `ImplicitCtxt` whose tcx field is the same as the tcx argument
-    /// passed in. This means the closure is given an `ImplicitCtxt` with the same `'tcx` lifetime
-    /// as the `TyCtxt` passed in.
-    /// This will panic if you pass it a `TyCtxt` which is different from the current
-    /// `ImplicitCtxt`'s `tcx` field.
-    #[inline]
-    pub fn with_related_context<'tcx, F, R>(tcx: TyCtxt<'tcx>, f: F) -> R
-    where
-        F: FnOnce(&ImplicitCtxt<'_, 'tcx>) -> R,
-    {
-        with_context(|context| unsafe {
-            assert!(ptr_eq(context.tcx.gcx, tcx.gcx));
-            let context: &ImplicitCtxt<'_, '_> = mem::transmute(context);
-            f(context)
-        })
-    }
-
-    /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.
-    /// Panics if there is no `ImplicitCtxt` available.
-    #[inline]
-    pub fn with<F, R>(f: F) -> R
-    where
-        F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> R,
-    {
-        with_context(|context| f(context.tcx))
-    }
-
-    /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.
-    /// The closure is passed None if there is no `ImplicitCtxt` available.
-    #[inline]
-    pub fn with_opt<F, R>(f: F) -> R
-    where
-        F: for<'tcx> FnOnce(Option<TyCtxt<'tcx>>) -> R,
-    {
-        with_context_opt(|opt_context| f(opt_context.map(|context| context.tcx)))
-    }
-}
-
 macro_rules! sty_debug_print {
     ($fmt: expr, $ctxt: expr, $($variant: ident),*) => {{
         // Curious inner module to allow variant names to be used as
@@ -1469,6 +1312,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Placeholder,
                     Generator,
                     GeneratorWitness,
+                    GeneratorWitnessMIR,
                     Dynamic,
                     Closure,
                     Tuple,
@@ -1969,6 +1813,20 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(GeneratorWitness(types))
     }
 
+    /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
+    pub fn mk_task_context(self) -> Ty<'tcx> {
+        let context_did = self.require_lang_item(LangItem::Context, None);
+        let context_adt_ref = self.adt_def(context_did);
+        let context_substs = self.intern_substs(&[self.lifetimes.re_erased.into()]);
+        let context_ty = self.mk_adt(context_adt_ref, context_substs);
+        self.mk_mut_ref(self.lifetimes.re_erased, context_ty)
+    }
+
+    #[inline]
+    pub fn mk_generator_witness_mir(self, id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(GeneratorWitnessMIR(id, substs))
+    }
+
     #[inline]
     pub fn mk_ty_var(self, v: TyVid) -> Ty<'tcx> {
         self.mk_ty_infer(TyVar(v))
@@ -2305,10 +2163,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner.def_id).map_or(false, |set| {
-            let def_id = self.hir().local_def_id(id);
-            set.contains(&def_id)
-        })
+        self.is_late_bound_map(id.owner).map_or(false, |set| set.contains(&id.local_id))
     }
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
@@ -2400,20 +2255,9 @@ pub struct DeducedParamAttrs {
     pub read_only: bool,
 }
 
-// We are comparing types with different invariant lifetimes, so `ptr::eq`
-// won't work for us.
-fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
-    t as *const () == u as *const ()
-}
-
 pub fn provide(providers: &mut ty::query::Providers) {
-    providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
     providers.module_reexports =
         |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
-    providers.crate_name = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        tcx.crate_name
-    };
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.maybe_unused_extern_crates =
@@ -2424,8 +2268,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
-    providers.output_filenames = |tcx, ()| &tcx.output_filenames;
-    providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.sess.contains_name(tcx.hir().krate_attrs(), sym::panic_runtime)

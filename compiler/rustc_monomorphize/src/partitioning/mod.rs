@@ -180,7 +180,7 @@ pub fn partition<'tcx>(
         partitioner.place_root_mono_items(cx, mono_items)
     };
 
-    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
+    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.create_size_estimate(tcx));
 
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
@@ -200,7 +200,7 @@ pub fn partition<'tcx>(
         partitioner.place_inlined_mono_items(cx, initial_partitioning)
     };
 
-    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
+    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.create_size_estimate(tcx));
 
     debug_dump(tcx, "POST INLINING:", post_inlining.codegen_units.iter());
 
@@ -285,7 +285,7 @@ where
         use std::fmt::Write;
 
         let s = &mut String::new();
-        let _ = writeln!(s, "{}", label);
+        let _ = writeln!(s, "{label}");
         for cgu in cgus {
             let _ =
                 writeln!(s, "CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
@@ -355,9 +355,8 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
             } else {
                 if mode_string != "lazy" {
                     let message = format!(
-                        "Unknown codegen-item collection mode '{}'. \
-                                           Falling back to 'lazy' mode.",
-                        mode_string
+                        "Unknown codegen-item collection mode '{mode_string}'. \
+                                           Falling back to 'lazy' mode."
                     );
                     tcx.sess.warn(&message);
                 }
@@ -470,7 +469,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
         item_keys.sort();
 
         for item in item_keys {
-            println!("MONO_ITEM {}", item);
+            println!("MONO_ITEM {item}");
         }
     }
 
@@ -596,6 +595,6 @@ pub fn provide(providers: &mut Providers) {
         let (_, all) = tcx.collect_and_partition_mono_items(());
         all.iter()
             .find(|cgu| cgu.name() == name)
-            .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
+            .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))
     };
 }

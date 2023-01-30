@@ -37,6 +37,21 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> OnUnimplementedNote;
 }
 
+/// The symbols which are always allowed in a format string
+static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
+    kw::SelfUpper,
+    sym::ItemContext,
+    sym::from_method,
+    sym::from_desugaring,
+    sym::direct,
+    sym::cause,
+    sym::integral,
+    sym::integer_,
+    sym::float,
+    sym::_Self,
+    sym::crate_local,
+];
+
 impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
@@ -53,7 +68,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
             let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
-            let impl_trait_ref = tcx.bound_impl_trait_ref(def_id).unwrap().subst(tcx, impl_substs);
+            let impl_trait_ref = tcx.impl_trait_ref(def_id).unwrap().subst(tcx, impl_substs);
 
             let impl_self_ty = impl_trait_ref.self_ty();
 
@@ -117,7 +132,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 Some(if movability.is_some() { "an async closure" } else { "a closure" })
             }),
             hir::Node::Expr(hir::Expr { .. }) => {
-                let parent_hid = hir.get_parent_node(hir_id);
+                let parent_hid = hir.parent_id(hir_id);
                 if parent_hid != hir_id { self.describe_enclosure(parent_hid) } else { None }
             }
             _ => None,
@@ -134,10 +149,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().substs));
         let trait_ref = trait_ref.skip_binder();
 
-        let mut flags = vec![(
-            sym::ItemContext,
-            self.describe_enclosure(obligation.cause.body_id).map(|s| s.to_owned()),
-        )];
+        let body_hir = self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
+        let mut flags =
+            vec![(sym::ItemContext, self.describe_enclosure(body_hir).map(|s| s.to_owned()))];
 
         match obligation.cause.code() {
             ObligationCauseCode::BuiltinDerivedObligation(..)
@@ -543,38 +557,26 @@ impl<'tcx> OnUnimplementedFormatString {
                 Piece::NextArgument(a) => match a.position {
                     Position::ArgumentNamed(s) => {
                         match Symbol::intern(s) {
-                            // `{Self}` is allowed
-                            kw::SelfUpper => (),
                             // `{ThisTraitsName}` is allowed
                             s if s == trait_name => (),
-                            // `{from_method}` is allowed
-                            sym::from_method => (),
-                            // `{from_desugaring}` is allowed
-                            sym::from_desugaring => (),
-                            // `{ItemContext}` is allowed
-                            sym::ItemContext => (),
-                            // `{integral}` and `{integer}` and `{float}` are allowed
-                            sym::integral | sym::integer_ | sym::float => (),
+                            s if ALLOWED_FORMAT_SYMBOLS.contains(&s) => (),
                             // So is `{A}` if A is a type parameter
-                            s => match generics.params.iter().find(|param| param.name == s) {
-                                Some(_) => (),
-                                None => {
-                                    let reported = struct_span_err!(
-                                        tcx.sess,
-                                        span,
-                                        E0230,
-                                        "there is no parameter `{}` on {}",
-                                        s,
-                                        if trait_def_id == item_def_id {
-                                            format!("trait `{}`", trait_name)
-                                        } else {
-                                            "impl".to_string()
-                                        }
-                                    )
-                                    .emit();
-                                    result = Err(reported);
-                                }
-                            },
+                            s if generics.params.iter().any(|param| param.name == s) => (),
+                            s => {
+                                result = Err(struct_span_err!(
+                                    tcx.sess,
+                                    span,
+                                    E0230,
+                                    "there is no parameter `{}` on {}",
+                                    s,
+                                    if trait_def_id == item_def_id {
+                                        format!("trait `{}`", trait_name)
+                                    } else {
+                                        "impl".to_string()
+                                    }
+                                )
+                                .emit());
+                            }
                         }
                     }
                     // `{:1}` and `{}` are not to be used

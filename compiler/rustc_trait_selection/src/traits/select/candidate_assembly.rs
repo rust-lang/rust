@@ -174,7 +174,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter_map(|o| o.to_opt_poly_trait_pred());
+            .filter(|p| !p.references_error())
+            .filter_map(|p| p.to_opt_poly_trait_pred());
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
@@ -254,18 +255,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         match *obligation.self_ty().skip_binder().kind() {
-            ty::Closure(_, closure_substs) => {
+            ty::Closure(def_id, closure_substs) => {
+                let is_const = self.tcx().is_const_fn_raw(def_id);
                 debug!(?kind, ?obligation, "assemble_unboxed_candidates");
                 match self.infcx.closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         debug!(?closure_kind, "assemble_unboxed_candidates");
                         if closure_kind.extends(kind) {
-                            candidates.vec.push(ClosureCandidate);
+                            candidates.vec.push(ClosureCandidate { is_const });
                         }
                     }
                     None => {
                         debug!("assemble_unboxed_candidates: closure_kind not yet known");
-                        candidates.vec.push(ClosureCandidate);
+                        candidates.vec.push(ClosureCandidate { is_const });
                     }
                 }
             }
@@ -355,7 +357,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Before we create the substitutions and everything, first
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
-                let impl_trait_ref = self.tcx().bound_impl_trait_ref(impl_def_id).unwrap();
+                let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
                 if self.fast_reject_trait_refs(obligation, &impl_trait_ref.0) {
                     return;
                 }
@@ -396,7 +398,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::Param(..) | ty::Alias(ty::Projection, ..) => {
                     // In these cases, we don't know what the actual
-                    // type is.  Therefore, we cannot break it down
+                    // type is. Therefore, we cannot break it down
                     // into its constituent types. So we don't
                     // consider the `..` impl but instead just add no
                     // candidates: this means that typeck will only
@@ -464,7 +466,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if let Some(principal) = data.principal() {
                         if !self.infcx.tcx.features().object_safe_for_dispatch {
                             principal.with_self_ty(self.tcx(), self_ty)
-                        } else if self.tcx().is_object_safe(principal.def_id()) {
+                        } else if self.tcx().check_is_object_safe(principal.def_id()) {
                             principal.with_self_ty(self.tcx(), self_ty)
                         } else {
                             return;
@@ -763,7 +765,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::Tuple(_)
-            | ty::GeneratorWitness(_) => {
+            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..) => {
                 // These are built-in, and cannot have a custom `impl const Destruct`.
                 candidates.vec.push(ConstDestructCandidate(None));
             }
@@ -824,6 +827,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Alias(..)
             | ty::Param(_)

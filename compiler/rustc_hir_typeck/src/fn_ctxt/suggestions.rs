@@ -5,13 +5,12 @@ use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Expr, ExprKind, GenericBound, Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
-use rustc_infer::infer;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{
@@ -23,16 +22,16 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::NormalizeExt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
         self.typeck_results
             .borrow()
             .liberated_fn_sigs()
-            .get(self.tcx.hir().get_parent_node(self.body_id))
+            .get(self.tcx.hir().local_def_id_to_hir_id(self.body_id))
             .copied()
     }
 
@@ -94,7 +93,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>) -> bool,
     ) -> bool {
-        let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(expr, found)
+        let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(found)
             else { return false; };
         if can_satisfy(output) {
             let (sugg_call, mut applicability) = match inputs.len() {
@@ -163,99 +162,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// because the callable type must also be well-formed to be called.
     pub(in super::super) fn extract_callable_info(
         &self,
-        expr: &Expr<'_>,
-        found: Ty<'tcx>,
+        ty: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
-        // Autoderef is useful here because sometimes we box callables, etc.
-        let Some((def_id_or_name, output, inputs)) = self.autoderef(expr.span, found).silence_errors().find_map(|(found, _)| {
-            match *found.kind() {
-                ty::FnPtr(fn_sig) =>
-                    Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs())),
-                ty::FnDef(def_id, _) => {
-                    let fn_sig = found.fn_sig(self.tcx);
-                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs()))
-                }
-                ty::Closure(def_id, substs) => {
-                    let fn_sig = substs.as_closure().sig();
-                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
-                }
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                    self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
-                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
-                        // args tuple will always be substs[1]
-                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
-                        {
-                            Some((
-                                DefIdOrName::DefId(def_id),
-                                pred.kind().rebind(proj.term.ty().unwrap()),
-                                pred.kind().rebind(args.as_slice()),
-                            ))
-                        } else {
-                            None
-                        }
-                    })
-                }
-                ty::Dynamic(data, _, ty::Dyn) => {
-                    data.iter().find_map(|pred| {
-                        if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
-                        && Some(proj.def_id) == self.tcx.lang_items().fn_once_output()
-                        // for existential projection, substs are shifted over by 1
-                        && let ty::Tuple(args) = proj.substs.type_at(0).kind()
-                        {
-                            Some((
-                                DefIdOrName::Name("trait object"),
-                                pred.rebind(proj.term.ty().unwrap()),
-                                pred.rebind(args.as_slice()),
-                            ))
-                        } else {
-                            None
-                        }
-                    })
-                }
-                ty::Param(param) => {
-                    let def_id = self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx).def_id;
-                    self.tcx.predicates_of(self.body_id.owner).predicates.iter().find_map(|(pred, _)| {
-                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
-                        && proj.projection_ty.self_ty() == found
-                        // args tuple will always be substs[1]
-                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
-                        {
-                            Some((
-                                DefIdOrName::DefId(def_id),
-                                pred.kind().rebind(proj.term.ty().unwrap()),
-                                pred.kind().rebind(args.as_slice()),
-                            ))
-                        } else {
-                            None
-                        }
-                    })
-                }
-                _ => None,
-            }
-        }) else { return None; };
-
-        let output = self.replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, output);
-        let inputs = inputs
-            .skip_binder()
-            .iter()
-            .map(|ty| {
-                self.replace_bound_vars_with_fresh_vars(
-                    expr.span,
-                    infer::FnCall,
-                    inputs.rebind(*ty),
-                )
-            })
-            .collect();
-
-        // We don't want to register any extra obligations, which should be
-        // implied by wf, but also because that would possibly result in
-        // erroneous errors later on.
-        let infer::InferOk { value: output, obligations: _ } =
-            self.at(&self.misc(expr.span), self.param_env).normalize(output);
-
-        if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
+        let body_hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+        self.err_ctxt().extract_callable_info(body_hir_id, self.param_env, ty)
     }
 
     pub fn suggest_two_fn_call(
@@ -267,9 +177,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_ty: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>, Ty<'tcx>) -> bool,
     ) -> bool {
-        let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_expr, lhs_ty)
+        let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_ty)
             else { return false; };
-        let Some((_, rhs_output_ty, rhs_inputs)) = self.extract_callable_info(rhs_expr, rhs_ty)
+        let Some((_, rhs_output_ty, rhs_inputs)) = self.extract_callable_info(rhs_ty)
             else { return false; };
 
         if can_satisfy(lhs_output_ty, rhs_output_ty) {
@@ -417,10 +327,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if self.suggest_else_fn_with_closure(err, expr, found, expected) {
             return true;
         } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
-            && let ty::FnDef(def_id, ..) = &found.kind()
-            && let Some(sp) = self.tcx.hir().span_if_local(*def_id)
+            && let ty::FnDef(def_id, ..) = *found.kind()
+            && let Some(sp) = self.tcx.hir().span_if_local(def_id)
         {
-            err.span_label(sp, format!("{found} defined here"));
+            let name = self.tcx.item_name(def_id);
+            let kind = self.tcx.def_kind(def_id);
+            if let DefKind::Ctor(of, CtorKind::Fn) = kind {
+                err.span_label(sp, format!("`{name}` defines {} constructor here, which should be called", match of {
+                    CtorOf::Struct => "a struct",
+                    CtorOf::Variant => "an enum variant",
+                }));
+            } else {
+                let descr = kind.descr(def_id);
+                err.span_label(sp, format!("{descr} `{name}` defined here"));
+            }
             return true;
         } else if self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
             return true;
@@ -442,7 +362,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && method_call_list.contains(&conversion_method.name)
                             // If receiver is `.clone()` and found type has one of those methods,
                             // we guess that the user wants to convert from a slice type (`&[]` or `&str`)
-                            // to an owned type (`Vec` or `String`).  These conversions clone internally,
+                            // to an owned type (`Vec` or `String`). These conversions clone internally,
                             // so we remove the user's `clone` call.
                         {
                             vec![(
@@ -639,10 +559,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ty::Adt(def, _) if def.is_box() && self.can_coerce(box_found, expected) => {
-                // Check if the parent expression is a call to Pin::new.  If it
+                // Check if the parent expression is a call to Pin::new. If it
                 // is and we were expecting a Box, ergo Pin<Box<expected>>, we
                 // can suggest Box::pin.
-                let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+                let parent = self.tcx.hir().parent_id(expr.hir_id);
                 let Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) = self.tcx.hir().find(parent) else {
                     return false;
                 };
@@ -783,7 +703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
                 let span = ty.span;
-                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
+                let ty = self.astconv().ast_ty_to_ty(ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
                 let bound_vars = self.tcx.late_bound_vars(fn_id);
@@ -854,7 +774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 }) => {
                     // FIXME: Maybe these calls to `ast_ty_to_ty` can be removed (and the ones below)
-                    let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, bounded_ty);
+                    let ty = self.astconv().ast_ty_to_ty(bounded_ty);
                     Some((ty, bounds))
                 }
                 _ => None,
@@ -892,7 +812,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let all_bounds_str = all_matching_bounds_strs.join(" + ");
 
         let ty_param_used_in_fn_params = fn_parameters.iter().any(|param| {
-                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, param);
+                let ty = self.astconv().ast_ty_to_ty( param);
                 matches!(ty.kind(), ty::Param(fn_param_ty_param) if expected_ty_as_param == fn_param_ty_param)
             });
 
@@ -946,7 +866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
-            let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
+            let ty = self.astconv().ast_ty_to_ty(ty);
             let bound_vars = self.tcx.late_bound_vars(fn_id);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = match self.tcx.asyncness(fn_id.owner) {
@@ -1012,6 +932,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => break false,
             }
         }
+    }
+
+    pub(crate) fn suggest_clone_for_ref(
+        &self,
+        diag: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        if let ty::Ref(_, inner_ty, hir::Mutability::Not) = expr_ty.kind()
+            && let Some(clone_trait_def) = self.tcx.lang_items().clone_trait()
+            && expected_ty == *inner_ty
+            && self
+                .infcx
+                .type_implements_trait(
+                    clone_trait_def,
+                    [self.tcx.erase_regions(expected_ty)],
+                    self.param_env
+                )
+                .must_apply_modulo_regions()
+          {
+              diag.span_suggestion_verbose(
+                  expr.span.shrink_to_hi(),
+                  "consider using clone here",
+                  ".clone()",
+                  Applicability::MachineApplicable,
+              );
+              return true;
+          }
+        false
     }
 
     pub(crate) fn suggest_copied_or_cloned(
@@ -1309,10 +1259,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::Path { segments: [segment], .. },
             ))
             | hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
-                let self_ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
+                let self_ty = self.astconv().ast_ty_to_ty(ty);
                 if let Ok(pick) = self.probe_for_name(
                     Mode::Path,
                     Ident::new(capitalized_name, segment.ident.span),
+                    Some(expected_ty),
                     IsSuggestion(true),
                     self_ty,
                     expr.hir_id,

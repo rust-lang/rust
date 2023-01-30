@@ -392,12 +392,12 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                         .cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(false, |id| self.cx.tcx.fn_sig(id).unsafety() == Unsafety::Unsafe) =>
+                        .map_or(false, |id| self.cx.tcx.fn_sig(id).skip_binder().unsafety() == Unsafety::Unsafe) =>
                 {
                     self.is_unsafe = true;
                 },
                 ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
-                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
+                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
                     ty::FnPtr(sig) if sig.unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
                     _ => walk_expr(self, e),
                 },
@@ -723,4 +723,15 @@ pub fn for_each_local_assignment<'tcx, B>(
     } else {
         ControlFlow::Continue(())
     }
+}
+
+pub fn contains_break_or_continue(expr: &Expr<'_>) -> bool {
+    for_each_expr(expr, |e| {
+        if matches!(e.kind, ExprKind::Break(..) | ExprKind::Continue(..)) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
 }

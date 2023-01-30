@@ -18,6 +18,7 @@
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
+pub use crate::format::*;
 pub use crate::util::parser::ExprPrecedence;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
@@ -1269,6 +1270,7 @@ impl Expr {
             ExprKind::Try(..) => ExprPrecedence::Try,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Yeet(..) => ExprPrecedence::Yeet,
+            ExprKind::FormatArgs(..) => ExprPrecedence::FormatArgs,
             ExprKind::Err => ExprPrecedence::Err,
         }
     }
@@ -1307,6 +1309,7 @@ impl Expr {
 pub struct Closure {
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
+    pub constness: Const,
     pub asyncness: Async,
     pub movability: Movability,
     pub fn_decl: P<FnDecl>,
@@ -1497,6 +1500,9 @@ pub enum ExprKind {
     /// large binary blobs - should always behave like [`ExprKind::Lit`]
     /// with a `ByteStr` literal.
     IncludedBytes(Lrc<[u8]>),
+
+    /// A `format_args!()` expression.
+    FormatArgs(P<FormatArgs>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err,
@@ -2031,7 +2037,8 @@ impl Clone for Ty {
 impl Ty {
     pub fn peel_refs(&self) -> &Self {
         let mut final_ty = self;
-        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
+        while let TyKind::Ref(_, MutTy { ty, .. }) | TyKind::Ptr(MutTy { ty, .. }) = &final_ty.kind
+        {
             final_ty = ty;
         }
         final_ty
@@ -2170,10 +2177,10 @@ impl fmt::Display for InlineAsmTemplatePiece {
                 Ok(())
             }
             Self::Placeholder { operand_idx, modifier: Some(modifier), .. } => {
-                write!(f, "{{{}:{}}}", operand_idx, modifier)
+                write!(f, "{{{operand_idx}:{modifier}}}")
             }
             Self::Placeholder { operand_idx, modifier: None, .. } => {
-                write!(f, "{{{}}}", operand_idx)
+                write!(f, "{{{operand_idx}}}")
             }
         }
     }
@@ -2185,7 +2192,7 @@ impl InlineAsmTemplatePiece {
         use fmt::Write;
         let mut out = String::new();
         for p in s.iter() {
-            let _ = write!(out, "{}", p);
+            let _ = write!(out, "{p}");
         }
         out
     }

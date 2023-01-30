@@ -462,7 +462,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
                 .root
                 .syntax_contexts
                 .get(cdata, id)
-                .unwrap_or_else(|| panic!("Missing SyntaxContext {:?} for crate {:?}", id, cname))
+                .unwrap_or_else(|| panic!("Missing SyntaxContext {id:?} for crate {cname:?}"))
                 .decode((cdata, sess))
         })
     }
@@ -806,7 +806,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .def_span
             .get(self, index)
-            .unwrap_or_else(|| panic!("Missing span for {:?}", index))
+            .unwrap_or_else(|| panic!("Missing span for {index:?}"))
             .decode((self, sess))
     }
 
@@ -985,7 +985,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let vis = self.get_visibility(id);
         let span = self.get_span(id, sess);
         let macro_rules = match kind {
-            DefKind::Macro(..) => self.root.tables.macro_rules.get(self, id).is_some(),
+            DefKind::Macro(..) => self.root.tables.is_macro_rules.get(self, id),
             _ => false,
         };
 
@@ -1249,7 +1249,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .proc_macro_quoted_spans
             .get(self, index)
-            .unwrap_or_else(|| panic!("Missing proc macro quoted span: {:?}", index))
+            .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
             .decode((self, sess))
     }
 
@@ -1283,7 +1283,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn get_macro(self, id: DefIndex, sess: &Session) -> ast::MacroDef {
         match self.def_kind(id) {
             DefKind::Macro(_) => {
-                let macro_rules = self.root.tables.macro_rules.get(self, id).is_some();
+                let macro_rules = self.root.tables.is_macro_rules.get(self, id);
                 let body =
                     self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess));
                 ast::MacroDef { macro_rules, body: ast::ptr::P(body) }
@@ -1594,12 +1594,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             })
     }
 
-    fn get_may_have_doc_links(self, index: DefIndex) -> bool {
-        self.root.tables.may_have_doc_links.get(self, index).is_some()
+    fn get_attr_flags(self, index: DefIndex) -> AttrFlags {
+        self.root.tables.attr_flags.get(self, index)
     }
 
     fn get_is_intrinsic(self, index: DefIndex) -> bool {
-        self.root.tables.is_intrinsic.get(self, index).is_some()
+        self.root.tables.is_intrinsic.get(self, index)
     }
 }
 

@@ -13,7 +13,7 @@ fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: 
         let events = db.log_executed(|| {
             db.crate_def_map(krate);
         });
-        assert!(format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
+        assert!(format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
     db.set_file_text(pos.file_id, Arc::new(ra_fixture_change.to_string()));
 
@@ -21,7 +21,7 @@ fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: 
         let events = db.log_executed(|| {
             db.crate_def_map(krate);
         });
-        assert!(!format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
+        assert!(!format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
 }
 
@@ -94,7 +94,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
             let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
             assert_eq!(module_data.scope.resolutions().count(), 1);
         });
-        assert!(format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
+        assert!(format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
     db.set_file_text(pos.file_id, Arc::new("m!(Y);".to_string()));
 
@@ -104,7 +104,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
             let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
             assert_eq!(module_data.scope.resolutions().count(), 1);
         });
-        assert!(!format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
+        assert!(!format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
 }
 

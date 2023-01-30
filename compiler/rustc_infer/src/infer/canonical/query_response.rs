@@ -9,7 +9,7 @@
 
 use crate::infer::canonical::substitute::{substitute_value, CanonicalExt};
 use crate::infer::canonical::{
-    Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty, OriginalQueryValues,
+    Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,
 };
 use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
@@ -17,7 +17,7 @@ use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use crate::traits::{PredicateObligations, TraitEngine};
+use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
@@ -57,7 +57,7 @@ impl<'tcx> InferCtxt<'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, T>>
+    ) -> Fallible<CanonicalQueryResponse<'tcx, T>>
     where
         T: Debug + TypeFoldable<'tcx>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
@@ -156,10 +156,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// As the new solver does canonicalization slightly differently, this is also used there
     /// for now. This should hopefully change fairly soon.
     pub fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
-        self.inner
-            .borrow_mut()
-            .opaque_type_storage
-            .take_opaque_types()
+        std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
             .into_iter()
             .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
             .collect()
@@ -485,11 +482,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let result_subst = CanonicalVarValues {
-            var_values: query_response
-                .variables
-                .iter()
-                .enumerate()
-                .map(|(index, info)| {
+            var_values: self.tcx.mk_substs(query_response.variables.iter().enumerate().map(
+                |(index, info)| {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
                             Some(k) => k,
@@ -502,8 +496,8 @@ impl<'tcx> InferCtxt<'tcx> {
                             universe_map[u.as_usize()]
                         })
                     }
-                })
-                .collect(),
+                },
+            )),
         };
 
         let mut obligations = vec![];

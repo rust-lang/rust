@@ -27,12 +27,12 @@ rustc_queries! {
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
-        eval_always
+        feedable
         no_hash
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering(_: ()) -> &'tcx Steal<ty::ResolverAstLowering> {
+    query resolver_for_lowering(_: ()) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
         feedable
         no_hash
         desc { "getting the resolver for lowering" }
@@ -142,7 +142,7 @@ rustc_queries! {
 
     /// Given the def_id of a const-generic parameter, computes the associated default const
     /// parameter. e.g. `fn example<const N: usize=3>` called on `N` would return `3`.
-    query const_param_default(param: DefId) -> ty::Const<'tcx> {
+    query const_param_default(param: DefId) -> ty::EarlyBinder<ty::Const<'tcx>> {
         desc { |tcx| "computing const default for a given parameter `{}`", tcx.def_path_str(param)  }
         cache_on_disk_if { param.is_local() }
         separate_provide_extern
@@ -175,6 +175,21 @@ rustc_queries! {
         desc { "comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process" }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+    }
+
+    query is_type_alias_impl_trait(key: DefId) -> bool
+    {
+        desc { "determine whether the opaque is a type-alias impl trait" }
+        separate_provide_extern
+    }
+
+    query unsizing_params_for_adt(key: DefId) -> rustc_index::bit_set::BitSet<u32>
+    {
+        arena_cache
+        desc { |tcx|
+            "determining what parameters of `{}` can participate in unsizing",
+            tcx.def_path_str(key),
+        }
     }
 
     query analysis(key: ()) -> Result<(), ErrorGuaranteed> {
@@ -272,7 +287,7 @@ rustc_queries! {
     /// ```
     ///
     /// Bounds from the parent (e.g. with nested impl trait) are not included.
-    query item_bounds(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+    query item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<ty::Predicate<'tcx>>> {
         desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
     }
 
@@ -353,6 +368,13 @@ rustc_queries! {
         no_hash
         arena_cache
         desc { |tcx| "constructing THIR tree for `{}`", tcx.def_path_str(key.did.to_def_id()) }
+    }
+
+    /// Create a list-like THIR representation for debugging.
+    query thir_flat(key: ty::WithOptConstParam<LocalDefId>) -> String {
+        no_hash
+        arena_cache
+        desc { |tcx| "constructing flat THIR representation for `{}`", tcx.def_path_str(key.did.to_def_id()) }
     }
 
     /// Set of all the `DefId`s in this crate that have MIR associated with
@@ -463,6 +485,17 @@ rustc_queries! {
             tcx.def_path_str(key.1.to_def_id()),
             tcx.def_path_str(key.0.to_def_id())
         }
+    }
+
+    query mir_generator_witnesses(key: DefId) -> mir::GeneratorLayout<'tcx> {
+        arena_cache
+        desc { |tcx| "generator witness types for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
+    }
+
+    query check_generator_obligations(key: LocalDefId) {
+        desc { |tcx| "verify auto trait bounds for generator interior type `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
     /// MIR after our optimization passes have run. This is MIR that is ready
@@ -737,7 +770,7 @@ rustc_queries! {
 
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
-    query impl_trait_ref(impl_id: DefId) -> Option<ty::TraitRef<'tcx>> {
+    query impl_trait_ref(impl_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern
@@ -790,15 +823,6 @@ rustc_queries! {
         }
     }
 
-    /// HACK: when evaluated, this reports an "unsafe derive on repr(packed)" error.
-    ///
-    /// Unsafety checking is executed for each method separately, but we only want
-    /// to emit this error once per derive. As there are some impls with multiple
-    /// methods, we use a query for deduplication.
-    query unsafe_derive_on_repr_packed(key: LocalDefId) -> () {
-        desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
-    }
-
     /// Returns the types assumed to be well formed while "inside" of the given item.
     ///
     /// Note that we've liberated the late bound regions of function signatures, so
@@ -808,7 +832,7 @@ rustc_queries! {
     }
 
     /// Computes the signature of the function.
-    query fn_sig(key: DefId) -> ty::PolyFnSig<'tcx> {
+    query fn_sig(key: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'tcx>> {
         desc { |tcx| "computing function signature of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -1151,6 +1175,7 @@ rustc_queries! {
     /// Determines whether an item is annotated with `doc(hidden)`.
     query is_doc_hidden(def_id: DefId) -> bool {
         desc { |tcx| "checking whether `{}` is `doc(hidden)`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     /// Determines whether an item is annotated with `doc(notable_trait)`.
@@ -1255,6 +1280,9 @@ rustc_queries! {
     }
     query object_safety_violations(trait_id: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
         desc { |tcx| "determining object safety of trait `{}`", tcx.def_path_str(trait_id) }
+    }
+    query check_is_object_safe(trait_id: DefId) -> bool {
+        desc { |tcx| "checking if trait `{}` is object safe", tcx.def_path_str(trait_id) }
     }
 
     /// Gets the ParameterEnvironment for a given item; this environment
@@ -1622,7 +1650,7 @@ rustc_queries! {
         Option<&'tcx FxHashMap<ItemLocalId, Region>> {
         desc { "looking up a named region" }
     }
-    query is_late_bound_map(_: LocalDefId) -> Option<&'tcx FxIndexSet<LocalDefId>> {
+    query is_late_bound_map(_: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
         desc { "testing if a region is late bound" }
     }
     /// For a given item's generic parameter, gets the default lifetimes to be used
@@ -1673,7 +1701,7 @@ rustc_queries! {
 
     /// Gets the name of the crate.
     query crate_name(_: CrateNum) -> Symbol {
-        eval_always
+        feedable
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
@@ -1839,7 +1867,7 @@ rustc_queries! {
         desc { "getting codegen unit `{sym}`" }
     }
 
-    query unused_generic_params(key: ty::InstanceDef<'tcx>) -> FiniteBitSet<u32> {
+    query unused_generic_params(key: ty::InstanceDef<'tcx>) -> UnusedGenericParams {
         cache_on_disk_if { key.def_id().is_local() }
         desc {
             |tcx| "determining which generic parameters are unused by `{}`",
@@ -1856,9 +1884,10 @@ rustc_queries! {
     ///
     /// This query returns an `&Arc` because codegen backends need the value even after the `TyCtxt`
     /// has been destroyed.
-    query output_filenames(_: ()) -> &'tcx Arc<OutputFilenames> {
-        eval_always
+    query output_filenames(_: ()) -> Arc<OutputFilenames> {
+        feedable
         desc { "getting output filenames" }
+        arena_cache
     }
 
     /// Do not call this query directly: invoke `normalize` instead.
@@ -2041,7 +2070,7 @@ rustc_queries! {
     }
 
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
-        eval_always
+        feedable
         desc { "looking up enabled feature gates" }
     }
 
@@ -2109,12 +2138,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query permits_uninit_init(key: TyAndLayout<'tcx>) -> bool {
-        desc { "checking to see if `{}` permits being left uninit", key.ty }
+    query permits_uninit_init(key: ty::ParamEnvAnd<'tcx, TyAndLayout<'tcx>>) -> bool {
+        desc { "checking to see if `{}` permits being left uninit", key.value.ty }
     }
 
-    query permits_zero_init(key: TyAndLayout<'tcx>) -> bool {
-        desc { "checking to see if `{}` permits being left zeroed", key.ty }
+    query permits_zero_init(key: ty::ParamEnvAnd<'tcx, TyAndLayout<'tcx>>) -> bool {
+        desc { "checking to see if `{}` permits being left zeroed", key.value.ty }
     }
 
     query compare_impl_const(

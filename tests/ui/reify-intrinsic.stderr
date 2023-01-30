@@ -1,0 +1,31 @@
+error[E0308]: cannot coerce intrinsics to function pointers
+  --> $DIR/reify-intrinsic.rs:6:64
+   |
+LL |     let _: unsafe extern "rust-intrinsic" fn(isize) -> usize = std::mem::transmute;
+   |            -------------------------------------------------   ^^^^^^^^^^^^^^^^^^^ cannot coerce intrinsics to function pointers
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `unsafe extern "rust-intrinsic" fn(isize) -> usize`
+                 found fn item `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}`
+
+error[E0606]: casting `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}` as `unsafe extern "rust-intrinsic" fn(isize) -> usize` is invalid
+  --> $DIR/reify-intrinsic.rs:11:13
+   |
+LL |     let _ = std::mem::transmute as unsafe extern "rust-intrinsic" fn(isize) -> usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: cannot coerce intrinsics to function pointers
+  --> $DIR/reify-intrinsic.rs:18:9
+   |
+LL |         std::intrinsics::unlikely,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot coerce intrinsics to function pointers
+   |
+   = note: expected fn item `extern "rust-intrinsic" fn(_) -> _ {likely}`
+              found fn item `extern "rust-intrinsic" fn(_) -> _ {unlikely}`
+   = note: different fn items have unique types, even if their signatures are the same
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0606.
+For more information about an error, try `rustc --explain E0308`.

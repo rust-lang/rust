@@ -1,13 +1,14 @@
 use std::mem;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_infer::{
-    infer::InferCtxt,
-    traits::{query::NoSolution, FulfillmentError, PredicateObligation, TraitEngine},
+use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::{
+    query::NoSolution, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
+    PredicateObligation, SelectionError, TraitEngine,
 };
 use rustc_middle::ty;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 
-use super::{Certainty, EvalCtxt};
+use super::{Certainty, InferCtxtEvalExt};
 
 /// A trait engine using the new trait solver.
 ///
@@ -39,38 +40,91 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         self.obligations.push(obligation);
     }
 
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let errors = self.select_where_possible(infcx);
-        if !errors.is_empty() {
-            return errors;
-        }
-
-        if self.obligations.is_empty() {
-            Vec::new()
-        } else {
-            unimplemented!("ambiguous obligations")
-        }
+    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>> {
+        self.obligations
+            .drain(..)
+            .map(|obligation| FulfillmentError {
+                obligation: obligation.clone(),
+                code: FulfillmentErrorCode::CodeAmbiguity,
+                root_obligation: obligation,
+            })
+            .collect()
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let errors = Vec::new();
+        let mut errors = Vec::new();
         for i in 0.. {
             if !infcx.tcx.recursion_limit().value_within_limit(i) {
-                unimplemented!("overflow")
+                unimplemented!("overflowed on pending obligations: {:?}", self.obligations);
             }
 
             let mut has_changed = false;
-            for o in mem::take(&mut self.obligations) {
-                let mut cx = EvalCtxt::new(infcx.tcx);
-                let (changed, certainty) = match cx.evaluate_goal(infcx, o.clone().into()) {
+            for obligation in mem::take(&mut self.obligations) {
+                let goal = obligation.clone().into();
+                let (changed, certainty) = match infcx.evaluate_root_goal(goal) {
                     Ok(result) => result,
-                    Err(NoSolution) => unimplemented!("error"),
+                    Err(NoSolution) => {
+                        errors.push(FulfillmentError {
+                            obligation: obligation.clone(),
+                            code: match goal.predicate.kind().skip_binder() {
+                                ty::PredicateKind::Clause(ty::Clause::Projection(_)) => {
+                                    FulfillmentErrorCode::CodeProjectionError(
+                                        // FIXME: This could be a `Sorts` if the term is a type
+                                        MismatchedProjectionTypes { err: TypeError::Mismatch },
+                                    )
+                                }
+                                ty::PredicateKind::Subtype(pred) => {
+                                    let (a, b) = infcx.replace_bound_vars_with_placeholders(
+                                        goal.predicate.kind().rebind((pred.a, pred.b)),
+                                    );
+                                    let expected_found = ExpectedFound::new(true, a, b);
+                                    FulfillmentErrorCode::CodeSubtypeError(
+                                        expected_found,
+                                        TypeError::Sorts(expected_found),
+                                    )
+                                }
+                                ty::PredicateKind::Coerce(pred) => {
+                                    let (a, b) = infcx.replace_bound_vars_with_placeholders(
+                                        goal.predicate.kind().rebind((pred.a, pred.b)),
+                                    );
+                                    let expected_found = ExpectedFound::new(false, a, b);
+                                    FulfillmentErrorCode::CodeSubtypeError(
+                                        expected_found,
+                                        TypeError::Sorts(expected_found),
+                                    )
+                                }
+                                ty::PredicateKind::ConstEquate(a, b) => {
+                                    let (a, b) = infcx.replace_bound_vars_with_placeholders(
+                                        goal.predicate.kind().rebind((a, b)),
+                                    );
+                                    let expected_found = ExpectedFound::new(true, a, b);
+                                    FulfillmentErrorCode::CodeConstEquateError(
+                                        expected_found,
+                                        TypeError::ConstMismatch(expected_found),
+                                    )
+                                }
+                                ty::PredicateKind::Clause(_)
+                                | ty::PredicateKind::WellFormed(_)
+                                | ty::PredicateKind::ObjectSafe(_)
+                                | ty::PredicateKind::ClosureKind(_, _, _)
+                                | ty::PredicateKind::ConstEvaluatable(_)
+                                | ty::PredicateKind::TypeWellFormedFromEnv(_)
+                                | ty::PredicateKind::Ambiguous => {
+                                    FulfillmentErrorCode::CodeSelectionError(
+                                        SelectionError::Unimplemented,
+                                    )
+                                }
+                            },
+                            root_obligation: obligation,
+                        });
+                        continue;
+                    }
                 };
 
                 has_changed |= changed;
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => self.obligations.push(o),
+                    Certainty::Maybe(_) => self.obligations.push(obligation),
                 }
             }
 
@@ -86,7 +140,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         self.obligations.clone()
     }
 
-    fn relationships(&mut self) -> &mut FxHashMap<ty::TyVid, ty::FoundRelationships> {
-        unimplemented!("Should be moved out of `TraitEngine`")
+    fn drain_unstalled_obligations(
+        &mut self,
+        _: &InferCtxt<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>> {
+        unimplemented!()
     }
 }

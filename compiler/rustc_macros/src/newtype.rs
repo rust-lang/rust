@@ -41,7 +41,7 @@ impl Parse for Newtype {
                     };
 
                     if let Some(old) = max.replace(literal.lit) {
-                        panic!("Specified multiple max: {:?}", old);
+                        panic!("Specified multiple max: {old:?}");
                     }
 
                     false
@@ -52,7 +52,7 @@ impl Parse for Newtype {
                     };
 
                     if let Some(old) = debug_format.replace(literal.lit) {
-                        panic!("Specified multiple debug format options: {:?}", old);
+                        panic!("Specified multiple debug format options: {old:?}");
                     }
 
                     false

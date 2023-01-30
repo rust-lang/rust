@@ -539,7 +539,7 @@ where
         #[rustc_inherit_overflow_checks]
         fn advance<U: Iterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_by(n) {
-                Ok(()) => ControlFlow::BREAK,
+                Ok(()) => ControlFlow::Break(()),
                 Err(advanced) => ControlFlow::Continue(n - advanced),
             }
         }
@@ -629,7 +629,7 @@ where
         #[rustc_inherit_overflow_checks]
         fn advance<U: DoubleEndedIterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_back_by(n) {
-                Ok(()) => ControlFlow::BREAK,
+                Ok(()) => ControlFlow::Break(()),
                 Err(advanced) => ControlFlow::Continue(n - advanced),
             }
         }

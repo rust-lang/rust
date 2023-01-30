@@ -2064,17 +2064,17 @@ fn fn_pointer_return() {
 fn block_modifiers_smoke_test() {
     check_infer(
         r#"
-//- minicore: future
+//- minicore: future, try
 async fn main() {
     let x = unsafe { 92 };
     let y = async { async { () }.await };
-    let z = try { () };
+    let z: core::ops::ControlFlow<(), _> = try { () };
     let w = const { 92 };
     let t = 'a: { 92 };
 }
         "#,
         expect![[r#"
-            16..162 '{     ...2 }; }': ()
+            16..193 '{     ...2 }; }': ()
             26..27 'x': i32
             30..43 'unsafe { 92 }': i32
             30..43 'unsafe { 92 }': i32
@@ -2086,17 +2086,17 @@ async fn main() {
             65..77 'async { () }': impl Future<Output = ()>
             65..83 'async ....await': ()
             73..75 '()': ()
-            95..96 'z': {unknown}
-            99..109 'try { () }': ()
-            99..109 'try { () }': {unknown}
-            105..107 '()': ()
-            119..120 'w': i32
-            123..135 'const { 92 }': i32
-            123..135 'const { 92 }': i32
-            131..133 '92': i32
-            145..146 't': i32
-            149..159 ''a: { 92 }': i32
-            155..157 '92': i32
+            95..96 'z': ControlFlow<(), ()>
+            130..140 'try { () }': ()
+            130..140 'try { () }': ControlFlow<(), ()>
+            136..138 '()': ()
+            150..151 'w': i32
+            154..166 'const { 92 }': i32
+            154..166 'const { 92 }': i32
+            162..164 '92': i32
+            176..177 't': i32
+            180..190 ''a: { 92 }': i32
+            186..188 '92': i32
         "#]],
     )
 }

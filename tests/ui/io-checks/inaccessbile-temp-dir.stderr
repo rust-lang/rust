@@ -1,0 +1,4 @@
+error: failed to find or create the directory specified by `--temps-dir`
+
+error: aborting due to previous error
+

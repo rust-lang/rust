@@ -41,6 +41,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
             };
             if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
         }
+        hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
         _ => {
             if let Some(fn_kind) = node.fn_kind() {
                 if fn_kind.constness() == hir::Constness::Const {
@@ -65,7 +66,7 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
                 if cfg!(debug_assertions) && stab.promotable {
                     let sig = tcx.fn_sig(def_id);
                     assert_eq!(
-                        sig.unsafety(),
+                        sig.skip_binder().unsafety(),
                         hir::Unsafety::Normal,
                         "don't mark const unsafe fns as promotable",
                         // https://github.com/rust-lang/rust/pull/53851#issuecomment-418760682

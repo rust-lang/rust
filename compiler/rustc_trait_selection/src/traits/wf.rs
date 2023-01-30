@@ -1,11 +1,11 @@
 use crate::infer::InferCtxt;
 use crate::traits;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
-use rustc_span::Span;
+use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_span::{Span, DUMMY_SP};
 
 use std::iter;
 /// Returns the set of obligations needed to make `arg` well-formed.
@@ -17,7 +17,7 @@ use std::iter;
 pub fn obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     recursion_depth: usize,
     arg: GenericArg<'tcx>,
     span: Span,
@@ -75,14 +75,42 @@ pub fn obligations<'tcx>(
     Some(result)
 }
 
+/// Compute the predicates that are required for a type to be well-formed.
+///
+/// This is only intended to be used in the new solver, since it does not
+/// take into account recursion depth or proper error-reporting spans.
+pub fn unnormalized_obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    arg: GenericArg<'tcx>,
+) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+    if let ty::GenericArgKind::Lifetime(..) = arg.unpack() {
+        return Some(vec![]);
+    }
+
+    debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
+
+    let mut wf = WfPredicates {
+        tcx: infcx.tcx,
+        param_env,
+        body_id: CRATE_DEF_ID,
+        span: DUMMY_SP,
+        out: vec![],
+        recursion_depth: 0,
+        item: None,
+    };
+    wf.compute(arg);
+    Some(wf.out)
+}
+
 /// Returns the obligations that make this trait reference
-/// well-formed.  For example, if there is a trait `Set` defined like
+/// well-formed. For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
 pub fn trait_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     trait_pred: &ty::TraitPredicate<'tcx>,
     span: Span,
     item: &'tcx hir::Item<'tcx>,
@@ -105,7 +133,7 @@ pub fn trait_obligations<'tcx>(
 pub fn predicate_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     predicate: ty::Predicate<'tcx>,
     span: Span,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
@@ -167,7 +195,7 @@ pub fn predicate_obligations<'tcx>(
 struct WfPredicates<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
     recursion_depth: usize,
@@ -232,7 +260,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // The obligation comes not from the current `impl` nor the `trait` being implemented,
             // but rather from a "second order" obligation, where an associated type has a
             // projection coming from another associated type. See
-            // `src/test/ui/associated-types/point-at-type-on-obligation-failure.rs` and
+            // `tests/ui/associated-types/point-at-type-on-obligation-failure.rs` and
             // `traits-assoc-type-in-supertrait-bad.rs`.
             if let Some(ty::Alias(ty::Projection, projection_ty)) = proj.term.ty().map(|ty| ty.kind())
                 && let Some(&impl_item_id) =
@@ -523,6 +551,7 @@ impl<'tcx> WfPredicates<'tcx> {
                 | ty::Error(_)
                 | ty::Str
                 | ty::GeneratorWitness(..)
+                | ty::GeneratorWitnessMIR(..)
                 | ty::Never
                 | ty::Param(_)
                 | ty::Bound(..)
@@ -640,7 +669,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     // hidden type that is not actually well formed and
                     // can cause compiler crashes when the user abuses unsafe
                     // code to procure such a closure.
-                    // See src/test/ui/type-alias-impl-trait/wf_check_closures.rs
+                    // See tests/ui/type-alias-impl-trait/wf_check_closures.rs
                     let obligations = self.nominal_obligations(did, substs);
                     self.out.extend(obligations);
                 }
@@ -654,7 +683,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     // All of the requirements on type parameters
                     // have already been checked for `impl Trait` in
                     // return position. We do need to check type-alias-impl-trait though.
-                    if ty::is_impl_trait_defn(self.tcx, def_id).is_none() {
+                    if self.tcx.is_type_alias_impl_trait(def_id) {
                         let obligations = self.nominal_obligations(def_id, substs);
                         self.out.extend(obligations);
                     }
@@ -736,7 +765,7 @@ impl<'tcx> WfPredicates<'tcx> {
         trace!("{:#?}", predicates);
         debug_assert_eq!(predicates.predicates.len(), origins.len());
 
-        iter::zip(iter::zip(predicates.predicates, predicates.spans), origins.into_iter().rev())
+        iter::zip(predicates, origins.into_iter().rev())
             .map(|((mut pred, span), origin_def_id)| {
                 let code = if span.is_dummy() {
                     traits::ItemObligation(origin_def_id)

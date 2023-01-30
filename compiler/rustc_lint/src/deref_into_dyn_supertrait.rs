@@ -1,6 +1,8 @@
-use crate::{LateContext, LateLintPass, LintContext};
+use crate::{
+    lints::{SupertraitAsDerefTarget, SupertraitAsDerefTargetLabel},
+    LateContext, LateLintPass, LintContext,
+};
 
-use rustc_errors::DelayDm;
 use rustc_hir as hir;
 use rustc_middle::{traits::util::supertraits, ty};
 use rustc_span::sym;
@@ -71,22 +73,14 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             && supertraits(cx.tcx, t_principal.with_self_ty(cx.tcx, cx.tcx.types.trait_object_dummy_self))
                 .any(|sup| sup.map_bound(|x| ty::ExistentialTraitRef::erase_self_ty(cx.tcx, x)) == target_principal)
         {
-            cx.struct_span_lint(
-                DEREF_INTO_DYN_SUPERTRAIT,
-                cx.tcx.def_span(item.owner_id.def_id),
-                DelayDm(|| {
-                    format!(
-                        "`{t}` implements `Deref` with supertrait `{target_principal}` as target"
-                    )
-                }),
-                |lint| {
-                    if let Some(target_span) = impl_.items.iter().find_map(|i| (i.ident.name == sym::Target).then_some(i.span)) {
-                        lint.span_label(target_span, "target type is set here");
-                    }
-
-                    lint
-                },
-            )
+            let label = impl_.items.iter().find_map(|i| (i.ident.name == sym::Target).then_some(i.span)).map(|label| SupertraitAsDerefTargetLabel {
+                label,
+            });
+            cx.emit_spanned_lint(DEREF_INTO_DYN_SUPERTRAIT, cx.tcx.def_span(item.owner_id.def_id), SupertraitAsDerefTarget {
+                t,
+                target_principal: target_principal.to_string(),
+                label,
+            });
         }
     }
 }

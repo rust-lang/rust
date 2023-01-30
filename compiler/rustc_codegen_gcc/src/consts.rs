@@ -322,13 +322,16 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
             )
             .expect("const_alloc_to_llvm: could not read relocation pointer")
             as u64;
+
+        let address_space = cx.tcx.global_alloc(alloc_id).address_space(cx);
+
         llvals.push(cx.scalar_to_backend(
             InterpScalar::from_pointer(
                 interpret::Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            abi::Scalar::Initialized { value: Primitive::Pointer, valid_range: WrappingRange::full(dl.pointer_size) },
-            cx.type_i8p(),
+            abi::Scalar::Initialized { value: Primitive::Pointer(address_space), valid_range: WrappingRange::full(dl.pointer_size) },
+            cx.type_i8p_ext(address_space),
         ));
         next_offset = offset + pointer_size;
     }

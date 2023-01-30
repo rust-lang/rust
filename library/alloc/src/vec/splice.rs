@@ -54,6 +54,12 @@ impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
 impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
     fn drop(&mut self) {
         self.drain.by_ref().for_each(drop);
+        // At this point draining is done and the only remaining tasks are splicing
+        // and moving things into the final place.
+        // Which means we can replace the slice::Iter with pointers that won't point to deallocated
+        // memory, so that Drain::drop is still allowed to call iter.len(), otherwise it would break
+        // the ptr.sub_ptr contract.
+        self.drain.iter = (&[]).iter();
 
         unsafe {
             if self.drain.tail_len == 0 {

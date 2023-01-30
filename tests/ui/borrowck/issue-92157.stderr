@@ -1,0 +1,11 @@
+error: incorrect number of parameters for the `start` lang item
+  --> $DIR/issue-92157.rs:11:1
+   |
+LL | fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8) -> isize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `start` lang item should have four parameters, but found 3
+   = note: the `start` lang item should have the signature `fn(fn() -> T, isize, *const *const u8, u8) -> isize`
+
+error: aborting due to previous error
+

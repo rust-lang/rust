@@ -1,6 +1,7 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
+use crate::rmeta::AttrFlags;
 
 use rustc_ast as ast;
 use rustc_attr::Deprecation;
@@ -201,6 +202,7 @@ provide! { tcx, def_id, other, cdata,
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
+    mir_generator_witnesses => { table }
     promoted_mir => { table }
     def_span => { table }
     def_ident_span => { table }
@@ -223,6 +225,10 @@ provide! { tcx, def_id, other, cdata,
     generator_kind => { table }
     trait_def => { table }
     deduced_param_attrs => { table }
+    is_type_alias_impl_trait => {
+        debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
+        cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
+    }
     collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
             .root
@@ -230,7 +236,7 @@ provide! { tcx, def_id, other, cdata,
             .trait_impl_trait_tys
             .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
-            .process_decoded(tcx, || panic!("{:?} does not have trait_impl_trait_tys", def_id)))
+            .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
      }
 
     visibility => { cdata.get_visibility(def_id.index) }
@@ -329,6 +335,7 @@ provide! { tcx, def_id, other, cdata,
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
     generator_diagnostic_data => { cdata.get_generator_diagnostic_data(tcx, def_id.index) }
+    is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -382,7 +389,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // keys from the former.
             // This is a rudimentary check that does not catch all cases,
             // just the easiest.
-            let mut fallback_map: DefIdMap<DefId> = Default::default();
+            let mut fallback_map: Vec<(DefId, DefId)> = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
             // paths when reporting the path to an item. Therefore we
@@ -412,12 +419,12 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
 
                 if let Some(def_id) = child.res.opt_def_id() {
                     if child.ident.name == kw::Underscore {
-                        fallback_map.insert(def_id, parent);
+                        fallback_map.push((def_id, parent));
                         return;
                     }
 
-                    if ty::util::is_doc_hidden(tcx, parent) {
-                        fallback_map.insert(def_id, parent);
+                    if tcx.is_doc_hidden(parent) {
+                        fallback_map.push((def_id, parent));
                         return;
                     }
 
@@ -451,6 +458,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // Fill in any missing entries with the less preferable path.
             // If this path re-exports the child as `_`, we still use this
             // path in a diagnostic that suggests importing `::*`.
+
             for (child, parent) in fallback_map {
                 visible_parent_map.entry(child).or_insert(parent);
             }
@@ -621,7 +629,15 @@ impl CStore {
     }
 
     pub fn may_have_doc_links_untracked(&self, def_id: DefId) -> bool {
-        self.get_crate_data(def_id.krate).get_may_have_doc_links(def_id.index)
+        self.get_crate_data(def_id.krate)
+            .get_attr_flags(def_id.index)
+            .contains(AttrFlags::MAY_HAVE_DOC_LINKS)
+    }
+
+    pub fn is_doc_hidden_untracked(&self, def_id: DefId) -> bool {
+        self.get_crate_data(def_id.krate)
+            .get_attr_flags(def_id.index)
+            .contains(AttrFlags::IS_DOC_HIDDEN)
     }
 }
 

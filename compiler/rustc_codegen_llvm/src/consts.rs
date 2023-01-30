@@ -13,7 +13,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ConstAllocation, ErrorHandled, GlobalAlloc, InitChunk, Pointer,
+    read_target_uint, Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer,
     Scalar as InterpScalar,
 };
 use rustc_middle::mir::mono::MonoItem;
@@ -21,9 +21,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::Lto;
-use rustc_target::abi::{
-    AddressSpace, Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
-};
+use rustc_target::abi::{Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
 use std::ops::Range;
 
 pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
@@ -98,12 +96,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
         .expect("const_alloc_to_llvm: could not read relocation pointer")
             as u64;
 
-        let address_space = match cx.tcx.global_alloc(alloc_id) {
-            GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
-            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
-                AddressSpace::DATA
-            }
-        };
+        let address_space = cx.tcx.global_alloc(alloc_id).address_space(cx);
 
         llvals.push(cx.scalar_to_backend(
             InterpScalar::from_pointer(
@@ -111,7 +104,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
                 &cx.tcx,
             ),
             Scalar::Initialized {
-                value: Primitive::Pointer,
+                value: Primitive::Pointer(address_space),
                 valid_range: WrappingRange::full(dl.pointer_size),
             },
             cx.type_i8p_ext(address_space),
@@ -140,7 +133,7 @@ pub fn codegen_static_initializer<'ll, 'tcx>(
 fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Align) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
-    // which can force it to be smaller.  Rust doesn't support this yet.
+    // which can force it to be smaller. Rust doesn't support this yet.
     if let Some(min) = cx.sess().target.min_global_align {
         match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
@@ -171,7 +164,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
             // Declare an internal global `extern_with_linkage_foo` which
-            // is initialized with the address of `foo`.  If `foo` is
+            // is initialized with the address of `foo`. If `foo` is
             // discarded during linking (for example, if `foo` has weak
             // linkage and there are no definitions), then
             // `extern_with_linkage_foo` will instead be initialized to

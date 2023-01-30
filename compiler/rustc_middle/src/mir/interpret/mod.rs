@@ -110,7 +110,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_target::abi::Endian;
+use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
 
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -438,6 +438,17 @@ impl<'tcx> GlobalAlloc<'tcx> {
             _ => bug!("expected vtable, got {:?}", self),
         }
     }
+
+    /// The address space that this `GlobalAlloc` should be placed in.
+    #[inline]
+    pub fn address_space(&self, cx: &impl HasDataLayout) -> AddressSpace {
+        match self {
+            GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
+            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
+                AddressSpace::DATA
+            }
+        }
+    }
 }
 
 pub(crate) struct AllocMap<'tcx> {
@@ -509,7 +520,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_dedup(GlobalAlloc::Static(static_id))
     }
 
-    /// Generates an `AllocId` for a function.  Depending on the function type,
+    /// Generates an `AllocId` for a function. Depending on the function type,
     /// this might get deduplicated or assigned a new ID each time.
     pub fn create_fn_alloc(self, instance: Instance<'tcx>) -> AllocId {
         // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
@@ -518,7 +529,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // We thus generate a new `AllocId` for every mention of a function. This means that
         // `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
         // However, formatting code relies on function identity (see #58320), so we only do
-        // this for generic functions.  Lifetime parameters are ignored.
+        // this for generic functions. Lifetime parameters are ignored.
         let is_generic = instance
             .substs
             .into_iter()
@@ -535,7 +546,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Generates an `AllocId` for a (symbolic, not-reified) vtable.  Will get deduplicated.
+    /// Generates an `AllocId` for a (symbolic, not-reified) vtable. Will get deduplicated.
     pub fn create_vtable_alloc(
         self,
         ty: Ty<'tcx>,

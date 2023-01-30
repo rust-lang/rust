@@ -126,7 +126,7 @@ impl<A: Clone> Iterator for RepeatN<A> {
             // zero so it won't be dropped later, and thus it's okay to take it here.
             unsafe { ManuallyDrop::take(&mut self.element) }
         } else {
-            A::clone(&mut self.element)
+            A::clone(&self.element)
         })
     }
 

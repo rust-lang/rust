@@ -60,7 +60,7 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
     /// Returns `true` if `func` refers to the function we are searching in.
     fn is_recursive_call(&self, func: &Operand<'tcx>, args: &[Operand<'tcx>]) -> bool {
         let Search { tcx, body, trait_substs, .. } = *self;
-        // Resolving function type to a specific instance that is being called is expensive.  To
+        // Resolving function type to a specific instance that is being called is expensive. To
         // avoid the cost we check the number of arguments first, which is sufficient to reject
         // most of calls as non-recursive.
         if args.len() != body.arg_count {
@@ -118,7 +118,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             // A diverging InlineAsm is treated as non-recursing
             TerminatorKind::InlineAsm { destination, .. } => {
                 if destination.is_some() {
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 } else {
                     ControlFlow::Break(NonRecursive)
                 }
@@ -132,7 +132,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. } => ControlFlow::CONTINUE,
+            | TerminatorKind::SwitchInt { .. } => ControlFlow::Continue(()),
         }
     }
 
@@ -145,7 +145,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             }
         }
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {

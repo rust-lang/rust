@@ -6,7 +6,7 @@ mod macros;
 use crate::cmp;
 use crate::cmp::Ordering;
 use crate::fmt;
-use crate::intrinsics::{assume, exact_div, unchecked_sub};
+use crate::intrinsics::assume;
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem::{self, SizedTypeProperties};
@@ -35,12 +35,6 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     }
 }
 
-// Macro helper functions
-#[inline(always)]
-fn size_from_ptr<T>(_: *const T) -> usize {
-    mem::size_of::<T>()
-}
-
 /// Immutable slice iterator
 ///
 /// This struct is created by the [`iter`] method on [slices].
@@ -65,7 +59,7 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Iter<'a, T: 'a> {
     ptr: NonNull<T>,
-    end: *const T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+    end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
     // ptr == end is a quick test for the Iterator being empty, that works
     // for both ZST and non-ZST.
     _marker: PhantomData<&'a T>,
@@ -186,7 +180,7 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct IterMut<'a, T: 'a> {
     ptr: NonNull<T>,
-    end: *mut T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+    end: *mut T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
     // ptr == end is a quick test for the Iterator being empty, that works
     // for both ZST and non-ZST.
     _marker: PhantomData<&'a mut T>,

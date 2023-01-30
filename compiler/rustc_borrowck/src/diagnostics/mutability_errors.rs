@@ -264,7 +264,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         ProjectionElem::Deref,
                     ],
             } => {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
 
                 if let Some(span) = get_mut_span_in_struct_field(
                     self.infcx.tcx,
@@ -290,7 +290,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .unwrap_or(false) =>
             {
                 let decl = &self.body.local_decls[local];
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
                 if let Some(mir::Statement {
                     source_info,
                     kind:
@@ -344,20 +344,25 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     } else {
                         err.span_help(source_info.span, "try removing `&mut` here");
                     }
-                } else if decl.mutability == Mutability::Not
-                    && !matches!(
+                } else if decl.mutability == Mutability::Not {
+                    if matches!(
                         decl.local_info,
                         Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
                             hir::ImplicitSelfKind::MutRef
-                        ))))
-                    )
-                {
-                    err.span_suggestion_verbose(
-                        decl.source_info.span.shrink_to_lo(),
-                        "consider making the binding mutable",
-                        "mut ",
-                        Applicability::MachineApplicable,
-                    );
+                        ),)))
+                    ) {
+                        err.note(
+                            "as `Self` may be unsized, this call attempts to take `&mut &mut self`",
+                        );
+                        err.note("however, `&mut self` expands to `self: &mut Self`, therefore `self` cannot be borrowed mutably");
+                    } else {
+                        err.span_suggestion_verbose(
+                            decl.source_info.span.shrink_to_lo(),
+                            "consider making the binding mutable",
+                            "mut ",
+                            Applicability::MachineApplicable,
+                        );
+                    };
                 }
             }
 
@@ -634,7 +639,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             PlaceRef { local: _, projection: [.., ProjectionElem::Deref] } => {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
 
                 match opt_source {
                     Some(BorrowedContentSource::OverloadedDeref(ty)) => {
@@ -1004,7 +1009,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
         let closure_span = self.infcx.tcx.def_span(self.mir_def_id());
-        let fn_call_id = hir.get_parent_node(closure_id);
+        let fn_call_id = hir.parent_id(closure_id);
         let node = hir.get(fn_call_id);
         let def_id = hir.enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;
@@ -1089,7 +1094,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     }
 }
 
-fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symbol>) -> bool {
+pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symbol>) -> bool {
     debug!("local_info: {:?}, ty.kind(): {:?}", local_decl.local_info, local_decl.ty.kind());
 
     match local_decl.local_info.as_deref() {
@@ -1207,7 +1212,7 @@ fn suggest_ampmut<'tcx>(
     {
         let lt_name = &src[1..ws_pos];
         let ty = &src[ws_pos..];
-        return (true, highlight_span, format!("&{} mut{}", lt_name, ty));
+        return (true, highlight_span, format!("&{lt_name} mut{ty}"));
     }
 
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();

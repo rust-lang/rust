@@ -6,10 +6,11 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     AsyncGeneratorKind, Block, Body, Closure, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound,
-    HirId, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
+    ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
@@ -45,7 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        _: HirId,
+        _: LocalDefId,
     ) {
         if_chain! {
             if let Some(header) = kind.header();

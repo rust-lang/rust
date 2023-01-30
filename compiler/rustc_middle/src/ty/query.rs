@@ -34,7 +34,7 @@ use crate::ty::layout::TyAndLayout;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;
-use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, UnusedGenericParams};
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
@@ -50,7 +50,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
-use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
@@ -118,6 +118,7 @@ fn copy<T: Copy>(x: &T) -> T {
 
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
+    (LocalDefId) => { impl IntoQueryParam<LocalDefId> };
     ($K:ty) => { $K };
 }
 
@@ -418,6 +419,13 @@ mod sealed {
         }
     }
 
+    impl IntoQueryParam<LocalDefId> for OwnerId {
+        #[inline(always)]
+        fn into_query_param(self) -> LocalDefId {
+            self.def_id
+        }
+    }
+
     impl IntoQueryParam<DefId> for LocalDefId {
         #[inline(always)]
         fn into_query_param(self) -> DefId {
@@ -441,6 +449,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_def_kind(def_id)
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
     }
+
+    pub fn bound_type_of(self, def_id: impl IntoQueryParam<DefId>) -> ty::EarlyBinder<Ty<'tcx>> {
+        ty::EarlyBinder(self.type_of(def_id))
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
@@ -448,5 +460,9 @@ impl<'tcx> TyCtxtAt<'tcx> {
         let def_id = def_id.into_query_param();
         self.opt_def_kind(def_id)
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
+    }
+
+    pub fn bound_type_of(self, def_id: impl IntoQueryParam<DefId>) -> ty::EarlyBinder<Ty<'tcx>> {
+        ty::EarlyBinder(self.type_of(def_id))
     }
 }

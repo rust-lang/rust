@@ -157,6 +157,43 @@ pub struct Baz;
 }
 
 #[test]
+fn module_resolution_works_for_inline_raw_modules() {
+    check(
+        r#"
+//- /lib.rs
+mod r#async {
+    pub mod a;
+    pub mod r#async;
+}
+use self::r#async::a::Foo;
+use self::r#async::r#async::Bar;
+
+//- /async/a.rs
+pub struct Foo;
+
+//- /async/async.rs
+pub struct Bar;
+"#,
+        expect![[r#"
+            crate
+            Bar: t v
+            Foo: t v
+            r#async: t
+
+            crate::r#async
+            a: t
+            r#async: t
+
+            crate::r#async::a
+            Foo: t v
+
+            crate::r#async::r#async
+            Bar: t v
+        "#]],
+    );
+}
+
+#[test]
 fn module_resolution_decl_path() {
     check(
         r#"

@@ -382,6 +382,8 @@ mod desc {
         "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
+    pub const parse_trait_solver: &str =
+        "one of the supported solver modes (`classic`, `chalk`, or `next`)";
     pub const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
@@ -880,6 +882,18 @@ mod parse {
         }
     }
 
+    pub(crate) fn parse_trait_solver(slot: &mut TraitSolver, v: Option<&str>) -> bool {
+        match v {
+            Some("classic") => *slot = TraitSolver::Classic,
+            Some("chalk") => *slot = TraitSolver::Chalk,
+            Some("next") => *slot = TraitSolver::Next,
+            // default trait solver is subject to change..
+            Some("default") => *slot = TraitSolver::Classic,
+            _ => return false,
+        }
+        true
+    }
+
     pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
@@ -1227,7 +1241,7 @@ options! {
 
     // tidy-alphabetical-start
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
-        "only allow the listed language features to be enabled in code (space separated)"),
+        "only allow the listed language features to be enabled in code (comma separated)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
     asm_comments: bool = (false, parse_bool, [TRACKED],
@@ -1241,7 +1255,7 @@ options! {
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info \
         (default: no)"),
-    box_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    box_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for box (default: yes)"),
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
         "set options for branch target identification and pointer authentication on AArch64"),
@@ -1249,8 +1263,6 @@ options! {
         "instrument control-flow architecture protection"),
     cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
         "the codegen unit partitioning strategy to use"),
-    chalk: bool = (false, parse_bool, [TRACKED],
-        "enable the experimental Chalk-based trait solving engine"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
@@ -1278,6 +1290,8 @@ options! {
         (default: no)"),
     drop_tracking: bool = (false, parse_bool, [TRACKED],
         "enables drop tracking in generators (default: no)"),
+    drop_tracking_mir: bool = (false, parse_bool, [TRACKED],
+        "enables drop tracking on MIR in generators (default: no)"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -1399,6 +1413,8 @@ options! {
         "what location details should be tracked when using caller_location, either \
         `none`, or a comma separated list of location details, for which \
         valid options are `file`, `line`, and `column` (default: `file,line,column`)"),
+    log_backtrace: Option<String> = (None, parse_opt_string, [TRACKED],
+        "add a backtrace along with logging"),
     ls: bool = (false, parse_bool, [UNTRACKED],
         "list the symbols defined by a library crate (default: no)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
@@ -1425,7 +1441,7 @@ options! {
         "use line numbers relative to the function in mir pretty printing"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),
-    mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    mutable_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
@@ -1558,7 +1574,7 @@ options! {
     /// o/w tests have closure@path
     span_free_formats: bool = (false, parse_bool, [UNTRACKED],
         "exclude spans when debug-printing compiler state (default: no)"),
-    split_dwarf_inlining: bool = (true, parse_bool, [TRACKED],
+    split_dwarf_inlining: bool = (false, parse_bool, [TRACKED],
         "provide minimal debug info in the object/executable to facilitate online \
          symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),
     split_dwarf_kind: SplitDwarfKind = (SplitDwarfKind::Split, parse_split_dwarf_kind, [TRACKED],
@@ -1602,6 +1618,8 @@ options! {
         "measure time of each LLVM pass (default: no)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass (default: no)"),
+    tiny_const_eval_limit: bool = (false, parse_bool, [TRACKED],
+        "sets a tiny, non-configurable limit for const eval; useful for compiler tests"),
     #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
     tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
@@ -1609,6 +1627,8 @@ options! {
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "tracks where in rustc a diagnostic was emitted"),
+    trait_solver: TraitSolver = (TraitSolver::Classic, parse_trait_solver, [TRACKED],
+        "specify the trait solver mode used by rustc (default: classic)"),
     // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
     // alongside query results and changes to translation options can affect diagnostics - so
     // translation options should be tracked.

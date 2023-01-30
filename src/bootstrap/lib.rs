@@ -110,9 +110,10 @@ use std::fs::{self, File};
 use std::io;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::str;
 
+use build_helper::ci::CiEnv;
 use channel::GitInfo;
 use config::{DryRun, Target};
 use filetime::FileTime;
@@ -121,7 +122,7 @@ use once_cell::sync::OnceCell;
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::util::{
-    exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed, CiEnv,
+    exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed,
 };
 
 mod bolt;
@@ -202,7 +203,6 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
-    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
     (Some(Mode::Codegen), "parallel_compiler", None),
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
@@ -213,18 +213,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
-    (Some(Mode::Std), "target_os", Some(&["watchos"])),
-    (
-        Some(Mode::Std),
-        "target_arch",
-        Some(&["asmjs", "spirv", "nvptx", "nvptx64", "le32", "xtensa"]),
-    ),
+    // (Some(Mode::Std), "target_os", Some(&[])),
+    (Some(Mode::Std), "target_arch", Some(&["asmjs", "spirv", "nvptx", "xtensa"])),
     /* Extra names used by dependencies */
-    // FIXME: Used by rustfmt is their test but is invalid (neither cargo nor bootstrap ever set
-    // this config) should probably by removed or use a allow attribute.
-    (Some(Mode::ToolRustc), "release", None),
-    // FIXME: Used by stdarch in their test, should use a allow attribute instead.
-    (Some(Mode::Std), "dont_compile_me", None),
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
     (Some(Mode::ToolRustc), "no_btreemap_remove_entry", None),
@@ -234,8 +225,12 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "span_locations", None),
     (Some(Mode::ToolRustc), "span_locations", None),
-    // Can be passed in RUSTFLAGS to prevent direct syscalls in rustix.
-    (None, "rustix_use_libc", None),
+    // FIXME: Used by rustix, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "rustix_use_libc", None),
+    (Some(Mode::ToolRustc), "rustix_use_libc", None),
+    // FIXME: Used by filetime, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "emulate_second_only_system", None),
+    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
 ];
 
 /// A structure representing a Rust compiler.
@@ -663,12 +658,32 @@ impl Build {
 
         // Try passing `--progress` to start, then run git again without if that fails.
         let update = |progress: bool| {
-            let mut git = Command::new("git");
+            // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
+            // even though that has no relation to the upstream for the submodule.
+            let current_branch = {
+                let output = self
+                    .config
+                    .git()
+                    .args(["symbolic-ref", "--short", "HEAD"])
+                    .stderr(Stdio::inherit())
+                    .output();
+                let output = t!(output);
+                if output.status.success() {
+                    Some(String::from_utf8(output.stdout).unwrap().trim().to_owned())
+                } else {
+                    None
+                }
+            };
+
+            let mut git = self.config.git();
+            if let Some(branch) = current_branch {
+                git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
+            }
             git.args(&["submodule", "update", "--init", "--recursive", "--depth=1"]);
             if progress {
                 git.arg("--progress");
             }
-            git.arg(relative_path).current_dir(&self.config.src);
+            git.arg(relative_path);
             git
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
@@ -1430,6 +1445,14 @@ impl Build {
     fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, DependencyType)> {
         if self.config.dry_run() {
             return Vec::new();
+        }
+
+        if !stamp.exists() {
+            eprintln!(
+                "Error: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
+                stamp.display()
+            );
+            crate::detail_exit(1);
         }
 
         let mut paths = Vec::new();

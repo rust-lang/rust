@@ -21,8 +21,8 @@ use crate::{
     cfg_flag::CfgFlag,
     rustc_cfg,
     sysroot::SysrootCrate,
-    utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath, Package,
-    ProjectJson, ProjectManifest, Sysroot, TargetKind, WorkspaceBuildScripts,
+    target_data_layout, utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath,
+    Package, ProjectJson, ProjectManifest, Sysroot, TargetKind, WorkspaceBuildScripts,
 };
 
 /// A set of cfg-overrides per crate.
@@ -79,6 +79,7 @@ pub enum ProjectWorkspace {
         rustc_cfg: Vec<CfgFlag>,
         cfg_overrides: CfgOverrides,
         toolchain: Option<Version>,
+        target_layout: Option<String>,
     },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: ProjectJson, sysroot: Option<Sysroot>, rustc_cfg: Vec<CfgFlag> },
@@ -93,7 +94,7 @@ pub enum ProjectWorkspace {
     // //
     /// Project with a set of disjoint files, not belonging to any particular workspace.
     /// Backed by basic sysroot crates for basic completion and highlighting.
-    DetachedFiles { files: Vec<AbsPathBuf>, sysroot: Sysroot, rustc_cfg: Vec<CfgFlag> },
+    DetachedFiles { files: Vec<AbsPathBuf>, sysroot: Option<Sysroot>, rustc_cfg: Vec<CfgFlag> },
 }
 
 impl fmt::Debug for ProjectWorkspace {
@@ -108,6 +109,7 @@ impl fmt::Debug for ProjectWorkspace {
                 rustc_cfg,
                 cfg_overrides,
                 toolchain,
+                target_layout: data_layout,
             } => f
                 .debug_struct("Cargo")
                 .field("root", &cargo.workspace_root().file_name())
@@ -120,6 +122,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("n_cfg_overrides", &cfg_overrides.len())
                 .field("toolchain", &toolchain)
+                .field("data_layout", &data_layout)
                 .finish(),
             ProjectWorkspace::Json { project, sysroot, rustc_cfg } => {
                 let mut debug_struct = f.debug_struct("Json");
@@ -133,7 +136,7 @@ impl fmt::Debug for ProjectWorkspace {
             ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => f
                 .debug_struct("DetachedFiles")
                 .field("n_files", &files.len())
-                .field("n_sysroot_crates", &sysroot.crates().len())
+                .field("sysroot", &sysroot.is_some())
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .finish(),
         }
@@ -191,10 +194,7 @@ impl ProjectWorkspace {
                 let sysroot = match &config.sysroot {
                     Some(RustcSource::Path(path)) => {
                         Some(Sysroot::with_sysroot_dir(path.clone()).with_context(|| {
-                            format!(
-                                "Failed to find sysroot for Cargo.toml file {}.",
-                                cargo_toml.display()
-                            )
+                            format!("Failed to find sysroot at {}.", path.display())
                         })?)
                     }
                     Some(RustcSource::Discover) => Some(
@@ -244,6 +244,11 @@ impl ProjectWorkspace {
                     rustc_cfg::get(Some(&cargo_toml), config.target.as_deref(), &config.extra_env);
 
                 let cfg_overrides = config.cfg_overrides();
+                let data_layout = target_data_layout::get(
+                    Some(&cargo_toml),
+                    config.target.as_deref(),
+                    &config.extra_env,
+                );
                 ProjectWorkspace::Cargo {
                     cargo,
                     build_scripts: WorkspaceBuildScripts::default(),
@@ -252,6 +257,7 @@ impl ProjectWorkspace {
                     rustc_cfg,
                     cfg_overrides,
                     toolchain,
+                    target_layout: data_layout,
                 }
             }
         };
@@ -291,14 +297,29 @@ impl ProjectWorkspace {
         Ok(ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg })
     }
 
-    pub fn load_detached_files(detached_files: Vec<AbsPathBuf>) -> Result<ProjectWorkspace> {
-        let sysroot = Sysroot::discover(
-            detached_files
-                .first()
-                .and_then(|it| it.parent())
-                .ok_or_else(|| format_err!("No detached files to load"))?,
-            &Default::default(),
-        )?;
+    pub fn load_detached_files(
+        detached_files: Vec<AbsPathBuf>,
+        config: &CargoConfig,
+    ) -> Result<ProjectWorkspace> {
+        let sysroot = match &config.sysroot {
+            Some(RustcSource::Path(path)) => Some(
+                Sysroot::with_sysroot_dir(path.clone())
+                    .with_context(|| format!("Failed to find sysroot at {}.", path.display()))?,
+            ),
+            Some(RustcSource::Discover) => {
+                let dir = &detached_files
+                    .first()
+                    .and_then(|it| it.parent())
+                    .ok_or_else(|| format_err!("No detached files to load"))?;
+                Some(Sysroot::discover(dir, &config.extra_env).with_context(|| {
+                    format!("Failed to find sysroot in {}. Is rust-src installed?", dir.display())
+                })?)
+            }
+            None => None,
+        };
+        if let Some(sysroot) = &sysroot {
+            tracing::info!(src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
+        }
         let rustc_cfg = rustc_cfg::get(None, None, &Default::default());
         Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
     }
@@ -386,7 +407,7 @@ impl ProjectWorkspace {
                 ["libexec", "lib"]
                     .into_iter()
                     .map(|segment| sysroot.root().join(segment).join(&standalone_server_name))
-                    .find(|server_path| std::fs::metadata(&server_path).is_ok())
+                    .find(|server_path| std::fs::metadata(server_path).is_ok())
             }
             _ => None,
         }
@@ -423,6 +444,7 @@ impl ProjectWorkspace {
                 cfg_overrides: _,
                 build_scripts,
                 toolchain: _,
+                target_layout: _,
             } => {
                 cargo
                     .packages()
@@ -479,21 +501,25 @@ impl ProjectWorkspace {
                     include: vec![detached_file.clone()],
                     exclude: Vec::new(),
                 })
-                .chain(mk_sysroot(Some(sysroot)))
+                .chain(mk_sysroot(sysroot.as_ref()))
                 .collect(),
         }
     }
 
     pub fn n_packages(&self) -> usize {
         match self {
-            ProjectWorkspace::Json { project, .. } => project.n_crates(),
+            ProjectWorkspace::Json { project, sysroot, .. } => {
+                let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.crates().len());
+                sysroot_package_len + project.n_crates()
+            }
             ProjectWorkspace::Cargo { cargo, sysroot, rustc, .. } => {
                 let rustc_package_len = rustc.as_ref().map_or(0, |it| it.packages().len());
                 let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.crates().len());
                 cargo.packages().len() + sysroot_package_len + rustc_package_len
             }
             ProjectWorkspace::DetachedFiles { sysroot, files, .. } => {
-                sysroot.crates().len() + files.len()
+                let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.crates().len());
+                sysroot_package_len + files.len()
             }
         }
     }
@@ -514,6 +540,7 @@ impl ProjectWorkspace {
                 project,
                 sysroot,
                 extra_env,
+                None,
             ),
             ProjectWorkspace::Cargo {
                 cargo,
@@ -523,6 +550,7 @@ impl ProjectWorkspace {
                 cfg_overrides,
                 build_scripts,
                 toolchain: _,
+                target_layout,
             } => cargo_to_crate_graph(
                 load_proc_macro,
                 load,
@@ -532,9 +560,10 @@ impl ProjectWorkspace {
                 rustc_cfg.clone(),
                 cfg_overrides,
                 build_scripts,
+                target_layout.as_deref().map(Arc::from),
             ),
             ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => {
-                detached_files_to_crate_graph(rustc_cfg.clone(), load, files, sysroot)
+                detached_files_to_crate_graph(rustc_cfg.clone(), load, files, sysroot, None)
             }
         };
         if crate_graph.patch_cfg_if() {
@@ -553,11 +582,18 @@ fn project_json_to_crate_graph(
     project: &ProjectJson,
     sysroot: &Option<Sysroot>,
     extra_env: &FxHashMap<String, String>,
+    target_layout: Option<Arc<str>>,
 ) -> CrateGraph {
     let mut crate_graph = CrateGraph::default();
-    let sysroot_deps = sysroot
-        .as_ref()
-        .map(|sysroot| sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load));
+    let sysroot_deps = sysroot.as_ref().map(|sysroot| {
+        sysroot_to_crate_graph(
+            &mut crate_graph,
+            sysroot,
+            rustc_cfg.clone(),
+            target_layout.clone(),
+            load,
+        )
+    });
 
     let mut cfg_cache: FxHashMap<&str, Vec<CfgFlag>> = FxHashMap::default();
     let crates: NoHashHashMap<CrateId, CrateId> = project
@@ -609,6 +645,7 @@ fn project_json_to_crate_graph(
                     } else {
                         CrateOrigin::CratesIo { repo: None, name: None }
                     },
+                    target_layout.clone(),
                 ),
             )
         })
@@ -649,11 +686,18 @@ fn cargo_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
+    target_layout: Option<Arc<str>>,
 ) -> CrateGraph {
     let _p = profile::span("cargo_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
     let (public_deps, libproc_macro) = match sysroot {
-        Some(sysroot) => sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load),
+        Some(sysroot) => sysroot_to_crate_graph(
+            &mut crate_graph,
+            sysroot,
+            rustc_cfg.clone(),
+            target_layout.clone(),
+            load,
+        ),
         None => (SysrootPublicDeps::default(), None),
     };
 
@@ -716,6 +760,7 @@ fn cargo_to_crate_graph(
                     file_id,
                     &cargo[tgt].name,
                     cargo[tgt].is_proc_macro,
+                    target_layout.clone(),
                 );
                 if cargo[tgt].kind == TargetKind::Lib {
                     lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
@@ -795,6 +840,7 @@ fn cargo_to_crate_graph(
                 &cfg_options,
                 override_cfg,
                 build_scripts,
+                target_layout,
             );
         }
     }
@@ -805,12 +851,21 @@ fn detached_files_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     detached_files: &[AbsPathBuf],
-    sysroot: &Sysroot,
+    sysroot: &Option<Sysroot>,
+    target_layout: Option<Arc<str>>,
 ) -> CrateGraph {
     let _p = profile::span("detached_files_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
-    let (public_deps, _libproc_macro) =
-        sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load);
+    let (public_deps, _libproc_macro) = match sysroot {
+        Some(sysroot) => sysroot_to_crate_graph(
+            &mut crate_graph,
+            sysroot,
+            rustc_cfg.clone(),
+            target_layout.clone(),
+            load,
+        ),
+        None => (SysrootPublicDeps::default(), None),
+    };
 
     let mut cfg_options = CfgOptions::default();
     cfg_options.extend(rustc_cfg);
@@ -841,6 +896,7 @@ fn detached_files_to_crate_graph(
                 repo: None,
                 name: display_name.map(|n| n.canonical_name().to_string()),
             },
+            target_layout.clone(),
         );
 
         public_deps.add_to_crate_graph(&mut crate_graph, detached_file_crate);
@@ -861,6 +917,7 @@ fn handle_rustc_crates(
     cfg_options: &CfgOptions,
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
+    target_layout: Option<Arc<str>>,
 ) {
     let mut rustc_pkg_crates = FxHashMap::default();
     // The root package of the rustc-dev component is rustc_driver, so we match that
@@ -917,6 +974,7 @@ fn handle_rustc_crates(
                         file_id,
                         &rustc_workspace[tgt].name,
                         rustc_workspace[tgt].is_proc_macro,
+                        target_layout.clone(),
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
@@ -981,6 +1039,7 @@ fn add_target_crate_root(
     file_id: FileId,
     cargo_name: &str,
     is_proc_macro: bool,
+    target_layout: Option<Arc<str>>,
 ) -> CrateId {
     let edition = pkg.edition;
     let mut potential_cfg_options = cfg_options.clone();
@@ -1027,6 +1086,7 @@ fn add_target_crate_root(
         proc_macro,
         is_proc_macro,
         CrateOrigin::CratesIo { repo: pkg.repository.clone(), name: Some(pkg.name.clone()) },
+        target_layout,
     )
 }
 
@@ -1048,6 +1108,7 @@ fn sysroot_to_crate_graph(
     crate_graph: &mut CrateGraph,
     sysroot: &Sysroot,
     rustc_cfg: Vec<CfgFlag>,
+    target_layout: Option<Arc<str>>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let _p = profile::span("sysroot_to_crate_graph");
@@ -1071,6 +1132,7 @@ fn sysroot_to_crate_graph(
                 Err("no proc macro loaded for sysroot crate".into()),
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::from(&*sysroot[krate].name)),
+                target_layout.clone(),
             );
             Some((krate, crate_id))
         })

@@ -1,0 +1,14 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/qualified-path-params-2.rs:18:10
+   |
+LL | type A = <S as Tr>::A::f<u8>;
+   |          ^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `f` implemented for `<S as Tr>::A`, you could use the fully-qualified path
+   |
+LL | type A = <<S as Tr>::A as Example>::f;
+   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0223`.

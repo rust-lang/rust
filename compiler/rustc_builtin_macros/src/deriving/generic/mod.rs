@@ -165,11 +165,12 @@ pub use SubstructureFields::*;
 use crate::deriving;
 use rustc_ast::ptr::P;
 use rustc_ast::{
-    self as ast, BindingAnnotation, ByRef, EnumDef, Expr, Generics, Mutability, PatKind,
+    self as ast, BindingAnnotation, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
+    Mutability, PatKind, TyKind, VariantData,
 };
-use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_session::lint::builtin::BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::RefCell;
@@ -190,6 +191,9 @@ pub struct TraitDef<'a> {
 
     /// Whether to skip adding the current trait as a bound to the type parameters of the type.
     pub skip_path_as_bound: bool,
+
+    /// Whether `Copy` is needed as an additional bound on type parameters in a packed struct.
+    pub needs_copy_as_bound_if_packed: bool,
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
@@ -222,12 +226,25 @@ pub struct MethodDef<'a> {
 
     pub attributes: ast::AttrVec,
 
-    /// Can we combine fieldless variants for enums into a single match arm?
-    /// If true, indicates that the trait operation uses the enum tag in some
-    /// way.
-    pub unify_fieldless_variants: bool,
+    pub fieldless_variants_strategy: FieldlessVariantsStrategy,
 
     pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
+}
+
+/// How to handle fieldless enum variants.
+#[derive(PartialEq)]
+pub enum FieldlessVariantsStrategy {
+    /// Combine fieldless variants into a single match arm.
+    /// This assumes that relevant information has been handled
+    /// by looking at the enum's discriminant.
+    Unify,
+    /// Don't do anything special about fieldless variants. They are
+    /// handled like any other variant.
+    Default,
+    /// If all variants of the enum are fieldless, expand the special
+    /// `AllFieldLessEnum` substructure, so that the entire enum can be handled
+    /// at once.
+    SpecializeIfAllVariantsFieldless,
 }
 
 /// All the data about the data structure/method being derived upon.
@@ -264,8 +281,13 @@ pub enum StaticFields {
 
 /// A summary of the possible sets of fields.
 pub enum SubstructureFields<'a> {
-    /// A non-static method with `Self` is a struct.
+    /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
+
+    /// A non-static method handling the entire enum at once
+    /// (after it has been determined that none of the enum
+    /// variants has any fields).
+    AllFieldlessEnum(&'a ast::EnumDef),
 
     /// Matching variants of the enum: variant index, variant count, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
@@ -437,18 +459,6 @@ impl<'a> TraitDef<'a> {
                     }
                     false
                 });
-                let has_no_type_params = match &item.kind {
-                    ast::ItemKind::Struct(_, generics)
-                    | ast::ItemKind::Enum(_, generics)
-                    | ast::ItemKind::Union(_, generics) => !generics
-                        .params
-                        .iter()
-                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
-                    _ => unreachable!(),
-                };
-                let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
-                let copy_fields =
-                    is_packed && has_no_type_params && cx.resolver.has_derive_copy(container_id);
 
                 let newitem = match &item.kind {
                     ast::ItemKind::Struct(struct_def, generics) => self.expand_struct_def(
@@ -457,7 +467,7 @@ impl<'a> TraitDef<'a> {
                         item.ident,
                         generics,
                         from_scratch,
-                        copy_fields,
+                        is_packed,
                     ),
                     ast::ItemKind::Enum(enum_def, generics) => {
                         // We ignore `is_packed` here, because `repr(packed)`
@@ -475,7 +485,7 @@ impl<'a> TraitDef<'a> {
                                 item.ident,
                                 generics,
                                 from_scratch,
-                                copy_fields,
+                                is_packed,
                             )
                         } else {
                             cx.span_err(mitem.span, "this trait cannot be derived for unions");
@@ -547,6 +557,7 @@ impl<'a> TraitDef<'a> {
         generics: &Generics,
         field_tys: Vec<P<ast::Ty>>,
         methods: Vec<P<ast::AssocItem>>,
+        is_packed: bool,
     ) -> P<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
@@ -589,20 +600,32 @@ impl<'a> TraitDef<'a> {
             .map(|param| match &param.kind {
                 GenericParamKind::Lifetime { .. } => param.clone(),
                 GenericParamKind::Type { .. } => {
-                    // I don't think this can be moved out of the loop, since
-                    // a GenericBound requires an ast id
-                    let bounds: Vec<_> =
-                    // extra restrictions on the generics parameters to the
-                    // type being derived upon
-                    self.additional_bounds.iter().map(|p| {
-                        cx.trait_bound(p.to_path(cx, self.span, type_ident, generics))
-                    }).chain(
-                        // require the current trait
-                        self.skip_path_as_bound.not().then(|| cx.trait_bound(trait_path.clone()))
-                    ).chain(
-                        // also add in any bounds from the declaration
-                        param.bounds.iter().cloned()
-                    ).collect();
+                    // Extra restrictions on the generics parameters to the
+                    // type being derived upon.
+                    let bounds: Vec<_> = self
+                        .additional_bounds
+                        .iter()
+                        .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                        .chain(
+                            // Add a bound for the current trait.
+                            self.skip_path_as_bound
+                                .not()
+                                .then(|| cx.trait_bound(trait_path.clone())),
+                        )
+                        .chain({
+                            // Add a `Copy` bound if required.
+                            if is_packed && self.needs_copy_as_bound_if_packed {
+                                let p = deriving::path_std!(marker::Copy);
+                                Some(cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                            } else {
+                                None
+                            }
+                        })
+                        .chain(
+                            // Also add in any bounds from the declaration.
+                            param.bounds.iter().cloned(),
+                        )
+                        .collect();
 
                     cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
                 }
@@ -674,8 +697,16 @@ impl<'a> TraitDef<'a> {
                             .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
                             .collect();
 
-                        // require the current trait
+                        // Require the current trait.
                         bounds.push(cx.trait_bound(trait_path.clone()));
+
+                        // Add a `Copy` bound if required.
+                        if is_packed && self.needs_copy_as_bound_if_packed {
+                            let p = deriving::path_std!(marker::Copy);
+                            bounds.push(
+                                cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)),
+                            );
+                        }
 
                         let predicate = ast::WhereBoundPredicate {
                             span: self.span,
@@ -744,7 +775,7 @@ impl<'a> TraitDef<'a> {
         type_ident: Ident,
         generics: &Generics,
         from_scratch: bool,
-        copy_fields: bool,
+        is_packed: bool,
     ) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> =
             struct_def.fields().iter().map(|field| field.ty.clone()).collect();
@@ -772,7 +803,7 @@ impl<'a> TraitDef<'a> {
                         type_ident,
                         &selflike_args,
                         &nonselflike_args,
-                        copy_fields,
+                        is_packed,
                     )
                 };
 
@@ -788,7 +819,7 @@ impl<'a> TraitDef<'a> {
             })
             .collect();
 
-        self.create_derived_impl(cx, type_ident, generics, field_tys, methods)
+        self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
     }
 
     fn expand_enum_def(
@@ -843,7 +874,8 @@ impl<'a> TraitDef<'a> {
             })
             .collect();
 
-        self.create_derived_impl(cx, type_ident, generics, field_tys, methods)
+        let is_packed = false; // enums are never packed
+        self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
     }
 }
 
@@ -993,8 +1025,8 @@ impl<'a> MethodDef<'a> {
     /// ```
     /// But if the struct is `repr(packed)`, we can't use something like
     /// `&self.x` because that might cause an unaligned ref. So for any trait
-    /// method that takes a reference, if the struct impls `Copy` then we use a
-    /// local block to force a copy:
+    /// method that takes a reference, we use a local block to force a copy.
+    /// This requires that the field impl `Copy`.
     /// ```
     /// # struct A { x: u8, y: u8 }
     /// impl PartialEq for A {
@@ -1009,10 +1041,6 @@ impl<'a> MethodDef<'a> {
     ///         ::core::hash::Hash::hash(&{ self.y }, state)
     ///     }
     /// }
-    /// ```
-    /// If the struct doesn't impl `Copy`, we use the normal `&self.x`. This
-    /// only works if the fields match the alignment required by the
-    /// `packed(N)` attribute. (We'll get errors later on if not.)
     fn expand_struct_method_body<'b>(
         &self,
         cx: &mut ExtCtxt<'_>,
@@ -1021,12 +1049,12 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         selflike_args: &[P<Expr>],
         nonselflike_args: &[P<Expr>],
-        copy_fields: bool,
+        is_packed: bool,
     ) -> BlockOrExpr {
         assert!(selflike_args.len() == 1 || selflike_args.len() == 2);
 
         let selflike_fields =
-            trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, copy_fields);
+            trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, is_packed);
         self.call_substructure_method(
             cx,
             trait_,
@@ -1086,8 +1114,8 @@ impl<'a> MethodDef<'a> {
     /// ```
     /// Creates a tag check combined with a match for a tuple of all
     /// `selflike_args`, with an arm for each variant with fields, possibly an
-    /// arm for each fieldless variant (if `!unify_fieldless_variants` is not
-    /// true), and possibly a default arm.
+    /// arm for each fieldless variant (if `unify_fieldless_variants` is not
+    /// `Unify`), and possibly a default arm.
     fn expand_enum_method_body<'b>(
         &self,
         cx: &mut ExtCtxt<'_>,
@@ -1101,7 +1129,8 @@ impl<'a> MethodDef<'a> {
         let variants = &enum_def.variants;
 
         // Traits that unify fieldless variants always use the tag(s).
-        let uses_tags = self.unify_fieldless_variants;
+        let unify_fieldless_variants =
+            self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
 
         // There is no sensible code to be generated for *any* deriving on a
         // zero-variant enum. So we just generate a failing expression.
@@ -1161,23 +1190,35 @@ impl<'a> MethodDef<'a> {
         // match is necessary.
         let all_fieldless = variants.iter().all(|v| v.data.fields().is_empty());
         if all_fieldless {
-            if uses_tags && variants.len() > 1 {
-                // If the type is fieldless and the trait uses the tag and
-                // there are multiple variants, we need just an operation on
-                // the tag(s).
-                let (tag_field, mut tag_let_stmts) = get_tag_pieces(cx);
-                let mut tag_check = self.call_substructure_method(
-                    cx,
-                    trait_,
-                    type_ident,
-                    nonselflike_args,
-                    &EnumTag(tag_field, None),
-                );
-                tag_let_stmts.append(&mut tag_check.0);
-                return BlockOrExpr(tag_let_stmts, tag_check.1);
-            }
-
-            if variants.len() == 1 {
+            if variants.len() > 1 {
+                match self.fieldless_variants_strategy {
+                    FieldlessVariantsStrategy::Unify => {
+                        // If the type is fieldless and the trait uses the tag and
+                        // there are multiple variants, we need just an operation on
+                        // the tag(s).
+                        let (tag_field, mut tag_let_stmts) = get_tag_pieces(cx);
+                        let mut tag_check = self.call_substructure_method(
+                            cx,
+                            trait_,
+                            type_ident,
+                            nonselflike_args,
+                            &EnumTag(tag_field, None),
+                        );
+                        tag_let_stmts.append(&mut tag_check.0);
+                        return BlockOrExpr(tag_let_stmts, tag_check.1);
+                    }
+                    FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless => {
+                        return self.call_substructure_method(
+                            cx,
+                            trait_,
+                            type_ident,
+                            nonselflike_args,
+                            &AllFieldlessEnum(enum_def),
+                        );
+                    }
+                    FieldlessVariantsStrategy::Default => (),
+                }
+            } else if variants.len() == 1 {
                 // If there is a single variant, we don't need an operation on
                 // the tag(s). Just use the most degenerate result.
                 return self.call_substructure_method(
@@ -1187,7 +1228,7 @@ impl<'a> MethodDef<'a> {
                     nonselflike_args,
                     &EnumMatching(0, 1, &variants[0], Vec::new()),
                 );
-            };
+            }
         }
 
         // These arms are of the form:
@@ -1198,7 +1239,7 @@ impl<'a> MethodDef<'a> {
         let mut match_arms: Vec<ast::Arm> = variants
             .iter()
             .enumerate()
-            .filter(|&(_, v)| !(self.unify_fieldless_variants && v.data.fields().is_empty()))
+            .filter(|&(_, v)| !(unify_fieldless_variants && v.data.fields().is_empty()))
             .map(|(index, variant)| {
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
@@ -1249,7 +1290,7 @@ impl<'a> MethodDef<'a> {
         // Add a default arm to the match, if necessary.
         let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
         let default = match first_fieldless {
-            Some(v) if self.unify_fieldless_variants => {
+            Some(v) if unify_fieldless_variants => {
                 // We need a default case that handles all the fieldless
                 // variants. The index and actual variant aren't meaningful in
                 // this case, so just use dummy values.
@@ -1296,7 +1337,7 @@ impl<'a> MethodDef<'a> {
         // If the trait uses the tag and there are multiple variants, we need
         // to add a tag check operation before the match. Otherwise, the match
         // is enough.
-        if uses_tags && variants.len() > 1 {
+        if unify_fieldless_variants && variants.len() > 1 {
             let (tag_field, mut tag_let_stmts) = get_tag_pieces(cx);
 
             // Combine a tag check with the match.
@@ -1483,7 +1524,7 @@ impl<'a> TraitDef<'a> {
         cx: &mut ExtCtxt<'_>,
         selflike_args: &[P<Expr>],
         struct_def: &'a VariantData,
-        copy_fields: bool,
+        is_packed: bool,
     ) -> Vec<FieldInfo> {
         self.create_fields(struct_def, |i, struct_field, sp| {
             selflike_args
@@ -1502,10 +1543,39 @@ impl<'a> TraitDef<'a> {
                             }),
                         ),
                     );
-                    if copy_fields {
-                        field_expr = cx.expr_block(
-                            cx.block(struct_field.span, vec![cx.stmt_expr(field_expr)]),
-                        );
+                    // In general, fields in packed structs are copied via a
+                    // block, e.g. `&{self.0}`. The one exception is `[u8]`
+                    // fields, which cannot be copied and also never cause
+                    // unaligned references. This exception is allowed to
+                    // handle the `FlexZeroSlice` type in the `zerovec` crate
+                    // within `icu4x-0.9.0`.
+                    //
+                    // Once use of `icu4x-0.9.0` has dropped sufficiently, this
+                    // exception should be removed.
+                    let is_u8_slice = if let TyKind::Slice(ty) = &struct_field.ty.kind &&
+                        let TyKind::Path(None, rustc_ast::Path { segments, .. }) = &ty.kind &&
+                        let [seg] = segments.as_slice() &&
+                        seg.ident.name == sym::u8 && seg.args.is_none()
+                    {
+                        true
+                    } else {
+                        false
+                    };
+                    if is_packed {
+                        if is_u8_slice {
+                            cx.sess.parse_sess.buffer_lint_with_diagnostic(
+                                BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
+                                sp,
+                                ast::CRATE_NODE_ID,
+                                "byte slice in a packed struct that derives a built-in trait",
+                                rustc_lint_defs::BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive
+                            );
+                        } else {
+                            // Wrap the expression in `{...}`, causing a copy.
+                            field_expr = cx.expr_block(
+                                cx.block(struct_field.span, vec![cx.stmt_expr(field_expr)]),
+                            );
+                        }
                     }
                     cx.expr_addr_of(sp, field_expr)
                 })
@@ -1580,5 +1650,6 @@ where
             }
         }
         StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span, "static function in `derive`"),
+        AllFieldlessEnum(..) => cx.span_bug(trait_span, "fieldless enum in `derive`"),
     }
 }

@@ -787,7 +787,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
         d.tcx.def_path_hash_to_def_id(def_path_hash, &mut || {
-            panic!("Failed to convert DefPathHash {:?}", def_path_hash)
+            panic!("Failed to convert DefPathHash {def_path_hash:?}")
         })
     }
 }

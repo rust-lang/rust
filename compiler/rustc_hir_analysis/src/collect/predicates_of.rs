@@ -85,29 +85,30 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         Node::ImplItem(item) => item.generics,
 
         Node::Item(item) => match item.kind {
-            ItemKind::Impl(ref impl_) => {
+            ItemKind::Impl(impl_) => {
                 if impl_.defaultness.is_default() {
-                    is_default_impl_trait = tcx.impl_trait_ref(def_id).map(ty::Binder::dummy);
+                    is_default_impl_trait =
+                        tcx.impl_trait_ref(def_id).map(|t| ty::Binder::dummy(t.subst_identity()));
                 }
-                &impl_.generics
+                impl_.generics
             }
-            ItemKind::Fn(.., ref generics, _)
-            | ItemKind::TyAlias(_, ref generics)
-            | ItemKind::Enum(_, ref generics)
-            | ItemKind::Struct(_, ref generics)
-            | ItemKind::Union(_, ref generics) => *generics,
+            ItemKind::Fn(.., generics, _)
+            | ItemKind::TyAlias(_, generics)
+            | ItemKind::Enum(_, generics)
+            | ItemKind::Struct(_, generics)
+            | ItemKind::Union(_, generics) => generics,
 
-            ItemKind::Trait(_, _, ref generics, ..) | ItemKind::TraitAlias(ref generics, _) => {
+            ItemKind::Trait(_, _, generics, ..) | ItemKind::TraitAlias(generics, _) => {
                 is_trait = Some(ty::TraitRef::identity(tcx, def_id));
-                *generics
+                generics
             }
-            ItemKind::OpaqueTy(OpaqueTy { ref generics, .. }) => generics,
+            ItemKind::OpaqueTy(OpaqueTy { generics, .. }) => generics,
             _ => NO_GENERICS,
         },
 
         Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Static(..) => NO_GENERICS,
-            ForeignItemKind::Fn(_, _, ref generics) => *generics,
+            ForeignItemKind::Fn(_, _, generics) => generics,
             ForeignItemKind::Type => NO_GENERICS,
         },
 
@@ -162,15 +163,15 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
                 let mut bounds = Bounds::default();
                 // Params are implicitly sized unless a `?Sized` bound is found
-                <dyn AstConv<'_>>::add_implicitly_sized(
-                    &icx,
+                icx.astconv().add_implicitly_sized(
                     &mut bounds,
+                    param_ty,
                     &[],
                     Some((param.def_id, ast_generics.predicates)),
                     param.span,
                 );
                 trace!(?bounds);
-                predicates.extend(bounds.predicates(tcx, param_ty));
+                predicates.extend(bounds.predicates());
                 trace!(?predicates);
             }
             GenericParamKind::Const { .. } => {
@@ -210,22 +211,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 }
 
                 let mut bounds = Bounds::default();
-                <dyn AstConv<'_>>::add_bounds(
-                    &icx,
-                    ty,
-                    bound_pred.bounds.iter(),
-                    &mut bounds,
-                    bound_vars,
-                );
-                predicates.extend(bounds.predicates(tcx, ty));
+                icx.astconv().add_bounds(ty, bound_pred.bounds.iter(), &mut bounds, bound_vars);
+                predicates.extend(bounds.predicates());
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
-                let r1 = <dyn AstConv<'_>>::ast_region_to_region(&icx, &region_pred.lifetime, None);
+                let r1 = icx.astconv().ast_region_to_region(&region_pred.lifetime, None);
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
                         hir::GenericBound::Outlives(lt) => {
-                            (<dyn AstConv<'_>>::ast_region_to_region(&icx, lt, None), lt.ident.span)
+                            (icx.astconv().ast_region_to_region(lt, None), lt.ident.span)
                         }
                         _ => bug!(),
                     };
@@ -252,12 +247,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
     // Subtle: before we store the predicates into the tcx, we
     // sort them so that predicates like `T: Foo<Item=U>` come
-    // before uses of `U`.  This avoids false ambiguity errors
+    // before uses of `U`. This avoids false ambiguity errors
     // in trait checking. See `setup_constraining_predicates`
     // for details.
     if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {
         let self_ty = tcx.type_of(def_id);
-        let trait_ref = tcx.impl_trait_ref(def_id);
+        let trait_ref = tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::subst_identity);
         cgp::setup_constraining_predicates(
             tcx,
             &mut predicates,
@@ -270,7 +265,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // We create bi-directional Outlives predicates between the original
     // and the duplicated parameter, to ensure that they do not get out of sync.
     if let Node::Item(&Item { kind: ItemKind::OpaqueTy(..), .. }) = node {
-        let opaque_ty_id = tcx.hir().get_parent_node(hir_id);
+        let opaque_ty_id = tcx.hir().parent_id(hir_id);
         let opaque_ty_node = tcx.hir().get(opaque_ty_id);
         let Node::Ty(&Ty { kind: TyKind::OpaqueDef(_, lifetimes, _), .. }) = opaque_ty_node else {
             bug!("unexpected {opaque_ty_node:?}")
@@ -278,14 +273,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         debug!(?lifetimes);
         for (arg, duplicate) in std::iter::zip(lifetimes, ast_generics.params) {
             let hir::GenericArg::Lifetime(arg) = arg else { bug!() };
-            let orig_region = <dyn AstConv<'_>>::ast_region_to_region(&icx, &arg, None);
+            let orig_region = icx.astconv().ast_region_to_region(&arg, None);
             if !matches!(orig_region.kind(), ty::ReEarlyBound(..)) {
                 // Only early-bound regions can point to the original generic parameter.
                 continue;
             }
 
             let hir::GenericParamKind::Lifetime { .. } = duplicate.kind else { continue };
-            let dup_def = tcx.hir().local_def_id(duplicate.hir_id).to_def_id();
+            let dup_def = duplicate.def_id.to_def_id();
 
             let Some(dup_index) = generics.param_def_id_to_index(tcx, dup_def) else { bug!() };
 
@@ -355,7 +350,7 @@ fn const_evaluatable_predicates_of(
     let node = tcx.hir().get(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
-    if let hir::Node::Item(item) = node && let hir::ItemKind::Impl(ref impl_) = item.kind {
+    if let hir::Node::Item(item) = node && let hir::ItemKind::Impl(impl_) = item.kind {
         if let Some(of_trait) = &impl_.of_trait {
             debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
             collector.visit_trait_ref(of_trait);
@@ -516,8 +511,8 @@ pub(super) fn super_predicates_that_define_assoc_type(
         };
 
         let (generics, bounds) = match item.kind {
-            hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => (generics, supertraits),
-            hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
+            hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
+            hir::ItemKind::TraitAlias(generics, supertraits) => (generics, supertraits),
             _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
         };
 
@@ -526,17 +521,12 @@ pub(super) fn super_predicates_that_define_assoc_type(
         // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
         let self_param_ty = tcx.types.self_param;
         let superbounds1 = if let Some(assoc_name) = assoc_name {
-            <dyn AstConv<'_>>::compute_bounds_that_match_assoc_type(
-                &icx,
-                self_param_ty,
-                bounds,
-                assoc_name,
-            )
+            icx.astconv().compute_bounds_that_match_assoc_type(self_param_ty, bounds, assoc_name)
         } else {
-            <dyn AstConv<'_>>::compute_bounds(&icx, self_param_ty, bounds)
+            icx.astconv().compute_bounds(self_param_ty, bounds)
         };
 
-        let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
+        let superbounds1 = superbounds1.predicates();
 
         // Convert any explicit superbounds in the where-clause,
         // e.g., `trait Foo where Self: Bar`.
@@ -622,18 +612,18 @@ pub(super) fn type_param_predicates(
 
         Node::Item(item) => {
             match item.kind {
-                ItemKind::Fn(.., ref generics, _)
-                | ItemKind::Impl(hir::Impl { ref generics, .. })
-                | ItemKind::TyAlias(_, ref generics)
+                ItemKind::Fn(.., generics, _)
+                | ItemKind::Impl(&hir::Impl { generics, .. })
+                | ItemKind::TyAlias(_, generics)
                 | ItemKind::OpaqueTy(OpaqueTy {
-                    ref generics,
+                    generics,
                     origin: hir::OpaqueTyOrigin::TyAlias,
                     ..
                 })
-                | ItemKind::Enum(_, ref generics)
-                | ItemKind::Struct(_, ref generics)
-                | ItemKind::Union(_, ref generics) => generics,
-                ItemKind::Trait(_, _, ref generics, ..) => {
+                | ItemKind::Enum(_, generics)
+                | ItemKind::Struct(_, generics)
+                | ItemKind::Union(_, generics) => generics,
+                ItemKind::Trait(_, _, generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
@@ -647,7 +637,7 @@ pub(super) fn type_param_predicates(
         }
 
         Node::ForeignItem(item) => match item.kind {
-            ForeignItemKind::Fn(_, _, ref generics) => generics,
+            ForeignItemKind::Fn(_, _, generics) => generics,
             _ => return result,
         },
 
@@ -691,8 +681,8 @@ impl<'tcx> ItemCtxt<'tcx> {
         ast_generics
             .predicates
             .iter()
-            .filter_map(|wp| match *wp {
-                hir::WherePredicate::BoundPredicate(ref bp) => Some(bp),
+            .filter_map(|wp| match wp {
+                hir::WherePredicate::BoundPredicate(bp) => Some(bp),
                 _ => None,
             })
             .flat_map(|bp| {
@@ -745,5 +735,5 @@ fn predicates_from_bound<'tcx>(
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     let mut bounds = Bounds::default();
     astconv.add_bounds(param_ty, [bound].into_iter(), &mut bounds, bound_vars);
-    bounds.predicates(astconv.tcx(), param_ty).collect()
+    bounds.predicates().collect()
 }

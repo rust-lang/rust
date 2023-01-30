@@ -27,6 +27,7 @@ pub fn expand_deriving_eq(
         span,
         path: path_std!(cmp::Eq),
         skip_path_as_bound: false,
+        needs_copy_as_bound_if_packed: true,
         additional_bounds: Vec::new(),
         supports_unions: true,
         methods: vec![MethodDef {
@@ -36,7 +37,7 @@ pub fn expand_deriving_eq(
             nonself_args: vec![],
             ret_ty: Unit,
             attributes: attrs,
-            unify_fieldless_variants: true,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 cs_total_eq_assert(a, b, c)
             })),

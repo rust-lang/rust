@@ -1,4 +1,4 @@
-//! Debugging code to test fingerprints computed for query results.  For each node marked with
+//! Debugging code to test fingerprints computed for query results. For each node marked with
 //! `#[rustc_clean]` we will compare the fingerprint from the current and from the previous
 //! compilation session as appropriate:
 //!

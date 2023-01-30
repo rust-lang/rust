@@ -7,8 +7,8 @@ use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable,
-    TypeVisitor,
+    self, AdtDef, DefIdTree, Discr, FallibleTypeFolder, Term, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;
@@ -99,6 +99,13 @@ impl BoundRegionKind {
         }
 
         None
+    }
+
+    pub fn get_id(&self) -> Option<DefId> {
+        match *self {
+            BoundRegionKind::BrNamed(id, _) => return Some(id),
+            _ => None,
+        }
     }
 }
 
@@ -205,7 +212,7 @@ static_assert_size!(TyKind<'_>, 32);
 ///
 /// ## Generators
 ///
-/// Generators are handled similarly in `GeneratorSubsts`.  The set of
+/// Generators are handled similarly in `GeneratorSubsts`. The set of
 /// type parameters is similar, but `CK` and `CS` are replaced by the
 /// following type parameters:
 ///
@@ -564,9 +571,9 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     ) -> impl Iterator<Item = impl Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
         let layout = tcx.generator_layout(def_id).unwrap();
         layout.variant_fields.iter().map(move |variant| {
-            variant
-                .iter()
-                .map(move |field| ty::EarlyBinder(layout.field_tys[*field]).subst(tcx, self.substs))
+            variant.iter().map(move |field| {
+                ty::EarlyBinder(layout.field_tys[*field].ty).subst(tcx, self.substs)
+            })
         })
     }
 
@@ -1135,12 +1142,87 @@ impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
     }
 }
 
+struct SkipBindersAt<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    index: ty::DebruijnIndex,
+}
+
+impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
+    type Error = ();
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
+    where
+        T: ty::TypeFoldable<'tcx>,
+    {
+        self.index.shift_in(1);
+        let value = t.try_map_bound(|t| t.try_fold_with(self));
+        self.index.shift_out(1);
+        value
+    }
+
+    fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        if !ty.has_escaping_bound_vars() {
+            Ok(ty)
+        } else if let ty::Bound(index, bv) = *ty.kind() {
+            if index == self.index {
+                Err(())
+            } else {
+                Ok(self.tcx().mk_ty(ty::Bound(index.shifted_out(1), bv)))
+            }
+        } else {
+            ty.try_super_fold_with(self)
+        }
+    }
+
+    fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
+        if !r.has_escaping_bound_vars() {
+            Ok(r)
+        } else if let ty::ReLateBound(index, bv) = r.kind() {
+            if index == self.index {
+                Err(())
+            } else {
+                Ok(self.tcx().mk_region(ty::ReLateBound(index.shifted_out(1), bv)))
+            }
+        } else {
+            r.try_super_fold_with(self)
+        }
+    }
+
+    fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        if !ct.has_escaping_bound_vars() {
+            Ok(ct)
+        } else if let ty::ConstKind::Bound(index, bv) = ct.kind() {
+            if index == self.index {
+                Err(())
+            } else {
+                Ok(self.tcx().mk_const(
+                    ty::ConstKind::Bound(index.shifted_out(1), bv),
+                    ct.ty().try_fold_with(self)?,
+                ))
+            }
+        } else {
+            ct.try_super_fold_with(self)
+        }
+    }
+
+    fn try_fold_predicate(
+        &mut self,
+        p: ty::Predicate<'tcx>,
+    ) -> Result<ty::Predicate<'tcx>, Self::Error> {
+        if !p.has_escaping_bound_vars() { Ok(p) } else { p.try_super_fold_with(self) }
+    }
+}
+
 /// Represents the projection of an associated type.
 ///
 /// For a projection, this would be `<Ty as Trait<...>>::N`.
 ///
 /// For an opaque type, there is no explicit syntax.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct AliasTy<'tcx> {
     /// The parameters of the associated or opaque item.
@@ -1163,11 +1245,26 @@ pub struct AliasTy<'tcx> {
     /// aka. `tcx.parent(def_id)`.
     pub def_id: DefId,
 
-    /// This field exists to prevent the creation of `ProjectionTy` without using
+    /// This field exists to prevent the creation of `AliasTy` without using
     /// [TyCtxt::mk_alias_ty].
     pub(super) _use_mk_alias_ty_instead: (),
 }
 
+impl<'tcx> AliasTy<'tcx> {
+    pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
+        match tcx.def_kind(self.def_id) {
+            DefKind::AssocTy | DefKind::ImplTraitPlaceholder => ty::Projection,
+            DefKind::OpaqueTy => ty::Opaque,
+            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
+        }
+    }
+
+    pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        tcx.mk_ty(ty::Alias(self.kind(tcx), self))
+    }
+}
+
+/// The following methods work only with associated type projections.
 impl<'tcx> AliasTy<'tcx> {
     pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.def_id) {
@@ -1175,7 +1272,7 @@ impl<'tcx> AliasTy<'tcx> {
             DefKind::ImplTraitPlaceholder => {
                 tcx.parent(tcx.impl_trait_in_trait_parent(self.def_id))
             }
-            kind => bug!("unexpected DefKind in ProjectionTy: {kind:?}"),
+            kind => bug!("expected a projection AliasTy; found {kind:?}"),
         }
     }
 
@@ -1686,7 +1783,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_ty_infer(self) -> bool {
+    pub fn is_ty_or_numeric_infer(self) -> bool {
         matches!(self.kind(), Infer(_))
     }
 
@@ -1929,7 +2026,7 @@ impl<'tcx> Ty<'tcx> {
             type BreakTy = ();
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if self.0 == t { ControlFlow::BREAK } else { t.super_visit_with(self) }
+                if self.0 == t { ControlFlow::Break(()) } else { t.super_visit_with(self) }
             }
         }
 
@@ -1962,7 +2059,7 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
-            FnDef(def_id, substs) => tcx.bound_fn_sig(*def_id).subst(tcx, substs),
+            FnDef(def_id, substs) => tcx.fn_sig(*def_id).subst(tcx, substs),
             FnPtr(f) => *f,
             Error(_) => {
                 // ignore errors (#54954)
@@ -2078,6 +2175,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_)
@@ -2113,6 +2211,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2199,6 +2298,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2263,7 +2363,7 @@ impl<'tcx> Ty<'tcx> {
             // anything with custom metadata it might be more complicated.
             ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => false,
 
-            ty::Generator(..) | ty::GeneratorWitness(..) => false,
+            ty::Generator(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
             ty::Adt(..) | ty::Closure(..) => false,

@@ -10,7 +10,7 @@ use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind, TokenKind::*};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
@@ -141,30 +141,39 @@ fn trace_macros_note(cx_expansions: &mut FxIndexMap<Span, Vec<String>>, sp: Span
 }
 
 pub(super) trait Tracker<'matcher> {
+    /// The contents of `ParseResult::Failure`.
+    type Failure;
+
+    /// Arm failed to match. If the token is `token::Eof`, it indicates an unexpected
+    /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
+    /// The usize is the approximate position of the token in the input token stream.
+    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure;
+
     /// This is called before trying to match next MatcherLoc on the current token.
-    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
+    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When this is called,
     /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
-    fn after_arm(&mut self, result: &NamedParseResult);
+    fn after_arm(&mut self, _result: &NamedParseResult<Self::Failure>) {}
 
     /// For tracing.
     fn description() -> &'static str;
 
-    fn recovery() -> Recovery;
+    fn recovery() -> Recovery {
+        Recovery::Forbidden
+    }
 }
 
 /// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization.
 pub(super) struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
-    fn before_match_loc(&mut self, _: &TtParser, _: &'matcher MatcherLoc) {}
-    fn after_arm(&mut self, _: &NamedParseResult) {}
+    type Failure = ();
+
+    fn build_failure(_tok: Token, _position: usize, _msg: &'static str) -> Self::Failure {}
+
     fn description() -> &'static str {
         "none"
-    }
-    fn recovery() -> Recovery {
-        Recovery::Forbidden
     }
 }
 
@@ -203,7 +212,6 @@ fn expand_macro<'cx>(
             };
             let arm_span = rhses[i].span();
 
-            let rhs_spans = rhs.tts.iter().map(|t| t.span()).collect::<Vec<_>>();
             // rhs has holes ( `$id` and `$(...)` that need filled)
             let mut tts = match transcribe(cx, &named_matches, &rhs, rhs_span, transparency) {
                 Ok(tts) => tts,
@@ -215,12 +223,25 @@ fn expand_macro<'cx>(
 
             // Replace all the tokens for the corresponding positions in the macro, to maintain
             // proper positions in error reporting, while maintaining the macro_backtrace.
-            if rhs_spans.len() == tts.len() {
+            if tts.len() == rhs.tts.len() {
                 tts = tts.map_enumerated(|i, tt| {
                     let mut tt = tt.clone();
-                    let mut sp = rhs_spans[i];
-                    sp = sp.with_ctxt(tt.span().ctxt());
-                    tt.set_span(sp);
+                    let rhs_tt = &rhs.tts[i];
+                    let ctxt = tt.span().ctxt();
+                    match (&mut tt, rhs_tt) {
+                        // preserve the delim spans if able
+                        (
+                            TokenTree::Delimited(target_sp, ..),
+                            mbe::TokenTree::Delimited(source_sp, ..),
+                        ) => {
+                            target_sp.open = source_sp.open.with_ctxt(ctxt);
+                            target_sp.close = source_sp.close.with_ctxt(ctxt);
+                        }
+                        _ => {
+                            let sp = rhs_tt.span().with_ctxt(ctxt);
+                            tt.set_span(sp);
+                        }
+                    }
                     tt
                 });
             }
@@ -326,8 +347,8 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 
                 return Ok((i, named_matches));
             }
-            Failure(_, reached_position, _) => {
-                trace!(%reached_position, "Failed to match arm, trying the next one");
+            Failure(_) => {
+                trace!("Failed to match arm, trying the next one");
                 // Try the next arm.
             }
             Error(_, _) => {
@@ -381,11 +402,13 @@ pub fn compile_declarative_macro(
     let rhs_nm = Ident::new(sym::rhs, def.span);
     let tt_spec = Some(NonterminalKind::TT);
 
-    // Parse the macro_rules! invocation
-    let (macro_rules, body) = match &def.kind {
-        ast::ItemKind::MacroDef(def) => (def.macro_rules, def.body.tokens.clone()),
+    let macro_def = match &def.kind {
+        ast::ItemKind::MacroDef(def) => def,
         _ => unreachable!(),
     };
+    let macro_rules = macro_def.macro_rules;
+
+    // Parse the macro_rules! invocation
 
     // The pattern that macro_rules matches.
     // The grammar for macro_rules! is:
@@ -426,13 +449,32 @@ pub fn compile_declarative_macro(
     // Convert it into `MatcherLoc` form.
     let argument_gram = mbe::macro_parser::compute_locs(&argument_gram);
 
-    let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
+    let create_parser = || {
+        let body = macro_def.body.tokens.clone();
+        Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS)
+    };
+
+    let parser = create_parser();
     let mut tt_parser =
         TtParser::new(Ident::with_dummy_span(if macro_rules { kw::MacroRules } else { kw::Macro }));
     let argument_map =
         match tt_parser.parse_tt(&mut Cow::Owned(parser), &argument_gram, &mut NoopTracker) {
             Success(m) => m,
-            Failure(token, _, msg) => {
+            Failure(()) => {
+                // The fast `NoopTracker` doesn't have any info on failure, so we need to retry it with another one
+                // that gives us the information we need.
+                // For this we need to reclone the macro body as the previous parser consumed it.
+                let retry_parser = create_parser();
+
+                let parse_result = tt_parser.parse_tt(
+                    &mut Cow::Owned(retry_parser),
+                    &argument_gram,
+                    &mut diagnostics::FailureForwarder,
+                );
+                let Failure((token, _, msg)) = parse_result else {
+                    unreachable!("matcher returned something other than Failure after retry");
+                };
+
                 let s = parse_failure_msg(&token);
                 let sp = token.span.substitute_dummy(def.span);
                 let mut err = sess.parse_sess.span_diagnostic.struct_span_err(sp, &s);
@@ -456,11 +498,11 @@ pub fn compile_declarative_macro(
     let mut valid = true;
 
     // Extract the arguments:
-    let lhses = match argument_map[&MacroRulesNormalizedIdent::new(lhs_nm)] {
-        MatchedSeq(ref s) => s
+    let lhses = match &argument_map[&MacroRulesNormalizedIdent::new(lhs_nm)] {
+        MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(ref tt) = *m {
+                if let MatchedTokenTree(tt) = m {
                     let tt = mbe::quoted::parse(
                         TokenStream::new(vec![tt.clone()]),
                         true,
@@ -480,11 +522,11 @@ pub fn compile_declarative_macro(
         _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
     };
 
-    let rhses = match argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
-        MatchedSeq(ref s) => s
+    let rhses = match &argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
+        MatchedSeq(s) => s
             .iter()
             .map(|m| {
-                if let MatchedTokenTree(ref tt) = *m {
+                if let MatchedTokenTree(tt) = m {
                     return mbe::quoted::parse(
                         TokenStream::new(vec![tt.clone()]),
                         false,
@@ -594,21 +636,21 @@ fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree)
 fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
     use mbe::TokenTree;
     for tt in tts {
-        match *tt {
+        match tt {
             TokenTree::Token(..)
             | TokenTree::MetaVar(..)
             | TokenTree::MetaVarDecl(..)
             | TokenTree::MetaVarExpr(..) => (),
-            TokenTree::Delimited(_, ref del) => {
+            TokenTree::Delimited(_, del) => {
                 if !check_lhs_no_empty_seq(sess, &del.tts) {
                     return false;
                 }
             }
-            TokenTree::Sequence(span, ref seq) => {
+            TokenTree::Sequence(span, seq) => {
                 if seq.separator.is_none()
-                    && seq.tts.iter().all(|seq_tt| match *seq_tt {
+                    && seq.tts.iter().all(|seq_tt| match seq_tt {
                         TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)) => true,
-                        TokenTree::Sequence(_, ref sub_seq) => {
+                        TokenTree::Sequence(_, sub_seq) => {
                             sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
                                 || sub_seq.kleene.op == mbe::KleeneOp::ZeroOrOne
                         }
@@ -706,21 +748,21 @@ impl<'tt> FirstSets<'tt> {
         fn build_recur<'tt>(sets: &mut FirstSets<'tt>, tts: &'tt [TokenTree]) -> TokenSet<'tt> {
             let mut first = TokenSet::empty();
             for tt in tts.iter().rev() {
-                match *tt {
+                match tt {
                     TokenTree::Token(..)
                     | TokenTree::MetaVar(..)
                     | TokenTree::MetaVarDecl(..)
                     | TokenTree::MetaVarExpr(..) => {
                         first.replace_with(TtHandle::TtRef(tt));
                     }
-                    TokenTree::Delimited(span, ref delimited) => {
+                    TokenTree::Delimited(span, delimited) => {
                         build_recur(sets, &delimited.tts);
                         first.replace_with(TtHandle::from_token_kind(
                             token::OpenDelim(delimited.delim),
                             span.open,
                         ));
                     }
-                    TokenTree::Sequence(sp, ref seq_rep) => {
+                    TokenTree::Sequence(sp, seq_rep) => {
                         let subfirst = build_recur(sets, &seq_rep.tts);
 
                         match sets.first.entry(sp.entire()) {
@@ -774,7 +816,7 @@ impl<'tt> FirstSets<'tt> {
         let mut first = TokenSet::empty();
         for tt in tts.iter() {
             assert!(first.maybe_empty);
-            match *tt {
+            match tt {
                 TokenTree::Token(..)
                 | TokenTree::MetaVar(..)
                 | TokenTree::MetaVarDecl(..)
@@ -782,14 +824,14 @@ impl<'tt> FirstSets<'tt> {
                     first.add_one(TtHandle::TtRef(tt));
                     return first;
                 }
-                TokenTree::Delimited(span, ref delimited) => {
+                TokenTree::Delimited(span, delimited) => {
                     first.add_one(TtHandle::from_token_kind(
                         token::OpenDelim(delimited.delim),
                         span.open,
                     ));
                     return first;
                 }
-                TokenTree::Sequence(sp, ref seq_rep) => {
+                TokenTree::Sequence(sp, seq_rep) => {
                     let subfirst_owned;
                     let subfirst = match self.first.get(&sp.entire()) {
                         Some(Some(subfirst)) => subfirst,
@@ -1011,7 +1053,7 @@ fn check_matcher_core<'tt>(
 
         // First, update `last` so that it corresponds to the set
         // of NT tokens that might end the sequence `... token`.
-        match *token {
+        match token {
             TokenTree::Token(..)
             | TokenTree::MetaVar(..)
             | TokenTree::MetaVarDecl(..)
@@ -1027,7 +1069,7 @@ fn check_matcher_core<'tt>(
                     suffix_first = build_suffix_first();
                 }
             }
-            TokenTree::Delimited(span, ref d) => {
+            TokenTree::Delimited(span, d) => {
                 let my_suffix = TokenSet::singleton(TtHandle::from_token_kind(
                     token::CloseDelim(d.delim),
                     span.close,
@@ -1040,7 +1082,7 @@ fn check_matcher_core<'tt>(
                 // against SUFFIX
                 continue 'each_token;
             }
-            TokenTree::Sequence(_, ref seq_rep) => {
+            TokenTree::Sequence(_, seq_rep) => {
                 suffix_first = build_suffix_first();
                 // The trick here: when we check the interior, we want
                 // to include the separator (if any) as a potential
@@ -1342,8 +1384,8 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
 }
 
 fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
-    match *tt {
-        mbe::TokenTree::Token(ref token) => pprust::token_to_string(&token).into(),
+    match tt {
+        mbe::TokenTree::Token(token) => pprust::token_to_string(&token).into(),
         mbe::TokenTree::MetaVar(_, name) => format!("${}", name),
         mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${}:{}", name, kind),
         mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${}:", name),

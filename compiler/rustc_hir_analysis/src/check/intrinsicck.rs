@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitable, UintTy};
 use rustc_session::lint;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{Symbol, DUMMY_SP};
 use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
 
@@ -253,10 +254,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         Some(asm_ty)
     }
 
-    pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, enclosing_id: hir::HirId) {
-        let hir = self.tcx.hir();
-        let enclosing_def_id = hir.local_def_id(enclosing_id).to_def_id();
-        let target_features = self.tcx.asm_target_features(enclosing_def_id);
+    pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, enclosing_id: LocalDefId) {
+        let target_features = self.tcx.asm_target_features(enclosing_id.to_def_id());
         let Some(asm_arch) = self.tcx.sess.asm_arch else {
             self.tcx.sess.delay_span_bug(DUMMY_SP, "target architecture does not support asm");
             return;
@@ -351,7 +350,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             }
 
             match *op {
-                hir::InlineAsmOperand::In { reg, ref expr } => {
+                hir::InlineAsmOperand::In { reg, expr } => {
                     self.check_asm_operand_type(
                         idx,
                         reg,
@@ -362,7 +361,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         &target_features,
                     );
                 }
-                hir::InlineAsmOperand::Out { reg, late: _, ref expr } => {
+                hir::InlineAsmOperand::Out { reg, late: _, expr } => {
                     if let Some(expr) = expr {
                         self.check_asm_operand_type(
                             idx,
@@ -375,7 +374,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                hir::InlineAsmOperand::InOut { reg, late: _, ref expr } => {
+                hir::InlineAsmOperand::InOut { reg, late: _, expr } => {
                     self.check_asm_operand_type(
                         idx,
                         reg,
@@ -386,7 +385,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         &target_features,
                     );
                 }
-                hir::InlineAsmOperand::SplitInOut { reg, late: _, ref in_expr, ref out_expr } => {
+                hir::InlineAsmOperand::SplitInOut { reg, late: _, in_expr, out_expr } => {
                     let in_ty = self.check_asm_operand_type(
                         idx,
                         reg,

@@ -31,6 +31,16 @@ fn test_no_semicolon() -> bool {
     return true;
 }
 
+#[rustfmt::skip]
+fn test_multiple_semicolon() -> bool {
+    return true;;;
+}
+
+#[rustfmt::skip]
+fn test_multiple_semicolon_with_spaces() -> bool {
+    return true;; ; ;
+}
+
 fn test_if_block() -> bool {
     if true {
         return true;
@@ -285,6 +295,16 @@ mod issue9416 {
 
 fn issue9947() -> Result<(), String> {
     do yeet "hello";
+}
+
+// without anyhow, but triggers the same bug I believe
+#[expect(clippy::useless_format)]
+fn issue10051() -> Result<String, String> {
+    if true {
+        return Ok(format!("ok!"));
+    } else {
+        return Err(format!("err!"));
+    }
 }
 
 fn main() {}

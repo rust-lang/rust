@@ -1,45 +1,48 @@
 use semver::Version;
-use std::io::ErrorKind;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
-    let result = Command::new("x").arg("--wrapper-version").stdout(Stdio::piped()).spawn();
-    // This runs the command inside a temporary directory.
-    // This allows us to compare output of result to see if `--wrapper-version` is not a recognized argument to x.
-    let temp_result = Command::new("x")
-        .arg("--wrapper-version")
-        .current_dir(std::env::temp_dir())
-        .stdout(Stdio::piped())
-        .spawn();
+    let cargo_list = Command::new(cargo).args(["install", "--list"]).stdout(Stdio::piped()).spawn();
 
-    let (child, temp_child) = match (result, temp_result) {
-        (Ok(child), Ok(temp_child)) => (child, temp_child),
-        (Err(e), _) | (_, Err(e)) => match e.kind() {
-            ErrorKind::NotFound => return,
-            _ => return tidy_error!(bad, "failed to run `x`: {}", e),
-        },
+    let child = match cargo_list {
+        Ok(child) => child,
+        Err(e) => return tidy_error!(bad, "failed to run `cargo`: {}", e),
     };
 
-    let output = child.wait_with_output().unwrap();
-    let temp_output = temp_child.wait_with_output().unwrap();
+    let cargo_list = child.wait_with_output().unwrap();
 
-    if output != temp_output {
-        return tidy_error!(
-            bad,
-            "Current version of x does not support the `--wrapper-version` argument\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
-        );
-    }
+    if cargo_list.status.success() {
+        let exe_list = String::from_utf8_lossy(&cargo_list.stdout);
+        let exe_list = exe_list.lines();
 
-    if output.status.success() {
-        let version = String::from_utf8_lossy(&output.stdout);
-        let version = Version::parse(version.trim_end()).unwrap();
+        let mut installed: Option<Version> = None;
+
+        for line in exe_list {
+            let mut iter = line.split_whitespace();
+            if iter.next() == Some("x") {
+                if let Some(version) = iter.next() {
+                    // Check this is the rust-lang/rust x tool installation since it should be
+                    // installed at a path containing `src/tools/x`.
+                    if let Some(path) = iter.next() {
+                        if path.contains(&"src/tools/x") {
+                            let version = version.strip_prefix("v").unwrap();
+                            installed = Some(Version::parse(version).unwrap());
+                            break;
+                        }
+                    };
+                }
+            } else {
+                continue;
+            }
+        }
+        // Unwrap the some if x is installed, otherwise return because it's fine if x isn't installed.
+        let installed = if let Some(i) = installed { i } else { return };
 
         if let Some(expected) = get_x_wrapper_version(root, cargo) {
-            if version < expected {
-                return tidy_error!(
-                    bad,
-                    "Current version of x is {version}, but the latest version is {expected}\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
+            if installed < expected {
+                return println!(
+                    "Current version of x is {installed}, but the latest version is {expected}\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
                 );
             }
         } else {
@@ -49,7 +52,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
             );
         }
     } else {
-        return tidy_error!(bad, "failed to check version of `x`: {}", output.status);
+        return tidy_error!(bad, "failed to check version of `x`: {}", cargo_list.status);
     }
 }
 

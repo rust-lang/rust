@@ -182,7 +182,7 @@ impl TyCtxt<'_> {
             if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
                 return id;
             }
-            let next = hir.get_parent_node(id);
+            let next = hir.parent_id(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }
@@ -234,16 +234,7 @@ pub fn explain_lint_level_source(
             err.note_once(&format!("`#[{}({})]` on by default", level.as_str(), name));
         }
         LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
-            let flag = match orig_level {
-                Level::Warn => "-W",
-                Level::Deny => "-D",
-                Level::Forbid => "-F",
-                Level::Allow => "-A",
-                Level::ForceWarn(_) => "--force-warn",
-                Level::Expect(_) => {
-                    unreachable!("the expect level does not have a commandline flag")
-                }
-            };
+            let flag = orig_level.to_cmd_flag();
             let hyphen_case_lint_name = name.replace('_', "-");
             if lint_flag_val.as_str() == name {
                 err.note_once(&format!(

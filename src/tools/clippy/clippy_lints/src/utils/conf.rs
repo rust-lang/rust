@@ -219,7 +219,8 @@ define_Conf! {
     ///
     /// #### Noteworthy
     ///
-    /// A type, say `SomeType`, listed in this configuration has the same behavior of `["SomeType" , "*"], ["*", "SomeType"]` in `arithmetic_side_effects_allowed_binary`.
+    /// A type, say `SomeType`, listed in this configuration has the same behavior of
+    /// `["SomeType" , "*"], ["*", "SomeType"]` in `arithmetic_side_effects_allowed_binary`.
     (arithmetic_side_effects_allowed: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
     /// Lint: ARITHMETIC_SIDE_EFFECTS.
     ///

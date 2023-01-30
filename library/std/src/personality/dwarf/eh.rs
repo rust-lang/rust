@@ -84,7 +84,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
             let cs_start = read_encoded_pointer(&mut reader, context, call_site_encoding)?;
             let cs_len = read_encoded_pointer(&mut reader, context, call_site_encoding)?;
             let cs_lpad = read_encoded_pointer(&mut reader, context, call_site_encoding)?;
-            let cs_action = reader.read_uleb128();
+            let cs_action_entry = reader.read_uleb128();
             // Callsite table is sorted by cs_start, so if we've passed the ip, we
             // may stop searching.
             if ip < func_start + cs_start {
@@ -95,7 +95,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
                     return Ok(EHAction::None);
                 } else {
                     let lpad = lpad_base + cs_lpad;
-                    return Ok(interpret_cs_action(cs_action, lpad));
+                    return Ok(interpret_cs_action(action_table as *mut u8, cs_action_entry, lpad));
                 }
             }
         }
@@ -113,26 +113,39 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
         let mut idx = ip;
         loop {
             let cs_lpad = reader.read_uleb128();
-            let cs_action = reader.read_uleb128();
+            let cs_action_entry = reader.read_uleb128();
             idx -= 1;
             if idx == 0 {
                 // Can never have null landing pad for sjlj -- that would have
                 // been indicated by a -1 call site index.
                 let lpad = (cs_lpad + 1) as usize;
-                return Ok(interpret_cs_action(cs_action, lpad));
+                return Ok(interpret_cs_action(action_table as *mut u8, cs_action_entry, lpad));
             }
         }
     }
 }
 
-fn interpret_cs_action(cs_action: u64, lpad: usize) -> EHAction {
-    if cs_action == 0 {
-        // If cs_action is 0 then this is a cleanup (Drop::drop). We run these
+unsafe fn interpret_cs_action(
+    action_table: *mut u8,
+    cs_action_entry: u64,
+    lpad: usize,
+) -> EHAction {
+    if cs_action_entry == 0 {
+        // If cs_action_entry is 0 then this is a cleanup (Drop::drop). We run these
         // for both Rust panics and foreign exceptions.
         EHAction::Cleanup(lpad)
     } else {
-        // Stop unwinding Rust panics at catch_unwind.
-        EHAction::Catch(lpad)
+        // If lpad != 0 and cs_action_entry != 0, we have to check ttype_index.
+        // If ttype_index == 0 under the condition, we take cleanup action.
+        let action_record = (action_table as *mut u8).offset(cs_action_entry as isize - 1);
+        let mut action_reader = DwarfReader::new(action_record);
+        let ttype_index = action_reader.read_sleb128();
+        if ttype_index == 0 {
+            EHAction::Cleanup(lpad)
+        } else {
+            // Stop unwinding Rust panics at catch_unwind.
+            EHAction::Catch(lpad)
+        }
     }
 }
 

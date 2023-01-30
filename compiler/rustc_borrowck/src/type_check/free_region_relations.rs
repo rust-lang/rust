@@ -98,7 +98,7 @@ impl UniversalRegionRelations<'_> {
         let upper_bounds = self.non_local_upper_bounds(fr);
 
         // In case we find more than one, reduce to one for
-        // convenience.  This is to prevent us from generating more
+        // convenience. This is to prevent us from generating more
         // complex constraints, but it will cause spurious errors.
         let post_dom = self.inverse_outlives.mutual_immediate_postdominator(upper_bounds);
 
@@ -128,7 +128,7 @@ impl UniversalRegionRelations<'_> {
         let lower_bounds = self.non_local_bounds(&self.outlives, fr);
 
         // In case we find more than one, reduce to one for
-        // convenience.  This is to prevent us from generating more
+        // convenience. This is to prevent us from generating more
         // complex constraints, but it will cause spurious errors.
         let post_dom = self.outlives.mutual_immediate_postdominator(lower_bounds);
 
@@ -359,14 +359,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                         .insert(ty::OutlivesPredicate(GenericKind::Param(param_b), r_a));
                 }
 
-                OutlivesBound::RegionSubProjection(r_a, projection_b) => {
+                OutlivesBound::RegionSubAlias(r_a, alias_b) => {
                     self.region_bound_pairs
-                        .insert(ty::OutlivesPredicate(GenericKind::Projection(projection_b), r_a));
-                }
-
-                OutlivesBound::RegionSubOpaque(r_a, def_id, substs) => {
-                    self.region_bound_pairs
-                        .insert(ty::OutlivesPredicate(GenericKind::Opaque(def_id, substs), r_a));
+                        .insert(ty::OutlivesPredicate(GenericKind::Alias(alias_b), r_a));
                 }
             }
         }

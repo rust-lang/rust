@@ -30,7 +30,12 @@ macro_rules! arena_types {
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
             [decode] borrowck_result:
                 rustc_middle::mir::BorrowCheckResult<'tcx>,
-            [] resolver: rustc_data_structures::steal::Steal<rustc_middle::ty::ResolverAstLowering>,
+            [] resolver: rustc_data_structures::steal::Steal<(
+                rustc_middle::ty::ResolverAstLowering,
+                rustc_data_structures::sync::Lrc<rustc_ast::Crate>,
+            )>,
+            [] output_filenames: std::sync::Arc<rustc_session::config::OutputFilenames>,
+            [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
             [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
@@ -100,7 +105,7 @@ macro_rules! arena_types {
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
             [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
             [decode] used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
-            [decode] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::def_id::LocalDefId>,
+            [decode] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
             [] dep_kind: rustc_middle::dep_graph::DepKindStruct<'tcx>,

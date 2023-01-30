@@ -30,18 +30,18 @@ RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7
 RUN add-apt-repository -y 'deb https://apt.dilos.org/dilos dilos2 main'
 
 ENV \
-    AR_x86_64_fuchsia=x86_64-fuchsia-ar \
-    CC_x86_64_fuchsia=x86_64-fuchsia-clang \
-    CFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
-    CXX_x86_64_fuchsia=x86_64-fuchsia-clang++ \
-    CXXFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
-    LDFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib" \
-    AR_aarch64_fuchsia=aarch64-fuchsia-ar \
-    CC_aarch64_fuchsia=aarch64-fuchsia-clang \
-    CFLAGS_aarch64_fuchsia="--target=aarch64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
-    CXX_aarch64_fuchsia=aarch64-fuchsia-clang++ \
-    CXXFLAGS_aarch64_fuchsia="--target=aarch64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
-    LDFLAGS_aarch64_fuchsia="--target=aarch64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib" \
+    AR_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-ar \
+    CC_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang \
+    CFLAGS_x86_64_unknown_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    CXX_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang++ \
+    CXXFLAGS_x86_64_unknown_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    LDFLAGS_x86_64_unknown_fuchsia="--target=x86_64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib" \
+    AR_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-ar \
+    CC_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-clang \
+    CFLAGS_aarch64_unknown_fuchsia="--target=aarch64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    CXX_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-clang++ \
+    CXXFLAGS_aarch64_unknown_fuchsia="--target=aarch64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    LDFLAGS_aarch64_unknown_fuchsia="--target=aarch64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib" \
     AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-ar \
     CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-gcc \
     CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
@@ -99,19 +99,19 @@ RUN /tmp/freebsd-toolchain.sh i686
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV CARGO_TARGET_X86_64_FUCHSIA_AR /usr/local/bin/llvm-ar
-ENV CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS \
+ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_AR /usr/local/bin/llvm-ar
+ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_RUSTFLAGS \
 -C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot \
 -Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot/lib \
 -Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib
-ENV CARGO_TARGET_AARCH64_FUCHSIA_AR /usr/local/bin/llvm-ar
-ENV CARGO_TARGET_AARCH64_FUCHSIA_RUSTFLAGS \
+ENV CARGO_TARGET_AARCH64_UNKNOWN_FUCHSIA_AR /usr/local/bin/llvm-ar
+ENV CARGO_TARGET_AARCH64_UNKNOWN_FUCHSIA_RUSTFLAGS \
 -C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot \
 -Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot/lib \
 -Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib
 
-ENV TARGETS=x86_64-fuchsia
-ENV TARGETS=$TARGETS,aarch64-fuchsia
+ENV TARGETS=x86_64-unknown-fuchsia
+ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris

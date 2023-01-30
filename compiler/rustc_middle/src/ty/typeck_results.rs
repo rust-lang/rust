@@ -1,12 +1,18 @@
 use crate::{
     hir::place::Place as HirPlace,
     infer::canonical::Canonical,
+    traits::ObligationCause,
     ty::{
         self, tls, BindingMode, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData,
         GenericArgKind, InternalSubsts, SubstsRef, Ty, UserSubsts,
     },
 };
-use rustc_data_structures::{fx::FxHashMap, sync::Lrc, unord::UnordSet, vec_map::VecMap};
+use rustc_data_structures::{
+    fx::FxHashMap,
+    sync::Lrc,
+    unord::{UnordItems, UnordSet},
+    vec_map::VecMap,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::{
@@ -20,11 +26,7 @@ use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
 use rustc_span::Span;
-use std::{
-    collections::hash_map::{self, Entry},
-    hash::Hash,
-    iter,
-};
+use std::{collections::hash_map::Entry, hash::Hash, iter};
 
 use super::RvalueScopes;
 
@@ -192,8 +194,13 @@ pub struct TypeckResults<'tcx> {
     /// that are live across the yield of this generator (if a generator).
     pub generator_interior_types: ty::Binder<'tcx, Vec<GeneratorInteriorTypeCause<'tcx>>>,
 
+    /// Stores the predicates that apply on generator witness types.
+    /// formatting modified file tests/ui/generator/retain-resume-ref.rs
+    pub generator_interior_predicates:
+        FxHashMap<LocalDefId, Vec<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
+
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
-    /// as `&[u8]`, depending on the pattern  in which they are used.
+    /// as `&[u8]`, depending on the pattern in which they are used.
     /// This hashset records all instances where we behave
     /// like this to allow `const_to_pat` to reliably handle this situation.
     pub treat_byte_string_as_slice: ItemLocalSet,
@@ -270,6 +277,7 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
             generator_interior_types: ty::Binder::dummy(Default::default()),
+            generator_interior_predicates: Default::default(),
             treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
         }
@@ -397,10 +405,10 @@ impl<'tcx> TypeckResults<'tcx> {
 
     /// Returns the type of an expression as a monotype.
     ///
-    /// NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
+    /// NB (1): This is the PRE-ADJUSTMENT TYPE for the expression. That is, in
     /// some cases, we insert `Adjustment` annotations such as auto-deref or
-    /// auto-ref.  The type returned by this function does not consider such
-    /// adjustments.  See `expr_ty_adjusted()` instead.
+    /// auto-ref. The type returned by this function does not consider such
+    /// adjustments. See `expr_ty_adjusted()` instead.
     ///
     /// NB (2): This type doesn't provide type parameter substitutions; e.g., if you
     /// ask for the type of `id` in `id(3)`, it will return `fn(&isize) -> isize`
@@ -567,8 +575,15 @@ impl<'a, V> LocalTableInContext<'a, V> {
         self.data.get(&id.local_id)
     }
 
-    pub fn iter(&self) -> hash_map::Iter<'_, hir::ItemLocalId, V> {
-        self.data.iter()
+    pub fn items(
+        &'a self,
+    ) -> UnordItems<(hir::ItemLocalId, &'a V), impl Iterator<Item = (hir::ItemLocalId, &'a V)>>
+    {
+        self.data.items().map(|(id, value)| (*id, value))
+    }
+
+    pub fn items_in_stable_order(&self) -> Vec<(ItemLocalId, &'a V)> {
+        self.data.to_sorted_stable_ord()
     }
 }
 
@@ -605,6 +620,16 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.remove(&id.local_id)
     }
+
+    pub fn extend(
+        &mut self,
+        items: UnordItems<(hir::HirId, V), impl Iterator<Item = (hir::HirId, V)>>,
+    ) {
+        self.data.extend(items.map(|(id, value)| {
+            validate_hir_id_for_typeck_results(self.hir_owner, id);
+            (id.local_id, value)
+        }))
+    }
 }
 
 rustc_index::newtype_index! {
@@ -626,7 +651,7 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub inferred_ty: Ty<'tcx>,
 }
 
-/// Canonicalized user type annotation.
+/// Canonical user type annotation.
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
 impl<'tcx> CanonicalUserType<'tcx> {
@@ -679,7 +704,7 @@ impl<'tcx> CanonicalUserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 

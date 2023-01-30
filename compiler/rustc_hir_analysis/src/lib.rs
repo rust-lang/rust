@@ -22,7 +22,7 @@ several major phases:
 4. Finally, the check phase then checks function bodies and so forth.
    Within the check phase, we check each function body one at a time
    (bodies of function expressions are checked as part of the
-   containing function).  Inference is used to supply types wherever
+   containing function). Inference is used to supply types wherever
    they are unknown. The actual checking of a function itself has
    several phases (check, regionck, writeback), as discussed in the
    documentation for the [`check`] module.
@@ -46,7 +46,7 @@ independently:
   local variables, type parameters, etc as necessary.
 
 - infer: finds the types to use for each type variable such that
-  all subtyping and assignment constraints are met.  In essence, the check
+  all subtyping and assignment constraints are met. In essence, the check
   module specifies the constraints, and the infer module solves them.
 
 ## Note
@@ -84,6 +84,7 @@ extern crate rustc_middle;
 pub mod check;
 
 pub mod astconv;
+pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;
@@ -99,20 +100,21 @@ mod variance;
 
 use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{Node, CRATE_HIR_ID};
+use rustc_hir::Node;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
 use rustc_session::{config::EntryFnType, parse::feature_err};
+use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use std::iter;
+use std::ops::Not;
 
 use astconv::AstConv;
 use bounds::Bounds;
@@ -180,19 +182,18 @@ fn require_same_types<'tcx>(
 }
 
 fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
-    let main_fnsig = tcx.fn_sig(main_def_id);
+    let main_fnsig = tcx.fn_sig(main_def_id).subst_identity();
     let main_span = tcx.def_span(main_def_id);
 
-    fn main_fn_diagnostics_hir_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> hir::HirId {
+    fn main_fn_diagnostics_def_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> LocalDefId {
         if let Some(local_def_id) = def_id.as_local() {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
             let hir_type = tcx.type_of(local_def_id);
             if !matches!(hir_type.kind(), ty::FnDef(..)) {
                 span_bug!(sp, "main has a non-function type: found `{}`", hir_type);
             }
-            hir_id
+            local_def_id
         } else {
-            CRATE_HIR_ID
+            CRATE_DEF_ID
         }
     }
 
@@ -202,12 +203,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. })) => {
-                if !generics.params.is_empty() {
-                    Some(generics.span)
-                } else {
-                    None
-                }
+            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
+                generics.params.is_empty().not().then(|| generics.span)
             }
             _ => {
                 span_bug!(tcx.def_span(def_id), "main has a non-function type");
@@ -221,7 +218,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. })) => {
+            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
                 Some(generics.where_clause_span)
             }
             _ => {
@@ -243,7 +240,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(ref fn_sig, _, _), .. })) => {
+            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(fn_sig, _, _), .. })) => {
                 Some(fn_sig.decl.output.span())
             }
             _ => {
@@ -253,7 +250,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     let mut error = false;
-    let main_diagnostics_hir_id = main_fn_diagnostics_hir_id(tcx, main_def_id, main_span);
+    let main_diagnostics_def_id = main_fn_diagnostics_def_id(tcx, main_def_id, main_span);
     let main_fn_generics = tcx.generics_of(main_def_id);
     let main_fn_predicates = tcx.predicates_of(main_def_id);
     if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
@@ -328,7 +325,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let param_env = ty::ParamEnv::empty();
         let cause = traits::ObligationCause::new(
             return_ty_span,
-            main_diagnostics_hir_id,
+            main_diagnostics_def_id,
             ObligationCauseCode::MainFunctionType,
         );
         let ocx = traits::ObligationCtxt::new(&infcx);
@@ -358,7 +355,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         tcx,
         &ObligationCause::new(
             main_span,
-            main_diagnostics_hir_id,
+            main_diagnostics_def_id,
             ObligationCauseCode::MainFunctionType,
         ),
         se_ty,
@@ -373,7 +370,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     match start_t.kind() {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
-                if let hir::ItemKind::Fn(ref sig, ref generics, _) = it.kind {
+                if let hir::ItemKind::Fn(sig, generics, _) = &it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         struct_span_err!(
@@ -446,9 +443,13 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
 
             require_same_types(
                 tcx,
-                &ObligationCause::new(start_span, start_id, ObligationCauseCode::StartFunctionType),
+                &ObligationCause::new(
+                    start_span,
+                    start_def_id,
+                    ObligationCauseCode::StartFunctionType,
+                ),
                 se_ty,
-                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id)),
+                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id).subst_identity()),
             );
         }
         _ => {
@@ -541,10 +542,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
-    // scope.  This is derived from the enclosing item-like thing.
+    // scope. This is derived from the enclosing item-like thing.
     let env_def_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
-    <dyn AstConv<'_>>::ast_ty_to_ty(&item_cx, hir_ty)
+    item_cx.astconv().ast_ty_to_ty(hir_ty)
 }
 
 pub fn hir_trait_to_predicates<'tcx>(
@@ -554,12 +555,11 @@ pub fn hir_trait_to_predicates<'tcx>(
 ) -> Bounds<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
-    // scope.  This is derived from the enclosing item-like thing.
+    // scope. This is derived from the enclosing item-like thing.
     let env_def_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
     let mut bounds = Bounds::default();
-    let _ = <dyn AstConv<'_>>::instantiate_poly_trait_ref(
-        &item_cx,
+    let _ = &item_cx.astconv().instantiate_poly_trait_ref(
         hir_trait,
         DUMMY_SP,
         ty::BoundConstness::NotConst,

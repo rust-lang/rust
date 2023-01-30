@@ -1,8 +1,6 @@
-FROM ubuntu:18.04
-# FIXME: when bumping the version, remove the Python 3.6-specific changes in
-# the reuse-requirements.in file, regenerate reuse-requirements.txt and remove
-# this comment.
+FROM ubuntu:22.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
@@ -45,6 +43,7 @@ ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
            python3 ../x.py test --stage 0 src/tools/compiletest && \
            python3 ../x.py test --stage 0 core alloc std test proc_macro && \
            # Build both public and internal documentation.
+           RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc --stage 0 compiler && \
            RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc --stage 0 library/test && \
            /scripts/validate-toolstate.sh && \
            /scripts/validate-error-codes.sh && \

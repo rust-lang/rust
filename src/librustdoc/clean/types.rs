@@ -62,8 +62,6 @@ pub(crate) enum ItemId {
     Auto { trait_: DefId, for_: DefId },
     /// Identifier that is used for blanket implementations.
     Blanket { impl_id: DefId, for_: DefId },
-    /// Identifier for primitive types.
-    Primitive(PrimitiveType, CrateNum),
 }
 
 impl ItemId {
@@ -73,7 +71,6 @@ impl ItemId {
             ItemId::Auto { for_: id, .. }
             | ItemId::Blanket { for_: id, .. }
             | ItemId::DefId(id) => id.is_local(),
-            ItemId::Primitive(_, krate) => krate == LOCAL_CRATE,
         }
     }
 
@@ -98,7 +95,6 @@ impl ItemId {
             ItemId::Auto { for_: id, .. }
             | ItemId::Blanket { for_: id, .. }
             | ItemId::DefId(id) => id.krate,
-            ItemId::Primitive(_, krate) => krate,
         }
     }
 }
@@ -443,17 +439,6 @@ impl Item {
         self.attrs.doc_value()
     }
 
-    /// Convenience wrapper around [`Self::from_def_id_and_parts`] which converts
-    /// `hir_id` to a [`DefId`]
-    pub(crate) fn from_hir_id_and_parts(
-        hir_id: hir::HirId,
-        name: Option<Symbol>,
-        kind: ItemKind,
-        cx: &mut DocContext<'_>,
-    ) -> Item {
-        Item::from_def_id_and_parts(cx.tcx.hir().local_def_id(hir_id).to_def_id(), name, kind, cx)
-    }
-
     pub(crate) fn from_def_id_and_parts(
         def_id: DefId,
         name: Option<Symbol>,
@@ -669,7 +654,7 @@ impl Item {
             tcx: TyCtxt<'_>,
             asyncness: hir::IsAsync,
         ) -> hir::FnHeader {
-            let sig = tcx.fn_sig(def_id);
+            let sig = tcx.fn_sig(def_id).skip_binder();
             let constness =
                 if tcx.is_const_fn(def_id) && is_unstable_const_fn(tcx, def_id).is_none() {
                     hir::Constness::Const
@@ -680,7 +665,8 @@ impl Item {
         }
         let header = match *self.kind {
             ItemKind::ForeignFunctionItem(_) => {
-                let abi = tcx.fn_sig(self.item_id.as_def_id().unwrap()).abi();
+                let def_id = self.item_id.as_def_id().unwrap();
+                let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
                     unsafety: if abi == Abi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, self.item_id.as_def_id().unwrap())
@@ -688,7 +674,14 @@ impl Item {
                         hir::Unsafety::Unsafe
                     },
                     abi,
-                    constness: hir::Constness::NotConst,
+                    constness: if abi == Abi::RustIntrinsic
+                        && tcx.is_const_fn(def_id)
+                        && is_unstable_const_fn(tcx, def_id).is_none()
+                    {
+                        hir::Constness::Const
+                    } else {
+                        hir::Constness::NotConst
+                    },
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
@@ -707,15 +700,13 @@ impl Item {
         let def_id = match self.item_id {
             // Anything but DefId *shouldn't* matter, but return a reasonable value anyway.
             ItemId::Auto { .. } | ItemId::Blanket { .. } => return None,
-            // Primitives and Keywords are written in the source code as private modules.
-            // The modules need to be private so that nobody actually uses them, but the
-            // keywords and primitives that they are documenting are public.
-            ItemId::Primitive(..) => return Some(Visibility::Public),
             ItemId::DefId(def_id) => def_id,
         };
 
         match *self.kind {
-            // Explication on `ItemId::Primitive` just above.
+            // Primitives and Keywords are written in the source code as private modules.
+            // The modules need to be private so that nobody actually uses them, but the
+            // keywords and primitives that they are documenting are public.
             ItemKind::KeywordItem | ItemKind::PrimitiveItem(_) => return Some(Visibility::Public),
             // Variant fields inherit their enum's visibility.
             StructFieldItem(..) if is_field_vis_inherited(tcx, def_id) => {
@@ -2414,10 +2405,7 @@ impl ConstantKind {
 
     pub(crate) fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
-            ConstantKind::TyConst { .. } => false,
-            ConstantKind::Extern { def_id } => def_id.as_local().map_or(false, |def_id| {
-                is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
-            }),
+            ConstantKind::TyConst { .. } | ConstantKind::Extern { .. } => false,
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 is_literal_expr(tcx, body.hir_id)
             }
@@ -2493,6 +2481,10 @@ impl Import {
 
     pub(crate) fn new_glob(source: ImportSource, should_be_displayed: bool) -> Self {
         Self { kind: ImportKind::Glob, source, should_be_displayed }
+    }
+
+    pub(crate) fn imported_item_is_doc_hidden(&self, tcx: TyCtxt<'_>) -> bool {
+        self.source.did.map_or(false, |did| tcx.is_doc_hidden(did))
     }
 }
 

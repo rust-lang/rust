@@ -195,6 +195,6 @@ impl AArch64InlineAsmReg {
             (modifier.unwrap_or('v'), self as u32 - Self::v0 as u32)
         };
         assert!(index < 32);
-        write!(out, "{}{}", prefix, index)
+        write!(out, "{prefix}{index}")
     }
 }

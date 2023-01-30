@@ -92,6 +92,8 @@
 	--scrape-example-help-color: #eee;
 	--scrape-example-help-hover-border-color: #fff;
 	--scrape-example-help-hover-color: #fff;
+	--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
+	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 }
 
 #search-tabs > button:not(.selected) {
@@ -102,11 +104,4 @@
 #search-tabs > button:hover, #search-tabs > button.selected {
 	border-top-color: #0089ff;
 	background-color: #353535;
-}
-
-.scraped-example:not(.expanded) .code-wrapper::before {
-	background: linear-gradient(to bottom, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
-}
-.scraped-example:not(.expanded) .code-wrapper::after {
-	background: linear-gradient(to top, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
 }

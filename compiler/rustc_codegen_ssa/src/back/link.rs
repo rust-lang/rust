@@ -445,7 +445,7 @@ fn link_rlib<'a>(
 /// Extract all symbols defined in raw-dylib libraries, collated by library name.
 ///
 /// If we have multiple extern blocks that specify symbols defined in the same raw-dylib library,
-/// then the CodegenResults value contains one NativeLib instance for each block.  However, the
+/// then the CodegenResults value contains one NativeLib instance for each block. However, the
 /// linker appears to expect only a single import library for each library used, so we need to
 /// collate the symbols together by library name before generating the import libraries.
 fn collate_raw_dylibs<'a, 'b>(
@@ -599,7 +599,8 @@ fn link_dwarf_object<'a>(
     cg_results: &CodegenResults,
     executable_out_filename: &Path,
 ) {
-    let dwp_out_filename = executable_out_filename.with_extension("dwp");
+    let mut dwp_out_filename = executable_out_filename.to_path_buf().into_os_string();
+    dwp_out_filename.push(".dwp");
     debug!(?dwp_out_filename, ?executable_out_filename);
 
     #[derive(Default)]
@@ -1197,7 +1198,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                         if cfg!(any(target_os = "solaris", target_os = "illumos")) {
                             // On historical Solaris systems, "cc" may have
                             // been Sun Studio, which is not flag-compatible
-                            // with "gcc".  This history casts a long shadow,
+                            // with "gcc". This history casts a long shadow,
                             // and many modern illumos distributions today
                             // ship GCC as "gcc" without also making it
                             // available as "cc".
@@ -1231,12 +1232,21 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     sess.emit_fatal(errors::LinkerFileStem);
                 });
 
+                // Remove any version postfix.
+                let stem = stem
+                    .rsplit_once('-')
+                    .and_then(|(lhs, rhs)| rhs.chars().all(char::is_numeric).then_some(lhs))
+                    .unwrap_or(stem);
+
+                // GCC can have an optional target prefix.
                 let flavor = if stem == "emcc" {
                     LinkerFlavor::EmCc
                 } else if stem == "gcc"
                     || stem.ends_with("-gcc")
+                    || stem == "g++"
+                    || stem.ends_with("-g++")
                     || stem == "clang"
-                    || stem.ends_with("-clang")
+                    || stem == "clang++"
                 {
                     LinkerFlavor::from_cli(LinkerFlavorCli::Gcc, &sess.target)
                 } else if stem == "wasm-ld" || stem.ends_with("-wasm-ld") {
@@ -1288,12 +1298,6 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 fn preserve_objects_for_their_debuginfo(sess: &Session) -> (bool, bool) {
     // If the objects don't have debuginfo there's nothing to preserve.
     if sess.opts.debuginfo == config::DebugInfo::None {
-        return (false, false);
-    }
-
-    // If we're only producing artifacts that are archives, no need to preserve
-    // the objects as they're losslessly contained inside the archives.
-    if sess.crate_types().iter().all(|&x| x.is_archive()) {
         return (false, false);
     }
 
@@ -2616,7 +2620,7 @@ fn add_static_crate<'a>(
             sess.target.no_builtins || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
 
         let mut archive = archive_builder_builder.new_archive_builder(sess);
-        if let Err(e) = archive.add_archive(
+        if let Err(error) = archive.add_archive(
             cratepath,
             Box::new(move |f| {
                 if f == METADATA_FILENAME {
@@ -2656,7 +2660,7 @@ fn add_static_crate<'a>(
                 false
             }),
         ) {
-            sess.fatal(&format!("failed to build archive from rlib: {}", e));
+            sess.emit_fatal(errors::RlibArchiveBuildFailure { error });
         }
         if archive.build(&dst) {
             link_upstream(&dst);

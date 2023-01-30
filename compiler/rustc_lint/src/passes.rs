@@ -4,6 +4,7 @@ use rustc_ast as ast;
 use rustc_hir as hir;
 use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::lint::LintPass;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -36,7 +37,7 @@ macro_rules! late_lint_methods {
                 b: &'tcx hir::FnDecl<'tcx>,
                 c: &'tcx hir::Body<'tcx>,
                 d: Span,
-                e: hir::HirId);
+                e: LocalDefId);
             fn check_trait_item(a: &'tcx hir::TraitItem<'tcx>);
             fn check_impl_item(a: &'tcx hir::ImplItem<'tcx>);
             fn check_impl_item_post(a: &'tcx hir::ImplItem<'tcx>);
@@ -171,6 +172,9 @@ macro_rules! early_lint_methods {
 
             /// Counterpart to `enter_lint_attrs`.
             fn exit_lint_attrs(a: &[ast::Attribute]);
+
+            fn enter_where_predicate(a: &ast::WherePredicate);
+            fn exit_where_predicate(a: &ast::WherePredicate);
         ]);
     )
 }

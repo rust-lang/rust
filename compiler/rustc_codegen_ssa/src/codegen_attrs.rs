@@ -214,7 +214,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
             if validate_fn_only_attr(attr.span)
-                && !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. })
+                && !matches!(tcx.fn_sig(did).skip_binder().abi(), abi::Abi::C { .. })
             {
                 struct_span_err!(
                     tcx.sess,
@@ -234,7 +234,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::track_caller) {
             if !tcx.is_closure(did.to_def_id())
                 && validate_fn_only_attr(attr.span)
-                && tcx.fn_sig(did).abi() != abi::Abi::Rust
+                && tcx.fn_sig(did).skip_binder().abi() != abi::Abi::Rust
             {
                 struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
                     .emit();
@@ -266,7 +266,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             }
         } else if attr.has_name(sym::target_feature) {
             if !tcx.is_closure(did.to_def_id())
-                && tcx.fn_sig(did).unsafety() == hir::Unsafety::Normal
+                && tcx.fn_sig(did).skip_binder().unsafety() == hir::Unsafety::Normal
             {
                 if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                     // The `#[target_feature]` attribute is allowed on
@@ -658,13 +658,13 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
         sole_meta_list
     {
         // According to the table at https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header,
-        // the ordinal must fit into 16 bits.  Similarly, the Ordinal field in COFFShortExport (defined
+        // the ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
         // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import information
         // to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
         //
         // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for this:
         // both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that specifies
-        // a zero ordinal.  However, llvm-dlltool is perfectly happy to generate an import library
+        // a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import library
         // for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an import
         // library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I don't know yet
         // if the resulting EXE runs, as I haven't yet built the necessary DLL -- see earlier comment

@@ -21,6 +21,7 @@
 #![feature(never_type)]
 #![feature(result_option_inspect)]
 #![feature(type_alias_impl_trait)]
+#![feature(min_specialization)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]
@@ -35,7 +36,6 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate smallvec;
 
-pub mod autoderef;
 pub mod errors;
 pub mod infer;
 pub mod solve;

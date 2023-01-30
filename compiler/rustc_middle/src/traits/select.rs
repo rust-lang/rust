@@ -131,7 +131,9 @@ pub enum SelectionCandidate<'tcx> {
 
     /// Implementation of a `Fn`-family trait by one of the anonymous types
     /// generated for an `||` expression.
-    ClosureCandidate,
+    ClosureCandidate {
+        is_const: bool,
+    },
 
     /// Implementation of a `Generator` trait by one of the anonymous types
     /// generated for a generator.

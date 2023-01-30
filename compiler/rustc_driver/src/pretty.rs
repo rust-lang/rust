@@ -9,14 +9,13 @@ use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::{Input, PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
+use rustc_session::config::{PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
 use std::fmt::Write;
-use std::path::Path;
 
 pub use self::PpMode::*;
 pub use self::PpSourceMode::*;
@@ -345,8 +344,8 @@ impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
     }
 }
 
-fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
-    let src_name = input.source_name();
+fn get_source(sess: &Session) -> (String, FileName) {
+    let src_name = sess.io.input.source_name();
     let src = String::clone(
         sess.source_map()
             .get_source_file(&src_name)
@@ -358,9 +357,9 @@ fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     (src, src_name)
 }
 
-fn write_or_print(out: &str, ofile: Option<&Path>, sess: &Session) {
-    match ofile {
-        None => print!("{}", out),
+fn write_or_print(out: &str, sess: &Session) {
+    match &sess.io.output_file {
+        None => print!("{out}"),
         Some(p) => {
             if let Err(e) = std::fs::write(p, out) {
                 sess.emit_fatal(UnprettyDumpFail {
@@ -372,14 +371,8 @@ fn write_or_print(out: &str, ofile: Option<&Path>, sess: &Session) {
     }
 }
 
-pub fn print_after_parsing(
-    sess: &Session,
-    input: &Input,
-    krate: &ast::Crate,
-    ppm: PpMode,
-    ofile: Option<&Path>,
-) {
-    let (src, src_name) = get_source(input, sess);
+pub fn print_after_parsing(sess: &Session, krate: &ast::Crate, ppm: PpMode) {
+    let (src, src_name) = get_source(sess);
 
     let out = match ppm {
         Source(s) => {
@@ -402,27 +395,21 @@ pub fn print_after_parsing(
         }
         AstTree(PpAstTreeMode::Normal) => {
             debug!("pretty printing AST tree");
-            format!("{:#?}", krate)
+            format!("{krate:#?}")
         }
         _ => unreachable!(),
     };
 
-    write_or_print(&out, ofile, sess);
+    write_or_print(&out, sess);
 }
 
-pub fn print_after_hir_lowering<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    input: &Input,
-    krate: &ast::Crate,
-    ppm: PpMode,
-    ofile: Option<&Path>,
-) {
+pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, ppm: PpMode) {
     if ppm.needs_analysis() {
-        abort_on_err(print_with_analysis(tcx, ppm, ofile), tcx.sess);
+        abort_on_err(print_with_analysis(tcx, ppm), tcx.sess);
         return;
     }
 
-    let (src, src_name) = get_source(input, tcx.sess);
+    let (src, src_name) = get_source(tcx.sess);
 
     let out = match ppm {
         Source(s) => {
@@ -433,7 +420,7 @@ pub fn print_after_hir_lowering<'tcx>(
                 let parse = &sess.parse_sess;
                 pprust::print_crate(
                     sess.source_map(),
-                    krate,
+                    &tcx.resolver_for_lowering(()).borrow().1,
                     src_name,
                     src,
                     annotation.pp_ann(),
@@ -446,7 +433,7 @@ pub fn print_after_hir_lowering<'tcx>(
 
         AstTree(PpAstTreeMode::Expanded) => {
             debug!("pretty-printing expanded AST");
-            format!("{:#?}", krate)
+            format!("{:#?}", tcx.resolver_for_lowering(()).borrow().1)
         }
 
         Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, hir_map| {
@@ -474,18 +461,14 @@ pub fn print_after_hir_lowering<'tcx>(
         _ => unreachable!(),
     };
 
-    write_or_print(&out, ofile, tcx.sess);
+    write_or_print(&out, tcx.sess);
 }
 
 // In an ideal world, this would be a public function called by the driver after
 // analysis is performed. However, we want to call `phase_3_run_analysis_passes`
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
-fn print_with_analysis(
-    tcx: TyCtxt<'_>,
-    ppm: PpMode,
-    ofile: Option<&Path>,
-) -> Result<(), ErrorGuaranteed> {
+fn print_with_analysis(tcx: TyCtxt<'_>, ppm: PpMode) -> Result<(), ErrorGuaranteed> {
     tcx.analysis(())?;
     let out = match ppm {
         Mir => {
@@ -515,10 +498,25 @@ fn print_with_analysis(
             out
         }
 
+        ThirFlat => {
+            let mut out = String::new();
+            abort_on_err(rustc_hir_analysis::check_crate(tcx), tcx.sess);
+            debug!("pretty printing THIR flat");
+            for did in tcx.hir().body_owners() {
+                let _ = writeln!(
+                    out,
+                    "{:?}:\n{}\n",
+                    did,
+                    tcx.thir_flat(ty::WithOptConstParam::unknown(did))
+                );
+            }
+            out
+        }
+
         _ => unreachable!(),
     };
 
-    write_or_print(&out, ofile, tcx.sess);
+    write_or_print(&out, tcx.sess);
 
     Ok(())
 }

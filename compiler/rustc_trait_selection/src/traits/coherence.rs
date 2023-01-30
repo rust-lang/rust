@@ -17,7 +17,6 @@ use crate::traits::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
@@ -80,7 +79,7 @@ pub fn overlapping_impls(
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
     let may_overlap = match (impl1_ref, impl2_ref) {
-        (Some(a), Some(b)) => iter::zip(a.substs, b.substs)
+        (Some(a), Some(b)) => iter::zip(a.skip_binder().substs, b.skip_binder().substs)
             .all(|(arg1, arg2)| drcx.generic_args_may_unify(arg1, arg2)),
         (None, None) => {
             let self_ty1 = tcx.type_of(impl1_def_id);
@@ -126,7 +125,7 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
     let header = ty::ImplHeader {
         impl_def_id,
         self_ty: tcx.bound_type_of(impl_def_id).subst(tcx, impl_substs),
-        trait_ref: tcx.bound_impl_trait_ref(impl_def_id).map(|i| i.subst(tcx, impl_substs)),
+        trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.subst(tcx, impl_substs)),
         predicates: tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs).predicates,
     };
 
@@ -382,18 +381,14 @@ fn resolve_negative_obligation<'tcx>(
         return false;
     }
 
-    let (body_id, body_def_id) = if let Some(body_def_id) = body_def_id.as_local() {
-        (tcx.hir().local_def_id_to_hir_id(body_def_id), body_def_id)
-    } else {
-        (CRATE_HIR_ID, CRATE_DEF_ID)
-    };
+    let body_def_id = body_def_id.as_local().unwrap_or(CRATE_DEF_ID);
 
     let ocx = ObligationCtxt::new(&infcx);
     let wf_tys = ocx.assumed_wf_types(param_env, DUMMY_SP, body_def_id);
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
         Some(&infcx),
-        infcx.implied_bounds_tys(param_env, body_id, wf_tys),
+        infcx.implied_bounds_tys(param_env, body_def_id, wf_tys),
     );
 
     infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
@@ -401,12 +396,12 @@ fn resolve_negative_obligation<'tcx>(
     infcx.resolve_regions(&outlives_env).is_empty()
 }
 
+#[instrument(level = "debug", skip(tcx), ret)]
 pub fn trait_ref_is_knowable<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), Conflict> {
-    debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
-    if orphan_check_trait_ref(tcx, trait_ref, InCrate::Remote).is_ok() {
+    if orphan_check_trait_ref(trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.
         return Err(Conflict::Downstream);
@@ -429,11 +424,9 @@ pub fn trait_ref_is_knowable<'tcx>(
     // and if we are an intermediate owner, then we don't care
     // about future-compatibility, which means that we're OK if
     // we are an owner.
-    if orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok() {
-        debug!("trait_ref_is_knowable: orphan check passed");
+    if orphan_check_trait_ref(trait_ref, InCrate::Local).is_ok() {
         Ok(())
     } else {
-        debug!("trait_ref_is_knowable: nonlocal, nonfundamental, unowned");
         Err(Conflict::Upstream)
     }
 }
@@ -445,6 +438,7 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
     trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, sym::fundamental)
 }
 
+#[derive(Debug)]
 pub enum OrphanCheckErr<'tcx> {
     NonLocalInputType(Vec<(Ty<'tcx>, bool /* Is this the first input type? */)>),
     UncoveredTy(Ty<'tcx>, Option<Ty<'tcx>>),
@@ -456,13 +450,12 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
+#[instrument(level = "debug", skip(tcx), ret)]
 pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanCheckErr<'_>> {
-    debug!("orphan_check({:?})", impl_def_id);
-
     // We only except this routine to be invoked on implementations
     // of a trait, not inherent implementations.
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-    debug!("orphan_check: trait_ref={:?}", trait_ref);
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
+    debug!(?trait_ref);
 
     // If the *trait* is local to the crate, ok.
     if trait_ref.def_id.is_local() {
@@ -470,7 +463,7 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
         return Ok(());
     }
 
-    orphan_check_trait_ref(tcx, trait_ref, InCrate::Local)
+    orphan_check_trait_ref(trait_ref, InCrate::Local)
 }
 
 /// Checks whether a trait-ref is potentially implementable by a crate.
@@ -559,13 +552,11 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
+#[instrument(level = "trace", ret)]
 fn orphan_check_trait_ref<'tcx>(
-    tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     in_crate: InCrate,
 ) -> Result<(), OrphanCheckErr<'tcx>> {
-    debug!("orphan_check_trait_ref(trait_ref={:?}, in_crate={:?})", trait_ref, in_crate);
-
     if trait_ref.needs_infer() && trait_ref.needs_subst() {
         bug!(
             "can't orphan check a trait ref with both params and inference variables {:?}",
@@ -573,7 +564,7 @@ fn orphan_check_trait_ref<'tcx>(
         );
     }
 
-    let mut checker = OrphanChecker::new(tcx, in_crate);
+    let mut checker = OrphanChecker::new(in_crate);
     match trait_ref.visit_with(&mut checker) {
         ControlFlow::Continue(()) => Err(OrphanCheckErr::NonLocalInputType(checker.non_local_tys)),
         ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(ty)) => {
@@ -592,7 +583,6 @@ fn orphan_check_trait_ref<'tcx>(
 }
 
 struct OrphanChecker<'tcx> {
-    tcx: TyCtxt<'tcx>,
     in_crate: InCrate,
     in_self_ty: bool,
     /// Ignore orphan check failures and exclusively search for the first
@@ -602,9 +592,8 @@ struct OrphanChecker<'tcx> {
 }
 
 impl<'tcx> OrphanChecker<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, in_crate: InCrate) -> Self {
+    fn new(in_crate: InCrate) -> Self {
         OrphanChecker {
-            tcx,
             in_crate,
             in_self_ty: true,
             search_first_local_ty: false,
@@ -614,12 +603,12 @@ impl<'tcx> OrphanChecker<'tcx> {
 
     fn found_non_local_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx>> {
         self.non_local_tys.push((t, self.in_self_ty));
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn found_param_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx>> {
         if self.search_first_local_ty {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         } else {
             ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(t))
         }
@@ -641,7 +630,7 @@ enum OrphanCheckEarlyExit<'tcx> {
 impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
     type BreakTy = OrphanCheckEarlyExit<'tcx>;
     fn visit_region(&mut self, _r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -697,11 +686,17 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
                 }
             }
             ty::Error(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
-            ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
-                self.tcx.sess.delay_span_bug(
-                    DUMMY_SP,
-                    format!("ty_is_local invoked on closure or generator: {:?}", ty),
-                );
+            ty::Closure(did, ..) | ty::Generator(did, ..) => {
+                if self.def_id_is_local(did) {
+                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+                } else {
+                    self.found_non_local_ty(ty)
+                }
+            }
+            // This should only be created when checking whether we have to check whether some
+            // auto trait impl applies. There will never be multiple impls, so we can just
+            // act as if it were a local type here.
+            ty::GeneratorWitness(_) | ty::GeneratorWitnessMIR(..) => {
                 ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
             }
             ty::Alias(ty::Opaque, ..) => {
@@ -749,13 +744,13 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
     ///
     /// This means that we can completely ignore constants during the orphan check.
     ///
-    /// See `src/test/ui/coherence/const-generics-orphan-check-ok.rs` for examples.
+    /// See `tests/ui/coherence/const-generics-orphan-check-ok.rs` for examples.
     ///
     /// [^1]: This might not hold for function pointers or trait objects in the future.
     /// As these should be quite rare as const arguments and especially rare as impl
     /// parameters, allowing uncovered const parameters in impls seems more useful
     /// than allowing `impl<T> Trait<local_fn_ptr, T> for i32` to compile.
     fn visit_const(&mut self, _c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }

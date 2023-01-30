@@ -228,7 +228,7 @@ fn completion_item(
     max_relevance: u32,
     item: CompletionItem,
 ) {
-    let insert_replace_support = config.insert_replace_support().then(|| tdpp.position);
+    let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let mut additional_text_edits = Vec::new();
 
     // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -258,7 +258,7 @@ fn completion_item(
         text_edit.unwrap()
     };
 
-    let insert_text_format = item.is_snippet().then(|| lsp_types::InsertTextFormat::SNIPPET);
+    let insert_text_format = item.is_snippet().then_some(lsp_types::InsertTextFormat::SNIPPET);
     let tags = item.deprecated().then(|| vec![lsp_types::CompletionItemTag::DEPRECATED]);
     let command = if item.trigger_call_info() && config.client_commands().trigger_parameter_hints {
         Some(command::trigger_parameter_hints())
@@ -342,7 +342,7 @@ fn completion_item(
         // by the client. Hex format is used because it is easier to
         // visually compare very large values, which the sort text
         // tends to be since it is the opposite of the score.
-        res.sort_text = Some(format!("{:08x}", sort_score));
+        res.sort_text = Some(format!("{sort_score:08x}"));
     }
 }
 
@@ -434,42 +434,52 @@ pub(crate) fn inlay_hint(
         InlayKind::ParameterHint if render_colons => inlay_hint.label.append_str(":"),
         InlayKind::TypeHint if render_colons => inlay_hint.label.prepend_str(": "),
         InlayKind::ClosureReturnTypeHint => inlay_hint.label.prepend_str(" -> "),
+        InlayKind::DiscriminantHint => inlay_hint.label.prepend_str(" = "),
         _ => {}
     }
 
     Ok(lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // before annotated thing
-            InlayKind::ParameterHint | InlayKind::AdjustmentHint | InlayKind::BindingModeHint => {
-                position(line_index, inlay_hint.range.start())
-            }
+            InlayKind::OpeningParenthesis
+            | InlayKind::ParameterHint
+            | InlayKind::AdjustmentHint
+            | InlayKind::BindingModeHint => position(line_index, inlay_hint.range.start()),
             // after annotated thing
             InlayKind::ClosureReturnTypeHint
             | InlayKind::TypeHint
+            | InlayKind::DiscriminantHint
             | InlayKind::ChainingHint
             | InlayKind::GenericParamListHint
-            | InlayKind::AdjustmentHintClosingParenthesis
+            | InlayKind::ClosingParenthesis
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::LifetimeHint
             | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
         },
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
             InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
-            InlayKind::AdjustmentHintClosingParenthesis
+            InlayKind::ClosingParenthesis
+            | InlayKind::DiscriminantHint
+            | InlayKind::OpeningParenthesis
             | InlayKind::BindingModeHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
             | InlayKind::AdjustmentHint
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::LifetimeHint
             | InlayKind::ParameterHint => false,
         }),
         padding_right: Some(match inlay_hint.kind {
-            InlayKind::AdjustmentHintClosingParenthesis
+            InlayKind::ClosingParenthesis
+            | InlayKind::OpeningParenthesis
             | InlayKind::ChainingHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
             | InlayKind::AdjustmentHint
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::TypeHint
+            | InlayKind::DiscriminantHint
             | InlayKind::ClosingBraceHint => false,
             InlayKind::BindingModeHint => inlay_hint.label.as_simple_str() != Some("&"),
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
@@ -479,11 +489,14 @@ pub(crate) fn inlay_hint(
             InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
                 Some(lsp_types::InlayHintKind::TYPE)
             }
-            InlayKind::AdjustmentHintClosingParenthesis
+            InlayKind::ClosingParenthesis
+            | InlayKind::DiscriminantHint
+            | InlayKind::OpeningParenthesis
             | InlayKind::BindingModeHint
             | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint
             | InlayKind::AdjustmentHint
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::ClosingBraceHint => None,
         },
         text_edits: None,
@@ -492,7 +505,10 @@ pub(crate) fn inlay_hint(
                 let uri = url(snap, file_id);
                 let line_index = snap.file_line_index(file_id).ok()?;
 
-                let text_document = lsp_types::TextDocumentIdentifier { uri };
+                let text_document = lsp_types::VersionedTextDocumentIdentifier {
+                    version: snap.url_file_version(&uri)?,
+                    uri,
+                };
                 to_value(lsp_ext::InlayHintResolveData {
                     text_document,
                     position: lsp_ext::PositionOrRange::Position(position(&line_index, offset)),
@@ -501,7 +517,10 @@ pub(crate) fn inlay_hint(
             }
             Some(ide::InlayTooltip::HoverRanged(file_id, text_range)) => {
                 let uri = url(snap, file_id);
-                let text_document = lsp_types::TextDocumentIdentifier { uri };
+                let text_document = lsp_types::VersionedTextDocumentIdentifier {
+                    version: snap.url_file_version(&uri)?,
+                    uri,
+                };
                 let line_index = snap.file_line_index(file_id).ok()?;
                 to_value(lsp_ext::InlayHintResolveData {
                     text_document,
@@ -1103,7 +1122,7 @@ pub(crate) fn code_action(
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
         (None, Some((index, code_action_params))) => {
             res.data = Some(lsp_ext::CodeActionData {
-                id: format!("{}:{}:{}", assist.id.0, assist.id.1.name(), index),
+                id: format!("{}:{}:{index}", assist.id.0, assist.id.1.name()),
                 code_action_params,
             });
         }
@@ -1164,7 +1183,10 @@ pub(crate) fn code_lens(
             let r = runnable(snap, run)?;
 
             let lens_config = snap.config.lens();
-            if lens_config.run && client_commands_config.run_single {
+            if lens_config.run
+                && client_commands_config.run_single
+                && r.args.workspace_root.is_some()
+            {
                 let command = command::run_single(&r, &title);
                 acc.push(lsp_types::CodeLens {
                     range: annotation_range,
@@ -1339,7 +1361,7 @@ pub(crate) fn implementation_title(count: usize) -> String {
     if count == 1 {
         "1 implementation".into()
     } else {
-        format!("{} implementations", count)
+        format!("{count} implementations")
     }
 }
 
@@ -1347,7 +1369,7 @@ pub(crate) fn reference_title(count: usize) -> String {
     if count == 1 {
         "1 reference".into()
     } else {
-        format!("{} references", count)
+        format!("{count} references")
     }
 }
 

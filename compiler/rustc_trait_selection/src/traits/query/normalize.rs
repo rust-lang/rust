@@ -133,7 +133,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
                 .escaping
                 .max(t.outer_exclusive_binder().as_usize() - self.outer_index.as_usize());
         }
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     #[inline]
@@ -145,7 +145,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
             }
             _ => {}
         }
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -153,7 +153,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 self.escaping =
                     self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
             _ => ct.super_visit_with(self),
         }
@@ -201,7 +201,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         // wait to fold the substs.
 
         // Wrap this in a closure so we don't accidentally return from the outer function
-        let res = (|| match *ty.kind() {
+        let res = match *ty.kind() {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
@@ -210,18 +210,22 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.try_super_fold_with(self),
+                    Reveal::UserFacing => ty.try_super_fold_with(self)?,
 
                     Reveal::All => {
                         let substs = substs.try_fold_with(self)?;
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
-                            self.infcx.err_ctxt().report_overflow_error(
-                                &ty,
-                                self.cause.span,
-                                true,
-                                |_| {},
-                            );
+                            // A closure or generator may have itself as in its upvars.
+                            // This should be checked handled by the recursion check for opaque
+                            // types, but we may end up here before that check can happen.
+                            // In that case, we delay a bug to mark the trip, and continue without
+                            // revealing the opaque.
+                            self.infcx
+                                .err_ctxt()
+                                .build_overflow_error(&ty, self.cause.span, true)
+                                .delay_as_bug();
+                            return ty.try_super_fold_with(self);
                         }
 
                         let generic_ty = self.tcx().bound_type_of(def_id);
@@ -239,7 +243,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         }
                         let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
                         self.anon_depth -= 1;
-                        folded_ty
+                        folded_ty?
                     }
                 }
             }
@@ -287,9 +291,9 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // `tcx.normalize_projection_ty` may normalize to a type that still has
                 // unevaluated consts, so keep normalizing here if that's the case.
                 if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
-                    Ok(res.try_super_fold_with(self)?)
+                    res.try_super_fold_with(self)?
                 } else {
-                    Ok(res)
+                    res
                 }
             }
 
@@ -344,14 +348,14 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // `tcx.normalize_projection_ty` may normalize to a type that still has
                 // unevaluated consts, so keep normalizing here if that's the case.
                 if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
-                    Ok(res.try_super_fold_with(self)?)
+                    res.try_super_fold_with(self)?
                 } else {
-                    Ok(res)
+                    res
                 }
             }
 
-            _ => ty.try_super_fold_with(self),
-        })()?;
+            _ => ty.try_super_fold_with(self)?,
+        };
 
         self.cache.insert(ty, res);
         Ok(res)

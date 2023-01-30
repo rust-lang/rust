@@ -490,6 +490,8 @@ impl<T> Vec<T> {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
+    /// * `ptr` must have been allocated using the global allocator, such as via
+    ///   the [`alloc::alloc`] function.
     /// * `T` needs to have the same alignment as what `ptr` was allocated with.
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
@@ -526,6 +528,7 @@ impl<T> Vec<T> {
     /// function.
     ///
     /// [`String`]: crate::string::String
+    /// [`alloc::alloc`]: crate::alloc::alloc
     /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
     ///
     /// # Examples
@@ -681,6 +684,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
+    /// * `ptr` must be [*currently allocated*] via the given allocator `alloc`.
     /// * `T` needs to have the same alignment as what `ptr` was allocated with.
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
@@ -714,6 +718,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// [`String`]: crate::string::String
     /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
+    /// [*currently allocated*]: crate::alloc::Allocator#currently-allocated-memory
     /// [*fit*]: crate::alloc::Allocator#memory-fitting
     ///
     /// # Examples
@@ -2424,7 +2429,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         self.reserve(range.len());
 
         // SAFETY:
-        // - `slice::range` guarantees  that the given range is valid for indexing self
+        // - `slice::range` guarantees that the given range is valid for indexing self
         unsafe {
             self.spec_extend_from_within(range);
         }
@@ -2642,35 +2647,6 @@ impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-trait SpecCloneFrom {
-    fn clone_from(this: &mut Self, other: &Self);
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl<T: Clone, A: Allocator> SpecCloneFrom for Vec<T, A> {
-    default fn clone_from(this: &mut Self, other: &Self) {
-        // drop anything that will not be overwritten
-        this.truncate(other.len());
-
-        // self.len <= other.len due to the truncate above, so the
-        // slices here are always in-bounds.
-        let (init, tail) = other.split_at(this.len());
-
-        // reuse the contained values' allocations/resources.
-        this.clone_from_slice(init);
-        this.extend_from_slice(tail);
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl<T: Copy, A: Allocator> SpecCloneFrom for Vec<T, A> {
-    fn clone_from(this: &mut Self, other: &Self) {
-        this.clear();
-        this.extend_from_slice(other);
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     #[cfg(not(test))]
@@ -2681,7 +2657,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
 
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
     // required for this method definition, is not available. Instead use the
-    // `slice::to_vec`  function which is only available with cfg(test)
+    // `slice::to_vec` function which is only available with cfg(test)
     // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
     fn clone(&self) -> Self {
@@ -2690,7 +2666,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     }
 
     fn clone_from(&mut self, other: &Self) {
-        SpecCloneFrom::clone_from(self, other)
+        crate::slice::SpecCloneIntoVec::clone_into(other.as_slice(), self);
     }
 }
 

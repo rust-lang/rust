@@ -144,7 +144,7 @@ pub fn setup(config: &Config, profile: Profile) {
         Profile::Tools => &[
             "check",
             "build",
-            "test src/test/rustdoc*",
+            "test tests/rustdoc*",
             "test src/tools/clippy",
             "test src/tools/miri",
             "test src/tools/rustfmt",
@@ -351,7 +351,7 @@ pub fn interactive_path() -> io::Result<Profile> {
     Ok(template)
 }
 
-// install a git hook to automatically run tidy --bless, if they want
+// install a git hook to automatically run tidy, if they want
 fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
     let git = t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
         if !output.status.success() {
@@ -370,7 +370,7 @@ fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
     println!();
     println!(
         "Rust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
-If you'd like, x.py can install a git hook for you that will automatically run `tidy --bless` before
+If you'd like, x.py can install a git hook for you that will automatically run `test tidy` before
 pushing your code to ensure your code is up to par. If you decide later that this behavior is
 undesirable, simply delete the `pre-push` file from .git/hooks."
     );

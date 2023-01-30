@@ -6,8 +6,9 @@
 extern crate rustc_macros;
 
 pub use self::Level::*;
-use rustc_ast::node_id::{NodeId, NodeMap};
+use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
@@ -253,6 +254,19 @@ impl Level {
         }
     }
 
+    pub fn to_cmd_flag(self) -> &'static str {
+        match self {
+            Level::Warn => "-W",
+            Level::Deny => "-D",
+            Level::Forbid => "-F",
+            Level::Allow => "-A",
+            Level::ForceWarn(_) => "--force-warn",
+            Level::Expect(_) => {
+                unreachable!("the expect level does not have a commandline flag")
+            }
+        }
+    }
+
     pub fn is_error(self) -> bool {
         match self {
             Level::Allow | Level::Expect(_) | Level::Warn | Level::ForceWarn(_) => false,
@@ -489,7 +503,7 @@ pub enum BuiltinLintDiagnostics {
         param_span: Span,
         /// Span of the code that should be removed when eliding this lifetime.
         /// This span should include leading or trailing comma.
-        deletion_span: Span,
+        deletion_span: Option<Span>,
         /// Span of the single use, or None if the lifetime is never used.
         /// If true, the lifetime will be fully elided.
         use_span: Option<(Span, bool)>,
@@ -507,6 +521,7 @@ pub enum BuiltinLintDiagnostics {
         /// Indicates if the named argument is used as a width/precision for formatting
         is_formatting_arg: bool,
     },
+    ByteSliceInPackedStructWithDerive,
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -531,7 +546,7 @@ pub struct BufferedEarlyLint {
 
 #[derive(Default)]
 pub struct LintBuffer {
-    pub map: NodeMap<Vec<BufferedEarlyLint>>,
+    pub map: FxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
 }
 
 impl LintBuffer {

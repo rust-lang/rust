@@ -14,7 +14,6 @@ mod object_safety;
 pub mod outlives_bounds;
 mod project;
 pub mod query;
-pub(crate) mod relationships;
 mod select;
 mod specialize;
 mod structural_match;
@@ -27,12 +26,11 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeSuperVisitable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
+use rustc_span::def_id::{DefId, CRATE_DEF_ID};
 use rustc_span::Span;
 
 use std::fmt::Debug;
@@ -102,7 +100,7 @@ pub enum TraitQueryMode {
     /// spans etc. passed in and hence can do reasonable
     /// error reporting on their own.
     Standard,
-    /// Canonicalized queries get dummy spans and hence
+    /// Canonical queries get dummy spans and hence
     /// must generally propagate errors to
     /// pre-canonicalization callsites.
     Canonical,
@@ -115,14 +113,12 @@ pub fn predicates_for_generics<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    std::iter::zip(generic_bounds.predicates, generic_bounds.spans).enumerate().map(
-        move |(idx, (predicate, span))| Obligation {
-            cause: cause(idx, span),
-            recursion_depth: 0,
-            param_env,
-            predicate,
-        },
-    )
+    generic_bounds.into_iter().enumerate().map(move |(idx, (predicate, span))| Obligation {
+        cause: cause(idx, span),
+        recursion_depth: 0,
+        param_env,
+        predicate,
+    })
 }
 
 /// Determines whether the type `ty` is known to meet `bound` and
@@ -154,7 +150,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
         // anyhow).
-        cause: ObligationCause::misc(span, hir::CRATE_HIR_ID),
+        cause: ObligationCause::misc(span, CRATE_DEF_ID),
         recursion_depth: 0,
         predicate: pred.to_predicate(infcx.tcx),
     };
@@ -169,14 +165,12 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         // that guess. While imperfect, I believe this is sound.
 
         // FIXME(@lcnr): this function doesn't seem right.
+        //
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
         let errors = fully_solve_obligation(infcx, obligation);
 
-        // Note: we only assume something is `Copy` if we can
-        // *definitively* show that it implements `Copy`. Otherwise,
-        // assume it is move; linear is always ok.
         match &errors[..] {
             [] => true,
             errors => {
@@ -308,7 +302,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // the `TypeOutlives` predicates first inside the unnormalized parameter environment, and
     // then we normalize the `TypeOutlives` bounds inside the normalized parameter environment.
     //
-    // This works fairly well because trait matching  does not actually care about param-env
+    // This works fairly well because trait matching does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
         .drain_filter(|predicate| {
@@ -450,9 +444,6 @@ pub fn impossible_predicates<'tcx>(
     }
     let errors = ocx.select_all_or_error();
 
-    // Clean up after ourselves
-    let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
-
     let result = !errors.is_empty();
     debug!("impossible_predicates = {:?}", result);
     result
@@ -498,7 +489,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 && let param_def_id = self.generics.type_param(param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(());
             }
             t.super_visit_with(self)
         }
@@ -507,7 +498,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(());
             }
             r.super_visit_with(self)
         }
@@ -516,7 +507,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 && let param_def_id = self.generics.const_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(());
             }
             ct.super_visit_with(self)
         }
@@ -524,8 +515,10 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
 
     let generics = tcx.generics_of(trait_item_def_id);
     let predicates = tcx.predicates_of(trait_item_def_id);
-    let impl_trait_ref =
-        tcx.impl_trait_ref(impl_def_id).expect("expected impl to correspond to trait");
+    let impl_trait_ref = tcx
+        .impl_trait_ref(impl_def_id)
+        .expect("expected impl to correspond to trait")
+        .subst_identity();
     let param_env = tcx.param_env(impl_def_id);
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };

@@ -80,8 +80,8 @@ impl<'a> LexedStr<'a> {
             State::PendingEnter | State::Normal => unreachable!(),
         }
 
-        let is_eof = builder.pos == builder.lexed.len();
-        is_eof
+        // is_eof?
+        builder.pos == builder.lexed.len()
     }
 }
 

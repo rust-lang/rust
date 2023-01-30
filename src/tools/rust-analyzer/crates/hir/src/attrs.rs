@@ -148,7 +148,7 @@ fn resolve_doc_path(
 
     let modpath = {
         // FIXME: this is not how we should get a mod path here
-        let ast_path = ast::SourceFile::parse(&format!("type T = {};", link))
+        let ast_path = ast::SourceFile::parse(&format!("type T = {link};"))
             .syntax_node()
             .descendants()
             .find_map(ast::Path::cast)?;

@@ -337,7 +337,9 @@ pub(crate) struct IfExpressionMissingThenBlock {
     #[primary_span]
     pub if_span: Span,
     #[subdiagnostic]
-    pub sub: IfExpressionMissingThenBlockSub,
+    pub missing_then_block_sub: IfExpressionMissingThenBlockSub,
+    #[subdiagnostic]
+    pub let_else_sub: Option<IfExpressionLetSomeSub>,
 }
 
 #[derive(Subdiagnostic)]
@@ -346,6 +348,13 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
     UnfinishedCondition(#[primary_span] Span),
     #[help(add_then_block)]
     AddThenBlock(#[primary_span] Span),
+}
+
+#[derive(Subdiagnostic)]
+#[help(parse_extra_if_in_let_else)]
+pub(crate) struct IfExpressionLetSomeSub {
+    #[primary_span]
+    pub if_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -638,6 +647,48 @@ pub(crate) struct MatchArmBodyWithoutBraces {
     pub num_statements: usize,
     #[subdiagnostic]
     pub sub: MatchArmBodyWithoutBracesSugg,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inclusive_range_extra_equals)]
+#[note]
+pub(crate) struct InclusiveRangeExtraEquals {
+    #[primary_span]
+    #[suggestion(
+        suggestion_remove_eq,
+        style = "short",
+        code = "..=",
+        applicability = "maybe-incorrect"
+    )]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inclusive_range_match_arrow)]
+pub(crate) struct InclusiveRangeMatchArrow {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        suggestion_add_space,
+        style = "verbose",
+        code = " ",
+        applicability = "machine-applicable"
+    )]
+    pub after_pat: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inclusive_range_no_end, code = "E0586")]
+#[note]
+pub(crate) struct InclusiveRangeNoEnd {
+    #[primary_span]
+    #[suggestion(
+        suggestion_open_range,
+        code = "..",
+        applicability = "machine-applicable",
+        style = "short"
+    )]
+    pub span: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -971,6 +1022,24 @@ pub(crate) struct StructLiteralBodyWithoutPathSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_struct_literal_needing_parens)]
+pub(crate) struct StructLiteralNeedingParens {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: StructLiteralNeedingParensSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+pub(crate) struct StructLiteralNeedingParensSugg {
+    #[suggestion_part(code = "(")]
+    pub before: Span,
+    #[suggestion_part(code = ")")]
+    pub after: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_unmatched_angle_brackets)]
 pub(crate) struct UnmatchedAngleBrackets {
     #[primary_span]
@@ -1236,4 +1305,28 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
     #[primary_span]
     #[suggestion(applicability = "machine-applicable", code = "Fn", style = "verbose")]
     pub fn_token_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_where_clause_before_tuple_struct_body)]
+pub(crate) struct WhereClauseBeforeTupleStructBody {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(name_label)]
+    pub name: Span,
+    #[label(body_label)]
+    pub body: Span,
+    #[subdiagnostic]
+    pub sugg: Option<WhereClauseBeforeTupleStructBodySugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+pub(crate) struct WhereClauseBeforeTupleStructBodySugg {
+    #[suggestion_part(code = "{snippet}")]
+    pub left: Span,
+    pub snippet: String,
+    #[suggestion_part(code = "")]
+    pub right: Span,
 }

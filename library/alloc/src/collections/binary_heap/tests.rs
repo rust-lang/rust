@@ -1,6 +1,7 @@
 use super::*;
 use crate::boxed::Box;
 use crate::testing::crash_test::{CrashTestDummy, Panic};
+use core::mem;
 use std::iter::TrustedLen;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
@@ -144,6 +145,24 @@ fn test_peek_mut() {
         *top -= 2;
     }
     assert_eq!(heap.peek(), Some(&9));
+}
+
+#[test]
+fn test_peek_mut_leek() {
+    let data = vec![4, 2, 7];
+    let mut heap = BinaryHeap::from(data);
+    let mut max = heap.peek_mut().unwrap();
+    *max = -1;
+
+    // The PeekMut object's Drop impl would have been responsible for moving the
+    // -1 out of the max position of the BinaryHeap, but we don't run it.
+    mem::forget(max);
+
+    // Absent some mitigation like leak amplification, the -1 would incorrectly
+    // end up in the last position of the returned Vec, with the rest of the
+    // heap's original contents in front of it in sorted order.
+    let sorted_vec = heap.into_sorted_vec();
+    assert!(sorted_vec.is_sorted(), "{:?}", sorted_vec);
 }
 
 #[test]
@@ -465,7 +484,7 @@ fn test_retain() {
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn panic_safe() {
-    use rand::{seq::SliceRandom, thread_rng};
+    use rand::seq::SliceRandom;
     use std::cmp;
     use std::panic::{self, AssertUnwindSafe};
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -490,7 +509,7 @@ fn panic_safe() {
             self.0.partial_cmp(&other.0)
         }
     }
-    let mut rng = thread_rng();
+    let mut rng = crate::test_helpers::test_rng();
     const DATASZ: usize = 32;
     // Miri is too slow
     let ntest = if cfg!(miri) { 1 } else { 10 };

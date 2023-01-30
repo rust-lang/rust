@@ -158,8 +158,10 @@ impl GlobalState {
                     .collect::<Vec<_>>();
 
                 if !detached_files.is_empty() {
-                    workspaces
-                        .push(project_model::ProjectWorkspace::load_detached_files(detached_files));
+                    workspaces.push(project_model::ProjectWorkspace::load_detached_files(
+                        detached_files,
+                        &cargo_config,
+                    ));
                 }
 
                 tracing::info!("did fetch workspaces {:?}", workspaces);
@@ -224,6 +226,7 @@ impl GlobalState {
 
                     build_scripts: _,
                     toolchain: _,
+                    target_layout: _,
                 } => Some((cargo, sysroot, rustc, rustc_cfg, cfg_overrides)),
                 _ => None,
             };
@@ -447,15 +450,7 @@ impl GlobalState {
 
     fn reload_flycheck(&mut self) {
         let _p = profile::span("GlobalState::reload_flycheck");
-        let config = match self.config.flycheck() {
-            Some(it) => it,
-            None => {
-                self.flycheck = Arc::new([]);
-                self.diagnostics.clear_check_all();
-                return;
-            }
-        };
-
+        let config = self.config.flycheck();
         let sender = self.flycheck_sender.clone();
         let invocation_strategy = match config {
             FlycheckConfig::CargoCommand { .. } => flycheck::InvocationStrategy::PerWorkspace,
@@ -466,7 +461,7 @@ impl GlobalState {
             flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
                 0,
                 Box::new(move |msg| sender.send(msg).unwrap()),
-                config.clone(),
+                config,
                 self.config.root_path().clone(),
             )],
             flycheck::InvocationStrategy::PerWorkspace => {

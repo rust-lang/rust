@@ -4,6 +4,9 @@ use crate::{callee, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
+use rustc_hir_analysis::astconv::generics::{
+    check_generic_arg_count_for_call, create_substs_for_generic_args,
+};
 use rustc_hir_analysis::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
@@ -12,10 +15,10 @@ use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutabili
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{self, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty};
-use rustc_span::Span;
+use rustc_middle::ty::{InternalSubsts, UserSubsts, UserType};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
 
-use std::iter;
 use std::ops::Deref;
 
 struct ConfirmContext<'a, 'tcx> {
@@ -89,7 +92,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
         // something which derefs to `Self` actually implements the trait and the caller
         // wanted to make a static dispatch on it but forgot to import the trait.
-        // See test `src/test/ui/issue-35976.rs`.
+        // See test `tests/ui/issue-35976.rs`.
         //
         // In that case, we'll error anyway, but we'll also re-run the search with all traits
         // in scope, and if we find another method which can be used, we'll output an
@@ -97,7 +100,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let filler_substs = rcvr_substs
             .extend_to(self.tcx, pick.item.def_id, |def, _| self.tcx.mk_param_from_def(def));
         let illegal_sized_bound = self.predicates_require_illegal_sized_bound(
-            &self.tcx.predicates_of(pick.item.def_id).instantiate(self.tcx, filler_substs),
+            self.tcx.predicates_of(pick.item.def_id).instantiate(self.tcx, filler_substs),
         );
 
         // Unify the (adjusted) self type with what the method expects.
@@ -330,7 +333,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // variables.
         let generics = self.tcx.generics_of(pick.item.def_id);
 
-        let arg_count_correct = <dyn AstConv<'_>>::check_generic_arg_count_for_call(
+        let arg_count_correct = check_generic_arg_count_for_call(
             self.tcx,
             self.span,
             pick.item.def_id,
@@ -368,11 +371,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             ) -> subst::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        <dyn AstConv<'_>>::ast_region_to_region(self.cfcx.fcx, lt, Some(param))
-                            .into()
+                        self.cfcx.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.cfcx.to_ty(ty).into()
+                        self.cfcx.to_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         self.cfcx.const_arg_to_const(&ct.value, param.def_id).into()
@@ -397,7 +399,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }
         }
-        <dyn AstConv<'_>>::create_substs_for_generic_args(
+
+        let substs = create_substs_for_generic_args(
             self.tcx,
             pick.item.def_id,
             parent_substs,
@@ -405,7 +408,47 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             None,
             &arg_count_correct,
             &mut MethodSubstsCtxt { cfcx: self, pick, seg },
-        )
+        );
+
+        // When the method is confirmed, the `substs` includes
+        // parameters from not just the method, but also the impl of
+        // the method -- in particular, the `Self` type will be fully
+        // resolved. However, those are not something that the "user
+        // specified" -- i.e., those types come from the inferred type
+        // of the receiver, not something the user wrote. So when we
+        // create the user-substs, we want to replace those earlier
+        // types with just the types that the user actually wrote --
+        // that is, those that appear on the *method itself*.
+        //
+        // As an example, if the user wrote something like
+        // `foo.bar::<u32>(...)` -- the `Self` type here will be the
+        // type of `foo` (possibly adjusted), but we don't want to
+        // include that. We want just the `[_, u32]` part.
+        if !substs.is_empty() && !generics.params.is_empty() {
+            let user_type_annotation = self.probe(|_| {
+                let user_substs = UserSubsts {
+                    substs: InternalSubsts::for_item(self.tcx, pick.item.def_id, |param, _| {
+                        let i = param.index as usize;
+                        if i < generics.parent_count {
+                            self.fcx.var_for_def(DUMMY_SP, param)
+                        } else {
+                            substs[i]
+                        }
+                    }),
+                    user_self_ty: None, // not relevant here
+                };
+
+                self.fcx.canonicalize_user_type_annotation(UserType::TypeOf(
+                    pick.item.def_id,
+                    user_substs,
+                ))
+            });
+
+            debug!("instantiate_method_substs: user_type_annotation={:?}", user_type_annotation);
+            self.fcx.write_user_type_annotation(self.call_expr.hir_id, user_type_annotation);
+        }
+
+        self.normalize(self.span, substs)
     }
 
     fn unify_receivers(
@@ -460,9 +503,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         debug!("method_predicates after subst = {:?}", method_predicates);
 
-        let sig = self.tcx.bound_fn_sig(def_id);
-
-        let sig = sig.subst(self.tcx, all_substs);
+        let sig = self.tcx.fn_sig(def_id).subst(self.tcx, all_substs);
         debug!("type scheme substituted, sig={:?}", sig);
 
         let sig = self.replace_bound_vars_with_fresh_vars(sig);
@@ -521,7 +562,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
     fn predicates_require_illegal_sized_bound(
         &self,
-        predicates: &ty::InstantiatedPredicates<'tcx>,
+        predicates: ty::InstantiatedPredicates<'tcx>,
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
@@ -531,10 +572,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
                     if trait_pred.def_id() == sized_def_id =>
                 {
-                    let span = iter::zip(&predicates.predicates, &predicates.spans)
+                    let span = predicates
+                        .iter()
                         .find_map(
                             |(p, span)| {
-                                if *p == obligation.predicate { Some(*span) } else { None }
+                                if p == obligation.predicate { Some(span) } else { None }
                             },
                         )
                         .unwrap_or(rustc_span::DUMMY_SP);

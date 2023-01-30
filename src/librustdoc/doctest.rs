@@ -2,10 +2,8 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError};
-use rustc_hir as hir;
-use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::intravisit;
-use rustc_hir::{HirId, CRATE_HIR_ID};
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::{self as hir, intravisit, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
@@ -95,7 +93,6 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         crate_cfg: interface::parse_cfgspecs(cfgs),
         crate_check_cfg: interface::parse_check_cfg(options.check_cfgs.clone()),
         input,
-        input_path: None,
         output_file: None,
         output_dir: None,
         file_loader: None,
@@ -115,9 +112,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     let (tests, unused_extern_reports, compiling_test_count) =
         interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
-                let mut global_ctxt = queries.global_ctxt()?.take();
-
-                let collector = global_ctxt.enter(|tcx| {
+                let collector = queries.global_ctxt()?.enter(|tcx| {
                     let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
 
                     let opts = scrape_test_config(crate_attrs);
@@ -143,7 +138,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                     };
                     hir_collector.visit_testable(
                         "".to_string(),
-                        CRATE_HIR_ID,
+                        CRATE_DEF_ID,
                         tcx.hir().span(CRATE_HIR_ID),
                         |this| tcx.hir().walk_toplevel_module(this),
                     );
@@ -156,9 +151,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
                 let unused_extern_reports = collector.unused_extern_reports.clone();
                 let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
-                let ret: Result<_, ErrorGuaranteed> =
-                    Ok((collector.tests, unused_extern_reports, compiling_test_count));
-                ret
+                Ok((collector.tests, unused_extern_reports, compiling_test_count))
             })
         })?;
 
@@ -1219,13 +1212,13 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
     fn visit_testable<F: FnOnce(&mut Self)>(
         &mut self,
         name: String,
-        hir_id: HirId,
+        def_id: LocalDefId,
         sp: Span,
         nested: F,
     ) {
-        let ast_attrs = self.tcx.hir().attrs(hir_id);
+        let ast_attrs = self.tcx.hir().attrs(self.tcx.hir().local_def_id_to_hir_id(def_id));
         if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &FxHashSet::default()) {
-            if !cfg.matches(&self.sess.parse_sess, Some(self.sess.features_untracked())) {
+            if !cfg.matches(&self.sess.parse_sess, Some(self.tcx.features())) {
                 return;
             }
         }
@@ -1252,7 +1245,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
                 self.collector.enable_per_target_ignores,
                 Some(&crate::html::markdown::ExtraInfo::new(
                     self.tcx,
-                    hir_id,
+                    def_id.to_def_id(),
                     span_of_attrs(&attrs).unwrap_or(sp),
                 )),
             );
@@ -1281,37 +1274,37 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
             _ => item.ident.to_string(),
         };
 
-        self.visit_testable(name, item.hir_id(), item.span, |this| {
+        self.visit_testable(name, item.owner_id.def_id, item.span, |this| {
             intravisit::walk_item(this, item);
         });
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
+        self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
+        self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
+        self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
             intravisit::walk_foreign_item(this, item);
         });
     }
 
     fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) {
-        self.visit_testable(v.ident.to_string(), v.hir_id, v.span, |this| {
+        self.visit_testable(v.ident.to_string(), v.def_id, v.span, |this| {
             intravisit::walk_variant(this, v);
         });
     }
 
     fn visit_field_def(&mut self, f: &'hir hir::FieldDef<'_>) {
-        self.visit_testable(f.ident.to_string(), f.hir_id, f.span, |this| {
+        self.visit_testable(f.ident.to_string(), f.def_id, f.span, |this| {
             intravisit::walk_field_def(this, f);
         });
     }

@@ -48,7 +48,7 @@ unsafe impl<T: ?Sized + Sync> Sync for ThinBox<T> {}
 
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<T> ThinBox<T> {
-    /// Moves a type to the heap with its `Metadata` stored in the heap allocation instead of on
+    /// Moves a type to the heap with its [`Metadata`] stored in the heap allocation instead of on
     /// the stack.
     ///
     /// # Examples
@@ -59,6 +59,8 @@ impl<T> ThinBox<T> {
     ///
     /// let five = ThinBox::new(5);
     /// ```
+    ///
+    /// [`Metadata`]: core::ptr::Pointee::Metadata
     #[cfg(not(no_global_oom_handling))]
     pub fn new(value: T) -> Self {
         let meta = ptr::metadata(&value);
@@ -69,7 +71,7 @@ impl<T> ThinBox<T> {
 
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<Dyn: ?Sized> ThinBox<Dyn> {
-    /// Moves a type to the heap with its `Metadata` stored in the heap allocation instead of on
+    /// Moves a type to the heap with its [`Metadata`] stored in the heap allocation instead of on
     /// the stack.
     ///
     /// # Examples
@@ -80,6 +82,8 @@ impl<Dyn: ?Sized> ThinBox<Dyn> {
     ///
     /// let thin_slice = ThinBox::<[i32]>::new_unsize([1, 2, 3, 4]);
     /// ```
+    ///
+    /// [`Metadata`]: core::ptr::Pointee::Metadata
     #[cfg(not(no_global_oom_handling))]
     pub fn new_unsize<T>(value: T) -> Self
     where

@@ -98,7 +98,7 @@ impl GlobalState {
         });
         let cancellable = Some(cancel_token.is_some());
         let token = lsp_types::ProgressToken::String(
-            cancel_token.unwrap_or_else(|| format!("rustAnalyzer/{}", title)),
+            cancel_token.unwrap_or_else(|| format!("rustAnalyzer/{title}")),
         );
         let work_done_progress = match state {
             Progress::Begin => {

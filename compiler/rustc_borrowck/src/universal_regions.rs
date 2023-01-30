@@ -162,7 +162,7 @@ struct UniversalRegionIndices<'tcx> {
     /// `ty::Region` to the internal `RegionVid` we are using. This is
     /// used because trait matching and type-checking will feed us
     /// region constraints that reference those regions and we need to
-    /// be able to map them our internal `RegionVid`. This is
+    /// be able to map them to our internal `RegionVid`. This is
     /// basically equivalent to an `InternalSubsts`, except that it also
     /// contains an entry for `ReStatic` -- it might be nice to just
     /// use a substs, and then handle `ReStatic` another way.
@@ -472,7 +472,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // C-variadic fns also have a `VaList` input that's not listed in the signature
         // (as it's created inside the body itself, not passed in from outside).
         if let DefiningTy::FnDef(def_id, _) = defining_ty {
-            if self.infcx.tcx.fn_sig(def_id).c_variadic() {
+            if self.infcx.tcx.fn_sig(def_id).skip_binder().c_variadic() {
                 let va_list_did = self.infcx.tcx.require_lang_item(
                     LangItem::VaList,
                     Some(self.infcx.tcx.def_span(self.mir_def.did)),
@@ -637,7 +637,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let closure_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
 
                 // The "inputs" of the closure in the
-                // signature appear as a tuple.  The MIR side
+                // signature appear as a tuple. The MIR side
                 // flattens this tuple.
                 let (&output, tuplized_inputs) =
                     inputs_and_output.skip_binder().split_last().unwrap();
@@ -665,7 +665,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             DefiningTy::FnDef(def_id, _) => {
-                let sig = tcx.fn_sig(def_id);
+                let sig = tcx.fn_sig(def_id).subst_identity();
                 let sig = indices.fold_to_region_vids(tcx, sig);
                 sig.inputs_and_output()
             }

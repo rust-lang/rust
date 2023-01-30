@@ -192,7 +192,7 @@ fn write_row(
 ) -> Result<(), Box<dyn Error>> {
     for (index, c) in columns.iter().enumerate() {
         let tail = if index == columns.len() - 1 { "\n" } else { "\t" };
-        write!(out, "{:?}{}", c.to_string(location_table), tail)?;
+        write!(out, "{:?}{tail}", c.to_string(location_table))?;
     }
     Ok(())
 }

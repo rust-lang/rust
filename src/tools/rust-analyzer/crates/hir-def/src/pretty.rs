@@ -92,7 +92,7 @@ pub(crate) fn print_generic_args(generics: &GenericArgs, buf: &mut dyn Write) ->
 pub(crate) fn print_generic_arg(arg: &GenericArg, buf: &mut dyn Write) -> fmt::Result {
     match arg {
         GenericArg::Type(ty) => print_type_ref(ty, buf),
-        GenericArg::Const(c) => write!(buf, "{}", c),
+        GenericArg::Const(c) => write!(buf, "{c}"),
         GenericArg::Lifetime(lt) => write!(buf, "{}", lt.name),
     }
 }
@@ -118,7 +118,7 @@ pub(crate) fn print_type_ref(type_ref: &TypeRef, buf: &mut dyn Write) -> fmt::Re
                 Mutability::Shared => "*const",
                 Mutability::Mut => "*mut",
             };
-            write!(buf, "{} ", mtbl)?;
+            write!(buf, "{mtbl} ")?;
             print_type_ref(pointee, buf)?;
         }
         TypeRef::Reference(pointee, lt, mtbl) => {
@@ -130,13 +130,13 @@ pub(crate) fn print_type_ref(type_ref: &TypeRef, buf: &mut dyn Write) -> fmt::Re
             if let Some(lt) = lt {
                 write!(buf, "{} ", lt.name)?;
             }
-            write!(buf, "{}", mtbl)?;
+            write!(buf, "{mtbl}")?;
             print_type_ref(pointee, buf)?;
         }
         TypeRef::Array(elem, len) => {
             write!(buf, "[")?;
             print_type_ref(elem, buf)?;
-            write!(buf, "; {}]", len)?;
+            write!(buf, "; {len}]")?;
         }
         TypeRef::Slice(elem) => {
             write!(buf, "[")?;

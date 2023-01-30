@@ -8,7 +8,7 @@ use rustc_middle::traits::{
     StatementAsExpression,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self as ty, Ty, TypeVisitable};
+use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TypeVisitable};
 use rustc_span::{sym, BytePos, Span};
 
 use crate::errors::SuggAddLetForLetChains;
@@ -351,6 +351,118 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
+    pub(super) fn suggest_function_pointers(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        span: Span,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut Diagnostic,
+    ) {
+        debug!("suggest_function_pointers(cause={:?}, exp_found={:?})", cause, exp_found);
+        let ty::error::ExpectedFound { expected, found } = exp_found;
+        let expected_inner = expected.peel_refs();
+        let found_inner = found.peel_refs();
+        if !expected_inner.is_fn() || !found_inner.is_fn() {
+            return;
+        }
+        match (&expected_inner.kind(), &found_inner.kind()) {
+            (ty::FnPtr(sig), ty::FnDef(did, substs)) => {
+                let expected_sig = &(self.normalize_fn_sig)(*sig);
+                let found_sig =
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).subst(self.tcx, substs));
+
+                let fn_name = self.tcx.def_path_str_with_substs(*did, substs);
+
+                if !self.same_type_modulo_infer(*found_sig, *expected_sig)
+                    || !sig.is_suggestable(self.tcx, true)
+                    || ty::util::is_intrinsic(self.tcx, *did)
+                {
+                    return;
+                }
+
+                let (msg, sug) = match (expected.is_ref(), found.is_ref()) {
+                    (true, false) => {
+                        let msg = "consider using a reference";
+                        let sug = format!("&{fn_name}");
+                        (msg, sug)
+                    }
+                    (false, true) => {
+                        let msg = "consider removing the reference";
+                        let sug = format!("{fn_name}");
+                        (msg, sug)
+                    }
+                    (true, true) => {
+                        diag.note("fn items are distinct from fn pointers");
+                        let msg = "consider casting to a fn pointer";
+                        let sug = format!("&({fn_name} as {sig})");
+                        (msg, sug)
+                    }
+                    (false, false) => {
+                        diag.note("fn items are distinct from fn pointers");
+                        let msg = "consider casting to a fn pointer";
+                        let sug = format!("{fn_name} as {sig}");
+                        (msg, sug)
+                    }
+                };
+                diag.span_suggestion(span, msg, sug, Applicability::MaybeIncorrect);
+            }
+            (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
+                let expected_sig =
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did1).subst(self.tcx, substs1));
+                let found_sig =
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did2).subst(self.tcx, substs2));
+
+                if self.same_type_modulo_infer(*expected_sig, *found_sig) {
+                    diag.note("different fn items have unique types, even if their signatures are the same");
+                }
+
+                if !self.same_type_modulo_infer(*found_sig, *expected_sig)
+                    || !found_sig.is_suggestable(self.tcx, true)
+                    || !expected_sig.is_suggestable(self.tcx, true)
+                    || ty::util::is_intrinsic(self.tcx, *did1)
+                    || ty::util::is_intrinsic(self.tcx, *did2)
+                {
+                    return;
+                }
+
+                let fn_name = self.tcx.def_path_str_with_substs(*did2, substs2);
+                let sug = if found.is_ref() {
+                    format!("&({fn_name} as {found_sig})")
+                } else {
+                    format!("{fn_name} as {found_sig}")
+                };
+
+                let msg = format!(
+                    "consider casting both fn items to fn pointers using `as {expected_sig}`"
+                );
+
+                diag.span_suggestion_hidden(span, msg, sug, Applicability::MaybeIncorrect);
+            }
+            (ty::FnDef(did, substs), ty::FnPtr(sig)) => {
+                let expected_sig =
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).subst(self.tcx, substs));
+                let found_sig = &(self.normalize_fn_sig)(*sig);
+
+                if !self.same_type_modulo_infer(*found_sig, *expected_sig) {
+                    return;
+                }
+
+                let fn_name = self.tcx.def_path_str_with_substs(*did, substs);
+
+                let casting = if expected.is_ref() {
+                    format!("&({fn_name} as {found_sig})")
+                } else {
+                    format!("{fn_name} as {found_sig}")
+                };
+
+                diag.help(&format!("consider casting the fn item to a fn pointer: `{}`", casting));
+            }
+            _ => {
+                return;
+            }
+        };
+    }
+
     pub fn should_suggest_as_ref(&self, expected: Ty<'tcx>, found: Ty<'tcx>) -> Option<&str> {
         if let (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) =
             (expected.kind(), found.kind())
@@ -411,8 +523,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) {
         let hir = self.tcx.hir();
-        let fn_hir_id = hir.get_parent_node(cause.body_id);
-        if let Some(node) = self.tcx.hir().find(fn_hir_id) &&
+        if let Some(node) = self.tcx.hir().find_by_def_id(cause.body_id) &&
             let hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Fn(_sig, _, body_id), ..
                 }) = node {
@@ -585,45 +696,42 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let hir::StmtKind::Local(local) = &stmt.kind else { continue; };
             local.pat.walk(&mut find_compatible_candidates);
         }
-        match hir.find(hir.get_parent_node(blk.hir_id)) {
-            Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => {
-                match hir.find(hir.get_parent_node(*hir_id)) {
-                    Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
-                        pat.walk(&mut find_compatible_candidates);
-                    }
-                    Some(
-                        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
-                        | hir::Node::ImplItem(hir::ImplItem {
-                            kind: hir::ImplItemKind::Fn(_, body),
-                            ..
-                        })
-                        | hir::Node::TraitItem(hir::TraitItem {
-                            kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
-                            ..
-                        })
-                        | hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
-                            ..
-                        }),
-                    ) => {
-                        for param in hir.body(*body).params {
-                            param.pat.walk(&mut find_compatible_candidates);
-                        }
-                    }
-                    Some(hir::Node::Expr(hir::Expr {
-                        kind:
-                            hir::ExprKind::If(
-                                hir::Expr { kind: hir::ExprKind::Let(let_), .. },
-                                then_block,
-                                _,
-                            ),
-                        ..
-                    })) if then_block.hir_id == *hir_id => {
-                        let_.pat.walk(&mut find_compatible_candidates);
-                    }
-                    _ => {}
+        match hir.find_parent(blk.hir_id) {
+            Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => match hir.find_parent(*hir_id) {
+                Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
+                    pat.walk(&mut find_compatible_candidates);
                 }
-            }
+                Some(
+                    hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
+                    | hir::Node::ImplItem(hir::ImplItem {
+                        kind: hir::ImplItemKind::Fn(_, body), ..
+                    })
+                    | hir::Node::TraitItem(hir::TraitItem {
+                        kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
+                        ..
+                    })
+                    | hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
+                        ..
+                    }),
+                ) => {
+                    for param in hir.body(*body).params {
+                        param.pat.walk(&mut find_compatible_candidates);
+                    }
+                }
+                Some(hir::Node::Expr(hir::Expr {
+                    kind:
+                        hir::ExprKind::If(
+                            hir::Expr { kind: hir::ExprKind::Let(let_), .. },
+                            then_block,
+                            _,
+                        ),
+                    ..
+                })) if then_block.hir_id == *hir_id => {
+                    let_.pat.walk(&mut find_compatible_candidates);
+                }
+                _ => {}
+            },
             _ => {}
         }
 

@@ -225,7 +225,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
     /// `align_offset(ptr, target_align)` needs special handling in const eval, because the pointer
     /// may not have an address.
     ///
-    /// If `ptr` does have a known address, then we return `CONTINUE` and the function call should
+    /// If `ptr` does have a known address, then we return `Continue(())` and the function call should
     /// proceed as normal.
     ///
     /// If `ptr` doesn't have an address, but its underlying allocation's alignment is at most
@@ -273,18 +273,18 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                         ret,
                         StackPopUnwind::NotAllowed,
                     )?;
-                    Ok(ControlFlow::BREAK)
+                    Ok(ControlFlow::Break(()))
                 } else {
                     // Not alignable in const, return `usize::MAX`.
                     let usize_max = Scalar::from_machine_usize(self.machine_usize_max(), self);
                     self.write_scalar(usize_max, dest)?;
                     self.return_to_block(ret)?;
-                    Ok(ControlFlow::BREAK)
+                    Ok(ControlFlow::Break(()))
                 }
             }
             Err(_addr) => {
                 // The pointer has an address, continue with function call.
-                Ok(ControlFlow::CONTINUE)
+                Ok(ControlFlow::Continue(()))
             }
         }
     }
@@ -408,7 +408,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
-            // sensitive check here.  But we can at least rule out functions that are not const
+            // sensitive check here. But we can at least rule out functions that are not const
             // at all.
             if !ecx.tcx.is_const_fn_raw(def.did) {
                 // allow calling functions inside a trait marked with #[const_trait].
@@ -533,7 +533,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         let eval_to_int =
             |op| ecx.read_immediate(&ecx.eval_operand(op, None)?).map(|x| x.to_const_int());
         let err = match msg {
-            BoundsCheck { ref len, ref index } => {
+            BoundsCheck { len, index } => {
                 let len = eval_to_int(len)?;
                 let index = eval_to_int(index)?;
                 BoundsCheck { len, index }
@@ -561,8 +561,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         throw_unsup_format!("pointer arithmetic or comparison is not supported at compile-time");
     }
 
-    fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        // The step limit has already been hit in a previous call to `before_terminator`.
+    fn increment_const_eval_counter(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        // The step limit has already been hit in a previous call to `increment_const_eval_counter`.
         if ecx.machine.steps_remaining == 0 {
             return Ok(());
         }

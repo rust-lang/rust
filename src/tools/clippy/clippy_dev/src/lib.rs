@@ -5,6 +5,9 @@
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
+// The `rustc_driver` crate seems to be required in order to use the `rust_lexer` crate.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
 extern crate rustc_lexer;
 
 use std::path::PathBuf;

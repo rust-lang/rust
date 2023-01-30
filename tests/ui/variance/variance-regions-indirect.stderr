@@ -1,0 +1,32 @@
+error: [-, +, o, *]
+  --> $DIR/variance-regions-indirect.rs:8:1
+   |
+LL | enum Base<'a, 'b, 'c:'b, 'd> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [*, o, +, -]
+  --> $DIR/variance-regions-indirect.rs:15:1
+   |
+LL | struct Derived1<'w, 'x:'y, 'y, 'z> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, o, *]
+  --> $DIR/variance-regions-indirect.rs:20:1
+   |
+LL | struct Derived2<'a, 'b:'a, 'c> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [o, +, *]
+  --> $DIR/variance-regions-indirect.rs:25:1
+   |
+LL | struct Derived3<'a:'b, 'b, 'c> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [-, +, o]
+  --> $DIR/variance-regions-indirect.rs:30:1
+   |
+LL | struct Derived4<'a, 'b, 'c:'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

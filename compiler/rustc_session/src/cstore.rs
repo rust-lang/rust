@@ -228,7 +228,7 @@ pub trait CrateStore: std::fmt::Debug {
     fn def_path_hash(&self, def: DefId) -> DefPathHash;
 
     // This information is safe to access, since it's hashed as part of the StableCrateId, which
-    // incr.  comp. uses to identify a CrateNum.
+    // incr. comp. uses to identify a CrateNum.
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
     fn stable_crate_id(&self, cnum: CrateNum) -> StableCrateId;
     fn stable_crate_id_to_crate_num(&self, stable_crate_id: StableCrateId) -> CrateNum;

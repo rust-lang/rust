@@ -250,7 +250,7 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
             // values. So here is what we do:
             //
             // 1. Find the vector `[X | a < X && b < X]` of all values
-            //    `X` where `a < X` and `b < X`.  In terms of the
+            //    `X` where `a < X` and `b < X`. In terms of the
             //    graph, this means all values reachable from both `a`
             //    and `b`. Note that this vector is also a set, but we
             //    use the term vector because the order matters

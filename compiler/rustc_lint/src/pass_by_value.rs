@@ -1,5 +1,5 @@
+use crate::lints::PassByValueDiag;
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc_errors::{fluent, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{GenericArg, PathSegment, QPath, TyKind};
@@ -29,20 +29,11 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
                     }
                 }
                 if let Some(t) = path_for_pass_by_value(cx, &inner_ty) {
-                    cx.struct_span_lint(
+                    cx.emit_spanned_lint(
                         PASS_BY_VALUE,
                         ty.span,
-                        fluent::lint_pass_by_value,
-                        |lint| {
-                            lint.set_arg("ty", t.clone()).span_suggestion(
-                                ty.span,
-                                fluent::suggestion,
-                                t,
-                                // Changing type of function argument
-                                Applicability::MaybeIncorrect,
-                            )
-                        },
-                    )
+                        PassByValueDiag { ty: t, suggestion: ty.span },
+                    );
                 }
             }
             _ => {}

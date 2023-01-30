@@ -446,7 +446,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // they go to.
 
                     // For where they come from: If the ABI is RustCall, we untuple the
-                    // last incoming argument.  These two iterators do not have the same type,
+                    // last incoming argument. These two iterators do not have the same type,
                     // so to keep the code paths uniform we accept an allocation
                     // (for RustCall ABI only).
                     let caller_args: Cow<'_, [OpTy<'tcx, M::Provenance>]> =
@@ -481,7 +481,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .filter(|arg_and_abi| !matches!(arg_and_abi.1.mode, PassMode::Ignore));
 
                     // Now we have to spread them out across the callee's locals,
-                    // taking into account the `spread_arg`.  If we could write
+                    // taking into account the `spread_arg`. If we could write
                     // this is a single iterator (that handles `spread_arg`), then
                     // `pass_argument` would be the loop body. It takes care to
                     // not advance `caller_iter` for ZSTs.
@@ -648,8 +648,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
-        // We take the address of the object.  This may well be unaligned, which is fine
-        // for us here.  However, unaligned accesses will probably make the actual drop
+        // We take the address of the object. This may well be unaligned, which is fine
+        // for us here. However, unaligned accesses will probably make the actual drop
         // implementation fail -- a problem shared by rustc.
         let place = self.force_allocation(place)?;
 

@@ -157,6 +157,14 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for AllocId {
     }
 }
 
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::ParamEnv<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.caller_bounds().encode(e);
+        self.reveal().encode(e);
+        self.constness().encode(e);
+    }
+}
+
 #[inline]
 fn decode_arena_allocable<
     'tcx,
@@ -280,8 +288,17 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::SymbolName<'tcx>
     }
 }
 
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::ParamEnv<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let caller_bounds = Decodable::decode(d);
+        let reveal = Decodable::decode(d);
+        let constness = Decodable::decode(d);
+        ty::ParamEnv::new(caller_bounds, reveal, constness)
+    }
+}
+
 macro_rules! impl_decodable_via_ref {
-    ($($t:ty),+) => {
+    ($($t:ty,)+) => {
         $(impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for $t {
             fn decode(decoder: &mut D) -> Self {
                 RefDecodable::decode(decoder)
@@ -373,6 +390,15 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty
     }
 }
 
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty::Predicate<'tcx>> {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        let predicates: Vec<_> =
+            (0..len).map::<ty::Predicate<'tcx>, _>(|_| Decodable::decode(decoder)).collect();
+        decoder.interner().intern_predicates(&predicates)
+    }
+}
+
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
@@ -382,7 +408,8 @@ impl_decodable_via_ref! {
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
     &'tcx mir::coverage::CodeRegion,
-    &'tcx ty::List<ty::BoundVariableKind>
+    &'tcx ty::List<ty::BoundVariableKind>,
+    &'tcx ty::List<ty::Predicate<'tcx>>,
 }
 
 #[macro_export]
@@ -519,6 +546,8 @@ macro_rules! impl_binder_encode_decode {
 impl_binder_encode_decode! {
     &'tcx ty::List<Ty<'tcx>>,
     ty::FnSig<'tcx>,
+    ty::Predicate<'tcx>,
+    ty::TraitPredicate<'tcx>,
     ty::ExistentialPredicate<'tcx>,
     ty::TraitRef<'tcx>,
     Vec<ty::GeneratorInteriorTypeCause<'tcx>>,

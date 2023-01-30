@@ -24,6 +24,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     _substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
+    target: BasicBlock,
     span: Span,
 ) {
     match intrinsic {
@@ -277,16 +278,15 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             } else {
                 fx.tcx.sess.span_warn(span, "Index argument for `simd_extract` is not a constant");
                 let trap_block = fx.bcx.create_block();
-                let dummy_block = fx.bcx.create_block();
                 let true_ = fx.bcx.ins().iconst(types::I8, 1);
                 fx.bcx.ins().brnz(true_, trap_block, &[]);
-                fx.bcx.ins().jump(dummy_block, &[]);
+                let ret_block = fx.get_block(target);
+                fx.bcx.ins().jump(ret_block, &[]);
                 fx.bcx.switch_to_block(trap_block);
                 crate::trap::trap_unimplemented(
                     fx,
                     "Index argument for `simd_extract` is not a constant",
                 );
-                fx.bcx.switch_to_block(dummy_block);
                 return;
             };
 
@@ -770,11 +770,119 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        // simd_arith_offset
-        // simd_scatter
-        // simd_gather
+        sym::simd_expose_addr | sym::simd_from_exposed_addr | sym::simd_cast_ptr => {
+            intrinsic_args!(fx, args => (arg); intrinsic);
+            ret.write_cvalue_transmute(fx, arg);
+        }
+
+        sym::simd_arith_offset => {
+            intrinsic_args!(fx, args => (ptr, offset); intrinsic);
+
+            let (lane_count, ptr_lane_ty) = ptr.layout().ty.simd_size_and_type(fx.tcx);
+            let pointee_ty = ptr_lane_ty.builtin_deref(true).unwrap().ty;
+            let pointee_size = fx.layout_of(pointee_ty).size.bytes();
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+            assert_eq!(lane_count, ret_lane_count);
+
+            for lane_idx in 0..lane_count {
+                let ptr_lane = ptr.value_lane(fx, lane_idx).load_scalar(fx);
+                let offset_lane = offset.value_lane(fx, lane_idx).load_scalar(fx);
+
+                let ptr_diff = if pointee_size != 1 {
+                    fx.bcx.ins().imul_imm(offset_lane, pointee_size as i64)
+                } else {
+                    offset_lane
+                };
+                let res_lane = fx.bcx.ins().iadd(ptr_lane, ptr_diff);
+                let res_lane = CValue::by_val(res_lane, ret_lane_layout);
+
+                ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        sym::simd_gather => {
+            intrinsic_args!(fx, args => (val, ptr, mask); intrinsic);
+
+            let (val_lane_count, val_lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
+            let (ptr_lane_count, _ptr_lane_ty) = ptr.layout().ty.simd_size_and_type(fx.tcx);
+            let (mask_lane_count, _mask_lane_ty) = mask.layout().ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(val_lane_count, ptr_lane_count);
+            assert_eq!(val_lane_count, mask_lane_count);
+            assert_eq!(val_lane_count, ret_lane_count);
+
+            let lane_clif_ty = fx.clif_type(val_lane_ty).unwrap();
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+
+            for lane_idx in 0..ptr_lane_count {
+                let val_lane = val.value_lane(fx, lane_idx).load_scalar(fx);
+                let ptr_lane = ptr.value_lane(fx, lane_idx).load_scalar(fx);
+                let mask_lane = mask.value_lane(fx, lane_idx).load_scalar(fx);
+
+                let if_enabled = fx.bcx.create_block();
+                let if_disabled = fx.bcx.create_block();
+                let next = fx.bcx.create_block();
+                let res_lane = fx.bcx.append_block_param(next, lane_clif_ty);
+
+                fx.bcx.ins().brnz(mask_lane, if_enabled, &[]);
+                fx.bcx.ins().jump(if_disabled, &[]);
+                fx.bcx.seal_block(if_enabled);
+                fx.bcx.seal_block(if_disabled);
+
+                fx.bcx.switch_to_block(if_enabled);
+                let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), ptr_lane, 0);
+                fx.bcx.ins().jump(next, &[res]);
+
+                fx.bcx.switch_to_block(if_disabled);
+                fx.bcx.ins().jump(next, &[val_lane]);
+
+                fx.bcx.seal_block(next);
+                fx.bcx.switch_to_block(next);
+
+                fx.bcx.ins().nop();
+
+                ret.place_lane(fx, lane_idx)
+                    .write_cvalue(fx, CValue::by_val(res_lane, ret_lane_layout));
+            }
+        }
+
+        sym::simd_scatter => {
+            intrinsic_args!(fx, args => (val, ptr, mask); intrinsic);
+
+            let (val_lane_count, _val_lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
+            let (ptr_lane_count, _ptr_lane_ty) = ptr.layout().ty.simd_size_and_type(fx.tcx);
+            let (mask_lane_count, _mask_lane_ty) = mask.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(val_lane_count, ptr_lane_count);
+            assert_eq!(val_lane_count, mask_lane_count);
+
+            for lane_idx in 0..ptr_lane_count {
+                let val_lane = val.value_lane(fx, lane_idx).load_scalar(fx);
+                let ptr_lane = ptr.value_lane(fx, lane_idx).load_scalar(fx);
+                let mask_lane = mask.value_lane(fx, lane_idx).load_scalar(fx);
+
+                let if_enabled = fx.bcx.create_block();
+                let next = fx.bcx.create_block();
+
+                fx.bcx.ins().brnz(mask_lane, if_enabled, &[]);
+                fx.bcx.ins().jump(next, &[]);
+                fx.bcx.seal_block(if_enabled);
+
+                fx.bcx.switch_to_block(if_enabled);
+                fx.bcx.ins().store(MemFlags::trusted(), val_lane, ptr_lane, 0);
+                fx.bcx.ins().jump(next, &[]);
+
+                fx.bcx.seal_block(next);
+                fx.bcx.switch_to_block(next);
+            }
+        }
+
         _ => {
-            fx.tcx.sess.span_fatal(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
+            fx.tcx.sess.span_err(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
+            // Prevent verifier error
+            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
         }
     }
+    let ret_block = fx.get_block(target);
+    fx.bcx.ins().jump(ret_block, &[]);
 }

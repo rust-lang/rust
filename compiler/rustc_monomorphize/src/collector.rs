@@ -526,7 +526,7 @@ fn collect_items_rec<'tcx>(
         let formatted_item = with_no_trimmed_paths!(starting_point.node.to_string());
         tcx.sess.span_note_without_error(
             starting_point.span,
-            &format!("the above error was encountered while instantiating `{}`", formatted_item),
+            &format!("the above error was encountered while instantiating `{formatted_item}`"),
         );
     }
     inlining_map.lock_mut().record_accesses(starting_point.node, &neighbors.items);
@@ -1296,7 +1296,7 @@ impl<'v> RootCollector<'_, 'v> {
         };
 
         let start_def_id = self.tcx.require_lang_item(LangItem::Start, None);
-        let main_ret_ty = self.tcx.fn_sig(main_def_id).output();
+        let main_ret_ty = self.tcx.fn_sig(main_def_id).no_bound_vars().unwrap().output();
 
         // Given that `main()` has no arguments,
         // then its return type cannot have
@@ -1352,6 +1352,8 @@ fn create_mono_items_for_default_impls<'tcx>(
             );
 
             if let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) {
+                let trait_ref = trait_ref.subst_identity();
+
                 let param_env = ty::ParamEnv::reveal_all();
                 let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
                 let overridden_methods = tcx.impl_item_implementor_ids(item.owner_id);

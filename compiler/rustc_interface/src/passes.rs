@@ -1,7 +1,8 @@
 use crate::errors::{
     CantEmitMIR, EmojiIdentifier, ErrorWritingDependencies, FerrisIdentifier,
     GeneratedFileConflictsWithDirectory, InputFileWouldBeOverWritten, MixedBinCrate,
-    MixedProcMacroCrate, OutDirError, ProcMacroDocWithoutArg, TempsDirError,
+    MixedProcMacroCrate, OutDirError, ProcMacroCratePanicAbort, ProcMacroDocWithoutArg,
+    TempsDirError,
 };
 use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
@@ -12,11 +13,10 @@ use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
-use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
-use rustc_hir::def_id::StableCrateId;
+use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -30,12 +30,13 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
+use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
+use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 
 use std::any::Any;
@@ -46,11 +47,11 @@ use std::marker::PhantomPinned;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 
-pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
-    let krate = sess.time("parse_crate", || match input {
+pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
+    let krate = sess.time("parse_crate", || match &sess.io.input {
         Input::File(file) => parse_crate_from_file(file, &sess.parse_sess),
         Input::Str { input, name } => {
             parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
@@ -380,6 +381,10 @@ pub fn configure_and_expand(
         }
     }
 
+    if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
+        sess.emit_warning(ProcMacroCratePanicAbort);
+    }
+
     // For backwards compatibility, we don't try to run proc macro injection
     // if rustdoc is run on a proc macro crate without '--crate-type proc-macro' being
     // specified. This should only affect users who manually invoke 'rustdoc', as
@@ -543,7 +548,7 @@ fn escape_dep_env(symbol: Symbol) -> String {
 
 fn write_out_deps(
     sess: &Session,
-    boxed_resolver: &RefCell<BoxedResolver>,
+    cstore: &CrateStoreDyn,
     outputs: &OutputFilenames,
     out_filenames: &[PathBuf],
 ) {
@@ -553,7 +558,7 @@ fn write_out_deps(
     }
     let deps_filename = outputs.path(OutputType::DepInfo);
 
-    let result = (|| -> io::Result<()> {
+    let result: io::Result<()> = try {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
         let mut files: Vec<String> = sess
@@ -595,20 +600,19 @@ fn write_out_deps(
                 }
             }
 
-            boxed_resolver.borrow_mut().access(|resolver| {
-                for cnum in resolver.cstore().crates_untracked() {
-                    let source = resolver.cstore().crate_source_untracked(cnum);
-                    if let Some((path, _)) = &source.dylib {
-                        files.push(escape_dep_filename(&path.display().to_string()));
-                    }
-                    if let Some((path, _)) = &source.rlib {
-                        files.push(escape_dep_filename(&path.display().to_string()));
-                    }
-                    if let Some((path, _)) = &source.rmeta {
-                        files.push(escape_dep_filename(&path.display().to_string()));
-                    }
+            let cstore = cstore.as_any().downcast_ref::<CStore>().unwrap();
+            for cnum in cstore.crates_untracked() {
+                let source = cstore.crate_source_untracked(cnum);
+                if let Some((path, _)) = &source.dylib {
+                    files.push(escape_dep_filename(&path.display().to_string()));
                 }
-            });
+                if let Some((path, _)) = &source.rlib {
+                    files.push(escape_dep_filename(&path.display().to_string()));
+                }
+                if let Some((path, _)) = &source.rmeta {
+                    files.push(escape_dep_filename(&path.display().to_string()));
+                }
+            }
         }
 
         let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
@@ -620,7 +624,7 @@ fn write_out_deps(
         // prevents `make` from spitting out an error if a file is later
         // deleted. For more info see #28735
         for path in files {
-            writeln!(file, "{}:", path)?;
+            writeln!(file, "{path}:")?;
         }
 
         // Emit special comments with information about accessed environment variables.
@@ -633,16 +637,14 @@ fn write_out_deps(
             envs.sort_unstable();
             writeln!(file)?;
             for (k, v) in envs {
-                write!(file, "# env-dep:{}", k)?;
+                write!(file, "# env-dep:{k}")?;
                 if let Some(v) = v {
-                    write!(file, "={}", v)?;
+                    write!(file, "={v}")?;
                 }
                 writeln!(file)?;
             }
         }
-
-        Ok(())
-    })();
+    };
 
     match result {
         Ok(_) => {
@@ -658,71 +660,57 @@ fn write_out_deps(
     }
 }
 
-pub fn prepare_outputs(
-    sess: &Session,
-    compiler: &Compiler,
-    krate: &ast::Crate,
-    boxed_resolver: &RefCell<BoxedResolver>,
-    crate_name: Symbol,
-) -> Result<OutputFilenames> {
+fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
+    let sess = tcx.sess;
     let _timer = sess.timer("prepare_outputs");
+    let (_, krate) = &*tcx.resolver_for_lowering(()).borrow();
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
 
     // FIXME: rustdoc passes &[] instead of &krate.attrs here
-    let outputs = util::build_output_filenames(
-        &compiler.input,
-        &compiler.output_dir,
-        &compiler.output_file,
-        &compiler.temps_dir,
-        &krate.attrs,
-        sess,
-    );
+    let outputs = util::build_output_filenames(&krate.attrs, sess);
 
     let output_paths =
-        generated_output_paths(sess, &outputs, compiler.output_file.is_some(), crate_name);
+        generated_output_paths(sess, &outputs, sess.io.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
-    if let Some(ref input_path) = compiler.input_path {
+    if let Some(ref input_path) = sess.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                let reported = sess.emit_err(InputFileWouldBeOverWritten { path: input_path });
-                return Err(reported);
+                sess.emit_fatal(InputFileWouldBeOverWritten { path: input_path });
             }
             if let Some(ref dir_path) = output_conflicts_with_dir(&output_paths) {
-                let reported =
-                    sess.emit_err(GeneratedFileConflictsWithDirectory { input_path, dir_path });
-                return Err(reported);
+                sess.emit_fatal(GeneratedFileConflictsWithDirectory { input_path, dir_path });
             }
         }
     }
 
-    if let Some(ref dir) = compiler.temps_dir {
+    if let Some(ref dir) = sess.io.temps_dir {
         if fs::create_dir_all(dir).is_err() {
-            let reported = sess.emit_err(TempsDirError);
-            return Err(reported);
+            sess.emit_fatal(TempsDirError);
         }
     }
 
-    write_out_deps(sess, boxed_resolver, &outputs, &output_paths);
+    write_out_deps(sess, tcx.cstore_untracked(), &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
 
     if !only_dep_info {
-        if let Some(ref dir) = compiler.output_dir {
+        if let Some(ref dir) = sess.io.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                let reported = sess.emit_err(OutDirError);
-                return Err(reported);
+                sess.emit_fatal(OutDirError);
             }
         }
     }
 
-    Ok(outputs)
+    outputs.into()
 }
 
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
+    providers.output_filenames = output_filenames;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
@@ -769,11 +757,8 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
-    krate: Lrc<ast::Crate>,
     dep_graph: DepGraph,
-    resolver: Rc<RefCell<BoxedResolver>>,
-    outputs: OutputFilenames,
-    crate_name: Symbol,
+    untracked: Untracked,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
@@ -783,8 +768,6 @@ pub fn create_global_ctxt<'tcx>(
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
     dep_graph.assert_ignored();
-
-    let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
 
     let sess = &compiler.session();
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
@@ -804,12 +787,6 @@ pub fn create_global_ctxt<'tcx>(
         TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
     });
 
-    let ty::ResolverOutputs {
-        global_ctxt: untracked_resolutions,
-        ast_lowering: untracked_resolver_for_lowering,
-        untracked,
-    } = resolver_outputs;
-
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(move || {
             TyCtxt::create_global_ctxt(
@@ -817,25 +794,16 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 arena,
                 hir_arena,
-                untracked_resolutions,
                 untracked,
-                krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
                 queries.as_dyn(),
                 rustc_query_impl::query_callbacks(arena),
-                crate_name,
-                outputs,
             )
         })
     });
 
-    let mut qcx = QueryContext { gcx };
-    qcx.enter(|tcx| {
-        tcx.feed_unit_query()
-            .resolver_for_lowering(tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)))
-    });
-    qcx
+    QueryContext { gcx }
 }
 
 /// Runs the resolution, type-checking, region checking and other
@@ -924,6 +892,15 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             }
         }
     });
+
+    if tcx.sess.opts.unstable_opts.drop_tracking_mir {
+        tcx.hir().par_body_owners(|def_id| {
+            if let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id) {
+                tcx.ensure().mir_generator_witnesses(def_id);
+                tcx.ensure().check_generator_obligations(def_id);
+            }
+        });
+    }
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
 

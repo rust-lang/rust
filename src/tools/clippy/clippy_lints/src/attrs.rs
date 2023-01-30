@@ -472,7 +472,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMe
 
 fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem], attr: &'_ Attribute) {
     // Check for the feature
-    if !cx.tcx.sess.features_untracked().lint_reasons {
+    if !cx.tcx.features().lint_reasons {
         return;
     }
 

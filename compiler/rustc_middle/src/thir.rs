@@ -9,6 +9,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/thir.html
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::RangeEnd;
@@ -28,6 +29,7 @@ use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
 use std::ops::Index;
 
+pub mod print;
 pub mod visit;
 
 macro_rules! thir_with_elements {
@@ -572,6 +574,12 @@ impl<'tcx> Pat<'tcx> {
             }
             _ => None,
         }
+    }
+}
+
+impl<'tcx> IntoDiagnosticArg for Pat<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        format!("{}", self).into_diagnostic_arg()
     }
 }
 

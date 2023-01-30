@@ -41,10 +41,6 @@ WORKDIR /
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-# We are disabling CI LLVM since this builder needs to build LLD, which is
-# currently unsupported when downloading pre-built LLVM.
-ENV NO_DOWNLOAD_CI_LLVM 1
-
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
   --set build.nodejs=/node-v15.14.0-linux-x64/bin/node \
@@ -59,16 +55,16 @@ ENV NO_OVERFLOW_CHECKS=1
 
 ENV WASM_TARGETS=wasm32-unknown-unknown
 ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_TARGETS \
-  src/test/run-make \
-  src/test/ui \
-  src/test/mir-opt \
-  src/test/codegen-units \
+  tests/run-make \
+  tests/ui \
+  tests/mir-opt \
+  tests/codegen-units \
   library/core
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \
-  src/test/run-make \
-  src/test/assembly
+  tests/run-make \
+  tests/assembly
 
 ENV MUSL_TARGETS=x86_64-unknown-linux-musl \
     CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc \

@@ -2,6 +2,7 @@ use crate::clean::Attributes;
 use crate::core::ResolverCaches;
 use crate::passes::collect_intra_doc_links::preprocessed_markdown_links;
 use crate::passes::collect_intra_doc_links::{Disambiguator, PreprocessedMarkdownLink};
+use crate::visit_lib::early_lib_embargo_visit_item;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, ItemKind};
@@ -12,8 +13,6 @@ use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, CRATE_DEF_ID};
 use rustc_hir::TraitCandidate;
 use rustc_middle::ty::{DefIdTree, Visibility};
 use rustc_resolve::{ParentScope, Resolver};
-use rustc_session::config::Externs;
-use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{Symbol, SyntaxContext};
 
@@ -22,16 +21,13 @@ use std::mem;
 
 pub(crate) fn early_resolve_intra_doc_links(
     resolver: &mut Resolver<'_>,
-    sess: &Session,
     krate: &ast::Crate,
-    externs: Externs,
     document_private_items: bool,
 ) -> ResolverCaches {
     let parent_scope =
         ParentScope::module(resolver.expect_module(CRATE_DEF_ID.to_def_id()), resolver);
     let mut link_resolver = EarlyDocLinkResolver {
         resolver,
-        sess,
         parent_scope,
         visited_mods: Default::default(),
         markdown_links: Default::default(),
@@ -39,6 +35,8 @@ pub(crate) fn early_resolve_intra_doc_links(
         traits_in_scope: Default::default(),
         all_trait_impls: Default::default(),
         all_macro_rules: Default::default(),
+        extern_doc_reachable: Default::default(),
+        local_doc_reachable: Default::default(),
         document_private_items,
     };
 
@@ -52,7 +50,9 @@ pub(crate) fn early_resolve_intra_doc_links(
     // the known necessary crates. Load them all unconditionally until we find a way to fix this.
     // DO NOT REMOVE THIS without first testing on the reproducer in
     // https://github.com/jyn514/objr/commit/edcee7b8124abf0e4c63873e8422ff81beb11ebb
-    for (extern_name, _) in externs.iter().filter(|(_, entry)| entry.add_prelude) {
+    for (extern_name, _) in
+        link_resolver.resolver.sess().opts.externs.iter().filter(|(_, entry)| entry.add_prelude)
+    {
         link_resolver.resolver.resolve_rustdoc_path(extern_name, TypeNS, parent_scope);
     }
 
@@ -64,6 +64,7 @@ pub(crate) fn early_resolve_intra_doc_links(
         traits_in_scope: link_resolver.traits_in_scope,
         all_trait_impls: Some(link_resolver.all_trait_impls),
         all_macro_rules: link_resolver.all_macro_rules,
+        extern_doc_reachable: link_resolver.extern_doc_reachable,
     }
 }
 
@@ -73,7 +74,6 @@ fn doc_attrs<'a>(attrs: impl Iterator<Item = &'a ast::Attribute>) -> Attributes 
 
 struct EarlyDocLinkResolver<'r, 'ra> {
     resolver: &'r mut Resolver<'ra>,
-    sess: &'r Session,
     parent_scope: ParentScope<'ra>,
     visited_mods: DefIdSet,
     markdown_links: FxHashMap<String, Vec<PreprocessedMarkdownLink>>,
@@ -81,6 +81,15 @@ struct EarlyDocLinkResolver<'r, 'ra> {
     traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
     all_trait_impls: Vec<DefId>,
     all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
+    /// This set is used as a seed for `effective_visibilities`, which are then extended by some
+    /// more items using `lib_embargo_visit_item` during doc inlining.
+    extern_doc_reachable: DefIdSet,
+    /// This is an easily identifiable superset of items added to `effective_visibilities`
+    /// using `lib_embargo_visit_item` during doc inlining.
+    /// The union of `(extern,local)_doc_reachable` is therefore a superset of
+    /// `effective_visibilities` and can be used for pruning extern impls here
+    /// in early doc link resolution.
+    local_doc_reachable: DefIdSet,
     document_private_items: bool,
 }
 
@@ -109,6 +118,10 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
         }
     }
 
+    fn is_doc_reachable(&self, def_id: DefId) -> bool {
+        self.extern_doc_reachable.contains(&def_id) || self.local_doc_reachable.contains(&def_id)
+    }
+
     /// Add traits in scope for links in impls collected by the `collect-intra-doc-links` pass.
     /// That pass filters impls using type-based information, but we don't yet have such
     /// information here, so we just conservatively calculate traits in scope for *all* modules
@@ -118,6 +131,14 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
         let mut start_cnum = 0;
         loop {
             let crates = Vec::from_iter(self.resolver.cstore().crates_untracked());
+            for cnum in &crates[start_cnum..] {
+                early_lib_embargo_visit_item(
+                    self.resolver,
+                    &mut self.extern_doc_reachable,
+                    cnum.as_def_id(),
+                    true,
+                );
+            }
             for &cnum in &crates[start_cnum..] {
                 let all_trait_impls =
                     Vec::from_iter(self.resolver.cstore().trait_impls_in_crate_untracked(cnum));
@@ -131,28 +152,26 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                 // privacy, private traits and impls from other crates are never documented in
                 // the current crate, and links in their doc comments are not resolved.
                 for &(trait_def_id, impl_def_id, simplified_self_ty) in &all_trait_impls {
-                    if self.resolver.cstore().visibility_untracked(trait_def_id).is_public()
-                        && simplified_self_ty.and_then(|ty| ty.def()).map_or(true, |ty_def_id| {
-                            self.resolver.cstore().visibility_untracked(ty_def_id).is_public()
-                        })
+                    if self.is_doc_reachable(trait_def_id)
+                        && simplified_self_ty
+                            .and_then(|ty| ty.def())
+                            .map_or(true, |ty_def_id| self.is_doc_reachable(ty_def_id))
                     {
                         if self.visited_mods.insert(trait_def_id) {
                             self.resolve_doc_links_extern_impl(trait_def_id, false);
                         }
                         self.resolve_doc_links_extern_impl(impl_def_id, false);
                     }
+                    self.all_trait_impls.push(impl_def_id);
                 }
                 for (ty_def_id, impl_def_id) in all_inherent_impls {
-                    if self.resolver.cstore().visibility_untracked(ty_def_id).is_public() {
+                    if self.is_doc_reachable(ty_def_id) {
                         self.resolve_doc_links_extern_impl(impl_def_id, true);
                     }
                 }
                 for impl_def_id in all_incoherent_impls {
                     self.resolve_doc_links_extern_impl(impl_def_id, true);
                 }
-
-                self.all_trait_impls
-                    .extend(all_trait_impls.into_iter().map(|(_, def_id, _)| def_id));
             }
 
             if crates.len() > start_cnum {
@@ -166,7 +185,7 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
     fn resolve_doc_links_extern_impl(&mut self, def_id: DefId, is_inherent: bool) {
         self.resolve_doc_links_extern_outer_fixme(def_id, def_id);
         let assoc_item_def_ids = Vec::from_iter(
-            self.resolver.cstore().associated_item_def_ids_untracked(def_id, self.sess),
+            self.resolver.cstore().associated_item_def_ids_untracked(def_id, self.resolver.sess()),
         );
         for assoc_def_id in assoc_item_def_ids {
             if !is_inherent || self.resolver.cstore().visibility_untracked(assoc_def_id).is_public()
@@ -191,7 +210,9 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
         if !self.resolver.cstore().may_have_doc_links_untracked(def_id) {
             return;
         }
-        let attrs = Vec::from_iter(self.resolver.cstore().item_attrs_untracked(def_id, self.sess));
+        let attrs = Vec::from_iter(
+            self.resolver.cstore().item_attrs_untracked(def_id, self.resolver.sess()),
+        );
         let parent_scope = ParentScope::module(
             self.resolver.get_nearest_non_block_module(
                 self.resolver.opt_parent(scope_id).unwrap_or(scope_id),
@@ -205,7 +226,9 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
         if !self.resolver.cstore().may_have_doc_links_untracked(def_id) {
             return;
         }
-        let attrs = Vec::from_iter(self.resolver.cstore().item_attrs_untracked(def_id, self.sess));
+        let attrs = Vec::from_iter(
+            self.resolver.cstore().item_attrs_untracked(def_id, self.resolver.sess()),
+        );
         let parent_scope = ParentScope::module(self.resolver.expect_module(def_id), self.resolver);
         self.resolve_doc_links(doc_attrs(attrs.iter()), parent_scope);
     }
@@ -298,6 +321,7 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                     && module_id.is_local()
             {
                 if let Some(def_id) = child.res.opt_def_id() && !def_id.is_local() {
+                    self.local_doc_reachable.insert(def_id);
                     let scope_id = match child.res {
                         Res::Def(
                             DefKind::Variant
@@ -321,7 +345,7 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                         let field_def_ids = Vec::from_iter(
                             self.resolver
                                 .cstore()
-                                .associated_item_def_ids_untracked(def_id, self.sess),
+                                .associated_item_def_ids_untracked(def_id, self.resolver.sess()),
                         );
                         for field_def_id in field_def_ids {
                             self.resolve_doc_links_extern_outer(field_def_id, scope_id);

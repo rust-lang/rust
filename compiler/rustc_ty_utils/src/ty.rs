@@ -1,7 +1,9 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
+use rustc_session::config::TraitSolver;
+use rustc_span::def_id::{DefId, CRATE_DEF_ID};
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -15,7 +17,13 @@ fn sized_constraint_for_ty<'tcx>(
         Bool | Char | Int(..) | Uint(..) | Float(..) | RawPtr(..) | Ref(..) | FnDef(..)
         | FnPtr(_) | Array(..) | Closure(..) | Generator(..) | Never => vec![],
 
-        Str | Dynamic(..) | Slice(_) | Foreign(..) | Error(_) | GeneratorWitness(..) => {
+        Str
+        | Dynamic(..)
+        | Slice(_)
+        | Foreign(..)
+        | Error(_)
+        | GeneratorWitness(..)
+        | GeneratorWitnessMIR(..) => {
             // these are never sized - return the target type
             vec![ty]
         }
@@ -121,7 +129,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // are any errors at that point, so outside of type inference you can be
     // sure that this will succeed without errors anyway.
 
-    if tcx.sess.opts.unstable_opts.chalk {
+    if tcx.sess.opts.unstable_opts.trait_solver == TraitSolver::Chalk {
         let environment = well_formed_types_in_env(tcx, def_id);
         predicates.extend(environment);
     }
@@ -161,7 +169,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
                 kind: hir::ImplItemKind::Type(..) | hir::ImplItemKind::Fn(..),
                 ..
             }) => {
-                let parent_hir_id = tcx.hir().get_parent_node(hir_id);
+                let parent_hir_id = tcx.hir().parent_id(hir_id);
                 match tcx.hir().get(parent_hir_id) {
                     hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
@@ -207,14 +215,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         constness,
     );
 
-    let body_id =
-        local_did.and_then(|id| tcx.hir().maybe_body_owned_by(id).map(|body| body.hir_id));
-    let body_id = match body_id {
-        Some(id) => id,
-        None if hir_id.is_some() => hir_id.unwrap(),
-        _ => hir::CRATE_HIR_ID,
-    };
-
+    let body_id = local_did.unwrap_or(CRATE_DEF_ID);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
 }
@@ -288,7 +289,7 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
         // In a trait impl, we assume that the header trait ref and all its
         // constituents are well-formed.
         NodeKind::TraitImpl => {
-            let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
+            let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl").subst_identity();
 
             // FIXME(chalk): this has problems because of late-bound regions
             //inputs.extend(trait_ref.substs.iter().flat_map(|arg| arg.walk()));
@@ -305,7 +306,7 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
         // In an fn, we assume that the arguments and all their constituents are
         // well-formed.
         NodeKind::Fn => {
-            let fn_sig = tcx.fn_sig(def_id);
+            let fn_sig = tcx.fn_sig(def_id).subst_identity();
             let fn_sig = tcx.liberate_late_bound_regions(def_id, fn_sig);
 
             inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
@@ -359,7 +360,8 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
     let trait_ref = tcx
         .impl_trait_ref(def_id)
-        .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id));
+        .unwrap_or_else(|| bug!("issue33140_self_ty called on inherent impl {:?}", def_id))
+        .skip_binder();
 
     debug!("issue33140_self_ty({:?}), trait-ref={:?}", def_id, trait_ref);
 
@@ -405,6 +407,56 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     node.fn_sig().map_or(hir::IsAsync::NotAsync, |sig| sig.header.asyncness)
 }
 
+fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32> {
+    let def = tcx.adt_def(def_id);
+    let num_params = tcx.generics_of(def_id).count();
+
+    let maybe_unsizing_param_idx = |arg: ty::GenericArg<'tcx>| match arg.unpack() {
+        ty::GenericArgKind::Type(ty) => match ty.kind() {
+            ty::Param(p) => Some(p.index),
+            _ => None,
+        },
+
+        // We can't unsize a lifetime
+        ty::GenericArgKind::Lifetime(_) => None,
+
+        ty::GenericArgKind::Const(ct) => match ct.kind() {
+            ty::ConstKind::Param(p) => Some(p.index),
+            _ => None,
+        },
+    };
+
+    // FIXME(eddyb) cache this (including computing `unsizing_params`)
+    // by putting it in a query; it would only need the `DefId` as it
+    // looks at declared field types, not anything substituted.
+
+    // The last field of the structure has to exist and contain type/const parameters.
+    let Some((tail_field, prefix_fields)) =
+        def.non_enum_variant().fields.split_last() else
+    {
+        return BitSet::new_empty(num_params);
+    };
+
+    let mut unsizing_params = BitSet::new_empty(num_params);
+    for arg in tcx.bound_type_of(tail_field.did).subst_identity().walk() {
+        if let Some(i) = maybe_unsizing_param_idx(arg) {
+            unsizing_params.insert(i);
+        }
+    }
+
+    // Ensure none of the other fields mention the parameters used
+    // in unsizing.
+    for field in prefix_fields {
+        for arg in tcx.bound_type_of(field.did).subst_identity().walk() {
+            if let Some(i) = maybe_unsizing_param_idx(arg) {
+                unsizing_params.remove(i);
+            }
+        }
+    }
+
+    unsizing_params
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
@@ -414,6 +466,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
+        unsizing_params_for_adt,
         ..*providers
     };
 }

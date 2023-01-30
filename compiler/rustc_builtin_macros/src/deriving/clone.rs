@@ -20,7 +20,7 @@ pub fn expand_deriving_clone(
     // some additional `AssertParamIsClone` assertions.
     //
     // We can use the simple form if either of the following are true.
-    // - The type derives Copy and there are no generic parameters.  (If we
+    // - The type derives Copy and there are no generic parameters. (If we
     //   used the simple form with generics, we'd have to bound the generics
     //   with Clone + Copy, and then there'd be no Clone impl at all if the
     //   user fills in something that is Clone but not Copy. After
@@ -73,6 +73,7 @@ pub fn expand_deriving_clone(
         span,
         path: path_std!(clone::Clone),
         skip_path_as_bound: false,
+        needs_copy_as_bound_if_packed: true,
         additional_bounds: bounds,
         supports_unions: true,
         methods: vec![MethodDef {
@@ -82,7 +83,7 @@ pub fn expand_deriving_clone(
             nonself_args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
-            unify_fieldless_variants: false,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: substructure,
         }],
         associated_types: Vec::new(),
@@ -177,7 +178,9 @@ fn cs_clone(
             all_fields = af;
             vdata = &variant.data;
         }
-        EnumTag(..) => cx.span_bug(trait_span, &format!("enum tags in `derive({})`", name,)),
+        EnumTag(..) | AllFieldlessEnum(..) => {
+            cx.span_bug(trait_span, &format!("enum tags in `derive({})`", name,))
+        }
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, &format!("associated function in `derive({})`", name))
         }

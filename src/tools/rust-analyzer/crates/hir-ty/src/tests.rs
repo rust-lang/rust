@@ -94,18 +94,19 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 types.insert(file_range, expected.trim_start_matches("type: ").to_string());
             } else if expected.starts_with("expected") {
                 mismatches.insert(file_range, expected);
-            } else if expected.starts_with("adjustments: ") {
+            } else if expected.starts_with("adjustments:") {
                 adjustments.insert(
                     file_range,
                     expected
-                        .trim_start_matches("adjustments: ")
+                        .trim_start_matches("adjustments:")
+                        .trim()
                         .split(',')
                         .map(|it| it.trim().to_string())
                         .filter(|it| !it.is_empty())
                         .collect(),
                 );
             } else {
-                panic!("unexpected annotation: {}", expected);
+                panic!("unexpected annotation: {expected}");
             }
             had_annotations = true;
         }
@@ -176,17 +177,17 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 assert_eq!(actual, expected);
             }
             if let Some(expected) = adjustments.remove(&range) {
-                if let Some(adjustments) = inference_result.expr_adjustments.get(&expr) {
-                    assert_eq!(
-                        expected,
-                        adjustments
-                            .iter()
-                            .map(|Adjustment { kind, .. }| format!("{:?}", kind))
-                            .collect::<Vec<_>>()
-                    );
-                } else {
-                    panic!("expected {:?} adjustments, found none", expected);
-                }
+                let adjustments = inference_result
+                    .expr_adjustments
+                    .get(&expr)
+                    .map_or_else(Default::default, |it| &**it);
+                assert_eq!(
+                    expected,
+                    adjustments
+                        .iter()
+                        .map(|Adjustment { kind, .. }| format!("{kind:?}"))
+                        .collect::<Vec<_>>()
+                );
             }
         }
 

@@ -107,7 +107,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         closure_substs: ty::SubstsRef<'tcx>,
     ) {
         // Extract the values of the free regions in `closure_substs`
-        // into a vector.  These are the regions that we will be
+        // into a vector. These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
             self.tcx,

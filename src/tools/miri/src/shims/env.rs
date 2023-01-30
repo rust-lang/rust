@@ -166,7 +166,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // `buf_size` represents the size in characters.
                 let buf_size = u64::from(this.read_scalar(size_op)?.to_u32()?);
                 Scalar::from_u32(windows_check_buffer_size(
-                    this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?,
+                    this.write_os_str_to_wide_str(
+                        &var, buf_ptr, buf_size, /*truncate*/ false,
+                    )?,
                 ))
             }
             None => {
@@ -366,7 +368,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match env::current_dir() {
             Ok(cwd) =>
                 return Ok(Scalar::from_u32(windows_check_buffer_size(
-                    this.write_path_to_wide_str(&cwd, buf, size)?,
+                    this.write_path_to_wide_str(&cwd, buf, size, /*truncate*/ false)?,
                 ))),
             Err(e) => this.set_last_error_from_io_error(e.kind())?,
         }

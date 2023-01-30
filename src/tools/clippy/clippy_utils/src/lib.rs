@@ -1,6 +1,5 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(never_type)]
@@ -22,6 +21,9 @@ extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
 extern crate rustc_data_structures;
+// The `rustc_driver` crate seems to be required in order to use the `rust_ast` crate.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_hir_typeck;
@@ -116,6 +118,8 @@ use crate::consts::{constant, Constant};
 use crate::ty::{can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type, ty_is_fn_once_param};
 use crate::visitors::for_each_expr;
 
+use rustc_middle::hir::nested_filter;
+
 #[macro_export]
 macro_rules! extract_msrv_attr {
     ($context:ident) => {
@@ -174,7 +178,7 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
     if_chain! {
         if let Some(Node::Pat(pat)) = hir.find(hir_id);
         if matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..));
-        let parent = hir.get_parent_node(hir_id);
+        let parent = hir.parent_id(hir_id);
         if let Some(Node::Local(local)) = hir.find(parent);
         then {
             return local.init;
@@ -1114,9 +1118,8 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                         self.captures.entry(l).and_modify(|e| *e |= cap).or_insert(cap);
                     }
                 },
-                ExprKind::Closure { .. } => {
-                    let closure_id = self.cx.tcx.hir().local_def_id(e.hir_id);
-                    for capture in self.cx.typeck_results().closure_min_captures_flattened(closure_id) {
+                ExprKind::Closure(closure) => {
+                    for capture in self.cx.typeck_results().closure_min_captures_flattened(closure.def_id) {
                         let local_id = match capture.place.base {
                             PlaceBase::Local(id) => id,
                             PlaceBase::Upvar(var) => var.var_path.hir_id,
@@ -1253,22 +1256,33 @@ pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     }
 }
 
-pub struct ContainsName {
+pub struct ContainsName<'a, 'tcx> {
+    pub cx: &'a LateContext<'tcx>,
     pub name: Symbol,
     pub result: bool,
 }
 
-impl<'tcx> Visitor<'tcx> for ContainsName {
+impl<'a, 'tcx> Visitor<'tcx> for ContainsName<'a, 'tcx> {
+    type NestedFilter = nested_filter::OnlyBodies;
+
     fn visit_name(&mut self, name: Symbol) {
         if self.name == name {
             self.result = true;
         }
     }
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
+    }
 }
 
 /// Checks if an `Expr` contains a certain name.
-pub fn contains_name(name: Symbol, expr: &Expr<'_>) -> bool {
-    let mut cn = ContainsName { name, result: false };
+pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
+    let mut cn = ContainsName {
+        name,
+        result: false,
+        cx,
+    };
     cn.visit_expr(expr);
     cn.result
 }
@@ -1287,7 +1301,7 @@ pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
 
 /// Gets the parent node, if any.
 pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
-    tcx.hir().parent_iter(id).next().map(|(_, node)| node)
+    tcx.hir().find_parent(id)
 }
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
@@ -1304,6 +1318,7 @@ pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::HirId)
     }
 }
 
+/// Gets the enclosing block, if any.
 pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Block<'tcx>> {
     let map = &cx.tcx.hir();
     let enclosing_node = map
@@ -1362,7 +1377,7 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
                                     .chain(args.iter())
                                     .position(|arg| arg.hir_id == id)?;
                                 let id = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
-                                let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i];
+                                let ty = cx.tcx.fn_sig(id).subst_identity().skip_binder().inputs()[i];
                                 ty_is_fn_once_param(cx.tcx, ty, cx.tcx.param_env(id).caller_bounds()).then_some(())
                             },
                             _ => None,
@@ -1561,16 +1576,14 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
 }
 
 /// Convenience function to get the return type of a function.
-pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> {
-    let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
-    let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
+pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_def_id: hir::OwnerId) -> Ty<'tcx> {
+    let ret_ty = cx.tcx.fn_sig(fn_def_id).subst_identity().output();
     cx.tcx.erase_late_bound_regions(ret_ty)
 }
 
 /// Convenience function to get the nth argument type of a function.
-pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId, nth: usize) -> Ty<'tcx> {
-    let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
-    let arg = cx.tcx.fn_sig(fn_def_id).input(nth);
+pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_def_id: hir::OwnerId, nth: usize) -> Ty<'tcx> {
+    let arg = cx.tcx.fn_sig(fn_def_id).subst_identity().input(nth);
     cx.tcx.erase_late_bound_regions(arg)
 }
 
@@ -2075,7 +2088,7 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 /// }
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+    if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
         matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
     } else {
         false
@@ -2242,6 +2255,18 @@ pub fn peel_n_hir_expr_refs<'a>(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'
         _ => None,
     });
     (e, count - remaining)
+}
+
+/// Peels off all unary operators of an expression. Returns the underlying expression and the number
+/// of operators removed.
+pub fn peel_hir_expr_unary<'a>(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
+    let mut count: usize = 0;
+    let mut curr_expr = expr;
+    while let ExprKind::Unary(_, local_expr) = curr_expr.kind {
+        count = count.wrapping_add(1);
+        curr_expr = local_expr;
+    }
+    (curr_expr, count)
 }
 
 /// Peels off all references on the expression. Returns the underlying expression and the number of
@@ -2460,6 +2485,10 @@ pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
     }
 
     comments_buf.join("\n")
+}
+
+pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
+    sm.span_take_while(span, |&ch| ch == ' ' || ch == ';')
 }
 
 macro_rules! op_utils {

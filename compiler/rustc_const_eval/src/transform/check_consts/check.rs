@@ -242,7 +242,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // impl trait is gone in MIR, so check the return type of a const fn by its signature
             // instead of the type of the return place.
             self.span = body.local_decls[RETURN_PLACE].source_info.span;
-            let return_ty = tcx.fn_sig(def_id).output();
+            let return_ty = self.ccx.fn_sig().output();
             self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
@@ -442,7 +442,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
         self.super_rvalue(rvalue, location);
 
-        match *rvalue {
+        match rvalue {
             Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
 
             Rvalue::Use(_)
@@ -451,18 +451,15 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | Rvalue::Discriminant(..)
             | Rvalue::Len(_) => {}
 
-            Rvalue::Aggregate(ref kind, ..) => {
-                if let AggregateKind::Generator(def_id, ..) = kind.as_ref() {
-                    if let Some(generator_kind) = self.tcx.generator_kind(def_id.to_def_id()) {
-                        if matches!(generator_kind, hir::GeneratorKind::Async(..)) {
-                            self.check_op(ops::Generator(generator_kind));
-                        }
-                    }
+            Rvalue::Aggregate(kind, ..) => {
+                if let AggregateKind::Generator(def_id, ..) = kind.as_ref()
+                    && let Some(generator_kind @ hir::GeneratorKind::Async(..)) = self.tcx.generator_kind(def_id.to_def_id())
+                {
+                    self.check_op(ops::Generator(generator_kind));
                 }
             }
 
-            Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
-            | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place) => {
+            Rvalue::Ref(_, kind @ (BorrowKind::Mut { .. } | BorrowKind::Unique), place) => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let is_allowed = match ty.kind() {
                     // Inside a `static mut`, `&mut [...]` is allowed.
@@ -491,12 +488,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::AddressOf(Mutability::Mut, ref place) => {
+            Rvalue::AddressOf(Mutability::Mut, place) => {
                 self.check_mut_borrow(place.local, hir::BorrowKind::Raw)
             }
 
-            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, ref place)
-            | Rvalue::AddressOf(Mutability::Not, ref place) => {
+            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, place)
+            | Rvalue::AddressOf(Mutability::Not, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     &self.ccx,
                     &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
@@ -564,7 +561,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(_, ref operand) => {
+            Rvalue::UnaryOp(_, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
                 if is_int_bool_or_char(ty) {
                     // Int, bool, and char operations are fine.
@@ -575,8 +572,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, box (ref lhs, ref rhs))
-            | Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs))
+            | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -585,13 +582,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
                     assert_eq!(lhs_ty, rhs_ty);
                     assert!(
-                        op == BinOp::Eq
-                            || op == BinOp::Ne
-                            || op == BinOp::Le
-                            || op == BinOp::Lt
-                            || op == BinOp::Ge
-                            || op == BinOp::Gt
-                            || op == BinOp::Offset
+                        matches!(
+                            op,
+                            BinOp::Eq
+                            | BinOp::Ne
+                            | BinOp::Le
+                            | BinOp::Lt
+                            | BinOp::Ge
+                            | BinOp::Gt
+                            | BinOp::Offset
+                        )
                     );
 
                     self.check_op(ops::RawPtrComparison);
@@ -693,6 +693,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}
         }
     }
@@ -730,6 +731,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             substs,
                             span: *fn_span,
                             from_hir_call: *from_hir_call,
+                            feature: Some(sym::const_trait_impl),
                         });
                         return;
                     }
@@ -753,12 +755,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         let ocx = ObligationCtxt::new(&infcx);
 
                         let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
-                        let hir_id = tcx
-                            .hir()
-                            .local_def_id_to_hir_id(self.body.source.def_id().expect_local());
                         let cause = ObligationCause::new(
                             terminator.source_info.span,
-                            hir_id,
+                            self.body.source.def_id().expect_local(),
                             ObligationCauseCode::ItemObligation(callee),
                         );
                         let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
@@ -782,6 +781,20 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             );
                             return;
                         }
+                        Ok(Some(ImplSource::Closure(data))) => {
+                            if !tcx.is_const_fn_raw(data.closure_def_id) {
+                                self.check_op(ops::FnCallNonConst {
+                                    caller,
+                                    callee,
+                                    substs,
+                                    span: *fn_span,
+                                    from_hir_call: *from_hir_call,
+                                    feature: None,
+                                });
+
+                                return;
+                            }
+                        }
                         Ok(Some(ImplSource::UserDefined(data))) => {
                             let callee_name = tcx.item_name(callee);
                             if let Some(&did) = tcx
@@ -802,6 +815,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     substs,
                                     span: *fn_span,
                                     from_hir_call: *from_hir_call,
+                                    feature: None,
                                 });
                                 return;
                             }
@@ -844,6 +858,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     substs,
                                     span: *fn_span,
                                     from_hir_call: *from_hir_call,
+                                    feature: None,
                                 });
                                 return;
                             }
@@ -903,6 +918,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             substs,
                             span: *fn_span,
                             from_hir_call: *from_hir_call,
+                            feature: None,
                         });
                         return;
                     }

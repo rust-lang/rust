@@ -1268,7 +1268,7 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::In { reg, ref expr } => {
                     s.word("in");
                     s.popen();
-                    s.word(format!("{}", reg));
+                    s.word(format!("{reg}"));
                     s.pclose();
                     s.space();
                     s.print_expr(expr);
@@ -1276,7 +1276,7 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::Out { reg, late, ref expr } => {
                     s.word(if late { "lateout" } else { "out" });
                     s.popen();
-                    s.word(format!("{}", reg));
+                    s.word(format!("{reg}"));
                     s.pclose();
                     s.space();
                     match expr {
@@ -1287,7 +1287,7 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
                     s.word(if late { "inlateout" } else { "inout" });
                     s.popen();
-                    s.word(format!("{}", reg));
+                    s.word(format!("{reg}"));
                     s.pclose();
                     s.space();
                     s.print_expr(expr);
@@ -1295,7 +1295,7 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
                     s.word(if late { "inlateout" } else { "inout" });
                     s.popen();
-                    s.word(format!("{}", reg));
+                    s.word(format!("{reg}"));
                     s.pclose();
                     s.space();
                     s.print_expr(in_expr);
@@ -1464,6 +1464,7 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Closure(&hir::Closure {
                 binder,
+                constness,
                 capture_clause,
                 bound_generic_params,
                 fn_decl,
@@ -1474,6 +1475,7 @@ impl<'a> State<'a> {
                 def_id: _,
             }) => {
                 self.print_closure_binder(binder, bound_generic_params);
+                self.print_constness(constness);
                 self.print_capture_clause(capture_clause);
 
                 self.print_closure_params(fn_decl, body);
@@ -2272,10 +2274,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_header_info(&mut self, header: hir::FnHeader) {
-        match header.constness {
-            hir::Constness::NotConst => {}
-            hir::Constness::Const => self.word_nbsp("const"),
-        }
+        self.print_constness(header.constness);
 
         match header.asyncness {
             hir::IsAsync::NotAsync => {}
@@ -2290,6 +2289,13 @@ impl<'a> State<'a> {
         }
 
         self.word("fn")
+    }
+
+    pub fn print_constness(&mut self, s: hir::Constness) {
+        match s {
+            hir::Constness::NotConst => {}
+            hir::Constness::Const => self.word_nbsp("const"),
+        }
     }
 
     pub fn print_unsafety(&mut self, s: hir::Unsafety) {

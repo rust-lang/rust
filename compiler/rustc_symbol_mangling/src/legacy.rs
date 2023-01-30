@@ -175,7 +175,7 @@ impl SymbolPath {
     fn finish(mut self, hash: u64) -> String {
         self.finalize_pending_component();
         // E = end name-sequence
-        let _ = write!(self.result, "17h{:016x}E", hash);
+        let _ = write!(self.result, "17h{hash:016x}E");
         self.result
     }
 }
@@ -227,7 +227,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
                 self = self.print_type(ty)?;
                 self.write_str("; ")?;
                 if let Some(size) = size.kind().try_to_bits(self.tcx().data_layout.pointer_size) {
-                    write!(self, "{}", size)?
+                    write!(self, "{size}")?
                 } else if let ty::ConstKind::Param(param) = size.kind() {
                     self = param.print(self)?
                 } else {

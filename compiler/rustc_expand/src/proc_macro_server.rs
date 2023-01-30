@@ -230,7 +230,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     let stream = TokenStream::from_nonterminal_ast(&nt);
                     // A hack used to pass AST fragments to attribute and derive
                     // macros as a single nonterminal token instead of a token
-                    // stream.  Such token needs to be "unwrapped" and not
+                    // stream. Such token needs to be "unwrapped" and not
                     // represented as a delimited group.
                     // FIXME: It needs to be removed, but there are some
                     // compatibility issues (see #73345).
@@ -597,8 +597,8 @@ impl server::SourceFile for Rustc<'_, '_> {
     }
 
     fn path(&mut self, file: &Self::SourceFile) -> String {
-        match file.name {
-            FileName::Real(ref name) => name
+        match &file.name {
+            FileName::Real(name) => name
                 .local_path()
                 .expect("attempting to get a file path in an imported file in `proc_macro::SourceFile::path`")
                 .to_str()

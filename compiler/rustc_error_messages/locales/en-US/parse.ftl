@@ -2,6 +2,10 @@ parse_struct_literal_body_without_path =
     struct literal body without path
     .suggestion = you might have forgotten to add the struct literal inside the block
 
+parse_struct_literal_needing_parens =
+    invalid struct literal
+    .suggestion = you might need to surround the struct literal in parentheses
+
 parse_maybe_report_ambiguous_plus =
     ambiguous `+` in a type
     .suggestion = use parentheses to disambiguate
@@ -195,6 +199,17 @@ parse_match_arm_body_without_braces = `match` arm body without braces
         } with a body
     .suggestion_use_comma_not_semicolon = use a comma to end a `match` arm expression
 
+parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
+    .suggestion_remove_eq = use `..=` instead
+    .note = inclusive ranges end with a single equals sign (`..=`)
+
+parse_inclusive_range_match_arrow = unexpected `=>` after open range
+    .suggestion_add_space = add a space between the pattern and `=>`
+
+parse_inclusive_range_no_end = inclusive range with no end
+    .suggestion_open_range = use `..` instead
+    .note = inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
 parse_struct_literal_not_allowed_here = struct literals are not allowed here
     .suggestion = surround the struct literal with parentheses
 
@@ -234,6 +249,7 @@ parse_const_let_mutually_exclusive = `const` and `let` are mutually exclusive
 
 parse_invalid_expression_in_let_else = a `{$operator}` expression cannot be directly assigned in `let...else`
 parse_invalid_curly_in_let_else = right curly brace `{"}"}` before `else` in a `let...else` statement not allowed
+parse_extra_if_in_let_else = remove the `if` if you meant to write a `let...else` statement
 
 parse_compound_assignment_expression_in_let = can't reassign to an uninitialized variable
     .suggestion = initialize the variable
@@ -368,3 +384,9 @@ parse_maybe_fn_typo_with_impl = you might have meant to write `impl` instead of 
 
 parse_expected_fn_path_found_fn_keyword = expected identifier, found keyword `fn`
     .suggestion = use `Fn` to refer to the trait
+
+parse_where_clause_before_tuple_struct_body = where clauses are not allowed before tuple struct bodies
+    .label = unexpected where clause
+    .name_label = while parsing this tuple struct
+    .body_label = the struct body
+    .suggestion = move the body before the where clause

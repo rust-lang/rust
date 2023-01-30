@@ -16,7 +16,7 @@ use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use thin_vec::thin_vec;
 
@@ -209,6 +209,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Closure(box Closure {
                     binder,
                     capture_clause,
+                    constness,
                     asyncness,
                     movability,
                     fn_decl,
@@ -233,6 +234,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             binder,
                             *capture_clause,
                             e.id,
+                            *constness,
                             *movability,
                             fn_decl,
                             body,
@@ -292,6 +294,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::InlineAsm(asm) => {
                     hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
                 }
+                ExprKind::FormatArgs(fmt) => self.lower_format_args(e.span, fmt),
                 ExprKind::Struct(se) => {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
@@ -651,6 +654,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 fn_decl_span: self.lower_span(span),
                 fn_arg_span: None,
                 movability: Some(hir::Movability::Static),
+                constness: hir::Constness::NotConst,
             });
 
             hir::ExprKind::Closure(c)
@@ -689,8 +693,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // call (like the identity function), as otherwise type and lifetime
         // inference have a hard time figuring things out.
         // Without this, we would get:
-        // E0720 in src/test/ui/impl-trait/in-trait/default-body-with-rpit.rs
-        // E0700 in src/test/ui/self/self_lifetime-async.rs
+        // E0720 in tests/ui/impl-trait/in-trait/default-body-with-rpit.rs
+        // E0700 in tests/ui/self/self_lifetime-async.rs
 
         // `future::identity_future`:
         let identity_future =
@@ -890,6 +894,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
+        constness: Const,
         movability: Movability,
         decl: &FnDecl,
         body: &Expr,
@@ -927,6 +932,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
             movability: generator_option,
+            constness: self.lower_constness(constness),
         });
 
         hir::ExprKind::Closure(c)
@@ -1041,6 +1047,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
             movability: None,
+            constness: hir::Constness::NotConst,
         });
         hir::ExprKind::Closure(c)
     }
@@ -1729,7 +1736,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, hir::ExprKind::DropTemps(expr))
     }
 
-    fn expr_match(
+    pub(super) fn expr_match(
         &mut self,
         span: Span,
         arg: &'hir hir::Expr<'hir>,
@@ -1757,7 +1764,44 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.expr(sp, hir::ExprKind::Tup(&[])))
     }
 
-    fn expr_call_mut(
+    pub(super) fn expr_usize(&mut self, sp: Span, value: usize) -> hir::Expr<'hir> {
+        self.expr(
+            sp,
+            hir::ExprKind::Lit(hir::Lit {
+                span: sp,
+                node: ast::LitKind::Int(
+                    value as u128,
+                    ast::LitIntType::Unsigned(ast::UintTy::Usize),
+                ),
+            }),
+        )
+    }
+
+    pub(super) fn expr_u32(&mut self, sp: Span, value: u32) -> hir::Expr<'hir> {
+        self.expr(
+            sp,
+            hir::ExprKind::Lit(hir::Lit {
+                span: sp,
+                node: ast::LitKind::Int(value.into(), ast::LitIntType::Unsigned(ast::UintTy::U32)),
+            }),
+        )
+    }
+
+    pub(super) fn expr_char(&mut self, sp: Span, value: char) -> hir::Expr<'hir> {
+        self.expr(sp, hir::ExprKind::Lit(hir::Lit { span: sp, node: ast::LitKind::Char(value) }))
+    }
+
+    pub(super) fn expr_str(&mut self, sp: Span, value: Symbol) -> hir::Expr<'hir> {
+        self.expr(
+            sp,
+            hir::ExprKind::Lit(hir::Lit {
+                span: sp,
+                node: ast::LitKind::Str(value, ast::StrStyle::Cooked),
+            }),
+        )
+    }
+
+    pub(super) fn expr_call_mut(
         &mut self,
         span: Span,
         e: &'hir hir::Expr<'hir>,
@@ -1766,7 +1810,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, hir::ExprKind::Call(e, args))
     }
 
-    fn expr_call(
+    pub(super) fn expr_call(
         &mut self,
         span: Span,
         e: &'hir hir::Expr<'hir>,
@@ -1806,6 +1850,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span,
             hir::ExprKind::Path(hir::QPath::LangItem(lang_item, self.lower_span(span), hir_id)),
         )
+    }
+
+    /// `<LangItem>::name`
+    pub(super) fn expr_lang_item_type_relative(
+        &mut self,
+        span: Span,
+        lang_item: hir::LangItem,
+        name: Symbol,
+    ) -> hir::Expr<'hir> {
+        let path = hir::ExprKind::Path(hir::QPath::TypeRelative(
+            self.arena.alloc(self.ty(
+                span,
+                hir::TyKind::Path(hir::QPath::LangItem(lang_item, self.lower_span(span), None)),
+            )),
+            self.arena.alloc(hir::PathSegment::new(
+                Ident::new(name, span),
+                self.next_id(),
+                Res::Err,
+            )),
+        ));
+        self.expr(span, path)
     }
 
     pub(super) fn expr_ident(
@@ -1866,12 +1931,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(b.span, hir::ExprKind::Block(b, None))
     }
 
+    pub(super) fn expr_array_ref(
+        &mut self,
+        span: Span,
+        elements: &'hir [hir::Expr<'hir>],
+    ) -> hir::Expr<'hir> {
+        let addrof = hir::ExprKind::AddrOf(
+            hir::BorrowKind::Ref,
+            hir::Mutability::Not,
+            self.arena.alloc(self.expr(span, hir::ExprKind::Array(elements))),
+        );
+        self.expr(span, addrof)
+    }
+
     pub(super) fn expr(&mut self, span: Span, kind: hir::ExprKind<'hir>) -> hir::Expr<'hir> {
         let hir_id = self.next_id();
         hir::Expr { hir_id, kind, span: self.lower_span(span) }
     }
 
-    fn expr_field(
+    pub(super) fn expr_field(
         &mut self,
         ident: Ident,
         expr: &'hir hir::Expr<'hir>,
@@ -1886,7 +1964,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn arm(&mut self, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {
+    pub(super) fn arm(
+        &mut self,
+        pat: &'hir hir::Pat<'hir>,
+        expr: &'hir hir::Expr<'hir>,
+    ) -> hir::Arm<'hir> {
         hir::Arm {
             hir_id: self.next_id(),
             pat,

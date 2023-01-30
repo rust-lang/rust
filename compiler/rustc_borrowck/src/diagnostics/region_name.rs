@@ -200,9 +200,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// increment the counter.
     ///
     /// This is _not_ idempotent. Call `give_region_a_name` when possible.
-    fn synthesize_region_name(&self) -> Symbol {
+    pub(crate) fn synthesize_region_name(&self) -> Symbol {
         let c = self.next_region_name.replace_with(|counter| *counter + 1);
-        Symbol::intern(&format!("'{:?}", c))
+        Symbol::intern(&format!("'{c:?}"))
     }
 
     /// Maps from an internal MIR region vid to something that we can
@@ -619,7 +619,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     // programs, so we need to use delay_span_bug here. See #82126.
                     self.infcx.tcx.sess.delay_span_bug(
                         hir_arg.span(),
-                        &format!("unmatched subst and hir arg: found {:?} vs {:?}", kind, hir_arg),
+                        &format!("unmatched subst and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );
                 }
             }
@@ -783,8 +783,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         } else {
             span_bug!(
                 hir_ty.span,
-                "bounds from lowered return type of async fn did not match expected format: {:?}",
-                opaque_ty
+                "bounds from lowered return type of async fn did not match expected format: {opaque_ty:?}",
             );
         }
     }

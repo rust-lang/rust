@@ -35,6 +35,7 @@ use std::hash::Hash;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
+use std::sync::LazyLock;
 
 pub mod sigpipe;
 
@@ -554,6 +555,16 @@ pub enum PrintRequest {
     SplitDebuginfo,
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum TraitSolver {
+    /// Classic trait solver in `rustc_trait_selection::traits::select`
+    Classic,
+    /// Chalk trait solver
+    Chalk,
+    /// Experimental trait solver in `rustc_trait_selection::solve`
+    Next,
+}
+
 pub enum Input {
     /// Load source code from a file.
     File(PathBuf),
@@ -578,6 +589,24 @@ impl Input {
         match *self {
             Input::File(ref ifile) => ifile.clone().into(),
             Input::Str { ref name, .. } => name.clone(),
+        }
+    }
+
+    pub fn opt_path(&self) -> Option<&Path> {
+        match self {
+            Input::File(file) => Some(file),
+            Input::Str { name, .. } => match name {
+                FileName::Real(real) => real.local_path(),
+                FileName::QuoteExpansion(_) => None,
+                FileName::Anon(_) => None,
+                FileName::MacroExpansion(_) => None,
+                FileName::ProcMacroSourceCode(_) => None,
+                FileName::CfgSpec(_) => None,
+                FileName::CliCrateAttr(_) => None,
+                FileName::Custom(_) => None,
+                FileName::DocTest(path, _) => Some(path),
+                FileName::InlineAsm(_) => None,
+            },
         }
     }
 }
@@ -704,7 +733,7 @@ impl OutputFilenames {
 pub fn host_triple() -> &'static str {
     // Get the host triple out of the build environment. This ensures that our
     // idea of the host triple is the same as for the set of libraries we've
-    // actually built.  We can't just take LLVM's host triple because they
+    // actually built. We can't just take LLVM's host triple because they
     // normalize all ix86 architectures to i386.
     //
     // Instead of grabbing the host triple (for the current host), we grab (at
@@ -835,18 +864,6 @@ pub enum CrateType {
     ProcMacro,
 }
 
-impl CrateType {
-    /// When generated, is this crate type an archive?
-    pub fn is_archive(&self) -> bool {
-        match *self {
-            CrateType::Rlib | CrateType::Staticlib => true,
-            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
-                false
-            }
-        }
-    }
-}
-
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum Passes {
     Some(Vec<String>),
@@ -928,6 +945,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     if sess.target.has_thread_local {
         ret.insert((sym::target_thread_local, None));
     }
+    let mut has_atomic = false;
     for (i, align) in [
         (8, layout.i8_align.abi),
         (16, layout.i16_align.abi),
@@ -936,6 +954,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
         (128, layout.i128_align.abi),
     ] {
         if i >= min_atomic_width && i <= max_atomic_width {
+            has_atomic = true;
             let mut insert_atomic = |s, align: Align| {
                 ret.insert((sym::target_has_atomic_load_store, Some(Symbol::intern(s))));
                 if atomic_cas {
@@ -950,6 +969,12 @@ fn default_configuration(sess: &Session) -> CrateConfig {
             if s == wordsz {
                 insert_atomic("ptr", layout.pointer_align.abi);
             }
+        }
+    }
+    if sess.is_nightly_build() && has_atomic {
+        ret.insert((sym::target_has_atomic_load_store, None));
+        if atomic_cas {
+            ret.insert((sym::target_has_atomic, None));
         }
     }
 
@@ -1260,7 +1285,7 @@ impl RustcOptGroup {
 
 // The `opt` local module holds wrappers around the `getopts` API that
 // adds extra rustc-specific metadata to each option; such metadata
-// is exposed by .  The public
+// is exposed by . The public
 // functions below ending with `_u` are the functions that return
 // *unstable* options, i.e., options that are only enabled when the
 // user also passes the `-Z unstable-options` debugging flag.
@@ -1312,7 +1337,12 @@ mod opt {
         unstable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
     }
 }
-
+static EDITION_STRING: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        "Specify which edition of the compiler to use when compiling code. \
+The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE_EDITION}."
+    )
+});
 /// Returns the "short" subset of the rustc command line options,
 /// including metadata for each option, such as whether the option is
 /// part of the stable long-term interface for rustc.
@@ -1345,7 +1375,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::opt_s(
             "",
             "edition",
-            "Specify which edition of the compiler to use when compiling code.",
+            &*EDITION_STRING,
             EDITION_NAME_LIST,
         ),
         opt::multi_s(
@@ -2075,7 +2105,7 @@ fn parse_libs(matches: &getopts::Matches, error_format: ErrorOutputType) -> Vec<
         .map(|s| {
             // Parse string of the form "[KIND[:MODIFIERS]=]lib[:new_name]",
             // where KIND is one of "dylib", "framework", "static", "link-arg" and
-            // where MODIFIERS are  a comma separated list of supported modifiers
+            // where MODIFIERS are a comma separated list of supported modifiers
             // (bundle, verbatim, whole-archive, as-needed). Each modifier is prefixed
             // with either + or - to indicate whether it is enabled or disabled.
             // The last value specified for a given modifier wins.
@@ -2443,6 +2473,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let pretty = parse_pretty(&unstable_opts, error_format);
 
+    // query-dep-graph is required if dump-dep-graph is given #106736
+    if unstable_opts.dump_dep_graph && !unstable_opts.query_dep_graph {
+        early_error(error_format, "can't dump dependency graph without `-Z query-dep-graph`");
+    }
+
     // Try to find a directory containing the Rust `src`, for more details see
     // the doc comment on the `real_rust_source_base_dir` field.
     let tmp_buf;
@@ -2475,12 +2510,12 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         early_error(error_format, &format!("Current directory is invalid: {e}"));
     });
 
-    let (path, remapped) =
-        FilePathMapping::new(remap_path_prefix.clone()).map_prefix(working_dir.clone());
+    let remap = FilePathMapping::new(remap_path_prefix.clone());
+    let (path, remapped) = remap.map_prefix(&working_dir);
     let working_dir = if remapped {
-        RealFileName::Remapped { local_path: Some(working_dir), virtual_name: path }
+        RealFileName::Remapped { virtual_name: path.into_owned(), local_path: Some(working_dir) }
     } else {
-        RealFileName::LocalPath(path)
+        RealFileName::LocalPath(path.into_owned())
     };
 
     Options {
@@ -2538,6 +2573,7 @@ fn parse_pretty(unstable_opts: &UnstableOptions, efmt: ErrorOutputType) -> Optio
         "hir,typed" => Hir(PpHirMode::Typed),
         "hir-tree" => HirTree,
         "thir-tree" => ThirTree,
+        "thir-flat" => ThirFlat,
         "mir" => Mir,
         "mir-cfg" => MirCFG,
         name => early_error(
@@ -2546,7 +2582,8 @@ fn parse_pretty(unstable_opts: &UnstableOptions, efmt: ErrorOutputType) -> Optio
                 "argument to `unpretty` must be one of `normal`, `identified`, \
                             `expanded`, `expanded,identified`, `expanded,hygiene`, \
                             `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
-                            `hir,typed`, `hir-tree`, `thir-tree`, `mir` or `mir-cfg`; got {name}"
+                            `hir,typed`, `hir-tree`, `thir-tree`, `thir-flat`, `mir` or \
+                            `mir-cfg`; got {name}"
             ),
         ),
     };
@@ -2701,6 +2738,8 @@ pub enum PpMode {
     HirTree,
     /// `-Zunpretty=thir-tree`
     ThirTree,
+    /// `-Zunpretty=`thir-flat`
+    ThirFlat,
     /// `-Zunpretty=mir`
     Mir,
     /// `-Zunpretty=mir-cfg`
@@ -2719,6 +2758,7 @@ impl PpMode {
             | Hir(_)
             | HirTree
             | ThirTree
+            | ThirFlat
             | Mir
             | MirCFG => true,
         }
@@ -2728,13 +2768,13 @@ impl PpMode {
         match *self {
             Source(_) | AstTree(_) => false,
 
-            Hir(_) | HirTree | ThirTree | Mir | MirCFG => true,
+            Hir(_) | HirTree | ThirTree | ThirFlat | Mir | MirCFG => true,
         }
     }
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
-        matches!(*self, Mir | MirCFG | ThirTree)
+        matches!(*self, Mir | MirCFG | ThirTree | ThirFlat)
     }
 }
 
@@ -2761,7 +2801,7 @@ pub(crate) mod dep_tracking {
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
         InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel,
         OutputType, OutputTypes, Passes, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
+        SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2861,6 +2901,7 @@ pub(crate) mod dep_tracking {
         BranchProtection,
         OomStrategy,
         LanguageIdentifier,
+        TraitSolver,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

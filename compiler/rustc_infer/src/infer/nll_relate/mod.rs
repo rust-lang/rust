@@ -439,7 +439,7 @@ trait VidValuePair<'tcx>: Debug {
     fn value_ty(&self) -> Ty<'tcx>;
 
     /// Extract the scopes that apply to whichever side of the tuple
-    /// the vid was found on.  See the comment where this is called
+    /// the vid was found on. See the comment where this is called
     /// for more details on why we want them.
     fn vid_scopes<'r, D: TypeRelatingDelegate<'tcx>>(
         &self,
@@ -663,13 +663,13 @@ where
         debug!(?v_b);
 
         if self.ambient_covariance() {
-            // Covariance: a <= b. Hence, `b: a`.
-            self.push_outlives(v_b, v_a, self.ambient_variance_info);
+            // Covariant: &'a u8 <: &'b u8. Hence, `'a: 'b`.
+            self.push_outlives(v_a, v_b, self.ambient_variance_info);
         }
 
         if self.ambient_contravariance() {
-            // Contravariant: b <= a. Hence, `a: b`.
-            self.push_outlives(v_a, v_b, self.ambient_variance_info);
+            // Contravariant: &'b u8 <: &'a u8. Hence, `'b: 'a`.
+            self.push_outlives(v_b, v_a, self.ambient_variance_info);
         }
 
         Ok(a)
@@ -831,7 +831,7 @@ where
 /// (these are not explicitly present in the ty representation right
 /// now). This visitor handles that: it descends the type, tracking
 /// binder depth, and finds late-bound regions targeting the
-/// `for<..`>.  For each of those, it creates an entry in
+/// `for<..`>. For each of those, it creates an entry in
 /// `bound_region_scope`.
 struct ScopeInstantiator<'me, 'tcx> {
     next_region: &'me mut dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
@@ -849,7 +849,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
         t.super_visit_with(self);
         self.target_index.shift_out(1);
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -863,7 +863,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
             _ => {}
         }
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 

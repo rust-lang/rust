@@ -111,7 +111,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 M::retag_place_contents(self, *kind, &dest)?;
             }
 
-            Intrinsic(box ref intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
+            Intrinsic(box intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
 
             // Statements we do not track.
             AscribeUserType(..) => {}
@@ -128,6 +128,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             //
             // FIXME(#73156): Handle source code coverage in const eval
             Coverage(..) => {}
+
+            ConstEvalCounter => {
+                M::increment_const_eval_counter(self)?;
+            }
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
@@ -163,8 +167,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.copy_op(&op, &dest, /*allow_transmute*/ false)?;
             }
 
-            CopyForDeref(ref place) => {
-                let op = self.eval_place_to_op(*place, Some(dest.layout))?;
+            CopyForDeref(place) => {
+                let op = self.eval_place_to_op(place, Some(dest.layout))?;
                 self.copy_op(&op, &dest, /* allow_transmute*/ false)?;
             }
 

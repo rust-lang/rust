@@ -46,7 +46,7 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             )
         }
         _ => {
-            // Destructors only work on nominal types.  This was
+            // Destructors only work on nominal types. This was
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);

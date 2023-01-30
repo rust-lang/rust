@@ -64,7 +64,7 @@ fn compute_dbg_replacement(macro_call: ast::MacroCall) -> Option<(TextRange, Str
     let input_expressions = mac_input.group_by(|tok| tok.kind() == T![,]);
     let input_expressions = input_expressions
         .into_iter()
-        .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
+        .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
         .map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
         .collect::<Option<Vec<ast::Expr>>>()?;
 

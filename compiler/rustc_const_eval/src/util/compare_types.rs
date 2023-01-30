@@ -58,6 +58,6 @@ pub fn is_subtype<'tcx>(
     // even if they're constrained in our current function.
     //
     // It seems very unlikely that this hides any bugs.
-    let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+    let _ = infcx.take_opaque_types();
     errors.is_empty()
 }

@@ -9,6 +9,9 @@ const path = require("path");
 const os = require('os');
 const {Options, runTest} = require('browser-ui-test');
 
+// If a test fails or errors, we will retry it two more times in case it was a flaky failure.
+const NB_RETRY = 3;
+
 function showHelp() {
     console.log("rustdoc-js options:");
     console.log("  --doc-folder [PATH]        : location of the generated doc folder");
@@ -129,9 +132,57 @@ function char_printer(n_tests) {
     };
 }
 
-/// Sort array by .file_name property
+// Sort array by .file_name property
 function by_filename(a, b) {
     return a.file_name - b.file_name;
+}
+
+async function runTests(opts, framework_options, files, results, status_bar, showTestFailures) {
+    const tests_queue = [];
+
+    for (const testPath of files) {
+        const callback = runTest(testPath, framework_options)
+            .then(out => {
+                const [output, nb_failures] = out;
+                results[nb_failures === 0 ? "successful" : "failed"].push({
+                    file_name: testPath,
+                    output: output,
+                });
+                if (nb_failures === 0) {
+                    status_bar.successful();
+                } else if (showTestFailures) {
+                    status_bar.erroneous();
+                }
+            })
+            .catch(err => {
+                results.errored.push({
+                    file_name: testPath,
+                    output: err,
+                });
+                if (showTestFailures) {
+                    status_bar.erroneous();
+                }
+            })
+            .finally(() => {
+                // We now remove the promise from the tests_queue.
+                tests_queue.splice(tests_queue.indexOf(callback), 1);
+            });
+        tests_queue.push(callback);
+        if (opts["jobs"] > 0 && tests_queue.length >= opts["jobs"]) {
+            await Promise.race(tests_queue);
+        }
+    }
+    if (tests_queue.length > 0) {
+        await Promise.all(tests_queue);
+    }
+}
+
+function createEmptyResults() {
+    return {
+        successful: [],
+        failed: [],
+        errored: [],
+    };
 }
 
 async function main(argv) {
@@ -144,7 +195,7 @@ async function main(argv) {
     let debug = false;
     // Run tests in sequentially
     let headless = true;
-    const options = new Options();
+    const framework_options = new Options();
     try {
         // This is more convenient that setting fields one by one.
         let args = [
@@ -169,13 +220,12 @@ async function main(argv) {
             args.push("--executable-path");
             args.push(opts["executable_path"]);
         }
-        options.parseArguments(args);
+        framework_options.parseArguments(args);
     } catch (error) {
         console.error(`invalid argument: ${error}`);
         process.exit(1);
     }
 
-    let failed = false;
     let files;
     if (opts["files"].length === 0) {
         files = fs.readdirSync(opts["tests_folder"]);
@@ -187,6 +237,9 @@ async function main(argv) {
         console.error("rustdoc-gui: No test selected");
         process.exit(2);
     }
+    files.forEach((file_name, index) => {
+        files[index] = path.join(opts["tests_folder"], file_name);
+    });
     files.sort();
 
     if (!headless) {
@@ -209,57 +262,35 @@ async function main(argv) {
             console.log("");
             console.log(
                 "`browser-ui-test` crashed unexpectedly. Please try again with adding `--test-args \
---no-sandbox` at the end. For example: `x.py test src/test/rustdoc-gui --test-args --no-sandbox`");
+--no-sandbox` at the end. For example: `x.py test tests/rustdoc-gui --test-args --no-sandbox`");
             console.log("");
         }
     };
     process.on('exit', exitHandling);
 
-    const tests_queue = [];
-    let results = {
-        successful: [],
-        failed: [],
-        errored: [],
-    };
+    const originalFilesLen = files.length;
+    let results = createEmptyResults();
     const status_bar = char_printer(files.length);
-    for (let i = 0; i < files.length; ++i) {
-        const file_name = files[i];
-        const testPath = path.join(opts["tests_folder"], file_name);
-        const callback = runTest(testPath, options)
-            .then(out => {
-                const [output, nb_failures] = out;
-                results[nb_failures === 0 ? "successful" : "failed"].push({
-                    file_name: testPath,
-                    output: output,
-                });
-                if (nb_failures > 0) {
-                    status_bar.erroneous();
-                    failed = true;
-                } else {
-                    status_bar.successful();
-                }
-            })
-            .catch(err => {
-                results.errored.push({
-                    file_name: testPath + file_name,
-                    output: err,
-                });
-                status_bar.erroneous();
-                failed = true;
-            })
-            .finally(() => {
-                // We now remove the promise from the tests_queue.
-                tests_queue.splice(tests_queue.indexOf(callback), 1);
-            });
-        tests_queue.push(callback);
-        if (opts["jobs"] > 0 && tests_queue.length >= opts["jobs"]) {
-            await Promise.race(tests_queue);
+
+    let new_results;
+    for (let it = 0; it < NB_RETRY && files.length > 0; ++it) {
+        new_results = createEmptyResults();
+        await runTests(opts, framework_options, files, new_results, status_bar, it + 1 >= NB_RETRY);
+        Array.prototype.push.apply(results.successful, new_results.successful);
+        // We generate the new list of files with the previously failing tests.
+        files = Array.prototype.concat(new_results.failed, new_results.errored).map(
+            f => f['file_name']);
+        if (files.length > originalFilesLen / 2) {
+            // If we have too many failing tests, it's very likely not flaky failures anymore so
+            // no need to retry.
+            break;
         }
     }
-    if (tests_queue.length > 0) {
-        await Promise.all(tests_queue);
-    }
+
     status_bar.finish();
+
+    Array.prototype.push.apply(results.failed, new_results.failed);
+    Array.prototype.push.apply(results.errored, new_results.errored);
 
     // We don't need this listener anymore.
     process.removeListener("exit", exitHandling);
@@ -287,7 +318,7 @@ async function main(argv) {
         });
     }
 
-    if (failed) {
+    if (results.failed.length > 0 || results.errored.length > 0) {
         process.exit(1);
     }
 }

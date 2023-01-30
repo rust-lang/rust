@@ -37,6 +37,11 @@ impl AssocItem {
         Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
     }
 
+    /// Gets the defaultness of the associated item.
+    /// To get the default associated type, use the [`type_of`] query on the
+    /// [`DefId`] of the type.
+    ///
+    /// [`type_of`]: crate::ty::TyCtxt::type_of
     pub fn defaultness(&self, tcx: TyCtxt<'_>) -> hir::Defaultness {
         tcx.impl_defaultness(self.def_id)
     }
@@ -72,9 +77,9 @@ impl AssocItem {
             ty::AssocKind::Fn => {
                 // We skip the binder here because the binder would deanonymize all
                 // late-bound regions, and we don't want method signatures to show up
-                // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
+                // `as for<'r> fn(&'r MyType)`. Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
-                tcx.fn_sig(self.def_id).skip_binder().to_string()
+                tcx.fn_sig(self.def_id).subst_identity().skip_binder().to_string()
             }
             ty::AssocKind::Type => format!("type {};", self.name),
             ty::AssocKind::Const => {
@@ -125,7 +130,7 @@ impl std::fmt::Display for AssocKind {
 /// done only on items with the same name.
 #[derive(Debug, Clone, PartialEq, HashStable)]
 pub struct AssocItems<'tcx> {
-    pub(super) items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
+    items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
 }
 
 impl<'tcx> AssocItems<'tcx> {

@@ -1,8 +1,7 @@
-use crate::builtin;
-use rustc_errors::fluent;
-use rustc_hir::HirId;
+use crate::lints::{Expectation, ExpectationNote};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::{lint::LintExpectation, ty::TyCtxt};
+use rustc_middle::ty::TyCtxt;
+use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
 use rustc_session::lint::LintExpectationId;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
@@ -12,7 +11,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
-    if !tcx.sess.features_untracked().enabled(sym::lint_reasons) {
+    if !tcx.features().enabled(sym::lint_reasons) {
         return;
     }
 
@@ -28,34 +27,17 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
             if !fulfilled_expectations.contains(&id)
                 && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
             {
-                emit_unfulfilled_expectation_lint(tcx, *hir_id, expectation);
+                let rationale = expectation.reason.map(|rationale| ExpectationNote { rationale });
+                let note = expectation.is_unfulfilled_lint_expectations.then_some(());
+                tcx.emit_spanned_lint(
+                    UNFULFILLED_LINT_EXPECTATIONS,
+                    *hir_id,
+                    expectation.emission_span,
+                    Expectation { rationale, note },
+                );
             }
         } else {
             unreachable!("at this stage all `LintExpectationId`s are stable");
         }
     }
-}
-
-fn emit_unfulfilled_expectation_lint(
-    tcx: TyCtxt<'_>,
-    hir_id: HirId,
-    expectation: &LintExpectation,
-) {
-    tcx.struct_span_lint_hir(
-        builtin::UNFULFILLED_LINT_EXPECTATIONS,
-        hir_id,
-        expectation.emission_span,
-        fluent::lint_expectation,
-        |lint| {
-            if let Some(rationale) = expectation.reason {
-                lint.note(rationale.as_str());
-            }
-
-            if expectation.is_unfulfilled_lint_expectations {
-                lint.note(fluent::note);
-            }
-
-            lint
-        },
-    );
 }

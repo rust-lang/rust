@@ -97,17 +97,7 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             }
 
             // handled in the `strip-priv-imports` pass
-            clean::ExternCrateItem { .. } => {}
-            clean::ImportItem(ref imp) => {
-                // Because json doesn't inline imports from private modules, we need to mark
-                // the imported item as retained so it's impls won't be stripped.
-                //
-                // FIXME: Is it necessary to check for json output here: See
-                // https://github.com/rust-lang/rust/pull/100325#discussion_r941495215
-                if let Some(did) = imp.source.did && self.is_json_output {
-                    self.retained.insert(did.into());
-                }
-            }
+            clean::ExternCrateItem { .. } | clean::ImportItem(_) => {}
 
             clean::ImplItem(..) => {}
 
@@ -243,11 +233,25 @@ impl<'a> DocFolder for ImplStripper<'a, '_> {
 /// This stripper discards all private import statements (`use`, `extern crate`)
 pub(crate) struct ImportStripper<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) is_json_output: bool,
+}
+
+impl<'tcx> ImportStripper<'tcx> {
+    fn import_should_be_hidden(&self, i: &Item, imp: &clean::Import) -> bool {
+        if self.is_json_output {
+            // FIXME: This should be handled the same way as for HTML output.
+            imp.imported_item_is_doc_hidden(self.tcx)
+        } else {
+            i.attrs.lists(sym::doc).has_word(sym::hidden)
+        }
+    }
 }
 
 impl<'tcx> DocFolder for ImportStripper<'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
+            clean::ImportItem(imp) if self.import_should_be_hidden(&i, &imp) => None,
+            clean::ImportItem(_) if i.attrs.lists(sym::doc).has_word(sym::hidden) => None,
             clean::ExternCrateItem { .. } | clean::ImportItem(..)
                 if i.visibility(self.tcx) != Some(Visibility::Public) =>
             {

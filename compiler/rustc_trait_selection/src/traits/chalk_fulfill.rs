@@ -7,24 +7,18 @@ use crate::traits::{
     ChalkEnvironmentAndGoal, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
     SelectionError, TraitEngine,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_middle::ty::{self, TypeVisitable};
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_middle::ty::TypeVisitable;
 
 pub struct FulfillmentContext<'tcx> {
     obligations: FxIndexSet<PredicateObligation<'tcx>>,
-
-    relationships: FxHashMap<ty::TyVid, ty::FoundRelationships>,
 
     usable_in_snapshot: bool,
 }
 
 impl FulfillmentContext<'_> {
     pub(super) fn new() -> Self {
-        FulfillmentContext {
-            obligations: FxIndexSet::default(),
-            relationships: FxHashMap::default(),
-            usable_in_snapshot: false,
-        }
+        FulfillmentContext { obligations: FxIndexSet::default(), usable_in_snapshot: false }
     }
 
     pub(crate) fn new_in_snapshot() -> Self {
@@ -43,20 +37,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         }
         let obligation = infcx.resolve_vars_if_possible(obligation);
 
-        super::relationships::update(self, infcx, &obligation);
-
         self.obligations.insert(obligation);
     }
 
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        {
-            let errors = self.select_where_possible(infcx);
-
-            if !errors.is_empty() {
-                return errors;
-            }
-        }
-
+    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>> {
         // any remaining obligations are errors
         self.obligations
             .iter()
@@ -151,11 +135,14 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         errors
     }
 
-    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
-        self.obligations.iter().cloned().collect()
+    fn drain_unstalled_obligations(
+        &mut self,
+        _: &InferCtxt<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>> {
+        unimplemented!()
     }
 
-    fn relationships(&mut self) -> &mut FxHashMap<ty::TyVid, ty::FoundRelationships> {
-        &mut self.relationships
+    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
+        self.obligations.iter().cloned().collect()
     }
 }

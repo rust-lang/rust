@@ -3,6 +3,7 @@
 //! This module contains the code for creating and emitting diagnostics.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(array_windows)]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
 #![feature(is_terminal)]
@@ -11,6 +12,10 @@
 #![feature(never_type)]
 #![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
+#![feature(yeet_expr)]
+#![feature(try_blocks)]
+#![feature(box_patterns)]
+#![feature(error_reporter)]
 #![allow(incomplete_features)]
 
 #[macro_use]
@@ -40,8 +45,8 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::HashStableContext;
 use rustc_span::{Loc, Span};
 
-use std::any::Any;
 use std::borrow::Cow;
+use std::error::Report;
 use std::fmt;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
@@ -55,11 +60,14 @@ mod diagnostic;
 mod diagnostic_builder;
 mod diagnostic_impls;
 pub mod emitter;
+pub mod error;
 pub mod json;
 mod lock;
 pub mod registry;
 mod snippet;
 mod styled_buffer;
+#[cfg(test)]
+mod tests;
 pub mod translation;
 
 pub use diagnostic_builder::IntoDiagnostic;
@@ -364,9 +372,9 @@ pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 /// or `.span_bug` rather than a failed assertion, etc.
 pub struct ExplicitBug;
 
-/// Signifies that the compiler died with an explicit call to `.delay_good_path_bug`
+/// Signifies that the compiler died with an explicit call to `.delay_*_bug`
 /// rather than a failed assertion, etc.
-pub struct GoodPathBug;
+pub struct DelayedBugPanic;
 
 pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
@@ -399,7 +407,7 @@ struct HandlerInner {
     warn_count: usize,
     deduplicated_err_count: usize,
     emitter: Box<dyn Emitter + sync::Send>,
-    delayed_span_bugs: Vec<Diagnostic>,
+    delayed_span_bugs: Vec<DelayedDiagnostic>,
     delayed_good_path_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
     /// This is used for the `delayed_good_path_bugs` check.
@@ -505,11 +513,7 @@ impl Drop for HandlerInner {
 
         if !self.has_errors() {
             let bugs = std::mem::replace(&mut self.delayed_span_bugs, Vec::new());
-            self.flush_delayed(
-                bugs,
-                "no errors encountered even though `delay_span_bug` issued",
-                ExplicitBug,
-            );
+            self.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
         }
 
         // FIXME(eddyb) this explains what `delayed_good_path_bugs` are!
@@ -520,9 +524,8 @@ impl Drop for HandlerInner {
         if !self.has_any_message() && !self.suppressed_expected_diag {
             let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
             self.flush_delayed(
-                bugs.into_iter().map(DelayedDiagnostic::decorate),
+                bugs,
                 "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
-                GoodPathBug,
             );
         }
 
@@ -622,7 +625,14 @@ impl Handler {
     ) -> SubdiagnosticMessage {
         let inner = self.inner.borrow();
         let args = crate::translation::to_fluent_args(args);
-        SubdiagnosticMessage::Eager(inner.emitter.translate_message(&message, &args).to_string())
+        SubdiagnosticMessage::Eager(
+            inner
+                .emitter
+                .translate_message(&message, &args)
+                .map_err(Report::new)
+                .unwrap()
+                .to_string(),
+        )
     }
 
     // This is here to not allow mutation of flags;
@@ -978,6 +988,7 @@ impl Handler {
         self.inner.borrow_mut().span_bug(span, msg)
     }
 
+    /// For documentation on this, see `Session::delay_span_bug`.
     #[track_caller]
     pub fn delay_span_bug(
         &self,
@@ -1132,6 +1143,20 @@ impl Handler {
         self.create_fatal(fatal).emit()
     }
 
+    pub fn create_bug<'a>(
+        &'a self,
+        bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
+    ) -> DiagnosticBuilder<'a, diagnostic_builder::Bug> {
+        bug.into_diagnostic(self)
+    }
+
+    pub fn emit_bug<'a>(
+        &'a self,
+        bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
+    ) -> diagnostic_builder::Bug {
+        self.create_bug(bug).emit()
+    }
+
     fn emit_diag_at_span(
         &self,
         mut diag: Diagnostic,
@@ -1208,11 +1233,7 @@ impl Handler {
     pub fn flush_delayed(&self) {
         let mut inner = self.inner.lock();
         let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
-        inner.flush_delayed(
-            bugs,
-            "no errors encountered even though `delay_span_bug` issued",
-            ExplicitBug,
-        );
+        inner.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
     }
 }
 
@@ -1272,7 +1293,9 @@ impl HandlerInner {
             // once *any* errors were emitted (and truncate `delayed_span_bugs`
             // when an error is first emitted, also), but maybe there's a case
             // in which that's not sound? otherwise this is really inefficient.
-            self.delayed_span_bugs.push(diagnostic.clone());
+            let backtrace = std::backtrace::Backtrace::force_capture();
+            self.delayed_span_bugs
+                .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
 
             if !self.flags.report_delayed_bugs {
                 return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
@@ -1529,6 +1552,7 @@ impl HandlerInner {
         self.emit_diagnostic(diag.set_span(sp));
     }
 
+    /// For documentation on this, see `Session::delay_span_bug`.
     #[track_caller]
     fn delay_span_bug(
         &mut self,
@@ -1546,7 +1570,6 @@ impl HandlerInner {
         }
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         diagnostic.set_span(sp.into());
-        diagnostic.note(&format!("delayed at {}", std::panic::Location::caller()));
         self.emit_diagnostic(&mut diagnostic).unwrap()
     }
 
@@ -1589,12 +1612,13 @@ impl HandlerInner {
 
     fn flush_delayed(
         &mut self,
-        bugs: impl IntoIterator<Item = Diagnostic>,
+        bugs: impl IntoIterator<Item = DelayedDiagnostic>,
         explanation: impl Into<DiagnosticMessage> + Copy,
-        panic_with: impl Any + Send + 'static,
     ) {
         let mut no_bugs = true;
-        for mut bug in bugs {
+        for bug in bugs {
+            let mut bug = bug.decorate();
+
             if no_bugs {
                 // Put the overall explanation before the `DelayedBug`s, to
                 // frame them better (e.g. separate warnings from them).
@@ -1617,9 +1641,9 @@ impl HandlerInner {
             self.emit_diagnostic(&mut bug);
         }
 
-        // Panic with `ExplicitBug` to avoid "unexpected panic" messages.
+        // Panic with `DelayedBugPanic` to avoid "unexpected panic" messages.
         if !no_bugs {
-            panic::panic_any(panic_with);
+            panic::panic_any(DelayedBugPanic);
         }
     }
 

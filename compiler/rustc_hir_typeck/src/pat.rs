@@ -1,4 +1,4 @@
-use crate::FnCtxt;
+use crate::{FnCtxt, RawTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
@@ -553,6 +553,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (lhs, Some((true, rhs_ty, rhs_sp))) => one_side_err(rhs_sp, rhs_ty, lhs),
             _ => span_bug!(span, "Impossible, verified above."),
         }
+        if (lhs, rhs).references_error() {
+            err.downgrade_to_delayed_bug();
+        }
         if self.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "In a match expression, only numbers and characters can be matched \
@@ -692,7 +695,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         if let PatKind::Ref(inner, mutbl) = pat.kind
         && let PatKind::Binding(_, _, binding, ..) = inner.kind {
-            let binding_parent_id = tcx.hir().get_parent_node(pat.hir_id);
+            let binding_parent_id = tcx.hir().parent_id(pat.hir_id);
             let binding_parent = tcx.hir().get(binding_parent_id);
             debug!(?inner, ?pat, ?binding_parent);
 
@@ -754,6 +757,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable
                     );
 
+                    if let Some((sp, msg, sugg)) = mut_var_suggestion {
+                        err.span_note(sp, format!("{msg}: `{sugg}`"));
+                    }
+                }
+                hir::Node::Pat(pt) if let PatKind::TupleStruct(_, pat_arr, _) = pt.kind => {
+                    for i in pat_arr.iter() {
+                        if let PatKind::Ref(the_ref, _) = i.kind
+                        && let PatKind::Binding(mt, _, ident, _) = the_ref.kind {
+                            let hir::BindingAnnotation(_, mtblty) = mt;
+                            err.span_suggestion_verbose(
+                                i.span,
+                                format!("consider removing `&{mutability}` from the pattern"),
+                                mtblty.prefix_str().to_string() + &ident.name.to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                     if let Some((sp, msg, sugg)) = mut_var_suggestion {
                         err.span_note(sp, format!("{msg}: `{sugg}`"));
                     }
@@ -839,7 +859,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'tcx>,
         qpath: &hir::QPath<'_>,
-        path_resolution: (Res, Option<Ty<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
+        path_resolution: (Res, Option<RawTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
         expected: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
@@ -936,7 +956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         res.descr(),
                     ),
                 );
-                match self.tcx.hir().get(self.tcx.hir().get_parent_node(pat.hir_id)) {
+                match self.tcx.hir().get_parent(pat.hir_id) {
                     hir::Node::PatField(..) => {
                         e.span_suggestion_verbose(
                             ident.span.shrink_to_hi(),

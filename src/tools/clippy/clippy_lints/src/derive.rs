@@ -7,17 +7,18 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Constness, Expr, ExprKind, FnDecl, HirId, Impl, Item, ItemKind, UnsafeSource,
+    self as hir, BlockCheckMode, BodyId, Constness, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource,
     Unsafety,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, Binder, BoundConstness, Clause, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate,
-    Ty, TyCtxt,
+    self, Binder, BoundConstness, Clause, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind,
+    TraitPredicate, Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 
@@ -46,7 +47,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub DERIVE_HASH_XOR_EQ,
+    pub DERIVED_HASH_WITH_MANUAL_EQ,
     correctness,
     "deriving `Hash` but implementing `PartialEq` explicitly"
 }
@@ -197,7 +198,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Derive => [
     EXPL_IMPL_CLONE_ON_COPY,
-    DERIVE_HASH_XOR_EQ,
+    DERIVED_HASH_WITH_MANUAL_EQ,
     DERIVE_ORD_XOR_PARTIAL_ORD,
     UNSAFE_DERIVE_DESERIALIZE,
     DERIVE_PARTIAL_EQ_WITHOUT_EQ
@@ -226,7 +227,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
     }
 }
 
-/// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
+/// Implementation of the `DERIVED_HASH_WITH_MANUAL_EQ` lint.
 fn check_hash_peq<'tcx>(
     cx: &LateContext<'tcx>,
     span: Span,
@@ -243,7 +244,7 @@ fn check_hash_peq<'tcx>(
             cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
                 let peq_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
 
-                if peq_is_automatically_derived == hash_is_automatically_derived {
+                if !hash_is_automatically_derived || peq_is_automatically_derived {
                     return;
                 }
 
@@ -251,18 +252,12 @@ fn check_hash_peq<'tcx>(
 
                 // Only care about `impl PartialEq<Foo> for Foo`
                 // For `impl PartialEq<B> for A, input_types is [A, B]
-                if trait_ref.substs.type_at(1) == ty {
-                    let mess = if peq_is_automatically_derived {
-                        "you are implementing `Hash` explicitly but have derived `PartialEq`"
-                    } else {
-                        "you are deriving `Hash` but have implemented `PartialEq` explicitly"
-                    };
-
+                if trait_ref.subst_identity().substs.type_at(1) == ty {
                     span_lint_and_then(
                         cx,
-                        DERIVE_HASH_XOR_EQ,
+                        DERIVED_HASH_WITH_MANUAL_EQ,
                         span,
-                        mess,
+                        "you are deriving `Hash` but have implemented `PartialEq` explicitly",
                         |diag| {
                             if let Some(local_def_id) = impl_id.as_local() {
                                 let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
@@ -305,7 +300,7 @@ fn check_ord_partial_ord<'tcx>(
 
                 // Only care about `impl PartialOrd<Foo> for Foo`
                 // For `impl PartialOrd<B> for A, input_types is [A, B]
-                if trait_ref.substs.type_at(1) == ty {
+                if trait_ref.subst_identity().substs.type_at(1) == ty {
                     let mess = if partial_ord_is_automatically_derived {
                         "you are implementing `Ord` explicitly but have derived `PartialOrd`"
                     } else {
@@ -366,6 +361,15 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     if ty_subs.types().any(|ty| !implements_trait(cx, ty, clone_id, &[])) {
         return;
     }
+    // `#[repr(packed)]` structs with type/const parameters can't derive `Clone`.
+    // https://github.com/rust-lang/rust-clippy/issues/10188
+    if ty_adt.repr().packed()
+        && ty_subs
+            .iter()
+            .any(|arg| matches!(arg.unpack(), GenericArgKind::Type(_) | GenericArgKind::Const(_)))
+    {
+        return;
+    }
 
     span_lint_and_note(
         cx,
@@ -422,7 +426,7 @@ struct UnsafeVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn visit_fn(&mut self, kind: FnKind<'tcx>, decl: &'tcx FnDecl<'_>, body_id: BodyId, _: Span, id: HirId) {
+    fn visit_fn(&mut self, kind: FnKind<'tcx>, decl: &'tcx FnDecl<'_>, body_id: BodyId, _: Span, id: LocalDefId) {
         if self.has_unsafe {
             return;
         }

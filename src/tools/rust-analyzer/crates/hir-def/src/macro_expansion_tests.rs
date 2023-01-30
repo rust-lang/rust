@@ -170,7 +170,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             }
             let pp = pretty_print_macro_expansion(
                 parse.syntax_node(),
-                show_token_ids.then(|| &*token_map),
+                show_token_ids.then_some(&*token_map),
             );
             let indent = IndentLevel::from_node(call.syntax());
             let pp = reindent(indent, pp);
@@ -179,7 +179,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             if tree {
                 let tree = format!("{:#?}", parse.syntax_node())
                     .split_inclusive('\n')
-                    .map(|line| format!("// {}", line))
+                    .map(|line| format!("// {line}"))
                     .collect::<String>();
                 format_to!(expn_text, "\n{}", tree)
             }

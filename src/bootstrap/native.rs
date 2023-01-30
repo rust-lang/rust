@@ -24,6 +24,8 @@ use crate::util::get_clang_cl_resource_dir;
 use crate::util::{self, exe, output, t, up_to_date};
 use crate::{CLang, GitRepo};
 
+use build_helper::ci::CiEnv;
+
 #[derive(Clone)]
 pub struct LlvmResult {
     /// Path to llvm-config binary.
@@ -178,46 +180,43 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
     let supported_platforms = [
         // tier 1
-        "aarch64-unknown-linux-gnu",
-        "i686-pc-windows-gnu",
-        "i686-pc-windows-msvc",
-        "i686-unknown-linux-gnu",
-        "x86_64-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-pc-windows-gnu",
-        "x86_64-pc-windows-msvc",
+        ("aarch64-unknown-linux-gnu", false),
+        ("i686-pc-windows-gnu", false),
+        ("i686-pc-windows-msvc", false),
+        ("i686-unknown-linux-gnu", false),
+        ("x86_64-unknown-linux-gnu", true),
+        ("x86_64-apple-darwin", true),
+        ("x86_64-pc-windows-gnu", true),
+        ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
-        "aarch64-apple-darwin",
-        "aarch64-pc-windows-msvc",
-        "aarch64-unknown-linux-musl",
-        "arm-unknown-linux-gnueabi",
-        "arm-unknown-linux-gnueabihf",
-        "armv7-unknown-linux-gnueabihf",
-        "mips-unknown-linux-gnu",
-        "mips64-unknown-linux-gnuabi64",
-        "mips64el-unknown-linux-gnuabi64",
-        "mipsel-unknown-linux-gnu",
-        "powerpc-unknown-linux-gnu",
-        "powerpc64-unknown-linux-gnu",
-        "powerpc64le-unknown-linux-gnu",
-        "riscv64gc-unknown-linux-gnu",
-        "s390x-unknown-linux-gnu",
-        "x86_64-unknown-freebsd",
-        "x86_64-unknown-illumos",
-        "x86_64-unknown-linux-musl",
-        "x86_64-unknown-netbsd",
+        ("aarch64-apple-darwin", false),
+        ("aarch64-pc-windows-msvc", false),
+        ("aarch64-unknown-linux-musl", false),
+        ("arm-unknown-linux-gnueabi", false),
+        ("arm-unknown-linux-gnueabihf", false),
+        ("armv7-unknown-linux-gnueabihf", false),
+        ("mips-unknown-linux-gnu", false),
+        ("mips64-unknown-linux-gnuabi64", false),
+        ("mips64el-unknown-linux-gnuabi64", false),
+        ("mipsel-unknown-linux-gnu", false),
+        ("powerpc-unknown-linux-gnu", false),
+        ("powerpc64-unknown-linux-gnu", false),
+        ("powerpc64le-unknown-linux-gnu", false),
+        ("riscv64gc-unknown-linux-gnu", false),
+        ("s390x-unknown-linux-gnu", false),
+        ("x86_64-unknown-freebsd", false),
+        ("x86_64-unknown-illumos", false),
+        ("x86_64-unknown-linux-musl", false),
+        ("x86_64-unknown-netbsd", false),
     ];
-    if !supported_platforms.contains(&&*config.build.triple) {
-        return false;
+
+    if !supported_platforms.contains(&(&*config.build.triple, asserts)) {
+        if asserts == true || !supported_platforms.contains(&(&*config.build.triple, true)) {
+            return false;
+        }
     }
 
-    let triple = &*config.build.triple;
-    if (triple == "aarch64-unknown-linux-gnu" || triple.contains("i686")) && asserts {
-        // No alt builder for aarch64-unknown-linux-gnu today.
-        return false;
-    }
-
-    if crate::util::CiEnv::is_ci() {
+    if CiEnv::is_ci() {
         // We assume we have access to git, so it's okay to unconditionally pass
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
@@ -908,7 +907,7 @@ impl Step for TestHelpers {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/test/auxiliary/rust_test_helpers.c")
+        run.path("tests/auxiliary/rust_test_helpers.c")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -930,7 +929,7 @@ impl Step for TestHelpers {
             self.target
         };
         let dst = builder.test_helpers_out(target);
-        let src = builder.src.join("src/test/auxiliary/rust_test_helpers.c");
+        let src = builder.src.join("tests/auxiliary/rust_test_helpers.c");
         if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
             return;
         }
@@ -959,7 +958,7 @@ impl Step for TestHelpers {
             .opt_level(0)
             .warnings(false)
             .debug(false)
-            .file(builder.src.join("src/test/auxiliary/rust_test_helpers.c"))
+            .file(builder.src.join("tests/auxiliary/rust_test_helpers.c"))
             .compile("rust_test_helpers");
     }
 }
@@ -1088,12 +1087,12 @@ fn supported_sanitizers(
 
     match &*target.triple {
         "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
-        "aarch64-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
+        "aarch64-unknown-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
         }
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
-        "x86_64-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
+        "x86_64-unknown-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
         "x86_64-unknown-freebsd" => common_libs("freebsd", "x86_64", &["asan", "msan", "tsan"]),
         "x86_64-unknown-netbsd" => {
             common_libs("netbsd", "x86_64", &["asan", "lsan", "msan", "tsan"])
@@ -1105,6 +1104,12 @@ fn supported_sanitizers(
         }
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
+        }
+        "s390x-unknown-linux-gnu" => {
+            common_libs("linux", "s390x", &["asan", "lsan", "msan", "tsan"])
+        }
+        "s390x-unknown-linux-musl" => {
+            common_libs("linux", "s390x", &["asan", "lsan", "msan", "tsan"])
         }
         _ => Vec::new(),
     }

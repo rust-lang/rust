@@ -66,7 +66,7 @@ impl WorkspaceBuildScripts {
             _ => {
                 let mut cmd = Command::new(toolchain::cargo());
 
-                cmd.args(&["check", "--quiet", "--workspace", "--message-format=json"]);
+                cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
 
                 // --all-targets includes tests, benches and examples in addition to the
                 // default lib and bins. This is an independent concept from the --target
@@ -74,7 +74,7 @@ impl WorkspaceBuildScripts {
                 cmd.arg("--all-targets");
 
                 if let Some(target) = &config.target {
-                    cmd.args(&["--target", target]);
+                    cmd.args(["--target", target]);
                 }
 
                 match &config.features {
@@ -122,7 +122,7 @@ impl WorkspaceBuildScripts {
             InvocationLocation::Root(root) if config.run_build_script_command.is_some() => {
                 root.as_path()
             }
-            _ => &workspace.workspace_root(),
+            _ => workspace.workspace_root(),
         }
         .as_ref();
 
@@ -133,7 +133,7 @@ impl WorkspaceBuildScripts {
                 // building build scripts failed, attempt to build with --keep-going so
                 // that we potentially get more build data
                 let mut cmd = Self::build_command(config)?;
-                cmd.args(&["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
+                cmd.args(["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
                 let mut res = Self::run_per_ws(cmd, workspace, current_dir, progress)?;
                 res.error = Some(error);
                 Ok(res)
@@ -295,7 +295,7 @@ impl WorkspaceBuildScripts {
                 match message {
                     Message::BuildScriptExecuted(mut message) => {
                         with_output_for(&message.package_id.repr, &mut |name, data| {
-                            progress(format!("running build-script: {}", name));
+                            progress(format!("running build-script: {name}"));
                             let cfgs = {
                                 let mut acc = Vec::new();
                                 for cfg in &message.cfgs {
@@ -303,8 +303,7 @@ impl WorkspaceBuildScripts {
                                         Ok(it) => acc.push(it),
                                         Err(err) => {
                                             push_err(&format!(
-                                                "invalid cfg from cargo-metadata: {}",
-                                                err
+                                                "invalid cfg from cargo-metadata: {err}"
                                             ));
                                             return;
                                         }
@@ -334,7 +333,7 @@ impl WorkspaceBuildScripts {
                     }
                     Message::CompilerArtifact(message) => {
                         with_output_for(&message.package_id.repr, &mut |name, data| {
-                            progress(format!("building proc-macros: {}", name));
+                            progress(format!("building proc-macros: {name}"));
                             if message.target.kind.iter().any(|k| k == "proc-macro") {
                                 // Skip rmeta file
                                 if let Some(filename) =

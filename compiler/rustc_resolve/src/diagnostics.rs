@@ -5,8 +5,10 @@ use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    pluralize, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
+};
+use rustc_errors::{struct_span_err, SuggestionStyle};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
@@ -161,10 +163,11 @@ impl<'a> Resolver<'a> {
                     found_use,
                     DiagnosticMode::Normal,
                     path,
+                    "",
                 );
                 err.emit();
             } else if let Some((span, msg, sugg, appl)) = suggestion {
-                err.span_suggestion(span, msg, sugg, appl);
+                err.span_suggestion_verbose(span, msg, sugg, appl);
                 err.emit();
             } else if let [segment] = path.as_slice() && is_call {
                 err.stash(segment.ident.span, rustc_errors::StashKey::CallIntoMethod);
@@ -690,6 +693,7 @@ impl<'a> Resolver<'a> {
                         FoundUse::Yes,
                         DiagnosticMode::Pattern,
                         vec![],
+                        "",
                     );
                 }
                 err
@@ -1029,7 +1033,7 @@ impl<'a> Resolver<'a> {
                     let root_module = this.resolve_crate_root(root_ident);
                     this.add_module_candidates(root_module, &mut suggestions, filter_fn, None);
                 }
-                Scope::Module(module) => {
+                Scope::Module(module, _) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn, None);
                 }
                 Scope::MacroUsePrelude => {
@@ -1344,6 +1348,7 @@ impl<'a> Resolver<'a> {
             FoundUse::Yes,
             DiagnosticMode::Normal,
             vec![],
+            "",
         );
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
@@ -1601,6 +1606,16 @@ impl<'a> Resolver<'a> {
         err.span_label(ident.span, &format!("private {}", descr));
         if let Some(span) = ctor_fields_span {
             err.span_label(span, "a constructor is private if any of the fields is private");
+            if let Res::Def(_, d) = res && let Some(fields) = self.field_visibility_spans.get(&d) {
+                err.multipart_suggestion_verbose(
+                    &format!(
+                        "consider making the field{} publicly accessible",
+                        pluralize!(fields.len())
+                    ),
+                    fields.iter().map(|span| (*span, "pub ".to_string())).collect(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
 
         // Print the whole import chain to make it easier to see what happens.
@@ -2110,9 +2125,15 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
                 let source_map = self.r.session.source_map();
 
+                // Make sure this is actually crate-relative.
+                let is_definitely_crate = import
+                    .module_path
+                    .first()
+                    .map_or(false, |f| f.ident.name != kw::SelfLower && f.ident.name != kw::Super);
+
                 // Add the import to the start, with a `{` if required.
                 let start_point = source_map.start_point(after_crate_name);
-                if let Ok(start_snippet) = source_map.span_to_snippet(start_point) {
+                if is_definitely_crate && let Ok(start_snippet) = source_map.span_to_snippet(start_point) {
                     corrections.push((
                         start_point,
                         if has_nested {
@@ -2124,11 +2145,17 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             format!("{{{}, {}", import_snippet, start_snippet)
                         },
                     ));
-                }
 
-                // Add a `};` to the end if nested, matching the `{` added at the start.
-                if !has_nested {
-                    corrections.push((source_map.end_point(after_crate_name), "};".to_string()));
+                    // Add a `};` to the end if nested, matching the `{` added at the start.
+                    if !has_nested {
+                        corrections.push((source_map.end_point(after_crate_name), "};".to_string()));
+                    }
+                } else {
+                    // If the root import is module-relative, add the import separately
+                    corrections.push((
+                        import.use_span.shrink_to_lo(),
+                        format!("use {module_name}::{import_snippet};\n"),
+                    ));
                 }
             }
 
@@ -2309,7 +2336,7 @@ enum FoundUse {
 }
 
 /// Whether a binding is part of a pattern or a use statement. Used for diagnostics.
-enum DiagnosticMode {
+pub(crate) enum DiagnosticMode {
     Normal,
     /// The binding is part of a pattern
     Pattern,
@@ -2324,6 +2351,8 @@ pub(crate) fn import_candidates(
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
+    mode: DiagnosticMode,
+    append: &str,
 ) {
     show_candidates(
         session,
@@ -2333,8 +2362,9 @@ pub(crate) fn import_candidates(
         candidates,
         Instead::Yes,
         FoundUse::Yes,
-        DiagnosticMode::Import,
+        mode,
         vec![],
+        append,
     );
 }
 
@@ -2352,6 +2382,7 @@ fn show_candidates(
     found_use: FoundUse,
     mode: DiagnosticMode,
     path: Vec<Segment>,
+    append: &str,
 ) {
     if candidates.is_empty() {
         return;
@@ -2399,7 +2430,7 @@ fn show_candidates(
         }
 
         if let Some(span) = use_placement_span {
-            let add_use = match mode {
+            let (add_use, trailing) = match mode {
                 DiagnosticMode::Pattern => {
                     err.span_suggestions(
                         span,
@@ -2409,21 +2440,23 @@ fn show_candidates(
                     );
                     return;
                 }
-                DiagnosticMode::Import => "",
-                DiagnosticMode::Normal => "use ",
+                DiagnosticMode::Import => ("", ""),
+                DiagnosticMode::Normal => ("use ", ";\n"),
             };
             for candidate in &mut accessible_path_strings {
                 // produce an additional newline to separate the new use statement
                 // from the directly following item.
-                let additional_newline = if let FoundUse::Yes = found_use { "" } else { "\n" };
-                candidate.0 = format!("{}{};\n{}", add_use, &candidate.0, additional_newline);
+                let additional_newline = if let FoundUse::No = found_use && let DiagnosticMode::Normal = mode { "\n" } else { "" };
+                candidate.0 =
+                    format!("{add_use}{}{append}{trailing}{additional_newline}", &candidate.0);
             }
 
-            err.span_suggestions(
+            err.span_suggestions_with_style(
                 span,
                 &msg,
                 accessible_path_strings.into_iter().map(|a| a.0),
                 Applicability::MaybeIncorrect,
+                SuggestionStyle::ShowAlways,
             );
             if let [first, .., last] = &path[..] {
                 let sp = first.ident.span.until(last.ident.span);
@@ -2444,7 +2477,7 @@ fn show_candidates(
                 msg.push_str(&candidate.0);
             }
 
-            err.note(&msg);
+            err.help(&msg);
         }
     } else if !matches!(mode, DiagnosticMode::Import) {
         assert!(!inaccessible_path_strings.is_empty());

@@ -227,20 +227,27 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
                     && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
-                        if let AssocItemKind::Fn(_) = &i.kind && i.ident.name == item_str.name
+                        if let AssocItemKind::Fn(..) | AssocItemKind::Const(..) = &i.kind
+                            && i.ident.name == item_str.name
                         {
                             debug!(?item_str.name);
                             return true
                         }
                         false
                     })
-                    && let AssocItemKind::Fn(fn_) = &item.kind
                 {
-                    debug!(?fn_);
-                    let self_sugg = if fn_.sig.decl.has_self() { "self." } else { "Self::" };
+                    let self_sugg = match &item.kind {
+                        AssocItemKind::Fn(fn_) if fn_.sig.decl.has_self() => "self.",
+                        _ => "Self::",
+                    };
+
                     Some((
                         item_span.shrink_to_lo(),
-                        "consider using the associated function",
+                        match &item.kind {
+                            AssocItemKind::Fn(..) => "consider using the associated function",
+                            AssocItemKind::Const(..) => "consider using the associated constant",
+                            _ => unreachable!("item kind was filtered above"),
+                        },
                         self_sugg.to_string()
                     ))
                 } else {
@@ -1451,6 +1458,17 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         .collect();
 
                     if non_visible_spans.len() > 0 {
+                        if let Some(fields) = self.r.field_visibility_spans.get(&def_id) {
+                            err.multipart_suggestion_verbose(
+                                &format!(
+                                    "consider making the field{} publicly accessible",
+                                    pluralize!(fields.len())
+                                ),
+                                fields.iter().map(|span| (*span, "pub ".to_string())).collect(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+
                         let mut m: MultiSpan = non_visible_spans.clone().into();
                         non_visible_spans
                             .into_iter()
@@ -2054,7 +2072,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         path: &[Segment],
     ) -> Option<(Span, &'static str, String, Applicability)> {
         let (ident, span) = match path {
-            [segment] if !segment.has_generic_args && segment.ident.name != kw::SelfUpper => {
+            [segment]
+                if !segment.has_generic_args
+                    && segment.ident.name != kw::SelfUpper
+                    && segment.ident.name != kw::Dyn =>
+            {
                 (segment.ident.to_string(), segment.ident.span)
             }
             _ => return None,
@@ -2173,15 +2195,31 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             let deletion_span = || {
                 if params.len() == 1 {
                     // if sole lifetime, remove the entire `<>` brackets
-                    generics_span
+                    Some(generics_span)
                 } else if param_index == 0 {
                     // if removing within `<>` brackets, we also want to
                     // delete a leading or trailing comma as appropriate
-                    param.span().to(params[param_index + 1].span().shrink_to_lo())
+                    match (
+                        param.span().find_ancestor_inside(generics_span),
+                        params[param_index + 1].span().find_ancestor_inside(generics_span),
+                    ) {
+                        (Some(param_span), Some(next_param_span)) => {
+                            Some(param_span.to(next_param_span.shrink_to_lo()))
+                        }
+                        _ => None,
+                    }
                 } else {
                     // if removing within `<>` brackets, we also want to
                     // delete a leading or trailing comma as appropriate
-                    params[param_index - 1].span().shrink_to_hi().to(param.span())
+                    match (
+                        param.span().find_ancestor_inside(generics_span),
+                        params[param_index - 1].span().find_ancestor_inside(generics_span),
+                    ) {
+                        (Some(param_span), Some(prev_param_span)) => {
+                            Some(prev_param_span.shrink_to_hi().to(param_span))
+                        }
+                        _ => None,
+                    }
                 }
             };
             match use_set {

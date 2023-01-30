@@ -86,7 +86,7 @@ pub(crate) fn completion_list_no_kw(ra_fixture: &str) -> String {
 }
 
 pub(crate) fn completion_list_no_kw_with_private_editable(ra_fixture: &str) -> String {
-    let mut config = TEST_CONFIG.clone();
+    let mut config = TEST_CONFIG;
     config.enable_private_editable = true;
     completion_list_with_config(config, ra_fixture, false, None)
 }
@@ -153,7 +153,7 @@ fn render_completion_list(completions: Vec<CompletionItem>) -> String {
         .into_iter()
         .map(|it| {
             let tag = it.kind().tag();
-            let var_name = format!("{} {}", tag, it.label());
+            let var_name = format!("{tag} {}", it.label());
             let mut buf = var_name;
             if let Some(detail) = it.detail() {
                 let width = label_width.saturating_sub(monospace_width(it.label()));
@@ -183,12 +183,12 @@ pub(crate) fn check_edit_with_config(
     let ra_fixture_after = trim_indent(ra_fixture_after);
     let (db, position) = position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
-        crate::completions(&db, &config, position, None).unwrap().into();
+        crate::completions(&db, &config, position, None).unwrap();
     let (completion,) = completions
         .iter()
         .filter(|it| it.lookup() == what)
         .collect_tuple()
-        .unwrap_or_else(|| panic!("can't find {:?} completion in {:#?}", what, completions));
+        .unwrap_or_else(|| panic!("can't find {what:?} completion in {completions:#?}"));
     let mut actual = db.file_text(position.file_id).to_string();
 
     let mut combined_edit = completion.text_edit().to_owned();

@@ -9,7 +9,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId};
 use rustc_hir::Mutability;
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt};
@@ -45,7 +45,7 @@ pub(crate) fn try_inline(
     res: Res,
     name: Symbol,
     attrs: Option<&[ast::Attribute]>,
-    visited: &mut FxHashSet<DefId>,
+    visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
     if did.is_local() {
@@ -162,7 +162,8 @@ pub(crate) fn try_inline(
 pub(crate) fn try_inline_glob(
     cx: &mut DocContext<'_>,
     res: Res,
-    visited: &mut FxHashSet<DefId>,
+    current_mod: LocalDefId,
+    visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
@@ -172,7 +173,16 @@ pub(crate) fn try_inline_glob(
 
     match res {
         Res::Def(DefKind::Mod, did) => {
-            let mut items = build_module_items(cx, did, visited, inlined_names);
+            // Use the set of module reexports to filter away names that are not actually
+            // reexported by the glob, e.g. because they are shadowed by something else.
+            let reexports = cx
+                .tcx
+                .module_reexports(current_mod)
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|child| child.res.opt_def_id())
+                .collect();
+            let mut items = build_module_items(cx, did, visited, inlined_names, Some(&reexports));
             items.drain_filter(|item| {
                 if let Some(name) = item.name {
                     // If an item with the same type and name already exists,
@@ -241,7 +251,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
 }
 
 fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<clean::Function> {
-    let sig = cx.tcx.fn_sig(did);
+    let sig = cx.tcx.fn_sig(did).subst_identity();
 
     let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
         ty::BoundVariableKind::Region(ty::BrNamed(_, name)) if name != kw::UnderscoreLifetime => {
@@ -376,7 +386,7 @@ pub(crate) fn build_impl(
     let _prof_timer = cx.tcx.sess.prof.generic_activity("build_impl");
 
     let tcx = cx.tcx;
-    let associated_trait = tcx.impl_trait_ref(did);
+    let associated_trait = tcx.impl_trait_ref(did).map(ty::EarlyBinder::skip_binder);
 
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
@@ -558,12 +568,8 @@ pub(crate) fn build_impl(
     ));
 }
 
-fn build_module(
-    cx: &mut DocContext<'_>,
-    did: DefId,
-    visited: &mut FxHashSet<DefId>,
-) -> clean::Module {
-    let items = build_module_items(cx, did, visited, &mut FxHashSet::default());
+fn build_module(cx: &mut DocContext<'_>, did: DefId, visited: &mut DefIdSet) -> clean::Module {
+    let items = build_module_items(cx, did, visited, &mut FxHashSet::default(), None);
 
     let span = clean::Span::new(cx.tcx.def_span(did));
     clean::Module { items, span }
@@ -572,8 +578,9 @@ fn build_module(
 fn build_module_items(
     cx: &mut DocContext<'_>,
     did: DefId,
-    visited: &mut FxHashSet<DefId>,
+    visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+    allowed_def_ids: Option<&DefIdSet>,
 ) -> Vec<clean::Item> {
     let mut items = Vec::new();
 
@@ -583,6 +590,11 @@ fn build_module_items(
     for &item in cx.tcx.module_children(did).iter() {
         if item.vis.is_public() {
             let res = item.res.expect_non_local();
+            if let Some(def_id) = res.opt_def_id()
+                && let Some(allowed_def_ids) = allowed_def_ids
+                && !allowed_def_ids.contains(&def_id) {
+                continue;
+            }
             if let Some(def_id) = res.mod_def_id() {
                 // If we're inlining a glob import, it's possible to have
                 // two distinct modules with the same name. We don't want to
@@ -600,7 +612,9 @@ fn build_module_items(
                 items.push(clean::Item {
                     name: None,
                     attrs: Box::new(clean::Attributes::default()),
-                    item_id: ItemId::Primitive(prim_ty, did.krate),
+                    // We can use the item's `DefId` directly since the only information ever used
+                    // from it is `DefId.krate`.
+                    item_id: ItemId::DefId(did),
                     kind: Box::new(clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
                         clean::ImportSource {

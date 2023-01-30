@@ -825,21 +825,24 @@ pub trait LintContext: Sized {
                     debug!(?param_span, ?use_span, ?deletion_span);
                     db.span_label(param_span, "this lifetime...");
                     db.span_label(use_span, "...is used only here");
-                    let msg = "elide the single-use lifetime";
-                    let (use_span, replace_lt) = if elide {
-                        let use_span = sess.source_map().span_extend_while(
-                            use_span,
-                            char::is_whitespace,
-                        ).unwrap_or(use_span);
-                        (use_span, String::new())
-                    } else {
-                        (use_span, "'_".to_owned())
-                    };
-                    db.multipart_suggestion(
-                        msg,
-                        vec![(deletion_span, String::new()), (use_span, replace_lt)],
-                        Applicability::MachineApplicable,
-                    );
+                    if let Some(deletion_span) = deletion_span {
+                        let msg = "elide the single-use lifetime";
+                        let (use_span, replace_lt) = if elide {
+                            let use_span = sess.source_map().span_extend_while(
+                                use_span,
+                                char::is_whitespace,
+                            ).unwrap_or(use_span);
+                            (use_span, String::new())
+                        } else {
+                            (use_span, "'_".to_owned())
+                        };
+                        debug!(?deletion_span, ?use_span);
+                        db.multipart_suggestion(
+                            msg,
+                            vec![(deletion_span, String::new()), (use_span, replace_lt)],
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 },
                 BuiltinLintDiagnostics::SingleUseLifetime {
                     param_span: _,
@@ -847,12 +850,14 @@ pub trait LintContext: Sized {
                     deletion_span,
                 } => {
                     debug!(?deletion_span);
-                    db.span_suggestion(
-                        deletion_span,
-                        "elide the unused lifetime",
-                        "",
-                        Applicability::MachineApplicable,
-                    );
+                    if let Some(deletion_span) = deletion_span {
+                        db.span_suggestion(
+                            deletion_span,
+                            "elide the unused lifetime",
+                            "",
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 },
                 BuiltinLintDiagnostics::NamedArgumentUsedPositionally{ position_sp_to_replace, position_sp_for_msg, named_arg_sp, named_arg_name, is_formatting_arg} => {
                     db.span_label(named_arg_sp, "this named argument is referred to by position in formatting string");
@@ -876,6 +881,9 @@ pub trait LintContext: Sized {
                             Applicability::MaybeIncorrect,
                         );
                     }
+                }
+                BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive => {
+                    db.help("consider implementing the trait by hand, or remove the `packed` attribute");
                 }
             }
             // Rewrap `db`, and pass control to the user.
@@ -965,6 +973,7 @@ pub trait LintContext: Sized {
     /// Note that this function should only be called for [`LintExpectationId`]s
     /// retrieved from the current lint pass. Buffered or manually created ids can
     /// cause ICEs.
+    #[rustc_lint_diagnostics]
     fn fulfill_expectation(&self, expectation: LintExpectationId) {
         // We need to make sure that submitted expectation ids are correctly fulfilled suppressed
         // and stored between compilation sessions. To not manually do these steps, we simply create
@@ -1011,6 +1020,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         &*self.lint_store
     }
 
+    #[rustc_lint_diagnostics]
     fn lookup<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -1045,6 +1055,7 @@ impl LintContext for EarlyContext<'_> {
         self.builder.lint_store()
     }
 
+    #[rustc_lint_diagnostics]
     fn lookup<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,

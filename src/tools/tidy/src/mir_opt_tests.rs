@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 fn check_unused_files(path: &Path, bless: bool, bad: &mut bool) {
     let mut rs_files = Vec::<PathBuf>::new();
     let mut output_files = HashSet::<PathBuf>::new();
-    let files = walkdir::WalkDir::new(&path.join("test/mir-opt")).into_iter();
+    let files = walkdir::WalkDir::new(&path.join("mir-opt")).into_iter();
 
     for file in files.filter_map(Result::ok).filter(|e| e.file_type().is_file()) {
         let filepath = file.path();
@@ -41,7 +41,7 @@ fn check_unused_files(path: &Path, bless: bool, bad: &mut bool) {
 }
 
 fn check_dash_files(path: &Path, bless: bool, bad: &mut bool) {
-    for file in walkdir::WalkDir::new(&path.join("test/mir-opt"))
+    for file in walkdir::WalkDir::new(&path.join("mir-opt"))
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())

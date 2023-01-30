@@ -25,28 +25,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::Reborrow(span) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_reborrow }.add_to_diagnostic(err)
             }
-            infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                RegionOriginNote::WithName {
-                    span,
-                    msg: fluent::infer_reborrow,
-                    name: &var_name.to_string(),
-                    continues: false,
-                }
-                .add_to_diagnostic(err);
-            }
             infer::RelateObjectBound(span) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_relate_object_bound }
                     .add_to_diagnostic(err);
-            }
-            infer::DataBorrowed(ty, span) => {
-                RegionOriginNote::WithName {
-                    span,
-                    msg: fluent::infer_data_borrowed,
-                    name: &self.ty_to_string(ty),
-                    continues: false,
-                }
-                .add_to_diagnostic(err);
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 RegionOriginNote::WithName {
@@ -162,33 +143,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 );
                 err
             }
-            infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0313,
-                    "lifetime of borrowed pointer outlives lifetime of captured variable `{}`...",
-                    var_name
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "...the borrowed pointer is valid for ",
-                    sub,
-                    "...",
-                    None,
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    &format!("...but `{}` is only valid for ", var_name),
-                    sup,
-                    "",
-                    None,
-                );
-                err
-            }
             infer::RelateObjectBound(span) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
@@ -259,32 +213,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &mut err,
                     "but lifetime parameter must outlive ",
                     sub,
-                    "",
-                    None,
-                );
-                err
-            }
-            infer::DataBorrowed(ty, span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0490,
-                    "a value of type `{}` is borrowed for too long",
-                    self.ty_to_string(ty)
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "the type is valid for ",
-                    sub,
-                    "",
-                    None,
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "but the borrow lasts for ",
-                    sup,
                     "",
                     None,
                 );
@@ -392,6 +320,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .impl_trait_ref(impl_def_id)
             else { return; };
         let trait_substs = trait_ref
+            .subst_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering
             .with_self_ty(self.tcx, self.tcx.mk_ty_param(0, kw::SelfUpper))
             .substs;
@@ -401,9 +330,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let Ok(trait_predicates) = self
             .tcx
-            .bound_explicit_predicates_of(trait_item_def_id)
-            .map_bound(|p| p.predicates)
-            .subst_iter_copied(self.tcx, trait_item_substs)
+            .explicit_predicates_of(trait_item_def_id)
+            .instantiate_own(self.tcx, trait_item_substs)
             .map(|(pred, _)| {
                 if pred.is_suggestable(self.tcx, false) {
                     Ok(pred.to_string())

@@ -86,6 +86,7 @@ fn main() {
         check_diagnostics(
             r#"
 extern "rust-intrinsic" {
+    #[rustc_safe_intrinsic]
     pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
     pub fn floorf32(x: f32) -> f32; // Unsafe intrinsic
 }

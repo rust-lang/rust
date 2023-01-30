@@ -181,7 +181,7 @@ fn test_mutex_arc_poison() {
     let arc2 = arc.clone();
     let _ = thread::spawn(move || {
         let lock = arc2.lock().unwrap();
-        assert_eq!(*lock, 2);
+        assert_eq!(*lock, 2); // deliberate assertion failure to poison the mutex
     })
     .join();
     assert!(arc.lock().is_err());

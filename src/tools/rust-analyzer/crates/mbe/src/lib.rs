@@ -140,7 +140,7 @@ impl Shift {
                     | tt::Leaf::Punct(tt::Punct { id, .. })
                     | tt::Leaf::Literal(tt::Literal { id, .. })) = leaf;
 
-                    (id != tt::TokenId::unspecified()).then(|| id.0)
+                    (id != tt::TokenId::unspecified()).then_some(id.0)
                 }
             };
             subtree.token_trees.iter().filter_map(filter).max()

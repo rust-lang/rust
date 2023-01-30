@@ -7,10 +7,11 @@ use crate::mir::{Field, ProjectionKind};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_target::abi::TyAndLayout;
 
 use std::fmt;
 use std::mem::ManuallyDrop;
@@ -180,6 +181,15 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for AliasTy<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AliasTy")
+            .field("substs", &self.substs)
+            .field("def_id", &self.def_id)
+            .finish()
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
 //
@@ -191,6 +201,7 @@ TrivialTypeTraversalAndLiftImpls! {
     bool,
     usize,
     ::rustc_target::abi::VariantIdx,
+    u16,
     u32,
     u64,
     String,
@@ -227,6 +238,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
+    crate::ty::AliasKind,
     crate::ty::Placeholder<crate::ty::BoundRegionKind>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
@@ -357,7 +369,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::AdtDef<'tcx> {
 
 impl<'tcx> TypeVisitable<'tcx> for ty::AdtDef<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 
@@ -455,7 +467,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Rc<T> {
             let slot = Rc::get_mut_unchecked(&mut unique);
 
             // Semantically move the contained type out from `unique`, fold
-            // it, then move the folded value back into `unique`.  Should
+            // it, then move the folded value back into `unique`. Should
             // folding fail, `ManuallyDrop` ensures that the "moved-out"
             // value is not re-dropped.
             let owned = ManuallyDrop::take(slot);
@@ -501,7 +513,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Arc<T> {
             let slot = Arc::get_mut_unchecked(&mut unique);
 
             // Semantically move the contained type out from `unique`, fold
-            // it, then move the folded value back into `unique`.  Should
+            // it, then move the folded value back into `unique`. Should
             // folding fail, `ManuallyDrop` ensures that the "moved-out"
             // value is not re-dropped.
             let owned = ManuallyDrop::take(slot);
@@ -644,6 +656,9 @@ impl<'tcx> TypeSuperFoldable<'tcx> for Ty<'tcx> {
                 ty::Generator(did, substs.try_fold_with(folder)?, movability)
             }
             ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
+            ty::GeneratorWitnessMIR(did, substs) => {
+                ty::GeneratorWitnessMIR(did, substs.try_fold_with(folder)?)
+            }
             ty::Closure(did, substs) => ty::Closure(did, substs.try_fold_with(folder)?),
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
 
@@ -689,6 +704,7 @@ impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
             }
             ty::Generator(_did, ref substs, _) => substs.visit_with(visitor),
             ty::GeneratorWitness(ref types) => types.visit_with(visitor),
+            ty::GeneratorWitnessMIR(_did, ref substs) => substs.visit_with(visitor),
             ty::Closure(_did, ref substs) => substs.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
 
@@ -704,7 +720,7 @@ impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
             | ty::Placeholder(..)
             | ty::Param(..)
             | ty::Never
-            | ty::Foreign(..) => ControlFlow::CONTINUE,
+            | ty::Foreign(..) => ControlFlow::Continue(()),
         }
     }
 }
@@ -732,7 +748,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> TypeSuperVisitable<'tcx> for ty::Region<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 
@@ -834,12 +850,18 @@ impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
 
 impl<'tcx> TypeVisitable<'tcx> for InferConst<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 
 impl<'tcx> TypeSuperVisitable<'tcx> for ty::UnevaluatedConst<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.substs.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for TyAndLayout<'tcx, Ty<'tcx>> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        visitor.visit_ty(self.ty)
     }
 }

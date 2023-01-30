@@ -286,7 +286,7 @@ impl BridgeState<'_> {
         BRIDGE_STATE.with(|state| {
             state.replace(BridgeState::InUse, |mut state| {
                 // FIXME(#52812) pass `f` directly to `replace` when `RefMutL` is gone
-                f(&mut *state)
+                f(&mut state)
             })
         })
     }

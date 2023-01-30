@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -56,7 +56,7 @@ pub(crate) struct Context<'tcx> {
     pub(super) render_redirect_pages: bool,
     /// Tracks section IDs for `Deref` targets so they match in both the main
     /// body and the sidebar.
-    pub(super) deref_id_map: FxHashMap<DefId, String>,
+    pub(super) deref_id_map: DefIdMap<String>,
     /// The map used to ensure all generated 'id=' attributes are unique.
     pub(super) id_map: IdMap,
     /// Shared mutable state.
@@ -309,7 +309,7 @@ impl<'tcx> Context<'tcx> {
 
     pub(crate) fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
         let mut root = self.root_path();
-        let mut path = String::new();
+        let mut path: String;
         let cnum = span.cnum(self.sess());
 
         // We can safely ignore synthetic `SourceFile`s.
@@ -340,10 +340,24 @@ impl<'tcx> Context<'tcx> {
                 ExternalLocation::Unknown => return None,
             };
 
-            sources::clean_path(&src_root, file, false, |component| {
-                path.push_str(&component.to_string_lossy());
+            let href = RefCell::new(PathBuf::new());
+            sources::clean_path(
+                &src_root,
+                file,
+                |component| {
+                    href.borrow_mut().push(component);
+                },
+                || {
+                    href.borrow_mut().pop();
+                },
+            );
+
+            path = href.into_inner().to_string_lossy().to_string();
+
+            if let Some(c) = path.as_bytes().last() && *c != b'/' {
                 path.push('/');
-            });
+            }
+
             let mut fname = file.file_name().expect("source has no filename").to_os_string();
             fname.push(".html");
             path.push_str(&fname.to_string_lossy());
@@ -450,8 +464,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // If user passed in `--playground-url` arg, we fill in crate name here
         let mut playground = None;
         if let Some(url) = playground_url {
-            playground =
-                Some(markdown::Playground { crate_name: Some(krate.name(tcx).to_string()), url });
+            playground = Some(markdown::Playground { crate_name: Some(krate.name(tcx)), url });
         }
         let mut layout = layout::Layout {
             logo: String::new(),
@@ -477,7 +490,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 }
                 (sym::html_playground_url, Some(s)) => {
                     playground = Some(markdown::Playground {
-                        crate_name: Some(krate.name(tcx).to_string()),
+                        crate_name: Some(krate.name(tcx)),
                         url: s.to_string(),
                     });
                 }
@@ -531,7 +544,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             dst,
             render_redirect_pages: false,
             id_map,
-            deref_id_map: FxHashMap::default(),
+            deref_id_map: Default::default(),
             shared: Rc::new(scx),
             include_sources,
             types_with_notable_traits: FxHashSet::default(),
@@ -559,7 +572,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: self.current.clone(),
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
-            deref_id_map: FxHashMap::default(),
+            deref_id_map: Default::default(),
             id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
@@ -625,7 +638,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 write!(
                     buf,
                     "<div class=\"main-heading\">\
-                     <h1 class=\"fqn\">Rustdoc settings</h1>\
+                     <h1>Rustdoc settings</h1>\
                      <span class=\"out-of-band\">\
                          <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
                             Back\
@@ -663,7 +676,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 write!(
                     buf,
                     "<div class=\"main-heading\">\
-                     <h1 class=\"fqn\">Rustdoc help</h1>\
+                     <h1>Rustdoc help</h1>\
                      <span class=\"out-of-band\">\
                          <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
                             Back\

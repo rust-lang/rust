@@ -622,9 +622,8 @@ impl<P: Deref> Pin<P> {
     /// that the closure is pinned.
     ///
     /// The better alternative is to avoid all that trouble and do the pinning in the outer function
-    /// instead (here using the unstable `pin` macro):
+    /// instead (here using the [`pin!`][crate::pin::pin] macro):
     /// ```
-    /// #![feature(pin_macro)]
     /// use std::pin::pin;
     /// use std::task::Context;
     /// use std::future::Future;
@@ -754,7 +753,7 @@ impl<P: DerefMut> Pin<P> {
 impl<'a, T: ?Sized> Pin<&'a T> {
     /// Constructs a new pin by mapping the interior value.
     ///
-    /// For example, if you  wanted to get a `Pin` of a field of something,
+    /// For example, if you wanted to get a `Pin` of a field of something,
     /// you could use this to get access to that field in one line of code.
     /// However, there are several gotchas with these "pinning projections";
     /// see the [`pin` module] documentation for further details on that topic.
@@ -857,7 +856,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
 
     /// Construct a new pin by mapping the interior value.
     ///
-    /// For example, if you  wanted to get a `Pin` of a field of something,
+    /// For example, if you wanted to get a `Pin` of a field of something,
     /// you could use this to get access to that field in one line of code.
     /// However, there are several gotchas with these "pinning projections";
     /// see the [`pin` module] documentation for further details on that topic.
@@ -1026,7 +1025,6 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### Basic usage
 ///
 /// ```rust
-/// #![feature(pin_macro)]
 /// # use core::marker::PhantomPinned as Foo;
 /// use core::pin::{pin, Pin};
 ///
@@ -1044,7 +1042,6 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### Manually polling a `Future` (without `Unpin` bounds)
 ///
 /// ```rust
-/// #![feature(pin_macro)]
 /// use std::{
 ///     future::Future,
 ///     pin::pin,
@@ -1083,7 +1080,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### With `Generator`s
 ///
 /// ```rust
-/// #![feature(generators, generator_trait, pin_macro)]
+/// #![feature(generators, generator_trait)]
 /// use core::{
 ///     ops::{Generator, GeneratorState},
 ///     pin::pin,
@@ -1126,7 +1123,6 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// The following, for instance, fails to compile:
 ///
 /// ```rust,compile_fail
-/// #![feature(pin_macro)]
 /// use core::pin::{pin, Pin};
 /// # use core::{marker::PhantomPinned as Foo, mem::drop as stuff};
 ///
@@ -1168,7 +1164,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// constructor.
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
-#[unstable(feature = "pin_macro", issue = "93178")]
+#[stable(feature = "pin_macro", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(unsafe_pin_internals)]
 pub macro pin($value:expr $(,)?) {

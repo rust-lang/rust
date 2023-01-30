@@ -27,7 +27,7 @@ if [[ -n "${CI_ONLY_WHEN_SUBMODULES_CHANGED-}" ]]; then
         # that breaks Miri.
         echo "Tool subtrees were updated"
     elif ! (git diff --quiet "$BASE_COMMIT" -- \
-             src/test/rustdoc-gui \
+             tests/rustdoc-gui \
              src/librustdoc \
              src/ci/docker/host-x86_64/x86_64-gnu-tools/Dockerfile \
              src/ci/docker/host-x86_64/x86_64-gnu-tools/browser-ui-test.version \

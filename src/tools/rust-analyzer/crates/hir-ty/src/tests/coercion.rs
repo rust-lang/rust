@@ -807,3 +807,37 @@ fn main() {
         "#,
     );
 }
+
+#[test]
+fn adjust_comparison_arguments() {
+    check_no_mismatches(
+        r"
+//- minicore: eq
+struct Struct;
+impl core::cmp::PartialEq for Struct {
+    fn eq(&self, other: &Self) -> bool { true }
+}
+fn test() {
+    Struct == Struct;
+ // ^^^^^^ adjustments: Borrow(Ref(Not))
+           // ^^^^^^ adjustments: Borrow(Ref(Not))
+}",
+    );
+}
+
+#[test]
+fn adjust_assign_lhs() {
+    check_no_mismatches(
+        r"
+//- minicore: add
+struct Struct;
+impl core::ops::AddAssign for Struct {
+    fn add_assign(&mut self, other: Self) {}
+}
+fn test() {
+    Struct += Struct;
+ // ^^^^^^ adjustments: Borrow(Ref(Mut))
+           // ^^^^^^ adjustments:
+}",
+    );
+}

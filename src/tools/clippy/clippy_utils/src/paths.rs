@@ -47,7 +47,6 @@ pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];
 #[cfg(feature = "internal")]
 pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
 pub const INSERT_STR: [&str; 4] = ["alloc", "string", "String", "insert_str"];
-pub const ITER_COUNT: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "count"];
 pub const ITER_EMPTY: [&str; 5] = ["core", "iter", "sources", "empty", "Empty"];
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
 #[cfg(feature = "internal")]

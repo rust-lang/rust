@@ -1,7 +1,7 @@
 use crate::context::LintContext;
+use crate::lints::NoopMethodCallDiag;
 use crate::LateContext;
 use crate::LateLintPass;
-use rustc_errors::fluent;
 use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
@@ -85,11 +85,10 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         }
         let expr_span = expr.span;
         let span = expr_span.with_lo(receiver.span.hi());
-        cx.struct_span_lint(NOOP_METHOD_CALL, span, fluent::lint_noop_method_call, |lint| {
-            lint.set_arg("method", call.ident.name)
-                .set_arg("receiver_ty", receiver_ty)
-                .span_label(span, fluent::label)
-                .note(fluent::note)
-        });
+        cx.emit_spanned_lint(
+            NOOP_METHOD_CALL,
+            span,
+            NoopMethodCallDiag { method: call.ident.name, receiver_ty, label: span },
+        );
     }
 }

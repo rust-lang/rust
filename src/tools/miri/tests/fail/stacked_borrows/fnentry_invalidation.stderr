@@ -14,7 +14,7 @@ help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
    |
 LL |     let z = &mut x as *mut i32;
    |             ^^^^^^
-help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique FnEntry retag inside this call
+help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique function-entry retag inside this call
   --> $DIR/fnentry_invalidation.rs:LL:CC
    |
 LL |     x.do_bad();

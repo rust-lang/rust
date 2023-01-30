@@ -28,6 +28,7 @@ use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
+use std::error::Report;
 use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
@@ -250,7 +251,7 @@ pub trait Emitter: Translate {
         let mut primary_span = diag.span.clone();
         let suggestions = diag.suggestions.as_deref().unwrap_or(&[]);
         if let Some((sugg, rest)) = suggestions.split_first() {
-            let msg = self.translate_message(&sugg.msg, fluent_args);
+            let msg = self.translate_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
             if rest.is_empty() &&
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
@@ -1325,7 +1326,7 @@ impl EmitterWriter {
         //                very *weird* formats
         //                see?
         for (text, style) in msg.iter() {
-            let text = self.translate_message(text, args);
+            let text = self.translate_message(text, args).map_err(Report::new).unwrap();
             let lines = text.split('\n').collect::<Vec<_>>();
             if lines.len() > 1 {
                 for (i, line) in lines.iter().enumerate() {
@@ -1387,7 +1388,7 @@ impl EmitterWriter {
                 label_width += 2;
             }
             for (text, _) in msg.iter() {
-                let text = self.translate_message(text, args);
+                let text = self.translate_message(text, args).map_err(Report::new).unwrap();
                 // Account for newlines to align output to its label.
                 for (line, text) in normalize_whitespace(&text).lines().enumerate() {
                     buffer.append(
@@ -1790,7 +1791,7 @@ impl EmitterWriter {
 
             if let Some(span) = span.primary_span() {
                 // Compare the primary span of the diagnostic with the span of the suggestion
-                // being emitted.  If they belong to the same file, we don't *need* to show the
+                // being emitted. If they belong to the same file, we don't *need* to show the
                 // file name, saving in verbosity, but if it *isn't* we do need it, otherwise we're
                 // telling users to make a change but not clarifying *where*.
                 let loc = sm.lookup_char_pos(parts[0].span.lo());
@@ -2301,7 +2302,9 @@ impl FileWithAnnotatedLines {
                     hi.col_display += 1;
                 }
 
-                let label = label.as_ref().map(|m| emitter.translate_message(m, args).to_string());
+                let label = label.as_ref().map(|m| {
+                    emitter.translate_message(m, args).map_err(Report::new).unwrap().to_string()
+                });
 
                 if lo.line != hi.line {
                     let ml = MultilineAnnotation {
@@ -2526,11 +2529,11 @@ fn emit_to_destination(
     //
     // On Unix systems, we write into a buffered terminal rather than directly to a terminal. When
     // the .flush() is called we take the buffer created from the buffered writes and write it at
-    // one shot.  Because the Unix systems use ANSI for the colors, which is a text-based styling
+    // one shot. Because the Unix systems use ANSI for the colors, which is a text-based styling
     // scheme, this buffered approach works and maintains the styling.
     //
     // On Windows, styling happens through calls to a terminal API. This prevents us from using the
-    // same buffering approach.  Instead, we use a global Windows mutex, which we acquire long
+    // same buffering approach. Instead, we use a global Windows mutex, which we acquire long
     // enough to output the full error message, then we release.
     let _buffer_lock = lock::acquire_global_lock("rustc_errors");
     for (pos, line) in rendered_buffer.iter().enumerate() {

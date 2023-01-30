@@ -1,0 +1,8 @@
+error: [o]
+  --> $DIR/variance-object-types.rs:7:1
+   |
+LL | struct Foo<'a> {
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

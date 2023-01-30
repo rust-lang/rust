@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/trait-error.rs:5:6
+   |
+LL |     [Foo(String::new()); 4];
+   |      ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required for `Foo<String>` to implement `Copy`
+  --> $DIR/trait-error.rs:1:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+   = help: consider creating a new `const` item and initializing it with the result of the function call to be used in the repeat position, like `const VAL: Type = const_fn();` and `let x = [VAL; 42];`
+   = help: create an inline `const` block, see RFC #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

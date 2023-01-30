@@ -2,19 +2,19 @@
 //!
 //! Confirmation unifies the output type parameters of the trait
 //! with the values found in the obligation, possibly yielding a
-//! type error.  See the [rustc dev guide] for more details.
+//! type error. See the [rustc dev guide] for more details.
 //!
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::{
-    self, Binder, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
-    ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt,
+    self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
+    TraitRef, Ty, TyCtxt, TypeVisitable,
 };
+use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
@@ -83,7 +83,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Object(data)
             }
 
-            ClosureCandidate => {
+            ClosureCandidate { .. } => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
                 ImplSource::Closure(vtable_closure)
             }
@@ -159,8 +159,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
         };
 
-        let candidate_predicate =
-            tcx.bound_item_bounds(def_id).map_bound(|i| i[idx]).subst(tcx, substs);
+        let candidate_predicate = tcx.item_bounds(def_id).map_bound(|i| i[idx]).subst(tcx, substs);
         let candidate = candidate_predicate
             .to_opt_poly_trait_pred()
             .expect("projection candidate is not a trait predicate")
@@ -184,9 +183,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })?);
 
         if let ty::Alias(ty::Projection, ..) = placeholder_self_ty.kind() {
-            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs).predicates;
-            debug!(?predicates, "projection predicates");
-            for predicate in predicates {
+            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
+            for (predicate, _) in predicates {
                 let normalized = normalize_with_depth_to(
                     self,
                     obligation.param_env,
@@ -356,8 +354,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested,
             );
 
-            // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
-            // predicate as usual.  It won't have any effect since auto traits are coinductive.
+            // Adds the predicates from the trait. Note that this contains a `Self: Trait`
+            // predicate as usual. It won't have any effect since auto traits are coinductive.
             obligations.extend(trait_obligations);
 
             debug!(?obligations, "vtable_auto_impl");
@@ -510,7 +508,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // This maybe belongs in wf, but that can't (doesn't) handle
             // higher-ranked things.
             // Prevent, e.g., `dyn Iterator<Item = str>`.
-            for bound in self.tcx().bound_item_bounds(assoc_type).transpose_iter() {
+            for bound in self.tcx().item_bounds(assoc_type).transpose_iter() {
                 let subst_bound =
                     if defs.count() == 0 {
                         bound.subst(tcx, trait_predicate.trait_ref.substs)
@@ -767,8 +765,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
 
         // FIXME: Chalk
-
-        if !self.tcx().sess.opts.unstable_opts.chalk {
+        if self.tcx().sess.opts.unstable_opts.trait_solver != TraitSolver::Chalk {
             nested.push(obligation.with(
                 self.tcx(),
                 ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, substs, kind)),
@@ -1011,7 +1008,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `T` -> `Trait`
             (_, &ty::Dynamic(ref data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
-                if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
+                if let Some(did) = object_dids.find(|did| !tcx.check_is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
                 }
 
@@ -1066,50 +1063,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // `Struct<T>` -> `Struct<U>`
             (&ty::Adt(def, substs_a), &ty::Adt(_, substs_b)) => {
-                let maybe_unsizing_param_idx = |arg: GenericArg<'tcx>| match arg.unpack() {
-                    GenericArgKind::Type(ty) => match ty.kind() {
-                        ty::Param(p) => Some(p.index),
-                        _ => None,
-                    },
-
-                    // Lifetimes aren't allowed to change during unsizing.
-                    GenericArgKind::Lifetime(_) => None,
-
-                    GenericArgKind::Const(ct) => match ct.kind() {
-                        ty::ConstKind::Param(p) => Some(p.index),
-                        _ => None,
-                    },
-                };
-
-                // FIXME(eddyb) cache this (including computing `unsizing_params`)
-                // by putting it in a query; it would only need the `DefId` as it
-                // looks at declared field types, not anything substituted.
-
-                // The last field of the structure has to exist and contain type/const parameters.
-                let (tail_field, prefix_fields) =
-                    def.non_enum_variant().fields.split_last().ok_or(Unimplemented)?;
-                let tail_field_ty = tcx.bound_type_of(tail_field.did);
-
-                let mut unsizing_params = GrowableBitSet::new_empty();
-                for arg in tail_field_ty.0.walk() {
-                    if let Some(i) = maybe_unsizing_param_idx(arg) {
-                        unsizing_params.insert(i);
-                    }
-                }
-
-                // Ensure none of the other fields mention the parameters used
-                // in unsizing.
-                for field in prefix_fields {
-                    for arg in tcx.type_of(field.did).walk() {
-                        if let Some(i) = maybe_unsizing_param_idx(arg) {
-                            unsizing_params.remove(i);
-                        }
-                    }
-                }
-
+                let unsizing_params = tcx.unsizing_params_for_adt(def.did());
                 if unsizing_params.is_empty() {
                     return Err(Unimplemented);
                 }
+
+                let tail_field = def
+                    .non_enum_variant()
+                    .fields
+                    .last()
+                    .expect("expected unsized ADT to have a tail field");
+                let tail_field_ty = tcx.bound_type_of(tail_field.did);
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`,
                 // normalizing in the process, since `type_of` returns something directly from
@@ -1286,6 +1250,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::GeneratorWitness(tys) => {
                     stack.extend(tcx.erase_late_bound_regions(tys).to_vec());
+                }
+                ty::GeneratorWitnessMIR(def_id, substs) => {
+                    let tcx = self.tcx();
+                    stack.extend(tcx.generator_hidden_types(def_id).map(|bty| {
+                        let ty = bty.subst(tcx, substs);
+                        debug_assert!(!ty.has_late_bound_regions());
+                        ty
+                    }))
                 }
 
                 // If we have a projection type, make sure to normalize it so we replace it

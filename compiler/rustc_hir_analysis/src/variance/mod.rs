@@ -92,7 +92,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
                         a.visit_with(self)?;
                     }
                 }
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             } else {
                 substs.visit_with(self)
             }

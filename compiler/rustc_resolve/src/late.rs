@@ -668,7 +668,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     && let Some(partial_res) = self.r.partial_res_map.get(&ty.id)
                     && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
                 {
-                    // This path is actually a bare trait object.  In case of a bare `Fn`-trait
+                    // This path is actually a bare trait object. In case of a bare `Fn`-trait
                     // object with anonymous lifetimes, we need this rib to correctly place the
                     // synthetic lifetimes.
                     let span = ty.span.shrink_to_lo().to(path.span.shrink_to_lo());
@@ -1046,7 +1046,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     // Probe the lifetime ribs to know how to behave.
                     for rib in self.lifetime_ribs.iter().rev() {
                         match rib.kind {
-                            // We are inside a `PolyTraitRef`.  The lifetimes are
+                            // We are inside a `PolyTraitRef`. The lifetimes are
                             // to be intoduced in that (maybe implicit) `for<>` binder.
                             LifetimeRibKind::Generics {
                                 binder,
@@ -1069,7 +1069,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                                 );
                                 break;
                             }
-                            // We have nowhere to introduce generics.  Code is malformed,
+                            // We have nowhere to introduce generics. Code is malformed,
                             // so use regular lifetime resolution to avoid spurious errors.
                             LifetimeRibKind::Item | LifetimeRibKind::Generics { .. } => {
                                 visit::walk_generic_args(self, args);
@@ -1515,7 +1515,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             count: 1,
         };
         let elision_candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
-        for rib in self.lifetime_ribs.iter().rev() {
+        for (i, rib) in self.lifetime_ribs.iter().enumerate().rev() {
             debug!(?rib.kind);
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
@@ -1532,16 +1532,31 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     } else {
                         ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
                     };
-                    rustc_errors::struct_span_err!(
+                    let mut diag = rustc_errors::struct_span_err!(
                         self.r.session,
                         lifetime.ident.span,
                         E0637,
                         "{}",
                         msg,
-                    )
-                    .span_label(lifetime.ident.span, note)
-                    .emit();
-
+                    );
+                    diag.span_label(lifetime.ident.span, note);
+                    if elided {
+                        for rib in self.lifetime_ribs[i..].iter().rev() {
+                            if let LifetimeRibKind::Generics {
+                                span,
+                                kind: LifetimeBinderKind::PolyTrait | LifetimeBinderKind::WhereBound,
+                                ..
+                            } = &rib.kind
+                            {
+                                diag.span_help(
+                                    *span,
+                                    "consider introducing a higher-ranked lifetime here with `for<'a>`",
+                                );
+                                break;
+                            }
+                        }
+                    }
+                    diag.emit();
                     self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
                     return;
                 }
@@ -1760,7 +1775,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         break;
                     }
                     // `LifetimeRes::Error`, which would usually be used in the case of
-                    // `ReportError`, is unsuitable here, as we don't emit an error yet.  Instead,
+                    // `ReportError`, is unsuitable here, as we don't emit an error yet. Instead,
                     // we simply resolve to an implicit lifetime, which will be checked later, at
                     // which point a suitable error will be emitted.
                     LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
@@ -3358,7 +3373,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         sugg.to_string(),
                         Applicability::MaybeIncorrect,
                     ))
-                } else if res.is_none() {
+                } else if res.is_none() && matches!(source, PathSource::Type) {
                     this.report_missing_type_error(path)
                 } else {
                     None
@@ -3632,7 +3647,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         if let Some(qself) = qself {
             if qself.position == 0 {
                 // This is a case like `<T>::B`, where there is no
-                // trait to resolve.  In that case, we leave the `B`
+                // trait to resolve. In that case, we leave the `B`
                 // segment to be resolved by type-check.
                 return Ok(Some(PartialRes::with_unresolved_segments(
                     Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id()),
@@ -3643,7 +3658,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // Make sure `A::B` in `<T as A::B>::C` is a trait item.
             //
             // Currently, `path` names the full item (`A::B::C`, in
-            // our example).  so we extract the prefix of that that is
+            // our example). so we extract the prefix of that that is
             // the trait (the slice upto and including
             // `qself.position`). And then we recursively resolve that,
             // but with `qself` set to `None`.

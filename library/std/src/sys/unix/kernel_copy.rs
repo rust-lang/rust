@@ -587,7 +587,7 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                         // - copy_file_range file is immutable or syscall is blocked by seccomp¹ (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         // - the writer fd was opened with O_APPEND (EBADF²)
-                        // and no bytes were written successfully yet.  (All these errnos should
+                        // and no bytes were written successfully yet. (All these errnos should
                         // not be returned if something was already written, but they happen in
                         // the wild, see #91152.)
                         //

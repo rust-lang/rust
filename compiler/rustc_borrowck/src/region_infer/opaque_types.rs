@@ -12,6 +12,8 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 
+use crate::session_diagnostics::NonGenericOpaqueTypeParam;
+
 use super::RegionInferenceContext;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -235,7 +237,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// # Parameters
     ///
     /// - `def_id`, the `impl Trait` type
-    /// - `substs`, the substs  used to instantiate this opaque type
+    /// - `substs`, the substs used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
     #[instrument(level = "debug", skip(self))]
@@ -250,7 +252,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         }
 
         let definition_ty = instantiated_ty
-            .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false, origin)
+            .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
             .ty;
 
         if !check_opaque_type_parameter_valid(
@@ -262,7 +264,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             return self.tcx.ty_error();
         }
 
-        // Only check this for TAIT. RPIT already supports `src/test/ui/impl-trait/nested-return-type2.rs`
+        // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
         // on stable and we'd break that.
         let OpaqueTyOrigin::TyAlias = origin else {
             return definition_ty;
@@ -271,7 +273,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // This logic duplicates most of `check_opaque_meets_bounds`.
         // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
         let param_env = self.tcx.param_env(def_id);
-        let body_id = self.tcx.local_def_id_to_hir_id(def_id);
         // HACK This bubble is required for this tests to pass:
         // type-alias-impl-trait/issue-67844-nested-opaque.rs
         let infcx =
@@ -288,7 +289,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // the bounds that the function supplies.
         let opaque_ty = self.tcx.mk_opaque(def_id.to_def_id(), id_substs);
         if let Err(err) = ocx.eq(
-            &ObligationCause::misc(instantiated_ty.span, body_id),
+            &ObligationCause::misc(instantiated_ty.span, def_id),
             param_env,
             opaque_ty,
             definition_ty,
@@ -296,7 +297,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             infcx
                 .err_ctxt()
                 .report_mismatched_types(
-                    &ObligationCause::misc(instantiated_ty.span, body_id),
+                    &ObligationCause::misc(instantiated_ty.span, def_id),
                     opaque_ty,
                     definition_ty,
                     err,
@@ -307,7 +308,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         ocx.register_obligation(Obligation::misc(
             infcx.tcx,
             instantiated_ty.span,
-            body_id,
+            def_id,
             param_env,
             predicate,
         ));
@@ -318,7 +319,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
         // This is still required for many(half of the tests in ui/type-alias-impl-trait)
         // tests to pass
-        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        let _ = infcx.take_opaque_types();
 
         if errors.is_empty() {
             definition_ty
@@ -366,18 +367,6 @@ fn check_opaque_type_parameter_valid(
     for (i, arg) in opaque_type_key.substs.iter().enumerate() {
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
-            GenericArgKind::Lifetime(lt) if lt.is_static() => {
-                tcx.sess
-                    .struct_span_err(span, "non-defining opaque type use in defining scope")
-                    .span_label(
-                        tcx.def_span(opaque_generics.param_at(i, tcx).def_id),
-                        "cannot use static lifetime; use a bound lifetime \
-                                    instead or remove the lifetime parameter from the \
-                                    opaque type",
-                    )
-                    .emit();
-                return false;
-            }
             GenericArgKind::Lifetime(lt) => {
                 matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
             }
@@ -389,17 +378,13 @@ fn check_opaque_type_parameter_valid(
         } else {
             // Prevent `fn foo() -> Foo<u32>` from being defining.
             let opaque_param = opaque_generics.param_at(i, tcx);
-            tcx.sess
-                .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .span_note(
-                    tcx.def_span(opaque_param.def_id),
-                    &format!(
-                        "used non-generic {} `{}` for generic parameter",
-                        opaque_param.kind.descr(),
-                        arg,
-                    ),
-                )
-                .emit();
+            let kind = opaque_param.kind.descr();
+            tcx.sess.emit_err(NonGenericOpaqueTypeParam {
+                ty: arg,
+                kind,
+                span,
+                param_span: tcx.def_span(opaque_param.def_id),
+            });
             return false;
         }
     }

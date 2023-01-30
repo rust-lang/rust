@@ -81,7 +81,7 @@ pub(super) fn check<'tcx>(
 
                 let skip = if starts_at_zero {
                     String::new()
-                } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, start) {
+                } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, start, cx) {
                     return;
                 } else {
                     format!(".skip({})", snippet(cx, start.span, ".."))
@@ -109,7 +109,7 @@ pub(super) fn check<'tcx>(
 
                     if is_len_call(end, indexed) || is_end_eq_array_len(cx, end, limits, indexed_ty) {
                         String::new()
-                    } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, take_expr) {
+                    } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, take_expr, cx) {
                         return;
                     } else {
                         match limits {
@@ -370,7 +370,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             ExprKind::MethodCall(_, receiver, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in iter::zip(
-                    self.cx.tcx.fn_sig(def_id).inputs().skip_binder(),
+                    self.cx.tcx.fn_sig(def_id).subst_identity().inputs().skip_binder(),
                     std::iter::once(receiver).chain(args.iter()),
                 ) {
                     self.prefer_mutable = false;

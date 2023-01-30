@@ -4,6 +4,7 @@ members = [
   "library/std",
   "library/test",
   "src/rustdoc-json-types",
+  "src/tools/build_helper",
   "src/tools/cargotest",
   "src/tools/clippy",
   "src/tools/clippy/clippy_dev",
@@ -50,7 +51,7 @@ exclude = [
   "compiler/rustc_codegen_cranelift",
   "compiler/rustc_codegen_gcc",
   "src/bootstrap",
-  "src/test/rustdoc-gui",
+  "tests/rustdoc-gui",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
   # The `x` binary is a thin wrapper that calls `x.py`, which initializes

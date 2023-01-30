@@ -1,0 +1,19 @@
+error: unexpected `=>` after open range
+  --> $DIR/half-open-range-pats-inclusive-match-arrow.rs:5:11
+   |
+LL |         74..=> {},
+   |           ^^^
+   |
+help: add a space between the pattern and `=>`
+   |
+LL |         74.. => {},
+   |             +
+
+error: expected one of `=>`, `if`, or `|`, found `>`
+  --> $DIR/half-open-range-pats-inclusive-match-arrow.rs:5:14
+   |
+LL |         74..=> {},
+   |              ^ expected one of `=>`, `if`, or `|`
+
+error: aborting due to 2 previous errors
+

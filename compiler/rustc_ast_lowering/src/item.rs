@@ -67,7 +67,6 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             current_hir_id_owner: hir::CRATE_OWNER_ID,
             item_local_id_counter: hir::ItemLocalId::new(0),
             node_id_to_local_id: Default::default(),
-            local_id_to_def_id: SortedMap::new(),
             trait_map: Default::default(),
 
             // Lowering state.
@@ -523,7 +522,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //
                 // The first two are produced by recursively invoking
                 // `lower_use_tree` (and indeed there may be things
-                // like `use foo::{a::{b, c}}` and so forth).  They
+                // like `use foo::{a::{b, c}}` and so forth). They
                 // wind up being directly added to
                 // `self.items`. However, the structure of this
                 // function also requires us to return one item, and
@@ -1051,7 +1050,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                     _ => {
                         // Replace the ident for bindings that aren't simple.
-                        let name = format!("__arg{}", index);
+                        let name = format!("__arg{index}");
                         let ident = Ident::from_str(&name);
 
                         (ident, false)
@@ -1239,7 +1238,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_constness(&mut self, c: Const) -> hir::Constness {
+    pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {
         match c {
             Const::Yes(_) => hir::Constness::Const,
             Const::No => hir::Constness::NotConst,

@@ -10,8 +10,10 @@ use crate::sys_common::io::test::{tmpdir, TempDir};
 use crate::thread;
 use crate::time::{Duration, Instant};
 
-use rand::{rngs::StdRng, RngCore, SeedableRng};
+use rand::RngCore;
 
+#[cfg(target_os = "macos")]
+use crate::ffi::{c_char, c_int};
 #[cfg(unix)]
 use crate::os::unix::fs::symlink as symlink_dir;
 #[cfg(unix)]
@@ -24,8 +26,6 @@ use crate::os::windows::fs::{symlink_dir, symlink_file};
 use crate::sys::fs::symlink_junction;
 #[cfg(target_os = "macos")]
 use crate::sys::weak::weak;
-#[cfg(target_os = "macos")]
-use libc::{c_char, c_int};
 
 macro_rules! check {
     ($e:expr) => {
@@ -1181,7 +1181,7 @@ fn _assert_send_sync() {
 #[test]
 fn binary_file() {
     let mut bytes = [0; 1024];
-    StdRng::from_entropy().fill_bytes(&mut bytes);
+    crate::test_helpers::test_rng().fill_bytes(&mut bytes);
 
     let tmpdir = tmpdir();
 
@@ -1194,7 +1194,7 @@ fn binary_file() {
 #[test]
 fn write_then_read() {
     let mut bytes = [0; 1024];
-    StdRng::from_entropy().fill_bytes(&mut bytes);
+    crate::test_helpers::test_rng().fill_bytes(&mut bytes);
 
     let tmpdir = tmpdir();
 

@@ -4,7 +4,6 @@ use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use hir::def::DefKind;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -13,7 +12,8 @@ use rustc_infer::infer::{InferOk, InferResult};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeSuperVisitable, TypeVisitor};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
@@ -21,6 +21,7 @@ use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use std::cmp;
 use std::iter;
+use std::ops::ControlFlow;
 
 /// What signature do we *expect* the closure to have from context?
 #[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
@@ -54,7 +55,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
         let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => self.deduce_expectations_from_expected_type(ty),
+            Some(ty) => self.deduce_closure_signature(ty),
             None => (None, None),
         };
         let body = self.tcx.hir().body(closure.body);
@@ -79,7 +80,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!(?bound_sig, ?liberated_sig);
 
-        let mut fcx = FnCtxt::new(self, self.param_env.without_const(), body.value.hir_id);
+        let mut fcx = FnCtxt::new(self, self.param_env.without_const(), closure.def_id);
         let generator_types = check_fn(
             &mut fcx,
             liberated_sig,
@@ -162,13 +163,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Given the expected type, figures out what it can about this closure we
     /// are about to type check:
     #[instrument(skip(self), level = "debug")]
-    fn deduce_expectations_from_expected_type(
+    fn deduce_closure_signature(
         &self,
         expected_ty: Ty<'tcx>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => self
-                .deduce_signature_from_predicates(
+                .deduce_closure_signature_from_predicates(
+                    expected_ty,
                     self.tcx.bound_explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs),
                 ),
             ty::Dynamic(ref object_type, ..) => {
@@ -181,7 +183,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|did| self.tcx.fn_trait_kind_from_def_id(did));
                 (sig, kind)
             }
-            ty::Infer(ty::TyVar(vid)) => self.deduce_signature_from_predicates(
+            ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
+                self.tcx.mk_ty_var(self.root_var(vid)),
                 self.obligations_for_self_ty(vid).map(|obl| (obl.predicate, obl.cause.span)),
             ),
             ty::FnPtr(sig) => {
@@ -192,8 +195,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn deduce_signature_from_predicates(
+    fn deduce_closure_signature_from_predicates(
         &self,
+        expected_ty: Ty<'tcx>,
         predicates: impl DoubleEndedIterator<Item = (ty::Predicate<'tcx>, Span)>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let mut expected_sig = None;
@@ -214,13 +218,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if expected_sig.is_none()
                 && let ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) = bound_predicate.skip_binder()
             {
-                expected_sig = self.normalize(
+                let inferred_sig = self.normalize(
                     obligation.cause.span,
                     self.deduce_sig_from_projection(
                     Some(obligation.cause.span),
                         bound_predicate.rebind(proj_predicate),
                     ),
                 );
+                // Make sure that we didn't infer a signature that mentions itself.
+                // This can happen when we elaborate certain supertrait bounds that
+                // mention projections containing the `Self` type. See #105401.
+                struct MentionsTy<'tcx> {
+                    expected_ty: Ty<'tcx>,
+                }
+                impl<'tcx> TypeVisitor<'tcx> for MentionsTy<'tcx> {
+                    type BreakTy = ();
+
+                    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                        if t == self.expected_ty {
+                            ControlFlow::Break(())
+                        } else {
+                            t.super_visit_with(self)
+                        }
+                    }
+                }
+                if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                    expected_sig = inferred_sig;
+                }
             }
 
             // Even if we can't infer the full signature, we may be able to
@@ -500,7 +524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // FIXME(#45727): As discussed in [this comment][c1], naively
         // forcing equality here actually results in suboptimal error
-        // messages in some cases.  For now, if there would have been
+        // messages in some cases. For now, if there would have been
         // an obvious error, we fallback to declaring the type of the
         // closure to be the one the user gave, which allows other
         // error message code to trigger.
@@ -596,8 +620,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // function.
                 Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn)) => {
                     debug!("closure is async fn body");
-                    self.deduce_future_output_from_obligations(expr_def_id, body.id().hir_id)
-                        .unwrap_or_else(|| {
+                    let def_id = self.tcx.hir().body_owner_def_id(body.id());
+                    self.deduce_future_output_from_obligations(expr_def_id, def_id).unwrap_or_else(
+                        || {
                             // AFAIK, deducing the future output
                             // always succeeds *except* in error cases
                             // like #65159. I'd like to return Error
@@ -606,7 +631,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // *have* reported an
                             // error. --nikomatsakis
                             astconv.ty_infer(None, decl.output.span())
-                        })
+                        },
+                    )
                 }
 
                 _ => astconv.ty_infer(None, decl.output.span()),
@@ -623,14 +649,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
             bound_vars,
         );
-        // Astconv can't normalize inputs or outputs with escaping bound vars,
-        // so normalize them here, after we've wrapped them in a binder.
-        let result = self.normalize(self.tcx.hir().span(hir_id), result);
 
         let c_result = self.inh.infcx.canonicalize_response(result);
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
-        result
+        // Normalize only after registering in `user_provided_sigs`.
+        self.normalize(self.tcx.hir().span(hir_id), result)
     }
 
     /// Invoked when we are translating the generator that results
@@ -643,7 +667,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_future_output_from_obligations(
         &self,
         expr_def_id: LocalDefId,
-        body_id: hir::HirId,
+        body_def_id: LocalDefId,
     ) -> Option<Ty<'tcx>> {
         let ret_coercion = self.ret_coercion.as_ref().unwrap_or_else(|| {
             span_bug!(self.tcx.def_span(expr_def_id), "async fn generator outside of a fn")
@@ -703,7 +727,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let InferOk { value: output_ty, obligations } = self
             .replace_opaque_types_with_inference_vars(
                 output_ty,
-                body_id,
+                body_def_id,
                 self.tcx.def_span(expr_def_id),
                 self.param_env,
             );

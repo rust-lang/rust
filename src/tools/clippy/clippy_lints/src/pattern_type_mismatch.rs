@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::{
-    intravisit, Body, Expr, ExprKind, FnDecl, HirId, Let, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind,
-};
+use rustc_hir::{intravisit, Body, Expr, ExprKind, FnDecl, Let, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
@@ -116,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
-        _: HirId,
+        _: LocalDefId,
     ) {
         for param in body.params {
             apply_lint(cx, param.pat, DerefPossible::Impossible);

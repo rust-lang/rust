@@ -91,7 +91,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     LocalMutationIsAllowed::Yes,
                 );
             }
-            StatementKind::Nop
+            StatementKind::ConstEvalCounter
+            | StatementKind::Nop
             | StatementKind::Retag { .. }
             | StatementKind::Deinit(..)
             | StatementKind::SetDiscriminant { .. } => {

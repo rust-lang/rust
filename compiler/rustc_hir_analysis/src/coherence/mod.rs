@@ -128,7 +128,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
 
     let impls = tcx.hir().trait_impls(def_id);
     for &impl_def_id in impls {
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
 
         check_impl(tcx, impl_def_id, trait_ref);
         check_object_overlap(tcx, impl_def_id, trait_ref);
@@ -169,9 +169,9 @@ fn check_object_overlap<'tcx>(
         });
 
         for component_def_id in component_def_ids {
-            if !tcx.is_object_safe(component_def_id) {
+            if !tcx.check_is_object_safe(component_def_id) {
                 // Without the 'object_safe_for_dispatch' feature this is an error
-                // which will be reported by wfcheck.  Ignore it here.
+                // which will be reported by wfcheck. Ignore it here.
                 // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
                 // With the feature enabled, the trait is not implemented automatically,
                 // so this is valid.

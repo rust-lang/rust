@@ -29,13 +29,19 @@ use crate::slice;
 /// Pure rust memchr implementation, taken from rust-memchr
 pub mod memchr;
 
+#[unstable(
+    feature = "slice_internals",
+    issue = "none",
+    reason = "exposed from core to be reused in std;"
+)]
+pub mod sort;
+
 mod ascii;
 mod cmp;
 mod index;
 mod iter;
 mod raw;
 mod rotate;
-mod sort;
 mod specialize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -703,7 +709,7 @@ impl<T> [T] {
 
             // Because this function is first compiled in isolation,
             // this check tells LLVM that the indexing below is
-            // in-bounds.  Then after inlining -- once the actual
+            // in-bounds. Then after inlining -- once the actual
             // lengths of the slices are known -- it's removed.
             let (a, b) = (&mut a[..n], &mut b[..n]);
 
@@ -780,6 +786,22 @@ impl<T> [T] {
     /// let slice = ['f', 'o', 'o'];
     /// let mut iter = slice.windows(4);
     /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// There's no `windows_mut`, as that existing would let safe code violate the
+    /// "only one `&mut` at a time to the same thing" rule.  However, you can sometimes
+    /// use [`Cell::as_slice_of_cells`](crate::cell::Cell::as_slice_of_cells) in
+    /// conjunction with `windows` to accomplish something similar:
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let mut array = ['R', 'u', 's', 't', ' ', '2', '0', '1', '5'];
+    /// let slice = &mut array[..];
+    /// let slice_of_cells: &[Cell<char>] = Cell::from_mut(slice).as_slice_of_cells();
+    /// for w in slice_of_cells.windows(3) {
+    ///     Cell::swap(&w[0], &w[2]);
+    /// }
+    /// assert_eq!(array, ['s', 't', ' ', '2', '0', '1', '5', 'u', 'R']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1248,7 +1270,7 @@ impl<T> [T] {
         ArrayChunksMut::new(self)
     }
 
-    /// Returns an iterator over overlapping windows of `N` elements of  a slice,
+    /// Returns an iterator over overlapping windows of `N` elements of a slice,
     /// starting at the beginning of the slice.
     ///
     /// This is the const generic equivalent of [`windows`].
@@ -2476,7 +2498,7 @@ impl<T> [T] {
             let mid = left + size / 2;
 
             // SAFETY: the while condition means `size` is strictly positive, so
-            // `size/2 < size`.  Thus `left + size/2 < left + size`, which
+            // `size/2 < size`. Thus `left + size/2 < left + size`, which
             // coupled with the `left + size <= self.len()` invariant means
             // we have `left + size/2 < self.len()`, and this is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });

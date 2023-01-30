@@ -57,9 +57,9 @@ pub struct DebugScope<S, L> {
 }
 
 impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
-    /// DILocations inherit source file name from the parent DIScope.  Due to macro expansions
+    /// DILocations inherit source file name from the parent DIScope. Due to macro expansions
     /// it may so happen that the current span belongs to a different file than the DIScope
-    /// corresponding to span's containing source scope.  If so, we need to create a DIScope
+    /// corresponding to span's containing source scope. If so, we need to create a DIScope
     /// "extension" into that file.
     pub fn adjust_dbg_scope_for_span<Cx: CodegenMethods<'tcx, DIScope = S, DILocation = L>>(
         &self,

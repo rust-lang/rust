@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `Dst` in this scope
+  --> $DIR/unknown_dst.rs:20:36
+   |
+LL |     assert::is_transmutable::<Src, Dst, Context>();
+   |                                    ^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | fn should_gracefully_handle_unknown_dst<Dst>() {
+   |                                        +++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

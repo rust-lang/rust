@@ -998,7 +998,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        let val = this.sb_retag_reference(&val, new_perm, RetagCause::FnReturn)?;
+        let val = this.sb_retag_reference(&val, new_perm, RetagCause::FnReturnPlace)?;
         // And use reborrowed pointer for return place.
         let return_place = this.ref_to_mplace(&val)?;
         this.frame_mut().return_place = return_place.into();

@@ -66,12 +66,12 @@ impl Runnable {
     // test package::module::testname
     pub fn label(&self, target: Option<String>) -> String {
         match &self.kind {
-            RunnableKind::Test { test_id, .. } => format!("test {}", test_id),
-            RunnableKind::TestMod { path } => format!("test-mod {}", path),
-            RunnableKind::Bench { test_id } => format!("bench {}", test_id),
-            RunnableKind::DocTest { test_id, .. } => format!("doctest {}", test_id),
+            RunnableKind::Test { test_id, .. } => format!("test {test_id}"),
+            RunnableKind::TestMod { path } => format!("test-mod {path}"),
+            RunnableKind::Bench { test_id } => format!("bench {test_id}"),
+            RunnableKind::DocTest { test_id, .. } => format!("doctest {test_id}"),
             RunnableKind::Bin => {
-                target.map_or_else(|| "run binary".to_string(), |t| format!("run {}", t))
+                target.map_or_else(|| "run binary".to_string(), |t| format!("run {t}"))
             }
         }
     }
@@ -377,7 +377,7 @@ pub(crate) fn runnable_impl(
     } else {
         String::new()
     };
-    let mut test_id = format!("{}{}", adt_name, params);
+    let mut test_id = format!("{adt_name}{params}");
     test_id.retain(|c| c != ' ');
     let test_id = TestId::Path(test_id);
 

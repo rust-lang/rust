@@ -4,6 +4,8 @@ use crate::interface::parse_cfgspecs;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::rustc_optgroups;
+use rustc_session::config::Input;
+use rustc_session::config::TraitSolver;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{
     BranchProtection, Externs, OomStrategy, OutputType, OutputTypes, PAuthKey, PacRet,
@@ -16,9 +18,11 @@ use rustc_session::config::{InstrumentCoverage, Passes};
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
+use rustc_session::CompilerIO;
 use rustc_session::{build_session, getopts, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
+use rustc_span::FileName;
 use rustc_span::SourceFileHashAlgorithm;
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel};
 use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel};
@@ -38,7 +42,14 @@ fn build_session_options_and_crate_config(matches: getopts::Matches) -> (Options
 fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
     let registry = registry::Registry::new(&[]);
     let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-    let sess = build_session(sessopts, None, None, registry, Default::default(), None, None);
+    let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
+    let io = CompilerIO {
+        input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
+        output_dir: None,
+        output_file: None,
+        temps_dir,
+    };
+    let sess = build_session(sessopts, io, None, registry, Default::default(), None, None);
     (sess, cfg)
 }
 
@@ -714,7 +725,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(asm_comments, true);
     tracked!(assume_incomplete_release, true);
     tracked!(binary_dep_depinfo, true);
-    tracked!(box_noalias, Some(false));
+    tracked!(box_noalias, false);
     tracked!(
         branch_protection,
         Some(BranchProtection {
@@ -722,7 +733,6 @@ fn test_unstable_options_tracking_hash() {
             pac_ret: Some(PacRet { leaf: true, key: PAuthKey::B })
         })
     );
-    tracked!(chalk, true);
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(debug_info_for_profiling, true);
@@ -748,13 +758,14 @@ fn test_unstable_options_tracking_hash() {
     tracked!(link_only, true);
     tracked!(llvm_plugins, vec![String::from("plugin_name")]);
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });
+    tracked!(log_backtrace, Some("filter".to_string()));
     tracked!(maximal_hir_to_mir_coverage, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(mir_emit_retag, true);
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
-    tracked!(mutable_noalias, Some(true));
+    tracked!(mutable_noalias, false);
     tracked!(no_generate_arange_section, true);
     tracked!(no_jump_tables, true);
     tracked!(no_link, true);
@@ -791,7 +802,9 @@ fn test_unstable_options_tracking_hash() {
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
     tracked!(thir_unsafeck, true);
+    tracked!(tiny_const_eval_limit, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
+    tracked!(trait_solver, TraitSolver::Chalk);
     tracked!(translate_remapped_path_to_local_path, false);
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));

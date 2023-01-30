@@ -33,11 +33,11 @@ impl StopWatch {
             if *PERF_ENABLED {
                 let mut counter = perf_event::Builder::new()
                     .build()
-                    .map_err(|err| eprintln!("Failed to create perf counter: {}", err))
+                    .map_err(|err| eprintln!("Failed to create perf counter: {err}"))
                     .ok();
                 if let Some(counter) = &mut counter {
                     if let Err(err) = counter.enable() {
-                        eprintln!("Failed to start perf counter: {}", err)
+                        eprintln!("Failed to start perf counter: {err}")
                     }
                 }
                 counter
@@ -64,7 +64,7 @@ impl StopWatch {
 
         #[cfg(target_os = "linux")]
         let instructions = self.counter.as_mut().and_then(|it| {
-            it.read().map_err(|err| eprintln!("Failed to read perf counter: {}", err)).ok()
+            it.read().map_err(|err| eprintln!("Failed to read perf counter: {err}")).ok()
         });
         #[cfg(not(target_os = "linux"))]
         let instructions = None;
@@ -91,10 +91,10 @@ impl fmt::Display for StopWatchSpan {
                 instructions /= 1000;
                 prefix = "g";
             }
-            write!(f, ", {}{}instr", instructions, prefix)?;
+            write!(f, ", {instructions}{prefix}instr")?;
         }
         if let Some(memory) = self.memory {
-            write!(f, ", {}", memory)?;
+            write!(f, ", {memory}")?;
         }
         Ok(())
     }

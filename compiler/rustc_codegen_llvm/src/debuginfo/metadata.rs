@@ -782,10 +782,10 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
 ) -> &'ll DIDescriptor {
-    let mut name_in_debuginfo = match tcx.sess.local_crate_source_file {
-        Some(ref path) => path.clone(),
-        None => PathBuf::from(tcx.crate_name(LOCAL_CRATE).as_str()),
-    };
+    let mut name_in_debuginfo = tcx
+        .sess
+        .local_crate_source_file()
+        .unwrap_or_else(|| PathBuf::from(tcx.crate_name(LOCAL_CRATE).as_str()));
 
     // To avoid breaking split DWARF, we need to ensure that each codegen unit
     // has a unique `DW_AT_name`. This is because there's a remote chance that
@@ -1498,6 +1498,11 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
     if cx.sess().opts.debuginfo != DebugInfo::Full {
         return;
     }
+
+    // When full debuginfo is enabled, we want to try and prevent vtables from being
+    // merged. Otherwise debuggers will have a hard time mapping from dyn pointer
+    // to concrete type.
+    llvm::SetUnnamedAddress(vtable, llvm::UnnamedAddr::No);
 
     let vtable_name =
         compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::GlobalVariable);

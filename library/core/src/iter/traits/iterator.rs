@@ -58,6 +58,11 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
               syntax `start..end` or the inclusive range syntax `start..=end`"
     ),
+    on(
+        _Self = "{float}",
+        note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
+              syntax `start..end` or the inclusive range syntax `start..=end`"
+    ),
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
@@ -1514,6 +1519,18 @@ pub trait Iterator {
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     ///
+    /// Flattening works on any `IntoIterator` type, including `Option` and `Result`:
+    ///
+    /// ```
+    /// let options = vec![Some(123), Some(321), None, Some(231)];
+    /// let flattened_options: Vec<_> = options.into_iter().flatten().collect();
+    /// assert_eq!(flattened_options, vec![123, 321, 231]);
+    ///
+    /// let results = vec![Ok(123), Ok(321), Err(456), Ok(231)];
+    /// let flattened_results: Vec<_> = results.into_iter().flatten().collect();
+    /// assert_eq!(flattened_results, vec![123, 321, 231]);
+    /// ```
+    ///
     /// Flattening only removes one level of nesting at a time:
     ///
     /// ```
@@ -2584,10 +2601,10 @@ pub trait Iterator {
         #[inline]
         fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<()> {
             move |(), x| {
-                if f(x) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
+                if f(x) { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
             }
         }
-        self.try_fold((), check(f)) == ControlFlow::CONTINUE
+        self.try_fold((), check(f)) == ControlFlow::Continue(())
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -2637,11 +2654,11 @@ pub trait Iterator {
         #[inline]
         fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<()> {
             move |(), x| {
-                if f(x) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
+                if f(x) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
             }
         }
 
-        self.try_fold((), check(f)) == ControlFlow::BREAK
+        self.try_fold((), check(f)) == ControlFlow::Break(())
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -2700,7 +2717,7 @@ pub trait Iterator {
         #[inline]
         fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut((), T) -> ControlFlow<T> {
             move |(), x| {
-                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
+                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
             }
         }
 
@@ -2732,7 +2749,7 @@ pub trait Iterator {
         fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> ControlFlow<B> {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
-                None => ControlFlow::CONTINUE,
+                None => ControlFlow::Continue(()),
             }
         }
 
@@ -2795,7 +2812,7 @@ pub trait Iterator {
             R: Residual<Option<I>>,
         {
             move |(), x| match f(&x).branch() {
-                ControlFlow::Continue(false) => ControlFlow::CONTINUE,
+                ControlFlow::Continue(false) => ControlFlow::Continue(()),
                 ControlFlow::Continue(true) => ControlFlow::Break(Try::from_output(Some(x))),
                 ControlFlow::Break(r) => ControlFlow::Break(FromResidual::from_residual(r)),
             }
@@ -3474,7 +3491,7 @@ pub trait Iterator {
             F: FnMut(X, Y) -> Ordering,
         {
             move |x, y| match cmp(x, y) {
-                Ordering::Equal => ControlFlow::CONTINUE,
+                Ordering::Equal => ControlFlow::Continue(()),
                 non_eq => ControlFlow::Break(non_eq),
             }
         }
@@ -3550,7 +3567,7 @@ pub trait Iterator {
             F: FnMut(X, Y) -> Option<Ordering>,
         {
             move |x, y| match partial_cmp(x, y) {
-                Some(Ordering::Equal) => ControlFlow::CONTINUE,
+                Some(Ordering::Equal) => ControlFlow::Continue(()),
                 non_eq => ControlFlow::Break(non_eq),
             }
         }
@@ -3608,7 +3625,7 @@ pub trait Iterator {
             F: FnMut(X, Y) -> bool,
         {
             move |x, y| {
-                if eq(x, y) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
+                if eq(x, y) { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
             }
         }
 
@@ -3842,7 +3859,7 @@ pub trait Iterator {
 
 /// Compares two iterators element-wise using the given function.
 ///
-/// If `ControlFlow::CONTINUE` is returned from the function, the comparison moves on to the next
+/// If `ControlFlow::Continue(())` is returned from the function, the comparison moves on to the next
 /// elements of both iterators. Returning `ControlFlow::Break(x)` short-circuits the iteration and
 /// returns `ControlFlow::Break(x)`. If one of the iterators runs out of elements,
 /// `ControlFlow::Continue(ord)` is returned where `ord` is the result of comparing the lengths of

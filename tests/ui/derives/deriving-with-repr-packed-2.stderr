@@ -1,0 +1,33 @@
+error[E0599]: the method `clone` exists for struct `Foo<NonCopy>`, but its trait bounds were not satisfied
+  --> $DIR/deriving-with-repr-packed-2.rs:20:11
+   |
+LL | pub struct Foo<T>(T, T, T);
+   | -----------------
+   | |
+   | method `clone` not found for this struct
+   | doesn't satisfy `Foo<NonCopy>: Clone`
+LL |
+LL | struct NonCopy;
+   | --------------
+   | |
+   | doesn't satisfy `NonCopy: Clone`
+   | doesn't satisfy `NonCopy: Copy`
+...
+LL |     _ = x.clone();
+   |           ^^^^^ method cannot be called on `Foo<NonCopy>` due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `NonCopy: Clone`
+      `NonCopy: Copy`
+  --> $DIR/deriving-with-repr-packed-2.rs:7:16
+   |
+LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
+   |                ^^^^^ unsatisfied trait bound introduced in this `derive` macro
+help: consider annotating `NonCopy` with `#[derive(Clone, Copy)]`
+   |
+LL | #[derive(Clone, Copy)]
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

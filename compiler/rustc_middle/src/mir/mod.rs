@@ -47,18 +47,15 @@ mod basic_blocks;
 pub mod coverage;
 mod generic_graph;
 pub mod generic_graphviz;
-mod graph_cyclic_cache;
 pub mod graphviz;
 pub mod interpret;
 pub mod mono;
 pub mod patch;
-mod predecessors;
 pub mod pretty;
 mod query;
 pub mod spanview;
 mod syntax;
 pub use syntax::*;
-mod switch_sources;
 pub mod tcx;
 pub mod terminator;
 pub use terminator::*;
@@ -905,6 +902,8 @@ pub enum LocalInfo<'tcx> {
     AggregateTemp,
     /// A temporary created during the pass `Derefer` to avoid it's retagging
     DerefTemp,
+    /// A temporary created for borrow checking.
+    FakeBorrow,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -1464,6 +1463,7 @@ impl Debug for Statement<'_> {
             }
             Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
             Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
+            ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -2483,7 +2483,7 @@ impl<'tcx> ConstantKind<'tcx> {
 
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
         // does not provide the parents generics to anonymous constants. We still allow generic const
-        // parameters by themselves however, e.g. `N`.  These constants would cause an ICE if we were to
+        // parameters by themselves however, e.g. `N`. These constants would cause an ICE if we were to
         // ever try to substitute the generic parameters in their bodies.
         //
         // While this doesn't happen as these constants are always used as `ty::ConstKind::Param`, it does
@@ -2506,8 +2506,8 @@ impl<'tcx> ConstantKind<'tcx> {
         }
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-        let parent_substs = if let Some(parent_hir_id) = tcx.hir().find_parent_node(hir_id) {
-            if let Some(parent_did) = tcx.hir().opt_local_def_id(parent_hir_id) {
+        let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id) {
+            if let Some(parent_did) = parent_hir_id.as_owner() {
                 InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
             } else {
                 tcx.mk_substs(Vec::<GenericArg<'tcx>>::new().into_iter())
@@ -3049,7 +3049,7 @@ impl Location {
         if self.block == other.block {
             self.statement_index <= other.statement_index
         } else {
-            dominators.is_dominated_by(other.block, self.block)
+            dominators.dominates(self.block, other.block)
         }
     }
 }

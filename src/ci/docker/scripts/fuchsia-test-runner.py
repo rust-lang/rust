@@ -4,7 +4,7 @@
 The Rust toolchain test runner for Fuchsia.
 
 For instructions on running the compiler test suite, see
-https://doc.rust-lang.org/stable/rustc/platform-support/fuchsia.html#aarch64-fuchsia-and-x86_64-fuchsia
+https://doc.rust-lang.org/stable/rustc/platform-support/fuchsia.html#aarch64-unknown-fuchsia-and-x86_64-unknown-fuchsia
 """
 
 import argparse
@@ -110,9 +110,9 @@ class TestEnvironment:
 
     def rustlib_dir(self):
         if self.target_arch == "x64":
-            return "x86_64-fuchsia"
+            return "x86_64-unknown-fuchsia"
         if self.target_arch == "arm64":
-            return "aarch64-fuchsia"
+            return "aarch64-unknown-fuchsia"
         raise Exception(f"Unrecognized target architecture {self.target_arch}")
 
     def libs_dir(self):

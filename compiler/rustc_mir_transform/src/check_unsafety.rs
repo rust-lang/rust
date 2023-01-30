@@ -104,6 +104,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {
                 // safe (at least as emitted during MIR construction)
             }
@@ -445,7 +446,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
         _fd: &'tcx hir::FnDecl<'tcx>,
         b: hir::BodyId,
         _s: rustc_span::Span,
-        _id: HirId,
+        _id: LocalDefId,
     ) {
         if matches!(fk, intravisit::FnKind::Closure) {
             self.visit_body(self.tcx.hir().body(b))

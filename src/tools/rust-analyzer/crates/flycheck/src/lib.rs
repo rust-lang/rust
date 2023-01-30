@@ -47,6 +47,7 @@ pub enum FlycheckConfig {
         features: Vec<String>,
         extra_args: Vec<String>,
         extra_env: FxHashMap<String, String>,
+        ansi_color_output: bool,
     },
     CustomCommand {
         command: String,
@@ -60,9 +61,9 @@ pub enum FlycheckConfig {
 impl fmt::Display for FlycheckConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {}", command),
+            FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {command}"),
             FlycheckConfig::CustomCommand { command, args, .. } => {
-                write!(f, "{} {}", command, args.join(" "))
+                write!(f, "{command} {}", args.join(" "))
             }
         }
     }
@@ -293,15 +294,24 @@ impl FlycheckActor {
                 extra_args,
                 features,
                 extra_env,
+                ansi_color_output,
             } => {
                 let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
                 cmd.current_dir(&self.root);
-                cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
-                    .arg(self.root.join("Cargo.toml").as_os_str());
+                cmd.arg("--workspace");
+
+                cmd.arg(if *ansi_color_output {
+                    "--message-format=json-diagnostic-rendered-ansi"
+                } else {
+                    "--message-format=json"
+                });
+
+                cmd.arg("--manifest-path");
+                cmd.arg(self.root.join("Cargo.toml").as_os_str());
 
                 for target in target_triples {
-                    cmd.args(&["--target", target.as_str()]);
+                    cmd.args(["--target", target.as_str()]);
                 }
                 if *all_targets {
                     cmd.arg("--all-targets");
@@ -360,13 +370,20 @@ impl FlycheckActor {
     }
 }
 
-struct JodChild(GroupChild);
+struct JodGroupChild(GroupChild);
+
+impl Drop for JodGroupChild {
+    fn drop(&mut self) {
+        _ = self.0.kill();
+        _ = self.0.wait();
+    }
+}
 
 /// A handle to a cargo process used for fly-checking.
 struct CargoHandle {
     /// The handle to the actual cargo process. As we cannot cancel directly from with
     /// a read syscall dropping and therefore terminating the process is our best option.
-    child: JodChild,
+    child: JodGroupChild,
     thread: jod_thread::JoinHandle<io::Result<(bool, String)>>,
     receiver: Receiver<CargoMessage>,
 }
@@ -374,7 +391,7 @@ struct CargoHandle {
 impl CargoHandle {
     fn spawn(mut command: Command) -> std::io::Result<CargoHandle> {
         command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
-        let mut child = command.group_spawn().map(JodChild)?;
+        let mut child = command.group_spawn().map(JodGroupChild)?;
 
         let stdout = child.0.inner().stdout.take().unwrap();
         let stderr = child.0.inner().stderr.take().unwrap();
@@ -401,8 +418,7 @@ impl CargoHandle {
             Ok(())
         } else {
             Err(io::Error::new(io::ErrorKind::Other, format!(
-                "Cargo watcher failed, the command produced no valid metadata (exit code: {:?}):\n{}",
-                exit_status, error
+                "Cargo watcher failed, the command produced no valid metadata (exit code: {exit_status:?}):\n{error}"
             )))
         }
     }
@@ -467,7 +483,7 @@ impl CargoActor {
         );
         match output {
             Ok(_) => Ok((read_at_least_one_message, error)),
-            Err(e) => Err(io::Error::new(e.kind(), format!("{:?}: {}", e, error))),
+            Err(e) => Err(io::Error::new(e.kind(), format!("{e:?}: {error}"))),
         }
     }
 }

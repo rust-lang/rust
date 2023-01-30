@@ -6,3 +6,7 @@ a06baa56b95674fc626b3c3fd680d6a65357fe60
 971c549ca334b7b7406e61e958efcca9c4152822
 # refactor infcx building
 283abbf0e7d20176f76006825b5c52e9a4234e4c
+# format libstd/sys
+c34fbfaad38cf5829ef5cfe780dc9d58480adeaa
+# move tests
+cf2dff2b1e3fa55fa5415d524200070d0d7aacfe

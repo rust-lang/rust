@@ -5,11 +5,11 @@ use crate::method::MethodCallee;
 use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
 use crate::{
-    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, Needs,
+    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, Needs, RawTy,
     TupleArgumentsFlag,
 };
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{pluralize, Applicability, Diagnostic, DiagnosticId, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -79,7 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
             InlineAsmCtxt::new_in_fn(self.tcx, self.param_env, get_operand_ty)
-                .check_asm(asm, self.tcx.hir().local_def_id_to_hir_id(enclosing_id));
+                .check_asm(asm, enclosing_id);
         }
     }
 
@@ -473,7 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &hir::Expr<'tcx>,
     ) {
         // Next, let's construct the error
-        let (error_span, full_call_span, ctor_of, is_method) = match &call_expr.kind {
+        let (error_span, full_call_span, call_name, is_method) = match &call_expr.kind {
             hir::ExprKind::Call(
                 hir::Expr { hir_id, span, kind: hir::ExprKind::Path(qpath), .. },
                 _,
@@ -481,12 +481,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Res::Def(DefKind::Ctor(of, _), _) =
                     self.typeck_results.borrow().qpath_res(qpath, *hir_id)
                 {
-                    (call_span, *span, Some(of), false)
+                    let name = match of {
+                        CtorOf::Struct => "struct",
+                        CtorOf::Variant => "enum variant",
+                    };
+                    (call_span, *span, name, false)
                 } else {
-                    (call_span, *span, None, false)
+                    (call_span, *span, "function", false)
                 }
             }
-            hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None, false),
+            hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, "function", false),
             hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
@@ -494,17 +498,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     ident_span
                 };
-                // methods are never ctors
-                (*span, ident_span, None, true)
+                (*span, ident_span, "method", true)
             }
             k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
         };
         let args_span = error_span.trim_start(full_call_span).unwrap_or(error_span);
-        let call_name = match ctor_of {
-            Some(CtorOf::Struct) => "struct",
-            Some(CtorOf::Variant) => "enum variant",
-            None => "function",
-        };
 
         // Don't print if it has error types or is just plain `_`
         fn has_error_or_infer<'tcx>(tys: impl IntoIterator<Item = Ty<'tcx>>) -> bool {
@@ -690,8 +688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err = tcx.sess.struct_span_err_with_code(
                             full_call_span,
                             &format!(
-                                "this {} takes {}{} but {} {} supplied",
-                                call_name,
+                                "{call_name} takes {}{} but {} {} supplied",
                                 if c_variadic { "at least " } else { "" },
                                 potentially_plural_count(
                                     formal_and_expected_inputs.len(),
@@ -801,6 +798,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 full_call_span,
                 format!("arguments to this {} are incorrect", call_name),
             );
+            if let (Some(callee_ty), hir::ExprKind::MethodCall(_, rcvr, _, _)) =
+                (callee_ty, &call_expr.kind)
+            {
+                // Type that would have accepted this argument if it hadn't been inferred earlier.
+                // FIXME: We leave an inference variable for now, but it'd be nice to get a more
+                // specific type to increase the accuracy of the diagnostic.
+                let expected = self.infcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: full_call_span,
+                });
+                self.point_at_expr_source_of_inferred_type(
+                    &mut err,
+                    rcvr,
+                    expected,
+                    callee_ty,
+                    provided_arg_span,
+                );
+            }
             // Call out where the function is defined
             self.label_fn_like(
                 &mut err,
@@ -1222,31 +1237,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 return None;
             }
-            Res::Def(DefKind::Variant, _) => match ty.kind() {
-                ty::Adt(adt, substs) => Some((adt.variant_of_res(def), adt.did(), substs)),
-                _ => bug!("unexpected type: {:?}", ty),
+            Res::Def(DefKind::Variant, _) => match ty.normalized.ty_adt_def() {
+                Some(adt) => {
+                    Some((adt.variant_of_res(def), adt.did(), Self::user_substs_for_adt(ty)))
+                }
+                _ => bug!("unexpected type: {:?}", ty.normalized),
             },
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfTyParam { .. }
-            | Res::SelfTyAlias { .. } => match ty.kind() {
-                ty::Adt(adt, substs) if !adt.is_enum() => {
-                    Some((adt.non_enum_variant(), adt.did(), substs))
+            | Res::SelfTyAlias { .. } => match ty.normalized.ty_adt_def() {
+                Some(adt) if !adt.is_enum() => {
+                    Some((adt.non_enum_variant(), adt.did(), Self::user_substs_for_adt(ty)))
                 }
                 _ => None,
             },
             _ => bug!("unexpected definition: {:?}", def),
         };
 
-        if let Some((variant, did, substs)) = variant {
+        if let Some((variant, did, ty::UserSubsts { substs, user_self_ty })) = variant {
             debug!("check_struct_path: did={:?} substs={:?}", did, substs);
-            self.write_user_type_annotation_from_substs(hir_id, did, substs, None);
+
+            // Register type annotation.
+            self.write_user_type_annotation_from_substs(hir_id, did, substs, user_self_ty);
 
             // Check bounds on type arguments used in the path.
             self.add_required_obligations_for_hir(path_span, did, substs, hir_id);
 
-            Some((variant, ty))
+            Some((variant, ty.normalized))
         } else {
-            match ty.kind() {
+            match ty.normalized.kind() {
                 ty::Error(_) => {
                     // E0071 might be caused by a spelling error, which will have
                     // already caused an error message and probably a suggestion
@@ -1259,7 +1278,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         path_span,
                         E0071,
                         "expected struct, variant or union type, found {}",
-                        ty.sort_string(self.tcx)
+                        ty.normalized.sort_string(self.tcx)
                     )
                     .span_label(path_span, "not a struct")
                     .emit();
@@ -1647,20 +1666,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &QPath<'_>,
         path_span: Span,
         hir_id: hir::HirId,
-    ) -> (Res, Ty<'tcx>) {
+    ) -> (Res, RawTy<'tcx>) {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
-                let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
-                let ty = <dyn AstConv<'_>>::res_to_ty(self, self_ty, path, true);
-                (path.res, ty)
+                let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
+                let ty = self.astconv().res_to_ty(self_ty, path, true);
+                (path.res, self.handle_raw_ty(path_span, ty))
             }
             QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
-                let result = <dyn AstConv<'_>>::associated_path_to_ty(
-                    self, hir_id, path_span, ty, qself, segment, true,
-                );
+                let result = self
+                    .astconv()
+                    .associated_path_to_ty(hir_id, path_span, ty.raw, qself, segment, true);
                 let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
+                let ty = self.handle_raw_ty(path_span, ty);
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
@@ -1669,7 +1689,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
             }
             QPath::LangItem(lang_item, span, id) => {
-                self.resolve_lang_item_path(lang_item, span, hir_id, id)
+                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id, id);
+                (res, self.handle_raw_ty(path_span, ty))
             }
         }
     }
@@ -1689,7 +1710,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // even if their `ObligationCauseCode` isn't an `Expr*Obligation` kind.
         // This is important since if we adjust one span but not the other, then
         // we will have "duplicated" the error on the UI side.
-        let mut remap_cause = FxHashSet::default();
+        let mut remap_cause = FxIndexSet::default();
         let mut not_adjusted = vec![];
 
         for error in errors {
@@ -1717,6 +1738,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        // Adjust any other errors that come from other cause codes, when these
+        // errors are of the same predicate as one we successfully adjusted, and
+        // when their spans overlap (suggesting they're due to the same root cause).
+        //
+        // This is because due to normalization, we often register duplicate
+        // obligations with misc obligations that are basically impossible to
+        // line back up with a useful ExprBindingObligation.
         for error in not_adjusted {
             for (span, predicate, cause) in &remap_cause {
                 if *predicate == error.obligation.predicate
@@ -1803,7 +1831,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir_id: call_hir_id,
                     span: call_span,
                     ..
-                }) = hir.get(hir.get_parent_node(expr.hir_id))
+                }) = hir.get_parent(expr.hir_id)
                     && callee.hir_id == expr.hir_id
                 {
                     if self.closure_span_overlaps_error(error, *call_span) {
@@ -2104,7 +2132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match *callee_ty.kind() {
                 ty::Param(param) => {
                     let param =
-                        self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx);
+                        self.tcx.generics_of(self.body_id).type_param(&param, self.tcx);
                     if param.kind.is_synthetic() {
                         // if it's `impl Fn() -> ..` then just fall down to the def-id based logic
                         def_id = param.def_id;
@@ -2113,13 +2141,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // and point at that.
                         let instantiated = self
                             .tcx
-                            .explicit_predicates_of(self.body_id.owner)
+                            .explicit_predicates_of(self.body_id)
                             .instantiate_identity(self.tcx);
                         // FIXME(compiler-errors): This could be problematic if something has two
                         // fn-like predicates with different args, but callable types really never
                         // do that, so it's OK.
-                        for (predicate, span) in
-                            std::iter::zip(instantiated.predicates, instantiated.spans)
+                        for (predicate, span) in instantiated
                         {
                             if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = predicate.kind().skip_binder()
                                 && pred.self_ty().peel_refs() == callee_ty

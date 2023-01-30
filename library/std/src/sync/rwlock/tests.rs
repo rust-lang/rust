@@ -2,7 +2,7 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::mpsc::channel;
 use crate::sync::{Arc, RwLock, RwLockReadGuard, TryLockError};
 use crate::thread;
-use rand::{self, Rng};
+use rand::Rng;
 
 #[derive(Eq, PartialEq, Debug)]
 struct NonCopy(i32);
@@ -28,7 +28,7 @@ fn frob() {
         let tx = tx.clone();
         let r = r.clone();
         thread::spawn(move || {
-            let mut rng = rand::thread_rng();
+            let mut rng = crate::test_helpers::test_rng();
             for _ in 0..M {
                 if rng.gen_bool(1.0 / (N as f64)) {
                     drop(r.write().unwrap());

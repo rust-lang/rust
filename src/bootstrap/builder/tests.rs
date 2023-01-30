@@ -78,7 +78,7 @@ macro_rules! rustc {
 #[test]
 fn test_valid() {
     // make sure multi suite paths are accepted
-    check_cli(["test", "src/test/ui/attr-start.rs", "src/test/ui/attr-shebang.rs"]);
+    check_cli(["test", "tests/ui/attr-start.rs", "tests/ui/attr-shebang.rs"]);
 }
 
 #[test]

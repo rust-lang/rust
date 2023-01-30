@@ -120,3 +120,10 @@ borrowck_cannot_move_when_borrowed =
         [value] value
         *[other] {$value_place}
     } occurs here
+
+borrowck_opaque_type_non_generic_param =
+    expected generic {$kind} parameter, found `{$ty}`
+    .label = {STREQ($ty, "'static") ->
+        [true] cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+        *[other] this generic parameter must be used with a generic {$kind} parameter
+    }

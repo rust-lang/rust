@@ -608,7 +608,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: ast::NameLike::NameRef(name_ref.clone()),
-                    category: is_name_ref_in_import(name_ref).then(|| ReferenceCategory::Import),
+                    category: is_name_ref_in_import(name_ref).then_some(ReferenceCategory::Import),
                 };
                 sink(file_id, reference)
             }
@@ -787,7 +787,7 @@ impl ReferenceCategory {
     fn new(def: &Definition, r: &ast::NameRef) -> Option<ReferenceCategory> {
         // Only Locals and Fields have accesses for now.
         if !matches!(def, Definition::Local(_) | Definition::Field(_)) {
-            return is_name_ref_in_import(r).then(|| ReferenceCategory::Import);
+            return is_name_ref_in_import(r).then_some(ReferenceCategory::Import);
         }
 
         let mode = r.syntax().ancestors().find_map(|node| {

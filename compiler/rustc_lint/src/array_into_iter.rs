@@ -1,5 +1,5 @@
+use crate::lints::{ArrayIntoIterDiag, ArrayIntoIterDiagSub};
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc_errors::{fluent, Applicability};
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
@@ -118,41 +118,23 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 // to an array or to a slice.
                 _ => bug!("array type coerced to something other than array or slice"),
             };
-            cx.struct_span_lint(
+            let sub = if self.for_expr_span == expr.span {
+                Some(ArrayIntoIterDiagSub::RemoveIntoIter {
+                    span: receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
+                })
+            } else if receiver_ty.is_array() {
+                Some(ArrayIntoIterDiagSub::UseExplicitIntoIter {
+                    start_span: expr.span.shrink_to_lo(),
+                    end_span: receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
+                })
+            } else {
+                None
+            };
+            cx.emit_spanned_lint(
                 ARRAY_INTO_ITER,
                 call.ident.span,
-                fluent::lint_array_into_iter,
-                |diag| {
-                    diag.set_arg("target", target);
-                    diag.span_suggestion(
-                        call.ident.span,
-                        fluent::use_iter_suggestion,
-                        "iter",
-                        Applicability::MachineApplicable,
-                    );
-                    if self.for_expr_span == expr.span {
-                        diag.span_suggestion(
-                            receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
-                            fluent::remove_into_iter_suggestion,
-                            "",
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else if receiver_ty.is_array() {
-                        diag.multipart_suggestion(
-                            fluent::use_explicit_into_iter_suggestion,
-                            vec![
-                                (expr.span.shrink_to_lo(), "IntoIterator::into_iter(".into()),
-                                (
-                                    receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
-                                    ")".into(),
-                                ),
-                            ],
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                    diag
-                },
-            )
+                ArrayIntoIterDiag { target, suggestion: call.ident.span, sub },
+            );
         }
     }
 }

@@ -12,7 +12,7 @@ pub fn target() -> Target {
 
     Target {
         // Clang automatically chooses a more specific target based on
-        // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work
+        // MACOSX_DEPLOYMENT_TARGET. To enable cross-language LTO to work
         // correctly, we do too.
         //
         // While ld64 doesn't understand i686, LLVM does.

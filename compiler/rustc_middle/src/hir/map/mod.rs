@@ -18,24 +18,30 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 #[inline]
-pub fn associated_body(node: Node<'_>) -> Option<BodyId> {
+pub fn associated_body(node: Node<'_>) -> Option<(LocalDefId, BodyId)> {
     match node {
         Node::Item(Item {
+            owner_id,
             kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
             ..
         })
         | Node::TraitItem(TraitItem {
+            owner_id,
             kind:
                 TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
             ..
         })
         | Node::ImplItem(ImplItem {
+            owner_id,
             kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
             ..
-        })
-        | Node::Expr(Expr { kind: ExprKind::Closure(Closure { body, .. }), .. }) => Some(*body),
+        }) => Some((owner_id.def_id, *body)),
 
-        Node::AnonConst(constant) => Some(constant.body),
+        Node::Expr(Expr { kind: ExprKind::Closure(Closure { def_id, body, .. }), .. }) => {
+            Some((*def_id, *body))
+        }
+
+        Node::AnonConst(constant) => Some((constant.def_id, constant.body)),
 
         _ => None,
     }
@@ -43,7 +49,7 @@ pub fn associated_body(node: Node<'_>) -> Option<BodyId> {
 
 fn is_body_owner(node: Node<'_>, hir_id: HirId) -> bool {
     match associated_body(node) {
-        Some(b) => b.hir_id == hir_id,
+        Some((_, b)) => b.hir_id == hir_id,
         None => false,
     }
 }
@@ -69,7 +75,7 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
         }
         loop {
             // There are nodes that do not have entries, so we need to skip them.
-            let parent_id = self.map.get_parent_node(self.current_id);
+            let parent_id = self.map.parent_id(self.current_id);
 
             if parent_id == self.current_id {
                 self.current_id = CRATE_HIR_ID;
@@ -154,10 +160,6 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions_untracked().def_key(def_id)
     }
 
-    pub fn def_path_from_hir_id(self, id: HirId) -> Option<DefPath> {
-        self.opt_local_def_id(id).map(|def_id| self.def_path(def_id))
-    }
-
     pub fn def_path(self, def_id: LocalDefId) -> DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
         self.tcx.definitions_untracked().def_path(def_id)
@@ -167,32 +169,6 @@ impl<'hir> Map<'hir> {
     pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
         // Accessing the DefPathHash is ok, it is incr. comp. stable.
         self.tcx.definitions_untracked().def_path_hash(def_id)
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn local_def_id(self, hir_id: HirId) -> LocalDefId {
-        self.opt_local_def_id(hir_id).unwrap_or_else(|| {
-            bug!(
-                "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
-                hir_id,
-                self.find(hir_id)
-            )
-        })
-    }
-
-    #[inline]
-    pub fn opt_local_def_id(self, hir_id: HirId) -> Option<LocalDefId> {
-        if hir_id.local_id == ItemLocalId::new(0) {
-            Some(hir_id.owner.def_id)
-        } else {
-            self.tcx
-                .hir_owner_nodes(hir_id.owner)
-                .as_owner()?
-                .local_id_to_def_id
-                .get(&hir_id.local_id)
-                .copied()
-        }
     }
 
     #[inline]
@@ -246,7 +222,7 @@ impl<'hir> Map<'hir> {
             },
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
-                let ctor_of = match self.find(self.get_parent_node(hir_id)) {
+                let ctor_of = match self.find_parent(hir_id) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
@@ -257,7 +233,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::AnonConst(_) => {
-                let inline = match self.find(self.get_parent_node(hir_id)) {
+                let inline = match self.find_parent(hir_id) {
                     Some(Node::Expr(&Expr {
                         kind: ExprKind::ConstBlock(ref anon_const), ..
                     })) if anon_const.hir_id == hir_id => true,
@@ -298,7 +274,7 @@ impl<'hir> Map<'hir> {
     /// Finds the id of the parent node to this one.
     ///
     /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
-    pub fn find_parent_node(self, id: HirId) -> Option<HirId> {
+    pub fn opt_parent_id(self, id: HirId) -> Option<HirId> {
         if id.local_id == ItemLocalId::from_u32(0) {
             Some(self.tcx.hir_owner_parent(id.owner))
         } else {
@@ -312,9 +288,17 @@ impl<'hir> Map<'hir> {
     }
 
     #[track_caller]
-    pub fn get_parent_node(self, hir_id: HirId) -> HirId {
-        self.find_parent_node(hir_id)
+    pub fn parent_id(self, hir_id: HirId) -> HirId {
+        self.opt_parent_id(hir_id)
             .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
+    }
+
+    pub fn get_parent(self, hir_id: HirId) -> Node<'hir> {
+        self.get(self.parent_id(hir_id))
+    }
+
+    pub fn find_parent(self, hir_id: HirId) -> Option<Node<'hir>> {
+        self.find(self.opt_parent_id(hir_id)?)
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
@@ -402,8 +386,8 @@ impl<'hir> Map<'hir> {
     #[track_caller]
     pub fn enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
         for (_, node) in self.parent_iter(hir_id) {
-            if let Some(body) = associated_body(node) {
-                return self.body_owner_def_id(body);
+            if let Some((def_id, _)) = associated_body(node) {
+                return def_id;
             }
         }
 
@@ -414,19 +398,22 @@ impl<'hir> Map<'hir> {
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
-        let parent = self.get_parent_node(hir_id);
+        let parent = self.parent_id(hir_id);
         assert!(self.find(parent).map_or(false, |n| is_body_owner(n, hir_id)), "{hir_id:?}");
         parent
     }
 
-    pub fn body_owner_def_id(self, id: BodyId) -> LocalDefId {
-        self.local_def_id(self.body_owner(id))
+    pub fn body_owner_def_id(self, BodyId { hir_id }: BodyId) -> LocalDefId {
+        let parent = self.parent_id(hir_id);
+        associated_body(self.get(parent)).unwrap().0
     }
 
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
-        self.find_by_def_id(id).and_then(associated_body)
+        let node = self.find_by_def_id(id)?;
+        let (_, body_id) = associated_body(node)?;
+        Some(body_id)
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
@@ -477,7 +464,9 @@ impl<'hir> Map<'hir> {
             BodyOwnerKind::Static(mt) => ConstContext::Static(mt),
 
             BodyOwnerKind::Fn if self.tcx.is_constructor(def_id.to_def_id()) => return None,
-            BodyOwnerKind::Fn if self.tcx.is_const_fn_raw(def_id.to_def_id()) => {
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure
+                if self.tcx.is_const_fn_raw(def_id.to_def_id()) =>
+            {
                 ConstContext::ConstFn
             }
             BodyOwnerKind::Fn if self.tcx.is_const_default_method(def_id.to_def_id()) => {
@@ -572,10 +561,10 @@ impl<'hir> Map<'hir> {
 
     /// Visits all item-likes in the crate in some deterministic (but unspecified) order. If you
     /// need to process every item-like, and don't care about visiting nested items in a particular
-    /// order then this method is the best choice.  If you do care about this nesting, you should
+    /// order then this method is the best choice. If you do care about this nesting, you should
     /// use the `tcx.hir().walk_toplevel_module`.
     ///
-    /// Note that this function will access HIR for all the item-likes in the crate.  If you only
+    /// Note that this function will access HIR for all the item-likes in the crate. If you only
     /// need to access some of them, it is usually better to manually loop on the iterators
     /// provided by `tcx.hir_crate_items(())`.
     ///
@@ -642,21 +631,21 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
-    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
     pub fn parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> + 'hir {
         ParentHirIterator { current_id, map: self }
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
-    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
     pub fn parent_iter(self, current_id: HirId) -> impl Iterator<Item = (HirId, Node<'hir>)> {
         self.parent_id_iter(current_id).filter_map(move |id| Some((id, self.find(id)?)))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
-    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
     pub fn parent_owner_iter(self, current_id: HirId) -> ParentOwnerIterator<'hir> {
         ParentOwnerIterator { current_id, map: self }
@@ -664,7 +653,7 @@ impl<'hir> Map<'hir> {
 
     /// Checks if the node is left-hand side of an assignment.
     pub fn is_lhs(self, id: HirId) -> bool {
-        match self.find(self.get_parent_node(id)) {
+        match self.find_parent(id) {
             Some(Node::Expr(expr)) => match expr.kind {
                 ExprKind::Assign(lhs, _rhs, _span) => lhs.hir_id == id,
                 _ => false,
@@ -892,7 +881,7 @@ impl<'hir> Map<'hir> {
             Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::opt_span`.
-            Node::Ctor(..) => match self.find(self.get_parent_node(id))? {
+            Node::Ctor(..) => match self.find_parent(id)? {
                 Node::Item(item) => Some(item.ident),
                 Node::Variant(variant) => Some(variant.ident),
                 _ => unreachable!(),
@@ -1021,7 +1010,7 @@ impl<'hir> Map<'hir> {
                 ForeignItemKind::Fn(decl, _, _) => until_within(item.span, decl.output.span()),
                 _ => named_span(item.span, item.ident, None),
             },
-            Node::Ctor(_) => return self.opt_span(self.get_parent_node(hir_id)),
+            Node::Ctor(_) => return self.opt_span(self.parent_id(hir_id)),
             Node::Expr(Expr {
                 kind: ExprKind::Closure(Closure { fn_decl_span, .. }),
                 span,
@@ -1063,7 +1052,7 @@ impl<'hir> Map<'hir> {
             Node::PatField(field) => field.span,
             Node::Arm(arm) => arm.span,
             Node::Block(block) => block.span,
-            Node::Ctor(..) => self.span_with_body(self.get_parent_node(hir_id)),
+            Node::Ctor(..) => self.span_with_body(self.parent_id(hir_id)),
             Node::Lifetime(lifetime) => lifetime.ident.span,
             Node::GenericParam(param) => param.span,
             Node::Infer(i) => i.span,
@@ -1093,7 +1082,7 @@ impl<'hir> Map<'hir> {
     /// Returns the HirId of `N` in `struct Foo<const N: usize = { ... }>` when
     /// called with the HirId for the `{ ... }` anon const
     pub fn opt_const_param_default_param_def_id(self, anon_const: HirId) -> Option<LocalDefId> {
-        match self.get(self.get_parent_node(anon_const)) {
+        match self.get_parent(anon_const) {
             Node::GenericParam(GenericParam {
                 def_id: param_id,
                 kind: GenericParamKind::Const { .. },

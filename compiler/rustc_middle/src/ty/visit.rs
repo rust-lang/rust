@@ -100,6 +100,9 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     fn has_opaque_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
     }
+    fn has_generators(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_GENERATOR)
+    }
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
@@ -164,6 +167,14 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     /// True if there are any late-bound regions
     fn has_late_bound_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
+    }
+    /// True if there are any late-bound non-region variables
+    fn has_non_region_late_bound(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_LATE_BOUND - TypeFlags::HAS_RE_LATE_BOUND)
+    }
+    /// True if there are any late-bound variables
+    fn has_late_bound_vars(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_LATE_BOUND)
     }
 
     /// Indicates whether this value still has parameters/placeholders/inference variables
@@ -286,13 +297,13 @@ impl<'tcx> TyCtxt<'tcx> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
                 match *r {
                     ty::ReLateBound(debruijn, _) if debruijn < self.outer_index => {
-                        ControlFlow::CONTINUE
+                        ControlFlow::Continue(())
                     }
                     _ => {
                         if (self.callback)(r) {
-                            ControlFlow::BREAK
+                            ControlFlow::Break(())
                         } else {
-                            ControlFlow::CONTINUE
+                            ControlFlow::Continue(())
                         }
                     }
                 }
@@ -303,7 +314,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 if ty.flags().intersects(TypeFlags::HAS_FREE_REGIONS) {
                     ty.super_visit_with(self)
                 } else {
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 }
             }
         }
@@ -386,7 +397,7 @@ impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
         if t.outer_exclusive_binder() < self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
-            return ControlFlow::BREAK;
+            return ControlFlow::Break(());
         }
         match *t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
@@ -504,7 +515,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         if t.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         }
     }
 
@@ -516,7 +527,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         if r.bound_at_or_above_binder(self.outer_index) {
             ControlFlow::Break(FoundEscapingVars)
         } else {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         }
     }
 
@@ -539,7 +550,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         if predicate.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         }
     }
 }
@@ -567,7 +578,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         }
     }
 
@@ -577,7 +588,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         }
     }
 
@@ -588,7 +599,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         }
     }
 
@@ -597,7 +608,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         if predicate.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
-            ControlFlow::CONTINUE
+            ControlFlow::Continue(())
         }
     }
 }
@@ -645,7 +656,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // in the normalized form
         if self.just_constrained {
             if let ty::Alias(..) = t.kind() {
-                return ControlFlow::CONTINUE;
+                return ControlFlow::Continue(());
             }
         }
 
@@ -658,7 +669,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // in the normalized form
         if self.just_constrained {
             if let ty::ConstKind::Unevaluated(..) = c.kind() {
-                return ControlFlow::CONTINUE;
+                return ControlFlow::Continue(());
             }
         }
 
@@ -671,7 +682,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
                 self.regions.insert(br.kind);
             }
         }
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }
 
@@ -718,6 +729,6 @@ impl<'tcx> TypeVisitor<'tcx> for MaxUniverse {
             );
         }
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 }

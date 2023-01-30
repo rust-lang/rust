@@ -7,7 +7,7 @@
 //! `crate::chalk::lowering` (to lower rustc types into Chalk types).
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
-use rustc_middle::ty::{self, AssocKind, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::{self, AssocKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_target::abi::{Integer, IntegerType};
 
@@ -38,13 +38,12 @@ impl<'tcx> RustIrDatabase<'tcx> {
         def_id: DefId,
         bound_vars: SubstsRef<'tcx>,
     ) -> Vec<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>> {
-        let predicates = self.interner.tcx.predicates_defined_on(def_id).predicates;
-        predicates
-            .iter()
-            .map(|(wc, _)| EarlyBinder(*wc).subst(self.interner.tcx, bound_vars))
-            .filter_map(|wc| LowerInto::<
-                    Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>
-                    >::lower_into(wc, self.interner)).collect()
+        self.interner
+            .tcx
+            .predicates_defined_on(def_id)
+            .instantiate_own(self.interner.tcx, bound_vars)
+            .filter_map(|(wc, _)| LowerInto::lower_into(wc, self.interner))
+            .collect()
     }
 
     fn bounds_for<T>(&self, def_id: DefId, bound_vars: SubstsRef<'tcx>) -> Vec<T>
@@ -270,7 +269,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
 
-        let sig = self.interner.tcx.bound_fn_sig(def_id);
+        let sig = self.interner.tcx.fn_sig(def_id);
         let (inputs_and_output, iobinders, _) = crate::chalk::lowering::collect_bound_vars(
             self.interner,
             self.interner.tcx,
@@ -309,7 +308,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(self.interner, bound_vars);
 
-        let trait_ref = self.interner.tcx.bound_impl_trait_ref(def_id).expect("not an impl");
+        let trait_ref = self.interner.tcx.impl_trait_ref(def_id).expect("not an impl");
         let trait_ref = trait_ref.subst(self.interner.tcx, bound_vars);
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
@@ -351,7 +350,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let all_impls = self.interner.tcx.all_impls(def_id);
         let matched_impls = all_impls.filter(|impl_def_id| {
             use chalk_ir::could_match::CouldMatch;
-            let trait_ref = self.interner.tcx.bound_impl_trait_ref(*impl_def_id).unwrap();
+            let trait_ref = self.interner.tcx.impl_trait_ref(*impl_def_id).unwrap();
             let bound_vars = bound_vars_for_item(self.interner.tcx, *impl_def_id);
 
             let self_ty = trait_ref.map_bound(|t| t.self_ty());
@@ -380,7 +379,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let trait_def_id = auto_trait_id.0;
         let all_impls = self.interner.tcx.all_impls(trait_def_id);
         for impl_def_id in all_impls {
-            let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap();
+            let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
             let self_ty = trait_ref.self_ty();
             let provides = match (self_ty.kind(), chalk_ty) {
                 (&ty::Adt(impl_adt_def, ..), Adt(id, ..)) => impl_adt_def.did() == id.0.did(),
@@ -581,7 +580,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     }
 
     fn is_object_safe(&self, trait_id: chalk_ir::TraitId<RustInterner<'tcx>>) -> bool {
-        self.interner.tcx.is_object_safe(trait_id.0)
+        self.interner.tcx.check_is_object_safe(trait_id.0)
     }
 
     fn hidden_opaque_type(

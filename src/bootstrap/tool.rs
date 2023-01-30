@@ -29,6 +29,8 @@ struct ToolBuild {
     is_optional_tool: bool,
     source_type: SourceType,
     extra_features: Vec<String>,
+    /// Nightly-only features that are allowed (comma-separated list).
+    allow_features: &'static str,
 }
 
 impl Step for ToolBuild {
@@ -62,7 +64,7 @@ impl Step for ToolBuild {
             }
         }
 
-        let cargo = prepare_tool_cargo(
+        let mut cargo = prepare_tool_cargo(
             builder,
             compiler,
             self.mode,
@@ -72,10 +74,13 @@ impl Step for ToolBuild {
             self.source_type,
             &self.extra_features,
         );
+        if !self.allow_features.is_empty() {
+            cargo.allow_features(self.allow_features);
+        }
 
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
-        let is_expected = compile::stream_cargo(builder, cargo, &mut |msg| {
+        let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
             match tool {
                 "rls" | "cargo" | "clippy-driver" | "miri" | "rustfmt" => {}
@@ -296,6 +301,7 @@ macro_rules! bootstrap_tool {
         $name:ident, $path:expr, $tool_name:expr
         $(,is_external_tool = $external:expr)*
         $(,is_unstable_tool = $unstable:expr)*
+        $(,allow_features = $allow_features:expr)?
         ;
     )+) => {
         #[derive(Copy, PartialEq, Eq, Clone)]
@@ -359,6 +365,7 @@ macro_rules! bootstrap_tool {
                         SourceType::InTree
                     },
                     extra_features: vec![],
+                    allow_features: concat!($($allow_features)*),
                 }).expect("expected to build -- essential tool")
             }
         }
@@ -372,7 +379,7 @@ bootstrap_tool!(
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
     CargoTest, "src/tools/cargotest", "cargotest";
-    Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true;
+    Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true, allow_features = "test";
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "rust-installer", is_external_tool = true;
@@ -439,6 +446,7 @@ impl Step for ErrorIndex {
                 is_optional_tool: false,
                 source_type: SourceType::InTree,
                 extra_features: Vec::new(),
+                allow_features: "",
             })
             .expect("expected to build -- essential tool")
     }
@@ -475,6 +483,7 @@ impl Step for RemoteTestServer {
                 is_optional_tool: false,
                 source_type: SourceType::InTree,
                 extra_features: Vec::new(),
+                allow_features: "",
             })
             .expect("expected to build -- essential tool")
     }
@@ -627,6 +636,7 @@ impl Step for Cargo {
                 is_optional_tool: false,
                 source_type: SourceType::Submodule,
                 extra_features: Vec::new(),
+                allow_features: "",
             })
             .expect("expected to build -- essential tool");
 
@@ -642,6 +652,7 @@ impl Step for Cargo {
                 is_optional_tool: true,
                 source_type: SourceType::Submodule,
                 extra_features: Vec::new(),
+                allow_features: "",
             });
         };
 
@@ -689,6 +700,7 @@ impl Step for LldWrapper {
                 is_optional_tool: false,
                 source_type: SourceType::InTree,
                 extra_features: Vec::new(),
+                allow_features: "",
             })
             .expect("expected to build -- essential tool");
 
@@ -700,6 +712,11 @@ impl Step for LldWrapper {
 pub struct RustAnalyzer {
     pub compiler: Compiler,
     pub target: TargetSelection,
+}
+
+impl RustAnalyzer {
+    pub const ALLOW_FEATURES: &str =
+        "proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink";
 }
 
 impl Step for RustAnalyzer {
@@ -736,6 +753,7 @@ impl Step for RustAnalyzer {
             extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
             is_optional_tool: false,
             source_type: SourceType::InTree,
+            allow_features: RustAnalyzer::ALLOW_FEATURES,
         })
     }
 }
@@ -752,9 +770,15 @@ impl Step for RustAnalyzerProcMacroSrv {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
         // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
+            .default_condition(builder.config.tools.as_ref().map_or(true, |tools| {
+                tools
+                    .iter()
+                    .any(|tool| tool == "rust-analyzer" || tool == "rust-analyzer-proc-macro-srv")
+            }))
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -774,6 +798,7 @@ impl Step for RustAnalyzerProcMacroSrv {
             extra_features: vec!["proc-macro-srv/sysroot-abi".to_owned()],
             is_optional_tool: false,
             source_type: SourceType::InTree,
+            allow_features: RustAnalyzer::ALLOW_FEATURES,
         })?;
 
         // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
@@ -793,6 +818,7 @@ macro_rules! tool_extended {
        $tool_name:expr,
        stable = $stable:expr
        $(,tool_std = $tool_std:literal)?
+       $(,allow_features = $allow_features:expr)?
        ;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -844,6 +870,7 @@ macro_rules! tool_extended {
                     extra_features: $sel.extra_features,
                     is_optional_tool: true,
                     source_type: SourceType::InTree,
+                    allow_features: concat!($($allow_features)*),
                 })
             }
         }

@@ -2,58 +2,20 @@
 
 use std::iter;
 
-use super::assembly::{self, AssemblyCtxt};
-use super::{CanonicalGoal, EvalCtxt, Goal, QueryResult};
+use super::assembly::{self, Candidate, CandidateSource};
+use super::infcx_ext::InferCtxtExt;
+use super::{Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::InferOk;
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::TraitPredicate;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{TraitPredicate, TypeVisitable};
 use rustc_span::DUMMY_SP;
 
-#[allow(dead_code)] // FIXME: implement and use all variants.
-#[derive(Debug, Clone, Copy)]
-pub(super) enum CandidateSource {
-    /// Some user-defined impl with the given `DefId`.
-    Impl(DefId),
-    /// The n-th caller bound in the `param_env` of our goal.
-    ///
-    /// This is pretty much always a bound from the `where`-clauses of the
-    /// currently checked item.
-    ParamEnv(usize),
-    /// A bound on the `self_ty` in case it is a projection or an opaque type.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore (for syntax highlighting)
-    /// trait Trait {
-    ///     type Assoc: OtherTrait;
-    /// }
-    /// ```
-    ///
-    /// We know that `<Whatever as Trait>::Assoc: OtherTrait` holds by looking at
-    /// the bounds on `Trait::Assoc`.
-    AliasBound(usize),
-    /// A builtin implementation for some specific traits, used in cases
-    /// where we cannot rely an ordinary library implementations.
-    ///
-    /// The most notable examples are `Sized`, `Copy` and `Clone`. This is also
-    /// used for the `DiscriminantKind` and `Pointee` trait, both of which have
-    /// an associated type.
-    Builtin,
-    /// An automatic impl for an auto trait, e.g. `Send`. These impls recursively look
-    /// at the constituent types of the `self_ty` to check whether the auto trait
-    /// is implemented for those.
-    AutoImpl,
-}
-
-type Candidate<'tcx> = assembly::Candidate<'tcx, TraitPredicate<'tcx>>;
+pub mod structural_traits;
 
 impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
-    type CandidateSource = CandidateSource;
-
     fn self_ty(self) -> Ty<'tcx> {
         self.self_ty()
     }
@@ -67,46 +29,247 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     }
 
     fn consider_impl_candidate(
-        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         impl_def_id: DefId,
-    ) {
-        let impl_trait_ref = acx.cx.tcx.bound_impl_trait_ref(impl_def_id).unwrap();
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+
+        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsPlaceholder };
         if iter::zip(goal.predicate.trait_ref.substs, impl_trait_ref.skip_binder().substs)
             .any(|(goal, imp)| !drcx.generic_args_may_unify(goal, imp))
         {
-            return;
+            return Err(NoSolution);
         }
 
-        acx.infcx.probe(|_| {
-            let impl_substs = acx.infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
-            let impl_trait_ref = impl_trait_ref.subst(acx.cx.tcx, impl_substs);
+        ecx.infcx.probe(|_| {
+            let impl_substs = ecx.infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
+            let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
-            let Ok(InferOk { obligations, .. }) = acx
-                .infcx
-                .at(&ObligationCause::dummy(), goal.param_env)
-                .define_opaque_types(false)
-                .eq(goal.predicate.trait_ref, impl_trait_ref)
-                .map_err(|e| debug!("failed to equate trait refs: {e:?}"))
-            else {
-                return
-            };
-
-            let nested_goals = obligations.into_iter().map(|o| o.into()).collect();
-
-            let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
-            acx.try_insert_candidate(CandidateSource::Impl(impl_def_id), certainty);
+            let mut nested_goals =
+                ecx.infcx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
+            let where_clause_bounds = tcx
+                .predicates_of(impl_def_id)
+                .instantiate(tcx, impl_substs)
+                .predicates
+                .into_iter()
+                .map(|pred| goal.with(tcx, pred));
+            nested_goals.extend(where_clause_bounds);
+            ecx.evaluate_all_and_make_canonical_response(nested_goals)
         })
+    }
+
+    fn consider_assumption(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+    ) -> QueryResult<'tcx> {
+        if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
+            && poly_trait_pred.def_id() == goal.predicate.def_id()
+        {
+            // FIXME: Constness and polarity
+            ecx.infcx.probe(|_| {
+                let assumption_trait_pred =
+                    ecx.infcx.instantiate_bound_vars_with_infer(poly_trait_pred);
+                let nested_goals = ecx.infcx.eq(
+                    goal.param_env,
+                    goal.predicate.trait_ref,
+                    assumption_trait_pred.trait_ref,
+                )?;
+                ecx.evaluate_all_and_make_canonical_response(nested_goals)
+            })
+        } else {
+            Err(NoSolution)
+        }
+    }
+
+    fn consider_auto_trait_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.probe_and_evaluate_goal_for_constituent_tys(
+            goal,
+            structural_traits::instantiate_constituent_tys_for_auto_trait,
+        )
+    }
+
+    fn consider_trait_alias_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+
+        ecx.infcx.probe(|_| {
+            let nested_obligations = tcx
+                .predicates_of(goal.predicate.def_id())
+                .instantiate(tcx, goal.predicate.trait_ref.substs);
+            ecx.evaluate_all_and_make_canonical_response(
+                nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)).collect(),
+            )
+        })
+    }
+
+    fn consider_builtin_sized_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.probe_and_evaluate_goal_for_constituent_tys(
+            goal,
+            structural_traits::instantiate_constituent_tys_for_sized_trait,
+        )
+    }
+
+    fn consider_builtin_copy_clone_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.probe_and_evaluate_goal_for_constituent_tys(
+            goal,
+            structural_traits::instantiate_constituent_tys_for_copy_clone_trait,
+        )
+    }
+
+    fn consider_builtin_pointer_sized_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if goal.predicate.self_ty().has_non_region_infer() {
+            return ecx.make_canonical_response(Certainty::AMBIGUOUS);
+        }
+
+        let tcx = ecx.tcx();
+        let self_ty = tcx.erase_regions(goal.predicate.self_ty());
+
+        if let Ok(layout) = tcx.layout_of(goal.param_env.and(self_ty))
+            &&  let usize_layout = tcx.layout_of(ty::ParamEnv::empty().and(tcx.types.usize)).unwrap().layout
+            && layout.layout.size() == usize_layout.size()
+            && layout.layout.align().abi == usize_layout.align().abi
+        {
+            // FIXME: We could make this faster by making a no-constraints response
+            ecx.make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
+    }
+
+    fn consider_builtin_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        goal_kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx> {
+        if let Some(tupled_inputs_and_output) =
+            structural_traits::extract_tupled_inputs_and_output_from_callable(
+                ecx.tcx(),
+                goal.predicate.self_ty(),
+                goal_kind,
+            )?
+        {
+            let pred = tupled_inputs_and_output
+                .map_bound(|(inputs, _)| {
+                    ecx.tcx()
+                        .mk_trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+                })
+                .to_predicate(ecx.tcx());
+            Self::consider_assumption(ecx, goal, pred)
+        } else {
+            ecx.make_canonical_response(Certainty::AMBIGUOUS)
+        }
+    }
+
+    fn consider_builtin_tuple_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if let ty::Tuple(..) = goal.predicate.self_ty().kind() {
+            ecx.make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
+    }
+
+    fn consider_builtin_pointee_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        _goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        ecx.make_canonical_response(Certainty::Yes)
+    }
+
+    fn consider_builtin_future_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let ty::Generator(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+            return Err(NoSolution);
+        };
+
+        // Generators are not futures unless they come from `async` desugaring
+        let tcx = ecx.tcx();
+        if !tcx.generator_is_async(def_id) {
+            return Err(NoSolution);
+        }
+
+        // Async generator unconditionally implement `Future`
+        ecx.make_canonical_response(Certainty::Yes)
+    }
+
+    fn consider_builtin_generator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Generator(def_id, substs, _) = *self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        // `async`-desugared generators do not implement the generator trait
+        let tcx = ecx.tcx();
+        if tcx.generator_is_async(def_id) {
+            return Err(NoSolution);
+        }
+
+        let generator = substs.as_generator();
+        Self::consider_assumption(
+            ecx,
+            goal,
+            ty::Binder::dummy(
+                tcx.mk_trait_ref(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
+            )
+            .to_predicate(tcx),
+        )
     }
 }
 
-impl<'tcx> EvalCtxt<'tcx> {
+impl<'tcx> EvalCtxt<'_, 'tcx> {
+    /// Convenience function for traits that are structural, i.e. that only
+    /// have nested subgoals that only change the self type. Unlike other
+    /// evaluate-like helpers, this does a probe, so it doesn't need to be
+    /// wrapped in one.
+    fn probe_and_evaluate_goal_for_constituent_tys(
+        &mut self,
+        goal: Goal<'tcx, TraitPredicate<'tcx>>,
+        constituent_tys: impl Fn(&InferCtxt<'tcx>, Ty<'tcx>) -> Result<Vec<Ty<'tcx>>, NoSolution>,
+    ) -> QueryResult<'tcx> {
+        self.infcx.probe(|_| {
+            self.evaluate_all_and_make_canonical_response(
+                constituent_tys(self.infcx, goal.predicate.self_ty())?
+                    .into_iter()
+                    .map(|ty| {
+                        goal.with(
+                            self.tcx(),
+                            ty::Binder::dummy(goal.predicate.with_self_ty(self.tcx(), ty)),
+                        )
+                    })
+                    .collect(),
+            )
+        })
+    }
+
     pub(super) fn compute_trait_goal(
         &mut self,
-        goal: CanonicalGoal<'tcx, TraitPredicate<'tcx>>,
+        goal: Goal<'tcx, TraitPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        let candidates = AssemblyCtxt::assemble_and_evaluate_candidates(self, goal);
+        let candidates = self.assemble_and_evaluate_candidates(goal);
         self.merge_trait_candidates_discard_reservation_impls(candidates)
     }
 
@@ -159,15 +322,14 @@ impl<'tcx> EvalCtxt<'tcx> {
         match (candidate.source, other.source) {
             (CandidateSource::Impl(_), _)
             | (CandidateSource::ParamEnv(_), _)
-            | (CandidateSource::AliasBound(_), _)
-            | (CandidateSource::Builtin, _)
-            | (CandidateSource::AutoImpl, _) => unimplemented!(),
+            | (CandidateSource::AliasBound, _)
+            | (CandidateSource::BuiltinImpl, _) => unimplemented!(),
         }
     }
 
     fn discard_reservation_impl(&self, candidate: Candidate<'tcx>) -> Candidate<'tcx> {
         if let CandidateSource::Impl(def_id) = candidate.source {
-            if let ty::ImplPolarity::Reservation = self.tcx.impl_polarity(def_id) {
+            if let ty::ImplPolarity::Reservation = self.tcx().impl_polarity(def_id) {
                 debug!("Selected reservation impl");
                 // FIXME: reduce candidate to ambiguous
                 // FIXME: replace `var_values` with identity, yeet external constraints.

@@ -3,6 +3,7 @@ use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
 use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
 /// Converts generic params of a TypeFoldable from one
@@ -46,6 +47,47 @@ impl<'tcx> ReverseMapper<'tcx> {
     fn fold_kind_normally(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
         assert!(!self.do_not_error);
         kind.fold_with(self)
+    }
+
+    fn fold_closure_substs(
+        &mut self,
+        def_id: DefId,
+        substs: ty::SubstsRef<'tcx>,
+    ) -> ty::SubstsRef<'tcx> {
+        // I am a horrible monster and I pray for death. When
+        // we encounter a closure here, it is always a closure
+        // from within the function that we are currently
+        // type-checking -- one that is now being encapsulated
+        // in an opaque type. Ideally, we would
+        // go through the types/lifetimes that it references
+        // and treat them just like we would any other type,
+        // which means we would error out if we find any
+        // reference to a type/region that is not in the
+        // "reverse map".
+        //
+        // **However,** in the case of closures, there is a
+        // somewhat subtle (read: hacky) consideration. The
+        // problem is that our closure types currently include
+        // all the lifetime parameters declared on the
+        // enclosing function, even if they are unused by the
+        // closure itself. We can't readily filter them out,
+        // so here we replace those values with `'empty`. This
+        // can't really make a difference to the rest of the
+        // compiler; those regions are ignored for the
+        // outlives relation, and hence don't affect trait
+        // selection or auto traits, and they are erased
+        // during codegen.
+
+        let generics = self.tcx.generics_of(def_id);
+        self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
+            if index < generics.parent_count {
+                // Accommodate missing regions in the parent kinds...
+                self.fold_kind_no_missing_regions_error(kind)
+            } else {
+                // ...but not elsewhere.
+                self.fold_kind_normally(kind)
+            }
+        }))
     }
 }
 
@@ -104,57 +146,18 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match *ty.kind() {
             ty::Closure(def_id, substs) => {
-                // I am a horrible monster and I pray for death. When
-                // we encounter a closure here, it is always a closure
-                // from within the function that we are currently
-                // type-checking -- one that is now being encapsulated
-                // in an opaque type. Ideally, we would
-                // go through the types/lifetimes that it references
-                // and treat them just like we would any other type,
-                // which means we would error out if we find any
-                // reference to a type/region that is not in the
-                // "reverse map".
-                //
-                // **However,** in the case of closures, there is a
-                // somewhat subtle (read: hacky) consideration. The
-                // problem is that our closure types currently include
-                // all the lifetime parameters declared on the
-                // enclosing function, even if they are unused by the
-                // closure itself. We can't readily filter them out,
-                // so here we replace those values with `'empty`. This
-                // can't really make a difference to the rest of the
-                // compiler; those regions are ignored for the
-                // outlives relation, and hence don't affect trait
-                // selection or auto traits, and they are erased
-                // during codegen.
-
-                let generics = self.tcx.generics_of(def_id);
-                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
-                    if index < generics.parent_count {
-                        // Accommodate missing regions in the parent kinds...
-                        self.fold_kind_no_missing_regions_error(kind)
-                    } else {
-                        // ...but not elsewhere.
-                        self.fold_kind_normally(kind)
-                    }
-                }));
-
+                let substs = self.fold_closure_substs(def_id, substs);
                 self.tcx.mk_closure(def_id, substs)
             }
 
             ty::Generator(def_id, substs, movability) => {
-                let generics = self.tcx.generics_of(def_id);
-                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
-                    if index < generics.parent_count {
-                        // Accommodate missing regions in the parent kinds...
-                        self.fold_kind_no_missing_regions_error(kind)
-                    } else {
-                        // ...but not elsewhere.
-                        self.fold_kind_normally(kind)
-                    }
-                }));
-
+                let substs = self.fold_closure_substs(def_id, substs);
                 self.tcx.mk_generator(def_id, substs, movability)
+            }
+
+            ty::GeneratorWitnessMIR(def_id, substs) => {
+                let substs = self.fold_closure_substs(def_id, substs);
+                self.tcx.mk_generator_witness_mir(def_id, substs)
             }
 
             ty::Param(param) => {

@@ -38,6 +38,8 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -60,7 +62,9 @@ mod internal;
 mod late;
 mod let_underscore;
 mod levels;
+mod lints;
 mod methods;
+mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
 mod nonstandard_style;
@@ -95,6 +99,7 @@ use hidden_unicode_codepoints::*;
 use internal::*;
 use let_underscore::*;
 use methods::*;
+use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
@@ -142,7 +147,7 @@ early_lint_methods!(
     [
         pub BuiltinCombinedEarlyLintPass,
         [
-            UnusedParens: UnusedParens,
+            UnusedParens: UnusedParens::new(),
             UnusedBraces: UnusedBraces,
             UnusedImportBraces: UnusedImportBraces,
             UnsafeCode: UnsafeCode,
@@ -229,6 +234,7 @@ late_lint_methods!(
             InvalidAtomicOrdering: InvalidAtomicOrdering,
             NamedAsmLabels: NamedAsmLabels,
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
+            MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
         ]
     ]
 );

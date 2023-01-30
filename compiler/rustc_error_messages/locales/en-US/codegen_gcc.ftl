@@ -23,7 +23,7 @@ codegen_gcc_invalid_monomorphization_unsupported_element =
     invalid monomorphization of `{$name}` intrinsic: unsupported {$name} from `{$in_ty}` with element `{$elem_ty}` to `{$ret_ty}`
 
 codegen_gcc_invalid_monomorphization_invalid_bitmask =
-    invalid monomorphization of `{$name}` intrinsic: invalid bitmask `{ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
+    invalid monomorphization of `{$name}` intrinsic: invalid bitmask `{$ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
 codegen_gcc_invalid_monomorphization_simd_shuffle =
     invalid monomorphization of `{$name}` intrinsic: simd_shuffle index must be an array of `u32`, got `{$ty}`

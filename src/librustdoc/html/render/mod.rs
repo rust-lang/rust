@@ -50,7 +50,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
@@ -100,7 +100,7 @@ pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 #[derive(Debug)]
 pub(crate) struct IndexItem {
     pub(crate) ty: ItemType,
-    pub(crate) name: String,
+    pub(crate) name: Symbol,
     pub(crate) path: String,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
@@ -364,7 +364,7 @@ impl AllTypes {
             }
         }
 
-        f.write_str("<h1 class=\"fqn\">List of all items</h1>");
+        f.write_str("<h1>List of all items</h1>");
         // Note: print_entries does not escape the title, because we know the current set of titles
         // doesn't require escaping.
         print_entries(f, &self.structs, ItemSection::Structs);
@@ -394,7 +394,7 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     let mut ids = IdMap::default();
     format!(
         "<div class=\"main-heading\">\
-            <h1 class=\"fqn\">About scraped examples</h1>\
+            <h1>About scraped examples</h1>\
         </div>\
         <div>{}</div>",
         Markdown {
@@ -513,7 +513,7 @@ fn document_full_inner(
         debug!("Doc block: =====\n{}\n=====", s);
         if is_collapsible {
             w.write_str(
-                "<details class=\"rustdoc-toggle top-doc\" open>\
+                "<details class=\"toggle top-doc\" open>\
                 <summary class=\"hideme\">\
                      <span>Expand description</span>\
                 </summary>",
@@ -1115,7 +1115,7 @@ fn render_assoc_items(
     it: DefId,
     what: AssocItemRender<'_>,
 ) {
-    let mut derefs = FxHashSet::default();
+    let mut derefs = DefIdSet::default();
     derefs.insert(it);
     render_assoc_items_inner(w, cx, containing_item, it, what, &mut derefs)
 }
@@ -1126,7 +1126,7 @@ fn render_assoc_items_inner(
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
-    derefs: &mut FxHashSet<DefId>,
+    derefs: &mut DefIdSet,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
@@ -1215,7 +1215,7 @@ fn render_deref_methods(
     impl_: &Impl,
     container_item: &clean::Item,
     deref_mut: bool,
-    derefs: &mut FxHashSet<DefId>,
+    derefs: &mut DefIdSet,
 ) {
     let cache = cx.cache();
     let deref_type = impl_.inner_impl().trait_.as_ref().unwrap();
@@ -1343,7 +1343,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                     write!(
                         &mut out,
                         "<h3>Notable traits for <code>{}</code></h3>\
-                     <pre class=\"content\"><code>",
+                     <pre><code>",
                         impl_.for_.print(cx)
                     );
                 }
@@ -1514,7 +1514,7 @@ fn render_impl(
         let toggled = !doc_buffer.is_empty();
         if toggled {
             let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
-            write!(w, "<details class=\"rustdoc-toggle{}\" open><summary>", method_toggle_class);
+            write!(w, "<details class=\"toggle{}\" open><summary>", method_toggle_class);
         }
         match &*item.kind {
             clean::MethodItem(..) | clean::TyMethodItem(_) => {
@@ -1528,11 +1528,7 @@ fn render_impl(
                             })
                         })
                         .map(|item| format!("{}.{}", item.type_(), name));
-                    write!(
-                        w,
-                        "<section id=\"{}\" class=\"{}{} has-srclink\">",
-                        id, item_type, in_trait_class,
-                    );
+                    write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
                     render_rightside(w, cx, item, containing_item, render_mode);
                     if trait_.is_some() {
                         // Anchors are only used on trait impls.
@@ -1554,11 +1550,7 @@ fn render_impl(
             kind @ (clean::TyAssocConstItem(ty) | clean::AssocConstItem(ty, _)) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(
-                    w,
-                    "<section id=\"{}\" class=\"{}{} has-srclink\">",
-                    id, item_type, in_trait_class
-                );
+                write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
                 render_rightside(w, cx, item, containing_item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
@@ -1606,11 +1598,7 @@ fn render_impl(
             clean::AssocTypeItem(tydef, _bounds) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(
-                    w,
-                    "<section id=\"{}\" class=\"{}{} has-srclink\">",
-                    id, item_type, in_trait_class
-                );
+                write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
                     write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
@@ -1730,7 +1718,7 @@ fn render_impl(
             close_tags.insert_str(0, "</details>");
             write!(
                 w,
-                "<details class=\"rustdoc-toggle implementors-toggle\"{}>",
+                "<details class=\"toggle implementors-toggle\"{}>",
                 if rendering_params.toggle_open_by_default { " open" } else { "" }
             );
             write!(w, "<summary>")
@@ -1844,7 +1832,7 @@ pub(crate) fn render_impl_summary(
     } else {
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
-    write!(w, "<section id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
+    write!(w, "<section id=\"{}\" class=\"impl\"{}>", id, aliases);
     render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
     write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
     write!(w, "<h3 class=\"code-header\">");
@@ -2175,7 +2163,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             if let Some(impl_) =
                 v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
             {
-                let mut derefs = FxHashSet::default();
+                let mut derefs = DefIdSet::default();
                 derefs.insert(did);
                 sidebar_deref_methods(cx, out, impl_, v, &mut derefs, &mut used_links);
             }
@@ -2195,7 +2183,7 @@ fn sidebar_deref_methods(
     out: &mut Buffer,
     impl_: &Impl,
     v: &[Impl],
-    derefs: &mut FxHashSet<DefId>,
+    derefs: &mut DefIdSet,
     used_links: &mut FxHashSet<String>,
 ) {
     let c = cx.cache();
@@ -2769,8 +2757,8 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
     let mut work = VecDeque::new();
 
     let mut process_path = |did: DefId| {
-        let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
-        let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
+        let get_extern = || cache.external_paths.get(&did).map(|s| &s.0);
+        let fqp = cache.exact_paths.get(&did).or_else(get_extern);
 
         if let Some(path) = fqp {
             out.push(join_with_double_colon(&path));
@@ -2921,7 +2909,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         // Look for the example file in the source map if it exists, otherwise return a dummy span
         let file_span = (|| {
             let source_map = tcx.sess.source_map();
-            let crate_src = tcx.sess.local_crate_source_file.as_ref()?;
+            let crate_src = tcx.sess.local_crate_source_file()?;
             let abs_crate_src = crate_src.canonicalize().ok()?;
             let crate_root = abs_crate_src.parent()?.parent()?;
             let rel_path = path.strip_prefix(crate_root).ok()?;
@@ -2999,7 +2987,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
     if it.peek().is_some() {
         write!(
             w,
-            "<details class=\"rustdoc-toggle more-examples-toggle\">\
+            "<details class=\"toggle more-examples-toggle\">\
                   <summary class=\"hideme\">\
                      <span>More examples</span>\
                   </summary>\

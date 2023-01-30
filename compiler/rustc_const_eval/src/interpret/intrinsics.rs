@@ -79,9 +79,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         }
         sym::variant_count => match tp_ty.kind() {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-            ty::Adt(ref adt, _) => {
-                ConstValue::from_machine_usize(adt.variants().len() as u64, &tcx)
-            }
+            ty::Adt(adt, _) => ConstValue::from_machine_usize(adt.variants().len() as u64, &tcx),
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
                 throw_inval!(TooGeneric)
             }
@@ -103,6 +101,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(_, _)
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_) => ConstValue::from_machine_usize(0u64, &tcx),
@@ -449,7 +448,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_zero_valid {
-                    let should_panic = !self.tcx.permits_zero_init(layout);
+                    let should_panic = !self.tcx.permits_zero_init(self.param_env.and(layout));
 
                     if should_panic {
                         M::abort(
@@ -463,7 +462,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_mem_uninitialized_valid {
-                    let should_panic = !self.tcx.permits_uninit_init(layout);
+                    let should_panic = !self.tcx.permits_uninit_init(self.param_env.and(layout));
 
                     if should_panic {
                         M::abort(

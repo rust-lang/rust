@@ -1,6 +1,6 @@
 test!(RunPassPretty {
             // comment
-    path: "src/test/run-pass/pretty",
+    path: "tests/run-pass/pretty",
     mode: "pretty",
     suite: "run-pass",
     default: false,
@@ -9,7 +9,7 @@ test!(RunPassPretty {
 
 test!(RunPassPretty {
             // comment
-    path: "src/test/run-pass/pretty",
+    path: "tests/run-pass/pretty",
     mode: "pretty",
     suite: "run-pass",
     default: false,

@@ -1,7 +1,7 @@
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 
@@ -33,7 +33,7 @@ pub(crate) struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    pub(crate) impls: FxHashMap<DefId, Vec<Impl>>,
+    pub(crate) impls: DefIdMap<Vec<Impl>>,
 
     /// Maintains a mapping of local crate `DefId`s to the fully qualified name
     /// and "short type description" of that node. This is used when generating
@@ -56,7 +56,7 @@ pub(crate) struct Cache {
     /// to the path used if the corresponding type is inlined. By
     /// doing this, we can detect duplicate impls on a trait page, and only display
     /// the impl for the inlined type.
-    pub(crate) exact_paths: FxHashMap<DefId, Vec<Symbol>>,
+    pub(crate) exact_paths: DefIdMap<Vec<Symbol>>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -127,7 +127,7 @@ pub(crate) struct Cache {
 struct CacheBuilder<'a, 'tcx> {
     cache: &'a mut Cache,
     /// This field is used to prevent duplicated impl blocks.
-    impl_ids: FxHashMap<DefId, FxHashSet<DefId>>,
+    impl_ids: DefIdMap<DefIdSet>,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -173,7 +173,7 @@ impl Cache {
 
         let (krate, mut impl_ids) = {
             let mut cache_builder =
-                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: FxHashMap::default() };
+                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: Default::default() };
             krate = cache_builder.fold_crate(krate);
             (krate, cache_builder.impl_ids)
         };
@@ -242,7 +242,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         }
 
         // Index this method for searching later on.
-        if let Some(ref s) = item.name.or_else(|| {
+        if let Some(s) = item.name.or_else(|| {
             if item.is_stripped() {
                 None
             } else if let clean::ImportItem(ref i) = *item.kind &&
@@ -296,7 +296,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             // for where the type was defined. On the other
                             // hand, `paths` always has the right
                             // information if present.
-                            Some(&(ref fqp, _)) => Some(&fqp[..fqp.len() - 1]),
+                            Some((fqp, _)) => Some(&fqp[..fqp.len() - 1]),
                             None => None,
                         };
                         ((did, path), true)
@@ -317,14 +317,15 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             short_markdown_summary(x.as_str(), &item.link_names(self.cache))
                         });
                         let ty = item.type_();
-                        let name = s.to_string();
-                        if ty != ItemType::StructField || u16::from_str_radix(&name, 10).is_err() {
+                        if ty != ItemType::StructField
+                            || u16::from_str_radix(s.as_str(), 10).is_err()
+                        {
                             // In case this is a field from a tuple struct, we don't add it into
                             // the search index because its name is something like "0", which is
                             // not useful for rustdoc search.
                             self.cache.search_index.push(IndexItem {
                                 ty,
-                                name,
+                                name: s,
                                 path: join_with_double_colon(path),
                                 desc,
                                 parent,

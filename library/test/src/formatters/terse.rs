@@ -254,6 +254,15 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
 
         self.write_plain("\n\n")?;
 
+        // Custom handling of cases where there is only 1 test to execute and that test was ignored.
+        // We want to show more detailed information(why was the test ignored) for investigation purposes.
+        if self.total_test_count == 1 && state.ignores.len() == 1 {
+            let test_desc = &state.ignores[0].0;
+            if let Some(im) = test_desc.ignore_message {
+                self.write_plain(format!("test: {}, ignore_message: {}\n\n", test_desc.name, im))?;
+            }
+        }
+
         Ok(success)
     }
 }

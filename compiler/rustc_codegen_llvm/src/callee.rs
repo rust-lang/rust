@@ -49,8 +49,8 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
         let llptrty = fn_abi.ptr_to_llvm_type(cx);
 
         // This is subtle and surprising, but sometimes we have to bitcast
-        // the resulting fn pointer.  The reason has to do with external
-        // functions.  If you have two crates that both bind the same C
+        // the resulting fn pointer. The reason has to do with external
+        // functions. If you have two crates that both bind the same C
         // library, they may not use precisely the same types: for
         // example, they will probably each declare their own structs,
         // which are distinct types from LLVM's point of view (nominal

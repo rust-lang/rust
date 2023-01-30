@@ -145,7 +145,7 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
     }
 
     if iter.peek_n(0).is_some() {
-        res.push(tt::Subtree { delimiter: None, token_trees: iter.into_iter().cloned().collect() });
+        res.push(tt::Subtree { delimiter: None, token_trees: iter.cloned().collect() });
     }
 
     res
@@ -237,7 +237,7 @@ fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
             let char = match token.to_char(conv) {
                 Some(c) => c,
                 None => {
-                    panic!("Token from lexer must be single char: token = {:#?}", token);
+                    panic!("Token from lexer must be single char: token = {token:#?}");
                 }
             };
             tt::Leaf::from(tt::Punct { char, spacing, id: conv.id_alloc().alloc(range, synth_id) })

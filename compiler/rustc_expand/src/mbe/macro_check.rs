@@ -151,9 +151,9 @@ impl<'a, T> Iterator for &'a Stack<'a, T> {
 
     // Iterates from top to bottom of the stack.
     fn next(&mut self) -> Option<&'a T> {
-        match *self {
+        match self {
             Stack::Empty => None,
-            Stack::Push { ref top, ref prev } => {
+            Stack::Push { top, prev } => {
                 *self = prev;
                 Some(top)
             }
@@ -437,8 +437,8 @@ fn check_nested_occurrences(
                 // We check that the meta-variable is correctly used.
                 check_occurrences(sess, node_id, tt, macros, binders, ops, valid);
             }
-            (NestedMacroState::MacroRulesNotName, &TokenTree::Delimited(_, ref del))
-            | (NestedMacroState::MacroName, &TokenTree::Delimited(_, ref del))
+            (NestedMacroState::MacroRulesNotName, TokenTree::Delimited(_, del))
+            | (NestedMacroState::MacroName, TokenTree::Delimited(_, del))
                 if del.delim == Delimiter::Brace =>
             {
                 let macro_rules = state == NestedMacroState::MacroRulesNotName;
@@ -497,7 +497,7 @@ fn check_nested_occurrences(
                     valid,
                 );
             }
-            (_, ref tt) => {
+            (_, tt) => {
                 state = NestedMacroState::Empty;
                 check_occurrences(sess, node_id, tt, macros, binders, ops, valid);
             }
