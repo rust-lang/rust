@@ -51,7 +51,7 @@ impl fmt::Display for AllocError {
 /// (Non-Null) Pointer and coallocation metadata.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[derive(Clone, Copy, Debug)]
-pub struct PtrAndMeta<M: CoAllocMetaBase> {
+pub struct PtrAndMeta<M: ~const CoAllocMetaBase> {
     pub ptr: NonNull<u8>,
     pub meta: M,
 }
@@ -60,7 +60,7 @@ pub struct PtrAndMeta<M: CoAllocMetaBase> {
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[derive(Clone, Copy, Debug)]
 /// Used for results (from `CoAllocator`'s functions, where applicable).
-pub struct SliceAndMeta<M: CoAllocMetaBase> {
+pub struct SliceAndMeta<M: ~const CoAllocMetaBase> {
     pub slice: NonNull<[u8]>,
     pub meta: M,
 }
@@ -70,6 +70,7 @@ pub struct SliceAndMeta<M: CoAllocMetaBase> {
 pub type SliceAndMetaResult<M> = Result<SliceAndMeta<M>, AllocError>;
 
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[const_trait]
 pub trait CoAllocMetaBase: Clone + Copy {
     /// NOT for public use. This MAY BE REMOVED or CHANGED.
     ///
@@ -90,7 +91,7 @@ pub struct CoAllocMetaPlain {}
 const CO_ALLOC_META_PLAIN: CoAllocMetaPlain = CoAllocMetaPlain {};
 
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-impl CoAllocMetaBase for CoAllocMetaPlain {
+impl const CoAllocMetaBase for CoAllocMetaPlain {
     const ZERO_METAS: [Self; 0] = [];
     const ONE_METAS: [Self; 1] = [CO_ALLOC_META_PLAIN];
 
@@ -188,7 +189,7 @@ pub unsafe trait Allocator {
     ///
     /// @FIXME Validate (preferrable at compile time, otherwise as a test) that this type's
     /// alignment <= `usize` alignment.
-    type CoAllocMeta: CoAllocMetaBase = CoAllocMetaPlain;
+    type CoAllocMeta: ~const CoAllocMetaBase = CoAllocMetaPlain;
 
     /// Attempts to allocate a block of memory.
     ///
