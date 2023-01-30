@@ -200,7 +200,7 @@ fn cs_clone(
                     let call = subcall(cx, field);
                     cx.field_imm(field.span, ident, call)
                 })
-                .collect::<Vec<_>>();
+                .collect::<ThinVec<_>>();
 
             cx.expr_struct(trait_span, ctor_path, fields)
         }

@@ -471,7 +471,7 @@ pub struct WhereEqPredicate {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Crate {
     pub attrs: AttrVec,
-    pub items: Vec<P<Item>>,
+    pub items: ThinVec<P<Item>>,
     pub spans: ModSpans,
     /// Must be equal to `CRATE_NODE_ID` after the crate root is expanded, but may hold
     /// expansion placeholders or an unassigned value (`DUMMY_NODE_ID`) before that.
@@ -1357,7 +1357,7 @@ pub enum StructRest {
 pub struct StructExpr {
     pub qself: Option<P<QSelf>>,
     pub path: Path,
-    pub fields: Vec<ExprField>,
+    pub fields: ThinVec<ExprField>,
     pub rest: StructRest,
 }
 
@@ -2475,7 +2475,7 @@ pub enum ModKind {
     /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
     /// The inner span is from the first token past `{` to the last token until `}`,
     /// or from the first to the last token in the loaded file.
-    Loaded(Vec<P<Item>>, Inline, ModSpans),
+    Loaded(ThinVec<P<Item>>, Inline, ModSpans),
     /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
     Unloaded,
 }
@@ -2502,7 +2502,7 @@ pub struct ForeignMod {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct EnumDef {
-    pub variants: Vec<Variant>,
+    pub variants: ThinVec<Variant>,
 }
 /// Enum variant.
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3122,8 +3122,8 @@ mod size_asserts {
     static_assert_size!(GenericBound, 56);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 136);
-    static_assert_size!(Item, 144);
-    static_assert_size!(ItemKind, 72);
+    static_assert_size!(Item, 136);
+    static_assert_size!(ItemKind, 64);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(MetaItemLit, 40);

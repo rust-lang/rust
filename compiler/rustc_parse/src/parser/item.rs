@@ -56,12 +56,12 @@ impl<'a> Parser<'a> {
     pub fn parse_mod(
         &mut self,
         term: &TokenKind,
-    ) -> PResult<'a, (AttrVec, Vec<P<Item>>, ModSpans)> {
+    ) -> PResult<'a, (AttrVec, ThinVec<P<Item>>, ModSpans)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
 
         let post_attr_lo = self.token.span;
-        let mut items = vec![];
+        let mut items = ThinVec::new();
         while let Some(item) = self.parse_item(ForceCollect::No)? {
             items.push(item);
             self.maybe_consume_incorrect_semicolon(&items);

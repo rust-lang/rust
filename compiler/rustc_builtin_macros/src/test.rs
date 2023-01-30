@@ -249,14 +249,14 @@ pub fn expand_test_or_bench(
                 cx.expr_struct(
                     sp,
                     test_path("TestDescAndFn"),
-                    vec![
+                    thin_vec![
                         // desc: test::TestDesc {
                         field(
                             "desc",
                             cx.expr_struct(
                                 sp,
                                 test_path("TestDesc"),
-                                vec![
+                                thin_vec![
                                     // name: "path::to::test"
                                     field(
                                         "name",

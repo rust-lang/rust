@@ -24,6 +24,7 @@ use rustc_session::Session;
 use rustc_span::edition::{Edition, ALL_EDITIONS};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use thin_vec::ThinVec;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
@@ -206,7 +207,7 @@ pub fn features(
         None => {
             // The entire crate is unconfigured.
             krate.attrs = ast::AttrVec::new();
-            krate.items = Vec::new();
+            krate.items = ThinVec::new();
             Features::default()
         }
         Some(attrs) => {

@@ -323,7 +323,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         path: ast::Path,
-        fields: Vec<ast::ExprField>,
+        fields: ThinVec<ast::ExprField>,
     ) -> P<ast::Expr> {
         self.expr(
             span,
@@ -339,7 +339,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         id: Ident,
-        fields: Vec<ast::ExprField>,
+        fields: ThinVec<ast::ExprField>,
     ) -> P<ast::Expr> {
         self.expr_struct(span, self.path_ident(span, id), fields)
     }

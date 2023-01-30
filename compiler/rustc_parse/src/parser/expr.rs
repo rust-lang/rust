@@ -2935,8 +2935,8 @@ impl<'a> Parser<'a> {
         pth: ast::Path,
         recover: bool,
         close_delim: Delimiter,
-    ) -> PResult<'a, (Vec<ExprField>, ast::StructRest, bool)> {
-        let mut fields = Vec::new();
+    ) -> PResult<'a, (ThinVec<ExprField>, ast::StructRest, bool)> {
+        let mut fields = ThinVec::new();
         let mut base = ast::StructRest::None;
         let mut recover_async = false;
 
