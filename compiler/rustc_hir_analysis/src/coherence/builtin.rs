@@ -56,7 +56,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         _ => {}
     }
 
-    let ItemKind::Impl(impl_) = tcx.hir().expect_item(impl_did).kind else { bug!("expected Drop impl item") };
+    let impl_ = tcx.hir().expect_item(impl_did).expect_impl();
 
     tcx.sess.emit_err(DropImplOnWrongItem { span: impl_.self_ty.span });
 }
