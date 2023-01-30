@@ -127,6 +127,7 @@ impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, A, CO_ALLOC_PR
 where
     [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
+    #[allow(dead_code)]
     const fn new_plain_metas() -> [A::CoAllocMeta; { meta_num_slots_default!(A) }] {
         loop {}
     }
@@ -538,7 +539,9 @@ where
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     default fn drop(&mut self) {
         if let Some((ptr, layout)) = self.current_memory() {
-            if A::CO_ALLOCATES_WITH_META && CO_ALLOC_PREF {
+            let meta_num_slots = crate::meta_num_slots!(A, CO_ALLOC_PREF);
+            if  meta_num_slots!=0 {
+                debug_assert!(meta_num_slots==1, "Number of coallocation meta slots can be only 0 or 1, but it is {}!", meta_num_slots);
                 let meta = self.metas[0];
                 unsafe { self.alloc.co_deallocate(PtrAndMeta { ptr, meta }, layout) }
             } else {

@@ -134,14 +134,16 @@ where
         // this creates less assembly
         self.cap = 0;
         self.buf = unsafe {
-            // @FIXME The below if CO_ALLOC_PREF {..} else {..}
-            // branching exists, because the following fails. Otherwise we'd have a snowball effect of wide spread of where...Global...
+            // @FIXME The below if .. {..} else {..}
+            // branching exists, because the following fails. Otherwise we'd have a snowball effect of wide spread of where...Global... bounds.
             //
-            // NonNull::new_unchecked(RawVec::<T, Global, CO_ALLOC_PREF>::NEW.ptr())
-            if CO_ALLOC_PREF {
-                NonNull::new_unchecked(RawVec::<T, Global, true>::NEW.ptr())
+            //NonNull::new_unchecked(RawVec::<T, Global, CO_ALLOC_PREF>::NEW.ptr());
+            let meta_num_slots = crate::meta_num_slots!(A, CO_ALLOC_PREF);
+            if  meta_num_slots>0 {
+                debug_assert!(meta_num_slots==1, "Number of coallocation meta slots can be only 0 or 1, but it is {}!", meta_num_slots);
+                NonNull::new_unchecked(RawVec::<T, Global, {CO_ALLOC_PREF_META_YES!()}>::NEW.ptr())
             } else {
-                NonNull::new_unchecked(RawVec::<T, Global, false>::NEW.ptr())
+                NonNull::new_unchecked(RawVec::<T, Global, {CO_ALLOC_PREF_META_NO!()}>::NEW.ptr())
             }
         };
         self.ptr = self.buf.as_ptr();

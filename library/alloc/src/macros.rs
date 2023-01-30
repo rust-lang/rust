@@ -127,7 +127,7 @@ macro_rules! __rust_force_expr {
 
 // ----- CoAlloc constant-like macros:
 
-// @FIXME Docs
+/// Coallocation option/parameter about using metadata that does prefer to use meta data. This is of type [::alloc::co_alloc::CoAllocMetaNumSlotsPref] (but not a whole []::alloc::co_alloc::CoAllocPref]).
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_ONE {
@@ -136,7 +136,7 @@ macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_ONE {
     };
 }
 
-// @FIXME Docs
+/// Coallocation option/parameter about using metadata that prefers NOT to use meta data. This is of type [::alloc::co_alloc::CoAllocMetaNumSlotsPref] (but not a whole []::alloc::co_alloc::CoAllocPref]).
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_ZERO {
@@ -145,7 +145,7 @@ macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_ZERO {
     };
 }
 
-// @FIXME Docs
+/// Default coallocation option/parameter about using metadata (whether to use meta data, or not). This is of type [::alloc::co_alloc::CoAllocMetaNumSlotsPref] (but not a whole []::alloc::co_alloc::CoAllocPref]).
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_DEFAULT {
@@ -213,7 +213,7 @@ macro_rules! CO_ALLOC_PREF_DEFAULT {
     () => { $crate::CO_ALLOC_PREF_META_DEFAULT!() };
 }
 
-// @FIXME Move to library/alloc - if possible:
+/// Coallocation preference for (internal) short term vectors.
 #[unstable(feature = "global_co_alloc", issue = "none")]
 //pub const SHORT_TERM_VEC_CO_ALLOC_PREF: bool = true;
 #[macro_export]

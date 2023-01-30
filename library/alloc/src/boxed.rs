@@ -643,7 +643,7 @@ impl<T> Box<[T]> {
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         // false = no need for co-alloc metadata, since it would get lost once converted to Box.
-        unsafe { RawVec::<T, Global, false>::with_capacity(len).into_box(len) }
+        unsafe { RawVec::<T, Global, {CO_ALLOC_PREF_META_NO!()}>::with_capacity(len).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents, with the memory
@@ -669,7 +669,7 @@ impl<T> Box<[T]> {
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         // false = no need for co-alloc metadata, since it would get lost once converted to Box.
-        unsafe { RawVec::<T, Global, false>::with_capacity_zeroed(len).into_box(len) }
+        unsafe { RawVec::<T, Global, {CO_ALLOC_PREF_META_NO!()}>::with_capacity_zeroed(len).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents. Returns an error if
@@ -701,7 +701,7 @@ impl<T> Box<[T]> {
                 Err(_) => return Err(AllocError),
             };
             let ptr = Global.allocate(layout)?;
-            Ok(RawVec::<T, Global, false>::from_raw_parts_in(
+            Ok(RawVec::<T, Global, {CO_ALLOC_PREF_META_NO!()}>::from_raw_parts_in(
                 ptr.as_mut_ptr() as *mut _,
                 len,
                 Global,
@@ -738,7 +738,7 @@ impl<T> Box<[T]> {
                 Err(_) => return Err(AllocError),
             };
             let ptr = Global.allocate_zeroed(layout)?;
-            Ok(RawVec::<T, Global, false>::from_raw_parts_in(
+            Ok(RawVec::<T, Global, {CO_ALLOC_PREF_META_NO!()}>::from_raw_parts_in(
                 ptr.as_mut_ptr() as *mut _,
                 len,
                 Global,
@@ -781,7 +781,7 @@ where
     #[must_use]
     #[allow(unused_braces)]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::<T, A, false>::with_capacity_in(len, alloc).into_box(len) }
+        unsafe { RawVec::<T, A, {CO_ALLOC_PREF_META_NO!()}>::with_capacity_in(len, alloc).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator,
@@ -810,7 +810,7 @@ where
     #[must_use]
     #[allow(unused_braces)]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::<T, A, false>::with_capacity_zeroed_in(len, alloc).into_box(len) }
+        unsafe { RawVec::<T, A, {CO_ALLOC_PREF_META_NO!()}>::with_capacity_zeroed_in(len, alloc).into_box(len) }
     }
 }
 
@@ -1516,7 +1516,7 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     fn from(slice: &[T]) -> Box<[T]> {
         let len = slice.len();
         // false = no need for co-alloc metadata, since it would get lost once converted to Box.
-        let buf = RawVec::<T, Global, false>::with_capacity(len);
+        let buf = RawVec::<T, Global, {CO_ALLOC_PREF_META_NO!()}>::with_capacity(len);
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
             buf.into_box(slice.len()).assume_init()
@@ -2051,7 +2051,7 @@ where
     fn clone(&self) -> Self {
         let alloc = Box::allocator(self).clone();
         // false = no need for co-alloc metadata, since it would get lost once converted to the boxed slice.
-        self.to_vec_in::<A, false>(alloc).into_boxed_slice()
+        self.to_vec_in::<A, {CO_ALLOC_PREF_META_NO!()}>(alloc).into_boxed_slice()
     }
 
     fn clone_from(&mut self, other: &Self) {
