@@ -97,32 +97,13 @@ impl MinimalConfig {
             config.src = src;
         }
 
-        if cfg!(test) {
-            // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
-            config.out = Path::new(
-                &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
-            )
-            .parent()
-            .unwrap()
-            .to_path_buf();
-        }
+        set_config_output_dir(&mut config.out);
 
-        let toml = if let Some(toml_path) = Self::config_path(config.src.clone(), config_flag) {
-            config.config = Some(toml_path.clone());
-            get_toml(&toml_path)
-        } else {
-            config.config = None;
-            TomlConfig::default()
-        };
+        let toml: TomlConfig =
+            set_and_return_toml_config(config.src.clone(), config_flag, &mut config.config);
+
         if let Some(build) = toml.build.unwrap_or_default().build {
             config.build = TargetSelection::from_user(&build);
-        }
-
-        // NOTE: Bootstrap spawns various commands with different working directories.
-        // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
-        if !config.out.is_absolute() {
-            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
-            config.out = crate::util::absolute(&config.out);
         }
 
         if config.dry_run() {
@@ -130,27 +111,16 @@ impl MinimalConfig {
             t!(fs::create_dir_all(&dir));
             config.out = dir;
         }
-
-        let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
-        config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
-
-        config
-    }
-
-    /// Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
-    ///
-    /// Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
-    /// but not if `config.toml` hasn't been created.
-    fn config_path(src: PathBuf, config_flag: Option<PathBuf>) -> Option<PathBuf> {
-        let toml_path =
-            config_flag.or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from));
-        let using_default_path = toml_path.is_none();
-        let mut toml_path = toml_path.unwrap_or_else(|| PathBuf::from("config.toml"));
-        if using_default_path && !toml_path.exists() {
-            toml_path = src.join(toml_path);
+        // NOTE: Bootstrap spawns various commands with different working directories.
+        // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
+        else if !config.out.is_absolute() {
+            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
+            config.out = crate::util::absolute(&config.out);
         }
 
-        if !using_default_path || toml_path.exists() { Some(toml_path) } else { None }
+        config.stage0_metadata = deserialize_stage0_metadata(&config.src);
+
+        config
     }
 }
 
@@ -235,10 +205,12 @@ impl MinimalConfig {
 }
 
 #[cfg(test)]
+/// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
 pub(crate) fn get_toml<T: Deserialize<'static> + Default>(_file: &Path) -> T {
     T::default()
 }
 #[cfg(not(test))]
+/// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
 pub(crate) fn get_toml<T: Deserialize<'static> + Default>(file: &Path) -> T {
     let contents =
         t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
@@ -251,6 +223,59 @@ pub(crate) fn get_toml<T: Deserialize<'static> + Default>(file: &Path) -> T {
             crate::detail_exit(2);
         }
     }
+}
+
+/// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
+///
+/// Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
+#[allow(unused_variables)]
+pub(crate) fn set_config_output_dir(output_path: &mut PathBuf) {
+    #[cfg(test)]
+    {
+        *output_path = Path::new(
+            &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
+        )
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    }
+}
+
+/// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
+pub(crate) fn set_and_return_toml_config<T: Deserialize<'static> + Default>(
+    src: PathBuf,
+    config_flag: Option<PathBuf>,
+    cfg_path: &mut Option<PathBuf>,
+) -> T {
+    /// Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
+    ///
+    /// Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
+    /// but not if `config.toml` hasn't been created.
+    fn config_path(src: &PathBuf, config_flag: Option<PathBuf>) -> Option<PathBuf> {
+        let toml_path =
+            config_flag.or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from));
+        let using_default_path = toml_path.is_none();
+        let mut toml_path = toml_path.unwrap_or_else(|| PathBuf::from("config.toml"));
+        if using_default_path && !toml_path.exists() {
+            toml_path = src.join(toml_path);
+        }
+
+        if !using_default_path || toml_path.exists() { Some(toml_path) } else { None }
+    }
+
+    if let Some(toml_path) = config_path(&src, config_flag) {
+        *cfg_path = Some(toml_path.clone());
+        get_toml(&toml_path)
+    } else {
+        *cfg_path = None;
+        T::default()
+    }
+}
+
+/// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
+pub(crate) fn deserialize_stage0_metadata(stage0_metadata_path: &PathBuf) -> Stage0Metadata {
+    let stage0_json = t!(std::fs::read(stage0_metadata_path.join("src").join("stage0.json")));
+    t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json))
 }
 
 fn src() -> Option<PathBuf> {
