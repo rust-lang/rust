@@ -12,7 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff};
+use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff, LLVMVoidTypeInContext};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -440,8 +440,19 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
     ) -> Result<(), FatalError> {
-    let unroll_loops =
-        opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+
+    // Enzyme:
+    // We want to simplify / optimize functions before AD.
+    // However, benchmarks show that optimizations increasing the code size
+    // tend to reduce AD performance. Therefore activate them first, then differentiate the code
+    // and finally re-optimize the module, now with all optimizations available.
+    // RIP compile time.
+    // let unroll_loops =
+    //     opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+    let unroll_loops = false;
+    let vectorize_slp = false;
+    let vectorize_loop = false;
+
     let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
@@ -489,8 +500,8 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         using_thin_buffers,
         config.merge_functions,
         unroll_loops,
-        config.vectorize_slp,
-        config.vectorize_loop,
+        vectorize_slp,
+        vectorize_loop,
         config.no_builtins,
         config.emit_lifetime_markers,
         sanitizer_options.as_ref(),
@@ -629,7 +640,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
 // As unsafe as it can be.
 #[allow(unused_variables)]
 #[allow(unused)]
-pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, tasks: &LLVMDiffItem, source: String) -> Result<(), FatalError> {
+pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, tasks: &LLVMDiffItem, source: String) -> Result<(), FatalError> {
 
     let autodiff_mode = tasks.mode;
     let rust_name = source;
@@ -664,9 +675,15 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, tasks: &LLVMDiffItem, sourc
     dbg!(res);
     let f_type = LLVMTypeOf(res);
     let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
-    if tasks.mode == DiffMode::Reverse {
+    let void_type = LLVMVoidTypeInContext(llcx);
+    if tasks.mode == DiffMode::Reverse && f_return_type != void_type{
+        dbg!("Reverse Mode sanitizer");
+        dbg!(f_type);
+        dbg!(f_return_type);
         let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
+        dbg!("checked");
         if num_elem_in_ret_struct == 1 {
+            dbg!("Unwrapping");
             let u_type = LLVMTypeOf(target_fnc);
             res = extract_return_type(llmod, res, u_type, rust_name2.clone());// TODO: check if name or name2
         }
@@ -694,15 +711,17 @@ pub(crate) unsafe fn differentiate(
     ) -> Result<(), FatalError> {
 
     let llmod = module.module_llvm.llmod();
+    let llcx = &module.module_llvm.llcx;
 
     dbg!(&diff_fncs);
     let names: Vec<String> = diff_fncs.iter().map(|(_fnc, name)| name.clone()).collect();
     let tasks = &module.module_llvm.lldiff_items;
 
-    dbg!(names.len());
-    dbg!(tasks.len());
+    assert_eq!(names.len(), tasks.len());
+    // dbg!(names.len());
+    // dbg!(tasks.len());
     for (task, name) in tasks.iter().zip(names) {
-        let res = enzyme_ad(llmod, &task, name);
+        let res = enzyme_ad(llmod, llcx, &task, name);
         assert!(res.is_ok());
     }
 

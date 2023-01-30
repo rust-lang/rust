@@ -306,45 +306,25 @@ impl<'tcx> ItemLikeVisitor<'tcx> for AutodiffContext<'tcx> {
             let def_id = tcx.hir().local_def_id(*source).to_def_id();
             let source_args = tcx.fn_arg_names(def_id);
 
-            let fn_args = match method.2.kind {
+            let _fn_args = match method.2.kind {
                 ForeignItemKind::Fn(_, args, _) => args,
                 _ => unreachable!(),
             };
 
             // skip beginning of function parameters, make sure they are the same
-            if &fn_args[..source_args.len()] != source_args {
+            if method.1.inputs.len() != source_args.len() {
                 tcx
                     .sess
                     .struct_span_err(
                         method.0.0.span,
-                        "method has to begin with same arguments",
+                        "need one activity for the return type + one for each input argument",
                         )
-                    .span_label(method.0.0.span, "arguments differ")
+                    .span_label(method.0.0.span, "incorrect number of activity attributes")
                     .emit();
 
                 return DiffItems::default();
             }
             assert!(method.1.inputs.len() == source_args.len());
-            //let activity = vec![DiffActivity::Const; source_args.len()];
-
-            // create activity from remaining parameters
-            //let mut activity = vec![DiffActivity::Const; source_args.len()];
-            // for a in &fn_args[source_args.len()..] {
-            //     let Some(pos) = source_args.iter().position(|x| a.as_str().ends_with(x.as_str())) else {
-            //         tcx
-            //             .sess
-            //             .struct_span_err(
-            //                 method.0.0.span,
-            //                 "argument not found",
-            //             )
-            //             .span_label(method.0.0.span, "argument not found")
-            //             .emit();
-
-            //         return DiffItems::default();
-            //     };
-
-            //     activity[pos] = DiffActivity::Active;
-            // }
 
             elms.push(DiffItem {
                 source: def_id,

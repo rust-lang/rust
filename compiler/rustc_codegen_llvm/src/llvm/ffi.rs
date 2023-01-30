@@ -1076,13 +1076,25 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     fnc: &Value,
     input_activity: Vec<DiffActivity>,
     ret_activity: DiffActivity,
-    ret_primary_ret: bool,
+    mut ret_primary_ret: bool,
     diff_primary_ret: bool
     ) -> &Value{
 
     let ret_activity = cdiffe_from(ret_activity);
     assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
+
+    if ret_activity == CDIFFE_TYPE::DFT_DUP_ARG {
+        if ret_primary_ret != true {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = true;
+    } else if ret_activity == CDIFFE_TYPE::DFT_DUP_NONEED {
+        if ret_primary_ret != false {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = false;
+    }
 
     let tree_tmp =  TypeTree::new();
     let mut args_tree = vec![tree_tmp.inner; input_activity.len()];
@@ -2785,7 +2797,6 @@ extern "C" {
     fn EnzymeCreatePrimalAndGradient<'a>(
         arg1: EnzymeLogicRef,
         todiff: &'a Value,
-        //todiff: LLVMValueRef,
         retType: CDIFFE_TYPE,
         constant_args: *const CDIFFE_TYPE,
         constant_args_size: size_t,
@@ -2831,7 +2842,6 @@ unsafe extern "C" fn(
     arg4: *mut IntList,
     arg5: size_t,
     arg6: &Value,
-    //arg6: LLVMValueRef,
     ) -> u8,
     >;
 extern "C" {
@@ -2859,14 +2869,15 @@ extern "C" {
 }
 
 extern "C" {
-    pub fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
-    pub fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef);
-    pub fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64);
-    pub fn EnzymeTypeTreeShiftIndiciesEq(arg1: CTypeTreeRef, data_layout: *const c_char,
-                                         offset: i64, max_size: i64, add_offset: u64);
-
-    pub fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
-    pub fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
+    fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
+    fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef;
+    fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool;
+    fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64);
+    fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef);
+    fn EnzymeTypeTreeShiftIndiciesEq(arg1: CTypeTreeRef, data_layout: *const c_char,
+                                     offset: i64, max_size: i64, add_offset: u64);
+    fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
+    fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
 }
 
 pub struct TypeTree {
@@ -2881,30 +2892,38 @@ impl TypeTree {
     }
 
 
+    #[must_use]
     pub fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
         let inner = unsafe { EnzymeNewTypeTreeCT(t, ctx) };
 
         TypeTree { inner }
     }
 
-    pub fn prepend(self, idx: isize) -> Self {
+    #[must_use]
+    pub fn only(self, idx: isize) -> TypeTree {
         unsafe {
-            EnzymeTypeTreeOnlyEq(self.inner, idx as i64)
+            EnzymeTypeTreeOnlyEq(self.inner, idx as i64);
         }
-
         self
     }
 
-    pub fn merge_with(self, other: Self) -> Self {
+    #[must_use]
+    pub fn data0(self) -> TypeTree {
+        unsafe {
+            EnzymeTypeTreeData0Eq(self.inner);
+        }
+        self
+    }
+
+    pub fn merge(&mut self, other: Self) {
         unsafe {
             EnzymeMergeTypeTree(self.inner, other.inner);
         }
-
         drop(other);
-        self
     }
 
-    pub fn shift_indices(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
+    #[must_use]
+    pub fn shift(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
         let layout = CString::new(layout).unwrap();
 
         unsafe {
@@ -2913,6 +2932,14 @@ impl TypeTree {
 
         self
     }
+}
+
+impl Clone for TypeTree {
+    fn clone(&self) -> Self {
+        let inner = unsafe { EnzymeNewTypeTreeTR(self.inner) };
+        TypeTree { inner }
+    }
+
 }
 
 impl fmt::Display for TypeTree {
