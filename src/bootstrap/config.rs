@@ -22,7 +22,9 @@ use crate::cc_detect::{ndk_compiler, Language};
 use crate::channel::{self, GitInfo};
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags, Warnings};
-use crate::min_config::get_toml;
+use crate::min_config::{
+    deserialize_stage0_metadata, get_toml, set_and_return_toml_config, set_config_output_dir,
+};
 use crate::util::{exe, output, t};
 use crate::MinimalConfig;
 use once_cell::sync::OnceCell;
@@ -817,40 +819,11 @@ impl Config {
 
         // Infer the rest of the configuration.
 
-        if cfg!(test) {
-            // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
-            config.out = Path::new(
-                &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
-            )
-            .parent()
-            .unwrap()
-            .to_path_buf();
-        }
+        set_config_output_dir(&mut config.out);
+        config.stage0_metadata = deserialize_stage0_metadata(&config.src);
 
-        let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
-
-        config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
-
-        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
-        let toml_path = flags
-            .config
-            .clone()
-            .or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from));
-        let using_default_path = toml_path.is_none();
-        let mut toml_path = toml_path.unwrap_or_else(|| PathBuf::from("config.toml"));
-        if using_default_path && !toml_path.exists() {
-            toml_path = config.src.join(toml_path);
-        }
-
-        // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
-        // but not if `config.toml` hasn't been created.
-        let mut toml = if !using_default_path || toml_path.exists() {
-            config.config = Some(toml_path.clone());
-            get_toml(&toml_path)
-        } else {
-            config.config = None;
-            TomlConfig::default()
-        };
+        let mut toml: TomlConfig =
+            set_and_return_toml_config(config.src.clone(), flags.config, &mut config.config);
 
         if let Some(include) = &toml.profile {
             let mut include_path = config.src.clone();
