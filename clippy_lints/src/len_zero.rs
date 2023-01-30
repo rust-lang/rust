@@ -135,6 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if item.ident.name == sym::len;
             if let ImplItemKind::Fn(sig, _) = &item.kind;
             if sig.decl.implicit_self.has_implicit_self();
+            if sig.decl.inputs.len() == 1;
             if cx.effective_visibilities.is_exported(item.owner_id.def_id);
             if matches!(sig.decl.output, FnRetTy::Return(_));
             if let Some(imp) = get_parent_as_impl(cx.tcx, item.hir_id());
