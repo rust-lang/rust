@@ -2,9 +2,10 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
-use self::utils::is_ci;
+use self::utils::{is_ci, Compiler};
 
 mod abi_cafe;
+mod bench;
 mod build_backend;
 mod build_sysroot;
 mod config;
@@ -14,31 +15,8 @@ mod rustc_info;
 mod tests;
 mod utils;
 
-const USAGE: &str = r#"The build system of cg_clif.
-
-USAGE:
-    ./y.rs prepare [--out-dir DIR]
-    ./y.rs build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
-    ./y.rs test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
-
-OPTIONS:
-    --sysroot none|clif|llvm
-            Which sysroot libraries to use:
-            `none` will not include any standard library in the sysroot.
-            `clif` will build the standard library using Cranelift.
-            `llvm` will use the pre-compiled standard library of rustc which is compiled with LLVM.
-
-    --out-dir DIR
-            Specify the directory in which the download, build and dist directories are stored.
-            By default this is the working directory.
-
-    --no-unstable-features
-            fSome features are not yet ready for production usage. This option will disable these
-            features. This includes the JIT mode and inline assembly support.
-"#;
-
 fn usage() {
-    eprintln!("{USAGE}");
+    eprintln!("{}", include_str!("usage.txt"));
 }
 
 macro_rules! arg_error {
@@ -54,6 +32,8 @@ enum Command {
     Prepare,
     Build,
     Test,
+    AbiCafe,
+    Bench,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -64,12 +44,17 @@ pub(crate) enum SysrootKind {
 }
 
 pub fn main() {
-    env::set_var("CG_CLIF_DISPLAY_CG_TIME", "1");
+    if env::var("RUST_BACKTRACE").is_err() {
+        env::set_var("RUST_BACKTRACE", "1");
+    }
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");
 
     if is_ci() {
         // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
         env::set_var("CARGO_BUILD_INCREMENTAL", "false");
+
+        // Enable the Cranelift verifier
+        env::set_var("CG_CLIF_ENABLE_VERIFIER", "1");
     }
 
     let mut args = env::args().skip(1);
@@ -77,6 +62,8 @@ pub fn main() {
         Some("prepare") => Command::Prepare,
         Some("build") => Command::Build,
         Some("test") => Command::Test,
+        Some("abi-cafe") => Command::AbiCafe,
+        Some("bench") => Command::Bench,
         Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
         Some(command) => arg_error!("Unknown command {}", command),
         None => {
@@ -112,24 +99,16 @@ pub fn main() {
         }
     }
 
-    let host_triple = if let Ok(host_triple) = std::env::var("HOST_TRIPLE") {
-        host_triple
-    } else if let Some(host_triple) = config::get_value("host") {
-        host_triple
-    } else {
-        rustc_info::get_host_triple()
-    };
-    let target_triple = if let Ok(target_triple) = std::env::var("TARGET_TRIPLE") {
-        if target_triple != "" {
-            target_triple
-        } else {
-            host_triple.clone() // Empty target triple can happen on GHA
-        }
-    } else if let Some(target_triple) = config::get_value("target") {
-        target_triple
-    } else {
-        host_triple.clone()
-    };
+    let bootstrap_host_compiler = Compiler::bootstrap_with_triple(
+        std::env::var("HOST_TRIPLE")
+            .ok()
+            .or_else(|| config::get_value("host"))
+            .unwrap_or_else(|| rustc_info::get_host_triple()),
+    );
+    let target_triple = std::env::var("TARGET_TRIPLE")
+        .ok()
+        .or_else(|| config::get_value("target"))
+        .unwrap_or_else(|| bootstrap_host_compiler.triple.clone());
 
     // FIXME allow changing the location of these dirs using cli arguments
     let current_dir = std::env::current_dir().unwrap();
@@ -157,8 +136,15 @@ pub fn main() {
         process::exit(0);
     }
 
-    let cg_clif_dylib =
-        build_backend::build_backend(&dirs, channel, &host_triple, use_unstable_features);
+    env::set_var("RUSTC", "rustc_should_be_set_explicitly");
+    env::set_var("RUSTDOC", "rustdoc_should_be_set_explicitly");
+
+    let cg_clif_dylib = build_backend::build_backend(
+        &dirs,
+        channel,
+        &bootstrap_host_compiler,
+        use_unstable_features,
+    );
     match command {
         Command::Prepare => {
             // Handled above
@@ -169,18 +155,16 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &cg_clif_dylib,
-                &host_triple,
-                &target_triple,
+                &bootstrap_host_compiler,
+                target_triple.clone(),
             );
-
-            abi_cafe::run(
-                channel,
-                sysroot_kind,
-                &dirs,
-                &cg_clif_dylib,
-                &host_triple,
-                &target_triple,
-            );
+        }
+        Command::AbiCafe => {
+            if bootstrap_host_compiler.triple != target_triple {
+                eprintln!("Abi-cafe doesn't support cross-compilation");
+                process::exit(1);
+            }
+            abi_cafe::run(channel, sysroot_kind, &dirs, &cg_clif_dylib, &bootstrap_host_compiler);
         }
         Command::Build => {
             build_sysroot::build_sysroot(
@@ -188,9 +172,20 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &cg_clif_dylib,
-                &host_triple,
-                &target_triple,
+                &bootstrap_host_compiler,
+                target_triple,
             );
+        }
+        Command::Bench => {
+            build_sysroot::build_sysroot(
+                &dirs,
+                channel,
+                sysroot_kind,
+                &cg_clif_dylib,
+                &bootstrap_host_compiler,
+                target_triple,
+            );
+            bench::benchmark(&dirs, &bootstrap_host_compiler);
         }
     }
 }

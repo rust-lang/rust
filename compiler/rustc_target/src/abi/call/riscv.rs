@@ -45,7 +45,7 @@ where
 {
     match arg_layout.abi {
         Abi::Scalar(scalar) => match scalar.primitive() {
-            abi::Int(..) | abi::Pointer => {
+            abi::Int(..) | abi::Pointer(_) => {
                 if arg_layout.size.bits() > xlen {
                     return Err(CannotUseFpConv);
                 }

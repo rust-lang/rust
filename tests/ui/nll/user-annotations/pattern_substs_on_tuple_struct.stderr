@@ -1,6 +1,8 @@
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_tuple_struct.rs:5:19
    |
+LL |     let y = 22;
+   |         - binding `y` declared here
 LL |     let foo = Foo(&y);
    |                   ^^ borrowed value does not live long enough
 LL |
@@ -12,6 +14,8 @@ LL | }
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_tuple_struct.rs:12:19
    |
+LL |     let y = 22;
+   |         - binding `y` declared here
 LL |     let foo = Foo(&y);
    |                   ^^ borrowed value does not live long enough
 ...

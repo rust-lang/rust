@@ -351,7 +351,7 @@ dependencies = [
  "cargo-test-macro",
  "cargo-test-support",
  "cargo-util",
- "clap 4.1.1",
+ "clap 4.1.4",
  "crates-io",
  "curl",
  "curl-sys",
@@ -655,9 +655,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.1.1"
+version = "4.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ec7a4128863c188deefe750ac1d1dfe66c236909f845af04beed823638dc1b2"
+checksum = "f13b9c79b5d1dd500d20ef541215a6423c75829ef43117e1b4d17fd8af0b5d76"
 dependencies = [
  "bitflags",
  "clap_derive 4.1.0",
@@ -675,7 +675,7 @@ version = "4.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10861370d2ba66b0f5989f83ebf35db6421713fd92351790e7fdd6c36774c56b"
 dependencies = [
- "clap 4.1.1",
+ "clap 4.1.4",
 ]
 
 [[package]]
@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.68"
+version = "0.1.69"
 dependencies = [
  "clippy_lints",
  "clippy_utils",
@@ -766,7 +766,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.68"
+version = "0.1.69"
 dependencies = [
  "cargo_metadata 0.14.0",
  "clippy_utils",
@@ -789,7 +789,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.68"
+version = "0.1.69"
 dependencies = [
  "arrayvec",
  "if_chain",
@@ -1168,7 +1168,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.68"
+version = "0.1.69"
 dependencies = [
  "itertools",
  "quote",
@@ -1799,9 +1799,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.16.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccf7f68c2995f392c49fffb4f95ae2c873297830eb25c6bc4c114ce8f4562acc"
+checksum = "be36bc9e0546df253c0cc41fd0af34f5e92845ad8509462ec76672fac6997f5b"
 dependencies = [
  "bitflags",
  "libc",
@@ -2294,7 +2294,7 @@ name = "jsondoclint"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 4.1.1",
+ "clap 4.1.4",
  "fs-err",
  "rustdoc-json-types",
  "serde",
@@ -2365,9 +2365,9 @@ dependencies = [
 
 [[package]]
 name = "libgit2-sys"
-version = "0.14.2+1.5.1"
+version = "0.14.1+1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f3d95f6b51075fe9810a7ae22c7095f12b98005ab364d8544797a825ce946a4"
+checksum = "4a07fb2692bc3593bda59de45a502bb3071659f2c515e28c71e728306b038e17"
 dependencies = [
  "cc",
  "libc",
@@ -2557,7 +2557,7 @@ dependencies = [
  "ammonia",
  "anyhow",
  "chrono",
- "clap 4.1.1",
+ "clap 4.1.4",
  "clap_complete",
  "elasticlunr-rs",
  "env_logger 0.10.0",
@@ -3528,7 +3528,7 @@ dependencies = [
 name = "rustbook"
 version = "0.1.0"
 dependencies = [
- "clap 4.1.1",
+ "clap 4.1.4",
  "env_logger 0.7.1",
  "mdbook",
 ]
@@ -3672,6 +3672,7 @@ name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "memchr",
  "rustc_data_structures",
  "rustc_index",
  "rustc_lexer",
@@ -3729,6 +3730,7 @@ name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
  "rustc_ast",
+ "rustc_parse_format",
  "rustc_span",
 ]
 
@@ -4926,7 +4928,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-config_proc_macro"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4936,7 +4938,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.5.1"
+version = "1.5.2"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -5214,9 +5216,9 @@ checksum = "cc88c725d61fc6c3132893370cac4a0200e3fedf5da8331c570664b1987f5ca2"
 
 [[package]]
 name = "snap"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da73c8f77aebc0e40c300b93f0a5f1bece7a248a36eee287d4e095f35c7b7d6e"
+checksum = "5e9f0ab6ef7eb7353d9119c170a436d1bf248eea575ac42d19d12f4e34130831"
 
 [[package]]
 name = "snapbox"

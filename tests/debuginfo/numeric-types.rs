@@ -1,6 +1,7 @@
 // compile-flags:-g
 
 // min-gdb-version: 8.1
+// ignore-windows-gnu // emit_debug_gdb_scripts is disabled on Windows
 
 // Tests the visualizations for `NonZero{I,U}{8,16,32,64,128,size}`, `Wrapping<T>` and
 // `Atomic{Bool,I8,I16,I32,I64,Isize,U8,U16,U32,U64,Usize}` located in `libcore.natvis`.

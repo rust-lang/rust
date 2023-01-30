@@ -629,9 +629,7 @@ jobs:
 
           - name: i686-mingw-1
             env:
-              RUST_CONFIGURE_ARGS: >-
-                --build=i686-pc-windows-gnu
-                --set llvm.allow-old-toolchain
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
               SCRIPT: make ci-mingw-subset-1
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
@@ -641,9 +639,7 @@ jobs:
 
           - name: i686-mingw-2
             env:
-              RUST_CONFIGURE_ARGS: >-
-                --build=i686-pc-windows-gnu
-                --set llvm.allow-old-toolchain
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
               SCRIPT: make ci-mingw-subset-2
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
@@ -657,7 +653,6 @@ jobs:
               RUST_CONFIGURE_ARGS: >-
                 --build=x86_64-pc-windows-gnu
                 --enable-profiler
-                --set llvm.allow-old-toolchain
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
@@ -670,7 +665,6 @@ jobs:
               RUST_CONFIGURE_ARGS: >-
                 --build=x86_64-pc-windows-gnu
                 --enable-profiler
-                --set llvm.allow-old-toolchain
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
@@ -686,7 +680,7 @@ jobs:
                 --enable-full-tools
                 --enable-profiler
                 --set rust.lto=thin
-              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc src/ci/pgo.sh python x.py dist bootstrap --include-default-paths
+              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc python src/ci/stage-build.py python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-xl
 
@@ -722,7 +716,6 @@ jobs:
                 --build=i686-pc-windows-gnu
                 --enable-full-tools
                 --enable-profiler
-                --set llvm.allow-old-toolchain
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
@@ -738,7 +731,6 @@ jobs:
                 --build=x86_64-pc-windows-gnu
                 --enable-full-tools
                 --enable-profiler
-                --set llvm.allow-old-toolchain
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1

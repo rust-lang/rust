@@ -355,6 +355,12 @@ pub enum StatementKind<'tcx> {
     /// This avoids adding a new block and a terminator for simple intrinsics.
     Intrinsic(Box<NonDivergingIntrinsic<'tcx>>),
 
+    /// Instructs the const eval interpreter to increment a counter; this counter is used to track
+    /// how many steps the interpreter has taken. It is used to prevent the user from writing const
+    /// code that runs for too long or infinitely. Other than in the const eval interpreter, this
+    /// is a no-op.
+    ConstEvalCounter,
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }

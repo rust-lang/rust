@@ -101,6 +101,18 @@ pub trait InferCtxtExt<'tcx> {
 }
 
 pub trait TypeErrCtxtExt<'tcx> {
+    fn build_overflow_error<T>(
+        &self,
+        predicate: &T,
+        span: Span,
+        suggest_increasing_limit: bool,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
+    where
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
+
     fn report_overflow_error<T>(
         &self,
         predicate: &T,
@@ -484,6 +496,26 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
+        let mut err = self.build_overflow_error(predicate, span, suggest_increasing_limit);
+        mutate(&mut err);
+        err.emit();
+
+        self.tcx.sess.abort_if_errors();
+        bug!();
+    }
+
+    fn build_overflow_error<T>(
+        &self,
+        predicate: &T,
+        span: Span,
+        suggest_increasing_limit: bool,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
+    where
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+    {
         let predicate = self.resolve_vars_if_possible(predicate.clone());
         let mut pred_str = predicate.to_string();
 
@@ -511,11 +543,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             self.suggest_new_overflow_limit(&mut err);
         }
 
-        mutate(&mut err);
-
-        err.emit();
-        self.tcx.sess.abort_if_errors();
-        bug!();
+        err
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -839,14 +867,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             err.note(s.as_str());
                         }
                         if let Some(ref s) = parent_label {
-                            let body = tcx
-                                .hir()
-                                .opt_local_def_id(obligation.cause.body_id)
-                                .unwrap_or_else(|| {
-                                    tcx.hir().body_owner_def_id(hir::BodyId {
-                                        hir_id: obligation.cause.body_id,
-                                    })
-                                });
+                            let body = obligation.cause.body_id;
                             err.span_label(tcx.def_span(body), s);
                         }
 
@@ -934,6 +955,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
+                        let body_hir_id =
+                            self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
                         // Try to report a help message
                         if is_fn_trait
                             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
@@ -1014,7 +1037,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             if !self.report_similar_impl_candidates(
                                 impl_candidates,
                                 trait_ref,
-                                obligation.cause.body_id,
+                                body_hir_id,
                                 &mut err,
                                 true,
                             ) {
@@ -1050,7 +1073,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     self.report_similar_impl_candidates(
                                         impl_candidates,
                                         trait_ref,
-                                        obligation.cause.body_id,
+                                        body_hir_id,
                                         &mut err,
                                         true,
                                     );
@@ -1896,6 +1919,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Generator(..) => Some(16),
                 ty::Foreign(..) => Some(17),
                 ty::GeneratorWitness(..) => Some(18),
+                ty::GeneratorWitnessMIR(..) => Some(19),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }
@@ -2305,10 +2329,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 predicate.to_opt_poly_trait_pred().unwrap(),
                             );
                             if impl_candidates.len() < 10 {
+                                let hir =
+                                    self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
                                 self.report_similar_impl_candidates(
                                     impl_candidates,
                                     trait_ref,
-                                    body_id.map(|id| id.hir_id).unwrap_or(obligation.cause.body_id),
+                                    body_id.map(|id| id.hir_id).unwrap_or(hir),
                                     &mut err,
                                     false,
                                 );
@@ -2828,7 +2854,7 @@ pub struct FindExprBySpan<'hir> {
 }
 
 impl<'hir> FindExprBySpan<'hir> {
-    fn new(span: Span) -> Self {
+    pub fn new(span: Span) -> Self {
         Self { span, result: None, ty_result: None }
     }
 }

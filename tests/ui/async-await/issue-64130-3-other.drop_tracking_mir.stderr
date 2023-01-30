@@ -1,0 +1,25 @@
+error[E0277]: the trait bound `Foo: Qux` is not satisfied in `impl Future<Output = ()>`
+  --> $DIR/issue-64130-3-other.rs:27:12
+   |
+LL | async fn bar() {
+   |                - within this `impl Future<Output = ()>`
+...
+LL |     is_qux(bar());
+   |            ^^^^^ within `impl Future<Output = ()>`, the trait `Qux` is not implemented for `Foo`
+   |
+note: future does not implement `Qux` as this value is used across an await
+  --> $DIR/issue-64130-3-other.rs:21:10
+   |
+LL |     let x = Box::new(Foo);
+   |         - has type `Box<Foo>` which does not implement `Qux`
+LL |     baz().await;
+   |          ^^^^^^ await occurs here, with `x` maybe used later
+note: required by a bound in `is_qux`
+  --> $DIR/issue-64130-3-other.rs:17:14
+   |
+LL | fn is_qux<T: Qux>(t: T) {}
+   |              ^^^ required by this bound in `is_qux`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

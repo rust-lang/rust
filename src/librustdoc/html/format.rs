@@ -1064,14 +1064,8 @@ fn fmt_type<'cx>(
                     fmt_type(ty, f, use_absolute, cx)?;
                     write!(f, ")")
                 }
-                clean::Generic(..) => {
-                    primitive_link(
-                        f,
-                        PrimitiveType::Reference,
-                        &format!("{}{}{}", amp, lt, m),
-                        cx,
-                    )?;
-                    fmt_type(ty, f, use_absolute, cx)
+                clean::Generic(name) => {
+                    primitive_link(f, PrimitiveType::Reference, &format!("{amp}{lt}{m}{name}"), cx)
                 }
                 _ => {
                     write!(f, "{}{}{}", amp, lt, m)?;

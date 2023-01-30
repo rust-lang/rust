@@ -391,7 +391,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 };
                 write!(
                     w,
-                    "<div class=\"item-left {stab}{add}import-item\"{id}>\
+                    "<div class=\"item-left{add}{stab}\"{id}>\
                          <code>{vis}{imp}</code>\
                      </div>\
                      {stab_tags_before}{stab_tags}{stab_tags_after}",
@@ -437,7 +437,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 };
                 write!(
                     w,
-                    "<div class=\"item-left {stab}{add}module-item\">\
+                    "<div class=\"item-left{add}{stab}\">\
                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
                         {visibility_emoji}\
                         {unsafety_flag}\
@@ -452,7 +452,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     stab = stab.unwrap_or_default(),
                     unsafety_flag = unsafety_flag,
                     href = item_path(myitem.type_(), myitem.name.unwrap().as_str()),
-                    title = [full_path(cx, myitem), myitem.type_().to_string()]
+                    title = [myitem.type_().to_string(), full_path(cx, myitem)]
                         .iter()
                         .filter_map(|s| if !s.is_empty() { Some(s.as_str()) } else { None })
                         .collect::<Vec<_>>()
@@ -735,7 +735,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
             write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>");
         }
-        write!(w, "<section id=\"{}\" class=\"method has-srclink\">", id);
+        write!(w, "<section id=\"{}\" class=\"method\">", id);
         render_rightside(w, cx, m, t, RenderMode::Normal);
         write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(

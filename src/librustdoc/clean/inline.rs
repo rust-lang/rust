@@ -251,7 +251,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
 }
 
 fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<clean::Function> {
-    let sig = cx.tcx.fn_sig(did);
+    let sig = cx.tcx.fn_sig(did).subst_identity();
 
     let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
         ty::BoundVariableKind::Region(ty::BrNamed(_, name)) if name != kw::UnderscoreLifetime => {

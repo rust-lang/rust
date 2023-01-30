@@ -1,4 +1,7 @@
-// compile-flags: -Zdrop-tracking
+// revisions: no_drop_tracking drop_tracking drop_tracking_mir
+// [drop_tracking] compile-flags: -Zdrop-tracking
+// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
+
 #![feature(generators, negative_impls, rustc_attrs)]
 
 macro_rules! type_combinations {
@@ -18,13 +21,14 @@ macro_rules! type_combinations {
             let g = move || match drop($name::Client { ..$name::Client::default() }) {
             //~^ `significant_drop::Client` which is not `Send`
             //~| `insignificant_dtor::Client` which is not `Send`
-            //~| `derived_drop::Client` which is not `Send`
+            //[no_drop_tracking,drop_tracking]~| `derived_drop::Client` which is not `Send`
                 _ => yield,
             };
             assert_send(g);
             //~^ ERROR cannot be sent between threads
             //~| ERROR cannot be sent between threads
             //~| ERROR cannot be sent between threads
+            //[no_drop_tracking]~| ERROR cannot be sent between threads
         }
 
         // Simple owned value. This works because the Client is considered moved into `drop`,
@@ -34,6 +38,10 @@ macro_rules! type_combinations {
                 _ => yield,
             };
             assert_send(g);
+            //[no_drop_tracking]~^ ERROR cannot be sent between threads
+            //[no_drop_tracking]~| ERROR cannot be sent between threads
+            //[no_drop_tracking]~| ERROR cannot be sent between threads
+            //[no_drop_tracking]~| ERROR cannot be sent between threads
         }
     )* }
 }

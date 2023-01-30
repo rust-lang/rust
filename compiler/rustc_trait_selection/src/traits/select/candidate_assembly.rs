@@ -174,8 +174,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter_map(|p| p.to_opt_poly_trait_pred())
-            .filter(|p| !p.references_error());
+            .filter(|p| !p.references_error())
+            .filter_map(|p| p.to_opt_poly_trait_pred());
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
@@ -466,7 +466,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if let Some(principal) = data.principal() {
                         if !self.infcx.tcx.features().object_safe_for_dispatch {
                             principal.with_self_ty(self.tcx(), self_ty)
-                        } else if self.tcx().is_object_safe(principal.def_id()) {
+                        } else if self.tcx().check_is_object_safe(principal.def_id()) {
                             principal.with_self_ty(self.tcx(), self_ty)
                         } else {
                             return;
@@ -765,7 +765,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::Tuple(_)
-            | ty::GeneratorWitness(_) => {
+            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..) => {
                 // These are built-in, and cannot have a custom `impl const Destruct`.
                 candidates.vec.push(ConstDestructCandidate(None));
             }
@@ -826,6 +827,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Alias(..)
             | ty::Param(_)

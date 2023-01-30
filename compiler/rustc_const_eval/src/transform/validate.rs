@@ -13,7 +13,7 @@ use rustc_middle::mir::{
     ProjectionElem, RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind,
     Terminator, TerminatorKind, UnOp, START_BLOCK,
 };
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -230,11 +230,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Equal types, all is good.
             return true;
         }
-        // Normalization reveals opaque types, but we may be validating MIR while computing
-        // said opaque types, causing cycles.
-        if (src, dest).has_opaque_types() {
-            return true;
-        }
 
         crate::util::is_subtype(self.tcx, self.param_env, src, dest)
     }
@@ -377,12 +372,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 return;
                             };
 
-                            let Some(&f_ty) = layout.field_tys.get(local) else {
+                            let Some(f_ty) = layout.field_tys.get(local) else {
                                 self.fail(location, format!("Out of bounds local {:?} for {:?}", local, parent_ty));
                                 return;
                             };
 
-                            f_ty
+                            f_ty.ty
                         } else {
                             let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index()) else {
                                 fail_out_of_bounds(self, location);
@@ -766,6 +761,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Coverage(_)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}
         }
 

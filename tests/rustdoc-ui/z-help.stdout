@@ -20,6 +20,7 @@
     -Z                                 dlltool=val -- import library generation tool (windows-gnu only)
     -Z                 dont-buffer-diagnostics=val -- emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) (default: no)
     -Z                           drop-tracking=val -- enables drop tracking in generators (default: no)
+    -Z                       drop-tracking-mir=val -- enables drop tracking on MIR in generators (default: no)
     -Z                        dual-proc-macros=val -- load proc macros for both target and host, but only link to the target (default: no)
     -Z                          dump-dep-graph=val -- dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv) (default: no)
     -Z                  dump-drop-tracking-cfg=val -- dump drop-tracking control-flow graph as a `.dot` file (default: no)
@@ -172,6 +173,7 @@
     -Z                                 threads=val -- use a thread pool with N threads
     -Z                        time-llvm-passes=val -- measure time of each LLVM pass (default: no)
     -Z                             time-passes=val -- measure time of each rustc pass (default: no)
+    -Z                   tiny-const-eval-limit=val -- sets a tiny, non-configurable limit for const eval; useful for compiler tests
     -Z                               tls-model=val -- choose the TLS model to use (`rustc --print tls-models` for details)
     -Z                            trace-macros=val -- for every macro invocation, print its name and arguments (default: no)
     -Z                       track-diagnostics=val -- tracks where in rustc a diagnostic was emitted

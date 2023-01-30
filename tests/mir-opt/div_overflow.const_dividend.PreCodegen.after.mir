@@ -11,7 +11,7 @@ fn const_dividend(_1: i32) -> i32 {
     }
 
     bb1: {
-        _0 = Div(const 256_i32, move _1); // scope 0 at $DIR/div_overflow.rs:+1:5: +1:12
+        _0 = Div(const 256_i32, _1);     // scope 0 at $DIR/div_overflow.rs:+1:5: +1:12
         return;                          // scope 0 at $DIR/div_overflow.rs:+2:2: +2:2
     }
 }

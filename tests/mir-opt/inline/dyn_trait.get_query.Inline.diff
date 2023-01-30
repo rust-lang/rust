@@ -35,8 +35,8 @@
           _4 = &(*_2);                     // scope 1 at $DIR/dyn_trait.rs:+2:23: +2:24
 -         _0 = try_execute_query::<<Q as Query>::C>(move _4) -> bb2; // scope 1 at $DIR/dyn_trait.rs:+2:5: +2:25
 +         StorageLive(_5);                 // scope 2 at $DIR/dyn_trait.rs:27:14: 27:15
-+         _5 = move _4 as &dyn Cache<V = <Q as Query>::V> (Pointer(Unsize)); // scope 2 at $DIR/dyn_trait.rs:27:14: 27:15
-+         _0 = <dyn Cache<V = <Q as Query>::V> as Cache>::store_nocache(move _5) -> bb2; // scope 3 at $DIR/dyn_trait.rs:21:5: 21:22
++         _5 = _4 as &dyn Cache<V = <Q as Query>::V> (Pointer(Unsize)); // scope 2 at $DIR/dyn_trait.rs:27:14: 27:15
++         _0 = <dyn Cache<V = <Q as Query>::V> as Cache>::store_nocache(_5) -> bb2; // scope 3 at $DIR/dyn_trait.rs:21:5: 21:22
                                            // mir::Constant
 -                                          // + span: $DIR/dyn_trait.rs:34:5: 34:22
 -                                          // + literal: Const { ty: for<'a> fn(&'a <Q as Query>::C) {try_execute_query::<<Q as Query>::C>}, val: Value(<ZST>) }

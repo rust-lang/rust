@@ -509,7 +509,7 @@ impl Options {
                 // these values up both in `dataset` and in the storage API, so it needs to be able
                 // to convert the names back and forth.  Despite doing this kebab-case to
                 // StudlyCaps transformation automatically, the JS DOM API does not provide a
-                // mechanism for doing the just transformation on a string.  So we want to avoid
+                // mechanism for doing just the transformation on a string.  So we want to avoid
                 // the StudlyCaps representation in the `dataset` property.
                 //
                 // We solve this by replacing all the `-`s with `_`s.  We do that here, when we

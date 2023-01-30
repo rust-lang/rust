@@ -3,73 +3,55 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::build_sysroot::{SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
+use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
-use super::utils::{copy_dir_recursively, spawn_and_wait, Compiler};
+use super::rustc_info::{get_default_sysroot, get_rustc_version};
+use super::utils::{copy_dir_recursively, git_command, retry_spawn_and_wait, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
-    if RelPath::DOWNLOAD.to_path(dirs).exists() {
-        std::fs::remove_dir_all(RelPath::DOWNLOAD.to_path(dirs)).unwrap();
-    }
-    std::fs::create_dir_all(RelPath::DOWNLOAD.to_path(dirs)).unwrap();
+    RelPath::DOWNLOAD.ensure_fresh(dirs);
+
+    spawn_and_wait(super::build_backend::CG_CLIF.fetch("cargo", dirs));
 
     prepare_sysroot(dirs);
-
-    // FIXME maybe install this only locally?
-    eprintln!("[INSTALL] hyperfine");
-    Command::new("cargo")
-        .arg("install")
-        .arg("hyperfine")
-        .env_remove("CARGO_TARGET_DIR")
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
+    spawn_and_wait(super::build_sysroot::STANDARD_LIBRARY.fetch("cargo", dirs));
+    spawn_and_wait(super::tests::LIBCORE_TESTS.fetch("cargo", dirs));
 
     super::abi_cafe::ABI_CAFE_REPO.fetch(dirs);
+    spawn_and_wait(super::abi_cafe::ABI_CAFE.fetch("cargo", dirs));
     super::tests::RAND_REPO.fetch(dirs);
+    spawn_and_wait(super::tests::RAND.fetch("cargo", dirs));
     super::tests::REGEX_REPO.fetch(dirs);
+    spawn_and_wait(super::tests::REGEX.fetch("cargo", dirs));
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
-    super::tests::SIMPLE_RAYTRACER_REPO.fetch(dirs);
-
-    eprintln!("[LLVM BUILD] simple-raytracer");
-    let host_compiler = Compiler::host();
-    let build_cmd = super::tests::SIMPLE_RAYTRACER.build(&host_compiler, dirs);
-    spawn_and_wait(build_cmd);
-    fs::copy(
-        super::tests::SIMPLE_RAYTRACER
-            .target_dir(dirs)
-            .join(&host_compiler.triple)
-            .join("debug")
-            .join(get_file_name("main", "bin")),
-        RelPath::BUILD.to_path(dirs).join(get_file_name("raytracer_cg_llvm", "bin")),
-    )
-    .unwrap();
+    spawn_and_wait(super::tests::PORTABLE_SIMD.fetch("cargo", dirs));
+    super::bench::SIMPLE_RAYTRACER_REPO.fetch(dirs);
+    spawn_and_wait(super::bench::SIMPLE_RAYTRACER.fetch("cargo", dirs));
 }
 
 fn prepare_sysroot(dirs: &Dirs) {
-    let rustc_path = get_rustc_path();
-    let sysroot_src_orig = rustc_path.parent().unwrap().join("../lib/rustlib/src/rust");
-    let sysroot_src = SYSROOT_SRC;
-
+    let sysroot_src_orig = get_default_sysroot(Path::new("rustc")).join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
-    sysroot_src.ensure_fresh(dirs);
-    fs::create_dir_all(sysroot_src.to_path(dirs).join("library")).unwrap();
     eprintln!("[COPY] sysroot src");
+
+    // FIXME ensure builds error out or update the copy if any of the files copied here change
+    BUILD_SYSROOT.ensure_fresh(dirs);
+    copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &BUILD_SYSROOT.to_path(dirs));
+
+    fs::create_dir_all(SYSROOT_SRC.to_path(dirs).join("library")).unwrap();
     copy_dir_recursively(
         &sysroot_src_orig.join("library"),
-        &sysroot_src.to_path(dirs).join("library"),
+        &SYSROOT_SRC.to_path(dirs).join("library"),
     );
 
-    let rustc_version = get_rustc_version();
+    let rustc_version = get_rustc_version(Path::new("rustc"));
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
 
     eprintln!("[GIT] init");
-    init_git_repo(&sysroot_src.to_path(dirs));
+    init_git_repo(&SYSROOT_SRC.to_path(dirs));
 
-    apply_patches(dirs, "sysroot", &sysroot_src.to_path(dirs));
+    apply_patches(dirs, "sysroot", &SYSROOT_SRC.to_path(dirs));
 }
 
 pub(crate) struct GitRepo {
@@ -118,14 +100,14 @@ impl GitRepo {
 fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     eprintln!("[CLONE] {}", repo);
     // Ignore exit code as the repo may already have been checked out
-    Command::new("git").arg("clone").arg(repo).arg(&download_dir).spawn().unwrap().wait().unwrap();
+    git_command(None, "clone").arg(repo).arg(download_dir).spawn().unwrap().wait().unwrap();
 
-    let mut clean_cmd = Command::new("git");
-    clean_cmd.arg("checkout").arg("--").arg(".").current_dir(&download_dir);
+    let mut clean_cmd = git_command(download_dir, "checkout");
+    clean_cmd.arg("--").arg(".");
     spawn_and_wait(clean_cmd);
 
-    let mut checkout_cmd = Command::new("git");
-    checkout_cmd.arg("checkout").arg("-q").arg(rev).current_dir(download_dir);
+    let mut checkout_cmd = git_command(download_dir, "checkout");
+    checkout_cmd.arg("-q").arg(rev);
     spawn_and_wait(checkout_cmd);
 }
 
@@ -149,8 +131,22 @@ fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo:
 
     // Download zip archive
     let mut download_cmd = Command::new("curl");
-    download_cmd.arg("--location").arg("--output").arg(&archive_file).arg(archive_url);
-    spawn_and_wait(download_cmd);
+    download_cmd
+        .arg("--max-time")
+        .arg("600")
+        .arg("-y")
+        .arg("30")
+        .arg("-Y")
+        .arg("10")
+        .arg("--connect-timeout")
+        .arg("30")
+        .arg("--continue-at")
+        .arg("-")
+        .arg("--location")
+        .arg("--output")
+        .arg(&archive_file)
+        .arg(archive_url);
+    retry_spawn_and_wait(5, download_cmd);
 
     // Unpack tar archive
     let mut unpack_cmd = Command::new("tar");
@@ -167,25 +163,16 @@ fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo:
 }
 
 fn init_git_repo(repo_dir: &Path) {
-    let mut git_init_cmd = Command::new("git");
-    git_init_cmd.arg("init").arg("-q").current_dir(repo_dir);
+    let mut git_init_cmd = git_command(repo_dir, "init");
+    git_init_cmd.arg("-q");
     spawn_and_wait(git_init_cmd);
 
-    let mut git_add_cmd = Command::new("git");
-    git_add_cmd.arg("add").arg(".").current_dir(repo_dir);
+    let mut git_add_cmd = git_command(repo_dir, "add");
+    git_add_cmd.arg(".");
     spawn_and_wait(git_add_cmd);
 
-    let mut git_commit_cmd = Command::new("git");
-    git_commit_cmd
-        .arg("-c")
-        .arg("user.name=Dummy")
-        .arg("-c")
-        .arg("user.email=dummy@example.com")
-        .arg("commit")
-        .arg("-m")
-        .arg("Initial commit")
-        .arg("-q")
-        .current_dir(repo_dir);
+    let mut git_commit_cmd = git_command(repo_dir, "commit");
+    git_commit_cmd.arg("-m").arg("Initial commit").arg("-q");
     spawn_and_wait(git_commit_cmd);
 }
 
@@ -220,16 +207,8 @@ fn apply_patches(dirs: &Dirs, crate_name: &str, target_dir: &Path) {
             target_dir.file_name().unwrap(),
             patch.file_name().unwrap()
         );
-        let mut apply_patch_cmd = Command::new("git");
-        apply_patch_cmd
-            .arg("-c")
-            .arg("user.name=Dummy")
-            .arg("-c")
-            .arg("user.email=dummy@example.com")
-            .arg("am")
-            .arg(patch)
-            .arg("-q")
-            .current_dir(target_dir);
+        let mut apply_patch_cmd = git_command(target_dir, "am");
+        apply_patch_cmd.arg(patch).arg("-q");
         spawn_and_wait(apply_patch_cmd);
     }
 }

@@ -1,5 +1,5 @@
 error: future cannot be sent between threads safely
-  --> $DIR/issue-65436-raw-ptr-not-send.rs:16:17
+  --> $DIR/issue-65436-raw-ptr-not-send.rs:17:17
    |
 LL |       assert_send(async {
    |  _________________^
@@ -8,9 +8,9 @@ LL | |         bar(Foo(std::ptr::null())).await;
 LL | |     })
    | |_____^ future created by async block is not `Send`
    |
-   = help: within `[async block@$DIR/issue-65436-raw-ptr-not-send.rs:16:17: 19:6]`, the trait `Send` is not implemented for `*const u8`
+   = help: within `[async block@$DIR/issue-65436-raw-ptr-not-send.rs:17:17: 20:6]`, the trait `Send` is not implemented for `*const u8`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-65436-raw-ptr-not-send.rs:18:35
+  --> $DIR/issue-65436-raw-ptr-not-send.rs:19:35
    |
 LL |         bar(Foo(std::ptr::null())).await;
    |                 ----------------  ^^^^^^- `std::ptr::null()` is later dropped here
@@ -18,12 +18,12 @@ LL |         bar(Foo(std::ptr::null())).await;
    |                 |                 await occurs here, with `std::ptr::null()` maybe used later
    |                 has type `*const u8` which is not `Send`
 help: consider moving this into a `let` binding to create a shorter lived borrow
-  --> $DIR/issue-65436-raw-ptr-not-send.rs:18:13
+  --> $DIR/issue-65436-raw-ptr-not-send.rs:19:13
    |
 LL |         bar(Foo(std::ptr::null())).await;
    |             ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `assert_send`
-  --> $DIR/issue-65436-raw-ptr-not-send.rs:13:19
+  --> $DIR/issue-65436-raw-ptr-not-send.rs:14:19
    |
 LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`

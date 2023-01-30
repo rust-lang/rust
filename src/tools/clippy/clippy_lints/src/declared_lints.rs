@@ -422,6 +422,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::module_style::MOD_MODULE_FILES_INFO,
     crate::module_style::SELF_NAMED_MODULE_FILES_INFO,
     crate::multi_assignments::MULTI_ASSIGNMENTS_INFO,
+    crate::multiple_unsafe_ops_per_block::MULTIPLE_UNSAFE_OPS_PER_BLOCK_INFO,
     crate::mut_key::MUTABLE_KEY_TYPE_INFO,
     crate::mut_mut::MUT_MUT_INFO,
     crate::mut_reference::UNNECESSARY_MUT_PASSED_INFO,

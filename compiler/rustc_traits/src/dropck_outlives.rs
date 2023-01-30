@@ -164,7 +164,8 @@ fn dtorck_constraint_for_ty<'tcx>(
         | ty::Ref(..)
         | ty::FnDef(..)
         | ty::FnPtr(_)
-        | ty::GeneratorWitness(..) => {
+        | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..) => {
             // these types never have a destructor
         }
 

@@ -443,12 +443,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             if a_repr == b_repr =>
         {
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
-                relation.relate_with_variance(
-                    ty::Contravariant,
-                    ty::VarianceDiagInfo::default(),
-                    a_region,
-                    b_region,
-                )
+                relation.relate(a_region, b_region)
             })?;
             Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
@@ -473,6 +468,16 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(tcx.mk_generator_witness(types))
         }
 
+        (&ty::GeneratorWitnessMIR(a_id, a_substs), &ty::GeneratorWitnessMIR(b_id, b_substs))
+            if a_id == b_id =>
+        {
+            // All GeneratorWitness types with the same id represent
+            // the (anonymous) type of the same generator expression. So
+            // all of their regions should be equated.
+            let substs = relation.relate(a_substs, b_substs)?;
+            Ok(tcx.mk_generator_witness_mir(a_id, substs))
+        }
+
         (&ty::Closure(a_id, a_substs), &ty::Closure(b_id, b_substs)) if a_id == b_id => {
             // All Closure types with the same id represent
             // the (anonymous) type of the same closure expression. So
@@ -487,12 +492,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         }
 
         (&ty::Ref(a_r, a_ty, a_mutbl), &ty::Ref(b_r, b_ty, b_mutbl)) => {
-            let r = relation.relate_with_variance(
-                ty::Contravariant,
-                ty::VarianceDiagInfo::default(),
-                a_r,
-                b_r,
-            )?;
+            let r = relation.relate(a_r, b_r)?;
             let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
             let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
             let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;

@@ -125,6 +125,16 @@ impl FlagComputation {
                 self.bound_computation(ts, |flags, ts| flags.add_tys(ts));
             }
 
+            &ty::GeneratorWitnessMIR(_, ref substs) => {
+                let should_remove_further_specializable =
+                    !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
+                self.add_substs(substs);
+                if should_remove_further_specializable {
+                    self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
+                }
+                self.add_flags(TypeFlags::HAS_TY_GENERATOR);
+            }
+
             &ty::Closure(_, substs) => {
                 let substs = substs.as_closure();
                 let should_remove_further_specializable =

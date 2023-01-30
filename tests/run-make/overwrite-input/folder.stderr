@@ -1,0 +1,6 @@
+warning: ignoring --out-dir flag due to -o flag
+
+error: the generated executable for the input file "main.rs" conflicts with the existing directory "."
+
+error: aborting due to previous error; 1 warning emitted
+

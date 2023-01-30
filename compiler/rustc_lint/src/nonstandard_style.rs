@@ -10,8 +10,9 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_middle::ty;
-use rustc_span::symbol::sym;
-use rustc_span::{symbol::Ident, BytePos, Span};
+use rustc_span::def_id::LocalDefId;
+use rustc_span::symbol::{sym, Ident};
+use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi::Abi;
 
 #[derive(PartialEq)]
@@ -21,9 +22,8 @@ pub enum MethodLateContext {
     PlainImpl,
 }
 
-pub fn method_context(cx: &LateContext<'_>, id: hir::HirId) -> MethodLateContext {
-    let def_id = cx.tcx.hir().local_def_id(id);
-    let item = cx.tcx.associated_item(def_id);
+pub fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLateContext {
+    let item = cx.tcx.associated_item(id);
     match item.container {
         ty::TraitContainer => MethodLateContext::TraitAutoImpl,
         ty::ImplContainer => match cx.tcx.impl_trait_ref(item.container_id(cx.tcx)) {
@@ -379,13 +379,13 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         _: &hir::FnDecl<'_>,
         _: &hir::Body<'_>,
         _: Span,
-        id: hir::HirId,
+        id: LocalDefId,
     ) {
-        let attrs = cx.tcx.hir().attrs(id);
         match &fk {
             FnKind::Method(ident, sig, ..) => match method_context(cx, id) {
                 MethodLateContext::PlainImpl => {
-                    if sig.header.abi != Abi::Rust && cx.sess().contains_name(attrs, sym::no_mangle)
+                    if sig.header.abi != Abi::Rust
+                        && cx.tcx.has_attr(id.to_def_id(), sym::no_mangle)
                     {
                         return;
                     }
@@ -398,7 +398,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             },
             FnKind::ItemFn(ident, _, header) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
-                if header.abi != Abi::Rust && cx.sess().contains_name(attrs, sym::no_mangle) {
+                if header.abi != Abi::Rust && cx.tcx.has_attr(id.to_def_id(), sym::no_mangle) {
                     return;
                 }
                 self.check_snake_case(cx, "function", ident);

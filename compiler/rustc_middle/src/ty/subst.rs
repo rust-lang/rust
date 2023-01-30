@@ -758,6 +758,11 @@ impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
     pub fn subst_identity(self) -> T {
         self.0
     }
+
+    /// Returns the inner value, but only if it contains no bound vars.
+    pub fn no_bound_vars(self) -> Option<T> {
+        if !self.0.needs_subst() { Some(self.0) } else { None }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

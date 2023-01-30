@@ -4,8 +4,8 @@ error: cannot move out of value because it is borrowed
 LL |         Some(ref _y @ _z) => {}
    |              ------^^^--
    |              |        |
-   |              |        value moved into `_z` here
-   |              value borrowed, by `_y`, here
+   |              |        value is moved into `_z` here
+   |              value is borrowed by `_y` here
 
 error: borrow of moved value
   --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:19:14
@@ -28,8 +28,8 @@ error: cannot move out of value because it is borrowed
 LL |         Some(ref mut _y @ _z) => {}
    |              ----------^^^--
    |              |            |
-   |              |            value moved into `_z` here
-   |              value borrowed, by `_y`, here
+   |              |            value is moved into `_z` here
+   |              value is mutably borrowed by `_y` here
 
 error: borrow of moved value
   --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:33:14

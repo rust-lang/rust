@@ -139,8 +139,7 @@ pub enum ProcessResult<O, E> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 struct ObligationTreeId(usize);
 
-type ObligationTreeIdGenerator =
-    std::iter::Map<std::ops::RangeFrom<usize>, fn(usize) -> ObligationTreeId>;
+type ObligationTreeIdGenerator = impl Iterator<Item = ObligationTreeId>;
 
 pub struct ObligationForest<O: ForestObligation> {
     /// The list of obligations. In between calls to [Self::process_obligations],

@@ -11,9 +11,6 @@ codegen_llvm_unknown_ctarget_feature_prefix =
 codegen_llvm_error_creating_import_library =
     Error creating import library for {$lib_name}: {$error}
 
-codegen_llvm_instrument_coverage_requires_llvm_12 =
-    rustc option `-C instrument-coverage` requires LLVM 12 or higher.
-
 codegen_llvm_symbol_already_defined =
     symbol `{$symbol_name}` is already defined
 

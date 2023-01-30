@@ -2,7 +2,7 @@ error[E0503]: cannot use `u.c` because it was mutably borrowed
   --> $DIR/borrowck-union-borrow-nested.rs:24:21
    |
 LL |             let ra = &mut u.s.a;
-   |                      ---------- borrow of `u.s.a` occurs here
+   |                      ---------- `u.s.a` is borrowed here
 LL |             let b = u.c;
    |                     ^^^ use of borrowed `u.s.a`
 LL |             ra.use_mut();

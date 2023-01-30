@@ -337,7 +337,9 @@ pub(crate) struct IfExpressionMissingThenBlock {
     #[primary_span]
     pub if_span: Span,
     #[subdiagnostic]
-    pub sub: IfExpressionMissingThenBlockSub,
+    pub missing_then_block_sub: IfExpressionMissingThenBlockSub,
+    #[subdiagnostic]
+    pub let_else_sub: Option<IfExpressionLetSomeSub>,
 }
 
 #[derive(Subdiagnostic)]
@@ -346,6 +348,13 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
     UnfinishedCondition(#[primary_span] Span),
     #[help(add_then_block)]
     AddThenBlock(#[primary_span] Span),
+}
+
+#[derive(Subdiagnostic)]
+#[help(parse_extra_if_in_let_else)]
+pub(crate) struct IfExpressionLetSomeSub {
+    #[primary_span]
+    pub if_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -638,6 +647,48 @@ pub(crate) struct MatchArmBodyWithoutBraces {
     pub num_statements: usize,
     #[subdiagnostic]
     pub sub: MatchArmBodyWithoutBracesSugg,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inclusive_range_extra_equals)]
+#[note]
+pub(crate) struct InclusiveRangeExtraEquals {
+    #[primary_span]
+    #[suggestion(
+        suggestion_remove_eq,
+        style = "short",
+        code = "..=",
+        applicability = "maybe-incorrect"
+    )]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inclusive_range_match_arrow)]
+pub(crate) struct InclusiveRangeMatchArrow {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        suggestion_add_space,
+        style = "verbose",
+        code = " ",
+        applicability = "machine-applicable"
+    )]
+    pub after_pat: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inclusive_range_no_end, code = "E0586")]
+#[note]
+pub(crate) struct InclusiveRangeNoEnd {
+    #[primary_span]
+    #[suggestion(
+        suggestion_open_range,
+        code = "..",
+        applicability = "machine-applicable",
+        style = "short"
+    )]
+    pub span: Span,
 }
 
 #[derive(Subdiagnostic)]

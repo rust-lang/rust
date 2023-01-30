@@ -29,24 +29,11 @@
   
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/issue_76432.rs:+1:9: +1:10
-          StorageLive(_3);                 // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
           StorageLive(_4);                 // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
           StorageLive(_5);                 // scope 0 at $DIR/issue_76432.rs:+1:20: +1:29
-          StorageLive(_6);                 // scope 0 at $DIR/issue_76432.rs:+1:21: +1:22
-          _6 = _1;                         // scope 0 at $DIR/issue_76432.rs:+1:21: +1:22
-          StorageLive(_7);                 // scope 0 at $DIR/issue_76432.rs:+1:24: +1:25
-          _7 = _1;                         // scope 0 at $DIR/issue_76432.rs:+1:24: +1:25
-          StorageLive(_8);                 // scope 0 at $DIR/issue_76432.rs:+1:27: +1:28
-          _8 = _1;                         // scope 0 at $DIR/issue_76432.rs:+1:27: +1:28
-          _5 = [move _6, move _7, move _8]; // scope 0 at $DIR/issue_76432.rs:+1:20: +1:29
-          StorageDead(_8);                 // scope 0 at $DIR/issue_76432.rs:+1:28: +1:29
-          StorageDead(_7);                 // scope 0 at $DIR/issue_76432.rs:+1:28: +1:29
-          StorageDead(_6);                 // scope 0 at $DIR/issue_76432.rs:+1:28: +1:29
+          _5 = [_1, _1, _1];               // scope 0 at $DIR/issue_76432.rs:+1:20: +1:29
           _4 = &_5;                        // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
-          _3 = _4;                         // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
-          _2 = move _3 as &[T] (Pointer(Unsize)); // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
-          StorageDead(_3);                 // scope 0 at $DIR/issue_76432.rs:+1:28: +1:29
-          StorageDead(_4);                 // scope 0 at $DIR/issue_76432.rs:+1:29: +1:30
+          _2 = _4 as &[T] (Pointer(Unsize)); // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
           _9 = Len((*_2));                 // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
           _10 = const 3_usize;             // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
 -         _11 = Eq(move _9, const 3_usize); // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33

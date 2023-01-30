@@ -79,7 +79,7 @@ impl AssocItem {
                 // late-bound regions, and we don't want method signatures to show up
                 // `as for<'r> fn(&'r MyType)`. Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
-                tcx.fn_sig(self.def_id).skip_binder().to_string()
+                tcx.fn_sig(self.def_id).subst_identity().skip_binder().to_string()
             }
             ty::AssocKind::Type => format!("type {};", self.name),
             ty::AssocKind::Const => {
@@ -130,7 +130,7 @@ impl std::fmt::Display for AssocKind {
 /// done only on items with the same name.
 #[derive(Debug, Clone, PartialEq, HashStable)]
 pub struct AssocItems<'tcx> {
-    pub(super) items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
+    items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
 }
 
 impl<'tcx> AssocItems<'tcx> {

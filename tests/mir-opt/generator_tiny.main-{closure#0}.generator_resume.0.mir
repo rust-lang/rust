@@ -1,7 +1,14 @@
 // MIR for `main::{closure#0}` 0 generator_resume
 /* generator_layout = GeneratorLayout {
     field_tys: {
-        _0: HasDrop,
+        _0: GeneratorSavedTy {
+            ty: HasDrop,
+            source_info: SourceInfo {
+                span: $DIR/generator_tiny.rs:20:13: 20:15 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+        },
     },
     variant_fields: {
         Unresumed(0): [],

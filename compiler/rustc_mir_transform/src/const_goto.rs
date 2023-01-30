@@ -57,6 +57,15 @@ impl<'tcx> MirPass<'tcx> for ConstGoto {
 }
 
 impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &BasicBlockData<'tcx>) {
+        if data.is_cleanup {
+            // Because of the restrictions around control flow in cleanup blocks, we don't perform
+            // this optimization at all in such blocks.
+            return;
+        }
+        self.super_basic_block_data(block, data);
+    }
+
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         let _: Option<_> = try {
             let target = terminator.kind.as_goto()?;

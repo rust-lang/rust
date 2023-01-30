@@ -211,7 +211,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     None => continue,
                 };
                 if !self.span.filter_generated(ident.span) {
-                    let id = id_from_hir_id(hir_id, &self.save_ctxt);
+                    let id = id_from_hir_id(hir_id);
                     let span = self.span_from_span(ident.span);
 
                     self.dumper.dump_def(
@@ -240,17 +240,17 @@ impl<'tcx> DumpVisitor<'tcx> {
         &mut self,
         sig: &'tcx hir::FnSig<'tcx>,
         body: Option<hir::BodyId>,
-        def_id: LocalDefId,
+        owner_id: hir::OwnerId,
         ident: Ident,
         generics: &'tcx hir::Generics<'tcx>,
         span: Span,
     ) {
-        debug!("process_method: {:?}:{}", def_id, ident);
+        debug!("process_method: {:?}:{}", owner_id, ident);
 
         let map = self.tcx.hir();
-        let hir_id = map.local_def_id_to_hir_id(def_id);
-        self.nest_typeck_results(def_id, |v| {
-            if let Some(mut method_data) = v.save_ctxt.get_method_data(hir_id, ident, span) {
+        let hir_id: hir::HirId = owner_id.into();
+        self.nest_typeck_results(owner_id.def_id, |v| {
+            if let Some(mut method_data) = v.save_ctxt.get_method_data(owner_id, ident, span) {
                 if let Some(body) = body {
                     v.process_formals(map.body(body).params, &method_data.qualname);
                 }
@@ -258,9 +258,10 @@ impl<'tcx> DumpVisitor<'tcx> {
 
                 method_data.value =
                     fn_to_string(sig.decl, sig.header, Some(ident.name), generics, &[], None);
-                method_data.sig = sig::method_signature(hir_id, ident, generics, sig, &v.save_ctxt);
+                method_data.sig =
+                    sig::method_signature(owner_id, ident, generics, sig, &v.save_ctxt);
 
-                v.dumper.dump_def(&access_from!(v.save_ctxt, def_id), method_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, owner_id.def_id), method_data);
             }
 
             // walk arg and return types
@@ -282,14 +283,11 @@ impl<'tcx> DumpVisitor<'tcx> {
     fn process_struct_field_def(
         &mut self,
         field: &'tcx hir::FieldDef<'tcx>,
-        parent_id: hir::HirId,
+        parent_id: LocalDefId,
     ) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
-            self.dumper.dump_def(
-                &access_from!(self.save_ctxt, self.tcx.hir().local_def_id(field.hir_id)),
-                field_data,
-            );
+            self.dumper.dump_def(&access_from!(self.save_ctxt, field.def_id), field_data);
         }
     }
 
@@ -309,7 +307,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     // Append $id to name to make sure each one is unique.
                     let qualname = format!("{}::{}${}", prefix, name, id);
                     if !self.span.filter_generated(param_ss) {
-                        let id = id_from_hir_id(param.hir_id, &self.save_ctxt);
+                        let id = id_from_def_id(param.def_id.to_def_id());
                         let span = self.span_from_span(param_ss);
 
                         self.dumper.dump_def(
@@ -387,25 +385,24 @@ impl<'tcx> DumpVisitor<'tcx> {
 
     fn process_assoc_const(
         &mut self,
-        def_id: LocalDefId,
+        owner_id: hir::OwnerId,
         ident: Ident,
         typ: &'tcx hir::Ty<'tcx>,
         expr: Option<&'tcx hir::Expr<'tcx>>,
         parent_id: DefId,
         attrs: &'tcx [ast::Attribute],
     ) {
-        let qualname = format!("::{}", self.tcx.def_path_str(def_id.to_def_id()));
+        let qualname = format!("::{}", self.tcx.def_path_str(owner_id.to_def_id()));
 
         if !self.span.filter_generated(ident.span) {
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-            let sig = sig::assoc_const_signature(hir_id, ident.name, typ, expr, &self.save_ctxt);
+            let sig = sig::assoc_const_signature(owner_id, ident.name, typ, expr, &self.save_ctxt);
             let span = self.span_from_span(ident.span);
 
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, def_id),
+                &access_from!(self.save_ctxt, owner_id.def_id),
                 Def {
                     kind: DefKind::Const,
-                    id: id_from_hir_id(hir_id, &self.save_ctxt),
+                    id: id_from_def_id(owner_id.to_def_id()),
                     span,
                     name: ident.name.to_string(),
                     qualname,
@@ -421,7 +418,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
 
         // walk type and init value
-        self.nest_typeck_results(def_id, |v| {
+        self.nest_typeck_results(owner_id.def_id, |v| {
             v.visit_ty(typ);
             if let Some(expr) = expr {
                 v.visit_expr(expr);
@@ -456,8 +453,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                         if include_priv_fields {
                             return Some(f.ident.to_string());
                         }
-                        let def_id = self.save_ctxt.tcx.hir().local_def_id(f.hir_id);
-                        if self.save_ctxt.tcx.visibility(def_id).is_public() {
+                        if self.save_ctxt.tcx.visibility(f.def_id).is_public() {
                             Some(f.ident.to_string())
                         } else {
                             None
@@ -466,7 +462,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     .collect::<Vec<_>>()
                     .join(", ");
                 let value = format!("{} {{ {} }}", name, fields_str);
-                (value, fields.iter().map(|f| id_from_hir_id(f.hir_id, &self.save_ctxt)).collect())
+                (value, fields.iter().map(|f| id_from_def_id(f.def_id.to_def_id())).collect())
             }
             _ => (String::new(), vec![]),
         };
@@ -495,7 +491,7 @@ impl<'tcx> DumpVisitor<'tcx> {
 
         self.nest_typeck_results(item.owner_id.def_id, |v| {
             for field in def.fields() {
-                v.process_struct_field_def(field, item.hir_id());
+                v.process_struct_field_def(field, item.owner_id.def_id);
                 v.visit_ty(&field.ty);
             }
 
@@ -529,7 +525,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     let value = format!("{}::{} {{ {} }}", enum_data.name, name, fields_str);
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_hir_id(variant.hir_id, &self.save_ctxt);
+                        let id = id_from_def_id(variant.def_id.to_def_id());
                         let parent = Some(id_from_def_id(item.owner_id.to_def_id()));
                         let attrs = self.tcx.hir().attrs(variant.hir_id);
 
@@ -567,7 +563,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     }
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_hir_id(variant.hir_id, &self.save_ctxt);
+                        let id = id_from_def_id(variant.def_id.to_def_id());
                         let parent = Some(id_from_def_id(item.owner_id.to_def_id()));
                         let attrs = self.tcx.hir().attrs(variant.hir_id);
 
@@ -593,7 +589,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             }
 
             for field in variant.data.fields() {
-                self.process_struct_field_def(field, variant.hir_id);
+                self.process_struct_field_def(field, variant.def_id);
                 self.visit_ty(field.ty);
             }
         }
@@ -883,7 +879,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     // Rust uses the id of the pattern for var lookups, so we'll use it too.
                     if !self.span.filter_generated(ident.span) {
                         let qualname = format!("{}${}", ident, hir_id);
-                        let id = id_from_hir_id(hir_id, &self.save_ctxt);
+                        let id = id_from_hir_id(hir_id);
                         let span = self.span_from_span(ident.span);
 
                         self.dumper.dump_def(
@@ -983,7 +979,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 let body = body.map(|b| self.tcx.hir().body(b).value);
                 let attrs = self.tcx.hir().attrs(trait_item.hir_id());
                 self.process_assoc_const(
-                    trait_item.owner_id.def_id,
+                    trait_item.owner_id,
                     trait_item.ident,
                     &ty,
                     body,
@@ -997,7 +993,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 self.process_method(
                     sig,
                     body,
-                    trait_item.owner_id.def_id,
+                    trait_item.owner_id,
                     trait_item.ident,
                     &trait_item.generics,
                     trait_item.span,
@@ -1028,7 +1024,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                             decl_id: None,
                             docs: self.save_ctxt.docs_for_attrs(attrs),
                             sig: sig::assoc_type_signature(
-                                trait_item.hir_id(),
+                                trait_item.owner_id,
                                 trait_item.ident,
                                 Some(bounds),
                                 default_ty.as_deref(),
@@ -1053,7 +1049,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 let body = self.tcx.hir().body(body);
                 let attrs = self.tcx.hir().attrs(impl_item.hir_id());
                 self.process_assoc_const(
-                    impl_item.owner_id.def_id,
+                    impl_item.owner_id,
                     impl_item.ident,
                     &ty,
                     Some(&body.value),
@@ -1065,7 +1061,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 self.process_method(
                     sig,
                     Some(body),
-                    impl_item.owner_id.def_id,
+                    impl_item.owner_id,
                     impl_item.ident,
                     &impl_item.generics,
                     impl_item.span,
@@ -1081,18 +1077,16 @@ impl<'tcx> DumpVisitor<'tcx> {
     }
 
     pub(crate) fn process_crate(&mut self) {
-        let id = hir::CRATE_HIR_ID;
-        let qualname =
-            format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()));
+        let qualname = format!("::{}", self.tcx.def_path_str(CRATE_DEF_ID.to_def_id()));
 
         let sm = self.tcx.sess.source_map();
         let krate_mod = self.tcx.hir().root_module();
         let filename = sm.span_to_filename(krate_mod.spans.inner_span);
-        let data_id = id_from_hir_id(id, &self.save_ctxt);
+        let data_id = id_from_def_id(CRATE_DEF_ID.to_def_id());
         let children =
             krate_mod.item_ids.iter().map(|i| id_from_def_id(i.owner_id.to_def_id())).collect();
         let span = self.span_from_span(krate_mod.spans.inner_span);
-        let attrs = self.tcx.hir().attrs(id);
+        let attrs = self.tcx.hir().attrs(hir::CRATE_HIR_ID);
 
         self.dumper.dump_def(
             &Access { public: true, reachable: true },
@@ -1319,7 +1313,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     // output the inferred type here? :shrug:
                     hir::ArrayLen::Infer(..) => {}
                     hir::ArrayLen::Body(anon_const) => self
-                        .nest_typeck_results(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
+                        .nest_typeck_results(anon_const.def_id, |v| {
                             v.visit_expr(&map.body(anon_const.body).value)
                         }),
                 }
@@ -1361,7 +1355,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Closure(&hir::Closure { ref fn_decl, body, .. }) => {
+            hir::ExprKind::Closure(&hir::Closure { ref fn_decl, body, def_id, .. }) => {
                 let id = format!("${}", ex.hir_id);
 
                 // walk arg and return types
@@ -1375,7 +1369,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
 
                 // walk the body
                 let map = self.tcx.hir();
-                self.nest_typeck_results(self.tcx.hir().local_def_id(ex.hir_id), |v| {
+                self.nest_typeck_results(def_id, |v| {
                     let body = map.body(body);
                     v.process_formals(body.params, &id);
                     v.visit_expr(&body.value)
@@ -1389,7 +1383,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     // output the inferred type here? :shrug:
                     hir::ArrayLen::Infer(..) => {}
                     hir::ArrayLen::Body(anon_const) => self
-                        .nest_typeck_results(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
+                        .nest_typeck_results(anon_const.def_id, |v| {
                             v.visit_expr(&map.body(anon_const.body).value)
                         }),
                 }

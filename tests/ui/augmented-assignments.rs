@@ -9,7 +9,7 @@ impl AddAssign for Int {
 }
 
 fn main() {
-    let mut x = Int(1);
+    let mut x = Int(1); //~ NOTE binding `x` declared here
     x
     //~^ NOTE borrow of `x` occurs here
     +=

@@ -533,7 +533,7 @@ ul.block, .block li {
 .rustdoc .example-wrap > pre {
 	margin: 0;
 	flex-grow: 1;
-	overflow-x: auto;
+	overflow: auto hidden;
 }
 
 .rustdoc .example-wrap > pre.example-line-numbers,
@@ -977,8 +977,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 		0 -1px 0 black;
 }
 
-.module-item.unstable,
-.import-item.unstable {
+.item-left.unstable {
 	opacity: 0.65;
 }
 

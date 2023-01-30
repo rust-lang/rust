@@ -1,12 +1,12 @@
 error: future cannot be sent between threads safely
-  --> $DIR/issue-64130-4-async-move.rs:19:17
+  --> $DIR/issue-64130-4-async-move.rs:21:17
    |
 LL | pub fn foo() -> impl Future + Send {
    |                 ^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `(dyn Any + Send + 'static)`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-64130-4-async-move.rs:25:31
+  --> $DIR/issue-64130-4-async-move.rs:27:31
    |
 LL |         match client.status() {
    |               ------ has type `&Client` which is not `Send`
@@ -17,7 +17,7 @@ LL |                 let _x = get().await;
 LL |     }
    |     - `client` is later dropped here
 help: consider moving this into a `let` binding to create a shorter lived borrow
-  --> $DIR/issue-64130-4-async-move.rs:23:15
+  --> $DIR/issue-64130-4-async-move.rs:25:15
    |
 LL |         match client.status() {
    |               ^^^^^^^^^^^^^^^

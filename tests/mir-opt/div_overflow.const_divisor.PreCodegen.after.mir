@@ -5,7 +5,7 @@ fn const_divisor(_1: i32) -> i32 {
     let mut _0: i32;                     // return place in scope 0 at $DIR/div_overflow.rs:+0:33: +0:36
 
     bb0: {
-        _0 = Div(move _1, const 256_i32); // scope 0 at $DIR/div_overflow.rs:+1:5: +1:12
+        _0 = Div(_1, const 256_i32);     // scope 0 at $DIR/div_overflow.rs:+1:5: +1:12
         return;                          // scope 0 at $DIR/div_overflow.rs:+2:2: +2:2
     }
 }

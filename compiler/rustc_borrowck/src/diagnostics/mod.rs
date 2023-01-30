@@ -1064,7 +1064,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                     }
                 }
-                CallKind::Normal { self_arg, desugaring, method_did } => {
+                CallKind::Normal { self_arg, desugaring, method_did, method_substs } => {
                     let self_arg = self_arg.unwrap();
                     let tcx = self.infcx.tcx;
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
@@ -1128,15 +1128,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 "{place_name} {partially_str}moved due to this method call{loop_message}",
                             ),
                         );
+
                         let infcx = tcx.infer_ctxt().build();
+                        // Erase and shadow everything that could be passed to the new infcx.
                         let ty = tcx.erase_regions(moved_place.ty(self.body, tcx).ty);
+                        let method_substs = tcx.erase_regions(method_substs);
+
                         if let ty::Adt(def, substs) = ty.kind()
                             && Some(def.did()) == tcx.lang_items().pin_type()
                             && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
                             && let self_ty = infcx.replace_bound_vars_with_fresh_vars(
                                 fn_call_span,
                                 LateBoundRegionConversionTime::FnCall,
-                                tcx.fn_sig(method_did).input(0),
+                                tcx.fn_sig(method_did).subst(tcx, method_substs).input(0),
                             )
                             && infcx.can_eq(self.param_env, ty, self_ty).is_ok()
                         {

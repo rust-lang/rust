@@ -122,7 +122,8 @@ fn tag_base_type<'ll, 'tcx>(
                 Primitive::Int(t, _) => t,
                 Primitive::F32 => Integer::I32,
                 Primitive::F64 => Integer::I64,
-                Primitive::Pointer => {
+                // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+                Primitive::Pointer(_) => {
                     // If the niche is the NULL value of a reference, then `discr_enum_ty` will be
                     // a RawPtr. CodeView doesn't know what to do with enums whose base type is a
                     // pointer so we fix this up to just be `usize`.

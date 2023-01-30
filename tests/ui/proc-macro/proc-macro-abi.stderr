@@ -1,0 +1,20 @@
+error: proc macro functions may not be `extern "C"`
+  --> $DIR/proc-macro-abi.rs:11:1
+   |
+LL | pub extern "C" fn abi(a: TokenStream) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: proc macro functions may not be `extern "system"`
+  --> $DIR/proc-macro-abi.rs:17:1
+   |
+LL | pub extern "system" fn abi2(a: TokenStream) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: proc macro functions may not be `extern "C"`
+  --> $DIR/proc-macro-abi.rs:23:1
+   |
+LL | pub extern fn abi3(a: TokenStream) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -25,7 +25,7 @@
 //
 // FIXME where clauses need implementing, defs/refs in generics are mostly missing.
 
-use crate::{id_from_def_id, id_from_hir_id, SaveContext};
+use crate::{id_from_def_id, SaveContext};
 
 use rls_data::{SigElement, Signature};
 
@@ -34,6 +34,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir_pretty::id_to_string;
 use rustc_hir_pretty::{bounds_to_string, path_segment_to_string, path_to_string, ty_to_string};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, Symbol};
 
 pub fn item_signature(item: &hir::Item<'_>, scx: &SaveContext<'_>) -> Option<Signature> {
@@ -71,7 +72,7 @@ pub fn variant_signature(variant: &hir::Variant<'_>, scx: &SaveContext<'_>) -> O
 }
 
 pub fn method_signature(
-    id: hir::HirId,
+    id: hir::OwnerId,
     ident: Ident,
     generics: &hir::Generics<'_>,
     m: &hir::FnSig<'_>,
@@ -84,7 +85,7 @@ pub fn method_signature(
 }
 
 pub fn assoc_const_signature(
-    id: hir::HirId,
+    id: hir::OwnerId,
     ident: Symbol,
     ty: &hir::Ty<'_>,
     default: Option<&hir::Expr<'_>>,
@@ -97,7 +98,7 @@ pub fn assoc_const_signature(
 }
 
 pub fn assoc_type_signature(
-    id: hir::HirId,
+    id: hir::OwnerId,
     ident: Ident,
     bounds: Option<hir::GenericBounds<'_>>,
     default: Option<&hir::Ty<'_>>,
@@ -112,7 +113,8 @@ pub fn assoc_type_signature(
 type Result = std::result::Result<Signature, &'static str>;
 
 trait Sig {
-    fn make(&self, offset: usize, id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result;
+    type Parent;
+    fn make(&self, offset: usize, id: Option<Self::Parent>, scx: &SaveContext<'_>) -> Result;
 }
 
 fn extend_sig(
@@ -148,6 +150,7 @@ fn text_sig(text: String) -> Signature {
 }
 
 impl<'hir> Sig for hir::Ty<'hir> {
+    type Parent = hir::HirId;
     fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let id = Some(self.hir_id);
         match self.kind {
@@ -326,6 +329,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
 }
 
 impl<'hir> Sig for hir::Item<'hir> {
+    type Parent = hir::HirId;
     fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let id = Some(self.hir_id());
 
@@ -391,7 +395,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 text.push_str("fn ");
 
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.owner_id, self.ident, scx)?;
 
                 sig.text.push('(');
                 for i in decl.inputs {
@@ -441,7 +445,7 @@ impl<'hir> Sig for hir::Item<'hir> {
             hir::ItemKind::TyAlias(ref ty, ref generics) => {
                 let text = "type ".to_owned();
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.owner_id, self.ident, scx)?;
 
                 sig.text.push_str(" = ");
                 let ty = ty.make(offset + sig.text.len(), id, scx)?;
@@ -453,21 +457,21 @@ impl<'hir> Sig for hir::Item<'hir> {
             hir::ItemKind::Enum(_, ref generics) => {
                 let text = "enum ".to_owned();
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.owner_id, self.ident, scx)?;
                 sig.text.push_str(" {}");
                 Ok(sig)
             }
             hir::ItemKind::Struct(_, ref generics) => {
                 let text = "struct ".to_owned();
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.owner_id, self.ident, scx)?;
                 sig.text.push_str(" {}");
                 Ok(sig)
             }
             hir::ItemKind::Union(_, ref generics) => {
                 let text = "union ".to_owned();
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.owner_id, self.ident, scx)?;
                 sig.text.push_str(" {}");
                 Ok(sig)
             }
@@ -483,7 +487,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 }
                 text.push_str("trait ");
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.owner_id, self.ident, scx)?;
 
                 if !bounds.is_empty() {
                     sig.text.push_str(": ");
@@ -498,7 +502,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 let mut text = String::new();
                 text.push_str("trait ");
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.owner_id, self.ident, scx)?;
 
                 if !bounds.is_empty() {
                     sig.text.push_str(" = ");
@@ -532,7 +536,8 @@ impl<'hir> Sig for hir::Item<'hir> {
                     text.push_str(" const");
                 }
 
-                let generics_sig = generics.make(offset + text.len(), id, scx)?;
+                let generics_sig =
+                    generics.make(offset + text.len(), Some(self.owner_id.def_id), scx)?;
                 text.push_str(&generics_sig.text);
 
                 text.push(' ');
@@ -575,6 +580,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 }
 
 impl<'hir> Sig for hir::Path<'hir> {
+    type Parent = hir::HirId;
     fn make(&self, offset: usize, id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
 
@@ -609,7 +615,8 @@ impl<'hir> Sig for hir::Path<'hir> {
 
 // This does not cover the where clause, which must be processed separately.
 impl<'hir> Sig for hir::Generics<'hir> {
-    fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
+    type Parent = LocalDefId;
+    fn make(&self, offset: usize, _parent_id: Option<LocalDefId>, scx: &SaveContext<'_>) -> Result {
         if self.params.is_empty() {
             return Ok(text_sig(String::new()));
         }
@@ -624,7 +631,7 @@ impl<'hir> Sig for hir::Generics<'hir> {
             }
             param_text.push_str(param.name.ident().as_str());
             defs.push(SigElement {
-                id: id_from_hir_id(param.hir_id, scx),
+                id: id_from_def_id(param.def_id.to_def_id()),
                 start: offset + text.len(),
                 end: offset + text.len() + param_text.as_str().len(),
             });
@@ -646,12 +653,13 @@ impl<'hir> Sig for hir::Generics<'hir> {
 }
 
 impl<'hir> Sig for hir::FieldDef<'hir> {
-    fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
+    type Parent = LocalDefId;
+    fn make(&self, offset: usize, _parent_id: Option<LocalDefId>, scx: &SaveContext<'_>) -> Result {
         let mut text = String::new();
 
         text.push_str(&self.ident.to_string());
         let defs = Some(SigElement {
-            id: id_from_hir_id(self.hir_id, scx),
+            id: id_from_def_id(self.def_id.to_def_id()),
             start: offset,
             end: offset + text.len(),
         });
@@ -666,13 +674,14 @@ impl<'hir> Sig for hir::FieldDef<'hir> {
 }
 
 impl<'hir> Sig for hir::Variant<'hir> {
-    fn make(&self, offset: usize, parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
+    type Parent = LocalDefId;
+    fn make(&self, offset: usize, parent_id: Option<LocalDefId>, scx: &SaveContext<'_>) -> Result {
         let mut text = self.ident.to_string();
         match self.data {
             hir::VariantData::Struct(fields, r) => {
                 let id = parent_id.ok_or("Missing id for Variant's parent")?;
                 let name_def = SigElement {
-                    id: id_from_hir_id(id, scx),
+                    id: id_from_def_id(id.to_def_id()),
                     start: offset,
                     end: offset + text.len(),
                 };
@@ -693,9 +702,9 @@ impl<'hir> Sig for hir::Variant<'hir> {
                 text.push('}');
                 Ok(Signature { text, defs, refs })
             }
-            hir::VariantData::Tuple(fields, id, _) => {
+            hir::VariantData::Tuple(fields, _, def_id) => {
                 let name_def = SigElement {
-                    id: id_from_hir_id(id, scx),
+                    id: id_from_def_id(def_id.to_def_id()),
                     start: offset,
                     end: offset + text.len(),
                 };
@@ -703,7 +712,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
                 let mut defs = vec![name_def];
                 let mut refs = vec![];
                 for f in fields {
-                    let field_sig = f.make(offset + text.len(), Some(id), scx)?;
+                    let field_sig = f.make(offset + text.len(), Some(def_id), scx)?;
                     text.push_str(&field_sig.text);
                     text.push_str(", ");
                     defs.extend(field_sig.defs.into_iter());
@@ -712,9 +721,9 @@ impl<'hir> Sig for hir::Variant<'hir> {
                 text.push(')');
                 Ok(Signature { text, defs, refs })
             }
-            hir::VariantData::Unit(id, _) => {
+            hir::VariantData::Unit(_, def_id) => {
                 let name_def = SigElement {
-                    id: id_from_hir_id(id, scx),
+                    id: id_from_def_id(def_id.to_def_id()),
                     start: offset,
                     end: offset + text.len(),
                 };
@@ -725,6 +734,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
 }
 
 impl<'hir> Sig for hir::ForeignItem<'hir> {
+    type Parent = hir::HirId;
     fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let id = Some(self.hir_id());
         match self.kind {
@@ -733,7 +743,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
                 text.push_str("fn ");
 
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.owner_id, self.ident, scx)?;
 
                 sig.text.push('(');
                 for i in decl.inputs {
@@ -797,25 +807,25 @@ fn name_and_generics(
     mut text: String,
     offset: usize,
     generics: &hir::Generics<'_>,
-    id: hir::HirId,
+    id: hir::OwnerId,
     name: Ident,
     scx: &SaveContext<'_>,
 ) -> Result {
     let name = name.to_string();
     let def = SigElement {
-        id: id_from_hir_id(id, scx),
+        id: id_from_def_id(id.to_def_id()),
         start: offset + text.len(),
         end: offset + text.len() + name.len(),
     };
     text.push_str(&name);
-    let generics: Signature = generics.make(offset + text.len(), Some(id), scx)?;
+    let generics: Signature = generics.make(offset + text.len(), Some(id.def_id), scx)?;
     // FIXME where clause
     let text = format!("{}{}", text, generics.text);
     Ok(extend_sig(generics, text, vec![def], vec![]))
 }
 
 fn make_assoc_type_signature(
-    id: hir::HirId,
+    id: hir::OwnerId,
     ident: Ident,
     bounds: Option<hir::GenericBounds<'_>>,
     default: Option<&hir::Ty<'_>>,
@@ -824,7 +834,7 @@ fn make_assoc_type_signature(
     let mut text = "type ".to_owned();
     let name = ident.to_string();
     let mut defs = vec![SigElement {
-        id: id_from_hir_id(id, scx),
+        id: id_from_def_id(id.to_def_id()),
         start: text.len(),
         end: text.len() + name.len(),
     }];
@@ -837,7 +847,7 @@ fn make_assoc_type_signature(
     }
     if let Some(default) = default {
         text.push_str(" = ");
-        let ty_sig = default.make(text.len(), Some(id), scx)?;
+        let ty_sig = default.make(text.len(), Some(id.into()), scx)?;
         text.push_str(&ty_sig.text);
         defs.extend(ty_sig.defs.into_iter());
         refs.extend(ty_sig.refs.into_iter());
@@ -847,7 +857,7 @@ fn make_assoc_type_signature(
 }
 
 fn make_assoc_const_signature(
-    id: hir::HirId,
+    id: hir::OwnerId,
     ident: Symbol,
     ty: &hir::Ty<'_>,
     default: Option<&hir::Expr<'_>>,
@@ -856,7 +866,7 @@ fn make_assoc_const_signature(
     let mut text = "const ".to_owned();
     let name = ident.to_string();
     let mut defs = vec![SigElement {
-        id: id_from_hir_id(id, scx),
+        id: id_from_def_id(id.to_def_id()),
         start: text.len(),
         end: text.len() + name.len(),
     }];
@@ -864,7 +874,7 @@ fn make_assoc_const_signature(
     text.push_str(&name);
     text.push_str(": ");
 
-    let ty_sig = ty.make(text.len(), Some(id), scx)?;
+    let ty_sig = ty.make(text.len(), Some(id.into()), scx)?;
     text.push_str(&ty_sig.text);
     defs.extend(ty_sig.defs.into_iter());
     refs.extend(ty_sig.refs.into_iter());
@@ -878,7 +888,7 @@ fn make_assoc_const_signature(
 }
 
 fn make_method_signature(
-    id: hir::HirId,
+    id: hir::OwnerId,
     ident: Ident,
     generics: &hir::Generics<'_>,
     m: &hir::FnSig<'_>,

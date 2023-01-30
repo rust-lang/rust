@@ -5,7 +5,7 @@ macro_rules! int_impl {
      $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr,
      $bound_condition:expr) => {
         /// The smallest value that can be represented by this integer type
-        #[doc = concat!("(&minus;2<sup>", $BITS_MINUS_ONE, "</sup>", $bound_condition, ")")]
+        #[doc = concat!("(&minus;2<sup>", $BITS_MINUS_ONE, "</sup>", $bound_condition, ").")]
         ///
         /// # Examples
         ///
@@ -18,7 +18,7 @@ macro_rules! int_impl {
         pub const MIN: Self = !0 ^ ((!0 as $UnsignedT) >> 1) as Self;
 
         /// The largest value that can be represented by this integer type
-        #[doc = concat!("(2<sup>", $BITS_MINUS_ONE, "</sup> &minus; 1", $bound_condition, ")")]
+        #[doc = concat!("(2<sup>", $BITS_MINUS_ONE, "</sup> &minus; 1", $bound_condition, ").")]
         ///
         /// # Examples
         ///
@@ -2574,12 +2574,13 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[rustc_allow_const_fn_unstable(const_cmp)]
         pub const fn signum(self) -> Self {
-            match self {
-                n if n > 0 =>  1,
-                0          =>  0,
-                _          => -1,
-            }
+            // Picking the right way to phrase this is complicated
+            // (<https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>)
+            // so delegate it to `Ord` which is already producing -1/0/+1
+            // exactly like we need and can be the place to deal with the complexity.
+            self.cmp(&0) as _
         }
 
         /// Returns `true` if `self` is positive and `false` if the number is zero or

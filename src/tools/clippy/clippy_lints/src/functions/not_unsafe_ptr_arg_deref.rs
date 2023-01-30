@@ -17,7 +17,7 @@ pub(super) fn check_fn<'tcx>(
     kind: intravisit::FnKind<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,
     body: &'tcx hir::Body<'tcx>,
-    hir_id: hir::HirId,
+    def_id: LocalDefId,
 ) {
     let unsafety = match kind {
         intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }) => unsafety,
@@ -25,7 +25,7 @@ pub(super) fn check_fn<'tcx>(
         intravisit::FnKind::Closure => return,
     };
 
-    check_raw_ptr(cx, unsafety, decl, body, cx.tcx.hir().local_def_id(hir_id));
+    check_raw_ptr(cx, unsafety, decl, body, def_id)
 }
 
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
@@ -58,7 +58,7 @@ fn check_raw_ptr<'tcx>(
                     },
                     hir::ExprKind::MethodCall(_, recv, args, _) => {
                         let def_id = typeck.type_dependent_def_id(e.hir_id).unwrap();
-                        if cx.tcx.fn_sig(def_id).skip_binder().unsafety == hir::Unsafety::Unsafe {
+                        if cx.tcx.fn_sig(def_id).skip_binder().skip_binder().unsafety == hir::Unsafety::Unsafe {
                             check_arg(cx, &raw_ptrs, recv);
                             for arg in args {
                                 check_arg(cx, &raw_ptrs, arg);

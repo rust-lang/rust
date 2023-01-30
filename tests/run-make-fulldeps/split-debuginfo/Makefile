@@ -254,12 +254,12 @@ unpacked-remapped-single:
 	$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -C debuginfo=2 \
 		-Z split-dwarf-kind=single --remap-path-prefix $(TMPDIR)=/a foo.rs -g
 	objdump -Wi $(TMPDIR)/foo | grep DW_AT_GNU_dwo_name | (! grep $(TMPDIR)) || exit 1
-	ls $(TMPDIR)/*.o
+	rm $(TMPDIR)/*.o
 	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 	rm $(TMPDIR)/$(call BIN,foo)
 
-unpacked-crosscrate: packed-crosscrate-split packed-crosscrate-single
+unpacked-crosscrate: unpacked-crosscrate-split unpacked-crosscrate-single
 
 # - Debuginfo in `.dwo` files
 # - (bar) `.rlib` file created, contains `.dwo`

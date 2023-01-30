@@ -508,9 +508,10 @@ fn method_autoderef_steps<'tcx>(
     let (ref infcx, goal, inference_vars) = tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &goal);
     let ParamEnvAnd { param_env, value: self_ty } = goal;
 
-    let mut autoderef = Autoderef::new(infcx, param_env, hir::CRATE_HIR_ID, DUMMY_SP, self_ty)
-        .include_raw_pointers()
-        .silence_errors();
+    let mut autoderef =
+        Autoderef::new(infcx, param_env, hir::def_id::CRATE_DEF_ID, DUMMY_SP, self_ty)
+            .include_raw_pointers()
+            .silence_errors();
     let mut reached_raw_pointer = false;
     let mut steps: Vec<_> = autoderef
         .by_ref()
@@ -610,10 +611,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn push_candidate(&mut self, candidate: Candidate<'tcx>, is_inherent: bool) {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let def_scope = self
-                .tcx
-                .adjust_ident_and_get_scope(name, item.container_id(self.tcx), self.body_id)
-                .1;
+            let hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+            let def_scope =
+                self.tcx.adjust_ident_and_get_scope(name, item.container_id(self.tcx), hir_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -921,26 +921,22 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         expected: Ty<'tcx>,
     ) -> bool {
         match method.kind {
-            ty::AssocKind::Fn => {
-                let fty = self.tcx.bound_fn_sig(method.def_id);
-                self.probe(|_| {
-                    let substs = self.fresh_substs_for_item(self.span, method.def_id);
-                    let fty = fty.subst(self.tcx, substs);
-                    let fty =
-                        self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
+            ty::AssocKind::Fn => self.probe(|_| {
+                let substs = self.fresh_substs_for_item(self.span, method.def_id);
+                let fty = self.tcx.fn_sig(method.def_id).subst(self.tcx, substs);
+                let fty = self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
 
-                    if let Some(self_ty) = self_ty {
-                        if self
-                            .at(&ObligationCause::dummy(), self.param_env)
-                            .sup(fty.inputs()[0], self_ty)
-                            .is_err()
-                        {
-                            return false;
-                        }
+                if let Some(self_ty) = self_ty {
+                    if self
+                        .at(&ObligationCause::dummy(), self.param_env)
+                        .sup(fty.inputs()[0], self_ty)
+                        .is_err()
+                    {
+                        return false;
                     }
-                    self.can_sub(self.param_env, fty.output(), expected).is_ok()
-                })
-            }
+                }
+                self.can_sub(self.param_env, fty.output(), expected).is_ok()
+            }),
             _ => false,
         }
     }
@@ -1887,7 +1883,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn xform_method_sig(&self, method: DefId, substs: SubstsRef<'tcx>) -> ty::FnSig<'tcx> {
-        let fn_sig = self.tcx.bound_fn_sig(method);
+        let fn_sig = self.tcx.fn_sig(method);
         debug!(?fn_sig);
 
         assert!(!substs.has_escaping_bound_vars());

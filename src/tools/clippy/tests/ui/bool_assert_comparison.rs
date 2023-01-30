@@ -1,3 +1,6 @@
+// run-rustfix
+
+#![allow(unused, clippy::assertions_on_constants)]
 #![warn(clippy::bool_assert_comparison)]
 
 use std::ops::Not;
@@ -15,7 +18,7 @@ macro_rules! b {
 
 // Implements the Not trait but with an output type
 // that's not bool. Should not suggest a rewrite
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum ImplNotTraitWithoutBool {
     VariantX(bool),
     VariantY(u32),
@@ -44,7 +47,7 @@ impl Not for ImplNotTraitWithoutBool {
 
 // This type implements the Not trait with an Output of
 // type bool. Using assert!(..) must be suggested
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct ImplNotTraitWithBool;
 
 impl PartialEq<bool> for ImplNotTraitWithBool {
@@ -54,6 +57,23 @@ impl PartialEq<bool> for ImplNotTraitWithBool {
 }
 
 impl Not for ImplNotTraitWithBool {
+    type Output = bool;
+
+    fn not(self) -> Self::Output {
+        true
+    }
+}
+
+#[derive(Debug)]
+struct NonCopy;
+
+impl PartialEq<bool> for NonCopy {
+    fn eq(&self, other: &bool) -> bool {
+        false
+    }
+}
+
+impl Not for NonCopy {
     type Output = bool;
 
     fn not(self) -> Self::Output {
@@ -119,4 +139,23 @@ fn main() {
     debug_assert_eq!("a".is_empty(), false, "tadam {}", true);
     debug_assert_eq!(false, "a".is_empty(), "tadam {}", true);
     debug_assert_eq!(a, true, "tadam {}", false);
+
+    assert_eq!(a!(), true);
+    assert_eq!(true, b!());
+
+    use debug_assert_eq as renamed;
+    renamed!(a, true);
+    renamed!(b, true);
+
+    let non_copy = NonCopy;
+    assert_eq!(non_copy, true);
+    // changing the above to `assert!(non_copy)` would cause a `borrow of moved value`
+    println!("{non_copy:?}");
+
+    macro_rules! in_macro {
+        ($v:expr) => {{
+            assert_eq!($v, true);
+        }};
+    }
+    in_macro!(a);
 }

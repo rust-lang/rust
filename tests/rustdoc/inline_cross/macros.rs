@@ -6,9 +6,9 @@
 
 extern crate macros;
 
-// @has foo/index.html '//*[@class="item-left unstable deprecated module-item"]/span[@class="stab deprecated"]' \
+// @has foo/index.html '//*[@class="item-left unstable deprecated"]/span[@class="stab deprecated"]' \
 //         Deprecated
-// @has - '//*[@class="item-left unstable deprecated module-item"]/span[@class="stab unstable"]' \
+// @has - '//*[@class="item-left unstable deprecated"]/span[@class="stab unstable"]' \
 //         Experimental
 
 // @has foo/macro.my_macro.html

@@ -404,6 +404,18 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     }
 }
 
+pub fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
+    // First, we're going to get a count of *actual* uses for every `Local`.
+    let mut used_locals = UsedLocals::new(body);
+
+    // Next, we're going to remove any `Local` with zero actual uses. When we remove those
+    // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
+    // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
+    // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
+    // fixedpoint where there are no more unused locals.
+    remove_unused_definitions_helper(&mut used_locals, body);
+}
+
 pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     // First, we're going to get a count of *actual* uses for every `Local`.
     let mut used_locals = UsedLocals::new(body);
@@ -413,7 +425,7 @@ pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
     // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
     // fixedpoint where there are no more unused locals.
-    remove_unused_definitions(&mut used_locals, body);
+    remove_unused_definitions_helper(&mut used_locals, body);
 
     // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
     let map = make_local_map(&mut body.local_decls, &used_locals);
@@ -517,7 +529,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
                 self.super_statement(statement, location);
             }
 
-            StatementKind::Nop => {}
+            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
 
             StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
 
@@ -548,7 +560,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
 }
 
 /// Removes unused definitions. Updates the used locals to reflect the changes made.
-fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) {
+fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Body<'_>) {
     // The use counts are updated as we remove the statements. A local might become unused
     // during the retain operation, leading to a temporary inconsistency (storage statements or
     // definitions referencing the local might remain). For correctness it is crucial that this

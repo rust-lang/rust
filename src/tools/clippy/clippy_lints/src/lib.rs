@@ -1,7 +1,6 @@
 #![feature(array_windows)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
@@ -198,6 +197,7 @@ mod missing_trait_methods;
 mod mixed_read_write_in_expression;
 mod module_style;
 mod multi_assignments;
+mod multiple_unsafe_ops_per_block;
 mod mut_key;
 mod mut_mut;
 mod mut_reference;
@@ -908,6 +908,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(fn_null_check::FnNullCheck));
     store.register_late_pass(|_| Box::new(permissions_set_readonly_false::PermissionsSetReadonlyFalse));
     store.register_late_pass(|_| Box::new(size_of_ref::SizeOfRef));
+    store.register_late_pass(|_| Box::new(multiple_unsafe_ops_per_block::MultipleUnsafeOpsPerBlock));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

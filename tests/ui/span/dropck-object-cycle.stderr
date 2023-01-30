@@ -1,6 +1,8 @@
 error[E0597]: `*m` does not live long enough
   --> $DIR/dropck-object-cycle.rs:27:31
    |
+LL |     let m : Box<dyn Trait+'static> = make_val();
+   |         - binding `m` declared here
 LL |     assert_eq!(object_invoke1(&*m), (4,5));
    |                               ^^^ borrowed value does not live long enough
 ...

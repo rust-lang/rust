@@ -1,7 +1,14 @@
 // MIR for `main::{closure#0}` 0 generator_drop
 /* generator_layout = GeneratorLayout {
     field_tys: {
-        _0: std::string::String,
+        _0: GeneratorSavedTy {
+            ty: std::string::String,
+            source_info: SourceInfo {
+                span: $DIR/generator_drop_cleanup.rs:11:13: 11:15 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+        },
     },
     variant_fields: {
         Unresumed(0): [],

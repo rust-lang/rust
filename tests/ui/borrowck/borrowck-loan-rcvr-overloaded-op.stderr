@@ -2,7 +2,7 @@ error[E0503]: cannot use `p` because it was mutably borrowed
   --> $DIR/borrowck-loan-rcvr-overloaded-op.rs:38:5
    |
 LL |     let q = &mut p;
-   |             ------ borrow of `p` occurs here
+   |             ------ `p` is borrowed here
 LL |
 LL |     p + 3;
    |     ^ use of borrowed `p`

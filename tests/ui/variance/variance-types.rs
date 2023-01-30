@@ -7,7 +7,7 @@ use std::cell::Cell;
 // not considered bivariant.
 
 #[rustc_variance]
-struct InvariantMut<'a,A:'a,B:'a> { //~ ERROR [-, o, o]
+struct InvariantMut<'a,A:'a,B:'a> { //~ ERROR [+, o, o]
     t: &'a mut (A,B)
 }
 

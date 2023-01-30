@@ -73,6 +73,7 @@ pub fn expand_deriving_clone(
         span,
         path: path_std!(clone::Clone),
         skip_path_as_bound: false,
+        needs_copy_as_bound_if_packed: true,
         additional_bounds: bounds,
         supports_unions: true,
         methods: vec![MethodDef {

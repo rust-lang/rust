@@ -119,7 +119,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::FnDef(..) => {
-                self.add_constraints_from_sig(current_item, tcx.fn_sig(def_id), self.covariant);
+                self.add_constraints_from_sig(
+                    current_item,
+                    tcx.fn_sig(def_id).subst_identity(),
+                    self.covariant,
+                );
             }
 
             ty::Error(_) => {}
@@ -221,8 +225,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Ref(region, ty, mutbl) => {
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(current, region, contra);
+                self.add_constraints_from_region(current, region, variance);
                 self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
@@ -254,9 +257,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Dynamic(data, r, _) => {
-                // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(current, r, contra);
+                // The type `dyn Trait<T> +'a` is covariant w/r/t `'a`:
+                self.add_constraints_from_region(current, r, variance);
 
                 if let Some(poly_trait_ref) = data.principal() {
                     self.add_constraints_from_invariant_substs(
@@ -291,12 +293,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // types, where we use Error as the Self type
             }
 
-            ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Bound(..) | ty::Infer(..) => {
-                bug!(
-                    "unexpected type encountered in \
-                      variance inference: {}",
-                    ty
-                );
+            ty::Placeholder(..)
+            | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
+            | ty::Bound(..)
+            | ty::Infer(..) => {
+                bug!("unexpected type encountered in variance inference: {}", ty);
             }
         }
     }

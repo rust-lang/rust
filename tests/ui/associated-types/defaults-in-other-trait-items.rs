@@ -44,4 +44,18 @@ impl AssocConst for () {
     const C: Self::Ty = 0u8;
 }
 
+pub trait Trait {
+    type Res = isize; //~ NOTE associated type defaults can't be assumed inside the trait defining them
+
+    fn infer_me_correctly() -> Self::Res {
+        //~^ NOTE expected `<Self as Trait>::Res` because of return type
+
+        // {integer} == isize
+        2
+        //~^ ERROR mismatched types
+        //~| NOTE expected associated type, found integer
+        //~| NOTE expected associated type `<Self as Trait>::Res`
+    }
+}
+
 fn main() {}

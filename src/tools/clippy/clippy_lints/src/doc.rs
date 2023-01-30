@@ -23,7 +23,6 @@ use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::def_id::LocalDefId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{BytePos, FilePathMapping, SourceMap, Span};
 use rustc_span::{sym, FileName, Pos};
@@ -251,7 +250,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub UNNECESSARY_SAFETY_DOC,
     restriction,
     "`pub fn` or `pub trait` with `# Safety` docs"
@@ -302,7 +301,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                         panic_span: None,
                     };
                     fpu.visit_expr(body.value);
-                    lint_for_missing_headers(cx, item.owner_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
+                    lint_for_missing_headers(cx, item.owner_id, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
             hir::ItemKind::Impl(impl_) => {
@@ -338,7 +337,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.owner_id.def_id, sig, headers, None, None);
+                lint_for_missing_headers(cx, item.owner_id, sig, headers, None, None);
             }
         }
     }
@@ -357,20 +356,20 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                 panic_span: None,
             };
             fpu.visit_expr(body.value);
-            lint_for_missing_headers(cx, item.owner_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
+            lint_for_missing_headers(cx, item.owner_id, sig, headers, Some(body_id), fpu.panic_span);
         }
     }
 }
 
 fn lint_for_missing_headers(
     cx: &LateContext<'_>,
-    def_id: LocalDefId,
+    owner_id: hir::OwnerId,
     sig: &hir::FnSig<'_>,
     headers: DocHeaders,
     body_id: Option<hir::BodyId>,
     panic_span: Option<Span>,
 ) {
-    if !cx.effective_visibilities.is_exported(def_id) {
+    if !cx.effective_visibilities.is_exported(owner_id.def_id) {
         return; // Private functions do not require doc comments
     }
 
@@ -378,13 +377,13 @@ fn lint_for_missing_headers(
     if cx
         .tcx
         .hir()
-        .parent_iter(cx.tcx.hir().local_def_id_to_hir_id(def_id))
+        .parent_iter(owner_id.into())
         .any(|(id, _node)| is_doc_hidden(cx.tcx.hir().attrs(id)))
     {
         return;
     }
 
-    let span = cx.tcx.def_span(def_id);
+    let span = cx.tcx.def_span(owner_id);
     match (headers.safety, sig.header.unsafety) {
         (false, hir::Unsafety::Unsafe) => span_lint(
             cx,
@@ -411,8 +410,7 @@ fn lint_for_missing_headers(
         );
     }
     if !headers.errors {
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-        if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::Result) {
+        if is_type_diagnostic_item(cx, return_ty(cx, owner_id), sym::Result) {
             span_lint(
                 cx,
                 MISSING_ERRORS_DOC,

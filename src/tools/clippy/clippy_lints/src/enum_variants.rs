@@ -277,7 +277,7 @@ impl LateLintPass<'_> for EnumVariantNames {
                                 Some(c) if is_word_beginning(c) => span_lint(
                                     cx,
                                     MODULE_NAME_REPETITIONS,
-                                    item.span,
+                                    item.ident.span,
                                     "item name starts with its containing module's name",
                                 ),
                                 _ => (),
@@ -287,7 +287,7 @@ impl LateLintPass<'_> for EnumVariantNames {
                             span_lint(
                                 cx,
                                 MODULE_NAME_REPETITIONS,
-                                item.span,
+                                item.ident.span,
                                 "item name ends with its containing module's name",
                             );
                         }

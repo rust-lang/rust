@@ -40,15 +40,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         self.obligations.insert(obligation);
     }
 
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        {
-            let errors = self.select_where_possible(infcx);
-
-            if !errors.is_empty() {
-                return errors;
-            }
-        }
-
+    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>> {
         // any remaining obligations are errors
         self.obligations
             .iter()
@@ -141,6 +133,13 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         }
 
         errors
+    }
+
+    fn drain_unstalled_obligations(
+        &mut self,
+        _: &InferCtxt<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>> {
+        unimplemented!()
     }
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {

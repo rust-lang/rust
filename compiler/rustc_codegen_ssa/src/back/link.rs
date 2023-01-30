@@ -599,7 +599,8 @@ fn link_dwarf_object<'a>(
     cg_results: &CodegenResults,
     executable_out_filename: &Path,
 ) {
-    let dwp_out_filename = executable_out_filename.with_extension("dwp");
+    let mut dwp_out_filename = executable_out_filename.to_path_buf().into_os_string();
+    dwp_out_filename.push(".dwp");
     debug!(?dwp_out_filename, ?executable_out_filename);
 
     #[derive(Default)]
@@ -1297,12 +1298,6 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 fn preserve_objects_for_their_debuginfo(sess: &Session) -> (bool, bool) {
     // If the objects don't have debuginfo there's nothing to preserve.
     if sess.opts.debuginfo == config::DebugInfo::None {
-        return (false, false);
-    }
-
-    // If we're only producing artifacts that are archives, no need to preserve
-    // the objects as they're losslessly contained inside the archives.
-    if sess.crate_types().iter().all(|&x| x.is_archive()) {
         return (false, false);
     }
 

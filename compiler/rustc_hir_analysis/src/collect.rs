@@ -25,7 +25,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericParamKind, Node};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::query::Providers;
@@ -516,6 +516,10 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
 
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
         // There's no place to record types from signatures?
+    }
+
+    fn infcx(&self) -> Option<&InferCtxt<'tcx>> {
+        None
     }
 }
 
@@ -1087,7 +1091,7 @@ pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir 
 }
 
 #[instrument(level = "debug", skip(tcx))]
-fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
+fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'_>> {
     use rustc_hir::Node::*;
     use rustc_hir::*;
 
@@ -1096,7 +1100,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    match tcx.hir().get(hir_id) {
+    let output = match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             generics,
@@ -1169,7 +1173,8 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         x => {
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
-    }
+    };
+    ty::EarlyBinder(output)
 }
 
 fn infer_return_ty_for_fn_sig<'tcx>(
@@ -1248,11 +1253,12 @@ fn infer_return_ty_for_fn_sig<'tcx>(
     }
 }
 
+// FIXME(vincenzopalazzo): remove the hir item when the refactoring is stable
 fn suggest_impl_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     ret_ty: Ty<'tcx>,
     span: Span,
-    hir_id: hir::HirId,
+    _hir_id: hir::HirId,
     def_id: LocalDefId,
 ) -> Option<String> {
     let format_as_assoc: fn(_, _, _, _, _) -> _ =
@@ -1324,7 +1330,7 @@ fn suggest_impl_trait<'tcx>(
         }
         let ocx = ObligationCtxt::new_in_snapshot(&infcx);
         let item_ty = ocx.normalize(
-            &ObligationCause::misc(span, hir_id),
+            &ObligationCause::misc(span, def_id),
             param_env,
             tcx.mk_projection(assoc_item_def_id, substs),
         );
@@ -1342,8 +1348,7 @@ fn suggest_impl_trait<'tcx>(
 
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
     let icx = ItemCtxt::new(tcx, def_id);
-    let item = tcx.hir().expect_item(def_id.expect_local());
-    let hir::ItemKind::Impl(impl_) = item.kind else { bug!() };
+    let impl_ = tcx.hir().expect_item(def_id.expect_local()).expect_impl();
     impl_
         .of_trait
         .as_ref()

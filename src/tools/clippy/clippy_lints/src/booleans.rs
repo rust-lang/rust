@@ -6,9 +6,10 @@ use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
-use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, UnOp};
+use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 
@@ -82,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
-        _: HirId,
+        _: LocalDefId,
     ) {
         NonminimalBoolVisitor { cx }.visit_body(body);
     }

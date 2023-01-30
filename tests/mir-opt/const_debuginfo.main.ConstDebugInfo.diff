@@ -64,17 +64,8 @@
           _3 = const 3_u8;                 // scope 2 at $DIR/const_debuginfo.rs:+3:13: +3:16
           StorageLive(_4);                 // scope 3 at $DIR/const_debuginfo.rs:+4:9: +4:12
           StorageLive(_5);                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:20
-          StorageLive(_6);                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:16
-          _6 = const 1_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:16
-          StorageLive(_7);                 // scope 3 at $DIR/const_debuginfo.rs:+4:19: +4:20
-          _7 = const 2_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:19: +4:20
           _5 = const 3_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:20
-          StorageDead(_7);                 // scope 3 at $DIR/const_debuginfo.rs:+4:19: +4:20
-          StorageDead(_6);                 // scope 3 at $DIR/const_debuginfo.rs:+4:19: +4:20
-          StorageLive(_8);                 // scope 3 at $DIR/const_debuginfo.rs:+4:23: +4:24
-          _8 = const 3_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:23: +4:24
           _4 = const 6_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:24
-          StorageDead(_8);                 // scope 3 at $DIR/const_debuginfo.rs:+4:23: +4:24
           StorageDead(_5);                 // scope 3 at $DIR/const_debuginfo.rs:+4:23: +4:24
           StorageLive(_9);                 // scope 4 at $DIR/const_debuginfo.rs:+6:9: +6:10
           _9 = const "hello, world!";      // scope 4 at $DIR/const_debuginfo.rs:+6:13: +6:28
@@ -117,9 +108,6 @@
           StorageDead(_16);                // scope 5 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_9);                 // scope 4 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_4);                 // scope 3 at $DIR/const_debuginfo.rs:+14:1: +14:2
-          StorageDead(_3);                 // scope 2 at $DIR/const_debuginfo.rs:+14:1: +14:2
-          StorageDead(_2);                 // scope 1 at $DIR/const_debuginfo.rs:+14:1: +14:2
-          StorageDead(_1);                 // scope 0 at $DIR/const_debuginfo.rs:+14:1: +14:2
           return;                          // scope 0 at $DIR/const_debuginfo.rs:+14:2: +14:2
       }
   }

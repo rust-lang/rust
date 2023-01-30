@@ -17,7 +17,7 @@ use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use crate::traits::{PredicateObligations, TraitEngine};
+use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
@@ -482,11 +482,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let result_subst = CanonicalVarValues {
-            var_values: query_response
-                .variables
-                .iter()
-                .enumerate()
-                .map(|(index, info)| {
+            var_values: self.tcx.mk_substs(query_response.variables.iter().enumerate().map(
+                |(index, info)| {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
                             Some(k) => k,
@@ -499,8 +496,8 @@ impl<'tcx> InferCtxt<'tcx> {
                             universe_map[u.as_usize()]
                         })
                     }
-                })
-                .collect(),
+                },
+            )),
         };
 
         let mut obligations = vec![];

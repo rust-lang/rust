@@ -16,6 +16,7 @@ use std::num::NonZeroUsize;
 /// but this has no impact on safety.
 pub(super) trait FixedSizeEncoding: Default {
     /// This should be `[u8; BYTE_LEN]`;
+    /// Cannot use an associated `const BYTE_LEN: usize` instead due to const eval limitations.
     type ByteArray;
 
     fn from_bytes(b: &Self::ByteArray) -> Self;
@@ -199,31 +200,31 @@ impl FixedSizeEncoding for Option<RawDefId> {
     }
 }
 
-impl FixedSizeEncoding for Option<AttrFlags> {
+impl FixedSizeEncoding for AttrFlags {
     type ByteArray = [u8; 1];
 
     #[inline]
     fn from_bytes(b: &[u8; 1]) -> Self {
-        (b[0] != 0).then(|| AttrFlags::from_bits_truncate(b[0]))
+        AttrFlags::from_bits_truncate(b[0])
     }
 
     #[inline]
     fn write_to_bytes(self, b: &mut [u8; 1]) {
-        b[0] = self.map_or(0, |flags| flags.bits())
+        b[0] = self.bits();
     }
 }
 
-impl FixedSizeEncoding for Option<()> {
+impl FixedSizeEncoding for bool {
     type ByteArray = [u8; 1];
 
     #[inline]
     fn from_bytes(b: &[u8; 1]) -> Self {
-        (b[0] != 0).then(|| ())
+        b[0] != 0
     }
 
     #[inline]
     fn write_to_bytes(self, b: &mut [u8; 1]) {
-        b[0] = self.is_some() as u8
+        b[0] = self as u8
     }
 }
 
@@ -273,44 +274,38 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
 }
 
 /// Helper for constructing a table's serialization (also see `Table`).
-pub(super) struct TableBuilder<I: Idx, T>
-where
-    Option<T>: FixedSizeEncoding,
-{
-    blocks: IndexVec<I, <Option<T> as FixedSizeEncoding>::ByteArray>,
+pub(super) struct TableBuilder<I: Idx, T: FixedSizeEncoding> {
+    blocks: IndexVec<I, T::ByteArray>,
     _marker: PhantomData<T>,
 }
 
-impl<I: Idx, T> Default for TableBuilder<I, T>
-where
-    Option<T>: FixedSizeEncoding,
-{
+impl<I: Idx, T: FixedSizeEncoding> Default for TableBuilder<I, T> {
     fn default() -> Self {
         TableBuilder { blocks: Default::default(), _marker: PhantomData }
     }
 }
 
-impl<I: Idx, T> TableBuilder<I, T>
+impl<I: Idx, const N: usize, T> TableBuilder<I, Option<T>>
 where
-    Option<T>: FixedSizeEncoding,
+    Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
-    pub(crate) fn set<const N: usize>(&mut self, i: I, value: T)
-    where
-        Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
-    {
+    pub(crate) fn set(&mut self, i: I, value: T) {
+        self.set_nullable(i, Some(value))
+    }
+}
+
+impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBuilder<I, T> {
+    pub(crate) fn set_nullable(&mut self, i: I, value: T) {
         // FIXME(eddyb) investigate more compact encodings for sparse tables.
         // On the PR @michaelwoerister mentioned:
         // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
         // > trick (i.e. divide things into buckets of 32 or 64 items and then
         // > store bit-masks of which item in each bucket is actually serialized).
         self.blocks.ensure_contains_elem(i, || [0; N]);
-        Some(value).write_to_bytes(&mut self.blocks[i]);
+        value.write_to_bytes(&mut self.blocks[i]);
     }
 
-    pub(crate) fn encode<const N: usize>(&self, buf: &mut FileEncoder) -> LazyTable<I, T>
-    where
-        Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
-    {
+    pub(crate) fn encode(&self, buf: &mut FileEncoder) -> LazyTable<I, T> {
         let pos = buf.position();
         for block in &self.blocks {
             buf.emit_raw_bytes(block);
@@ -323,34 +318,27 @@ where
     }
 }
 
-impl<I: Idx, T: ParameterizedOverTcx> LazyTable<I, T>
+impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]> + ParameterizedOverTcx>
+    LazyTable<I, T>
 where
-    Option<T>: FixedSizeEncoding,
+    for<'tcx> T::Value<'tcx>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     /// Given the metadata, extract out the value at a particular index (if any).
     #[inline(never)]
-    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>, const N: usize>(
-        &self,
-        metadata: M,
-        i: I,
-    ) -> Option<T::Value<'tcx>>
-    where
-        Option<T::Value<'tcx>>: FixedSizeEncoding<ByteArray = [u8; N]>,
-    {
+    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
         debug!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
 
         let start = self.position.get();
         let bytes = &metadata.blob()[start..start + self.encoded_size];
         let (bytes, []) = bytes.as_chunks::<N>() else { panic!() };
-        let bytes = bytes.get(i.index())?;
-        FixedSizeEncoding::from_bytes(bytes)
+        match bytes.get(i.index()) {
+            Some(bytes) => FixedSizeEncoding::from_bytes(bytes),
+            None => FixedSizeEncoding::from_bytes(&[0; N]),
+        }
     }
 
     /// Size of the table in entries, including possible gaps.
-    pub(super) fn size<const N: usize>(&self) -> usize
-    where
-        for<'tcx> Option<T::Value<'tcx>>: FixedSizeEncoding<ByteArray = [u8; N]>,
-    {
+    pub(super) fn size(&self) -> usize {
         self.encoded_size / N
     }
 }

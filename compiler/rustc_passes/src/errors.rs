@@ -12,6 +12,7 @@ use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
+use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
 
 #[derive(Diagnostic)]
@@ -1514,4 +1515,53 @@ pub struct ChangeFieldsToBeOfUnitType {
     pub num: usize,
     #[suggestion_part(code = "()")]
     pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_proc_macro_typeerror)]
+#[note]
+pub(crate) struct ProcMacroTypeError<'tcx> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub found: Ty<'tcx>,
+    pub kind: ProcMacroKind,
+    pub expected_signature: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_proc_macro_diff_arg_count)]
+pub(crate) struct ProcMacroDiffArguments {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub count: usize,
+    pub kind: ProcMacroKind,
+    pub expected_signature: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_proc_macro_missing_args)]
+pub(crate) struct ProcMacroMissingArguments {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub expected_input_count: usize,
+    pub kind: ProcMacroKind,
+    pub expected_signature: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_proc_macro_invalid_abi)]
+pub(crate) struct ProcMacroInvalidAbi {
+    #[primary_span]
+    pub span: Span,
+    pub abi: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_proc_macro_unsafe)]
+pub(crate) struct ProcMacroUnsafe {
+    #[primary_span]
+    pub span: Span,
 }

@@ -1142,7 +1142,11 @@ function loadCss(cssUrl) {
 (function() {
     let reset_button_timeout = null;
 
-    window.copy_path = but => {
+    const but = document.getElementById("copy-path");
+    if (!but) {
+        return;
+    }
+    but.onclick = () => {
         const parent = but.parentElement;
         const path = [];
 

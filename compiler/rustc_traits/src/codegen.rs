@@ -4,7 +4,7 @@
 // general routines.
 
 use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
-use rustc_infer::traits::FulfillmentErrorCode;
+use rustc_infer::traits::{FulfillmentErrorCode, TraitEngineExt as _};
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;

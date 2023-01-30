@@ -436,7 +436,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             cx.type_func(&[], cx.type_int())
         };
 
-        let main_ret_ty = cx.tcx().fn_sig(rust_main_def_id).output();
+        let main_ret_ty = cx.tcx().fn_sig(rust_main_def_id).no_bound_vars().unwrap().output();
         // Given that `main()` has no arguments,
         // then its return type cannot have
         // late-bound regions, since late-bound

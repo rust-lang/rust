@@ -26,7 +26,7 @@ fn bar() -> bool {
         _3 = const 1_i32;                // scope 1 at $DIR/inline_any_operand.rs:+2:5: +2:13
         StorageLive(_4);                 // scope 1 at $DIR/inline_any_operand.rs:+2:5: +2:13
         _4 = const -1_i32;               // scope 1 at $DIR/inline_any_operand.rs:+2:5: +2:13
-        _0 = Eq(move _3, move _4);       // scope 2 at $DIR/inline_any_operand.rs:17:5: 17:11
+        _0 = Eq(_3, _4);                 // scope 2 at $DIR/inline_any_operand.rs:17:5: 17:11
         StorageDead(_4);                 // scope 1 at $DIR/inline_any_operand.rs:+2:5: +2:13
         StorageDead(_3);                 // scope 1 at $DIR/inline_any_operand.rs:+2:5: +2:13
         StorageDead(_2);                 // scope 1 at $DIR/inline_any_operand.rs:+2:12: +2:13

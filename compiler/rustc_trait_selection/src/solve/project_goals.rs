@@ -7,6 +7,7 @@ use super::{Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
@@ -15,7 +16,7 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ProjectionPredicate, TypeSuperVisitable, TypeVisitor};
 use rustc_middle::ty::{ToPredicate, TypeVisitable};
-use rustc_span::DUMMY_SP;
+use rustc_span::{sym, DUMMY_SP};
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -27,8 +28,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // To only compute normalization once for each projection we only
         // normalize if the expected term is an unconstrained inference variable.
         //
-        // E.g. for `<T as Trait>::Assoc = u32` we recursively compute the goal
-        // `exists<U> <T as Trait>::Assoc = U` and then take the resulting type for
+        // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
+        // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
         // `U` and equate it with `u32`. This means that we don't need a separate
         // projection cache in the solver.
         if self.term_is_fully_unconstrained(goal) {
@@ -92,24 +93,24 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if t.needs_infer() {
                     if ty::Term::from(t) == self.term {
-                        ControlFlow::BREAK
+                        ControlFlow::Break(())
                     } else {
                         t.super_visit_with(self)
                     }
                 } else {
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 }
             }
 
             fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if c.needs_infer() {
                     if ty::Term::from(c) == self.term {
-                        ControlFlow::BREAK
+                        ControlFlow::Break(())
                     } else {
                         c.super_visit_with(self)
                     }
                 } else {
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 }
             }
         }
@@ -170,7 +171,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             (CandidateSource::Impl(_), _)
             | (CandidateSource::ParamEnv(_), _)
             | (CandidateSource::BuiltinImpl, _)
-            | (CandidateSource::AliasBound(_), _) => unimplemented!(),
+            | (CandidateSource::AliasBound, _) => unimplemented!(),
         }
     }
 }
@@ -295,7 +296,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx> {
-        if let Some(poly_projection_pred) = assumption.to_opt_poly_projection_pred() {
+        if let Some(poly_projection_pred) = assumption.to_opt_poly_projection_pred()
+            && poly_projection_pred.projection_def_id() == goal.predicate.def_id()
+        {
             ecx.infcx.probe(|_| {
                 let assumption_projection_pred =
                     ecx.infcx.instantiate_bound_vars_with_infer(poly_projection_pred);
@@ -390,6 +393,166 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         bug!("`Tuple` does not have an associated type: {:?}", goal);
+    }
+
+    fn consider_builtin_pointee_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+        ecx.infcx.probe(|_| {
+            let metadata_ty = match goal.predicate.self_ty().kind() {
+                ty::Bool
+                | ty::Char
+                | ty::Int(..)
+                | ty::Uint(..)
+                | ty::Float(..)
+                | ty::Array(..)
+                | ty::RawPtr(..)
+                | ty::Ref(..)
+                | ty::FnDef(..)
+                | ty::FnPtr(..)
+                | ty::Closure(..)
+                | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
+                | ty::Generator(..)
+                | ty::GeneratorWitness(..)
+                | ty::GeneratorWitnessMIR(..)
+                | ty::Never
+                | ty::Foreign(..) => tcx.types.unit,
+
+                ty::Error(e) => tcx.ty_error_with_guaranteed(*e),
+
+                ty::Str | ty::Slice(_) => tcx.types.usize,
+
+                ty::Dynamic(_, _, _) => {
+                    let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
+                    tcx.bound_type_of(dyn_metadata)
+                        .subst(tcx, &[ty::GenericArg::from(goal.predicate.self_ty())])
+                }
+
+                ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
+                    // FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with no constraints.
+                    let sized_predicate = ty::Binder::dummy(tcx.at(DUMMY_SP).mk_trait_ref(
+                        LangItem::Sized,
+                        [ty::GenericArg::from(goal.predicate.self_ty())],
+                    ));
+
+                    let mut nested_goals = ecx.infcx.eq(
+                        goal.param_env,
+                        goal.predicate.term.ty().unwrap(),
+                        tcx.types.unit,
+                    )?;
+                    nested_goals.push(goal.with(tcx, sized_predicate));
+
+                    return ecx.evaluate_all_and_make_canonical_response(nested_goals);
+                }
+
+                ty::Adt(def, substs) if def.is_struct() => {
+                    match def.non_enum_variant().fields.last() {
+                        None => tcx.types.unit,
+                        Some(field_def) => {
+                            let self_ty = field_def.ty(tcx, substs);
+                            let new_goal = goal.with(
+                                tcx,
+                                ty::Binder::dummy(goal.predicate.with_self_ty(tcx, self_ty)),
+                            );
+                            return ecx.evaluate_all_and_make_canonical_response(vec![new_goal]);
+                        }
+                    }
+                }
+                ty::Adt(_, _) => tcx.types.unit,
+
+                ty::Tuple(elements) => match elements.last() {
+                    None => tcx.types.unit,
+                    Some(&self_ty) => {
+                        let new_goal = goal.with(
+                            tcx,
+                            ty::Binder::dummy(goal.predicate.with_self_ty(tcx, self_ty)),
+                        );
+                        return ecx.evaluate_all_and_make_canonical_response(vec![new_goal]);
+                    }
+                },
+
+                ty::Infer(
+                    ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
+                )
+                | ty::Bound(..) => bug!(
+                    "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
+                    goal.predicate.self_ty()
+                ),
+            };
+
+            let nested_goals =
+                ecx.infcx.eq(goal.param_env, goal.predicate.term.ty().unwrap(), metadata_ty)?;
+            ecx.evaluate_all_and_make_canonical_response(nested_goals)
+        })
+    }
+
+    fn consider_builtin_future_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Generator(def_id, substs, _) = *self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        // Generators are not futures unless they come from `async` desugaring
+        let tcx = ecx.tcx();
+        if !tcx.generator_is_async(def_id) {
+            return Err(NoSolution);
+        }
+
+        let term = substs.as_generator().return_ty().into();
+
+        Self::consider_assumption(
+            ecx,
+            goal,
+            ty::Binder::dummy(ty::ProjectionPredicate {
+                projection_ty: ecx.tcx().mk_alias_ty(goal.predicate.def_id(), [self_ty]),
+                term,
+            })
+            .to_predicate(tcx),
+        )
+    }
+
+    fn consider_builtin_generator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Generator(def_id, substs, _) = *self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        // `async`-desugared generators do not implement the generator trait
+        let tcx = ecx.tcx();
+        if tcx.generator_is_async(def_id) {
+            return Err(NoSolution);
+        }
+
+        let generator = substs.as_generator();
+
+        let name = tcx.associated_item(goal.predicate.def_id()).name;
+        let term = if name == sym::Return {
+            generator.return_ty().into()
+        } else if name == sym::Yield {
+            generator.yield_ty().into()
+        } else {
+            bug!("unexpected associated item `<{self_ty} as Generator>::{name}`")
+        };
+
+        Self::consider_assumption(
+            ecx,
+            goal,
+            ty::Binder::dummy(ty::ProjectionPredicate {
+                projection_ty: ecx
+                    .tcx()
+                    .mk_alias_ty(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
+                term,
+            })
+            .to_predicate(tcx),
+        )
     }
 }
 

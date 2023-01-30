@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             if impl_item.generics.params.iter().all(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }));
 
             // Check if return type is String
-            if is_type_lang_item(cx, return_ty(cx, impl_item.hir_id()), LangItem::String);
+            if is_type_lang_item(cx, return_ty(cx, impl_item.owner_id), LangItem::String);
 
             // Filters instances of to_string which are required by a trait
             if trait_ref_of_method(cx, impl_item.owner_id.def_id).is_none();
@@ -124,7 +124,7 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
         .expect("Failed to get trait ID of `Display`!");
 
     // Get the real type of 'self'
-    let self_type = cx.tcx.fn_sig(item.owner_id).input(0);
+    let self_type = cx.tcx.fn_sig(item.owner_id).skip_binder().input(0);
     let self_type = self_type.skip_binder().peel_refs();
 
     // Emit either a warning or an error

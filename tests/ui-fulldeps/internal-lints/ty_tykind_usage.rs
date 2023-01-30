@@ -31,6 +31,7 @@ fn main() {
         TyKind::Closure(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Generator(..) => (),        //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::GeneratorWitness(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
+        TyKind::GeneratorWitnessMIR(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Never => (),                //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Tuple(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Alias(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`

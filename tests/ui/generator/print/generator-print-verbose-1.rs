@@ -1,3 +1,6 @@
+// revisions: no_drop_tracking drop_tracking drop_tracking_mir
+// [drop_tracking] compile-flags: -Zdrop-tracking
+// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 // compile-flags: -Zverbose
 
 // Same as: tests/ui/generator/issue-68112.stderr
@@ -12,7 +15,7 @@ use std::{
 };
 
 pub struct Ready<T>(Option<T>);
-impl<T> Generator<()> for Ready<T> {
+impl<T: Unpin> Generator<()> for Ready<T> {
     type Return = T;
     type Yield = ();
     fn resume(mut self: Pin<&mut Self>, _args: ()) -> GeneratorState<(), T> {

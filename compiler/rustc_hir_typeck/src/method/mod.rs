@@ -145,7 +145,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
             .map(|pick| {
                 let sig = self.tcx.fn_sig(pick.item.def_id);
-                sig.inputs().skip_binder().len().saturating_sub(1)
+                sig.skip_binder().inputs().skip_binder().len().saturating_sub(1)
             })
             .unwrap_or(0);
 
@@ -399,8 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // N.B., instantiate late-bound regions before normalizing the
         // function signature so that normalization does not need to deal
         // with bound regions.
-        let fn_sig = tcx.bound_fn_sig(def_id);
-        let fn_sig = fn_sig.subst(self.tcx, substs);
+        let fn_sig = tcx.fn_sig(def_id).subst(self.tcx, substs);
         let fn_sig =
             self.replace_bound_vars_with_fresh_vars(obligation.cause.span, infer::FnCall, fn_sig);
 
