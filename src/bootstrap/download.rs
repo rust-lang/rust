@@ -18,6 +18,8 @@ use crate::{
     Config,
 };
 
+static SHOULD_FIX_BINS_AND_DYLIBS: OnceCell<bool> = OnceCell::new();
+
 /// Generic helpers that are useful anywhere in bootstrap.
 impl Config {
     pub fn is_verbose(&self) -> bool {
@@ -73,9 +75,7 @@ impl Config {
     /// Whether or not `fix_bin_or_dylib` needs to be run; can only be true
     /// on NixOS
     fn should_fix_bins_and_dylibs(&self) -> bool {
-        static CACHED: OnceCell<bool> = OnceCell::new();
-
-        let val = *CACHED.get_or_init(|| {
+        let val = *SHOULD_FIX_BINS_AND_DYLIBS.get_or_init(|| {
             match Command::new("uname").arg("-s").stderr(Stdio::inherit()).output() {
                 Err(_) => return false,
                 Ok(output) if !output.status.success() => return false,
@@ -125,6 +125,7 @@ impl Config {
     ///
     /// Please see https://nixos.org/patchelf.html for more information
     fn fix_bin_or_dylib(&self, fname: &Path) {
+        assert_eq!(SHOULD_FIX_BINS_AND_DYLIBS.get(), Some(&true));
         println!("attempting to patch {}", fname.display());
 
         // Only build `.nix-deps` once.

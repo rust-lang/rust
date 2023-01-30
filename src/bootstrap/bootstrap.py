@@ -402,9 +402,10 @@ class RustBuild(object):
         self.rust_root = ''
         self.use_locked_deps = False
         self.use_vendored_sources = False
-        self.verbose = 0
+        self.verbose = False
         self.git_version = None
         self.nix_deps_dir = None
+        self._should_fix_bins_and_dylibs = None
 
     def download_toolchain(self):
         """Fetch the build system for Rust, written in Rust
@@ -466,46 +467,54 @@ class RustBuild(object):
                 "dist/{}/{}".format(key, filename),
                 tarball,
                 self.checksums_sha256,
-                verbose=self.verbose != 0,
+                verbose=self.verbose,
             )
-        unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose != 0)
+        unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
 
     def should_fix_bins_and_dylibs(self):
         """Whether or not `fix_bin_or_dylib` needs to be run; can only be True
         on NixOS.
         """
-        default_encoding = sys.getdefaultencoding()
-        try:
-            ostype = subprocess.check_output(
-                ['uname', '-s']).strip().decode(default_encoding)
-        except subprocess.CalledProcessError:
-            return False
-        except OSError as reason:
-            if getattr(reason, 'winerror', None) is not None:
+        if self._should_fix_bins_and_dylibs is not None:
+            return self._should_fix_bins_and_dylibs
+
+        def get_answer():
+            default_encoding = sys.getdefaultencoding()
+            try:
+                ostype = subprocess.check_output(
+                    ['uname', '-s']).strip().decode(default_encoding)
+            except subprocess.CalledProcessError:
                 return False
-            raise reason
+            except OSError as reason:
+                if getattr(reason, 'winerror', None) is not None:
+                    return False
+                raise reason
 
-        if ostype != "Linux":
-            return False
+            if ostype != "Linux":
+                return False
 
-        # If the user has asked binaries to be patched for Nix, then
-        # don't check for NixOS or `/lib`.
-        if self.get_toml("patch-binaries-for-nix", "build") == "true":
+            # If the user has asked binaries to be patched for Nix, then
+            # don't check for NixOS or `/lib`.
+            if self.get_toml("patch-binaries-for-nix", "build") == "true":
+                return True
+
+            # Use `/etc/os-release` instead of `/etc/NIXOS`.
+            # The latter one does not exist on NixOS when using tmpfs as root.
+            try:
+                with open("/etc/os-release", "r") as f:
+                    if not any(l.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for l in f):
+                        return False
+            except FileNotFoundError:
+                return False
+            if os.path.exists("/lib"):
+                return False
+
             return True
 
-        # Use `/etc/os-release` instead of `/etc/NIXOS`.
-        # The latter one does not exist on NixOS when using tmpfs as root.
-        try:
-            with open("/etc/os-release", "r") as f:
-                if not any(l.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for l in f):
-                    return False
-        except FileNotFoundError:
-            return False
-        if os.path.exists("/lib"):
-            return False
-
-        print("info: You seem to be using Nix.")
-        return True
+        answer = self._should_fix_bins_and_dylibs = get_answer()
+        if answer:
+            print("info: You seem to be using Nix.")
+        return answer
 
     def fix_bin_or_dylib(self, fname):
         """Modifies the interpreter section of 'fname' to fix the dynamic linker,
@@ -516,6 +525,7 @@ class RustBuild(object):
 
         Please see https://nixos.org/patchelf.html for more information
         """
+        assert self._should_fix_bins_and_dylibs is True
         print("attempting to patch", fname)
 
         # Only build `.nix-deps` once.
@@ -707,7 +717,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
-    def build_bootstrap(self, color):
+    def build_bootstrap(self, color, verbose_count):
         """Build bootstrap"""
         print("Building bootstrap")
         build_dir = os.path.join(self.build_dir, "bootstrap")
@@ -764,7 +774,7 @@ class RustBuild(object):
                 self.cargo()))
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
-        args.extend("--verbose" for _ in range(self.verbose))
+        args.extend("--verbose" for _ in range(verbose_count))
         if self.use_locked_deps:
             args.append("--locked")
         if self.use_vendored_sources:
@@ -778,7 +788,7 @@ class RustBuild(object):
             args.append("--color=never")
 
         # Run this from the source directory so cargo finds .cargo/config
-        run(args, env=env, verbose=self.verbose != 0, cwd=self.rust_root)
+        run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
 
     def build_triple(self):
         """Build triple as in LLVM
@@ -787,7 +797,7 @@ class RustBuild(object):
         so use `self.build` where possible.
         """
         config = self.get_toml('build')
-        return config or default_build_triple(self.verbose != 0)
+        return config or default_build_triple(self.verbose)
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
@@ -838,7 +848,7 @@ def bootstrap(args):
     # Configure initial bootstrap
     build = RustBuild()
     build.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
-    build.verbose = args.verbose
+    build.verbose = args.verbose != 0
     build.clean = args.clean
 
     # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`,
@@ -866,9 +876,10 @@ def bootstrap(args):
         with open(include_path) as included_toml:
             build.config_toml += os.linesep + included_toml.read()
 
-    config_verbose = build.get_toml('verbose', 'build')
-    if config_verbose is not None:
-        build.verbose = max(build.verbose, int(config_verbose))
+    verbose_count = args.verbose
+    config_verbose_count = build.get_toml('verbose', 'build')
+    if config_verbose_count is not None:
+        verbose_count = max(args.verbose, int(config_verbose_count))
 
     build.use_vendored_sources = build.get_toml('vendor', 'build') == 'true'
     build.use_locked_deps = build.get_toml('locked-deps', 'build') == 'true'
@@ -892,7 +903,7 @@ def bootstrap(args):
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.build_bootstrap(args.color)
+    build.build_bootstrap(args.color, verbose_count)
     sys.stdout.flush()
 
     # Run the bootstrap
