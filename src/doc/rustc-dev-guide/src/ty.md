@@ -161,22 +161,47 @@ Because types are interned, it is possible to compare them for equality efficien
 for duplicates. This is because often in Rust there are multiple ways to represent the same type,
 particularly once inference is involved.
 
-For example, the type `{integer}` (an integer inference variable, the type of an integer
-literal like `0`) and `u8` should often be treated as equal when testing whether they
-can be assigned to each other (which is a common operation in diagnostics code).
-`==` on them will return `false` though, since they are different types.
+For example, the type `{integer}` (`ty::Infer(ty::IntVar(..))` an integer inference variable,
+the type of an integer literal like `0`) and `u8` (`ty::UInt(..)`) should often be treated as
+equal when testing whether they can be assigned to each other (which is a common operation in
+diagnostics code). `==` on them will return `false` though, since they are different types.
 
 The simplest way to compare two types correctly requires an inference context (`infcx`).
-If you have one, you can use `infcx.can_eq(ty1, ty2)` to check whether the types can be made equal,
-so whether they can be assigned to each other.
+If you have one, you can use `infcx.can_eq(ty1, ty2)` to check whether the types can be made equal.
+This is typically what you want to check during diagnostics, which is concerned with questions such
+as whether two types can be assigned to each other, not whether they're represented identically in
+the compiler's type-checking layer.
+
 When working with an inference context, you have to be careful to ensure that potential inference
 variables inside the types actually belong to that inference context. If you are in a function
-that has access to an inference context already, this should be the case.
+that has access to an inference context already, this should be the case. Specifically, this is the
+case during HIR type checking or MIR borrow checking.
 
-Another consideration is normalization. Two types may actually be the same, but one is behind an associated type.
-To compare them correctly, you have to normalize the types first. <!-- FIXME: When do you have to worry about this? When not? -->
+Another consideration is normalization. Two types may actually be the same, but one is behind an
+associated type. To compare them correctly, you have to normalize the types first. This is
+primarily a concern during HIR type checking and with all types from a `TyCtxt` query
+(for example from `tcx.type_of()`).
 
-<!-- What to do when you don't have an inference context available already? Just create one and hope all goes well? -->
+When a `FnCtxt` or an `ObligationCtxt` is available during type checking, `.normalize(ty)`
+can be used on them to normalize the type. After type checking, diagnostics code can use
+`tcx.normalize_erasing_regions(ty)`.
+
+There are also cases where using `==` on `Ty` is fine. This is for example the case in late lints
+or after monomorphization, since type checking has been completed, meaning all inference variables
+are resolved and all regions have been erased. In these cases, if you know that inference variables
+or normalization won't be a concern, `#[allow]` or `#[expect]`ing the lint is recommended.
+
+When diagnostics code does not have access to an inference context, it should be threaded through
+the function calls if one is available in some place (like during type checking).
+
+If no inference context is available at all, then one can be created as described in
+[type-inference]. But this is only useful when the involved types (for example, if
+they came from a query like `tcx.type_of()`) are actually substituted with fresh
+inference variables using [`fresh_substs_for_item`]. This can be used to answer questions
+like "can `Vec<T>` for any `T` be unified with `Vec<u32>`?".
+
+[type-inference]: ./type-inference.md#creating-an-inference-context
+[`fresh_substs_for_item`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.fresh_substs_for_item
 
 ## `ty::TyKind` Variants
 
