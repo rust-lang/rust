@@ -23,6 +23,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(deprecated_suggestion)]
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]

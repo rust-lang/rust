@@ -621,6 +621,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.arena.alloc(Steal::new(promoted))
     }
 
+    #[deprecated(suggestion = "mk().adt_def")]
     pub fn mk_adt_def(
         self,
         did: DefId,
@@ -744,7 +745,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Constructs a `RegionKind::ReError` lifetime.
-    #[track_caller]
+    #[deprecated(suggestion = "mk().re_error")]
     pub fn mk_re_error(self, reported: ErrorGuaranteed) -> Region<'tcx> {
         self.intern_region(ty::ReError(reported))
     }
@@ -752,6 +753,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` to ensure it
     /// gets used.
     #[track_caller]
+    #[deprecated(suggestion = "mk().re_error_misc")]
     pub fn mk_re_error_misc(self) -> Region<'tcx> {
         self.mk_re_error_with_message(
             DUMMY_SP,
@@ -762,6 +764,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` with the given
     /// `msg` to ensure it gets used.
     #[track_caller]
+    #[deprecated(suggestion = "mk().re_error_with_message")]
     pub fn mk_re_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Region<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_re_error(reported)
@@ -1563,7 +1566,7 @@ macro_rules! direct_interners {
 // crate. Functions with an `intern_` prefix are intended for use within this
 // file only, and have a corresponding `mk_` function.
 //
-// FIXME(waffle): move `mk_region`, `mk_const_internal` to `.mk()`
+// TODO(waffle): pub mk_* -> intern_*
 direct_interners! {
     region: intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
@@ -1593,6 +1596,7 @@ macro_rules! slice_interners {
 // These functions intern slices. They all have a corresponding
 // `mk_foo_from_iter` function that interns an iterator. The slice version
 // should be used when possible, because it's faster.
+// TODO: deprecate/make into private `intern_*`/etc all `mk_*` methods here
 slice_interners!(
     const_lists: pub mk_const_list(Const<'tcx>),
     substs: pub mk_substs(GenericArg<'tcx>),
@@ -1689,6 +1693,7 @@ impl<'tcx> TyCtxt<'tcx> {
     // Avoid this in favour of more specific `mk_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
+    #[deprecated(suggestion = "mk().ty_from_kind")]
     pub fn mk_ty_from_kind(self, st: TyKind<'tcx>) -> Ty<'tcx> {
         self.interners.intern_ty(
             st,
@@ -1699,6 +1704,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().predicate")]
     pub fn mk_predicate(self, binder: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
         self.interners.intern_predicate(
             binder,
@@ -1717,6 +1723,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
     }
 
+    #[deprecated(suggestion = "mk().mach_int")]
     pub fn mk_mach_int(self, tm: IntTy) -> Ty<'tcx> {
         match tm {
             IntTy::Isize => self.types.isize,
@@ -1728,6 +1735,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[deprecated(suggestion = "mk().mach_uint")]
     pub fn mk_mach_uint(self, tm: UintTy) -> Ty<'tcx> {
         match tm {
             UintTy::Usize => self.types.usize,
@@ -1739,6 +1747,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[deprecated(suggestion = "mk().mach_float")]
     pub fn mk_mach_float(self, tm: FloatTy) -> Ty<'tcx> {
         match tm {
             FloatTy::F32 => self.types.f32,
@@ -1747,17 +1756,20 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().static_str")]
     pub fn mk_static_str(self) -> Ty<'tcx> {
         self.mk_imm_ref(self.lifetimes.re_static, self.types.str_)
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().adt")]
     pub fn mk_adt(self, def: AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         // Take a copy of substs so that we own the vectors inside.
         self.mk_ty_from_kind(Adt(def, substs))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().foreign")]
     pub fn mk_foreign(self, def_id: DefId) -> Ty<'tcx> {
         self.mk_ty_from_kind(Foreign(def_id))
     }
@@ -1780,75 +1792,89 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().box_")]
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(LangItem::OwnedBox, None);
         self.mk_generic_adt(def_id, ty)
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().lang_item")]
     pub fn mk_lang_item(self, ty: Ty<'tcx>, item: LangItem) -> Option<Ty<'tcx>> {
         let def_id = self.lang_items().get(item)?;
         Some(self.mk_generic_adt(def_id, ty))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().diagnostic_item")]
     pub fn mk_diagnostic_item(self, ty: Ty<'tcx>, name: Symbol) -> Option<Ty<'tcx>> {
         let def_id = self.get_diagnostic_item(name)?;
         Some(self.mk_generic_adt(def_id, ty))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().maybe_uninit")]
     pub fn mk_maybe_uninit(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(LangItem::MaybeUninit, None);
         self.mk_generic_adt(def_id, ty)
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().ptr")]
     pub fn mk_ptr(self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty_from_kind(RawPtr(tm))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().ref_")]
     pub fn mk_ref(self, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty_from_kind(Ref(r, tm.ty, tm.mutbl))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().mut_ref")]
     pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ref(r, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().imm_ref")]
     pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ref(r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().mut_ptr")]
     pub fn mk_mut_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ptr(TypeAndMut { ty, mutbl: hir::Mutability::Mut })
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().imm_ptr")]
     pub fn mk_imm_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ptr(TypeAndMut { ty, mutbl: hir::Mutability::Not })
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().array")]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
         self.mk_ty_from_kind(Array(ty, ty::Const::from_target_usize(self, n)))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().array_with_const_len")]
     pub fn mk_array_with_const_len(self, ty: Ty<'tcx>, ct: Const<'tcx>) -> Ty<'tcx> {
         self.mk_ty_from_kind(Array(ty, ct))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().slice")]
     pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ty_from_kind(Slice(ty))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().tup")]
     pub fn mk_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
         if ts.is_empty() {
             self.types.unit
@@ -1857,6 +1883,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[deprecated(suggestion = "mk().tup_from_iter")]
     pub fn mk_tup_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -1866,16 +1893,19 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().unit")]
     pub fn mk_unit(self) -> Ty<'tcx> {
         self.types.unit
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().diverging_default")]
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
         if self.features().never_type_fallback { self.types.never } else { self.types.unit }
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().fn_def")]
     pub fn mk_fn_def(
         self,
         def_id: DefId,
@@ -1906,11 +1936,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().fn_ptr")]
     pub fn mk_fn_ptr(self, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
         self.mk_ty_from_kind(FnPtr(fty))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().dynamic")]
     pub fn mk_dynamic(
         self,
         obj: &'tcx List<PolyExistentialPredicate<'tcx>>,
@@ -1921,6 +1953,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().projection")]
     pub fn mk_projection(
         self,
         item_def_id: DefId,
@@ -1930,11 +1963,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().closure")]
     pub fn mk_closure(self, closure_id: DefId, closure_substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_ty_from_kind(Closure(closure_id, closure_substs))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().generator")]
     pub fn mk_generator(
         self,
         id: DefId,
@@ -1945,11 +1980,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().generator_witness")]
     pub fn mk_generator_witness(self, types: ty::Binder<'tcx, &'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
         self.mk_ty_from_kind(GeneratorWitness(types))
     }
 
     /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
+    #[deprecated(suggestion = "mk().task_context")]
     pub fn mk_task_context(self) -> Ty<'tcx> {
         let context_did = self.require_lang_item(LangItem::Context, None);
         let context_adt_ref = self.adt_def(context_did);
@@ -1959,16 +1996,19 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().generator_witness_mir")]
     pub fn mk_generator_witness_mir(self, id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_ty_from_kind(GeneratorWitnessMIR(id, substs))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().const_")]
     pub fn mk_const(self, kind: impl Into<ty::ConstKind<'tcx>>, ty: Ty<'tcx>) -> Const<'tcx> {
         self.intern_const(ty::ConstData { kind: kind.into(), ty })
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().ty_var")]
     pub fn mk_ty_var(self, v: TyVid) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         self.types
@@ -1979,16 +2019,19 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().int_var")]
     pub fn mk_int_var(self, v: IntVid) -> Ty<'tcx> {
         self.mk_ty_from_kind(Infer(IntVar(v)))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().float_var")]
     pub fn mk_float_var(self, v: FloatVid) -> Ty<'tcx> {
         self.mk_ty_from_kind(Infer(FloatVar(v)))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().fresh_ty")]
     pub fn mk_fresh_ty(self, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         self.types
@@ -1999,6 +2042,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().fresh_int_ty")]
     pub fn mk_fresh_int_ty(self, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         self.types
@@ -2009,6 +2053,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().fresh_float_ty")]
     pub fn mk_fresh_float_ty(self, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         self.types
@@ -2019,10 +2064,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().ty_param")]
     pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
         self.mk_ty_from_kind(Param(ParamTy { index, name }))
     }
 
+    #[deprecated(suggestion = "mk().param_from_def")]
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
@@ -2041,31 +2088,37 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().bound")]
     pub fn mk_bound(self, index: ty::DebruijnIndex, bound_ty: ty::BoundTy) -> Ty<'tcx> {
         self.mk_ty_from_kind(Bound(index, bound_ty))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().placeholder")]
     pub fn mk_placeholder(self, placeholder: ty::PlaceholderType) -> Ty<'tcx> {
         self.mk_ty_from_kind(Placeholder(placeholder))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().alias")]
     pub fn mk_alias(self, kind: ty::AliasKind, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
         self.mk_ty_from_kind(Alias(kind, alias_ty))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().opaque")]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_alias(ty::Opaque, self.mk_alias_ty(def_id, substs))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().re_early_bound")]
     pub fn mk_re_early_bound(self, early_bound_region: ty::EarlyBoundRegion) -> Region<'tcx> {
         self.intern_region(ty::ReEarlyBound(early_bound_region))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().re_late_bound")]
     pub fn mk_re_late_bound(
         self,
         debruijn: ty::DebruijnIndex,
@@ -2084,11 +2137,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().re_free")]
     pub fn mk_re_free(self, scope: DefId, bound_region: ty::BoundRegionKind) -> Region<'tcx> {
         self.intern_region(ty::ReFree(ty::FreeRegion { scope, bound_region }))
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().re_var")]
     pub fn mk_re_var(self, v: ty::RegionVid) -> Region<'tcx> {
         // Use a pre-interned one when possible.
         self.lifetimes
@@ -2099,12 +2154,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    #[deprecated(suggestion = "mk().re_placeholder")]
     pub fn mk_re_placeholder(self, placeholder: ty::PlaceholderRegion) -> Region<'tcx> {
         self.intern_region(ty::RePlaceholder(placeholder))
     }
 
     // Avoid this in favour of more specific `mk_re_*` methods, where possible,
     // to avoid the cost of the `match`.
+    #[deprecated(suggestion = "mk().region_from_kind")]
     pub fn mk_region_from_kind(self, kind: ty::RegionKind<'tcx>) -> Region<'tcx> {
         match kind {
             ty::ReEarlyBound(region) => self.mk_re_early_bound(region),
@@ -2120,14 +2177,17 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[deprecated(suggestion = "mk().place_field")]
     pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
         self.mk_place_elem(place, PlaceElem::Field(f, ty))
     }
 
+    #[deprecated(suggestion = "mk().place_deref")]
     pub fn mk_place_deref(self, place: Place<'tcx>) -> Place<'tcx> {
         self.mk_place_elem(place, PlaceElem::Deref)
     }
 
+    #[deprecated(suggestion = "mk().place_downcast")]
     pub fn mk_place_downcast(
         self,
         place: Place<'tcx>,
@@ -2140,6 +2200,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    #[deprecated(suggestion = "mk().place_downcast_unnamed")]
     pub fn mk_place_downcast_unnamed(
         self,
         place: Place<'tcx>,
@@ -2148,6 +2209,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_place_elem(place, PlaceElem::Downcast(None, variant_index))
     }
 
+    #[deprecated(suggestion = "mk().place_index")]
     pub fn mk_place_index(self, place: Place<'tcx>, index: Local) -> Place<'tcx> {
         self.mk_place_elem(place, PlaceElem::Index(index))
     }
@@ -2155,12 +2217,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This method copies `Place`'s projection, add an element and reintern it. Should not be used
     /// to build a full `Place` it's just a convenient way to grab a projection and modify it in
     /// flight.
+    #[deprecated(suggestion = "mk().place_elem")]
     pub fn mk_place_elem(self, place: Place<'tcx>, elem: PlaceElem<'tcx>) -> Place<'tcx> {
         let mut projection = place.projection.to_vec();
         projection.push(elem);
 
         Place { local: place.local, projection: self.mk_place_elems(&projection) }
     }
+
+    #[deprecated(suggestion = "mk().poly_existential_predicates")]
 
     pub fn mk_poly_existential_predicates(
         self,
@@ -2175,6 +2240,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.intern_poly_existential_predicates(eps)
     }
 
+    #[deprecated(suggestion = "mk().predicates")]
     pub fn mk_predicates(self, preds: &[Predicate<'tcx>]) -> &'tcx List<Predicate<'tcx>> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
@@ -2182,6 +2248,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.intern_predicates(preds)
     }
 
+    #[deprecated(suggestion = "mk().const_list_from_iter")]
     pub fn mk_const_list_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -2190,6 +2257,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_const_list(xs))
     }
 
+    #[deprecated(suggestion = "mk().type_list")]
     pub fn mk_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
         // Actually intern type lists as lists of `GenericArg`s.
         //
@@ -2206,6 +2274,7 @@ impl<'tcx> TyCtxt<'tcx> {
     // IntoIterator` instead of `I: Iterator`, and it doesn't have a slice
     // variant, because of the need to combine `inputs` and `output`. This
     // explains the lack of `_from_iter` suffix.
+    #[deprecated(suggestion = "mk().fn_sig")]
     pub fn mk_fn_sig<I, T>(
         self,
         inputs: I,
@@ -2226,6 +2295,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    #[deprecated(suggestion = "mk().poly_existential_predicates_from_iter")]
     pub fn mk_poly_existential_predicates_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -2237,6 +2307,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_poly_existential_predicates(xs))
     }
 
+    #[deprecated(suggestion = "mk().predicates_from_iter")]
     pub fn mk_predicates_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -2245,6 +2316,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_predicates(xs))
     }
 
+    #[deprecated(suggestion = "mk().type_list_from_iter")]
     pub fn mk_type_list_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -2253,6 +2325,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_type_list(xs))
     }
 
+    #[deprecated(suggestion = "mk().substs_from_iter")]
     pub fn mk_substs_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -2261,6 +2334,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_substs(xs))
     }
 
+    #[deprecated(suggestion = "mk().canonical_var_infos_from_iter")]
     pub fn mk_canonical_var_infos_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -2269,6 +2343,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_canonical_var_infos(xs))
     }
 
+    #[deprecated(suggestion = "mk().place_elems_from_iter")]
     pub fn mk_place_elems_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -2277,6 +2352,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_place_elems(xs))
     }
 
+    #[deprecated(suggestion = "mk().substs_trait")]
     pub fn mk_substs_trait(
         self,
         self_ty: Ty<'tcx>,
@@ -2285,6 +2361,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_substs_from_iter(iter::once(self_ty.into()).chain(rest))
     }
 
+    #[deprecated(suggestion = "mk().trait_ref")]
     pub fn mk_trait_ref(
         self,
         trait_def_id: DefId,
@@ -2294,6 +2371,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::TraitRef { def_id: trait_def_id, substs, _use_mk_trait_ref_instead: () }
     }
 
+    #[deprecated(suggestion = "mk().alias_ty")]
     pub fn mk_alias_ty(
         self,
         def_id: DefId,
@@ -2303,6 +2381,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::AliasTy { def_id, substs, _use_mk_alias_ty_instead: () }
     }
 
+    #[deprecated(suggestion = "mk().bound_variable_kinds_from_iter")]
     pub fn mk_bound_variable_kinds_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
