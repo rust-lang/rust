@@ -17,7 +17,6 @@ use rustc_ast::{
     self as ast, BareFnTy, FnRetTy, GenericBound, GenericBounds, GenericParam, Generics, Lifetime,
     MacCall, MutTy, Mutability, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax, Ty, TyKind,
 };
-use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -50,20 +49,13 @@ pub(super) enum AllowPlus {
     No,
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq)]
 pub(super) enum RecoverQPath {
     Yes,
     No,
 }
 
-#[derive(PartialEq, Clone, Copy)]
 pub(super) enum RecoverQuestionMark {
-    Yes,
-    No,
-}
-
-#[derive(PartialEq, Clone, Copy)]
-pub(super) enum RecoverAnonEnum {
     Yes,
     No,
 }
@@ -100,7 +92,7 @@ impl RecoverReturnSign {
 }
 
 // Is `...` (`CVarArgs`) legal at this level of type parsing?
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq)]
 enum AllowCVariadic {
     Yes,
     No,
@@ -125,7 +117,6 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::Yes,
-            RecoverAnonEnum::No,
         )
     }
 
@@ -140,7 +131,6 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             Some(ty_params),
             RecoverQuestionMark::Yes,
-            RecoverAnonEnum::No,
         )
     }
 
@@ -155,7 +145,6 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::Yes,
-            RecoverAnonEnum::Yes,
         )
     }
 
@@ -173,7 +162,6 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::Yes,
-            RecoverAnonEnum::No,
         )
     }
 
@@ -187,7 +175,6 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::No,
-            RecoverAnonEnum::No,
         )
     }
 
@@ -199,7 +186,6 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::No,
-            RecoverAnonEnum::No,
         )
     }
 
@@ -212,7 +198,6 @@ impl<'a> Parser<'a> {
             RecoverReturnSign::OnlyFatArrow,
             None,
             RecoverQuestionMark::Yes,
-            RecoverAnonEnum::No,
         )
     }
 
@@ -232,7 +217,6 @@ impl<'a> Parser<'a> {
                 recover_return_sign,
                 None,
                 RecoverQuestionMark::Yes,
-                RecoverAnonEnum::Yes,
             )?;
             FnRetTy::Ty(ty)
         } else if recover_return_sign.can_recover(&self.token.kind) {
@@ -247,7 +231,6 @@ impl<'a> Parser<'a> {
                 recover_return_sign,
                 None,
                 RecoverQuestionMark::Yes,
-                RecoverAnonEnum::Yes,
             )?;
             FnRetTy::Ty(ty)
         } else {
@@ -263,7 +246,6 @@ impl<'a> Parser<'a> {
         recover_return_sign: RecoverReturnSign,
         ty_generics: Option<&Generics>,
         recover_question_mark: RecoverQuestionMark,
-        recover_anon_enum: RecoverAnonEnum,
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
@@ -347,49 +329,8 @@ impl<'a> Parser<'a> {
             AllowPlus::Yes => self.maybe_recover_from_bad_type_plus(&ty)?,
             AllowPlus::No => self.maybe_report_ambiguous_plus(impl_dyn_multi, &ty),
         }
-        if RecoverQuestionMark::Yes == recover_question_mark {
+        if let RecoverQuestionMark::Yes = recover_question_mark {
             ty = self.maybe_recover_from_question_mark(ty);
-        }
-        if recover_anon_enum == RecoverAnonEnum::Yes
-            && self.check_noexpect(&token::BinOp(token::Or))
-            && self.look_ahead(1, |t| t.can_begin_type())
-        {
-            let mut pipes = vec![self.token.span];
-            let mut types = vec![ty];
-            loop {
-                if !self.eat(&token::BinOp(token::Or)) {
-                    break;
-                }
-                pipes.push(self.prev_token.span);
-                types.push(self.parse_ty_common(
-                    allow_plus,
-                    allow_c_variadic,
-                    recover_qpath,
-                    recover_return_sign,
-                    ty_generics,
-                    recover_question_mark,
-                    RecoverAnonEnum::No,
-                )?);
-            }
-            let mut err = self.struct_span_err(pipes, "anonymous enums are not supported");
-            for ty in &types {
-                err.span_label(ty.span, "");
-            }
-            err.help(&format!(
-                "create a named `enum` and use it here instead:\nenum Name {{\n{}\n}}",
-                types
-                    .iter()
-                    .enumerate()
-                    .map(|(i, t)| format!(
-                        "    Variant{}({}),",
-                        i + 1, // Lets not confuse people with zero-indexing :)
-                        pprust::to_string(|s| s.print_type(&t)),
-                    ))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ));
-            err.emit();
-            return Ok(self.mk_ty(lo.to(self.prev_token.span), TyKind::Err));
         }
         if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
     }
