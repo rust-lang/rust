@@ -97,7 +97,9 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let ast_id = AstId::new(source.file_id, file_ast_id.upcast());
         let kind = MacroDefKind::Declarative(ast_id);
 
-        let macro_def = db.macro_def(MacroDefId { krate, kind, local_inner: false }).unwrap();
+        let macro_def = db
+            .macro_def(MacroDefId { krate, kind, local_inner: false, allow_internal_unsafe: false })
+            .unwrap();
         if let TokenExpander::DeclarativeMacro { mac, def_site_token_map } = &*macro_def {
             let tt = match &macro_ {
                 ast::Macro::MacroRules(mac) => mac.token_tree().unwrap(),

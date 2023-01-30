@@ -290,6 +290,7 @@ pub struct Macro2Loc {
     pub container: ModuleId,
     pub id: ItemTreeId<MacroDef>,
     pub expander: MacroExpander,
+    pub allow_internal_unsafe: bool,
 }
 impl_intern!(Macro2Id, Macro2Loc, intern_macro2, lookup_intern_macro2);
 
@@ -299,8 +300,9 @@ pub struct MacroRulesId(salsa::InternId);
 pub struct MacroRulesLoc {
     pub container: ModuleId,
     pub id: ItemTreeId<MacroRules>,
-    pub local_inner: bool,
     pub expander: MacroExpander,
+    pub allow_internal_unsafe: bool,
+    pub local_inner: bool,
 }
 impl_intern!(MacroRulesId, MacroRulesLoc, intern_macro_rules, lookup_intern_macro_rules);
 
@@ -894,6 +896,7 @@ pub fn macro_id_to_def_id(db: &dyn db::DefDatabase, id: MacroId) -> MacroDefId {
                     }
                 },
                 local_inner: false,
+                allow_internal_unsafe: loc.allow_internal_unsafe,
             }
         }
         MacroId::MacroRulesId(it) => {
@@ -918,6 +921,7 @@ pub fn macro_id_to_def_id(db: &dyn db::DefDatabase, id: MacroId) -> MacroDefId {
                     }
                 },
                 local_inner: loc.local_inner,
+                allow_internal_unsafe: loc.allow_internal_unsafe,
             }
         }
         MacroId::ProcMacroId(it) => {
@@ -933,6 +937,7 @@ pub fn macro_id_to_def_id(db: &dyn db::DefDatabase, id: MacroId) -> MacroDefId {
                     InFile::new(loc.id.file_id(), makro.ast_id),
                 ),
                 local_inner: false,
+                allow_internal_unsafe: false,
             }
         }
     }
