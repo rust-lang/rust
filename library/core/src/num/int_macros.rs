@@ -5,7 +5,7 @@ macro_rules! int_impl {
      $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr,
      $bound_condition:expr) => {
         /// The smallest value that can be represented by this integer type
-        #[doc = concat!("(&minus;2<sup>", $BITS_MINUS_ONE, "</sup>", $bound_condition, ")")]
+        #[doc = concat!("(&minus;2<sup>", $BITS_MINUS_ONE, "</sup>", $bound_condition, ").")]
         ///
         /// # Examples
         ///
@@ -18,7 +18,7 @@ macro_rules! int_impl {
         pub const MIN: Self = !0 ^ ((!0 as $UnsignedT) >> 1) as Self;
 
         /// The largest value that can be represented by this integer type
-        #[doc = concat!("(2<sup>", $BITS_MINUS_ONE, "</sup> &minus; 1", $bound_condition, ")")]
+        #[doc = concat!("(2<sup>", $BITS_MINUS_ONE, "</sup> &minus; 1", $bound_condition, ").")]
         ///
         /// # Examples
         ///
