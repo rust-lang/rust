@@ -3,6 +3,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_refutable, peel_hir_pat_refs, recurse_or_patterns};
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{Arm, Expr, PatKind, PathSegment, QPath, Ty, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, VariantDef};
@@ -45,11 +46,11 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
 
     // Accumulate the variants which should be put in place of the wildcard because they're not
     // already covered.
-    let has_hidden_external = adt_def.variants().iter().any(|x| is_hidden_and_external(cx, x));
+    let has_hidden_external = adt_def.variants().iter().any(|x| is_external_and_hidden(cx, x));
     let mut missing_variants: Vec<_> = adt_def
         .variants()
         .iter()
-        .filter(|x| !is_hidden_and_external(cx, x))
+        .filter(|x| !is_external_and_hidden(cx, x))
         .collect();
 
     let mut path_prefix = CommonPrefixSearcher::None;
@@ -195,7 +196,14 @@ impl<'a> CommonPrefixSearcher<'a> {
     }
 }
 
-fn is_hidden_and_external(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
-    (cx.tcx.is_doc_hidden(variant_def.def_id) || cx.tcx.has_attr(variant_def.def_id, sym::unstable))
-        && variant_def.def_id.as_local().is_none()
+fn is_external_and_hidden(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
+    is_external(variant_def.def_id) && is_hidden(cx, variant_def)
+}
+
+fn is_hidden(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
+    cx.tcx.is_doc_hidden(variant_def.def_id) || cx.tcx.has_attr(variant_def.def_id, sym::unstable)
+}
+
+fn is_external(def_id: DefId) -> bool {
+    def_id.as_local().is_none()
 }
