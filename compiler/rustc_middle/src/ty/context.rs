@@ -2,6 +2,7 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
+pub mod mk;
 pub mod tls;
 
 use crate::arena::Arena;
@@ -1561,6 +1562,8 @@ macro_rules! direct_interners {
 // Functions with a `mk_` prefix are intended for use outside this file and
 // crate. Functions with an `intern_` prefix are intended for use within this
 // file only, and have a corresponding `mk_` function.
+//
+// FIXME(waffle): move `mk_region`, `mk_const_internal` to `.mk()`
 direct_interners! {
     region: intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
