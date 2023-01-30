@@ -301,6 +301,7 @@ impl<'tcx> ItemLikeVisitor<'tcx> for AutodiffContext<'tcx> {
                 return DiffItems::default();
             };
 
+
             //let source = tcx.hir().fn_decl_by_hir_id(*source).unwrap();
 
             let def_id = tcx.hir().local_def_id(*source).to_def_id();

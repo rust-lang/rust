@@ -2976,6 +2976,7 @@ fn fn_abi_of_fn_ptr<'tcx>(
         None,
         CodegenFnAttrFlags::empty(),
         false,
+        false
     )
 }
 
@@ -2995,12 +2996,21 @@ fn fn_abi_of_instance<'tcx>(
 
     let attrs = tcx.codegen_fn_attrs(instance.def_id()).flags;
 
+    let is_autodiff = tcx.autodiff_functions(()).into_iter()
+        .any(|fnc| {
+            let def_id = instance.def_id();
+
+            fnc.source == def_id 
+        });
+    dbg!(&is_autodiff);
+
     LayoutCx { tcx, param_env }.fn_abi_new_uncached(
         sig,
         extra_args,
         caller_location,
         attrs,
         matches!(instance.def, ty::InstanceDef::Virtual(..)),
+        is_autodiff,
     )
 }
 
@@ -3015,6 +3025,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         codegen_fn_attr_flags: CodegenFnAttrFlags,
         // FIXME(eddyb) replace this with something typed, like an `enum`.
         force_thin_self_ptr: bool,
+        is_autodiff: bool,
     ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
         debug!("fn_abi_new_uncached({:?}, {:?})", sig, extra_args);
 
@@ -3186,7 +3197,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             conv,
             can_unwind: fn_can_unwind(self.tcx(), codegen_fn_attr_flags, sig.abi),
         };
-        self.fn_abi_adjust_for_abi(&mut fn_abi, sig.abi)?;
+        if !is_autodiff {
+            self.fn_abi_adjust_for_abi(&mut fn_abi, sig.abi)?;
+        } else {
+            dbg!(&fn_abi);
+        }
+
         debug!("fn_abi_new_uncached = {:?}", fn_abi);
         Ok(self.tcx.arena.alloc(fn_abi))
     }
