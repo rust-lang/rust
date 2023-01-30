@@ -486,7 +486,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         path: ast::Path,
-        field_pats: Vec<ast::PatField>,
+        field_pats: ThinVec<ast::PatField>,
     ) -> P<ast::Pat> {
         self.pat(span, PatKind::Struct(None, path, field_pats, false))
     }

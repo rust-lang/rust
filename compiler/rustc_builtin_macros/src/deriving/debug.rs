@@ -224,11 +224,11 @@ fn show_fieldless_enum(
             let pat = match &v.data {
                 ast::VariantData::Tuple(fields, _) => {
                     debug_assert!(fields.is_empty());
-                    cx.pat_tuple_struct(span, variant_path, thin_vec![])
+                    cx.pat_tuple_struct(span, variant_path, ThinVec::new())
                 }
                 ast::VariantData::Struct(fields, _) => {
                     debug_assert!(fields.is_empty());
-                    cx.pat_struct(span, variant_path, vec![])
+                    cx.pat_struct(span, variant_path, ThinVec::new())
                 }
                 ast::VariantData::Unit(_) => cx.pat_path(span, variant_path),
             };

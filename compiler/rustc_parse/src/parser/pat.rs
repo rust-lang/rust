@@ -23,7 +23,7 @@ use rustc_errors::{
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Expected {
@@ -854,7 +854,7 @@ impl<'a> Parser<'a> {
             e.span_label(path.span, "while parsing the fields for this pattern");
             e.emit();
             self.recover_stmt();
-            (vec![], true)
+            (ThinVec::new(), true)
         });
         self.bump();
         Ok(PatKind::Struct(qself, path, fields, etc))
@@ -933,8 +933,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the fields of a struct-like pattern.
-    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<PatField>, bool)> {
-        let mut fields = Vec::new();
+    fn parse_pat_fields(&mut self) -> PResult<'a, (ThinVec<PatField>, bool)> {
+        let mut fields = ThinVec::new();
         let mut etc = false;
         let mut ate_comma = true;
         let mut delayed_err: Option<DiagnosticBuilder<'a, ErrorGuaranteed>> = None;

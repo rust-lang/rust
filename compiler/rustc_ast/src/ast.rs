@@ -722,7 +722,7 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Option<P<QSelf>>, Path, Vec<PatField>, /* recovered */ bool),
+    Struct(Option<P<QSelf>>, Path, ThinVec<PatField>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     TupleStruct(Option<P<QSelf>>, Path, ThinVec<P<Pat>>),
@@ -3128,10 +3128,10 @@ mod size_asserts {
     static_assert_size!(Local, 72);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 88);
+    static_assert_size!(Pat, 72);
     static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
-    static_assert_size!(PatKind, 64);
+    static_assert_size!(PatKind, 48);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
     static_assert_size!(Ty, 64);
