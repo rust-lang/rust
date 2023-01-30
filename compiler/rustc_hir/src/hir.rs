@@ -2288,7 +2288,7 @@ impl<'hir> TraitItem<'hir> {
         (ty, trfn)
     }
 
-    /// Expect an [`TraitItemKind::ExternCrate`] or panic.
+    /// Expect an [`TraitItemKind::Type`] or panic.
     #[track_caller]
     pub fn expect_type(&self) -> (GenericBounds<'hir>, Option<&'hir Ty<'hir>>) {
         let TraitItemKind::Type(bounds, ty) = self.kind else { self.expect_failed("a type") };
