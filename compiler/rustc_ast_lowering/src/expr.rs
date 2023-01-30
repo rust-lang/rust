@@ -376,7 +376,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Split the arguments into const generics and normal arguments
         let mut real_args = vec![];
-        let mut generic_args = vec![];
+        let mut generic_args = ThinVec::new();
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let parent_def_id = self.current_hir_id_owner;

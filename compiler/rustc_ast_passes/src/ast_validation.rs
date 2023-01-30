@@ -27,6 +27,7 @@ use rustc_span::Span;
 use rustc_target::spec::abi;
 use std::mem;
 use std::ops::{Deref, DerefMut};
+use thin_vec::thin_vec;
 
 use crate::errors::*;
 
@@ -1615,7 +1616,7 @@ fn deny_equality_constraints(
                                         empty_args => {
                                             *empty_args = AngleBracketedArgs {
                                                 span: ident.span,
-                                                args: vec![arg],
+                                                args: thin_vec![arg],
                                             }
                                             .into();
                                         }

@@ -209,7 +209,7 @@ pub struct AngleBracketedArgs {
     /// The overall span.
     pub span: Span,
     /// The comma separated parts in the `<...>`.
-    pub args: Vec<AngleBracketedArg>,
+    pub args: ThinVec<AngleBracketedArg>,
 }
 
 /// Either an argument for a parameter e.g., `'a`, `Vec<u8>`, `0`,
