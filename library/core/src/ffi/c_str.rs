@@ -320,8 +320,9 @@ impl CStr {
     /// assert_eq!(c_str.to_str().unwrap(), "AAAAAAAA");
     /// ```
     ///
+    #[rustc_allow_const_fn_unstable(const_slice_index)]
     #[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_unstable(feature = "const_cstr_from_bytes_until_nul", issue = "95027")]
+    #[rustc_const_stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
     pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
