@@ -72,7 +72,6 @@ pub struct Index {
     /// are filled by the annotator.
     pub stab_map: LocalDefIdMap<Stability>,
     pub const_stab_map: LocalDefIdMap<ConstStability>,
-    pub default_body_stab_map: LocalDefIdMap<DefaultBodyStability>,
     /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
     /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
     /// exists, then this map will have a `impliee -> implier` entry.
@@ -95,10 +94,6 @@ impl Index {
 
     pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
         self.const_stab_map.get(&def_id).copied()
-    }
-
-    pub fn local_default_body_stability(&self, def_id: LocalDefId) -> Option<DefaultBodyStability> {
-        self.default_body_stab_map.get(&def_id).copied()
     }
 }
 

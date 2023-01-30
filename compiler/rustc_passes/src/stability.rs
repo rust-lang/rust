@@ -6,8 +6,8 @@ use std::num::NonZero;
 
 use rustc_ast_lowering::stability::extern_abi_stability;
 use rustc_attr_data_structures::{
-    self as attrs, AttributeKind, ConstStability, DeprecatedSince, Stability, StabilityLevel,
-    StableSince, UnstableReason, VERSION_PLACEHOLDER, find_attr,
+    self as attrs, AttributeKind, ConstStability, DefaultBodyStability, DeprecatedSince, Stability,
+    StabilityLevel, StableSince, UnstableReason, VERSION_PLACEHOLDER, find_attr,
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
@@ -150,6 +150,20 @@ fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Depre
     Some(DeprecationEntry::local(depr, def_id))
 }
 
+#[instrument(level = "debug", skip(tcx))]
+fn lookup_default_body_stability(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> Option<DefaultBodyStability> {
+    if !tcx.features().staged_api() {
+        return None;
+    }
+
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
+    // FIXME: check that this item can have body stability
+    attrs::find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => *stability)
+}
+
 /// A private tree-walker for producing an `Index`.
 struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -197,18 +211,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             return;
         }
 
-        // # Regular and body stability
+        // # Regular stability
         let stab =
             attrs::find_attr!(attrs, AttributeKind::Stability { stability, span: _ } => *stability);
-        let body_stab =
-            attrs::find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => *stability);
-
-        if let Some(body_stab) = body_stab {
-            // FIXME: check that this item can have body stability
-
-            self.index.default_body_stab_map.insert(def_id, body_stab);
-            debug!(?self.index.default_body_stab_map);
-        }
 
         if let Some(stab) = stab {
             debug!("annotate: found {:?}", stab);
@@ -679,7 +684,6 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
     let mut index = Index {
         stab_map: Default::default(),
         const_stab_map: Default::default(),
-        default_body_stab_map: Default::default(),
         implications: Default::default(),
     };
 
@@ -732,7 +736,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         stability_implications: |tcx, _| tcx.stability().implications.clone(),
         lookup_stability: |tcx, id| tcx.stability().local_stability(id),
         lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id),
-        lookup_default_body_stability: |tcx, id| tcx.stability().local_default_body_stability(id),
+        lookup_default_body_stability,
         lookup_deprecation_entry,
         ..*providers
     };
