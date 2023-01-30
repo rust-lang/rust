@@ -29,7 +29,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         if item.span.is_dummy() {
             continue;
         }
-        let hir::ItemKind::Use(path, _) = item.kind else { unreachable!() };
+        let (path, _) = item.expect_use();
         let msg = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(path.span) {
             format!("unused import: `{}`", snippet)
         } else {

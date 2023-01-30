@@ -1504,7 +1504,7 @@ fn compare_synthetic_generics<'tcx>(
                     let _: Option<_> = try {
                         let impl_m = impl_m.def_id.as_local()?;
                         let impl_m = tcx.hir().expect_impl_item(impl_m);
-                        let hir::ImplItemKind::Fn(sig, _) = &impl_m.kind else { unreachable!() };
+                        let (sig, _) = impl_m.expect_fn();
                         let input_tys = sig.decl.inputs;
 
                         struct Visitor(Option<Span>, hir::def_id::LocalDefId);
