@@ -780,6 +780,10 @@ impl Map {
         tail_elem: Option<TrackElem>,
         f: &mut impl FnMut(PlaceIndex),
     ) {
+        if place.is_indirect() {
+            // We do not track indirect places.
+            return;
+        }
         let Some(&Some(mut index)) = self.locals.get(place.local) else {
             // The local is not tracked at all, so it does not alias anything.
             return;
@@ -790,6 +794,9 @@ impl Map {
             .map(|&elem| elem.try_into())
             .chain(tail_elem.map(Ok).into_iter());
         for elem in elems {
+            // A field aliases the parent place.
+            f(index);
+
             let Ok(elem) = elem else { return };
             let sub = self.apply(index, elem);
             if let TrackElem::Variant(..) | TrackElem::Discriminant = elem {
