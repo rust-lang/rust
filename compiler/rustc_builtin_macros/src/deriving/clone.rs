@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_clone(
     cx: &mut ExtCtxt<'_>,
@@ -100,7 +100,7 @@ fn cs_clone_simple(
     substr: &Substructure<'_>,
     is_union: bool,
 ) -> BlockOrExpr {
-    let mut stmts = Vec::new();
+    let mut stmts = ThinVec::new();
     let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &VariantData| {
         for field in variant.fields() {

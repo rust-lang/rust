@@ -83,12 +83,12 @@ impl<'cx, 'a> Context<'cx, 'a> {
 
         let Self { best_case_captures, capture_decls, cx, local_bind_decls, span, .. } = self;
 
-        let mut assert_then_stmts = Vec::with_capacity(2);
+        let mut assert_then_stmts = ThinVec::with_capacity(2);
         assert_then_stmts.extend(best_case_captures);
         assert_then_stmts.push(self.cx.stmt_expr(panic));
         let assert_then = self.cx.block(span, assert_then_stmts);
 
-        let mut stmts = Vec::with_capacity(4);
+        let mut stmts = ThinVec::with_capacity(4);
         stmts.push(initial_imports);
         stmts.extend(capture_decls.into_iter().map(|c| c.decl));
         stmts.extend(local_bind_decls);
@@ -389,7 +389,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let local_bind_path = self.cx.expr_path(Path::from_ident(local_bind));
         let rslt = if self.is_consumed {
             let ret = self.cx.stmt_expr(local_bind_path);
-            self.cx.expr_block(self.cx.block(self.span, vec![try_capture_call, ret]))
+            self.cx.expr_block(self.cx.block(self.span, thin_vec![try_capture_call, ret]))
         } else {
             self.best_case_captures.push(try_capture_call);
             local_bind_path

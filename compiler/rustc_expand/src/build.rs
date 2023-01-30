@@ -221,14 +221,14 @@ impl<'a> ExtCtxt<'a> {
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
         self.block(
             expr.span,
-            vec![ast::Stmt {
+            thin_vec![ast::Stmt {
                 id: ast::DUMMY_NODE_ID,
                 span: expr.span,
                 kind: ast::StmtKind::Expr(expr),
             }],
         )
     }
-    pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
+    pub fn block(&self, span: Span, stmts: ThinVec<ast::Stmt>) -> P<ast::Block> {
         P(ast::Block {
             stmts,
             id: ast::DUMMY_NODE_ID,
@@ -567,7 +567,12 @@ impl<'a> ExtCtxt<'a> {
         self.lambda(span, vec![ident], body)
     }
 
-    pub fn lambda_stmts_1(&self, span: Span, stmts: Vec<ast::Stmt>, ident: Ident) -> P<ast::Expr> {
+    pub fn lambda_stmts_1(
+        &self,
+        span: Span,
+        stmts: ThinVec<ast::Stmt>,
+        ident: Ident,
+    ) -> P<ast::Expr> {
         self.lambda1(span, self.expr_block(self.block(span, stmts)), ident)
     }
 

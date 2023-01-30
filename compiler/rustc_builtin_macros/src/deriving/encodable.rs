@@ -169,7 +169,7 @@ fn encodable_substructure(
         Struct(_, fields) => {
             let fn_emit_struct_field_path =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_struct_field]);
-            let mut stmts = Vec::new();
+            let mut stmts = ThinVec::new();
             for (i, &FieldInfo { name, ref self_expr, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
                     Some(id) => id.name,
@@ -237,7 +237,7 @@ fn encodable_substructure(
             let fn_emit_enum_variant_arg_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_enum_variant_arg]);
 
-            let mut stmts = Vec::new();
+            let mut stmts = ThinVec::new();
             if !fields.is_empty() {
                 let last = fields.len() - 1;
                 for (i, &FieldInfo { ref self_expr, span, .. }) in fields.iter().enumerate() {
@@ -293,7 +293,7 @@ fn encodable_substructure(
                 fn_emit_enum_path,
                 thin_vec![encoder, cx.expr_str(trait_span, substr.type_ident.name), blk],
             );
-            BlockOrExpr::new_mixed(vec![me], Some(expr))
+            BlockOrExpr::new_mixed(thin_vec![me], Some(expr))
         }
 
         _ => cx.bug("expected Struct or EnumMatching in derive(Encodable)"),

@@ -317,9 +317,9 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     // If no test runner is provided we need to import the test crate
     let main_body = if cx.test_runner.is_none() {
-        ecx.block(sp, vec![test_extern_stmt, call_test_main])
+        ecx.block(sp, thin_vec![test_extern_stmt, call_test_main])
     } else {
-        ecx.block(sp, vec![call_test_main])
+        ecx.block(sp, thin_vec![call_test_main])
     };
 
     let decl = ecx.fn_decl(ThinVec::new(), ast::FnRetTy::Ty(main_ret_ty));

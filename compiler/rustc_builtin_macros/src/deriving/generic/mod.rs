@@ -328,18 +328,18 @@ struct TypeParameter {
 /// avoiding the insertion of any unnecessary blocks.
 ///
 /// The statements come before the expression.
-pub struct BlockOrExpr(Vec<ast::Stmt>, Option<P<Expr>>);
+pub struct BlockOrExpr(ThinVec<ast::Stmt>, Option<P<Expr>>);
 
 impl BlockOrExpr {
-    pub fn new_stmts(stmts: Vec<ast::Stmt>) -> BlockOrExpr {
+    pub fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
         BlockOrExpr(stmts, None)
     }
 
     pub fn new_expr(expr: P<Expr>) -> BlockOrExpr {
-        BlockOrExpr(vec![], Some(expr))
+        BlockOrExpr(ThinVec::new(), Some(expr))
     }
 
-    pub fn new_mixed(stmts: Vec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
+    pub fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
         BlockOrExpr(stmts, expr)
     }
 
@@ -355,7 +355,7 @@ impl BlockOrExpr {
     fn into_expr(self, cx: &ExtCtxt<'_>, span: Span) -> P<Expr> {
         if self.0.is_empty() {
             match self.1 {
-                None => cx.expr_block(cx.block(span, vec![])),
+                None => cx.expr_block(cx.block(span, ThinVec::new())),
                 Some(expr) => expr,
             }
         } else if self.0.len() == 1
@@ -1146,7 +1146,7 @@ impl<'a> MethodDef<'a> {
         // There is no sensible code to be generated for *any* deriving on a
         // zero-variant enum. So we just generate a failing expression.
         if variants.is_empty() {
-            return BlockOrExpr(vec![], Some(deriving::call_unreachable(cx, span)));
+            return BlockOrExpr(ThinVec::new(), Some(deriving::call_unreachable(cx, span)));
         }
 
         let prefixes = iter::once("__self".to_string())
@@ -1182,7 +1182,7 @@ impl<'a> MethodDef<'a> {
             let other_selflike_exprs = tag_exprs;
             let tag_field = FieldInfo { span, name: None, self_expr, other_selflike_exprs };
 
-            let tag_let_stmts: Vec<_> = iter::zip(&tag_idents, &selflike_args)
+            let tag_let_stmts: ThinVec<_> = iter::zip(&tag_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
                     let variant_value = deriving::call_intrinsic(
                         cx,
@@ -1362,7 +1362,7 @@ impl<'a> MethodDef<'a> {
             tag_let_stmts.append(&mut tag_check_plus_match.0);
             BlockOrExpr(tag_let_stmts, tag_check_plus_match.1)
         } else {
-            BlockOrExpr(vec![], Some(get_match_expr(selflike_args)))
+            BlockOrExpr(ThinVec::new(), Some(get_match_expr(selflike_args)))
         }
     }
 
@@ -1599,7 +1599,7 @@ impl<'a> TraitDef<'a> {
                         } else {
                             // Wrap the expression in `{...}`, causing a copy.
                             field_expr = cx.expr_block(
-                                cx.block(struct_field.span, vec![cx.stmt_expr(field_expr)]),
+                                cx.block(struct_field.span, thin_vec![cx.stmt_expr(field_expr)]),
                             );
                         }
                     }

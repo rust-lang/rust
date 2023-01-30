@@ -1601,7 +1601,7 @@ impl<'a> Parser<'a> {
 
                 // Replace `'label: non_block_expr` with `'label: {non_block_expr}` in order to suppress future errors about `break 'label`.
                 let stmt = self.mk_stmt(span, StmtKind::Expr(expr));
-                let blk = self.mk_block(vec![stmt], BlockCheckMode::Default, span);
+                let blk = self.mk_block(thin_vec![stmt], BlockCheckMode::Default, span);
                 self.mk_expr(span, ExprKind::Block(blk, label))
             });
 
@@ -2481,7 +2481,7 @@ impl<'a> Parser<'a> {
             self.sess
                 .emit_err(errors::MissingExpressionInForLoop { span: expr.span.shrink_to_lo() });
             let err_expr = self.mk_expr(expr.span, ExprKind::Err);
-            let block = self.mk_block(vec![], BlockCheckMode::Default, self.prev_token.span);
+            let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
             return Ok(self.mk_expr(
                 lo.to(self.prev_token.span),
                 ExprKind::ForLoop(pat, err_expr, block, opt_label),

@@ -375,7 +375,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
         });
 
     let block = cx.expr_block(
-        cx.block(span, vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),
+        cx.block(span, thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),
     );
 
     let anon_constant = cx.item_const(

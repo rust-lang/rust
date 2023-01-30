@@ -708,7 +708,7 @@ impl<'a> Parser<'a> {
                     err.delay_as_bug();
                     self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
-                        vec![self.mk_stmt_err(expr.span)],
+                        thin_vec![self.mk_stmt_err(expr.span)],
                         s,
                         lo.to(self.prev_token.span),
                     );

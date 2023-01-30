@@ -72,7 +72,7 @@ fn hash_substructure(
         }
         EnumTag(tag_field, match_expr) => {
             assert!(tag_field.other_selflike_exprs.is_empty());
-            let stmts = vec![call_hash(tag_field.span, tag_field.self_expr.clone())];
+            let stmts = thin_vec![call_hash(tag_field.span, tag_field.self_expr.clone())];
             (stmts, match_expr.clone())
         }
         _ => cx.span_bug(trait_span, "impossible substructure in `derive(Hash)`"),

@@ -187,7 +187,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         args.push(cx.expr_ident(span, Ident::new(sym::values, span)));
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
-        let mut stmts = Vec::with_capacity(3);
+        let mut stmts = ThinVec::with_capacity(2);
         if is_struct {
             stmts.push(names_let.unwrap());
         }

@@ -531,7 +531,7 @@ pub enum NestedMetaItem {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Block {
     /// The statements in the block.
-    pub stmts: Vec<Stmt>,
+    pub stmts: ThinVec<Stmt>,
     pub id: NodeId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
@@ -3112,7 +3112,7 @@ mod size_asserts {
     static_assert_size!(AssocItem, 104);
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
-    static_assert_size!(Block, 48);
+    static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
     static_assert_size!(Fn, 152);
