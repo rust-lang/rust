@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::{DefId, CRATE_DEF_ID};
@@ -406,6 +407,56 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     node.fn_sig().map_or(hir::IsAsync::NotAsync, |sig| sig.header.asyncness)
 }
 
+fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32> {
+    let def = tcx.adt_def(def_id);
+    let num_params = tcx.generics_of(def_id).count();
+
+    let maybe_unsizing_param_idx = |arg: ty::GenericArg<'tcx>| match arg.unpack() {
+        ty::GenericArgKind::Type(ty) => match ty.kind() {
+            ty::Param(p) => Some(p.index),
+            _ => None,
+        },
+
+        // We can't unsize a lifetime
+        ty::GenericArgKind::Lifetime(_) => None,
+
+        ty::GenericArgKind::Const(ct) => match ct.kind() {
+            ty::ConstKind::Param(p) => Some(p.index),
+            _ => None,
+        },
+    };
+
+    // FIXME(eddyb) cache this (including computing `unsizing_params`)
+    // by putting it in a query; it would only need the `DefId` as it
+    // looks at declared field types, not anything substituted.
+
+    // The last field of the structure has to exist and contain type/const parameters.
+    let Some((tail_field, prefix_fields)) =
+        def.non_enum_variant().fields.split_last() else
+    {
+        return BitSet::new_empty(num_params);
+    };
+
+    let mut unsizing_params = BitSet::new_empty(num_params);
+    for arg in tcx.bound_type_of(tail_field.did).subst_identity().walk() {
+        if let Some(i) = maybe_unsizing_param_idx(arg) {
+            unsizing_params.insert(i);
+        }
+    }
+
+    // Ensure none of the other fields mention the parameters used
+    // in unsizing.
+    for field in prefix_fields {
+        for arg in tcx.bound_type_of(field.did).subst_identity().walk() {
+            if let Some(i) = maybe_unsizing_param_idx(arg) {
+                unsizing_params.remove(i);
+            }
+        }
+    }
+
+    unsizing_params
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
@@ -415,6 +466,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
+        unsizing_params_for_adt,
         ..*providers
     };
 }
