@@ -141,7 +141,6 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         )
     }
 
-    #[allow(unreachable_patterns)]
     fn parse_rvalue(&self, expr_id: ExprId) -> PResult<Rvalue<'tcx>> {
         parse_by_kind!(self, expr_id, _, "rvalue",
             @call("mir_discriminant", args) => self.parse_place(args[0]).map(Rvalue::Discriminant),
@@ -172,7 +171,6 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         )
     }
 
-    #[allow(unreachable_patterns)]
     fn parse_operand(&self, expr_id: ExprId) -> PResult<Operand<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "operand",
             @call("mir_move", args) => self.parse_place(args[0]).map(Operand::Move),
@@ -196,7 +194,6 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         self.parse_place_inner(expr_id).map(|(x, _)| x)
     }
 
-    #[allow(unreachable_patterns)]
     fn parse_place_inner(&self, expr_id: ExprId) -> PResult<(Place<'tcx>, PlaceTy<'tcx>)> {
         let (parent, proj) = parse_by_kind!(self, expr_id, expr, "place",
             @call("mir_field", args) => {

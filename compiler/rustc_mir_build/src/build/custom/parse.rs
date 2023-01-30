@@ -36,6 +36,7 @@ macro_rules! parse_by_kind {
         let expr = &$self.thir[expr_id];
         debug!("Trying to parse {:?} as {}", expr.kind, $expected);
         let $expr_name = expr;
+        #[allow(unreachable_patterns)]
         match &expr.kind {
             $(
                 ExprKind::Call { ty, fun: _, args: $args, .. } if {
@@ -50,7 +51,6 @@ macro_rules! parse_by_kind {
             $(
                 $pat => $expr,
             )*
-            #[allow(unreachable_patterns)]
             _ => return Err($self.expr_error(expr_id, $expected))
         }
     }};
