@@ -2892,12 +2892,14 @@ impl TypeTree {
     }
 
 
+    #[must_use]
     pub fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
         let inner = unsafe { EnzymeNewTypeTreeCT(t, ctx) };
 
         TypeTree { inner }
     }
 
+    #[must_use]
     pub fn only(self, idx: isize) -> TypeTree {
         unsafe {
             EnzymeTypeTreeOnlyEq(self.inner, idx as i64);
@@ -2905,6 +2907,7 @@ impl TypeTree {
         self
     }
 
+    #[must_use]
     pub fn data0(self) -> TypeTree {
         unsafe {
             EnzymeTypeTreeData0Eq(self.inner);
@@ -2919,6 +2922,7 @@ impl TypeTree {
         drop(other);
     }
 
+    #[must_use]
     pub fn shift(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
         let layout = CString::new(layout).unwrap();
 
