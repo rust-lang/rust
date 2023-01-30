@@ -161,9 +161,10 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                     None => format!("impl {}", target_type.syntax().text()),
                     Some(t) => {
                         format!("impl {}{} for {}", 
-                        it.excl_token().map(|x| x.to_string()).unwrap_or_default(), 
-                        t.syntax().text(), 
-                        target_type.syntax().text(),)
+                            it.excl_token().map(|x| x.to_string()).unwrap_or_default(), 
+                            t.syntax().text(), 
+                            target_type.syntax().text(),
+                        )
                     }
                 };
 
