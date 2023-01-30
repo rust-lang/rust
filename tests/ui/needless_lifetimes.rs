@@ -495,4 +495,17 @@ mod pr_9743_output_lifetime_checks {
     }
 }
 
+mod skip_inside_macros {
+    macro_rules! print_with_one_input {
+        ($a:expr) => {
+            fn print_with_one_input<'a>(x: &'a u8) -> &'a u8 {
+                println!("{}", $a);
+                unimplemented!()
+            }
+        };
+    }
+
+    print_with_one_input!("this is a dandy little string literal");
+}
+
 fn main() {}
