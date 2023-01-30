@@ -6,6 +6,7 @@ use rustc_ast::{ast, ptr};
 use rustc_errors::Diagnostic;
 use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
 use rustc_span::{sym, Span};
+use thin_vec::ThinVec;
 
 use crate::attr::first_attr_value_str_by_name;
 use crate::parse::session::ParseSess;
@@ -109,7 +110,7 @@ impl<'a> Parser<'a> {
         sess: &'a ParseSess,
         path: &Path,
         span: Span,
-    ) -> Result<(ast::AttrVec, Vec<ptr::P<ast::Item>>, Span), ParserError> {
+    ) -> Result<(ast::AttrVec, ThinVec<ptr::P<ast::Item>>, Span), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser = new_parser_from_file(sess.inner(), path, Some(span));
             match parser.parse_mod(&TokenKind::Eof) {
