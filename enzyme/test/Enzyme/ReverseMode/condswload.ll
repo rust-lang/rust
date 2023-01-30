@@ -96,9 +96,9 @@ entry:
 ; CHECK-NEXT:   %7 = phi {{(fast )?}}double [ %l3_unwrap, %invertend_phirc ], [ %l1_unwrap, %invertend_phirc1 ], [ %l2_unwrap, %invertend_phirc2 ]
 ; CHECK-NEXT:   %m0diffep = fmul fast double %0, %7
 ; CHECK-NEXT:   %8 = fadd fast double %m0diffep, %m0diffep
-; CHECK-NEXT:   %9 = icmp eq i32 17, %val
-; CHECK-NEXT:   %10 = icmp eq i32 42, %val
-; CHECK-NEXT:   %11 = or i1 %9, %10
+; CHECK-DAG:   %[[i9:.+]] = icmp eq i32 17, %val
+; CHECK-DAG:   %[[i10:.+]] = icmp eq i32 42, %val
+; CHECK-DAG:   %11 = or i1 %[[i9]], %[[i10]]
 ; CHECK-NEXT:   %12 = select {{(fast )?}}i1 %11, double 0.000000e+00, double %8
 ; CHECK-NEXT:   %13 = select {{(fast )?}}i1 %10, double %8, double 0.000000e+00
 ; CHECK-NEXT:   %14 = select {{(fast )?}}i1 %9, double %8, double 0.000000e+00
