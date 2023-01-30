@@ -195,7 +195,7 @@ impl<'tcx> TypeError<'tcx> {
             )
             .into(),
             ProjectionMismatched(ref values) => format!(
-                "expected {}, found {}",
+                "expected `{}`, found `{}`",
                 tcx.def_path_str(values.expected),
                 tcx.def_path_str(values.found)
             )
