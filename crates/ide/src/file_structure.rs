@@ -220,7 +220,9 @@ mod tests {
     #[test]
     fn test_nagative_trait_bound() {
         let txt = r#"impl !Unpin for Test {}"#;
-        check(txt, expect![[r#"
+        check(
+            txt,
+            expect![[r#"
         [
             StructureNode {
                 parent: None,
@@ -234,7 +236,8 @@ mod tests {
                 deprecated: false,
             },
         ]
-        "#]]);
+        "#]],
+        );
     }
 
     #[test]
