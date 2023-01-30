@@ -385,10 +385,9 @@ pub fn check_generic_arg_count_for_call(
 ) -> GenericArgCountResult {
     let empty_args = hir::GenericArgs::none();
     let gen_args = seg.args.unwrap_or(&empty_args);
-    let gen_pos = if is_method_call == IsMethodCall::Yes {
-        GenericArgPosition::MethodCall
-    } else {
-        GenericArgPosition::Value
+    let gen_pos = match is_method_call {
+        IsMethodCall::Yes => GenericArgPosition::MethodCall,
+        IsMethodCall::No => GenericArgPosition::Value,
     };
     let has_self = generics.parent.is_none() && generics.has_self;
 

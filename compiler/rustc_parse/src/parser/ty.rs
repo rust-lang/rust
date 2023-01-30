@@ -323,13 +323,14 @@ impl<'a> Parser<'a> {
         } else if self.can_begin_bound() {
             self.parse_bare_trait_object(lo, allow_plus)?
         } else if self.eat(&token::DotDotDot) {
-            if allow_c_variadic == AllowCVariadic::Yes {
-                TyKind::CVarArgs
-            } else {
-                // FIXME(Centril): Should we just allow `...` syntactically
-                // anywhere in a type and use semantic restrictions instead?
-                self.error_illegal_c_varadic_ty(lo);
-                TyKind::Err
+            match allow_c_variadic {
+                AllowCVariadic::Yes => TyKind::CVarArgs,
+                AllowCVariadic::No => {
+                    // FIXME(Centril): Should we just allow `...` syntactically
+                    // anywhere in a type and use semantic restrictions instead?
+                    self.error_illegal_c_varadic_ty(lo);
+                    TyKind::Err
+                }
             }
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
@@ -343,10 +344,9 @@ impl<'a> Parser<'a> {
         let mut ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
-        if allow_plus == AllowPlus::Yes {
-            self.maybe_recover_from_bad_type_plus(&ty)?;
-        } else {
-            self.maybe_report_ambiguous_plus(impl_dyn_multi, &ty);
+        match allow_plus {
+            AllowPlus::Yes => self.maybe_recover_from_bad_type_plus(&ty)?,
+            AllowPlus::No => self.maybe_report_ambiguous_plus(impl_dyn_multi, &ty),
         }
         if RecoverQuestionMark::Yes == recover_question_mark {
             ty = self.maybe_recover_from_question_mark(ty);

@@ -1354,13 +1354,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return Some(Err(MethodError::Ambiguity(sources)));
         }
 
-        applicable_candidates.pop().map(|(probe, status)| {
-            if status == ProbeResult::Match {
+        applicable_candidates.pop().map(|(probe, status)| match status {
+            ProbeResult::Match => {
                 Ok(probe
                     .to_unadjusted_pick(self_ty, unstable_candidates.cloned().unwrap_or_default()))
-            } else {
-                Err(MethodError::BadReturnType)
             }
+            ProbeResult::NoMatch | ProbeResult::BadReturnType => Err(MethodError::BadReturnType),
         })
     }
 }
