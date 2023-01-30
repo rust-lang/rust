@@ -2743,8 +2743,6 @@ fn sidebar_foreign_type(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
     }
 }
 
-pub(crate) const BASIC_KEYWORDS: &str = "rust, rustlang, rust-lang";
-
 /// Returns a list of all paths used in the type.
 /// This is used to help deduplicate imported impls
 /// for reexported types. If any of the contained
