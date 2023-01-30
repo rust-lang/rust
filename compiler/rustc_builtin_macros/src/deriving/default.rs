@@ -25,6 +25,7 @@ pub fn expand_deriving_default(
         span,
         path: Path::new(vec![kw::Default, sym::Default]),
         skip_path_as_bound: has_a_default_variant(item),
+        needs_copy_as_bound_if_packed: false,
         additional_bounds: Vec::new(),
         supports_unions: false,
         methods: vec![MethodDef {

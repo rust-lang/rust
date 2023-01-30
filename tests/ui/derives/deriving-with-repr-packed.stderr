@@ -1,111 +1,45 @@
-error: `Clone` can't be derived on this `#[repr(packed)]` struct with type or const parameters
-  --> $DIR/deriving-with-repr-packed.rs:11:16
+warning: byte slice in a packed struct that derives a built-in trait
+  --> $DIR/deriving-with-repr-packed.rs:33:5
    |
-LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
-   |                ^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-note: the lint level is defined here
-  --> $DIR/deriving-with-repr-packed.rs:1:9
-   |
-LL | #![deny(unaligned_references)]
-   |         ^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: `PartialEq` can't be derived on this `#[repr(packed)]` struct with type or const parameters
-  --> $DIR/deriving-with-repr-packed.rs:11:32
-   |
-LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
-   |                                ^^^^^^^^^
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+LL |     data: [u8],
+   |     ^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: for more information, see issue #107457 <https://github.com/rust-lang/rust/issues/107457>
+   = help: consider implementing the trait by hand, or remove the `packed` attribute
+   = note: `#[warn(byte_slice_in_packed_struct_with_derive)]` on by default
+   = note: this warning originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `Hash` can't be derived on this `#[repr(packed)]` struct that does not derive `Copy`
-  --> $DIR/deriving-with-repr-packed.rs:19:19
-   |
-LL | #[derive(Default, Hash)]
-   |                   ^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: this error originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: `Debug` can't be derived on this `#[repr(packed)]` struct that does not derive `Copy`
-  --> $DIR/deriving-with-repr-packed.rs:39:10
+error[E0507]: cannot move out of `self` which is behind a shared reference
+  --> $DIR/deriving-with-repr-packed.rs:24:10
    |
 LL | #[derive(Debug, Default)]
-   |          ^^^^^
+   |          ----- in this derive macro expansion
+LL | #[repr(packed)]
+LL | struct X(Y);
+   |          ^ move occurs because `self.0` has type `Y`, which does not implement the `Copy` trait
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error; 1 warning emitted
 
+For more information about this error, try `rustc --explain E0507`.
 Future incompatibility report: Future breakage diagnostic:
-error: `Clone` can't be derived on this `#[repr(packed)]` struct with type or const parameters
-  --> $DIR/deriving-with-repr-packed.rs:11:16
+warning: byte slice in a packed struct that derives a built-in trait
+  --> $DIR/deriving-with-repr-packed.rs:33:5
    |
-LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
-   |                ^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-note: the lint level is defined here
-  --> $DIR/deriving-with-repr-packed.rs:1:9
-   |
-LL | #![deny(unaligned_references)]
-   |         ^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-Future breakage diagnostic:
-error: `PartialEq` can't be derived on this `#[repr(packed)]` struct with type or const parameters
-  --> $DIR/deriving-with-repr-packed.rs:11:32
-   |
-LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
-   |                                ^^^^^^^^^
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+LL |     data: [u8],
+   |     ^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-note: the lint level is defined here
-  --> $DIR/deriving-with-repr-packed.rs:1:9
-   |
-LL | #![deny(unaligned_references)]
-   |         ^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-Future breakage diagnostic:
-error: `Hash` can't be derived on this `#[repr(packed)]` struct that does not derive `Copy`
-  --> $DIR/deriving-with-repr-packed.rs:19:19
-   |
-LL | #[derive(Default, Hash)]
-   |                   ^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-note: the lint level is defined here
-  --> $DIR/deriving-with-repr-packed.rs:1:9
-   |
-LL | #![deny(unaligned_references)]
-   |         ^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-Future breakage diagnostic:
-error: `Debug` can't be derived on this `#[repr(packed)]` struct that does not derive `Copy`
-  --> $DIR/deriving-with-repr-packed.rs:39:10
-   |
-LL | #[derive(Debug, Default)]
-   |          ^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-note: the lint level is defined here
-  --> $DIR/deriving-with-repr-packed.rs:1:9
-   |
-LL | #![deny(unaligned_references)]
-   |         ^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: for more information, see issue #107457 <https://github.com/rust-lang/rust/issues/107457>
+   = help: consider implementing the trait by hand, or remove the `packed` attribute
+   = note: `#[warn(byte_slice_in_packed_struct_with_derive)]` on by default
+   = note: this warning originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
