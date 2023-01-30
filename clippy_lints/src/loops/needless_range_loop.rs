@@ -149,7 +149,7 @@ pub(super) fn check<'tcx>(
                         |diag| {
                             multispan_sugg(
                                 diag,
-                                "consider using an iterator",
+                                "consider using an iterator and enumerate()",
                                 vec![
                                     (pat.span, format!("({}, <item>)", ident.name)),
                                     (
