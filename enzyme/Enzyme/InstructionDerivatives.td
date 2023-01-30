@@ -164,3 +164,10 @@ def : CallPattern<(Op $x),
                     (Select (FCmpOEQ $x, (ConstantFP<"0"> $x)),
                         (ConstantFP<"0"> $x),
                   (FMul (DiffeRet<"">), (FDiv (FSub (Intrinsic<"cos", [(TypeOf<""> $x)]> (FMul (ConstantFP<"3.1415926535897962684626433"> $x), $x)), (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), $x)))]>;
+
+// Normalized Faddeeva_erfcx_re(x) = Exp[z^2] Erfc[z] -> 2 dx ( x f(x) - 1/sqrt(pi))
+def : CallPattern<(Op $x),
+                  ["Faddeeva_erfcx_re"],
+                  [
+                  (FMul (DiffeRet<"">), (FMul (ConstantFP<"2.0"> $x), (FSub (FMul $x, (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), (ConstantFP<"0.56418958354775628694807945156077258584405062932900"> $x) )))
+                  ]>;
