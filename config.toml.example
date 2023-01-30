@@ -233,6 +233,9 @@ changelog-seen = 2
 # and generated in already-minified form from the beginning.
 #docs-minification = true
 
+# Flag to specify whether private items should be included in the library docs.
+#library-docs-private-items = false
+
 # Indicate whether the compiler should be documented in addition to the standard
 # library and facade crates.
 #compiler-docs = false
