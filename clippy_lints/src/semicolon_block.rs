@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// # let x = 0;
     /// unsafe { f(x); }
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.68.0"]
     pub SEMICOLON_INSIDE_BLOCK,
     restriction,
     "add a semicolon inside the block"
@@ -59,7 +59,7 @@ declare_clippy_lint! {
     /// # let x = 0;
     /// unsafe { f(x) };
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.68.0"]
     pub SEMICOLON_OUTSIDE_BLOCK,
     restriction,
     "add a semicolon outside the block"
