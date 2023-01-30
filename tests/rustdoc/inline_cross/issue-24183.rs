@@ -5,7 +5,7 @@
 // edition: 2021
 
 // @has usr/trait.U.html
-// @has - '//*[@class="item-decl"]' "pub trait U {"
+// @has - '//*[@class="rust item-decl"]' "pub trait U {"
 // @has - '//*[@id="method.modified"]' \
 // "fn modified(self) -> Self\
 // where \
@@ -14,5 +14,5 @@
 pub use issue_24183::U;
 
 // @has usr/trait.S.html
-// @has - '//*[@class="item-decl"]' 'pub trait S: Sized {'
+// @has - '//*[@class="rust item-decl"]' 'pub trait S: Sized {'
 pub use issue_24183::S;

@@ -1,6 +1,6 @@
 // This test checks that the font weight is correctly applied.
 goto: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
-assert-css: ("//*[@class='item-decl']//a[text()='Alias']", {"font-weight": "400"})
+assert-css: ("//*[@class='rust item-decl']//a[text()='Alias']", {"font-weight": "400"})
 assert-css: (
     "//*[@class='structfield small-section-header']//a[text()='Alias']",
     {"font-weight": "400"},
@@ -19,8 +19,7 @@ goto: "file://" + |DOC_PATH| + "/lib2/trait.Trait.html"
 
 // This is a complex selector, so here's how it works:
 //
-// * //*[@class='item-decl'] — selects element of any tag with classes docblock and item-decl
-// * /pre[@class='rust'] — selects immediate child with tag pre and class rust
+// * //pre[@class='rust item-decl'] — selects item-decl code block
 // * /code — selects immediate child with tag code
 // * /a[@class='constant'] — selects immediate child with tag a and class constant
 // * //text() — selects child that is text node
@@ -29,11 +28,11 @@ goto: "file://" + |DOC_PATH| + "/lib2/trait.Trait.html"
 // This uses '/parent::*' as a proxy for the style of the text node.
 // We can't just select the '<a>' because intermediate tags could be added.
 assert-count: (
-    "//*[@class='item-decl']/pre[@class='rust']/code/a[@class='constant']//text()/parent::*",
+    "//pre[@class='rust item-decl']/code/a[@class='constant']//text()/parent::*",
     1,
 )
 assert-css: (
-    "//*[@class='item-decl']/pre[@class='rust']/code/a[@class='constant']//text()/parent::*",
+    "//pre[@class='rust item-decl']/code/a[@class='constant']//text()/parent::*",
     {"font-weight": "400"},
 )
 
