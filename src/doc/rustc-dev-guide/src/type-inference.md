@@ -36,18 +36,16 @@ signature, such as the `'a` in `for<'a> fn(&'a u32)`. A region is
 
 ## Creating an inference context
 
-You create and "enter" an inference context by doing something like
+You create an inference context by doing something like
 the following:
 
 ```rust,ignore
-tcx.infer_ctxt().enter(|infcx| {
-    // Use the inference context `infcx` here.
-})
+let infcx = tcx.infer_ctxt().build();
+// Use the inference context `infcx` here.
 ```
 
-Within the closure,
-`infcx` has the type `InferCtxt<'a, 'tcx>` for some fresh `'a`,
-while `'tcx` is the same as outside the inference context.
+`infcx` has the type `InferCtxt<'tcx>`, the same `'tcx` lifetime as on
+the `tcx` it was built from.
 
 The `tcx.infer_ctxt` method actually returns a builder, which means
 there are some kinds of configuration you can do before the `infcx` is
