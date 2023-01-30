@@ -34,7 +34,7 @@
 
 // See https://github.com/rust-lang/rust/pull/53562
 // and https://github.com/rust-lang/rfcs/pull/2527
-// and https://twitter.com/garblefart/status/1393236602856611843
+// and https://web.archive.org/web/20211010063452/https://twitter.com/garblefart/status/1393236602856611843
 // for context.
 
 fn main() {
