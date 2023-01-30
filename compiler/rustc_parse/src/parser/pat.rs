@@ -777,7 +777,7 @@ impl<'a> Parser<'a> {
                 self.error_inclusive_range_with_extra_equals(span_with_eq);
             }
             token::Gt if no_space => {
-                self.error_inclusive_range_match_arrow(span);
+                self.error_inclusive_range_match_arrow(span, tok.span);
             }
             _ => self.error_inclusive_range_with_no_end(span),
         }
@@ -787,9 +787,9 @@ impl<'a> Parser<'a> {
         self.sess.emit_err(InclusiveRangeExtraEquals { span });
     }
 
-    fn error_inclusive_range_match_arrow(&self, span: Span) {
+    fn error_inclusive_range_match_arrow(&self, span: Span, arrow: Span) {
         let after_pat = span.with_hi(span.hi() - rustc_span::BytePos(1)).shrink_to_hi();
-        self.sess.emit_err(InclusiveRangeMatchArrow { span, after_pat });
+        self.sess.emit_err(InclusiveRangeMatchArrow { span, arrow, after_pat });
     }
 
     fn error_inclusive_range_with_no_end(&self, span: Span) {

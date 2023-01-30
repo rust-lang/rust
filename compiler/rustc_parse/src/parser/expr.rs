@@ -2707,6 +2707,14 @@ impl<'a> Parser<'a> {
                     );
                     err.emit();
                     this.bump();
+                } else if matches!(
+                    (&this.prev_token.kind, &this.token.kind),
+                    (token::DotDotEq, token::Gt)
+                ) {
+                    // `error_inclusive_range_match_arrow` handles cases like `0..=> {}`,
+                    // so we supress the error here
+                    err.delay_as_bug();
+                    this.bump();
                 } else {
                     return Err(err);
                 }

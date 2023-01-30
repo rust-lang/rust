@@ -667,13 +667,10 @@ pub(crate) struct InclusiveRangeExtraEquals {
 #[diag(parse_inclusive_range_match_arrow)]
 pub(crate) struct InclusiveRangeMatchArrow {
     #[primary_span]
+    pub arrow: Span,
+    #[label]
     pub span: Span,
-    #[suggestion(
-        suggestion_add_space,
-        style = "verbose",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
+    #[suggestion(style = "verbose", code = " ", applicability = "machine-applicable")]
     pub after_pat: Span,
 }
 
