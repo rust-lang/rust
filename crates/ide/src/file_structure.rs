@@ -235,7 +235,7 @@ mod tests {
             },
         ]
         "#]]);
-    } 
+    }
 
     #[test]
     fn test_file_structure() {
