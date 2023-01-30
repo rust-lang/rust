@@ -149,3 +149,13 @@ macro_rules! almost_complete_range {
         let _ = '0'..'9';
     };
 }
+
+#[macro_export]
+macro_rules! unsafe_macro {
+    () => {
+        unsafe {
+            *core::ptr::null::<()>();
+            *core::ptr::null::<()>();
+        }
+    };
+}
