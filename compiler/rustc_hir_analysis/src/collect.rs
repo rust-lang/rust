@@ -1348,8 +1348,7 @@ fn suggest_impl_trait<'tcx>(
 
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
     let icx = ItemCtxt::new(tcx, def_id);
-    let item = tcx.hir().expect_item(def_id.expect_local());
-    let hir::ItemKind::Impl(impl_) = item.kind else { bug!() };
+    let impl_ = tcx.hir().expect_item(def_id.expect_local()).expect_impl();
     impl_
         .of_trait
         .as_ref()

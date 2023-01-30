@@ -459,30 +459,32 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 }
 
 fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    if tcx.has_attr(def_id.to_def_id(), sym::lang) {
-        return true;
+    fn has_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+        tcx.has_attr(def_id.to_def_id(), sym::lang)
+            // Stable attribute for #[lang = "panic_impl"]
+            || tcx.has_attr(def_id.to_def_id(), sym::panic_handler)
     }
 
-    // Stable attribute for #[lang = "panic_impl"]
-    if tcx.has_attr(def_id.to_def_id(), sym::panic_handler) {
-        return true;
+    fn has_allow_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0 == lint::Allow
     }
 
-    if tcx.def_kind(def_id).has_codegen_attrs() {
-        let cg_attrs = tcx.codegen_fn_attrs(def_id);
+    fn has_used_like_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+        tcx.def_kind(def_id).has_codegen_attrs() && {
+            let cg_attrs = tcx.codegen_fn_attrs(def_id);
 
-        // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
-        // forcefully, e.g., for placing it in a specific section.
-        if cg_attrs.contains_extern_indicator()
-            || cg_attrs.flags.contains(CodegenFnAttrFlags::USED)
-            || cg_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-        {
-            return true;
+            // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
+            // forcefully, e.g., for placing it in a specific section.
+            cg_attrs.contains_extern_indicator()
+                || cg_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                || cg_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         }
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0 == lint::Allow
+    has_allow_dead_code(tcx, def_id)
+        || has_used_like_attr(tcx, def_id)
+        || has_lang_attr(tcx, def_id)
 }
 
 // These check_* functions seeds items that

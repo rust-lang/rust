@@ -8,7 +8,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
-use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
+use rustc_hir::{GenericParamKind, ImplItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
@@ -918,7 +918,7 @@ fn report_trait_method_mismatch<'tcx>(
             // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
             // span points only at the type `Box<Self`>, but we want to cover the whole
             // argument pattern and type.
-            let ImplItemKind::Fn(ref sig, body) = tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind else { bug!("{impl_m:?} is not a method") };
+            let (sig, body) = tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
             let span = tcx
                 .hir()
                 .body_param_names(body)
@@ -1080,12 +1080,12 @@ fn extract_spans_for_error_reporting<'tcx>(
 ) -> (Span, Option<Span>) {
     let tcx = infcx.tcx;
     let mut impl_args = {
-        let ImplItemKind::Fn(sig, _) = &tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind else { bug!("{:?} is not a method", impl_m) };
+        let (sig, _) = tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
         sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
     };
 
     let trait_args = trait_m.def_id.as_local().map(|def_id| {
-        let TraitItemKind::Fn(sig, _) = &tcx.hir().expect_trait_item(def_id).kind else { bug!("{:?} is not a TraitItemKind::Fn", trait_m) };
+        let (sig, _) = tcx.hir().expect_trait_item(def_id).expect_fn();
         sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
     });
 
@@ -1358,7 +1358,7 @@ fn compare_number_of_method_arguments<'tcx>(
             .def_id
             .as_local()
             .and_then(|def_id| {
-                let TraitItemKind::Fn(trait_m_sig, _) = &tcx.hir().expect_trait_item(def_id).kind else { bug!("{:?} is not a method", impl_m) };
+                let (trait_m_sig, _) = &tcx.hir().expect_trait_item(def_id).expect_fn();
                 let pos = trait_number_args.saturating_sub(1);
                 trait_m_sig.decl.inputs.get(pos).map(|arg| {
                     if pos == 0 {
@@ -1370,7 +1370,7 @@ fn compare_number_of_method_arguments<'tcx>(
             })
             .or(trait_item_span);
 
-        let ImplItemKind::Fn(impl_m_sig, _) = &tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind else { bug!("{:?} is not a method", impl_m) };
+        let (impl_m_sig, _) = &tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
         let pos = impl_number_args.saturating_sub(1);
         let impl_span = impl_m_sig
             .decl
@@ -1506,7 +1506,7 @@ fn compare_synthetic_generics<'tcx>(
                     let _: Option<_> = try {
                         let impl_m = impl_m.def_id.as_local()?;
                         let impl_m = tcx.hir().expect_impl_item(impl_m);
-                        let hir::ImplItemKind::Fn(sig, _) = &impl_m.kind else { unreachable!() };
+                        let (sig, _) = impl_m.expect_fn();
                         let input_tys = sig.decl.inputs;
 
                         struct Visitor(Option<Span>, hir::def_id::LocalDefId);
@@ -1704,7 +1704,7 @@ pub(super) fn compare_impl_const_raw(
         );
 
         // Locate the Span containing just the type of the offending impl
-        let ImplItemKind::Const(ty, _) = tcx.hir().expect_impl_item(impl_const_item_def).kind else { bug!("{impl_const_item:?} is not a impl const") };
+        let (ty, _) = tcx.hir().expect_impl_item(impl_const_item_def).expect_const();
         cause.span = ty.span;
 
         let mut diag = struct_span_err!(
@@ -1717,7 +1717,7 @@ pub(super) fn compare_impl_const_raw(
 
         let trait_c_span = trait_const_item_def.as_local().map(|trait_c_def_id| {
             // Add a label to the Span containing just the type of the const
-            let TraitItemKind::Const(ty, _) = tcx.hir().expect_trait_item(trait_c_def_id).kind else { bug!("{trait_const_item:?} is not a trait const") };
+            let (ty, _) = tcx.hir().expect_trait_item(trait_c_def_id).expect_const();
             ty.span
         });
 
