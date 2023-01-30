@@ -49,7 +49,7 @@ error: the loop variable `i` is used to index `vec`
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
    |
-help: consider using an iterator and enumerate
+help: consider using an iterator and enumerate()
    |
 LL |     for (i, <item>) in vec.iter().enumerate() {
    |         ~~~~~~~~~~~    ~~~~~~~~~~~~~~~~~~~~~~
@@ -126,7 +126,7 @@ error: the loop variable `i` is used to index `vec`
 LL |     for i in 5..vec.len() {
    |              ^^^^^^^^^^^^
    |
-help: consider using an iterator and enumerate
+help: consider using an iterator and enumerate()
    |
 LL |     for (i, <item>) in vec.iter().enumerate().skip(5) {
    |         ~~~~~~~~~~~    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -137,7 +137,7 @@ error: the loop variable `i` is used to index `vec`
 LL |     for i in 5..10 {
    |              ^^^^^
    |
-help: consider using an iterator and enumerate
+help: consider using an iterator and enumerate()
    |
 LL |     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
    |         ~~~~~~~~~~~    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -148,7 +148,7 @@ error: the loop variable `i` is used to index `vec`
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
    |
-help: consider using an iterator and enumerate
+help: consider using an iterator and enumerate()
    |
 LL |     for (i, <item>) in vec.iter_mut().enumerate() {
    |         ~~~~~~~~~~~    ~~~~~~~~~~~~~~~~~~~~~~~~~~
