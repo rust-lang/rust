@@ -38,10 +38,10 @@ help: add a block here
 LL |     if let Some(n) = opt else {
    |                         ^
 help: remove the `if` if you meant to write a `let...else` statement
-  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:24:5
    |
-LL |     if let Some(n) = opt else {
-   |     ^^
+LL -     if let Some(n) = opt else {
+LL +     let Some(n) = opt else {
+   |
 
 error: this `if` expression is missing a block after the condition
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:28:5

@@ -10,10 +10,10 @@ help: add a block here
 LL |     if let Some(y) = x else {
    |                       ^
 help: remove the `if` if you meant to write a `let...else` statement
-  --> $DIR/accidental-if.rs:3:5
    |
-LL |     if let Some(y) = x else {
-   |     ^^
+LL -     if let Some(y) = x else {
+LL +     let Some(y) = x else {
+   |
 
 error: aborting due to previous error
 
