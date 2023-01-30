@@ -2028,7 +2028,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             }
                         };
 
-                        if ty_to_mut == Mutability::Mut && ty_mut == Mutability::Not {
+                        if ty_to_mut.is_mut() && ty_mut.is_not() {
                             span_mirbug!(
                                 self,
                                 rvalue,
