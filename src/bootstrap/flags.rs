@@ -371,7 +371,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 if let Some(s) = paths {
                     println!("{}", s);
                 } else {
-                    panic!("No paths available for subcommand `{}`", subcommand.as_str());
+                    eprintln!("No paths available for subcommand `{}`", subcommand.as_str());
+                    crate::detail_exit(1);
                 }
             } else {
                 println!(

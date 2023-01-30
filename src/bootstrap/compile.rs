@@ -235,7 +235,8 @@ fn copy_self_contained_objects(
     // and link with them manually in the self-contained mode.
     if target.contains("musl") {
         let srcdir = builder.musl_libdir(target).unwrap_or_else(|| {
-            panic!("Target {:?} does not have a \"musl-libdir\" key", target.triple)
+            eprintln!("Target {:?} does not have a \"musl-libdir\" key", target.triple);
+            crate::detail_exit(1);
         });
         for &obj in &["libc.a", "crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
             copy_and_stamp(
@@ -263,7 +264,8 @@ fn copy_self_contained_objects(
         let srcdir = builder
             .wasi_root(target)
             .unwrap_or_else(|| {
-                panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
+                eprintln!("Target {:?} does not have a \"wasi-root\" key", target.triple);
+                crate::detail_exit(1);
             })
             .join("lib/wasm32-wasi");
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
@@ -484,7 +486,10 @@ fn apple_darwin_update_library_name(library_path: &Path, new_name: &str) {
         .arg(library_path)
         .status()
         .expect("failed to execute `install_name_tool`");
-    assert!(status.success());
+    if !status.success() {
+        eprintln!("failed to execute `install_name_tool`");
+        crate::detail_exit(1);
+    };
 }
 
 fn apple_darwin_sign_file(file_path: &Path) {
@@ -495,7 +500,10 @@ fn apple_darwin_sign_file(file_path: &Path) {
         .arg(file_path)
         .status()
         .expect("failed to execute `codesign`");
-    assert!(status.success());
+    if !status.success() {
+        eprintln!("failed to execute `codesign`");
+        crate::detail_exit(1);
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -658,7 +666,8 @@ impl Step for Rustc {
         if builder.config.rust_profile_use.is_some()
             && builder.config.rust_profile_generate.is_some()
         {
-            panic!("Cannot use and generate PGO profiles at the same time");
+            eprintln!("Cannot use and generate PGO profiles at the same time");
+            crate::detail_exit(1);
         }
 
         // With LLD, we can use ICF (identical code folding) to reduce the executable size
@@ -1008,14 +1017,18 @@ impl Step for CodegenBackend {
         });
         let codegen_backend = match files.next() {
             Some(f) => f,
-            None => panic!("no dylibs built for codegen backend?"),
+            None => {
+                eprintln!("no dylibs built for codegen backend?");
+                crate::detail_exit(1);
+            }
         };
         if let Some(f) = files.next() {
-            panic!(
+            eprintln!(
                 "codegen backend built two dylibs:\n{}\n{}",
                 codegen_backend.display(),
                 f.display()
             );
+            crate::detail_exit(1);
         }
         let stamp = codegen_backend_stamp(builder, compiler, target, backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
@@ -1554,7 +1567,10 @@ pub fn run_cargo(
         });
         let path_to_add = match max {
             Some(triple) => triple.0.to_str().unwrap(),
-            None => panic!("no output generated for {:?} {:?}", prefix, extension),
+            None => {
+                eprintln!("no output generated for {:?} {:?}", prefix, extension);
+                crate::detail_exit(1);
+            }
         };
         if is_dylib(path_to_add) {
             let candidate = format!("{}.lib", path_to_add);
@@ -1607,7 +1623,10 @@ pub fn stream_cargo(
     builder.verbose(&format!("running: {:?}", cargo));
     let mut child = match cargo.spawn() {
         Ok(child) => child,
-        Err(e) => panic!("failed to execute command: {:?}\nerror: {}", cargo, e),
+        Err(e) => {
+            eprintln!("failed to execute command: {:?}\nerror: {}", cargo, e);
+            crate::detail_exit(1);
+        }
     };
 
     // Spawn Cargo slurping up its JSON output. We'll start building up the

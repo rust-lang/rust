@@ -494,10 +494,11 @@ impl Build {
             .to_path_buf();
         if !bootstrap_out.join(exe("rustc", config.build)).exists() && !cfg!(test) {
             // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
-            panic!(
+            eprintln!(
                 "`rustc` not found in {}, run `cargo build --bins` before `cargo run`",
                 bootstrap_out.display()
-            )
+            );
+            crate::detail_exit(1);
         }
 
         if rust_info.is_from_tarball() && config.description.is_none() {
@@ -595,12 +596,13 @@ impl Build {
         let host = build.out.join("host");
         if let Err(e) = symlink_dir(&build.config, &build_triple, &host) {
             if e.kind() != ErrorKind::AlreadyExists {
-                panic!(
+                eprintln!(
                     "symlink_dir({} => {}) failed with {}",
                     host.display(),
                     build_triple.display(),
                     e
                 );
+                crate::detail_exit(1);
             }
         }
 
@@ -640,10 +642,10 @@ impl Build {
                 .arg(relative_path)
                 .current_dir(&self.config.src),
         );
-        let actual_hash = recorded
-            .split_whitespace()
-            .nth(2)
-            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+        let actual_hash = recorded.split_whitespace().nth(2).unwrap_or_else(|| {
+            eprintln!("unexpected output `{}`", recorded);
+            crate::detail_exit(1);
+        });
 
         // update_submodule
         if actual_hash == checked_out_hash.trim_end() {
@@ -1375,8 +1377,8 @@ impl Build {
                 return stripped.to_owned();
             }
         }
-
-        panic!("failed to find version in {}'s Cargo.toml", package)
+        eprintln!("failed to find version in {}'s Cargo.toml", package);
+        crate::detail_exit(1);
     }
 
     /// Returns `true` if unstable features should be enabled for the compiler
@@ -1396,10 +1398,10 @@ impl Build {
         let mut list = vec![INTERNER.intern_str(root)];
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
-            let krate = self
-                .crates
-                .get(&krate)
-                .unwrap_or_else(|| panic!("metadata missing for {krate}: {:?}", self.crates));
+            let krate = self.crates.get(&krate).unwrap_or_else(|| {
+                eprintln!("metadata missing for {krate}: {:?}", self.crates);
+                crate::detail_exit(1);
+            });
             ret.push(krate);
             for dep in &krate.deps {
                 if !self.crates.contains_key(dep) {
@@ -1481,7 +1483,8 @@ impl Build {
             // just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {
-                panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
+                eprintln!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e);
+                crate::detail_exit(1);
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
             let atime = FileTime::from_last_access_time(&metadata);
@@ -1553,7 +1556,8 @@ impl Build {
         self.verbose_than(1, &format!("Install {:?} to {:?}", src, dst));
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
-            panic!("Error: File \"{}\" not found!", src.display());
+            eprintln!("Error: File \"{}\" not found!", src.display());
+            crate::detail_exit(1);
         }
         self.copy_internal(src, &dst, true);
         chmod(&dst, perms);
@@ -1584,7 +1588,10 @@ impl Build {
         let iter = match fs::read_dir(dir) {
             Ok(v) => v,
             Err(_) if self.config.dry_run() => return vec![].into_iter(),
-            Err(err) => panic!("could not read dir {:?}: {:?}", dir, err),
+            Err(err) => {
+                eprintln!("could not read dir {:?}: {:?}", dir, err);
+                crate::detail_exit(1);
+            }
         };
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
     }
@@ -1650,10 +1657,11 @@ fn chmod(_path: &Path, _perms: u32) {}
 
 /// If code is not 0 (successful exit status), exit status is 101 (rust's default error code.)
 /// If the test is running and code is an error code, it will cause a panic.
-fn detail_exit(code: i32) -> ! {
+pub fn detail_exit(code: i32) -> ! {
     // if in test and code is an error code, panic with status code provided
     if cfg!(test) {
-        panic!("status code: {}", code);
+        eprintln!("status code: {}", code);
+        std::process::exit(code);
     } else {
         // otherwise,exit with provided status code
         std::process::exit(code);

@@ -28,11 +28,10 @@ use serde::{Deserialize, Deserializer};
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
-        assert!(
-            $name.is_none(),
-            "setting {} is incompatible with download-ci-llvm.",
-            stringify!($name)
-        );
+        if !$name.is_none() {
+            eprintln!("setting {} is incompatible with download-ci-llvm.", stringify!($name));
+            $crate::detail_exit(1);
+        }
     };
 }
 
@@ -501,7 +500,10 @@ impl Merge for TomlConfig {
         do_merge(&mut self.llvm, llvm);
         do_merge(&mut self.rust, rust);
         do_merge(&mut self.dist, dist);
-        assert!(target.is_none(), "merging target-specific config is not currently supported");
+        if !target.is_none() {
+            eprintln!("merging target-specific config is not currently supported");
+            crate::detail_exit(1);
+        }
     }
 }
 
@@ -1181,7 +1183,13 @@ impl Config {
             let asserts = llvm_assertions.unwrap_or(false);
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
-                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
+                    match s == "if-available" {
+                        false => {
+                            eprintln!("unknown option `{}` for download-ci-llvm", s);
+                            crate::detail_exit(1);
+                        }
+                        true => {}
+                    };
                     crate::native::is_ci_llvm_available(&config, asserts)
                 }
                 Some(StringOrBool::Bool(b)) => b,
@@ -1450,7 +1458,7 @@ impl Config {
                     if let Err(version) = version {
                         eprintln!("reading {}/src/version failed: {:?}", src, version);
                     }
-                    panic!();
+                    crate::detail_exit(1);
                 }
             }
         };
@@ -1490,7 +1498,9 @@ impl Config {
 
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
-        assert!(self.llvm_from_ci);
+        if !self.llvm_from_ci {
+            crate::detail_exit(1);
+        }
         self.out.join(&*self.build.triple).join("ci-llvm")
     }
 
@@ -1620,7 +1630,8 @@ impl Config {
             Some(StringOrBool::Bool(true)) => false,
             Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
             Some(StringOrBool::String(other)) => {
-                panic!("unrecognized option for download-rustc: {}", other)
+                eprintln!("unrecognized option for download-rustc: {}", other);
+                crate::detail_exit(1);
             }
         };
 

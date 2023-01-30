@@ -35,7 +35,10 @@ impl Config {
         if self.dry_run() {
             return;
         }
-        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+        fs::remove_file(f).unwrap_or_else(|_| {
+            eprintln!("failed to remove {:?}", f);
+            crate::detail_exit(1);
+        });
     }
 
     /// Create a temporary directory in `out` and return its path.
@@ -104,7 +107,10 @@ impl Config {
             const NIX_IDS: &[&str] = &["ID=nixos", "ID='nixos'", "ID=\"nixos\""];
             let os_release = match File::open("/etc/os-release") {
                 Err(e) if e.kind() == ErrorKind::NotFound => return,
-                Err(e) => panic!("failed to access /etc/os-release: {}", e),
+                Err(e) => {
+                    eprintln!("failed to access /etc/os-release: {}", e);
+                    crate::detail_exit(1);
+                }
                 Ok(f) => f,
             };
             if !BufReader::new(os_release).lines().any(|l| NIX_IDS.contains(&t!(l).trim())) {
@@ -190,8 +196,14 @@ impl Config {
             Some("http") | Some("https") => {
                 self.download_http_with_retries(&tempfile, url, help_on_error)
             }
-            Some(other) => panic!("unsupported protocol {other} in {url}"),
-            None => panic!("no protocol in {url}"),
+            Some(other) => {
+                eprintln!("unsupported protocol {} in {}", other, url);
+                crate::detail_exit(1);
+            }
+            None => {
+                eprintln!("no protocol in {}", url);
+                crate::detail_exit(1);
+            }
         }
         t!(std::fs::rename(&tempfile, dest_path));
     }
@@ -272,7 +284,8 @@ impl Config {
             let dst_path = dst.join(short_path);
             self.verbose(&format!("extracting {} to {}", original_path.display(), dst.display()));
             if !t!(member.unpack_in(dst)) {
-                panic!("path traversal attack ??");
+                eprintln!("path traversal attack ??");
+                crate::detail_exit(1);
             }
             let src_path = dst.join(original_path);
             if src_path.is_dir() && dst_path.exists() {
@@ -442,7 +455,8 @@ impl Config {
         self.download_file(&format!("{base_url}/{url}"), &tarball, "");
         if let Some(sha256) = checksum {
             if !self.verify(&tarball, sha256) {
-                panic!("failed to verify {}", tarball.display());
+                eprintln!("failed to verify {}", tarball.display());
+                crate::detail_exit(1);
             }
         }
 

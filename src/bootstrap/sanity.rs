@@ -56,7 +56,8 @@ impl Finder {
 
     pub fn must_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> PathBuf {
         self.maybe_have(&cmd).unwrap_or_else(|| {
-            panic!("\n\ncouldn't find required command: {:?}\n\n", cmd.as_ref());
+            eprintln!("\n\ncouldn't find required command: {:?}\n\n", cmd.as_ref());
+            crate::detail_exit(1);
         })
     }
 }
@@ -68,7 +69,8 @@ pub fn check(build: &mut Build) {
     // being unable to identify the files properly. See
     // https://github.com/rust-lang/rust/issues/34959 for more details.
     if cfg!(windows) && path.to_string_lossy().contains('\"') {
-        panic!("PATH contains invalid character '\"'");
+        eprintln!("PATH contains invalid character '\"'");
+        crate::detail_exit(1);
     }
 
     let mut cmd_finder = Finder::new();
@@ -188,7 +190,8 @@ than building it.
         // Externally configured LLVM requires FileCheck to exist
         let filecheck = build.llvm_filecheck(build.build);
         if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
-            panic!("FileCheck executable {:?} does not exist", filecheck);
+            eprintln!("FileCheck executable {:?} does not exist", filecheck);
+            crate::detail_exit(1);
         }
     }
 
@@ -201,7 +204,8 @@ than building it.
 
         if target.contains("-none-") || target.contains("nvptx") {
             if build.no_std(*target) == Some(false) {
-                panic!("All the *-none-* and nvptx* targets are no-std targets")
+                eprintln!("All the *-none-* and nvptx* targets are no-std targets");
+                crate::detail_exit(1);
             }
         }
 
@@ -216,14 +220,18 @@ than building it.
             match build.musl_libdir(*target) {
                 Some(libdir) => {
                     if fs::metadata(libdir.join("libc.a")).is_err() {
-                        panic!("couldn't find libc.a in musl libdir: {}", libdir.display());
+                        eprintln!("couldn't find libc.a in musl libdir: {}", libdir.display());
+                        crate::detail_exit(1);
                     }
                 }
-                None => panic!(
-                    "when targeting MUSL either the rust.musl-root \
-                            option or the target.$TARGET.musl-root option must \
-                            be specified in config.toml"
-                ),
+                None => {
+                    eprintln!(
+                        "when targeting MUSL either the rust.musl-root \
+                                option or the target.$TARGET.musl-root option must \
+                                be specified in config.toml"
+                    );
+                    crate::detail_exit(1);
+                }
             }
         }
 
@@ -241,7 +249,7 @@ than building it.
             // Studio, so detect that here and error.
             let out = output(Command::new("cmake").arg("--help"));
             if !out.contains("Visual Studio") {
-                panic!(
+                eprintln!(
                     "
 cmake does not support Visual Studio generators.
 
@@ -255,6 +263,7 @@ package instead of cmake:
 $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
 "
                 );
+                crate::detail_exit(1);
             }
         }
     }

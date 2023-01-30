@@ -152,10 +152,14 @@ impl TaskPath {
             if let Some(str) = os_str.to_str() {
                 if let Some((found_kind, found_prefix)) = str.split_once("::") {
                     if found_kind.is_empty() {
-                        panic!("empty kind in task path {}", path.display());
+                        eprintln!("empty kind in task path {}", path.display());
+                        crate::detail_exit(1);
                     }
                     kind = Kind::parse(found_kind);
-                    assert!(kind.is_some());
+                    if !kind.is_some() {
+                        eprintln!("empty kind in task path {}", path.display());
+                        crate::detail_exit(1);
+                    }
                     path = Path::new(found_prefix).join(components.as_path());
                 }
             }
@@ -321,11 +325,10 @@ impl StepDescription {
 
         // sanity checks on rules
         for (desc, should_run) in v.iter().zip(&should_runs) {
-            assert!(
-                !should_run.paths.is_empty(),
-                "{:?} should have at least one pathset",
-                desc.name
-            );
+            if should_run.paths.is_empty() {
+                eprintln!("{:?} should have at least one pathset", desc.name);
+                crate::detail_exit(1);
+            }
         }
 
         if paths.is_empty() || builder.config.include_default_paths {
@@ -466,11 +469,12 @@ impl<'a> ShouldRun<'a> {
         // exceptional case for `Kind::Setup` because its `library`
         // and `compiler` options would otherwise naively match with
         // `compiler` and `library` folders respectively.
-        assert!(
-            self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
-            "use `builder.path()` for real paths: {}",
-            alias
-        );
+        match self.kind == Kind::Setup || !self.builder.src.join(alias).exists() {
+            true => {}
+            false => {
+                eprintln!("use `builder.path()` for real paths: {:?}", alias)
+            }
+        };
         self.paths.insert(PathSet::Set(
             std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
         ));
@@ -1197,7 +1201,10 @@ impl<'a> Builder<'a> {
                         out_dir.join(target.triple).join("doc")
                     }
                 }
-                _ => panic!("doc mode {:?} not expected", mode),
+                _ => {
+                    eprintln!("doc mode {:?} not expected", mode);
+                    crate::detail_exit(1);
+                }
             };
             let rustdoc = self.rustdoc(compiler);
             self.clear_if_dirty(&my_out, &rustdoc);
@@ -1934,7 +1941,8 @@ impl<'a> Builder<'a> {
                 for el in stack.iter().rev() {
                     out += &format!("\t{:?}\n", el);
                 }
-                panic!("{}", out);
+                eprintln!("{}", out);
+                crate::detail_exit(1);
             }
             if let Some(out) = self.cache.get(&step) {
                 self.verbose_than(1, &format!("{}c {:?}", "  ".repeat(stack.len()), step));

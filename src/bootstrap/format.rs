@@ -210,7 +210,10 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         eprintln!("./x.py fmt is not supported on this channel");
         crate::detail_exit(1);
     });
-    assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
+    if !rustfmt_path.exists() {
+        eprintln!("{}", rustfmt_path.display());
+        crate::detail_exit(1);
+    }
     let src = build.src.clone();
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
     let walker = match paths.get(0) {

@@ -315,7 +315,10 @@ impl<'a> Tarball<'a> {
         build_cli(&self, &mut cmd);
         cmd.arg("--work-dir").arg(&self.temp_dir);
         if let Some(formats) = &self.builder.config.dist_compression_formats {
-            assert!(!formats.is_empty(), "dist.compression-formats can't be empty");
+            if formats.is_empty() {
+                eprintln!("dist.compression-formats can't be empty");
+                crate::detail_exit(1);
+            }
             cmd.arg("--compression-formats").arg(formats.join(","));
         }
         self.builder.run(&mut cmd);
@@ -327,7 +330,8 @@ impl<'a> Tarball<'a> {
             for entry in walkdir::WalkDir::new(&decompressed_output) {
                 let entry = t!(entry);
                 if entry.path_is_symlink() {
-                    panic!("generated a symlink in a tarball: {}", entry.path().display());
+                    eprintln!("generated a symlink in a tarball: {}", entry.path().display());
+                    crate::detail_exit(1);
                 }
             }
         }

@@ -53,7 +53,10 @@ pub fn build(build: &mut Build) {
             let relative_path = krate.local_path(build);
             build.crates.insert(name, krate);
             let existing_path = build.crate_paths.insert(relative_path, name);
-            assert!(existing_path.is_none(), "multiple crates with the same path");
+            if !existing_path.is_none() {
+                eprintln!("multiple crates with the same path");
+                crate::detail_exit(1);
+            }
         }
     }
 }

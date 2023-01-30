@@ -54,6 +54,9 @@ pub unsafe fn setup(build: &mut Build) {
 
     // Create a new job object for us to use
     let job = CreateJobObjectW(ptr::null_mut(), ptr::null());
+    if job.is_null() {
+        eprintln!("{}", io::Error::last_os_error());
+    }
     assert!(!job.is_null(), "{}", io::Error::last_os_error());
 
     // Indicate that when all handles to the job object are gone that all

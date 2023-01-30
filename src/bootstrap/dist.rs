@@ -158,7 +158,8 @@ fn find_files(files: &[&str], path: &[PathBuf]) -> Vec<PathBuf> {
         if let Some(file_path) = file_path {
             found.push(file_path);
         } else {
-            panic!("Could not find '{}' in {:?}", file, path);
+            eprintln!("Could not find '{}' in {:?}", file, path);
+            crate::detail_exit(1);
         }
     }
 
@@ -587,7 +588,8 @@ fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp
 
             if !is_coff {
                 let member_name = String::from_utf8_lossy(member.name());
-                panic!("member {} in {} is not COFF", member_name, path.display());
+                eprintln!("member {} in {} is not COFF", member_name, path.display());
+                crate::detail_exit(1);
             }
         }
     }

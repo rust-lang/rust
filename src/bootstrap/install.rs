@@ -107,7 +107,10 @@ fn prepare_dir(mut path: PathBuf) -> String {
     // paths. std::fs::canonicalize is not used as that requires the path to actually be present.
     if path.is_relative() {
         path = std::env::current_dir().expect("failed to get the current directory").join(path);
-        assert!(path.is_absolute(), "could not make the path relative");
+        if !path.is_absolute() {
+            eprintln!("could not make the path relative");
+            crate::detail_exit(1);
+        }
     }
 
     sanitize_sh(&path)

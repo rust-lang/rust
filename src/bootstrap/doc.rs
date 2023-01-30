@@ -566,10 +566,11 @@ fn doc_std(
         format.as_str()
     ));
     if builder.no_std(target) == Some(true) {
-        panic!(
+        eprintln!(
             "building std documentation for no_std target {target} is not supported\n\
              Set `docs = false` in the config to disable documentation."
         );
+        crate::detail_exit(1);
     }
     let compiler = builder.compiler(stage, builder.config.build);
 
