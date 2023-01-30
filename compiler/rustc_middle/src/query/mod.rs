@@ -183,6 +183,15 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query unsizing_params_for_adt(key: DefId) -> rustc_index::bit_set::BitSet<u32>
+    {
+        arena_cache
+        desc { |tcx|
+            "determining what parameters of `{}` can participate in unsizing",
+            tcx.def_path_str(key),
+        }
+    }
+
     query analysis(key: ()) -> Result<(), ErrorGuaranteed> {
         eval_always
         desc { "running analysis passes on this crate" }

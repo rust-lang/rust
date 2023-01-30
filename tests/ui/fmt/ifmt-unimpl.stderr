@@ -15,7 +15,7 @@ LL |     format!("{:X}", "3");
              NonZeroIsize
            and 21 others
    = note: required for `&str` to implement `UpperHex`
-note: required by a bound in `ArgumentV1::<'a>::new_upper_hex`
+note: required by a bound in `core::fmt::ArgumentV1::<'a>::new_upper_hex`
   --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `arg_new` (in Nightly builds, run with -Z macro-backtrace for more info)
 
