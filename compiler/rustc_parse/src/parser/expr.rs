@@ -2566,7 +2566,7 @@ impl<'a> Parser<'a> {
         }
         let attrs = self.parse_inner_attributes()?;
 
-        let mut arms: Vec<Arm> = Vec::new();
+        let mut arms = ThinVec::new();
         while self.token != token::CloseDelim(Delimiter::Brace) {
             match self.parse_arm() {
                 Ok(arm) => arms.push(arm),

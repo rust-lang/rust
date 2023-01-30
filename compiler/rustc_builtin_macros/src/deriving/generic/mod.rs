@@ -1247,7 +1247,7 @@ impl<'a> MethodDef<'a> {
         // (Variant2, Variant2, ...) => Body2
         // ...
         // where each tuple has length = selflike_args.len()
-        let mut match_arms: Vec<ast::Arm> = variants
+        let mut match_arms: ThinVec<ast::Arm> = variants
             .iter()
             .enumerate()
             .filter(|&(_, v)| !(unify_fieldless_variants && v.data.fields().is_empty()))

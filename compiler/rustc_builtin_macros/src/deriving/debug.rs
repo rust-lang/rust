@@ -234,7 +234,7 @@ fn show_fieldless_enum(
             };
             cx.arm(span, pat, cx.expr_str(span, v.ident.name))
         })
-        .collect::<Vec<_>>();
+        .collect::<ThinVec<_>>();
     let name = cx.expr_match(span, cx.expr_self(span), arms);
     let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))

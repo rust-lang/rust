@@ -446,7 +446,7 @@ impl<'a> ExtCtxt<'a> {
         let err_arm = self.arm(sp, err_pat, err_expr);
 
         // `match head { Ok() => ..., Err() => ... }`
-        self.expr_match(sp, head, vec![ok_arm, err_arm])
+        self.expr_match(sp, head, thin_vec![ok_arm, err_arm])
     }
 
     pub fn pat(&self, span: Span, kind: PatKind) -> P<ast::Pat> {
@@ -516,7 +516,7 @@ impl<'a> ExtCtxt<'a> {
         self.arm(span, self.pat_wild(span), self.expr_unreachable(span))
     }
 
-    pub fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: Vec<ast::Arm>) -> P<Expr> {
+    pub fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: ThinVec<ast::Arm>) -> P<Expr> {
         self.expr(span, ast::ExprKind::Match(arg, arms))
     }
 

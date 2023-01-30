@@ -123,7 +123,7 @@ fn decodable_substructure(
         StaticEnum(_, fields) => {
             let variant = Ident::new(sym::i, trait_span);
 
-            let mut arms = Vec::with_capacity(fields.len() + 1);
+            let mut arms = ThinVec::with_capacity(fields.len() + 1);
             let mut variants = ThinVec::with_capacity(fields.len());
 
             let fn_read_enum_variant_arg_path: Vec<_> =
