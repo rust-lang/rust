@@ -335,7 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 format!("cannot divide `{lhs_ty}` by `{rhs_ty}`")
                             }
                             hir::BinOpKind::Rem => {
-                                format!("cannot rem `{lhs_ty}` by `{rhs_ty}`")
+                                format!("cannot calculate the remainder of `{lhs_ty}` divided by `{rhs_ty}`")
                             }
                             hir::BinOpKind::BitAnd => {
                                 format!("no implementation for `{lhs_ty} & {rhs_ty}`")
