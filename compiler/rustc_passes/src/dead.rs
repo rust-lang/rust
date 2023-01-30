@@ -482,9 +482,9 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool
         }
     }
 
-    has_lang_attr(tcx, def_id)
+    has_allow_dead_code(tcx, def_id)
         || has_used_like_attr(tcx, def_id)
-        || has_allow_dead_code(tcx, def_id)
+        || has_lang_attr(tcx, def_id)
 }
 
 // These check_* functions seeds items that
