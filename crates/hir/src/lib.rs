@@ -3139,15 +3139,15 @@ impl Type {
     }
 
     pub fn is_closure(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::Closure { .. })
+        matches!(self.ty.kind(Interner), TyKind::Closure { .. })
     }
 
     pub fn is_fn(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::FnDef(..) | TyKind::Function { .. })
+        matches!(self.ty.kind(Interner), TyKind::FnDef(..) | TyKind::Function { .. })
     }
 
     pub fn is_array(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::Array(..))
+        matches!(self.ty.kind(Interner), TyKind::Array(..))
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
@@ -3164,7 +3164,7 @@ impl Type {
     }
 
     pub fn is_raw_ptr(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::Raw(..))
+        matches!(self.ty.kind(Interner), TyKind::Raw(..))
     }
 
     pub fn contains_unknown(&self) -> bool {

@@ -16,8 +16,7 @@ use syntax::{
 };
 
 use crate::{
-    utils::convert_reference_type,
-    utils::{find_struct_impl, render_snippet, Cursor},
+    utils::{convert_reference_type, find_struct_impl, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -107,7 +106,7 @@ fn fn_target_info(
     match path.qualifier() {
         Some(qualifier) => match ctx.sema.resolve_path(&qualifier) {
             Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) => {
-                get_fn_target_info(ctx, &Some(module), call.clone())
+                get_fn_target_info(ctx, Some(module), call.clone())
             }
             Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) => {
                 if let hir::Adt::Enum(_) = adt {
@@ -125,7 +124,7 @@ fn fn_target_info(
             }
             _ => None,
         },
-        _ => get_fn_target_info(ctx, &None, call.clone()),
+        _ => get_fn_target_info(ctx, None, call.clone()),
     }
 }
 
@@ -396,16 +395,16 @@ fn make_return_type(
 
 fn get_fn_target_info(
     ctx: &AssistContext<'_>,
-    target_module: &Option<Module>,
+    target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<TargetInfo> {
     let (target, file, insert_offset) = get_fn_target(ctx, target_module, call)?;
-    Some(TargetInfo::new(*target_module, None, target, file, insert_offset))
+    Some(TargetInfo::new(target_module, None, target, file, insert_offset))
 }
 
 fn get_fn_target(
     ctx: &AssistContext<'_>,
-    target_module: &Option<Module>,
+    target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId, TextSize)> {
     let mut file = ctx.file_id();
@@ -640,10 +639,11 @@ fn next_space_for_fn_in_module(
 }
 
 fn next_space_for_fn_in_impl(impl_: &ast::Impl) -> Option<GeneratedFunctionTarget> {
-    if let Some(last_item) = impl_.assoc_item_list().and_then(|it| it.assoc_items().last()) {
+    let assoc_item_list = impl_.assoc_item_list()?;
+    if let Some(last_item) = assoc_item_list.assoc_items().last() {
         Some(GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()))
     } else {
-        Some(GeneratedFunctionTarget::InEmptyItemList(impl_.assoc_item_list()?.syntax().clone()))
+        Some(GeneratedFunctionTarget::InEmptyItemList(assoc_item_list.syntax().clone()))
     }
 }
 
