@@ -744,7 +744,7 @@ impl<'a> Parser<'a> {
             }
             token::Gt if no_space => {
                 let after_pat = span.with_hi(span.hi() - rustc_span::BytePos(1)).shrink_to_hi();
-                self.sess.emit_err(InclusiveRangeMatchArrow { span, after_pat });
+                self.sess.emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span, after_pat });
             }
             _ => {
                 self.sess.emit_err(InclusiveRangeNoEnd { span });
