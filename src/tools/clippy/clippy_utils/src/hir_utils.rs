@@ -1069,6 +1069,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(ty);
                 self.hash_array_length(len);
             },
+            TyKind::Pat(ty, pat) => {
+                self.hash_ty(ty);
+                self.hash_pat(pat);
+            },
             TyKind::Ptr(ref mut_ty) => {
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
