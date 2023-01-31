@@ -6,8 +6,9 @@ LL | struct<T> Foo { x: T }
    |
 help: place the generic parameter name after the struct name
    |
-LL | struct Foo<T> { x: T }
-   |        ~~~~~~
+LL - struct<T> Foo { x: T }
+LL + struct Foo<T> { x: T }
+   |
 
 error: aborting due to previous error
 

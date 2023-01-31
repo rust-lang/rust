@@ -6,8 +6,9 @@ LL | fn<T> id(x: T) -> T { x }
    |
 help: place the generic parameter name after the fn name
    |
-LL | fn id<T>(x: T) -> T { x }
-   |    ~~~~~
+LL - fn<T> id(x: T) -> T { x }
+LL + fn id<T>(x: T) -> T { x }
+   |
 
 error: aborting due to previous error
 

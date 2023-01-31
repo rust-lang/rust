@@ -352,12 +352,13 @@ impl<'a> Parser<'a> {
                             // if there is a `<` after the fn name, then don't show a suggestion, show help
 
                             if !self.look_ahead(1, |t| *t == token::Lt) &&
-                                let Ok(snippet) = self.sess.source_map().span_to_snippet(generic.span) &&
-                                let Ok(ident) = self.sess.source_map().span_to_snippet(self.token.span) {
-                                    err.span_suggestion_verbose(
-                                        generic.span.to(self.token.span),
+                                let Ok(snippet) = self.sess.source_map().span_to_snippet(generic.span) {
+                                err.multipart_suggestion_verbose(
                                         format!("place the generic parameter name after the {ident_name} name"),
-                                        format!(" {ident}{snippet}"),
+                                        vec![
+                                            (self.token.span.shrink_to_hi(), snippet),
+                                            (generic.span, String::new())
+                                        ],
                                         Applicability::MaybeIncorrect,
                                     );
                                 } else {
