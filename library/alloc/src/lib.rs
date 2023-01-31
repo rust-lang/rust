@@ -248,6 +248,7 @@ mod boxed {
     pub use std::boxed::Box;
 }
 pub mod borrow;
+#[macro_use]
 #[unstable(feature = "global_co_alloc", issue = "none")]
 pub mod co_alloc;
 pub mod collections;

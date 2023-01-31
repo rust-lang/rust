@@ -6,7 +6,7 @@ use crate::io::prelude::*;
 use crate::alloc::Allocator;
 use crate::cmp;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
-use core::alloc;
+use ::alloc::{co_alloc::CoAllocPref, meta_num_slots};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
@@ -398,13 +398,14 @@ fn slice_write_vectored(
 }
 
 /// Reserves the required space, and pads the vec with 0s if necessary.
+#[allow(unused_braces)]
 fn reserve_and_pad<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
     pos_mut: &mut u64,
     vec: &mut Vec<u8, A, CO_ALLOC_PREF>,
     buf_len: usize,
 ) -> io::Result<usize>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     let pos: usize = (*pos_mut).try_into().map_err(|_| {
         io::const_io_error!(
@@ -444,6 +445,7 @@ where
 
 /// Writes the slice to the vec without allocating
 /// # Safety: vec must have buf.len() spare capacity
+#[allow(unused_braces)]
 unsafe fn vec_write_unchecked<A, const CO_ALLOC_PREF: CoAllocPref>(
     pos: usize,
     vec: &mut Vec<u8, A, CO_ALLOC_PREF>,
@@ -451,7 +453,7 @@ unsafe fn vec_write_unchecked<A, const CO_ALLOC_PREF: CoAllocPref>(
 ) -> usize
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     debug_assert!(vec.capacity() >= pos + buf.len());
     vec.as_mut_ptr().add(pos).copy_from(buf.as_ptr(), buf.len());
@@ -467,6 +469,7 @@ where
 /// This also allows for the vec body to be empty, but with a position of N.
 /// This means that [`Write`] will pad the vec with 0 initially,
 /// before writing anything from that point
+#[allow(unused_braces)]
 fn vec_write<A, const CO_ALLOC_PREF: CoAllocPref>(
     pos_mut: &mut u64,
     vec: &mut Vec<u8, A, CO_ALLOC_PREF>,
@@ -474,7 +477,7 @@ fn vec_write<A, const CO_ALLOC_PREF: CoAllocPref>(
 ) -> io::Result<usize>
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     let buf_len = buf.len();
     let mut pos = reserve_and_pad(pos_mut, vec, buf_len)?;
@@ -503,6 +506,7 @@ where
 /// This also allows for the vec body to be empty, but with a position of N.
 /// This means that [`Write`] will pad the vec with 0 initially,
 /// before writing anything from that point
+#[allow(unused_braces)]
 fn vec_write_vectored<A, const CO_ALLOC_PREF: CoAllocPref>(
     pos_mut: &mut u64,
     vec: &mut Vec<u8, A, CO_ALLOC_PREF>,
@@ -510,7 +514,7 @@ fn vec_write_vectored<A, const CO_ALLOC_PREF: CoAllocPref>(
 ) -> io::Result<usize>
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     // For safety reasons, we don't want this sum to overflow ever.
     // If this saturates, the reserve should panic to avoid any unsound writing.
@@ -558,10 +562,11 @@ impl Write for Cursor<&mut [u8]> {
 }
 
 #[stable(feature = "cursor_mut_vec", since = "1.25.0")]
+#[allow(unused_braces)]
 impl<A, const CO_ALLOC_PREF: CoAllocPref> Write for Cursor<&mut Vec<u8, A, CO_ALLOC_PREF>>
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, self.inner, buf)
@@ -583,10 +588,11 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<A, const CO_ALLOC_PREF: CoAllocPref> Write for Cursor<Vec<u8, A, CO_ALLOC_PREF>>
 where
     A: Allocator,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(CO_ALLOC_PREF)]:,
+    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, &mut self.inner, buf)

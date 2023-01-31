@@ -217,7 +217,9 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 #![feature(global_co_alloc)]
+#![feature(global_co_alloc_default)]
 #![feature(global_co_alloc_plvec)]
+#![feature(global_co_alloc_meta)]
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
@@ -415,6 +417,11 @@ pub mod prelude;
 pub use alloc_crate::borrow;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::boxed;
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub use alloc_crate::co_alloc;
+// @FIXME ugly - someone move this to a better place, please
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub use alloc_crate::{CO_ALLOC_PREF_DEFAULT};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
