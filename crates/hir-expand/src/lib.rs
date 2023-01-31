@@ -116,6 +116,7 @@ pub struct MacroDefId {
     pub krate: CrateId,
     pub kind: MacroDefKind,
     pub local_inner: bool,
+    pub allow_internal_unsafe: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

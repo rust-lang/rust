@@ -1982,11 +1982,13 @@ impl ModCollector<'_, '_> {
             // Case 2: normal `macro_rules!` macro
             MacroExpander::Declarative
         };
+        let allow_internal_unsafe = attrs.by_key("allow_internal_unsafe").exists();
 
         let macro_id = MacroRulesLoc {
             container: module,
             id: ItemTreeId::new(self.tree_id, id),
             local_inner,
+            allow_internal_unsafe,
             expander,
         }
         .intern(self.def_collector.db);
@@ -2046,10 +2048,15 @@ impl ModCollector<'_, '_> {
             // Case 2: normal `macro`
             MacroExpander::Declarative
         };
+        let allow_internal_unsafe = attrs.by_key("allow_internal_unsafe").exists();
 
-        let macro_id =
-            Macro2Loc { container: module, id: ItemTreeId::new(self.tree_id, id), expander }
-                .intern(self.def_collector.db);
+        let macro_id = Macro2Loc {
+            container: module,
+            id: ItemTreeId::new(self.tree_id, id),
+            expander,
+            allow_internal_unsafe,
+        }
+        .intern(self.def_collector.db);
         self.def_collector.define_macro_def(
             self.module_id,
             mac.name.clone(),
