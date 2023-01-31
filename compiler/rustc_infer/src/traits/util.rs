@@ -34,8 +34,8 @@ impl<'tcx> PredicateSet<'tcx> {
         //
         //    for<'b> Foo<&'b i32>
         //
-        // to be considered equivalent. So normalize all late-bound
-        // regions before we throw things into the underlying set.
+        // to be considered equivalent. So anonymize all late-bound
+        // variables before we throw things into the underlying set.
         self.set.insert(anonymize_predicate(self.tcx, pred))
     }
 }
@@ -72,15 +72,17 @@ pub struct Elaborator<'tcx> {
 }
 
 impl<'tcx> Elaborator<'tcx> {
-    pub fn new(_tcx: TyCtxt<'tcx>, _e: impl Elaboratable<'tcx>) -> Self {
-        todo!()
+    pub fn elaborate(tcx: TyCtxt<'tcx>, e: impl Elaboratable<'tcx>) -> Self {
+        Self::elaborate_many(tcx, [e])
     }
 
-    pub fn new_many(
-        _tcx: TyCtxt<'tcx>,
-        _e: impl IntoIterator<Item = impl Elaboratable<'tcx>>,
+    pub fn elaborate_many(
+        tcx: TyCtxt<'tcx>,
+        es: impl IntoIterator<Item = impl Elaboratable<'tcx>>,
     ) -> Self {
-        todo!()
+        let mut elaborator = Elaborator { stack: vec![], seen: PredicateSet::new(tcx) };
+        elaborator.extend(es.into_iter().map(|e| e.to_obligation(tcx)));
+        elaborator
     }
 
     fn extend(&mut self, iterator: impl IntoIterator<Item = PredicateObligation<'tcx>>) {
@@ -90,15 +92,38 @@ impl<'tcx> Elaborator<'tcx> {
     }
 }
 
-pub trait Elaboratable<'tcx> {}
+pub trait Elaboratable<'tcx> {
+    fn to_obligation(self, tcx: TyCtxt<'tcx>) -> PredicateObligation<'tcx>;
+}
 
-impl<'tcx> Elaboratable<'tcx> for ty::PolyTraitRef<'tcx> {}
+impl<'tcx> Elaboratable<'tcx> for ty::PolyTraitRef<'tcx> {
+    fn to_obligation(self, tcx: TyCtxt<'tcx>) -> PredicateObligation<'tcx> {
+        Obligation::new(tcx, ObligationCause::dummy(), ty::ParamEnv::empty(), self)
+    }
+}
 
-impl<'tcx> Elaboratable<'tcx> for ty::Predicate<'tcx> {}
+impl<'tcx> Elaboratable<'tcx> for ty::Predicate<'tcx> {
+    fn to_obligation(self, tcx: TyCtxt<'tcx>) -> PredicateObligation<'tcx> {
+        Obligation::new(tcx, ObligationCause::dummy(), ty::ParamEnv::empty(), self)
+    }
+}
 
-impl<'tcx> Elaboratable<'tcx> for (ty::Predicate<'tcx>, Span) {}
+impl<'tcx> Elaboratable<'tcx> for (ty::Predicate<'tcx>, Span) {
+    fn to_obligation(self, tcx: TyCtxt<'tcx>) -> PredicateObligation<'tcx> {
+        Obligation::new(
+            tcx,
+            ObligationCause::dummy_with_span(self.1),
+            ty::ParamEnv::empty(),
+            self.0,
+        )
+    }
+}
 
-impl<'tcx> Elaboratable<'tcx> for PredicateObligation<'tcx> {}
+impl<'tcx> Elaboratable<'tcx> for PredicateObligation<'tcx> {
+    fn to_obligation(self, _tcx: TyCtxt<'tcx>) -> Self {
+        self
+    }
+}
 
 fn predicate_obligation<'tcx>(
     predicate: ty::Predicate<'tcx>,
