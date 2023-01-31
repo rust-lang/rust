@@ -161,6 +161,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             search_graph: &mut search_graph,
             infcx: self,
             var_values: CanonicalVarValues::dummy(),
+            in_projection_eq_hack: false,
         }
         .evaluate_goal(goal);
 
@@ -174,6 +175,10 @@ struct EvalCtxt<'a, 'tcx> {
     var_values: CanonicalVarValues<'tcx>,
 
     search_graph: &'a mut search_graph::SearchGraph<'tcx>,
+
+    /// This field is used by a debug assertion in [`EvalCtxt::evaluate_goal`],
+    /// see the comment in that method for more details.
+    in_projection_eq_hack: bool,
 }
 
 impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
@@ -209,7 +214,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         loop {
             let (ref infcx, goal, var_values) =
                 tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical_goal);
-            let mut ecx = EvalCtxt { infcx, var_values, search_graph };
+            let mut ecx =
+                EvalCtxt { infcx, var_values, search_graph, in_projection_eq_hack: false };
             let result = ecx.compute_goal(goal);
 
             // FIXME: `Response` should be `Copy`
@@ -239,10 +245,28 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let canonical_goal = self.infcx.canonicalize_query(goal, &mut orig_values);
         let canonical_response =
             EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
-        Ok((
-            !canonical_response.value.var_values.is_identity(),
-            instantiate_canonical_query_response(self.infcx, &orig_values, canonical_response),
-        ))
+
+        let has_changed = !canonical_response.value.var_values.is_identity();
+        let certainty =
+            instantiate_canonical_query_response(self.infcx, &orig_values, canonical_response);
+
+        // Check that rerunning this query with its inference constraints applied
+        // doesn't result in new inference constraints and has the same result.
+        //
+        // If we have projection goals like `<T as Trait>::Assoc == u32` we recursively
+        // call `exists<U> <T as Trait>::Assoc == U` to enable better caching. This goal
+        // could constrain `U` to `u32` which would cause this check to result in a
+        // solver cycle.
+        if cfg!(debug_assertions) && has_changed && !self.in_projection_eq_hack {
+            let mut orig_values = OriginalQueryValues::default();
+            let canonical_goal = self.infcx.canonicalize_query(goal, &mut orig_values);
+            let canonical_response =
+                EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
+            assert!(canonical_response.value.var_values.is_identity());
+            assert_eq!(certainty, canonical_response.value.certainty);
+        }
+
+        Ok((has_changed, certainty))
     }
 
     fn compute_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> QueryResult<'tcx> {
