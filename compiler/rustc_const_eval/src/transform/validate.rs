@@ -754,7 +754,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // FIXME(JakobDegen) The validator should check that `self.mir_phase <
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
-                if *kind == RetagKind::Raw || *kind == RetagKind::TwoPhase {
+                if matches!(kind, RetagKind::Raw | RetagKind::TwoPhase) {
                     self.fail(location, format!("explicit `{:?}` is forbidden", kind));
                 }
             }

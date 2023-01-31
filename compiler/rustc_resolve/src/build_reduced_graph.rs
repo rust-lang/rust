@@ -298,14 +298,15 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             self.r.record_partial_res(id, PartialRes::new(res));
                         }
                         if module.is_normal() {
-                            if res == Res::Err {
-                                Ok(ty::Visibility::Public)
-                            } else {
-                                let vis = ty::Visibility::Restricted(res.def_id());
-                                if self.r.is_accessible_from(vis, parent_scope.module) {
-                                    Ok(vis.expect_local())
-                                } else {
-                                    Err(VisResolutionError::AncestorOnly(path.span))
+                            match res {
+                                Res::Err => Ok(ty::Visibility::Public),
+                                _ => {
+                                    let vis = ty::Visibility::Restricted(res.def_id());
+                                    if self.r.is_accessible_from(vis, parent_scope.module) {
+                                        Ok(vis.expect_local())
+                                    } else {
+                                        Err(VisResolutionError::AncestorOnly(path.span))
+                                    }
                                 }
                             }
                         } else {

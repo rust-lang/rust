@@ -427,7 +427,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     fn make_place(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
         let span = self.span;
         let mut local = LocalDecl::new(ty, span);
-        if mutability == Mutability::Not {
+        if mutability.is_not() {
             local = local.immutable();
         }
         Place::from(self.local_decls.push(local))
