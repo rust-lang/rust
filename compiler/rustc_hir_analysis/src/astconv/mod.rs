@@ -12,7 +12,7 @@ use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
 use crate::errors::{
     AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
-    TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified,
+    TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified, WildPatTy,
 };
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
@@ -2961,7 +2961,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, ast_ty.span)
             }
-            hir::TyKind::Pat(..) => span_bug!(ast_ty.span, "{ast_ty:#?}"),
+            hir::TyKind::Pat(_ty, pat) => match pat.kind {
+                hir::PatKind::Wild => {
+                    let err = tcx.sess.emit_err(WildPatTy { span: pat.span });
+                    tcx.ty_error_with_guaranteed(err)
+                }
+                hir::PatKind::Binding(_, _, _, _) => todo!(),
+                hir::PatKind::Struct(_, _, _) => todo!(),
+                hir::PatKind::TupleStruct(_, _, _) => todo!(),
+                hir::PatKind::Or(_) => todo!(),
+                hir::PatKind::Path(_) => todo!(),
+                hir::PatKind::Tuple(_, _) => todo!(),
+                hir::PatKind::Box(_) => todo!(),
+                hir::PatKind::Ref(_, _) => todo!(),
+                hir::PatKind::Lit(_) => todo!(),
+                hir::PatKind::Range(_, _, _) => tcx.ty_error(),
+                hir::PatKind::Slice(_, _, _) => todo!(),
+            },
             hir::TyKind::Err => tcx.ty_error(),
         };
 
