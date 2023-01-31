@@ -335,3 +335,7 @@ infer_srs_remove_and_box = consider removing this semicolon and boxing the expre
 infer_srs_remove = consider removing this semicolon
 infer_srs_add = consider returning the local binding `{$ident}`
 infer_srs_add_one = consider returning one of these bindings
+
+infer_await_both_futures = consider `await`ing on both `Future`s
+infer_await_future = consider `await`ing on the `Future`
+infer_await_note = calling an async function returns a future

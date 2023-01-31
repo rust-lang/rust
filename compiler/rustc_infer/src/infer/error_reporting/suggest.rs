@@ -11,7 +11,9 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TypeVisitable};
 use rustc_span::{sym, BytePos, Span};
 
-use crate::errors::{SuggAddLetForLetChains, SuggestRemoveSemiOrReturnBinding};
+use crate::errors::{
+    ConsiderAddingAwait, SuggAddLetForLetChains, SuggestRemoveSemiOrReturnBinding,
+};
 
 use super::TypeErrCtxt;
 
@@ -191,7 +193,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return;
         }
 
-        match (
+        let subdiag = match (
             self.get_impl_future_output_ty(exp_found.expected),
             self.get_impl_future_output_ty(exp_found.found),
         ) {
@@ -200,65 +202,52 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             {
                 ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
                     let then_span = self.find_block_span_from_hir_id(*then_id);
-                    diag.multipart_suggestion(
-                        "consider `await`ing on both `Future`s",
-                        vec![
-                            (then_span.shrink_to_hi(), ".await".to_string()),
-                            (exp_span.shrink_to_hi(), ".await".to_string()),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    );
+                    Some(ConsiderAddingAwait::BothFuturesSugg {
+                        first: then_span.shrink_to_hi(),
+                        second: exp_span.shrink_to_hi(),
+                    })
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                     prior_arms,
                     ..
                 }) => {
                     if let [.., arm_span] = &prior_arms[..] {
-                        diag.multipart_suggestion(
-                            "consider `await`ing on both `Future`s",
-                            vec![
-                                (arm_span.shrink_to_hi(), ".await".to_string()),
-                                (exp_span.shrink_to_hi(), ".await".to_string()),
-                            ],
-                            Applicability::MaybeIncorrect,
-                        );
+                        Some(ConsiderAddingAwait::BothFuturesSugg {
+                            first: arm_span.shrink_to_hi(),
+                            second: exp_span.shrink_to_hi(),
+                        })
                     } else {
-                        diag.help("consider `await`ing on both `Future`s");
+                        Some(ConsiderAddingAwait::BothFuturesHelp)
                     }
                 }
-                _ => {
-                    diag.help("consider `await`ing on both `Future`s");
-                }
+                _ => Some(ConsiderAddingAwait::BothFuturesHelp),
             },
             (_, Some(ty)) if self.same_type_modulo_infer(exp_found.expected, ty) => {
-                self.suggest_await_on_future(diag, exp_span);
-                diag.span_note(exp_span, "calling an async function returns a future");
+                Some(ConsiderAddingAwait::FutureSuggWithNote { span: exp_span.shrink_to_hi() })
             }
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
             {
                 ObligationCauseCode::Pattern { span: Some(then_span), .. } => {
-                    self.suggest_await_on_future(diag, then_span.shrink_to_hi());
+                    Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
                 }
                 ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
                     let then_span = self.find_block_span_from_hir_id(*then_id);
-                    self.suggest_await_on_future(diag, then_span.shrink_to_hi());
+                    Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                     ref prior_arms,
                     ..
-                }) => {
-                    diag.multipart_suggestion_verbose(
-                        "consider `await`ing on the `Future`",
-                        prior_arms
-                            .iter()
-                            .map(|arm| (arm.shrink_to_hi(), ".await".to_string()))
-                            .collect(),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                _ => {}
+                }) => Some({
+                    ConsiderAddingAwait::FutureSuggMultiple {
+                        spans: prior_arms.iter().map(|arm| arm.shrink_to_hi()).collect(),
+                    }
+                }),
+                _ => None,
             },
-            _ => {}
+            _ => None,
+        };
+        if let Some(subdiag) = subdiag {
+            diag.subdiagnostic(subdiag);
         }
     }
 

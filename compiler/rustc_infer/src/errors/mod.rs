@@ -1050,3 +1050,46 @@ pub enum SuggestRemoveSemiOrReturnBinding {
         spans: MultiSpan,
     },
 }
+
+#[derive(Subdiagnostic)]
+pub enum ConsiderAddingAwait {
+    #[help(infer_await_both_futures)]
+    BothFuturesHelp,
+    #[multipart_suggestion(infer_await_both_futures, applicability = "maybe-incorrect")]
+    BothFuturesSugg {
+        #[suggestion_part(code = ".await")]
+        first: Span,
+        #[suggestion_part(code = ".await")]
+        second: Span,
+    },
+    #[suggestion(
+        infer_await_future,
+        code = ".await",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    FutureSugg {
+        #[primary_span]
+        span: Span,
+    },
+    #[suggestion(
+        infer_await_future,
+        code = ".await",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    #[note(infer_await_note)]
+    FutureSuggWithNote {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(
+        infer_await_future,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    FutureSuggMultiple {
+        #[suggestion_part(code = ".await")]
+        spans: Vec<Span>,
+    },
+}
