@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn foo(Tuple(_): String) {}
    |        ^^^^^^^^  ------ expected due to this
    |        |
-   |        expected struct `String`, found struct `Tuple`
+   |        expected `String`, found `Tuple`
 
 error: aborting due to previous error
 

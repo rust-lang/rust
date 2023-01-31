@@ -10,7 +10,7 @@ LL | || ) -> ()
 LL | |  {
 LL | |      loop {}
 LL | |  }
-   | |__^ expected `&Layout`, found struct `Layout`
+   | |__^ expected `&Layout`, found `Layout`
    |
 note: function defined here
   --> $DIR/alloc-error-handler-bad-signature-1.rs:10:4

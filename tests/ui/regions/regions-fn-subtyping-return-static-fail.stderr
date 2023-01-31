@@ -8,6 +8,7 @@ LL |     want_G(baz);
    |
    = note: expected fn pointer `for<'cx> fn(&'cx S) -> &'static S`
                  found fn item `for<'a> fn(&'a S) -> &'a S {baz}`
+   = note: when the arguments and return types match, functions can be coerced to function pointers
 note: function defined here
   --> $DIR/regions-fn-subtyping-return-static-fail.rs:20:4
    |

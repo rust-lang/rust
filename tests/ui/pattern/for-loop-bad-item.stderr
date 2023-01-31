@@ -25,7 +25,7 @@ error[E0308]: mismatched types
 LL |     for Some(Qux(_)) | None in [Some(""), None] {
    |              ^^^^^^            ---------------- this is an iterator with items of type `Option<&str>`
    |              |
-   |              expected `str`, found struct `Qux`
+   |              expected `str`, found `Qux`
 
 error: aborting due to 2 previous errors
 

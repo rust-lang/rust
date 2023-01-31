@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/no-implicit-dyn-star.rs:6:48
    |
 LL |     dyn_star_foreign::require_dyn_star_display(1usize);
-   |     ------------------------------------------ ^^^^^^ expected trait object `dyn Display`, found `usize`
+   |     ------------------------------------------ ^^^^^^ expected `dyn Display`, found `usize`
    |     |
    |     arguments to this function are incorrect
    |

@@ -15,7 +15,7 @@ LL |     type Foo = impl PartialEq<(Foo, i32)>;
 LL |         fn eq(&self, _other: &(Foo, i32)) -> bool {
    |                              ^^^^^^^^^^^
    |                              |
-   |                              expected struct `Bar`, found opaque type
+   |                              expected `a::Bar`, found opaque type
    |                              help: change the parameter type to match the trait: `&(a::Bar, i32)`
    |
    = note: expected signature `fn(&a::Bar, &(a::Bar, i32)) -> _`
@@ -38,7 +38,7 @@ LL |     type Foo = impl PartialEq<(Foo, i32)>;
 LL |         fn eq(&self, _other: &(Bar, i32)) -> bool {
    |                              ^^^^^^^^^^^
    |                              |
-   |                              expected opaque type, found struct `Bar`
+   |                              expected opaque type, found `b::Bar`
    |                              help: change the parameter type to match the trait: `&(b::Foo, i32)`
    |
    = note: expected signature `fn(&b::Bar, &(b::Foo, i32)) -> _`

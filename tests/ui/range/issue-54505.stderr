@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     take_range(0..1);
    |     ---------- ^^^^
    |     |          |
-   |     |          expected reference, found struct `Range`
+   |     |          expected `&_`, found `Range<{integer}>`
    |     |          help: consider borrowing here: `&(0..1)`
    |     arguments to this function are incorrect
    |
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 LL |     take_range(1..);
    |     ---------- ^^^
    |     |          |
-   |     |          expected reference, found struct `RangeFrom`
+   |     |          expected `&_`, found `RangeFrom<{integer}>`
    |     |          help: consider borrowing here: `&(1..)`
    |     arguments to this function are incorrect
    |
@@ -40,7 +40,7 @@ error[E0308]: mismatched types
 LL |     take_range(..);
    |     ---------- ^^
    |     |          |
-   |     |          expected reference, found struct `RangeFull`
+   |     |          expected `&_`, found `RangeFull`
    |     |          help: consider borrowing here: `&(..)`
    |     arguments to this function are incorrect
    |
@@ -58,7 +58,7 @@ error[E0308]: mismatched types
 LL |     take_range(0..=1);
    |     ---------- ^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeInclusive`
+   |     |          expected `&_`, found `RangeInclusive<{integer}>`
    |     |          help: consider borrowing here: `&(0..=1)`
    |     arguments to this function are incorrect
    |
@@ -76,7 +76,7 @@ error[E0308]: mismatched types
 LL |     take_range(..5);
    |     ---------- ^^^
    |     |          |
-   |     |          expected reference, found struct `RangeTo`
+   |     |          expected `&_`, found `RangeTo<{integer}>`
    |     |          help: consider borrowing here: `&(..5)`
    |     arguments to this function are incorrect
    |
@@ -94,7 +94,7 @@ error[E0308]: mismatched types
 LL |     take_range(..=42);
    |     ---------- ^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeToInclusive`
+   |     |          expected `&_`, found `RangeToInclusive<{integer}>`
    |     |          help: consider borrowing here: `&(..=42)`
    |     arguments to this function are incorrect
    |

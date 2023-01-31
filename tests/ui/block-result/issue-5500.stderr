@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn main() {
    |           - expected `()` because of default return type
 LL |     &panic!()
-   |     ^^^^^^^^^ expected `()`, found reference
+   |     ^^^^^^^^^ expected `()`, found `&_`
    |
    = note: expected unit type `()`
               found reference `&_`

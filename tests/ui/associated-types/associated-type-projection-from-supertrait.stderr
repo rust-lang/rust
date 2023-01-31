@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:27:23
    |
 LL | fn b() { dent(ModelT, Blue); }
-   |          ----         ^^^^ expected struct `Black`, found struct `Blue`
+   |          ----         ^^^^ expected `Black`, found `Blue`
    |          |
    |          arguments to this function are incorrect
    |
@@ -16,7 +16,7 @@ error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:28:23
    |
 LL | fn c() { dent(ModelU, Black); }
-   |          ----         ^^^^^ expected struct `Blue`, found struct `Black`
+   |          ----         ^^^^^ expected `Blue`, found `Black`
    |          |
    |          arguments to this function are incorrect
    |
@@ -30,7 +30,7 @@ error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:32:28
    |
 LL | fn f() { ModelT.chip_paint(Blue); }
-   |                 ---------- ^^^^ expected struct `Black`, found struct `Blue`
+   |                 ---------- ^^^^ expected `Black`, found `Blue`
    |                 |
    |                 arguments to this method are incorrect
    |
@@ -44,7 +44,7 @@ error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:33:28
    |
 LL | fn g() { ModelU.chip_paint(Black); }
-   |                 ---------- ^^^^^ expected struct `Blue`, found struct `Black`
+   |                 ---------- ^^^^^ expected `Blue`, found `Black`
    |                 |
    |                 arguments to this method are incorrect
    |

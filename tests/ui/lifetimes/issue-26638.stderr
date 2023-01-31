@@ -38,7 +38,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-26638.rs:1:69
    |
 LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.next() }
-   |                                                              ----   ^^^^^^^^^^^ expected `&str`, found enum `Option`
+   |                                                              ----   ^^^^^^^^^^^ expected `&str`, found `Option<&str>`
    |                                                              |
    |                                                              expected `&'static str` because of return type
    |
@@ -60,7 +60,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-26638.rs:5:47
    |
 LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
-   |                                        ----   ^^^^^^ expected `str`, found `u8`
+   |                                        ----   ^^^^^^ expected `&str`, found `&u8`
    |                                        |
    |                                        expected `&'static str` because of return type
    |

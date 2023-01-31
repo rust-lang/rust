@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/diverging-tuple-parts-39485.rs:8:5
    |
 LL |     &panic!()
-   |     ^^^^^^^^^ expected `()`, found reference
+   |     ^^^^^^^^^ expected `()`, found `&_`
    |
    = note: expected unit type `()`
               found reference `&_`
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 LL | fn f() -> isize {
    |           ----- expected `isize` because of return type
 LL |     (return 1, return 2)
-   |     ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found tuple
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `(!, !)`
    |
    = note: expected type `isize`
              found tuple `(!, !)`

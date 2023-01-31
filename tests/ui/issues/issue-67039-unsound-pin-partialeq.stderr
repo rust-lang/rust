@@ -2,7 +2,7 @@ error[E0271]: type mismatch resolving `<Rc<Apple> as Deref>::Target == Rc<Apple>
   --> $DIR/issue-67039-unsound-pin-partialeq.rs:25:29
    |
 LL |     let _ = Pin::new(Apple) == Rc::pin(Apple);
-   |                             ^^ expected struct `Apple`, found struct `Rc`
+   |                             ^^ expected `Apple`, found `Rc<Apple>`
    |
    = note: expected struct `Apple`
               found struct `Rc<Apple>`

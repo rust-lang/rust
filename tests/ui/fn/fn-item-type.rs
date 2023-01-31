@@ -34,8 +34,7 @@ fn main() {
     eq(bar::<String>, bar::<Vec<u8>>);
     //~^ ERROR mismatched types
     //~| found fn item `fn(_) -> _ {bar::<Vec<u8>>}`
-    //~| expected struct `String`, found struct `Vec`
-    //~| different fn items have unique types, even if their signatures are the same
+    //~| expected `String`, found `Vec<u8>`
 
     // Make sure we distinguish between trait methods correctly.
     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);

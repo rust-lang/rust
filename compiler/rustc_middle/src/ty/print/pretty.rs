@@ -1084,9 +1084,11 @@ pub trait PrettyPrinter<'tcx>:
             write!(self, "Sized")?;
         }
 
-        for re in lifetimes {
-            write!(self, " + ")?;
-            self = self.print_region(re)?;
+        if !FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+            for re in lifetimes {
+                write!(self, " + ")?;
+                self = self.print_region(re)?;
+            }
         }
 
         Ok(self)
@@ -2070,6 +2072,10 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             return true;
         }
 
+        if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+            return false;
+        }
+
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match *region {
@@ -2346,6 +2352,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         } else {
             let tcx = self.tcx;
 
+            let trim_path = FORCE_TRIMMED_PATH.with(|flag| flag.get());
             // Closure used in `RegionFolder` to create names for anonymous late-bound
             // regions. We use two `DebruijnIndex`es (one for the currently folded
             // late-bound region and the other for the binder level) to determine
@@ -2400,8 +2407,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     }
                 };
 
-                start_or_continue(&mut self, "for<", ", ");
-                do_continue(&mut self, name);
+                if !trim_path {
+                    start_or_continue(&mut self, "for<", ", ");
+                    do_continue(&mut self, name);
+                }
                 tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind }))
             };
             let mut folder = RegionFolder {
@@ -2412,7 +2421,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             };
             let new_value = value.clone().skip_binder().fold_with(&mut folder);
             let region_map = folder.region_map;
-            start_or_continue(&mut self, "", "> ");
+            if !trim_path {
+                start_or_continue(&mut self, "", "> ");
+            }
             (new_value, region_map)
         };
 

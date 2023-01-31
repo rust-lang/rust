@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-24819.rs:5:9
    |
 LL |     foo(&mut v);
-   |     --- ^^^^^^ expected struct `HashSet`, found struct `Vec`
+   |     --- ^^^^^^ expected `&mut HashSet<u32>`, found `&mut Vec<_>`
    |     |
    |     arguments to this function are incorrect
    |

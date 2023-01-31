@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:2:21
    |
 LL |     let a: String = &String::from("a");
-   |            ------   ^^^^^^^^^^^^^^^^^^ expected struct `String`, found `&String`
+   |            ------   ^^^^^^^^^^^^^^^^^^ expected `String`, found `&String`
    |            |
    |            expected due to this
    |
@@ -20,7 +20,7 @@ error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:4:21
    |
 LL |     let b: String = &format!("b");
-   |            ------   ^^^^^^^^^^^^^ expected struct `String`, found `&String`
+   |            ------   ^^^^^^^^^^^^^ expected `String`, found `&String`
    |            |
    |            expected due to this
    |
@@ -38,7 +38,7 @@ error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:6:21
    |
 LL |     let c: String = &mut format!("c");
-   |            ------   ^^^^^^^^^^^^^^^^^ expected struct `String`, found `&mut String`
+   |            ------   ^^^^^^^^^^^^^^^^^ expected `String`, found `&mut String`
    |            |
    |            expected due to this
    |
@@ -56,7 +56,7 @@ error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:8:21
    |
 LL |     let d: String = &mut (format!("d"));
-   |            ------   ^^^^^^^^^^^^^^^^^^^ expected struct `String`, found `&mut String`
+   |            ------   ^^^^^^^^^^^^^^^^^^^ expected `String`, found `&mut String`
    |            |
    |            expected due to this
    |

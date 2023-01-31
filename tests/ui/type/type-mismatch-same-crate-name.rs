@@ -16,7 +16,7 @@ fn main() {
         a::try_foo(foo2);
         //~^ ERROR mismatched types
         //~| perhaps two different versions of crate `crate_a1`
-        //~| expected struct `main::a::Foo`
+        //~| expected `main::a::Foo`, found a different `main::a::Foo`
         a::try_bar(bar2);
         //~^ ERROR mismatched types
         //~| perhaps two different versions of crate `crate_a1`

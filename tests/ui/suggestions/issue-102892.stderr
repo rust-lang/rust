@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-102892.rs:15:26
    |
 LL |     let (a, b): (A, B) = &**arc; // suggests putting `&**arc` here too
-   |                 ------   ^^^^^^ expected tuple, found `&(A, B)`
+   |                 ------   ^^^^^^ expected `(A, B)`, found `&(A, B)`
    |                 |
    |                 expected due to this
    |
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-102892.rs:20:32
    |
 LL |     let (a, b): ((A, B), A) = (&mut *mutation, &(**arc).0); // suggests putting `&**arc` here too
-   |                                ^^^^^^^^^^^^^^ expected tuple, found `&mut (A, B)`
+   |                                ^^^^^^^^^^^^^^ expected `(A, B)`, found `&mut (A, B)`
    |
    = note:          expected tuple `(A, B)`
            found mutable reference `&mut (A, B)`
@@ -40,7 +40,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-102892.rs:20:48
    |
 LL |     let (a, b): ((A, B), A) = (&mut *mutation, &(**arc).0); // suggests putting `&**arc` here too
-   |                                                ^^^^^^^^^^ expected struct `A`, found `&A`
+   |                                                ^^^^^^^^^^ expected `A`, found `&A`
    |
 help: consider removing the borrow
    |

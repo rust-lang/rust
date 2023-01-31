@@ -9,7 +9,7 @@ LL |     match n {
 LL |         RANGE => {}
    |         ^^^^^
    |         |
-   |         expected `i32`, found struct `RangeInclusive`
+   |         expected `i32`, found `RangeInclusive<i32>`
    |         `RANGE` is interpreted as a constant, not a new binding
    |
    = note: expected type `i32`
@@ -31,7 +31,7 @@ LL |     match n {
 LL |         RANGE2 => {}
    |         ^^^^^^
    |         |
-   |         expected `i32`, found struct `RangeInclusive`
+   |         expected `i32`, found `RangeInclusive<i32>`
    |         `RANGE2` is interpreted as a constant, not a new binding
    |
    = note: expected type `i32`

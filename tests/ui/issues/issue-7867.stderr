@@ -7,7 +7,7 @@ LL | enum A { B, C }
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
 LL |         A::B => (),
-   |         ^^^^ expected tuple, found enum `A`
+   |         ^^^^ expected `(bool, bool)`, found `A`
    |
    = note: expected tuple `(bool, bool)`
                found enum `A`

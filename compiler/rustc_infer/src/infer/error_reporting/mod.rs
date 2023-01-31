@@ -67,6 +67,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Node;
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
     self, error::TypeError, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
@@ -1612,16 +1613,31 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 {
                     format!("expected this to be `{}`", expected)
                 } else {
-                    terr.to_string()
+                    terr.to_string(self.tcx).to_string()
                 };
                 label_or_note(sp, &terr);
                 label_or_note(span, &msg);
             } else {
-                label_or_note(span, &terr.to_string());
+                label_or_note(span, &terr.to_string(self.tcx));
                 label_or_note(sp, &msg);
             }
         } else {
-            label_or_note(span, &terr.to_string());
+            if let Some(values) = values
+                && let Some((e, f)) = values.ty()
+                && let TypeError::ArgumentSorts(..) | TypeError::Sorts(_) = terr
+            {
+                let e = self.tcx.erase_regions(e);
+                let f = self.tcx.erase_regions(f);
+                let expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
+                let found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
+                if expected == found {
+                    label_or_note(span, &terr.to_string(self.tcx));
+                } else {
+                    label_or_note(span, &format!("expected {expected}, found {found}"));
+                }
+            } else {
+                label_or_note(span, &terr.to_string(self.tcx));
+            }
         }
 
         if let Some((expected, found, exp_p, found_p)) = expected_found {
@@ -1849,6 +1865,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         self.check_and_note_conflicting_crates(diag, terr);
 
         self.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
+        if let Some(exp_found) = exp_found
+            && let exp_found = TypeError::Sorts(exp_found)
+            && exp_found != terr
+        {
+            self.note_and_explain_type_err(
+                diag,
+                exp_found,
+                cause,
+                span,
+                cause.body_id.to_def_id(),
+            );
+        }
 
         if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values
             && let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind()

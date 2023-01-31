@@ -87,7 +87,7 @@ error[E0308]: mismatched types
 LL |     match x {
    |           - this expression has type `(E, E)`
 LL |         (A, B) | (ref B, c) | (c, A) => ()
-   |             -     ^^^^^ expected enum `E`, found `&E`
+   |             -     ^^^^^ expected `E`, found `&E`
    |             |
    |             first introduced with type `E` here
    |

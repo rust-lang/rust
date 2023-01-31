@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | /     intrinsic_match! {
 LL | |         "abc"
 LL | |     };
-   | |_____^ expected `&str`, found struct `String`
+   | |_____^ expected `&str`, found `String`
    |
    = note: this error originates in the macro `format` which comes from the expansion of the macro `intrinsic_match` (in Nightly builds, run with -Z macro-backtrace for more info)
 

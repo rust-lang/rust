@@ -23,7 +23,7 @@ LL |     foo::<for<'a> fn(&'a ()) -> (dyn std::fmt::Display + 'a), _>(None, (&()
    |     required by a bound introduced by this call
    |
    = help: within `for<'a> fn(&'a ()) -> (dyn std::fmt::Display + 'a)`, the trait `for<'a> Sized` is not implemented for `(dyn std::fmt::Display + 'a)`
-   = note: required because it appears within the type `for<'a> fn(&'a ()) -> (dyn Display + 'a)`
+   = note: required because it appears within the type `fn(&()) -> dyn Display`
 note: required by a bound in `foo`
   --> $DIR/unsized-ret.rs:5:11
    |

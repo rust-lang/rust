@@ -5,10 +5,11 @@ LL | fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
    |                                     ------------------------------------ expected `<C as Collection<i32>>::Sibling<f32>` because of return type
 ...
 LL |     res
-   |     ^^^ expected Collection::Sibling, found CollectionFamily::Member
+   |     ^^^ expected `Collection::Sibling`, found `CollectionFamily::Member`
    |
    = note: expected associated type `<C as Collection<i32>>::Sibling<f32>`
               found associated type `<<C as Collection<i32>>::Family as CollectionFamily>::Member<f32>`
+   = note: an associated type was expected, but a different one was found
 
 error: aborting due to previous error
 

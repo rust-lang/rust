@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     f(x)
    |     - ^
    |     | |
-   |     | expected `&mut isize`, found struct `Box`
+   |     | expected `&mut isize`, found `Box<{integer}>`
    |     | help: consider mutably borrowing here: `&mut x`
    |     arguments to this function are incorrect
    |

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-30225.rs:31:9
    |
 LL |     u = v; // mark $0 and $1 in a subtype relationship
-   |         ^ expected struct `A`, found struct `B`
+   |         ^ expected `A`, found `B`
 
 error: aborting due to previous error
 

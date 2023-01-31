@@ -5,7 +5,7 @@ LL | fn assert_sizeof() -> ! {
    |                       - expected `!` because of return type
 LL |     unsafe {
 LL |         ::std::mem::transmute::<f64, [u8; 8]>(panic!())
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `!`, found array `[u8; 8]`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `!`, found `[u8; 8]`
    |
    = note: expected type `!`
              found array `[u8; 8]`

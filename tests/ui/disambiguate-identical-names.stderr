@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/disambiguate-identical-names.rs:13:10
    |
 LL |     test(&v);
-   |     ---- ^^ expected struct `Vec`, found struct `HashMap`
+   |     ---- ^^ expected `&Vec<Vec<u32>>`, found `&HashMap<u8, u8>`
    |     |
    |     arguments to this function are incorrect
    |

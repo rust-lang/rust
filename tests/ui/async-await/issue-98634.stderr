@@ -1,8 +1,8 @@
-error[E0271]: expected `fn() -> impl Future<Output = ()> {callback}` to be a fn item that returns `Pin<Box<(dyn Future<Output = ()> + 'static)>>`, but it returns `impl Future<Output = ()>`
+error[E0271]: expected `callback` to be a fn item that returns `Pin<Box<dyn Future<Output = ()>>>`, but it returns `impl Future<Output = ()>`
   --> $DIR/issue-98634.rs:45:23
    |
 LL |         StructAsync { callback }.await;
-   |                       ^^^^^^^^ expected struct `Pin`, found opaque type
+   |                       ^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
    |
 note: while checking the return type of the `async fn`
   --> $DIR/issue-98634.rs:24:21
@@ -17,11 +17,11 @@ note: required by a bound in `StructAsync`
 LL | pub struct StructAsync<F: Fn() -> Pin<Box<dyn Future<Output = ()>>>> {
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StructAsync`
 
-error[E0271]: expected `fn() -> impl Future<Output = ()> {callback}` to be a fn item that returns `Pin<Box<(dyn Future<Output = ()> + 'static)>>`, but it returns `impl Future<Output = ()>`
+error[E0271]: expected `callback` to be a fn item that returns `Pin<Box<dyn Future<Output = ()>>>`, but it returns `impl Future<Output = ()>`
   --> $DIR/issue-98634.rs:45:9
    |
 LL |         StructAsync { callback }.await;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Pin`, found opaque type
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
    |
 note: while checking the return type of the `async fn`
   --> $DIR/issue-98634.rs:24:21
@@ -36,11 +36,11 @@ note: required by a bound in `StructAsync`
 LL | pub struct StructAsync<F: Fn() -> Pin<Box<dyn Future<Output = ()>>>> {
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StructAsync`
 
-error[E0271]: expected `fn() -> impl Future<Output = ()> {callback}` to be a fn item that returns `Pin<Box<(dyn Future<Output = ()> + 'static)>>`, but it returns `impl Future<Output = ()>`
+error[E0271]: expected `callback` to be a fn item that returns `Pin<Box<dyn Future<Output = ()>>>`, but it returns `impl Future<Output = ()>`
   --> $DIR/issue-98634.rs:45:33
    |
 LL |         StructAsync { callback }.await;
-   |                                 ^^^^^^ expected struct `Pin`, found opaque type
+   |                                 ^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
    |
 note: while checking the return type of the `async fn`
   --> $DIR/issue-98634.rs:24:21

@@ -12,7 +12,7 @@ error[E0308]: mismatched types
   --> $DIR/coercion-missing-tail-expected-type.rs:8:13
    |
 LL | fn foo() -> Result<u8, u64> {
-   |    ---      ^^^^^^^^^^^^^^^ expected enum `Result`, found `()`
+   |    ---      ^^^^^^^^^^^^^^^ expected `Result<u8, u64>`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     Ok(1);

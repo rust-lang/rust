@@ -6,6 +6,7 @@ LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
    |
    = note: expected fn pointer `for<'a, 'b, 'c, 'd, 'e, 'f> fn(&'a mut &'b isize, &'c mut &'d isize, &'e mut &'f isize)`
                  found fn item `for<'a, 'b, 'c> fn(&'a mut &isize, &'b mut &isize, &'c mut &isize) {a::<'_, '_, '_>}`
+   = note: when the arguments and return types match, functions can be coerced to function pointers
 
 error: aborting due to previous error
 

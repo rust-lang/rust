@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-102605.rs:13:20
    |
 LL |     convert_result(foo())
-   |     -------------- ^^^^^ expected enum `Result`, found opaque type
+   |     -------------- ^^^^^ expected `Result<(), _>`, found opaque type
    |     |
    |     arguments to this function are incorrect
    |
