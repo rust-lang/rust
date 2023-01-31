@@ -899,6 +899,7 @@ impl Session {
         ret
     }
 
+    /// Is this edition 2015?
     pub fn rust_2015(&self) -> bool {
         self.edition().rust_2015()
     }
