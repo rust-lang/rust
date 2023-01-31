@@ -1262,6 +1262,14 @@ a.test-arrow:hover {
 	line-height: 1.5;
 	color: inherit;
 }
+#search-tabs button:not(.selected) {
+	background-color: var(--search-tab-button-not-selected-background);
+	border-top-color: var(--search-tab-button-not-selected-border-top-color);
+}
+#search-tabs button:hover, #search-tabs button.selected {
+	background-color: var(--search-tab-button-selected-background);
+	border-top-color: var(--search-tab-button-selected-border-top-color);
+}
 
 #search-tabs .count {
 	font-size: 1rem;

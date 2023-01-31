@@ -41,6 +41,10 @@
 	--search-results-alias-color: #000;
 	--search-results-grey-color: #999;
 	--search-tab-title-count-color: #888;
+	--search-tab-button-not-selected-border-top-color: #e6e6e6;
+	--search-tab-button-not-selected-background: #e6e6e6;
+	--search-tab-button-selected-border-top-color: #0089ff;
+	--search-tab-button-selected-background: #ffffff;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
@@ -91,14 +95,4 @@
 	--scrape-example-help-hover-color: #000;
 	--scrape-example-code-wrapper-background-start: rgba(255, 255, 255, 1);
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
-}
-
-#search-tabs > button:not(.selected) {
-	background-color: #e6e6e6;
-	border-top-color: #e6e6e6;
-}
-
-#search-tabs > button:hover, #search-tabs > button.selected {
-	background-color: #ffffff;
-	border-top-color: #0089ff;
 }
