@@ -1369,7 +1369,7 @@ pub struct Placeholder<T> {
 
 pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
 
-pub type PlaceholderType = Placeholder<BoundVar>;
+pub type PlaceholderType = Placeholder<BoundTyKind>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]

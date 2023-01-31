@@ -2044,7 +2044,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
 ) -> SubstsRef<'tcx> {
     struct ReplaceParamAndInferWithPlaceholder<'tcx> {
         tcx: TyCtxt<'tcx>,
-        idx: usize,
+        idx: u32,
     }
 
     impl<'tcx> TypeFolder<'tcx> for ReplaceParamAndInferWithPlaceholder<'tcx> {
@@ -2056,7 +2056,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
             if let ty::Infer(_) = t.kind() {
                 self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::ROOT,
-                    name: ty::BoundVar::from_usize({
+                    name: ty::BoundTyKind::Anon({
                         let idx = self.idx;
                         self.idx += 1;
                         idx
@@ -2077,7 +2077,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                 self.tcx.mk_const(
                     ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
-                        name: ty::BoundVar::from_usize({
+                        name: ty::BoundVar::from_u32({
                             let idx = self.idx;
                             self.idx += 1;
                             idx
