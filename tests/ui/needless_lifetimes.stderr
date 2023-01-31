@@ -1,319 +1,546 @@
 error: the following explicit lifetimes could be elided: 'a, 'b
-  --> $DIR/needless_lifetimes.rs:15:1
+  --> $DIR/needless_lifetimes.rs:17:1
    |
 LL | fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
+help: elide the lifetimes
+   |
+LL - fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
+LL + fn distinct_lifetimes(_x: &u8, _y: &u8, _z: u8) {}
+   |
 
 error: the following explicit lifetimes could be elided: 'a, 'b
-  --> $DIR/needless_lifetimes.rs:17:1
+  --> $DIR/needless_lifetimes.rs:19:1
    |
 LL | fn distinct_and_static<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: &'static u8) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn distinct_and_static<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: &'static u8) {}
+LL + fn distinct_and_static(_x: &u8, _y: &u8, _z: &'static u8) {}
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:27:1
+  --> $DIR/needless_lifetimes.rs:29:1
    |
 LL | fn in_and_out<'a>(x: &'a u8, _y: u8) -> &'a u8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn in_and_out<'a>(x: &'a u8, _y: u8) -> &'a u8 {
+LL + fn in_and_out(x: &u8, _y: u8) -> &u8 {
+   |
 
 error: the following explicit lifetimes could be elided: 'b
-  --> $DIR/needless_lifetimes.rs:39:1
+  --> $DIR/needless_lifetimes.rs:41:1
    |
 LL | fn multiple_in_and_out_2a<'a, 'b>(x: &'a u8, _y: &'b u8) -> &'a u8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn multiple_in_and_out_2a<'a, 'b>(x: &'a u8, _y: &'b u8) -> &'a u8 {
+LL + fn multiple_in_and_out_2a<'a>(x: &'a u8, _y: &u8) -> &'a u8 {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:46:1
+  --> $DIR/needless_lifetimes.rs:48:1
    |
 LL | fn multiple_in_and_out_2b<'a, 'b>(_x: &'a u8, y: &'b u8) -> &'b u8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn multiple_in_and_out_2b<'a, 'b>(_x: &'a u8, y: &'b u8) -> &'b u8 {
+LL + fn multiple_in_and_out_2b<'b>(_x: &u8, y: &'b u8) -> &'b u8 {
+   |
 
 error: the following explicit lifetimes could be elided: 'b
-  --> $DIR/needless_lifetimes.rs:63:1
+  --> $DIR/needless_lifetimes.rs:65:1
    |
 LL | fn deep_reference_1a<'a, 'b>(x: &'a u8, _y: &'b u8) -> Result<&'a u8, ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn deep_reference_1a<'a, 'b>(x: &'a u8, _y: &'b u8) -> Result<&'a u8, ()> {
+LL + fn deep_reference_1a<'a>(x: &'a u8, _y: &u8) -> Result<&'a u8, ()> {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:70:1
+  --> $DIR/needless_lifetimes.rs:72:1
    |
 LL | fn deep_reference_1b<'a, 'b>(_x: &'a u8, y: &'b u8) -> Result<&'b u8, ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn deep_reference_1b<'a, 'b>(_x: &'a u8, y: &'b u8) -> Result<&'b u8, ()> {
+LL + fn deep_reference_1b<'b>(_x: &u8, y: &'b u8) -> Result<&'b u8, ()> {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:79:1
+  --> $DIR/needless_lifetimes.rs:81:1
    |
 LL | fn deep_reference_3<'a>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn deep_reference_3<'a>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> {
+LL + fn deep_reference_3(x: &u8, _y: u8) -> Result<&u8, ()> {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:84:1
+  --> $DIR/needless_lifetimes.rs:86:1
    |
 LL | fn where_clause_without_lt<'a, T>(x: &'a u8, _y: u8) -> Result<&'a u8, ()>
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn where_clause_without_lt<'a, T>(x: &'a u8, _y: u8) -> Result<&'a u8, ()>
+LL + fn where_clause_without_lt<T>(x: &u8, _y: u8) -> Result<&u8, ()>
+   |
 
 error: the following explicit lifetimes could be elided: 'a, 'b
-  --> $DIR/needless_lifetimes.rs:96:1
+  --> $DIR/needless_lifetimes.rs:98:1
    |
 LL | fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace with `'_` in generic arguments such as here
-  --> $DIR/needless_lifetimes.rs:96:37
+help: elide the lifetimes
    |
-LL | fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) {}
-   |                                     ^^
+LL - fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) {}
+LL + fn lifetime_param_2(_x: Ref<'_>, _y: &u8) {}
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:120:1
+  --> $DIR/needless_lifetimes.rs:122:1
    |
 LL | fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace with `'_` in generic arguments such as here
-  --> $DIR/needless_lifetimes.rs:120:32
+help: elide the lifetimes
    |
-LL | fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
-   |                                ^^
+LL - fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
+LL + fn fn_bound_2<F, I>(_m: Lt<'_, I>, _f: F) -> Lt<'_, I>
+   |
 
 error: the following explicit lifetimes could be elided: 's
-  --> $DIR/needless_lifetimes.rs:150:5
+  --> $DIR/needless_lifetimes.rs:152:5
    |
 LL |     fn self_and_out<'s>(&'s self) -> &'s u8 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn self_and_out<'s>(&'s self) -> &'s u8 {
+LL +     fn self_and_out(&self) -> &u8 {
+   |
 
 error: the following explicit lifetimes could be elided: 't
-  --> $DIR/needless_lifetimes.rs:157:5
+  --> $DIR/needless_lifetimes.rs:159:5
    |
 LL |     fn self_and_in_out_1<'s, 't>(&'s self, _x: &'t u8) -> &'s u8 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn self_and_in_out_1<'s, 't>(&'s self, _x: &'t u8) -> &'s u8 {
+LL +     fn self_and_in_out_1<'s>(&'s self, _x: &u8) -> &'s u8 {
+   |
 
 error: the following explicit lifetimes could be elided: 's
-  --> $DIR/needless_lifetimes.rs:164:5
+  --> $DIR/needless_lifetimes.rs:166:5
    |
 LL |     fn self_and_in_out_2<'s, 't>(&'s self, x: &'t u8) -> &'t u8 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn self_and_in_out_2<'s, 't>(&'s self, x: &'t u8) -> &'t u8 {
+LL +     fn self_and_in_out_2<'t>(&self, x: &'t u8) -> &'t u8 {
+   |
 
 error: the following explicit lifetimes could be elided: 's, 't
-  --> $DIR/needless_lifetimes.rs:168:5
+  --> $DIR/needless_lifetimes.rs:170:5
    |
 LL |     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) {}
+LL +     fn distinct_self_and_in(&self, _x: &u8) {}
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:187:1
+  --> $DIR/needless_lifetimes.rs:189:1
    |
 LL | fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace with `'_` in generic arguments such as here
-  --> $DIR/needless_lifetimes.rs:187:33
+help: elide the lifetimes
    |
-LL | fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str {
-   |                                 ^^
+LL - fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str {
+LL + fn struct_with_lt(_foo: Foo<'_>) -> &str {
+   |
 
 error: the following explicit lifetimes could be elided: 'b
-  --> $DIR/needless_lifetimes.rs:205:1
+  --> $DIR/needless_lifetimes.rs:207:1
    |
 LL | fn struct_with_lt4a<'a, 'b>(_foo: &'a Foo<'b>) -> &'a str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace with `'_` in generic arguments such as here
-  --> $DIR/needless_lifetimes.rs:205:43
+help: elide the lifetimes
    |
-LL | fn struct_with_lt4a<'a, 'b>(_foo: &'a Foo<'b>) -> &'a str {
-   |                                           ^^
+LL - fn struct_with_lt4a<'a, 'b>(_foo: &'a Foo<'b>) -> &'a str {
+LL + fn struct_with_lt4a<'a>(_foo: &'a Foo<'_>) -> &'a str {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:213:1
+  --> $DIR/needless_lifetimes.rs:215:1
    |
 LL | fn struct_with_lt4b<'a, 'b>(_foo: &'a Foo<'b>) -> &'b str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn struct_with_lt4b<'a, 'b>(_foo: &'a Foo<'b>) -> &'b str {
+LL + fn struct_with_lt4b<'b>(_foo: &Foo<'b>) -> &'b str {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:228:1
+  --> $DIR/needless_lifetimes.rs:230:1
    |
 LL | fn trait_obj_elided2<'a>(_arg: &'a dyn Drop) -> &'a str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn trait_obj_elided2<'a>(_arg: &'a dyn Drop) -> &'a str {
+LL + fn trait_obj_elided2(_arg: &dyn Drop) -> &str {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:234:1
+  --> $DIR/needless_lifetimes.rs:236:1
    |
 LL | fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace with `'_` in generic arguments such as here
-  --> $DIR/needless_lifetimes.rs:234:37
+help: elide the lifetimes
    |
-LL | fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str {
-   |                                     ^^
+LL - fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str {
+LL + fn alias_with_lt(_foo: FooAlias<'_>) -> &str {
+   |
 
 error: the following explicit lifetimes could be elided: 'b
-  --> $DIR/needless_lifetimes.rs:252:1
+  --> $DIR/needless_lifetimes.rs:254:1
    |
 LL | fn alias_with_lt4a<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'a str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace with `'_` in generic arguments such as here
-  --> $DIR/needless_lifetimes.rs:252:47
+help: elide the lifetimes
    |
-LL | fn alias_with_lt4a<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'a str {
-   |                                               ^^
+LL - fn alias_with_lt4a<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'a str {
+LL + fn alias_with_lt4a<'a>(_foo: &'a FooAlias<'_>) -> &'a str {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:260:1
+  --> $DIR/needless_lifetimes.rs:262:1
    |
 LL | fn alias_with_lt4b<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'b str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn alias_with_lt4b<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'b str {
+LL + fn alias_with_lt4b<'b>(_foo: &FooAlias<'b>) -> &'b str {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:264:1
+  --> $DIR/needless_lifetimes.rs:266:1
    |
 LL | fn named_input_elided_output<'a>(_arg: &'a str) -> &str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn named_input_elided_output<'a>(_arg: &'a str) -> &str {
+LL + fn named_input_elided_output(_arg: &str) -> &str {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:272:1
+  --> $DIR/needless_lifetimes.rs:274:1
    |
 LL | fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL - fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) {
+LL + fn trait_bound_ok<T: WithLifetime<'static>>(_: &u8, _: T) {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:308:1
+  --> $DIR/needless_lifetimes.rs:310:1
    |
 LL | fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace with `'_` in generic arguments such as here
-  --> $DIR/needless_lifetimes.rs:308:47
+help: elide the lifetimes
    |
-LL | fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> {
-   |                                               ^^
+LL - fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> {
+LL + fn out_return_type_lts(e: &str) -> Cow<'_> {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:315:9
+  --> $DIR/needless_lifetimes.rs:317:9
    |
 LL |         fn needless_lt<'a>(x: &'a u8) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn needless_lt<'a>(x: &'a u8) {}
+LL +         fn needless_lt(x: &u8) {}
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:319:9
+  --> $DIR/needless_lifetimes.rs:321:9
    |
 LL |         fn needless_lt<'a>(_x: &'a u8) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn needless_lt<'a>(_x: &'a u8) {}
+LL +         fn needless_lt(_x: &u8) {}
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:332:9
+  --> $DIR/needless_lifetimes.rs:334:9
    |
 LL |         fn baz<'a>(&'a self) -> impl Foo + 'a {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn baz<'a>(&'a self) -> impl Foo + 'a {
+LL +         fn baz(&self) -> impl Foo + '_ {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:364:5
+  --> $DIR/needless_lifetimes.rs:366:5
    |
 LL |     fn impl_trait_elidable_nested_anonymous_lifetimes<'a>(i: &'a i32, f: impl Fn(&i32) -> &i32) -> &'a i32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn impl_trait_elidable_nested_anonymous_lifetimes<'a>(i: &'a i32, f: impl Fn(&i32) -> &i32) -> &'a i32 {
+LL +     fn impl_trait_elidable_nested_anonymous_lifetimes(i: &i32, f: impl Fn(&i32) -> &i32) -> &i32 {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:373:5
+  --> $DIR/needless_lifetimes.rs:375:5
    |
 LL |     fn generics_elidable<'a, T: Fn(&i32) -> &i32>(i: &'a i32, f: T) -> &'a i32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn generics_elidable<'a, T: Fn(&i32) -> &i32>(i: &'a i32, f: T) -> &'a i32 {
+LL +     fn generics_elidable<T: Fn(&i32) -> &i32>(i: &i32, f: T) -> &i32 {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:385:5
+  --> $DIR/needless_lifetimes.rs:387:5
    |
 LL |     fn where_clause_elidadable<'a, T>(i: &'a i32, f: T) -> &'a i32
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn where_clause_elidadable<'a, T>(i: &'a i32, f: T) -> &'a i32
+LL +     fn where_clause_elidadable<T>(i: &i32, f: T) -> &i32
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:400:5
+  --> $DIR/needless_lifetimes.rs:402:5
    |
 LL |     fn pointer_fn_elidable<'a>(i: &'a i32, f: fn(&i32) -> &i32) -> &'a i32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn pointer_fn_elidable<'a>(i: &'a i32, f: fn(&i32) -> &i32) -> &'a i32 {
+LL +     fn pointer_fn_elidable(i: &i32, f: fn(&i32) -> &i32) -> &i32 {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:413:5
+  --> $DIR/needless_lifetimes.rs:415:5
    |
 LL |     fn nested_fn_pointer_3<'a>(_: &'a i32) -> fn(fn(&i32) -> &i32) -> i32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn nested_fn_pointer_3<'a>(_: &'a i32) -> fn(fn(&i32) -> &i32) -> i32 {
+LL +     fn nested_fn_pointer_3(_: &i32) -> fn(fn(&i32) -> &i32) -> i32 {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:416:5
+  --> $DIR/needless_lifetimes.rs:418:5
    |
 LL |     fn nested_fn_pointer_4<'a>(_: &'a i32) -> impl Fn(fn(&i32)) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn nested_fn_pointer_4<'a>(_: &'a i32) -> impl Fn(fn(&i32)) {
+LL +     fn nested_fn_pointer_4(_: &i32) -> impl Fn(fn(&i32)) {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:438:9
+  --> $DIR/needless_lifetimes.rs:440:9
    |
 LL |         fn implicit<'a>(&'a self) -> &'a () {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn implicit<'a>(&'a self) -> &'a () {
+LL +         fn implicit(&self) -> &() {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:441:9
+  --> $DIR/needless_lifetimes.rs:443:9
    |
 LL |         fn implicit_mut<'a>(&'a mut self) -> &'a () {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn implicit_mut<'a>(&'a mut self) -> &'a () {
+LL +         fn implicit_mut(&mut self) -> &() {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:452:9
+  --> $DIR/needless_lifetimes.rs:454:9
    |
 LL |         fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+LL +         fn lifetime_elsewhere(self: Box<Self>, here: &()) -> &() {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:458:9
+  --> $DIR/needless_lifetimes.rs:460:9
    |
 LL |         fn implicit<'a>(&'a self) -> &'a ();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn implicit<'a>(&'a self) -> &'a ();
+LL +         fn implicit(&self) -> &();
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:459:9
+  --> $DIR/needless_lifetimes.rs:461:9
    |
 LL |         fn implicit_provided<'a>(&'a self) -> &'a () {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn implicit_provided<'a>(&'a self) -> &'a () {
+LL +         fn implicit_provided(&self) -> &() {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:468:9
+  --> $DIR/needless_lifetimes.rs:470:9
    |
 LL |         fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a ();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a ();
+LL +         fn lifetime_elsewhere(self: Box<Self>, here: &()) -> &();
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:469:9
+  --> $DIR/needless_lifetimes.rs:471:9
    |
 LL |         fn lifetime_elsewhere_provided<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:478:5
    |
-LL |     fn foo<'a>(x: &'a u8, y: &'_ u8) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: elide the lifetimes
+   |
+LL -         fn lifetime_elsewhere_provided<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+LL +         fn lifetime_elsewhere_provided(self: Box<Self>, here: &()) -> &() {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
   --> $DIR/needless_lifetimes.rs:480:5
    |
-LL |     fn bar<'a>(x: &'a u8, y: &'_ u8, z: &'_ u8) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn foo<'a>(x: &'a u8, y: &'_ u8) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn foo<'a>(x: &'a u8, y: &'_ u8) {}
+LL +     fn foo(x: &u8, y: &'_ u8) {}
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:487:5
+  --> $DIR/needless_lifetimes.rs:482:5
+   |
+LL |     fn bar<'a>(x: &'a u8, y: &'_ u8, z: &'_ u8) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn bar<'a>(x: &'a u8, y: &'_ u8, z: &'_ u8) {}
+LL +     fn bar(x: &u8, y: &'_ u8, z: &'_ u8) {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> $DIR/needless_lifetimes.rs:489:5
    |
 LL |     fn one_input<'a>(x: &'a u8) -> &'a u8 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn one_input<'a>(x: &'a u8) -> &'a u8 {
+LL +     fn one_input(x: &u8) -> &u8 {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:492:5
+  --> $DIR/needless_lifetimes.rs:494:5
    |
 LL |     fn multiple_inputs_output_not_elided<'a, 'b>(x: &'a u8, y: &'b u8, z: &'b u8) -> &'b u8 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: elide the lifetimes
+   |
+LL -     fn multiple_inputs_output_not_elided<'a, 'b>(x: &'a u8, y: &'b u8, z: &'b u8) -> &'b u8 {
+LL +     fn multiple_inputs_output_not_elided<'b>(x: &u8, y: &'b u8, z: &'b u8) -> &'b u8 {
+   |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/needless_lifetimes.rs:505:13
+  --> $DIR/needless_lifetimes.rs:507:13
    |
 LL |             fn one_input<'a>(x: &'a u8) -> &'a u8 {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -322,6 +549,11 @@ LL |     local_one_input_macro!();
    |     ------------------------ in this macro invocation
    |
    = note: this error originates in the macro `local_one_input_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: elide the lifetimes
+   |
+LL -             fn one_input<'a>(x: &'a u8) -> &'a u8 {
+LL +             fn one_input(x: &u8) -> &u8 {
+   |
 
 error: aborting due to 46 previous errors
 
