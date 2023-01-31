@@ -242,8 +242,7 @@ josh-proxy --local=$HOME/.cache/josh --remote=https://github.com --no-background
 
 This uses a directory `$HOME/.cache/josh` as a cache, to speed up repeated pulling/pushing.
 
-Note that josh is unable to handle ssh auth natively, but you can force it to use ssh auth
-by adding the following to your `.gitconfig`:
+To make josh push via ssh instead of https, you can add the following to your `.gitconfig`:
 
 ```toml
 [url "git@github.com:"]
