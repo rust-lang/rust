@@ -51,7 +51,6 @@ function hasClass(elem, className) {
     return elem && elem.classList && elem.classList.contains(className);
 }
 
-// eslint-disable-next-line no-unused-vars
 function addClass(elem, className) {
     if (!elem || !elem.classList) {
         return;
