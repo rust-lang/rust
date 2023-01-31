@@ -4,7 +4,7 @@ import * as ra from "./lsp_ext";
 
 import { Config, substituteVSCodeVariables } from "./config";
 import { createClient } from "./client";
-import { isRustDocument, isRustEditor, log, RustEditor } from "./util";
+import { isRustDocument, isRustEditor, LazyOutputChannel, log, RustEditor } from "./util";
 import { ServerStatusParams } from "./lsp_ext";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
@@ -128,9 +128,7 @@ export class Ctx {
         }
 
         if (!this.traceOutputChannel) {
-            this.traceOutputChannel = vscode.window.createOutputChannel(
-                "Rust Analyzer Language Server Trace"
-            );
+            this.traceOutputChannel = new LazyOutputChannel("Rust Analyzer Language Server Trace");
             this.pushExtCleanup(this.traceOutputChannel);
         }
         if (!this.outputChannel) {
