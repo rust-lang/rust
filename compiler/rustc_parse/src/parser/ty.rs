@@ -342,6 +342,12 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.prev_token.span);
         let mut ty = self.mk_ty(span, kind);
 
+        if self.eat_keyword(sym::is) {
+            let pat = self.parse_pat_no_top_alt(None)?;
+            let span = lo.to(self.prev_token.span);
+            ty = self.mk_ty(span, TyKind::Pat(ty, pat));
+        }
+
         // Try to recover from use of `+` with incorrect priority.
         match allow_plus {
             AllowPlus::Yes => self.maybe_recover_from_bad_type_plus(&ty)?,

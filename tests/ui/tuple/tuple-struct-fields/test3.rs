@@ -3,7 +3,7 @@ macro_rules! define_struct {
         struct S1(pub($t));
         struct S2(pub (in foo) ());
         struct S3(pub($t) ());
-        //~^ ERROR expected one of `)` or `,`, found `(`
+        //~^ ERROR expected one of `)`, `,`, or `is`, found `(`
     }
 }
 

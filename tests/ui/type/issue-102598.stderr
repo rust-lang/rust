@@ -25,11 +25,11 @@ help: if this is a type, explicitly ignore the parameter name
 LL | fn foo<'a>(_: impl 'a _: Sized) {}
    |                       ++
 
-error: expected one of `)`, `+`, or `,`, found `Sized`
+error: expected one of `)`, `+`, `,`, or `is`, found `Sized`
   --> $DIR/issue-102598.rs:1:23
    |
 LL | fn foo<'a>(_: impl 'a Sized) {}
-   |                      -^^^^^ expected one of `)`, `+`, or `,`
+   |                      -^^^^^ expected one of `)`, `+`, `,`, or `is`
    |                      |
    |                      help: missing `,`
 

@@ -313,6 +313,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::DynStar, ..) => {
                 gate_feature_post!(&self, dyn_star, ty.span, "dyn* trait objects are unstable");
             }
+            ast::TyKind::Pat(..) => {
+                gate_feature_post!(&self, pattern_types, ty.span, "pattern types are unstable");
+            }
             _ => {}
         }
         visit::walk_ty(self, ty)

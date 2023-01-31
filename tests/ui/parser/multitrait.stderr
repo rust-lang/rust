@@ -1,8 +1,8 @@
-error: expected one of `!`, `(`, `+`, `::`, `<`, `for`, `where`, or `{`, found `,`
+error: expected one of `!`, `(`, `+`, `::`, `<`, `for`, `is`, `where`, or `{`, found `,`
   --> $DIR/multitrait.rs:5:9
    |
 LL | impl Cmp, ToString for S {
-   |         ^ expected one of 8 possible tokens
+   |         ^ expected one of 9 possible tokens
 
 error: aborting due to previous error
 

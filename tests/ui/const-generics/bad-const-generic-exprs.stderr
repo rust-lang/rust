@@ -142,11 +142,11 @@ help: expressions must be enclosed in braces to be used as const generic argumen
 LL |     let _: Wow<{ (1 + 2) * 3 }>;
    |                +             +
 
-error: expected one of `,` or `>`, found `0`
+error: expected one of `,`, `>`, or `is`, found `0`
   --> $DIR/bad-const-generic-exprs.rs:43:17
    |
 LL |     let _: Wow<!0>;
-   |         -       ^ expected one of `,` or `>`
+   |         -       ^ expected one of `,`, `>`, or `is`
    |         |
    |         while parsing the type for `_`
    |

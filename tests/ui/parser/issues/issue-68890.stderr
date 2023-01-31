@@ -4,11 +4,11 @@ error: `?` may only modify trait bounds, not lifetime bounds
 LL | enum e{A((?'a a+?+l))}
    |           ^
 
-error: expected one of `)`, `+`, or `,`, found `a`
+error: expected one of `)`, `+`, `,`, or `is`, found `a`
   --> $DIR/issue-68890.rs:1:15
    |
 LL | enum e{A((?'a a+?+l))}
-   |               ^ expected one of `)`, `+`, or `,`
+   |               ^ expected one of `)`, `+`, `,`, or `is`
 
 error: expected item, found `)`
   --> $DIR/issue-68890.rs:1:21

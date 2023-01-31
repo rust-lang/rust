@@ -1,8 +1,8 @@
-error: expected one of `,`, `:`, or `>`, found `=`
+error: expected one of `,`, `:`, `>`, or `is`, found `=`
   --> $DIR/issue-34334.rs:2:29
    |
 LL |     let sr: Vec<(u32, _, _) = vec![];
-   |         --                - ^ expected one of `,`, `:`, or `>`
+   |         --                - ^ expected one of `,`, `:`, `>`, or `is`
    |         |                 |
    |         |                 maybe try to close unmatched angle bracket
    |         while parsing the type for `sr`

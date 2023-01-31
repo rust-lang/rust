@@ -14,7 +14,7 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::fmt;
 use std::fs;
 use std::num::NonZeroU32;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use regex::Regex;
 
@@ -51,6 +51,8 @@ pub struct Feature {
     pub since: Option<Version>,
     pub has_gate_test: bool,
     pub tracking_issue: Option<NonZeroU32>,
+    pub file: PathBuf,
+    pub line: usize,
 }
 impl Feature {
     fn tracking_issue_display(&self) -> impl fmt::Display {
@@ -72,7 +74,7 @@ pub struct CollectedFeatures {
 pub fn collect_lib_features(base_src_path: &Path) -> Features {
     let mut lib_features = Features::new();
 
-    map_lib_features(base_src_path, &mut |res, _, _| {
+    map_lib_features(base_src_path, &mut |res| {
         if let Ok((name, feature)) = res {
             lib_features.insert(name.to_owned(), feature);
         }
@@ -185,23 +187,25 @@ pub fn check(
         .chain(lib_features.iter().map(|feat| (feat, "lib")));
     for ((feature_name, feature), kind) in all_features_iter {
         let since = if let Some(since) = feature.since { since } else { continue };
+        let file = feature.file.display();
+        let line = feature.line;
         if since > version && since != Version::CurrentPlaceholder {
             tidy_error!(
                 bad,
-                "The stabilization version {since} of {kind} feature `{feature_name}` is newer than the current {version}"
+                "{file}:{line}: The stabilization version {since} of {kind} feature `{feature_name}` is newer than the current {version}"
             );
         }
         if channel == "nightly" && since == version {
             tidy_error!(
                 bad,
-                "The stabilization version {since} of {kind} feature `{feature_name}` is written out but should be {}",
+                "{file}:{line}: The stabilization version {since} of {kind} feature `{feature_name}` is written out but should be {}",
                 version::VERSION_PLACEHOLDER
             );
         }
         if channel != "nightly" && since == Version::CurrentPlaceholder {
             tidy_error!(
                 bad,
-                "The placeholder use of {kind} feature `{feature_name}` is not allowed on the {channel} channel",
+                "{file}:{line}: The placeholder use of {kind} feature `{feature_name}` is not allowed on the {channel} channel",
             );
         }
     }
@@ -435,7 +439,14 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
                 );
             }
             Entry::Vacant(e) => {
-                e.insert(Feature { level, since, has_gate_test: false, tracking_issue });
+                e.insert(Feature {
+                    level,
+                    since,
+                    has_gate_test: false,
+                    tracking_issue,
+                    file: path.to_path_buf(),
+                    line: line_number,
+                });
             }
         }
     }
@@ -447,7 +458,7 @@ fn get_and_check_lib_features(
     lang_features: &Features,
 ) -> Features {
     let mut lib_features = Features::new();
-    map_lib_features(base_src_path, &mut |res, file, line| match res {
+    map_lib_features(base_src_path, &mut |res| match res {
         Ok((name, f)) => {
             let mut check_features = |f: &Feature, list: &Features, display: &str| {
                 if let Some(ref s) = list.get(name) {
@@ -455,8 +466,8 @@ fn get_and_check_lib_features(
                         tidy_error!(
                             bad,
                             "{}:{}: `issue` \"{}\" mismatches the {} `issue` of \"{}\"",
-                            file.display(),
-                            line,
+                            f.file.display(),
+                            f.line,
                             f.tracking_issue_display(),
                             display,
                             s.tracking_issue_display(),
@@ -468,7 +479,7 @@ fn get_and_check_lib_features(
             check_features(&f, &lib_features, "previous");
             lib_features.insert(name.to_owned(), f);
         }
-        Err(msg) => {
+        Err((msg, file, line)) => {
             tidy_error!(bad, "{}:{}: {}", file.display(), line, msg);
         }
     });
@@ -477,7 +488,7 @@ fn get_and_check_lib_features(
 
 fn map_lib_features(
     base_src_path: &Path,
-    mf: &mut dyn FnMut(Result<(&str, Feature), &str>, &Path, usize),
+    mf: &mut dyn FnMut(Result<(&str, Feature), (&str, &Path, usize)>),
 ) {
     walk(
         base_src_path,
@@ -514,7 +525,7 @@ fn map_lib_features(
             while let Some((i, line)) = iter_lines.next() {
                 macro_rules! err {
                     ($msg:expr) => {{
-                        mf(Err($msg), file, i + 1);
+                        mf(Err(($msg, file, i + 1)));
                         continue;
                     }};
                 }
@@ -532,7 +543,10 @@ fn map_lib_features(
                         f.tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);
                     }
                     if line.ends_with(']') {
-                        mf(Ok((name, f.clone())), file, i + 1);
+                        let mut f = f.clone();
+                        f.file = file.to_path_buf();
+                        f.line = i + 1;
+                        mf(Ok((name, f)));
                     } else if !line.ends_with(',') && !line.ends_with('\\') && !line.ends_with('"')
                     {
                         // We need to bail here because we might have missed the
@@ -561,8 +575,10 @@ fn map_lib_features(
                         since: None,
                         has_gate_test: false,
                         tracking_issue: find_attr_val(line, "issue").and_then(handle_issue_none),
+                        file: file.to_path_buf(),
+                        line: i + 1,
                     };
-                    mf(Ok((feature_name, feature)), file, i + 1);
+                    mf(Ok((feature_name, feature)));
                     continue;
                 }
                 let level = if line.contains("[unstable(") {
@@ -590,9 +606,16 @@ fn map_lib_features(
                 };
                 let tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);
 
-                let feature = Feature { level, since, has_gate_test: false, tracking_issue };
+                let feature = Feature {
+                    level,
+                    since,
+                    has_gate_test: false,
+                    tracking_issue,
+                    file: file.to_path_buf(),
+                    line: i + 1,
+                };
                 if line.contains(']') {
-                    mf(Ok((feature_name, feature)), file, i + 1);
+                    mf(Ok((feature_name, feature)));
                 } else {
                     becoming_feature = Some((feature_name, feature));
                 }

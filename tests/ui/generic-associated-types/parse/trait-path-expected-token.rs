@@ -3,6 +3,6 @@ trait X {
 }
 
 fn f1<'a>(arg : Box<dyn X<Y = B = &'a ()>>) {}
-    //~^ ERROR: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `=`
+    //~^ ERROR: expected one of `!`, `(`, `+`, `,`, `::`, `<`, `>`, or `is`, found `=`
 
 fn main() {}

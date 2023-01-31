@@ -1,0 +1,48 @@
+error[E0658]: pattern types are unstable
+  --> $DIR/feature-gate-pattern_types.rs:3:19
+   |
+LL | type NonNullU32 = u32 is 1..;
+   |                   ^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(pattern_types)]` to the crate attributes to enable
+
+error[E0658]: pattern types are unstable
+  --> $DIR/feature-gate-pattern_types.rs:5:16
+   |
+LL | type Percent = u32 is 0..=100;
+   |                ^^^^^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(pattern_types)]` to the crate attributes to enable
+
+error[E0658]: pattern types are unstable
+  --> $DIR/feature-gate-pattern_types.rs:7:17
+   |
+LL | type Negative = i32 is ..=0;
+   |                 ^^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(pattern_types)]` to the crate attributes to enable
+
+error[E0658]: pattern types are unstable
+  --> $DIR/feature-gate-pattern_types.rs:9:17
+   |
+LL | type Positive = i32 is 0..;
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(pattern_types)]` to the crate attributes to enable
+
+error[E0658]: pattern types are unstable
+  --> $DIR/feature-gate-pattern_types.rs:11:15
+   |
+LL | type Always = Option<u32> is Some(_);
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
+   = help: add `#![feature(pattern_types)]` to the crate attributes to enable
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

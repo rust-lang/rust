@@ -1,8 +1,8 @@
-error: expected one of `!`, `(`, `+`, `,`, `::`, `:`, `<`, `=`, or `>`, found `/`
+error: expected one of `!`, `(`, `+`, `,`, `::`, `:`, `<`, `=`, `>`, or `is`, found `/`
   --> $DIR/removed-syntax-closure-lifetime.rs:1:22
    |
 LL | type closure = Box<lt/fn()>;
-   |                      ^ expected one of 9 possible tokens
+   |                      ^ expected one of 10 possible tokens
    |
 help: you might have meant to end the type parameters here
    |

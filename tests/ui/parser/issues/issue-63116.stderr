@@ -7,11 +7,11 @@ LL | impl W <s(f;Y(;]
    |          |     missing open `[` for this delimiter
    |          unclosed delimiter
 
-error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `;`
+error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, `<`, or `is`, found `;`
   --> $DIR/issue-63116.rs:3:12
    |
 LL | impl W <s(f;Y(;]
-   |            ^ expected one of 7 possible tokens
+   |            ^ expected one of 8 possible tokens
 
 error: mismatched closing delimiter: `]`
   --> $DIR/issue-63116.rs:3:14

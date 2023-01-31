@@ -1,8 +1,8 @@
-error: expected one of `)` or `,`, found `(`
+error: expected one of `)`, `,`, or `is`, found `(`
   --> $DIR/test.rs:4:26
    |
 LL |     struct S2(pub((foo)) ());
-   |                         -^ expected one of `)` or `,`
+   |                         -^ expected one of `)`, `,`, or `is`
    |                         |
    |                         help: missing `,`
 

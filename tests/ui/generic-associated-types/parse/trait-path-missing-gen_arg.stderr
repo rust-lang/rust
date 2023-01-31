@@ -15,13 +15,13 @@ error: expected parameter name, found `>`
 LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
    |                                    ^ expected parameter name
 
-error: expected one of `!`, `)`, `+`, `,`, or `::`, found `>`
+error: expected one of `!`, `)`, `+`, `,`, `::`, or `is`, found `>`
   --> $DIR/trait-path-missing-gen_arg.rs:6:36
    |
 LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
    |                                    ^
    |                                    |
-   |                                    expected one of `!`, `)`, `+`, `,`, or `::`
+   |                                    expected one of `!`, `)`, `+`, `,`, `::`, or `is`
    |                                    help: missing `,`
 
 error: expected one of `>`, a const expression, lifetime, or type, found `=`
