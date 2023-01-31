@@ -725,7 +725,7 @@ fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
                 ty::INNERMOST,
                 ty::BoundTy {
                     var: ty::BoundVar::from(param.index),
-                    kind: ty::BoundTyKind::Param(param.name),
+                    kind: ty::BoundTyKind::Param(param.def_id, param.name),
                 },
             ))
             .into(),

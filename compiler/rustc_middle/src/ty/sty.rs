@@ -1504,13 +1504,22 @@ pub struct BoundTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum BoundTyKind {
-    Anon,
-    Param(Symbol),
+    Anon(u32),
+    Param(DefId, Symbol),
+}
+
+impl BoundTyKind {
+    pub fn expect_anon(self) -> u32 {
+        match self {
+            BoundTyKind::Anon(i) => i,
+            _ => bug!(),
+        }
+    }
 }
 
 impl From<BoundVar> for BoundTy {
     fn from(var: BoundVar) -> Self {
-        BoundTy { var, kind: BoundTyKind::Anon }
+        BoundTy { var, kind: BoundTyKind::Anon(var.as_u32()) }
     }
 }
 

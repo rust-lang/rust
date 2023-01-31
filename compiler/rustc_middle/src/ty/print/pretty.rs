@@ -698,8 +698,10 @@ pub trait PrettyPrinter<'tcx>:
             ty::Error(_) => p!("[type error]"),
             ty::Param(ref param_ty) => p!(print(param_ty)),
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
-                ty::BoundTyKind::Anon => self.pretty_print_bound_var(debruijn, bound_ty.var)?,
-                ty::BoundTyKind::Param(p) => p!(write("{}", p)),
+                ty::BoundTyKind::Anon(bv) => {
+                    self.pretty_print_bound_var(debruijn, ty::BoundVar::from_u32(bv))?
+                }
+                ty::BoundTyKind::Param(_, s) => p!(write("{}", s)),
             },
             ty::Adt(def, substs) => {
                 p!(print_def_path(def.did(), substs));
