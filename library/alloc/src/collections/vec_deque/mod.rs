@@ -160,14 +160,12 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T, const CO_ALLOC_PREF: CoAllocPref> Default for VecDeque<T, Global, CO_ALLOC_PREF>
-where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+impl<T> Default for VecDeque<T>
 {
     /// Creates an empty deque.
     #[inline]
-    fn default() -> VecDeque<T, Global, CO_ALLOC_PREF> {
-        VecDeque::<T, Global, CO_ALLOC_PREF>::new()
+    fn default() -> VecDeque<T> {
+        VecDeque::<T>::new()
     }
 }
 
@@ -554,12 +552,7 @@ where
     }
 }
 
-#[allow(unused_braces)]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> VecDeque<T, A, CO_ALLOC_PREF>
-where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
-    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
-{
+impl <T> VecDeque<T> {
     /// Creates an empty deque.
     ///
     /// # Examples
@@ -573,14 +566,13 @@ where
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_vec_deque_new", since = "1.68.0")]
     #[must_use]
-    pub const fn new() -> VecDeque<T, Global, CO_ALLOC_PREF>
-    where
-        [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    #[allow(unused_braces)]
+    pub const fn new() -> VecDeque<T, Global, {CO_ALLOC_PREF_DEFAULT!()}>
     {
         // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
         VecDeque { head: 0, len: 0, buf: RawVec::NEW }
     }
-
+    
     /// Creates an empty deque with space for at least `capacity` elements.
     ///
     /// # Examples
@@ -593,8 +585,9 @@ where
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> VecDeque<T, Global, CO_ALLOC_PREF> {
-        VecDeque::<T, Global, CO_ALLOC_PREF>::with_capacity_in(capacity, Global)
+    #[allow(unused_braces)]
+    pub fn with_capacity(capacity: usize) -> VecDeque<T, Global, {CO_ALLOC_PREF_DEFAULT!()}> {
+        VecDeque::<T, Global, {CO_ALLOC_PREF_DEFAULT!()}>::with_capacity_in(capacity, Global)
     }
 }
 
@@ -3006,9 +2999,7 @@ where
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
 #[allow(unused_braces)]
-impl<T, const N: usize, const CO_ALLOC_PREF: CoAllocPref> From<[T; N]> for VecDeque<T, Global, CO_ALLOC_PREF>
-where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+impl<T, const N: usize> From<[T; N]> for VecDeque<T>
 {
     /// Converts a `[T; N]` into a `VecDeque<T>`.
     ///
@@ -3020,7 +3011,7 @@ where
     /// assert_eq!(deq1, deq2);
     /// ```
     fn from(arr: [T; N]) -> Self {
-        let mut deq = VecDeque::<T, Global, CO_ALLOC_PREF>::with_capacity(N);
+        let mut deq = VecDeque::<T>::with_capacity(N);
         let arr = ManuallyDrop::new(arr);
         if !<T>::IS_ZST {
             // SAFETY: VecDeque::with_capacity ensures that there is enough capacity.
