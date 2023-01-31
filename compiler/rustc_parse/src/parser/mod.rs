@@ -224,7 +224,7 @@ impl<'a> Drop for Parser<'a> {
 #[derive(Clone)]
 struct TokenCursor {
     // The current (innermost) frame. `frame` and `stack` could be combined,
-    // but it's faster to have them separately to access `frame` directly
+    // but it's faster to keep them separate and access `frame` directly
     // rather than via something like `stack.last().unwrap()` or
     // `stack[stack.len() - 1]`.
     frame: TokenCursorFrame,
@@ -259,6 +259,7 @@ struct TokenCursor {
 
 #[derive(Clone)]
 struct TokenCursorFrame {
+    // This is `None` only for the outermost frame.
     delim_sp: Option<(Delimiter, DelimSpan)>,
     tree_cursor: tokenstream::Cursor,
 }
@@ -285,7 +286,9 @@ impl TokenCursor {
                 match tree {
                     &TokenTree::Token(ref token, spacing) => match (desugar_doc_comments, token) {
                         (true, &Token { kind: token::DocComment(_, attr_style, data), span }) => {
-                            return self.desugar(attr_style, data, span);
+                            let desugared = self.desugar(attr_style, data, span);
+                            self.frame.tree_cursor.replace_prev_and_rewind(desugared);
+                            // Continue to get the first token of the desugared doc comment.
                         }
                         _ => return (token.clone(), spacing),
                     },
@@ -300,19 +303,22 @@ impl TokenCursor {
                     }
                 };
             } else if let Some(frame) = self.stack.pop() {
-                if let Some((delim, span)) = self.frame.delim_sp && delim != Delimiter::Invisible {
-                    self.frame = frame;
+                // We have exhausted this frame. Move back to its parent frame.
+                let (delim, span) = self.frame.delim_sp.unwrap();
+                self.frame = frame;
+                if delim != Delimiter::Invisible {
                     return (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone);
                 }
-                self.frame = frame;
                 // No close delimiter to return; continue on to the next iteration.
             } else {
+                // We have exhausted the outermost frame.
                 return (Token::new(token::Eof, DUMMY_SP), Spacing::Alone);
             }
         }
     }
 
-    fn desugar(&mut self, attr_style: AttrStyle, data: Symbol, span: Span) -> (Token, Spacing) {
+    // Desugar a doc comment into something like `#[doc = r"foo"]`.
+    fn desugar(&mut self, attr_style: AttrStyle, data: Symbol, span: Span) -> Vec<TokenTree> {
         // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
         // required to wrap the text. E.g.
         // - `abc d` is wrapped as `r"abc d"` (num_of_hashes = 0)
@@ -346,27 +352,15 @@ impl TokenCursor {
             .collect::<TokenStream>(),
         );
 
-        self.stack.push(mem::replace(
-            &mut self.frame,
-            TokenCursorFrame::new(
-                None,
-                if attr_style == AttrStyle::Inner {
-                    [
-                        TokenTree::token_alone(token::Pound, span),
-                        TokenTree::token_alone(token::Not, span),
-                        body,
-                    ]
-                    .into_iter()
-                    .collect::<TokenStream>()
-                } else {
-                    [TokenTree::token_alone(token::Pound, span), body]
-                        .into_iter()
-                        .collect::<TokenStream>()
-                },
-            ),
-        ));
-
-        self.next(/* desugar_doc_comments */ false)
+        if attr_style == AttrStyle::Inner {
+            vec![
+                TokenTree::token_alone(token::Pound, span),
+                TokenTree::token_alone(token::Not, span),
+                body,
+            ]
+        } else {
+            vec![TokenTree::token_alone(token::Pound, span), body]
+        }
     }
 }
 
