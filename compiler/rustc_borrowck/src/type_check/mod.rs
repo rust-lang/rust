@@ -1484,7 +1484,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             None => {
-                if !sig.output().is_privately_uninhabited(self.tcx(), self.param_env) {
+                // The signature in this call can reference region variables,
+                // so erase them before calling a query.
+                let output_ty = self.tcx().erase_regions(sig.output());
+                if !output_ty.is_privately_uninhabited(self.tcx(), self.param_env) {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }
