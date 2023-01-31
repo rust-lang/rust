@@ -23,6 +23,7 @@ use rustc_const_eval::util;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::vec::IndexVec;
@@ -430,7 +431,9 @@ fn mir_drops_elaborated_and_const_checked(
         return tcx.mir_drops_elaborated_and_const_checked(def);
     }
 
-    if tcx.generator_kind(def.did).is_some() && tcx.sess.opts.unstable_opts.drop_tracking_mir {
+    if tcx.sess.opts.unstable_opts.drop_tracking_mir
+        && let DefKind::Generator = tcx.def_kind(def.did)
+    {
         tcx.ensure().mir_generator_witnesses(def.did);
     }
     let mir_borrowck = tcx.mir_borrowck_opt_const_arg(def);
