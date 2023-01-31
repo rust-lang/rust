@@ -41,6 +41,8 @@ pub(crate) use abi_sysroot::Abi as Abi_Sysroot;
 use libloading::Library;
 use proc_macro_api::{ProcMacroKind, RustCInfo};
 
+use crate::tt;
+
 pub struct PanicMessage {
     message: Option<String>,
 }

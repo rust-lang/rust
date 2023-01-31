@@ -14,7 +14,7 @@ use syntax::{
 
 use crate::{
     ast_id_map::AstIdMap, builtin_attr_macro::pseudo_derive_attr_expansion, fixup,
-    hygiene::HygieneFrame, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
+    hygiene::HygieneFrame, tt, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
     ExpandError, ExpandResult, ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind,
     MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
@@ -175,7 +175,7 @@ pub fn expand_speculative(
             match attr.token_tree() {
                 Some(token_tree) => {
                     let (mut tree, map) = syntax_node_to_token_tree(attr.token_tree()?.syntax());
-                    tree.delimiter = None;
+                    tree.delimiter = tt::Delimiter::unspecified();
 
                     let shift = mbe::Shift::new(&tt);
                     shift.shift_all(&mut tree);
@@ -210,7 +210,7 @@ pub fn expand_speculative(
     // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, ..) => {
-            tt.delimiter = None;
+            tt.delimiter = tt::Delimiter::unspecified();
             expander.expand(db, loc.krate, &tt, attr_arg.as_ref())
         }
         MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
@@ -316,9 +316,8 @@ fn macro_arg(
 
     if loc.def.is_proc_macro() {
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
-        tt.delimiter = None;
+        tt.delimiter = tt::Delimiter::unspecified();
     }
-
     Some(Arc::new((tt, tmap, fixups.undo_info)))
 }
 
@@ -479,7 +478,10 @@ fn expand_proc_macro(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<tt::
     let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
         None => {
-            return ExpandResult::only_err(ExpandError::Other("No arguments for proc-macro".into()))
+            return ExpandResult::with_err(
+                tt::Subtree::empty(),
+                ExpandError::Other("No arguments for proc-macro".into()),
+            )
         }
     };
 

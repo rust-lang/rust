@@ -16,7 +16,6 @@ use syntax::{
     ast::{self, HasAttrs, IsString},
     AstPtr, AstToken, SmolStr, TextRange, TextSize,
 };
-use tt::Subtree;
 
 use crate::{
     db::DefDatabase,
@@ -234,7 +233,7 @@ impl Attrs {
 
     pub fn has_doc_hidden(&self) -> bool {
         self.by_key("doc").tt_values().any(|tt| {
-            tt.delimiter_kind() == Some(DelimiterKind::Parenthesis) &&
+            tt.delimiter.kind == DelimiterKind::Parenthesis &&
                 matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "hidden")
         })
     }
@@ -628,7 +627,7 @@ pub struct AttrQuery<'attr> {
 }
 
 impl<'attr> AttrQuery<'attr> {
-    pub fn tt_values(self) -> impl Iterator<Item = &'attr Subtree> {
+    pub fn tt_values(self) -> impl Iterator<Item = &'attr crate::tt::Subtree> {
         self.attrs().filter_map(|attr| attr.token_tree_value())
     }
 

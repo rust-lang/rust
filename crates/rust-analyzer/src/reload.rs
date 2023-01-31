@@ -34,6 +34,8 @@ use crate::{
     op_queue::Cause,
 };
 
+use ::tt::token_id as tt;
+
 #[derive(Debug)]
 pub(crate) enum ProjectWorkspaceProgress {
     Begin,
@@ -656,7 +658,7 @@ pub(crate) fn load_proc_macro(
             _: Option<&tt::Subtree>,
             _: &Env,
         ) -> Result<tt::Subtree, ProcMacroExpansionError> {
-            Ok(tt::Subtree::default())
+            Ok(tt::Subtree::empty())
         }
     }
 }

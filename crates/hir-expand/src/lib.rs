@@ -22,6 +22,8 @@ mod fixup;
 
 pub use mbe::{Origin, ValueResult};
 
+use ::tt::token_id as tt;
+
 use std::{fmt, hash::Hash, iter, sync::Arc};
 
 use base_db::{

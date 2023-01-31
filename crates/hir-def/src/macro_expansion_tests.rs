@@ -30,7 +30,7 @@ use syntax::{
     SyntaxKind::{self, COMMENT, EOF, IDENT, LIFETIME_IDENT},
     SyntaxNode, TextRange, T,
 };
-use tt::{Subtree, TokenId};
+use tt::token_id::{Subtree, TokenId};
 
 use crate::{
     db::DefDatabase, macro_id_to_def_id, nameres::ModuleSource, resolver::HasResolver,
@@ -253,9 +253,9 @@ fn extract_id_ranges(ranges: &mut Vec<(TextRange, TokenId)>, map: &TokenMap, tre
     tree.token_trees.iter().for_each(|tree| match tree {
         tt::TokenTree::Leaf(leaf) => {
             let id = match leaf {
-                tt::Leaf::Literal(it) => it.id,
-                tt::Leaf::Punct(it) => it.id,
-                tt::Leaf::Ident(it) => it.id,
+                tt::Leaf::Literal(it) => it.span,
+                tt::Leaf::Punct(it) => it.span,
+                tt::Leaf::Ident(it) => it.span,
             };
             ranges.extend(map.ranges_by_token(id, SyntaxKind::ERROR).map(|range| (range, id)));
         }

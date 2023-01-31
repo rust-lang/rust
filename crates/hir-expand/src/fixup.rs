@@ -9,7 +9,7 @@ use syntax::{
     ast::{self, AstNode, HasLoopBody},
     match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
 };
-use tt::Subtree;
+use tt::token_id::Subtree;
 
 /// The result of calculating fixes for a syntax node -- a bunch of changes
 /// (appending to and replacing nodes), the information that is needed to
@@ -297,9 +297,11 @@ pub(crate) fn reverse_fixups(
     tt.token_trees = tts
         .into_iter()
         .filter(|tt| match tt {
-            tt::TokenTree::Leaf(leaf) => token_map.synthetic_token_id(leaf.id()) != Some(EMPTY_ID),
+            tt::TokenTree::Leaf(leaf) => {
+                token_map.synthetic_token_id(*leaf.span()) != Some(EMPTY_ID)
+            }
             tt::TokenTree::Subtree(st) => {
-                st.delimiter.map_or(true, |d| token_map.synthetic_token_id(d.id) != Some(EMPTY_ID))
+                token_map.synthetic_token_id(st.delimiter.open) != Some(EMPTY_ID)
             }
         })
         .flat_map(|tt| match tt {
@@ -308,9 +310,9 @@ pub(crate) fn reverse_fixups(
                 SmallVec::from_const([tt.into()])
             }
             tt::TokenTree::Leaf(leaf) => {
-                if let Some(id) = token_map.synthetic_token_id(leaf.id()) {
+                if let Some(id) = token_map.synthetic_token_id(*leaf.span()) {
                     let original = undo_info.original[id.0 as usize].clone();
-                    if original.delimiter.is_none() {
+                    if original.delimiter.kind == tt::DelimiterKind::Invisible {
                         original.token_trees.into()
                     } else {
                         SmallVec::from_const([original.into()])
@@ -327,6 +329,8 @@ pub(crate) fn reverse_fixups(
 mod tests {
     use expect_test::{expect, Expect};
 
+    use crate::tt;
+
     use super::reverse_fixups;
 
     // The following three functions are only meant to check partial structural equivalence of
@@ -341,7 +345,7 @@ mod tests {
     }
 
     fn check_subtree_eq(a: &tt::Subtree, b: &tt::Subtree) -> bool {
-        a.delimiter.map(|it| it.kind) == b.delimiter.map(|it| it.kind)
+        a.delimiter.kind == b.delimiter.kind
             && a.token_trees.len() == b.token_trees.len()
             && a.token_trees.iter().zip(&b.token_trees).all(|(a, b)| check_tt_eq(a, b))
     }
@@ -386,7 +390,7 @@ mod tests {
         let (original_as_tt, _) = mbe::syntax_node_to_token_tree(&parsed.syntax_node());
         assert!(
             check_subtree_eq(&tt, &original_as_tt),
-            "different token tree: {tt:?}, {original_as_tt:?}"
+            "different token tree: {tt:?},\n{original_as_tt:?}"
         );
     }
 

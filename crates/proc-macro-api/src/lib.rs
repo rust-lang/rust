@@ -19,7 +19,8 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use tt::Subtree;
+
+use ::tt::token_id as tt;
 
 use crate::{
     msg::{ExpandMacro, FlatTree, PanicMessage},
@@ -151,10 +152,10 @@ impl ProcMacro {
 
     pub fn expand(
         &self,
-        subtree: &Subtree,
-        attr: Option<&Subtree>,
+        subtree: &tt::Subtree,
+        attr: Option<&tt::Subtree>,
         env: Vec<(String, String)>,
-    ) -> Result<Result<Subtree, PanicMessage>, ServerError> {
+    ) -> Result<Result<tt::Subtree, PanicMessage>, ServerError> {
         let current_dir = env
             .iter()
             .find(|(name, _)| name == "CARGO_MANIFEST_DIR")

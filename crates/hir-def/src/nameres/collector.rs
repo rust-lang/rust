@@ -46,6 +46,7 @@ use crate::{
     },
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
+    tt,
     visibility::{RawVisibility, Visibility},
     AdtId, AstId, AstIdWithPath, ConstLoc, EnumLoc, EnumVariantId, ExternBlockLoc, FunctionId,
     FunctionLoc, ImplLoc, Intern, ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc,
@@ -83,7 +84,8 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
                 .enumerate()
                 .map(|(idx, it)| {
                     // FIXME: a hacky way to create a Name from string.
-                    let name = tt::Ident { text: it.name.clone(), id: tt::TokenId::unspecified() };
+                    let name =
+                        tt::Ident { text: it.name.clone(), span: tt::TokenId::unspecified() };
                     (
                         name.as_name(),
                         ProcMacroExpander::new(def_map.krate, base_db::ProcMacroId(idx as u32)),
@@ -451,7 +453,10 @@ impl DefCollector<'_> {
                         directive.module_id,
                         MacroCallKind::Attr {
                             ast_id: ast_id.ast_id,
-                            attr_args: Default::default(),
+                            attr_args: std::sync::Arc::new((
+                                tt::Subtree::empty(),
+                                Default::default(),
+                            )),
                             invoc_attr_index: attr.id,
                             is_derive: false,
                         },
@@ -1947,7 +1952,8 @@ impl ModCollector<'_, '_> {
             let name = match attrs.by_key("rustc_builtin_macro").string_value() {
                 Some(it) => {
                     // FIXME: a hacky way to create a Name from string.
-                    name = tt::Ident { text: it.clone(), id: tt::TokenId::unspecified() }.as_name();
+                    name =
+                        tt::Ident { text: it.clone(), span: tt::TokenId::unspecified() }.as_name();
                     &name
                 }
                 None => {

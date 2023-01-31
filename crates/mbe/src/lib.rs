@@ -18,6 +18,8 @@ mod to_parser_input;
 mod benchmark;
 mod token_map;
 
+use ::tt::token_id as tt;
+
 use std::fmt;
 
 use crate::{
@@ -26,8 +28,8 @@ use crate::{
 };
 
 // FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
+pub use self::tt::{Delimiter, DelimiterKind, Punct};
 pub use ::parser::TopEntryPoint;
-pub use tt::{Delimiter, DelimiterKind, Punct};
 
 pub use crate::{
     syntax_bridge::{
@@ -125,24 +127,26 @@ impl Shift {
 
         // Find the max token id inside a subtree
         fn max_id(subtree: &tt::Subtree) -> Option<u32> {
-            let filter = |tt: &_| match tt {
-                tt::TokenTree::Subtree(subtree) => {
-                    let tree_id = max_id(subtree);
-                    match subtree.delimiter {
-                        Some(it) if it.id != tt::TokenId::unspecified() => {
-                            Some(tree_id.map_or(it.id.0, |t| t.max(it.id.0)))
+            let filter =
+                |tt: &_| match tt {
+                    tt::TokenTree::Subtree(subtree) => {
+                        let tree_id = max_id(subtree);
+                        if subtree.delimiter.open != tt::TokenId::unspecified() {
+                            Some(tree_id.map_or(subtree.delimiter.open.0, |t| {
+                                t.max(subtree.delimiter.open.0)
+                            }))
+                        } else {
+                            tree_id
                         }
-                        _ => tree_id,
                     }
-                }
-                tt::TokenTree::Leaf(leaf) => {
-                    let &(tt::Leaf::Ident(tt::Ident { id, .. })
-                    | tt::Leaf::Punct(tt::Punct { id, .. })
-                    | tt::Leaf::Literal(tt::Literal { id, .. })) = leaf;
+                    tt::TokenTree::Leaf(leaf) => {
+                        let &(tt::Leaf::Ident(tt::Ident { span, .. })
+                        | tt::Leaf::Punct(tt::Punct { span, .. })
+                        | tt::Leaf::Literal(tt::Literal { span, .. })) = leaf;
 
-                    (id != tt::TokenId::unspecified()).then_some(id.0)
-                }
-            };
+                        (span != tt::TokenId::unspecified()).then_some(span.0)
+                    }
+                };
             subtree.token_trees.iter().filter_map(filter).max()
         }
     }
@@ -152,14 +156,13 @@ impl Shift {
         for t in &mut tt.token_trees {
             match t {
                 tt::TokenTree::Leaf(
-                    tt::Leaf::Ident(tt::Ident { id, .. })
-                    | tt::Leaf::Punct(tt::Punct { id, .. })
-                    | tt::Leaf::Literal(tt::Literal { id, .. }),
-                ) => *id = self.shift(*id),
+                    tt::Leaf::Ident(tt::Ident { span, .. })
+                    | tt::Leaf::Punct(tt::Punct { span, .. })
+                    | tt::Leaf::Literal(tt::Literal { span, .. }),
+                ) => *span = self.shift(*span),
                 tt::TokenTree::Subtree(tt) => {
-                    if let Some(it) = tt.delimiter.as_mut() {
-                        it.id = self.shift(it.id);
-                    }
+                    tt.delimiter.open = self.shift(tt.delimiter.open);
+                    tt.delimiter.close = self.shift(tt.delimiter.close);
                     self.shift_all(tt)
                 }
             }
@@ -216,7 +219,7 @@ impl DeclarativeMacro {
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
 
-        if Some(tt::DelimiterKind::Brace) == tt.delimiter_kind() {
+        if tt::DelimiterKind::Brace == tt.delimiter.kind {
             cov_mark::hit!(parse_macro_def_rules);
             while src.len() > 0 {
                 let rule = Rule::parse(&mut src, true)?;
@@ -323,6 +326,10 @@ pub struct ValueResult<T, E> {
 impl<T, E> ValueResult<T, E> {
     pub fn ok(value: T) -> Self {
         Self { value, err: None }
+    }
+
+    pub fn with_err(value: T, err: E) -> Self {
+        Self { value, err: Some(err) }
     }
 
     pub fn only_err(err: E) -> Self

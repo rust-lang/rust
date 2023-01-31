@@ -15,6 +15,8 @@ use std::hash::Hash;
 use std::ops::Bound;
 use std::{ascii, vec::IntoIter};
 
+use crate::tt;
+
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
 type Punct = tt::Punct;
@@ -33,7 +35,7 @@ impl TokenStream {
     }
 
     pub fn with_subtree(subtree: tt::Subtree) -> Self {
-        if subtree.delimiter.is_some() {
+        if subtree.delimiter.kind != tt::DelimiterKind::Invisible {
             TokenStream { token_trees: vec![TokenTree::Subtree(subtree)] }
         } else {
             TokenStream { token_trees: subtree.token_trees }
@@ -41,7 +43,7 @@ impl TokenStream {
     }
 
     pub fn into_subtree(self) -> tt::Subtree {
-        tt::Subtree { delimiter: None, token_trees: self.token_trees }
+        tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: self.token_trees }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -84,7 +86,9 @@ impl Extend<TokenStream> for TokenStream {
         for item in streams {
             for tkn in item {
                 match tkn {
-                    tt::TokenTree::Subtree(subtree) if subtree.delimiter.is_none() => {
+                    tt::TokenTree::Subtree(subtree)
+                        if subtree.delimiter.kind == tt::DelimiterKind::Invisible =>
+                    {
                         self.token_trees.extend(subtree.token_trees);
                     }
                     _ => {
@@ -165,7 +169,7 @@ pub struct TokenStreamBuilder {
 pub mod token_stream {
     use std::str::FromStr;
 
-    use super::{TokenStream, TokenTree};
+    use super::{tt, TokenStream, TokenTree};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
     /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
@@ -202,15 +206,17 @@ pub mod token_stream {
 
     impl ToString for TokenStream {
         fn to_string(&self) -> String {
-            tt::pretty(&self.token_trees)
+            ::tt::pretty(&self.token_trees)
         }
     }
 
     fn subtree_replace_token_ids_with_unspecified(subtree: tt::Subtree) -> tt::Subtree {
         tt::Subtree {
-            delimiter: subtree
-                .delimiter
-                .map(|d| tt::Delimiter { id: tt::TokenId::unspecified(), ..d }),
+            delimiter: tt::Delimiter {
+                open: tt::TokenId::UNSPECIFIED,
+                close: tt::TokenId::UNSPECIFIED,
+                ..subtree.delimiter
+            },
             token_trees: subtree
                 .token_trees
                 .into_iter()
@@ -233,13 +239,13 @@ pub mod token_stream {
     fn leaf_replace_token_ids_with_unspecified(leaf: tt::Leaf) -> tt::Leaf {
         match leaf {
             tt::Leaf::Literal(lit) => {
-                tt::Leaf::Literal(tt::Literal { id: tt::TokenId::unspecified(), ..lit })
+                tt::Leaf::Literal(tt::Literal { span: tt::TokenId::unspecified(), ..lit })
             }
             tt::Leaf::Punct(punct) => {
-                tt::Leaf::Punct(tt::Punct { id: tt::TokenId::unspecified(), ..punct })
+                tt::Leaf::Punct(tt::Punct { span: tt::TokenId::unspecified(), ..punct })
             }
             tt::Leaf::Ident(ident) => {
-                tt::Leaf::Ident(tt::Ident { id: tt::TokenId::unspecified(), ..ident })
+                tt::Leaf::Ident(tt::Ident { span: tt::TokenId::unspecified(), ..ident })
             }
         }
     }
@@ -389,22 +395,22 @@ impl server::TokenStream for RustAnalyzer {
     }
 }
 
-fn delim_to_internal(d: bridge::Delimiter) -> Option<tt::Delimiter> {
+fn delim_to_internal(d: bridge::Delimiter) -> tt::Delimiter {
     let kind = match d {
         bridge::Delimiter::Parenthesis => tt::DelimiterKind::Parenthesis,
         bridge::Delimiter::Brace => tt::DelimiterKind::Brace,
         bridge::Delimiter::Bracket => tt::DelimiterKind::Bracket,
-        bridge::Delimiter::None => return None,
+        bridge::Delimiter::None => tt::DelimiterKind::Invisible,
     };
-    Some(tt::Delimiter { id: tt::TokenId::unspecified(), kind })
+    tt::Delimiter { open: tt::TokenId::unspecified(), close: tt::TokenId::unspecified(), kind }
 }
 
-fn delim_to_external(d: Option<tt::Delimiter>) -> bridge::Delimiter {
-    match d.map(|it| it.kind) {
-        Some(tt::DelimiterKind::Parenthesis) => bridge::Delimiter::Parenthesis,
-        Some(tt::DelimiterKind::Brace) => bridge::Delimiter::Brace,
-        Some(tt::DelimiterKind::Bracket) => bridge::Delimiter::Bracket,
-        None => bridge::Delimiter::None,
+fn delim_to_external(d: tt::Delimiter) -> bridge::Delimiter {
+    match d.kind {
+        tt::DelimiterKind::Parenthesis => bridge::Delimiter::Parenthesis,
+        tt::DelimiterKind::Brace => bridge::Delimiter::Brace,
+        tt::DelimiterKind::Bracket => bridge::Delimiter::Bracket,
+        tt::DelimiterKind::Invisible => bridge::Delimiter::None,
     }
 }
 
@@ -443,23 +449,19 @@ impl server::Group for RustAnalyzer {
     }
 
     fn span(&mut self, group: &Self::Group) -> Self::Span {
-        group.delimiter.map(|it| it.id).unwrap_or_else(tt::TokenId::unspecified)
+        group.delimiter.open
     }
 
     fn set_span(&mut self, group: &mut Self::Group, span: Self::Span) {
-        if let Some(delim) = &mut group.delimiter {
-            delim.id = span;
-        }
+        group.delimiter.open = span;
     }
 
     fn span_open(&mut self, group: &Self::Group) -> Self::Span {
-        // FIXME we only store one `TokenId` for the delimiters
-        group.delimiter.map(|it| it.id).unwrap_or_else(tt::TokenId::unspecified)
+        group.delimiter.open
     }
 
     fn span_close(&mut self, group: &Self::Group) -> Self::Span {
-        // FIXME we only store one `TokenId` for the delimiters
-        group.delimiter.map(|it| it.id).unwrap_or_else(tt::TokenId::unspecified)
+        group.delimiter.close
     }
 }
 
@@ -468,7 +470,7 @@ impl server::Punct for RustAnalyzer {
         tt::Punct {
             char: ch,
             spacing: spacing_to_internal(spacing),
-            id: tt::TokenId::unspecified(),
+            span: tt::TokenId::unspecified(),
         }
     }
     fn as_char(&mut self, punct: Self::Punct) -> char {
@@ -478,28 +480,27 @@ impl server::Punct for RustAnalyzer {
         spacing_to_external(punct.spacing)
     }
     fn span(&mut self, punct: Self::Punct) -> Self::Span {
-        punct.id
+        punct.span
     }
     fn with_span(&mut self, punct: Self::Punct, span: Self::Span) -> Self::Punct {
-        tt::Punct { id: span, ..punct }
+        tt::Punct { span: span, ..punct }
     }
 }
 
 impl server::Ident for RustAnalyzer {
     fn new(&mut self, string: &str, span: Self::Span, is_raw: bool) -> Self::Ident {
-        IdentId(self.ident_interner.intern(&IdentData(tt::Ident::new_with_is_raw(
-            string.into(),
+        IdentId(self.ident_interner.intern(&IdentData(tt::Ident {
+            text: if is_raw { ::tt::SmolStr::from_iter(["r#", string]) } else { string.into() },
             span,
-            is_raw,
-        ))))
+        })))
     }
 
     fn span(&mut self, ident: Self::Ident) -> Self::Span {
-        self.ident_interner.get(ident.0).0.id
+        self.ident_interner.get(ident.0).0.span
     }
     fn with_span(&mut self, ident: Self::Ident, span: Self::Span) -> Self::Ident {
         let data = self.ident_interner.get(ident.0);
-        let new = IdentData(tt::Ident { id: span, ..data.0.clone() });
+        let new = IdentData(tt::Ident { span: span, ..data.0.clone() });
         IdentId(self.ident_interner.intern(&new))
     }
 }
@@ -511,7 +512,7 @@ impl server::Literal for RustAnalyzer {
         "".to_owned()
     }
     fn from_str(&mut self, s: &str) -> Result<Self::Literal, ()> {
-        Ok(Literal { text: s.into(), id: tt::TokenId::unspecified() })
+        Ok(Literal { text: s.into(), span: tt::TokenId::unspecified() })
     }
     fn symbol(&mut self, literal: &Self::Literal) -> String {
         literal.text.to_string()
@@ -529,7 +530,7 @@ impl server::Literal for RustAnalyzer {
             Ok(n) => n.to_string(),
             Err(_) => n.parse::<u128>().unwrap().to_string(),
         };
-        Literal { text: n.into(), id: tt::TokenId::unspecified() }
+        Literal { text: n.into(), span: tt::TokenId::unspecified() }
     }
 
     fn typed_integer(&mut self, n: &str, kind: &str) -> Self::Literal {
@@ -549,7 +550,7 @@ impl server::Literal for RustAnalyzer {
 
         let text = def_suffixed_integer! {kind, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize};
 
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
+        Literal { text: text.into(), span: tt::TokenId::unspecified() }
     }
 
     fn float(&mut self, n: &str) -> Self::Literal {
@@ -558,19 +559,19 @@ impl server::Literal for RustAnalyzer {
         if !text.contains('.') {
             text += ".0"
         }
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
+        Literal { text: text.into(), span: tt::TokenId::unspecified() }
     }
 
     fn f32(&mut self, n: &str) -> Self::Literal {
         let n: f32 = n.parse().unwrap();
         let text = format!("{n}f32");
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
+        Literal { text: text.into(), span: tt::TokenId::unspecified() }
     }
 
     fn f64(&mut self, n: &str) -> Self::Literal {
         let n: f64 = n.parse().unwrap();
         let text = format!("{n}f64");
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
+        Literal { text: text.into(), span: tt::TokenId::unspecified() }
     }
 
     fn string(&mut self, string: &str) -> Self::Literal {
@@ -578,11 +579,11 @@ impl server::Literal for RustAnalyzer {
         for ch in string.chars() {
             escaped.extend(ch.escape_debug());
         }
-        Literal { text: format!("\"{escaped}\"").into(), id: tt::TokenId::unspecified() }
+        Literal { text: format!("\"{escaped}\"").into(), span: tt::TokenId::unspecified() }
     }
 
     fn character(&mut self, ch: char) -> Self::Literal {
-        Literal { text: format!("'{ch}'").into(), id: tt::TokenId::unspecified() }
+        Literal { text: format!("'{ch}'").into(), span: tt::TokenId::unspecified() }
     }
 
     fn byte_string(&mut self, bytes: &[u8]) -> Self::Literal {
@@ -593,15 +594,15 @@ impl server::Literal for RustAnalyzer {
             .map(Into::<char>::into)
             .collect::<String>();
 
-        Literal { text: format!("b\"{string}\"").into(), id: tt::TokenId::unspecified() }
+        Literal { text: format!("b\"{string}\"").into(), span: tt::TokenId::unspecified() }
     }
 
     fn span(&mut self, literal: &Self::Literal) -> Self::Span {
-        literal.id
+        literal.span
     }
 
     fn set_span(&mut self, literal: &mut Self::Literal, span: Self::Span) {
-        literal.id = span;
+        literal.span = span;
     }
 
     fn subspan(
@@ -784,17 +785,18 @@ mod tests {
             token_trees: vec![
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "struct".into(),
-                    id: tt::TokenId::unspecified(),
+                    span: tt::TokenId::unspecified(),
                 })),
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "T".into(),
-                    id: tt::TokenId::unspecified(),
+                    span: tt::TokenId::unspecified(),
                 })),
                 tt::TokenTree::Subtree(tt::Subtree {
-                    delimiter: Some(tt::Delimiter {
-                        id: tt::TokenId::unspecified(),
+                    delimiter: tt::Delimiter {
+                        open: tt::TokenId::unspecified(),
+                        close: tt::TokenId::unspecified(),
                         kind: tt::DelimiterKind::Brace,
-                    }),
+                    },
                     token_trees: vec![],
                 }),
             ],
@@ -807,13 +809,14 @@ mod tests {
     fn test_ra_server_from_str() {
         use std::str::FromStr;
         let subtree_paren_a = tt::TokenTree::Subtree(tt::Subtree {
-            delimiter: Some(tt::Delimiter {
-                id: tt::TokenId::unspecified(),
+            delimiter: tt::Delimiter {
+                open: tt::TokenId::unspecified(),
+                close: tt::TokenId::unspecified(),
                 kind: tt::DelimiterKind::Parenthesis,
-            }),
+            },
             token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "a".into(),
-                id: tt::TokenId::unspecified(),
+                span: tt::TokenId::unspecified(),
             }))],
         });
 
@@ -830,7 +833,7 @@ mod tests {
             underscore.token_trees[0],
             tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "_".into(),
-                id: tt::TokenId::unspecified(),
+                span: tt::TokenId::unspecified(),
             }))
         );
     }

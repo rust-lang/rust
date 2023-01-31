@@ -8,7 +8,7 @@ mod transcriber;
 use rustc_hash::FxHashMap;
 use syntax::SmolStr;
 
-use crate::{parser::MetaVarKind, ExpandError, ExpandResult};
+use crate::{parser::MetaVarKind, tt, ExpandError, ExpandResult};
 
 pub(crate) fn expand_rules(
     rules: &[crate::Rule],
@@ -45,7 +45,10 @@ pub(crate) fn expand_rules(
             transcriber::transcribe(&rule.rhs, &match_.bindings);
         ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
-        ExpandResult::only_err(ExpandError::NoMatchingRule)
+        ExpandResult::with_err(
+            tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: vec![] },
+            ExpandError::NoMatchingRule,
+        )
     }
 }
 

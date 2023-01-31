@@ -22,6 +22,8 @@ pub use symbol::*;
 
 use std::ops::Bound;
 
+use crate::tt;
+
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
 type Punct = tt::Punct;
@@ -108,8 +110,9 @@ impl server::TokenStream for RustAnalyzer {
 
             bridge::TokenTree::Ident(ident) => {
                 let text = ident.sym.text();
-                let text = if ident.is_raw { tt::SmolStr::from_iter(["r#", &text]) } else { text };
-                let ident: tt::Ident = tt::Ident { text, id: ident.span };
+                let text =
+                    if ident.is_raw { ::tt::SmolStr::from_iter(["r#", &text]) } else { text };
+                let ident: tt::Ident = tt::Ident { text, span: ident.span };
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
                 Self::TokenStream::from_iter(vec![tree])
@@ -118,9 +121,9 @@ impl server::TokenStream for RustAnalyzer {
             bridge::TokenTree::Literal(literal) => {
                 let literal = LiteralFormatter(literal);
                 let text = literal
-                    .with_stringify_parts(|parts| tt::SmolStr::from_iter(parts.iter().copied()));
+                    .with_stringify_parts(|parts| ::tt::SmolStr::from_iter(parts.iter().copied()));
 
-                let literal = tt::Literal { text, id: literal.0.span };
+                let literal = tt::Literal { text, span: literal.0.span };
                 let leaf = tt::Leaf::from(literal);
                 let tree = TokenTree::from(leaf);
                 Self::TokenStream::from_iter(vec![tree])
@@ -130,7 +133,7 @@ impl server::TokenStream for RustAnalyzer {
                 let punct = tt::Punct {
                     char: p.ch as char,
                     spacing: if p.joint { Spacing::Joint } else { Spacing::Alone },
-                    id: p.span,
+                    span: p.span,
                 };
                 let leaf = tt::Leaf::from(punct);
                 let tree = TokenTree::from(leaf);
@@ -184,7 +187,7 @@ impl server::TokenStream for RustAnalyzer {
                     bridge::TokenTree::Ident(bridge::Ident {
                         sym: Symbol::intern(ident.text.trim_start_matches("r#")),
                         is_raw: ident.text.starts_with("r#"),
-                        span: ident.id,
+                        span: ident.span,
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
@@ -194,14 +197,14 @@ impl server::TokenStream for RustAnalyzer {
                         symbol: Symbol::intern(&lit.text),
                         // FIXME: handle suffixes
                         suffix: None,
-                        span: lit.id,
+                        span: lit.span,
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
                     bridge::TokenTree::Punct(bridge::Punct {
                         ch: punct.char as u8,
                         joint: punct.spacing == Spacing::Joint,
-                        span: punct.id,
+                        span: punct.span,
                     })
                 }
                 tt::TokenTree::Subtree(subtree) => bridge::TokenTree::Group(bridge::Group {
@@ -211,31 +214,29 @@ impl server::TokenStream for RustAnalyzer {
                     } else {
                         Some(subtree.token_trees.into_iter().collect())
                     },
-                    span: bridge::DelimSpan::from_single(
-                        subtree.delimiter.map_or(Span::unspecified(), |del| del.id),
-                    ),
+                    span: bridge::DelimSpan::from_single(subtree.delimiter.open),
                 }),
             })
             .collect()
     }
 }
 
-fn delim_to_internal(d: proc_macro::Delimiter) -> Option<tt::Delimiter> {
+fn delim_to_internal(d: proc_macro::Delimiter) -> tt::Delimiter {
     let kind = match d {
         proc_macro::Delimiter::Parenthesis => tt::DelimiterKind::Parenthesis,
         proc_macro::Delimiter::Brace => tt::DelimiterKind::Brace,
         proc_macro::Delimiter::Bracket => tt::DelimiterKind::Bracket,
-        proc_macro::Delimiter::None => return None,
+        proc_macro::Delimiter::None => tt::DelimiterKind::Invisible,
     };
-    Some(tt::Delimiter { id: tt::TokenId::unspecified(), kind })
+    tt::Delimiter { open: tt::TokenId::unspecified(), close: tt::TokenId::unspecified(), kind }
 }
 
-fn delim_to_external(d: Option<tt::Delimiter>) -> proc_macro::Delimiter {
-    match d.map(|it| it.kind) {
-        Some(tt::DelimiterKind::Parenthesis) => proc_macro::Delimiter::Parenthesis,
-        Some(tt::DelimiterKind::Brace) => proc_macro::Delimiter::Brace,
-        Some(tt::DelimiterKind::Bracket) => proc_macro::Delimiter::Bracket,
-        None => proc_macro::Delimiter::None,
+fn delim_to_external(d: tt::Delimiter) -> proc_macro::Delimiter {
+    match d.kind {
+        tt::DelimiterKind::Parenthesis => proc_macro::Delimiter::Parenthesis,
+        tt::DelimiterKind::Brace => proc_macro::Delimiter::Brace,
+        tt::DelimiterKind::Bracket => proc_macro::Delimiter::Bracket,
+        tt::DelimiterKind::Invisible => proc_macro::Delimiter::None,
     }
 }
 
@@ -349,7 +350,7 @@ impl server::Server for RustAnalyzer {
     }
 
     fn intern_symbol(ident: &str) -> Self::Symbol {
-        Symbol::intern(&tt::SmolStr::from(ident))
+        Symbol::intern(&::tt::SmolStr::from(ident))
     }
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
@@ -413,17 +414,18 @@ mod tests {
             token_trees: vec![
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "struct".into(),
-                    id: tt::TokenId::unspecified(),
+                    span: tt::TokenId::unspecified(),
                 })),
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "T".into(),
-                    id: tt::TokenId::unspecified(),
+                    span: tt::TokenId::unspecified(),
                 })),
                 tt::TokenTree::Subtree(tt::Subtree {
-                    delimiter: Some(tt::Delimiter {
-                        id: tt::TokenId::unspecified(),
+                    delimiter: tt::Delimiter {
+                        open: tt::TokenId::unspecified(),
+                        close: tt::TokenId::unspecified(),
                         kind: tt::DelimiterKind::Brace,
-                    }),
+                    },
                     token_trees: vec![],
                 }),
             ],
@@ -436,13 +438,14 @@ mod tests {
     fn test_ra_server_from_str() {
         use std::str::FromStr;
         let subtree_paren_a = tt::TokenTree::Subtree(tt::Subtree {
-            delimiter: Some(tt::Delimiter {
-                id: tt::TokenId::unspecified(),
+            delimiter: tt::Delimiter {
+                open: tt::TokenId::unspecified(),
+                close: tt::TokenId::unspecified(),
                 kind: tt::DelimiterKind::Parenthesis,
-            }),
+            },
             token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "a".into(),
-                id: tt::TokenId::unspecified(),
+                span: tt::TokenId::unspecified(),
             }))],
         });
 
@@ -459,7 +462,7 @@ mod tests {
             underscore.token_trees[0],
             tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "_".into(),
-                id: tt::TokenId::unspecified(),
+                span: tt::TokenId::unspecified(),
             }))
         );
     }
