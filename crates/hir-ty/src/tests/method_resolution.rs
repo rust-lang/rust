@@ -1725,14 +1725,13 @@ fn test() {
 
 #[test]
 fn receiver_adjustment_unsize_array() {
-    // FIXME not quite correct
     check(
         r#"
 //- minicore: slice
 fn test() {
     let a = [1, 2, 3];
     a.len();
-} //^ adjustments: Pointer(Unsize), Borrow(Ref(Not))
+} //^ adjustments: Borrow(Ref(Not)), Pointer(Unsize)
 "#,
     );
 }

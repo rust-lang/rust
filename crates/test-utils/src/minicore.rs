@@ -273,6 +273,24 @@ pub mod ops {
             }
         }
 
+        impl<T, I, const N: usize> Index<I> for [T; N]
+        where
+            I: SliceIndex<[T]>,
+        {
+            type Output = I::Output;
+            fn index(&self, index: I) -> &I::Output {
+                loop {}
+            }
+        }
+        impl<T, I, const N: usize> IndexMut<I> for [T; N]
+        where
+            I: SliceIndex<[T]>,
+        {
+            fn index_mut(&mut self, index: I) -> &mut I::Output {
+                loop {}
+            }
+        }
+
         pub unsafe trait SliceIndex<T: ?Sized> {
             type Output: ?Sized;
         }
