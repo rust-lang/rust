@@ -7,7 +7,9 @@ Environment (TEE) for Android.
 
 ## Target maintainers
 
-- David LeGare, `dgl@immunant.com`, https://github.com/randomPoison
+- Nicole LeGare (@randomPoison)
+- Stephen Crane (@rinon)
+- As a fallback trusty-dev-team@google.com can be contacted
 
 ## Requirements
 
