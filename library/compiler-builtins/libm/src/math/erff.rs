@@ -174,7 +174,7 @@ pub fn erff(x: f32) -> f32 {
     }
 }
 
-/// Error function (f32)
+/// Complementary error function (f32)
 ///
 /// Calculates the complementary probability.
 /// Is `1 - erf(x)`. Is computed directly, so that you can use it to avoid
