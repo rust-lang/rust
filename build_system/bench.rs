@@ -32,12 +32,14 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         std::process::exit(1);
     }
 
-    SIMPLE_RAYTRACER_REPO.fetch(dirs);
-    spawn_and_wait(SIMPLE_RAYTRACER.fetch(
-        &bootstrap_host_compiler.cargo,
-        &bootstrap_host_compiler.rustc,
-        dirs,
-    ));
+    if !SIMPLE_RAYTRACER_REPO.source_dir().to_path(dirs).exists() {
+        SIMPLE_RAYTRACER_REPO.fetch(dirs);
+        spawn_and_wait(SIMPLE_RAYTRACER.fetch(
+            &bootstrap_host_compiler.cargo,
+            &bootstrap_host_compiler.rustc,
+            dirs,
+        ));
+    }
 
     eprintln!("[LLVM BUILD] simple-raytracer");
     let build_cmd = SIMPLE_RAYTRACER_LLVM.build(bootstrap_host_compiler, dirs);
@@ -64,17 +66,17 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     let target_dir = SIMPLE_RAYTRACER.target_dir(dirs);
 
     let clean_cmd = format!(
-        "cargo clean --manifest-path {manifest_path} --target-dir {target_dir}",
+        "RUSTC=rustc cargo clean --manifest-path {manifest_path} --target-dir {target_dir}",
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
     let llvm_build_cmd = format!(
-        "cargo build --manifest-path {manifest_path} --target-dir {target_dir}",
+        "RUSTC=rustc cargo build --manifest-path {manifest_path} --target-dir {target_dir}",
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
     let clif_build_cmd = format!(
-        "{cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir}",
+        "RUSTC=rustc {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir}",
         cargo_clif = cargo_clif.display(),
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
