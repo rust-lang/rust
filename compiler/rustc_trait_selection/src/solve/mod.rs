@@ -485,35 +485,38 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         mut goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> Result<Certainty, NoSolution> {
         let mut new_goals = Vec::new();
-        self.repeat_while_none(|this| {
-            let mut has_changed = Err(Certainty::Yes);
-            for goal in goals.drain(..) {
-                let (changed, certainty) = match this.evaluate_goal(goal) {
-                    Ok(result) => result,
-                    Err(NoSolution) => return Some(Err(NoSolution)),
-                };
+        self.repeat_while_none(
+            |_| Certainty::Maybe(MaybeCause::Overflow),
+            |this| {
+                let mut has_changed = Err(Certainty::Yes);
+                for goal in goals.drain(..) {
+                    let (changed, certainty) = match this.evaluate_goal(goal) {
+                        Ok(result) => result,
+                        Err(NoSolution) => return Some(Err(NoSolution)),
+                    };
 
-                if changed {
-                    has_changed = Ok(());
-                }
+                    if changed {
+                        has_changed = Ok(());
+                    }
 
-                match certainty {
-                    Certainty::Yes => {}
-                    Certainty::Maybe(_) => {
-                        new_goals.push(goal);
-                        has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                    match certainty {
+                        Certainty::Yes => {}
+                        Certainty::Maybe(_) => {
+                            new_goals.push(goal);
+                            has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                        }
                     }
                 }
-            }
 
-            match has_changed {
-                Ok(()) => {
-                    mem::swap(&mut new_goals, &mut goals);
-                    None
+                match has_changed {
+                    Ok(()) => {
+                        mem::swap(&mut new_goals, &mut goals);
+                        None
+                    }
+                    Err(certainty) => Some(Ok(certainty)),
                 }
-                Err(certainty) => Some(Ok(certainty)),
-            }
-        })
+            },
+        )
     }
 
     // Recursively evaluates a list of goals to completion, making a query response.

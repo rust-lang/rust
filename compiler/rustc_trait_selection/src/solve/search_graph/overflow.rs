@@ -63,10 +63,11 @@ impl<'tcx> SearchGraph<'tcx> {
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// A `while`-loop which tracks overflow.
-    pub fn repeat_while_none(
+    pub fn repeat_while_none<T>(
         &mut self,
-        mut loop_body: impl FnMut(&mut Self) -> Option<Result<Certainty, NoSolution>>,
-    ) -> Result<Certainty, NoSolution> {
+        mut overflow_body: impl FnMut(&mut Self) -> T,
+        mut loop_body: impl FnMut(&mut Self) -> Option<Result<T, NoSolution>>,
+    ) -> Result<T, NoSolution> {
         let start_depth = self.search_graph.overflow_data.additional_depth;
         let depth = self.search_graph.stack.len();
         while !self.search_graph.overflow_data.has_overflow(depth) {
@@ -79,6 +80,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
         self.search_graph.overflow_data.additional_depth = start_depth;
         self.search_graph.overflow_data.deal_with_overflow();
-        Ok(Certainty::Maybe(MaybeCause::Overflow))
+        Ok(overflow_body(self))
     }
 }
