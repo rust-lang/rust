@@ -400,8 +400,11 @@ impl CodegenBackend for LlvmCodegenBackend {
 }
 
 pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
-                                tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context) -> TypeTree {
+                                tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, depth: u8) -> TypeTree {
     let mut tt = TypeTree::new();
+    if depth > 6 {
+        panic!("depth > 6! Abort");
+    }
 
     if id.is_unsafe_ptr() || id.is_ref() || id.is_box() {
         if  id.is_fn_ptr() {
@@ -418,7 +421,7 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
 
         tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx).only(-1);
         let inner_id = id.builtin_deref(true).unwrap().ty;
-        let inner_tt = get_enzyme_typtree(inner_id, llvm_data_layout, tcx, llcx);
+        let inner_tt = get_enzyme_typtree(inner_id, llvm_data_layout, tcx, llcx, depth+1);
         tt.merge(inner_tt.only(-1));
         println!("returning tt with indirection: {}", tt);
         return tt;
@@ -466,9 +469,26 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
                 FieldsShape::Arbitrary{ offsets: o, memory_index: m } => (o,m),
                 _ => panic!(""),
             };
+            let fields = adt_def.all_fields();
+            let mut field_tt = vec![];
+            for field in fields {
+                let field_ty: Ty<'_> = tcx.type_of(field.did);
+                let inner_tt = get_enzyme_typtree(field_ty, llvm_data_layout, tcx, llcx, depth+1).data0();
+                dbg!(field_ty);
+                println!("inner tt: {}", inner_tt);
+                field_tt.push(inner_tt);
+            }
             dbg!(offsets);
             dbg!(memory_index);
-            unimplemented!("");
+            // Now let's move those typeTrees in the order that rustc mandates.
+            let mut ret_tt = TypeTree::new();
+            for i in 0..field_tt.len() {
+                let tt = &field_tt[i];
+                let offset = offsets[i];
+                ret_tt.merge(tt.clone().only(offset.bytes_usize() as isize));
+            }
+            println!("ret_tt: {}", ret_tt);
+            return ret_tt;
         } else {
             unimplemented!("adt that isn't a struct");
         }
@@ -488,7 +508,7 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
         assert!(byte_stride * *count as usize == byte_max_size);
         assert!(*count > 0); // return empty TT for empty?
         let sub_id = id.builtin_index().unwrap();
-        let sub_tt = get_enzyme_typtree(sub_id, llvm_data_layout, tcx, llcx).data0();
+        let sub_tt = get_enzyme_typtree(sub_id, llvm_data_layout, tcx, llcx, depth+1).data0();
         for i in 0isize..isize_count {
             println!("tt: {}", tt);
             println!("sub_tt: {}", sub_tt);
@@ -551,9 +571,9 @@ impl ModuleLlvm {
             //            .expect("got a non-UTF8 data-layout from LLVM");
             //        let mut input_tt = vec![];
             //        for input in inputs {
-            //            input_tt.push(get_enzyme_typtree(*input, llvm_data_layout, tcx, llcx));
+            //            input_tt.push(get_enzyme_typtree(*input, llvm_data_layout, tcx, llcx, 0));
             //        }
-            //        let ret_tt = get_enzyme_typtree(output, llvm_data_layout, tcx, llcx);
+            //        let ret_tt = get_enzyme_typtree(output, llvm_data_layout, tcx, llcx, 0);
             //        println!("ret_tt: {}", ret_tt);
             //        LLVMDiffItem {
             //            ret_tt,
@@ -566,7 +586,6 @@ impl ModuleLlvm {
             //        }
             //    })
             //.collect::<Vec<_>>();
-            let out = Vec::new();
             ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name), lldiff_items: out }
         }
     }
