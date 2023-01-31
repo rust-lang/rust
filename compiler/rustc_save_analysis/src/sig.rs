@@ -322,7 +322,10 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let item = scx.tcx.hir().item(item_id);
                 item.make(offset, Some(item_id.hir_id()), scx)
             }
-            hir::TyKind::Typeof(_) | hir::TyKind::Infer | hir::TyKind::Err => Err("Ty"),
+            hir::TyKind::Pat(..)
+            | hir::TyKind::Typeof(_)
+            | hir::TyKind::Infer
+            | hir::TyKind::Err => Err("Ty"),
         }
     }
 }

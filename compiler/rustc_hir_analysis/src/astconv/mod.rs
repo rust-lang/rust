@@ -2961,6 +2961,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, ast_ty.span)
             }
+            hir::TyKind::Pat(..) => span_bug!(ast_ty.span, "{ast_ty:#?}"),
             hir::TyKind::Err => tcx.ty_error(),
         };
 

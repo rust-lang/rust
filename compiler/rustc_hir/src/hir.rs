@@ -2682,6 +2682,8 @@ pub enum TyKind<'hir> {
     Infer,
     /// Placeholder for a type that has failed to be defined.
     Err,
+    /// Pattern types (`u32 as 1..`)
+    Pat(&'hir Ty<'hir>, &'hir Pat<'hir>),
 }
 
 #[derive(Debug, HashStable_Generic)]
