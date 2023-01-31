@@ -29,9 +29,9 @@ pub enum FieldKind {
 impl std::fmt::Display for FieldKind {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            FieldKind::AdtField => { write!(w, "field") }
-            FieldKind::Upvar => { write!(w, "upvar") }
-            FieldKind::GeneratorLocal => { write!(w, "local") }
+            FieldKind::AdtField => write!(w, "field"),
+            FieldKind::Upvar => write!(w, "upvar"),
+            FieldKind::GeneratorLocal => write!(w, "local"),
         }
     }
 }
