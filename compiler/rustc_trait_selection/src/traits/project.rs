@@ -783,7 +783,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
             }
             ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
-                let p = ty::PlaceholderType { universe, name: bound_ty.var };
+                let p = ty::PlaceholderType { universe, name: bound_ty.kind };
                 self.mapped_types.insert(p, bound_ty);
                 self.infcx.tcx.mk_ty(ty::Placeholder(p))
             }
