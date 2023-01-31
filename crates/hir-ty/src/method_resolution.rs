@@ -5,7 +5,7 @@
 use std::{ops::ControlFlow, sync::Arc};
 
 use base_db::{CrateId, Edition};
-use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
+use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex};
 use hir_def::{
     data::ImplData, item_scope::ItemScope, lang_item::LangItem, nameres::DefMap, AssocItemId,
     BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId,
@@ -25,7 +25,7 @@ use crate::{
     static_lifetime, to_chalk_trait_id,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, InEnvironment, Interner,
-    Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
+    Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
 };
 
 /// This is used as a key for indexing impls.
@@ -588,24 +588,30 @@ impl ReceiverAdjustments {
                 }
             }
         }
-        if self.unsize_array {
-            ty = match ty.kind(Interner) {
-                TyKind::Array(inner, _) => TyKind::Slice(inner.clone()).intern(Interner),
-                _ => {
-                    never!("unsize_array with non-array {:?}", ty);
-                    ty
-                }
-            };
-            // FIXME this is kind of wrong since the unsize needs to happen to a pointer/reference
-            adjust.push(Adjustment {
-                kind: Adjust::Pointer(PointerCast::Unsize),
-                target: ty.clone(),
-            });
-        }
         if let Some(m) = self.autoref {
             ty = TyKind::Ref(m, static_lifetime(), ty).intern(Interner);
             adjust
                 .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(m)), target: ty.clone() });
+        }
+        if self.unsize_array {
+            ty = 'x: {
+                if let TyKind::Ref(m, l, inner) = ty.kind(Interner) {
+                    if let TyKind::Array(inner, _) = inner.kind(Interner) {
+                        break 'x TyKind::Ref(
+                            m.clone(),
+                            l.clone(),
+                            TyKind::Slice(inner.clone()).intern(Interner),
+                        )
+                        .intern(Interner);
+                    }
+                }
+                never!("unsize_array with non-reference-to-array {:?}", ty);
+                ty
+            };
+            adjust.push(Adjustment {
+                kind: Adjust::Pointer(PointerCast::Unsize),
+                target: ty.clone(),
+            });
         }
         (ty, adjust)
     }

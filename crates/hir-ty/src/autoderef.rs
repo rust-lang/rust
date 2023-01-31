@@ -17,11 +17,13 @@ use crate::{
 
 static AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
 
+#[derive(Debug)]
 pub(crate) enum AutoderefKind {
     Builtin,
     Overloaded,
 }
 
+#[derive(Debug)]
 pub(crate) struct Autoderef<'a, 'db> {
     pub(crate) table: &'a mut InferenceTable<'db>,
     ty: Ty,
