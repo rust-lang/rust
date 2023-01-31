@@ -576,6 +576,9 @@ pub mod net;
 pub mod num;
 pub mod os;
 pub mod panic;
+#[cfg(not(bootstrap))]
+#[unstable(feature = "core_pattern_types", issue = "none")]
+pub mod pat;
 pub mod path;
 pub mod process;
 pub mod sync;

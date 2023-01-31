@@ -396,6 +396,9 @@ pub mod net;
 pub mod option;
 pub mod panic;
 pub mod panicking;
+#[cfg(not(bootstrap))]
+#[unstable(feature = "core_pattern_types", issue = "none")]
+pub mod pat;
 pub mod pin;
 pub mod result;
 pub mod sync;
