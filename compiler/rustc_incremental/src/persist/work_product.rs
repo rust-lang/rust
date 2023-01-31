@@ -2,6 +2,7 @@
 //!
 //! [work products]: WorkProduct
 
+use crate::errors;
 use crate::persist::fs::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_fs_util::link_or_copy;
@@ -28,12 +29,11 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
                 let _ = saved_files.insert(ext.to_string(), file_name);
             }
             Err(err) => {
-                sess.warn(&format!(
-                    "error copying object file `{}` to incremental directory as `{}`: {}",
-                    path.display(),
-                    path_in_incr_dir.display(),
-                    err
-                ));
+                sess.emit_warning(errors::CopyWorkProductToCache {
+                    from: &path,
+                    to: &path_in_incr_dir,
+                    err,
+                });
             }
         }
     }
@@ -49,11 +49,7 @@ pub fn delete_workproduct_files(sess: &Session, work_product: &WorkProduct) {
     for (_, path) in &work_product.saved_files {
         let path = in_incr_comp_dir_sess(sess, path);
         if let Err(err) = std_fs::remove_file(&path) {
-            sess.warn(&format!(
-                "file-system error deleting outdated file `{}`: {}",
-                path.display(),
-                err
-            ));
+            sess.emit_warning(errors::DeleteWorkProduct { path: &path, err });
         }
     }
 }

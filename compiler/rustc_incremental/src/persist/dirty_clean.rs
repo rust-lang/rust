@@ -19,6 +19,7 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
+use crate::errors;
 use rustc_ast::{self as ast, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LocalDefId;
@@ -196,11 +197,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         let loaded_from_disk = self.loaded_from_disk(attr);
         for e in except.iter() {
             if !auto.remove(e) {
-                let msg = format!(
-                    "`except` specified DepNodes that can not be affected for \"{}\": \"{}\"",
-                    name, e
-                );
-                self.tcx.sess.span_fatal(attr.span, &msg);
+                self.tcx.sess.emit_fatal(errors::AssertionAuto { span: attr.span, name, e });
             }
         }
         Assertion { clean: auto, dirty: except, loaded_from_disk }
@@ -282,14 +279,10 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
                     HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),
 
-                    _ => self.tcx.sess.span_fatal(
-                        attr.span,
-                        &format!(
-                            "clean/dirty auto-assertions not yet defined \
-                             for Node::Item.node={:?}",
-                            item.kind
-                        ),
-                    ),
+                    _ => self.tcx.sess.emit_fatal(errors::UndefinedCleanDirtyItem {
+                        span: attr.span,
+                        kind: format!("{:?}", item.kind),
+                    }),
                 }
             }
             HirNode::TraitItem(item) => match item.kind {
@@ -302,10 +295,10 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                 ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
             },
-            _ => self.tcx.sess.span_fatal(
-                attr.span,
-                &format!("clean/dirty auto-assertions not yet defined for {:?}", node),
-            ),
+            _ => self.tcx.sess.emit_fatal(errors::UndefinedCleanDirty {
+                span: attr.span,
+                kind: format!("{:?}", node),
+            }),
         };
         let labels =
             Labels::from_iter(labels.iter().flat_map(|s| s.iter().map(|l| (*l).to_string())));
@@ -318,16 +311,15 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             let label = label.trim();
             if DepNode::has_label_string(label) {
                 if out.contains(label) {
-                    self.tcx.sess.span_fatal(
-                        item.span(),
-                        &format!("dep-node label `{}` is repeated", label),
-                    );
+                    self.tcx
+                        .sess
+                        .emit_fatal(errors::RepeatedDepNodeLabel { span: item.span(), label });
                 }
                 out.insert(label.to_string());
             } else {
                 self.tcx
                     .sess
-                    .span_fatal(item.span(), &format!("dep-node label `{}` not recognized", label));
+                    .emit_fatal(errors::UnrecognizedDepNodeLabel { span: item.span(), label });
             }
         }
         out
@@ -348,7 +340,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx
                 .sess
-                .span_err(item_span, &format!("`{}` should be dirty but is not", dep_node_str));
+                .emit_err(errors::NotDirty { span: item_span, dep_node_str: &dep_node_str });
         }
     }
 
@@ -359,7 +351,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx
                 .sess
-                .span_err(item_span, &format!("`{}` should be clean but is not", dep_node_str));
+                .emit_err(errors::NotClean { span: item_span, dep_node_str: &dep_node_str });
         }
     }
 
@@ -368,10 +360,9 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
 
         if !self.tcx.dep_graph.debug_was_loaded_from_disk(dep_node) {
             let dep_node_str = self.dep_node_str(&dep_node);
-            self.tcx.sess.span_err(
-                item_span,
-                &format!("`{}` should have been loaded from disk but it was not", dep_node_str),
-            );
+            self.tcx
+                .sess
+                .emit_err(errors::NotLoaded { span: item_span, dep_node_str: &dep_node_str });
         }
     }
 
@@ -412,12 +403,12 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
             debug!("check_config: searching for cfg {:?}", value);
             cfg = Some(config.contains(&(value, None)));
         } else if !(item.has_name(EXCEPT) || item.has_name(LOADED_FROM_DISK)) {
-            tcx.sess.span_err(attr.span, &format!("unknown item `{}`", item.name_or_empty()));
+            tcx.sess.emit_err(errors::UnknownItem { span: attr.span, name: item.name_or_empty() });
         }
     }
 
     match cfg {
-        None => tcx.sess.span_fatal(attr.span, "no cfg attribute"),
+        None => tcx.sess.emit_fatal(errors::NoCfg { span: attr.span }),
         Some(c) => c,
     }
 }
@@ -426,13 +417,11 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
     if let Some(value) = item.value_str() {
         value
     } else {
-        let msg = if let Some(ident) = item.ident() {
-            format!("associated value expected for `{}`", ident)
+        if let Some(ident) = item.ident() {
+            tcx.sess.emit_fatal(errors::AssociatedValueExpectedFor { span: item.span(), ident });
         } else {
-            "expected an associated value".to_string()
-        };
-
-        tcx.sess.span_fatal(item.span(), &msg);
+            tcx.sess.emit_fatal(errors::AssociatedValueExpected { span: item.span() });
+        }
     }
 }
 
@@ -456,7 +445,7 @@ impl<'tcx> FindAllAttrs<'tcx> {
     fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<ast::AttrId>) {
         for attr in &self.found_attrs {
             if !checked_attrs.contains(&attr.id) {
-                self.tcx.sess.span_err(attr.span, "found unchecked `#[rustc_clean]` attribute");
+                self.tcx.sess.emit_err(errors::UncheckedClean { span: attr.span });
                 checked_attrs.insert(attr.id);
             }
         }

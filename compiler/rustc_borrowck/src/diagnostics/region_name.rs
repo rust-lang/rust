@@ -187,6 +187,12 @@ impl Display for RegionName {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for RegionName {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     pub(crate) fn mir_def_id(&self) -> hir::def_id::LocalDefId {
         self.body.source.def_id().expect_local()

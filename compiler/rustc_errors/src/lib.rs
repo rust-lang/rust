@@ -617,22 +617,24 @@ impl Handler {
         }
     }
 
-    /// Translate `message` eagerly with `args`.
+    /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.
     pub fn eagerly_translate<'a>(
         &self,
         message: DiagnosticMessage,
         args: impl Iterator<Item = DiagnosticArg<'a, 'static>>,
     ) -> SubdiagnosticMessage {
+        SubdiagnosticMessage::Eager(self.eagerly_translate_to_string(message, args))
+    }
+
+    /// Translate `message` eagerly with `args` to `String`.
+    pub fn eagerly_translate_to_string<'a>(
+        &self,
+        message: DiagnosticMessage,
+        args: impl Iterator<Item = DiagnosticArg<'a, 'static>>,
+    ) -> String {
         let inner = self.inner.borrow();
         let args = crate::translation::to_fluent_args(args);
-        SubdiagnosticMessage::Eager(
-            inner
-                .emitter
-                .translate_message(&message, &args)
-                .map_err(Report::new)
-                .unwrap()
-                .to_string(),
-        )
+        inner.emitter.translate_message(&message, &args).map_err(Report::new).unwrap().to_string()
     }
 
     // This is here to not allow mutation of flags;
@@ -1010,6 +1012,7 @@ impl Handler {
     }
 
     #[track_caller]
+    #[rustc_lint_diagnostics]
     pub fn span_note_without_error(
         &self,
         span: impl Into<MultiSpan>,
@@ -1019,6 +1022,7 @@ impl Handler {
     }
 
     #[track_caller]
+    #[rustc_lint_diagnostics]
     pub fn span_note_diag(
         &self,
         span: Span,
@@ -1030,19 +1034,23 @@ impl Handler {
     }
 
     // NOTE: intentionally doesn't raise an error so rustc_codegen_ssa only reports fatal errors in the main thread
+    #[rustc_lint_diagnostics]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> FatalError {
         self.inner.borrow_mut().fatal(msg)
     }
 
+    #[rustc_lint_diagnostics]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.inner.borrow_mut().err(msg)
     }
 
+    #[rustc_lint_diagnostics]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
         let mut db = DiagnosticBuilder::new(self, Warning(None), msg);
         db.emit();
     }
 
+    #[rustc_lint_diagnostics]
     pub fn note_without_error(&self, msg: impl Into<DiagnosticMessage>) {
         DiagnosticBuilder::new(self, Note, msg).emit();
     }
@@ -1059,6 +1067,7 @@ impl Handler {
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         if self.inner.borrow().has_errors() { Some(ErrorGuaranteed(())) } else { None }
     }
+
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
         if self.inner.borrow().has_errors_or_lint_errors() {
             Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
@@ -1132,6 +1141,20 @@ impl Handler {
         self.create_warning(warning).emit()
     }
 
+    pub fn create_almost_fatal<'a>(
+        &'a self,
+        fatal: impl IntoDiagnostic<'a, FatalError>,
+    ) -> DiagnosticBuilder<'a, FatalError> {
+        fatal.into_diagnostic(self)
+    }
+
+    pub fn emit_almost_fatal<'a>(
+        &'a self,
+        fatal: impl IntoDiagnostic<'a, FatalError>,
+    ) -> FatalError {
+        self.create_almost_fatal(fatal).emit()
+    }
+
     pub fn create_fatal<'a>(
         &'a self,
         fatal: impl IntoDiagnostic<'a, !>,
@@ -1155,6 +1178,17 @@ impl Handler {
         bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
     ) -> diagnostic_builder::Bug {
         self.create_bug(bug).emit()
+    }
+
+    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, Noted>) -> Noted {
+        self.create_note(note).emit()
+    }
+
+    pub fn create_note<'a>(
+        &'a self,
+        note: impl IntoDiagnostic<'a, Noted>,
+    ) -> DiagnosticBuilder<'a, Noted> {
+        note.into_diagnostic(self)
     }
 
     fn emit_diag_at_span(

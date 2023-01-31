@@ -201,7 +201,9 @@ use rustc_target::abi::Size;
 use std::ops::Range;
 use std::path::PathBuf;
 
-use crate::errors::{LargeAssignmentsLint, RecursionLimit, TypeLengthLimit};
+use crate::errors::{
+    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, RecursionLimit, TypeLengthLimit,
+};
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
@@ -524,10 +526,10 @@ fn collect_items_rec<'tcx>(
         && starting_point.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths!(starting_point.node.to_string());
-        tcx.sess.span_note_without_error(
-            starting_point.span,
-            &format!("the above error was encountered while instantiating `{formatted_item}`"),
-        );
+        tcx.sess.emit_note(EncounteredErrorWhileInstantiating {
+            span: starting_point.span,
+            formatted_item,
+        });
     }
     inlining_map.lock_mut().record_accesses(starting_point.node, &neighbors.items);
 

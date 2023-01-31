@@ -1051,6 +1051,7 @@ impl Diagnostic {
     ) -> (
         &Level,
         &[(DiagnosticMessage, Style)],
+        Vec<(&Cow<'static, str>, &DiagnosticArgValue<'static>)>,
         &Option<DiagnosticId>,
         &MultiSpan,
         &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
@@ -1059,6 +1060,7 @@ impl Diagnostic {
         (
             &self.level,
             &self.message,
+            self.args().collect(),
             &self.code,
             &self.span,
             &self.suggestions,

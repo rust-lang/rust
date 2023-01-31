@@ -17,7 +17,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, Span, Symbol};
 
-use crate::errors::ExprNotAllowedInContext;
+use crate::errors::{ExprNotAllowedInContext, SkippingConstChecks};
 
 /// An expression that is not *always* legal in a const context.
 #[derive(Clone, Copy)]
@@ -124,7 +124,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             // corresponding feature gate. This encourages nightly users to use feature gates when
             // possible.
             None if tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you => {
-                tcx.sess.span_warn(span, "skipping const checks");
+                tcx.sess.emit_warning(SkippingConstChecks { span });
                 return;
             }
 

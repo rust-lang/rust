@@ -24,7 +24,7 @@ use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
 
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, HandlerFlags};
+use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
 
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
@@ -2691,6 +2691,12 @@ impl fmt::Display for CrateType {
             CrateType::Cdylib => "cdylib".fmt(f),
             CrateType::ProcMacro => "proc-macro".fmt(f),
         }
+    }
+}
+
+impl IntoDiagnosticArg for CrateType {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
     }
 }
 
