@@ -2195,6 +2195,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, hir_ty.span)
             }
+            hir::TyKind::Pat(..) => span_bug!(hir_ty.span, "{hir_ty:#?}"),
             hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };
 
