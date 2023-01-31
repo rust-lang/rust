@@ -1456,6 +1456,8 @@ pub enum PointerKind {
     UniqueOwned,
 }
 
+/// Note that this information is advisory only, and backends are free to ignore it.
+/// It can only be used to encode potential optimizations, but no critical information.
 #[derive(Copy, Clone, Debug)]
 pub struct PointeeInfo {
     pub size: Size,
