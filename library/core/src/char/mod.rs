@@ -489,6 +489,13 @@ impl CaseMappingIter {
             CaseMappingIter::Three(chars[0], chars[1], chars[2])
         }
     }
+    fn new_lower(chars: [char; 2]) -> CaseMappingIter {
+        if chars[1] == '\0' {
+            CaseMappingIter::One(chars[0]) // Including if chars[0] == '\0'
+        } else {
+            CaseMappingIter::Two(chars[0], chars[1])
+        }
+    }
 }
 
 impl Iterator for CaseMappingIter {

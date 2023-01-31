@@ -385,15 +385,10 @@ impl str {
                 map_uppercase_sigma(rest, i, &mut s)
             } else {
                 match conversions::to_lower(c) {
-                    [a, '\0', _] => s.push(a),
-                    [a, b, '\0'] => {
+                    [a, '\0'] => s.push(a),
+                    [a, b] => {
                         s.push(a);
                         s.push(b);
-                    }
-                    [a, b, c] => {
-                        s.push(a);
-                        s.push(b);
-                        s.push(c);
                     }
                 }
             }

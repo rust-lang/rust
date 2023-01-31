@@ -1018,7 +1018,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_lowercase(self) -> ToLowercase {
-        ToLowercase(CaseMappingIter::new(conversions::to_lower(self)))
+        ToLowercase(CaseMappingIter::new_lower(conversions::to_lower(self)))
     }
 
     /// Returns an iterator that yields the uppercase mapping of this `char` as one or more
