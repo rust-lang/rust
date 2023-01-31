@@ -232,7 +232,7 @@ impl Stats for [f64] {
     }
 
     fn percentile(&self, pct: f64) -> f64 {
-        let mut tmp = self.to_vec();
+        let mut tmp = self.to_vec::<{std::SHORT_TERM_VEC_CO_ALLOC_PREF!()}>();
         local_sort(&mut tmp);
         percentile_of_sorted(&tmp, pct)
     }

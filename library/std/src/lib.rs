@@ -421,7 +421,7 @@ pub use alloc_crate::boxed;
 pub use alloc_crate::co_alloc;
 // @FIXME ugly - someone move this to a better place, please
 #[unstable(feature = "global_co_alloc", issue = "none")]
-pub use alloc_crate::{CO_ALLOC_PREF_DEFAULT};
+pub use alloc_crate::{CO_ALLOC_PREF_DEFAULT, SHORT_TERM_VEC_CO_ALLOC_PREF};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
