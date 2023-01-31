@@ -86,7 +86,9 @@ use crate::sync::Arc;
 
 use crate::ffi::{OsStr, OsString};
 use crate::sys;
-use crate::sys::path::{is_sep_byte, is_verbatim_sep, parse_prefix, MAIN_SEP_STR};
+use crate::sys::path::{
+    is_sep_byte, is_verbatim_sep, parse_prefix, NativePath as NativePathImpl, MAIN_SEP_STR,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -1108,6 +1110,63 @@ impl FusedIterator for Ancestors<'_> {}
 ////////////////////////////////////////////////////////////////////////////////
 // Basic types and traits
 ////////////////////////////////////////////////////////////////////////////////
+
+/// Represents a path in a form native to the OS.
+#[derive(Debug)]
+#[repr(transparent)]
+#[unstable(feature = "path_like", issue = "none")]
+pub struct NativePath(pub(crate) NativePathImpl);
+impl NativePath {
+    fn new(native: &NativePathImpl) -> &Self {
+        unsafe { &*(native as *const NativePathImpl as *const Self) }
+    }
+}
+
+/// # Stable use
+///
+/// Any function that requires a path may take a `PathLike` type.
+///
+/// These types include [`OsStr`], [`Path`] and [`str`] as well as their owned
+/// counterparts [`OsString`], [`PathBuf`] and [`String`].
+///
+/// # Unstable use
+///
+/// The `PathLike` trait can also be used with [`NativePath`] to pass platform
+/// native paths more directly to system APIs without needing to convert them.
+/// Note that this trait is unstable and highly likely to change between nightly versions.
+#[unstable(feature = "path_like", issue = "none")]
+pub trait PathLike: crate::sealed::Sealed {
+    /// Convert to a `Path` reference.
+    fn with_path<T, F: FnOnce(&Path) -> io::Result<T>>(&self, f: F) -> io::Result<T>;
+    /// Convert to the native platform representation of a path.
+    fn with_native_path<T, F: FnOnce(&NativePath) -> io::Result<T>>(&self, f: F) -> io::Result<T>;
+}
+#[unstable(feature = "path_like", issue = "none")]
+impl<P: AsRef<Path>> PathLike for P {
+    fn with_path<T, F: FnOnce(&Path) -> io::Result<T>>(&self, f: F) -> io::Result<T> {
+        f(self.as_ref())
+    }
+    fn with_native_path<T, F: FnOnce(&NativePath) -> io::Result<T>>(&self, f: F) -> io::Result<T> {
+        crate::sys::path::with_native_path(self.as_ref(), |p| f(NativePath::new(p)))
+    }
+}
+
+#[unstable(feature = "path_like", issue = "none")]
+impl PathLike for &NativePath {
+    fn with_path<T, F: FnOnce(&Path) -> io::Result<T>>(&self, f: F) -> io::Result<T> {
+        crate::sys::path::with_std_path(&self.0, f)
+    }
+    fn with_native_path<T, F: FnOnce(&NativePath) -> io::Result<T>>(&self, f: F) -> io::Result<T> {
+        f(self)
+    }
+}
+
+#[unstable(feature = "sealed", issue = "none")]
+impl<P: AsRef<Path>> crate::sealed::Sealed for P {}
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for NativePath {}
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for &NativePath {}
 
 /// An owned, mutable path (akin to [`String`]).
 ///

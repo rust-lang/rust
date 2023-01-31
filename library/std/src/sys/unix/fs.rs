@@ -17,7 +17,7 @@ use crate::mem;
 ))]
 use crate::mem::MaybeUninit;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
-use crate::path::{Path, PathBuf};
+use crate::path::{NativePath, Path, PathBuf};
 use crate::ptr;
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
@@ -988,8 +988,8 @@ impl OpenOptions {
 }
 
 impl File {
-    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        run_path_with_cstr(path, |path| File::open_c(path, opts))
+    pub fn open_native(path: &NativePath, opts: &OpenOptions) -> io::Result<File> {
+        File::open_c(&path.0, opts)
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {

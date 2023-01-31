@@ -11,6 +11,22 @@ mod tests;
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
 
+pub type NativePath = [u16];
+pub fn with_native_path<T, F>(path: &Path, f: F) -> io::Result<T>
+where
+    F: FnOnce(&[u16]) -> io::Result<T>,
+{
+    let path = maybe_verbatim(path)?;
+    f(&path)
+}
+pub fn with_std_path<T, F>(path: &[u16], f: F) -> io::Result<T>
+where
+    F: FnOnce(&Path) -> io::Result<T>,
+{
+    let path = super::os2path(path);
+    f(&path)
+}
+
 /// # Safety
 ///
 /// `bytes` must be a valid wtf8 encoded slice

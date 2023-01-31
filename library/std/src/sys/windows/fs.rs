@@ -5,8 +5,9 @@ use crate::ffi::OsString;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit};
+use crate::os::windows::ffi::NativePathExt;
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
-use crate::path::{Path, PathBuf};
+use crate::path::{NativePath, Path, PathBuf};
 use crate::ptr;
 use crate::slice;
 use crate::sync::Arc;
@@ -277,11 +278,14 @@ impl OpenOptions {
 }
 
 impl File {
-    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+    pub(super) fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = maybe_verbatim(path)?;
+        Self::open_native(NativePath::from_wide(&path), opts)
+    }
+    pub fn open_native(path: &NativePath, opts: &OpenOptions) -> io::Result<File> {
         let handle = unsafe {
             c::CreateFileW(
-                path.as_ptr(),
+                path.0.as_ptr(),
                 opts.get_access_mode()?,
                 opts.share_mode,
                 opts.security_attributes,

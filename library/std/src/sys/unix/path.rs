@@ -1,7 +1,18 @@
 use crate::env;
-use crate::ffi::OsStr;
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::io;
+use crate::os::unix::ffi::OsStringExt;
 use crate::path::{Path, PathBuf, Prefix};
+
+pub type NativePath = CStr;
+pub use crate::sys::common::small_c_string::run_path_with_cstr as with_native_path;
+pub fn with_std_path<T, F>(path: &CStr, f: F) -> io::Result<T>
+where
+    F: FnOnce(&Path) -> io::Result<T>,
+{
+    let path = PathBuf::from(OsString::from_vec(path.to_bytes().to_vec()));
+    f(&path)
+}
 
 #[inline]
 pub fn is_sep_byte(b: u8) -> bool {
