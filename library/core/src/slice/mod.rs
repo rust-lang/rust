@@ -42,6 +42,7 @@ mod index;
 mod iter;
 mod raw;
 mod rotate;
+mod select;
 mod specialize;
 
 #[unstable(feature = "str_internals", issue = "none")]
@@ -2776,7 +2777,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        sort::partition_at_index(self, index, T::lt)
+        select::partition_at_index(self, index, T::lt)
     }
 
     /// Reorder the slice with a comparator function such that the element at `index` is at its
@@ -2831,7 +2832,7 @@ impl<T> [T] {
     where
         F: FnMut(&T, &T) -> Ordering,
     {
-        sort::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
+        select::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
     /// Reorder the slice with a key extraction function such that the element at `index` is at its
@@ -2887,7 +2888,7 @@ impl<T> [T] {
         F: FnMut(&T) -> K,
         K: Ord,
     {
-        sort::partition_at_index(self, index, |a: &T, b: &T| f(a).lt(&f(b)))
+        select::partition_at_index(self, index, |a: &T, b: &T| f(a).lt(&f(b)))
     }
 
     /// Moves all consecutive repeated elements to the end of the slice according to the
