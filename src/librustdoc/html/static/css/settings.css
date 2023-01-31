@@ -40,8 +40,6 @@
 }
 
 .setting-check {
-	position: relative;
-	width: 100%;
 	margin-right: 20px;
 	display: flex;
 	align-items: center;
