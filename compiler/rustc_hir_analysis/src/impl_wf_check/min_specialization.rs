@@ -318,7 +318,7 @@ fn check_predicates<'tcx>(
     span: Span,
 ) {
     let instantiated = tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs);
-    let impl1_predicates: Vec<_> = Elaborator::new_many(
+    let impl1_predicates: Vec<_> = Elaborator::elaborate_many(
         tcx,
         std::iter::zip(
             instantiated.predicates,
@@ -334,7 +334,7 @@ fn check_predicates<'tcx>(
         // assumptions.
         Vec::new()
     } else {
-        Elaborator::new_many(
+        Elaborator::elaborate_many(
             tcx,
             tcx.predicates_of(impl2_node.def_id())
                 .instantiate(tcx, impl2_substs)
@@ -376,11 +376,13 @@ fn check_predicates<'tcx>(
                 .unwrap();
 
         assert!(!obligations.needs_infer());
-        impl2_predicates
-            .extend(Elaborator::new_many(tcx, obligations).map(|obligation| obligation.predicate))
+        impl2_predicates.extend(
+            Elaborator::elaborate_many(tcx, obligations).map(|obligation| obligation.predicate),
+        )
     }
     impl2_predicates.extend(
-        Elaborator::new_many(tcx, always_applicable_traits).map(|obligation| obligation.predicate),
+        Elaborator::elaborate_many(tcx, always_applicable_traits)
+            .map(|obligation| obligation.predicate),
     );
 
     for (predicate, span) in impl1_predicates {

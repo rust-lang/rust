@@ -2115,7 +2115,7 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
         .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     traits::impossible_predicates(
         cx.tcx,
-        Elaborator::new_many(cx.tcx, predicates)
+        Elaborator::elaborate_many(cx.tcx, predicates)
             .map(|o| o.predicate)
             .collect::<Vec<_>>(),
     )

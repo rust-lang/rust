@@ -104,7 +104,7 @@ pub(super) fn item_bounds(
     def_id: DefId,
 ) -> ty::EarlyBinder<&'_ ty::List<ty::Predicate<'_>>> {
     let bounds = tcx.mk_predicates(
-        Elaborator::new_many(
+        Elaborator::elaborate_many(
             tcx,
             tcx.explicit_item_bounds(def_id).iter().map(|&(bound, _span)| bound),
         )

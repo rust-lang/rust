@@ -878,8 +878,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         F: for<'b> FnMut(&mut ProbeContext<'b, 'tcx>, ty::PolyTraitRef<'tcx>, ty::AssocItem),
     {
         let tcx = self.tcx;
-        // TODO:
-        for bound_trait_ref in Elaborator::new_many(tcx, bounds).filter_to_traits() {
+        for bound_trait_ref in Elaborator::elaborate_many(tcx, bounds).filter_to_traits() {
             debug!("elaborate_bounds(bound_trait_ref={:?})", bound_trait_ref);
             for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                 if !self.has_applicable_self(&item) {
@@ -1585,7 +1584,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if !self.predicate_may_hold(&obligation) {
                             result = ProbeResult::NoMatch;
                             let parent_obligation = obligation.clone();
-                            for elaborated_obligation in Elaborator::new(self.tcx, obligation) {
+                            for elaborated_obligation in Elaborator::elaborate(self.tcx, obligation)
+                            {
                                 let parent = if elaborated_obligation == parent_obligation {
                                     None
                                 } else {

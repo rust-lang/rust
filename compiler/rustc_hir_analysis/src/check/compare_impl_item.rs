@@ -2044,7 +2044,7 @@ pub(super) fn check_type_bounds<'tcx>(
         .collect();
     debug!("check_type_bounds: item_bounds={:?}", obligations);
 
-    for mut obligation in Elaborator::new_many(tcx, obligations) {
+    for mut obligation in Elaborator::elaborate_many(tcx, obligations) {
         let normalized_predicate =
             ocx.normalize(&normalize_cause, normalize_param_env, obligation.predicate);
         debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);

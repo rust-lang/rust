@@ -68,7 +68,7 @@ impl<'tcx> Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
 /// `T: Foo`, then we know that `T: 'static`.
 pub struct Elaborator<'tcx> {
     stack: Vec<PredicateObligation<'tcx>>,
-    visited: PredicateSet<'tcx>,
+    seen: PredicateSet<'tcx>,
 }
 
 impl<'tcx> Elaborator<'tcx> {
@@ -81,6 +81,12 @@ impl<'tcx> Elaborator<'tcx> {
         _e: impl IntoIterator<Item = impl Elaboratable<'tcx>>,
     ) -> Self {
         todo!()
+    }
+
+    fn extend(&mut self, iterator: impl IntoIterator<Item = PredicateObligation<'tcx>>) {
+        self.stack.extend(
+            iterator.into_iter().filter(|obligation| self.seen.insert(obligation.predicate)),
+        )
     }
 }
 
@@ -107,8 +113,8 @@ impl<'tcx> Elaborator<'tcx> {
         FilterToTraits::new(self)
     }
 
-    fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
-        let tcx = self.visited.tcx;
+    fn elaborate_obligation(&mut self, obligation: &PredicateObligation<'tcx>) {
+        let tcx = self.seen.tcx;
 
         let bound_predicate = obligation.predicate.kind();
         match bound_predicate.skip_binder() {
@@ -142,14 +148,7 @@ impl<'tcx> Elaborator<'tcx> {
                 });
                 debug!(?data, ?obligations, "super_predicates");
 
-                // Only keep those bounds that we haven't already seen.
-                // This is necessary to prevent infinite recursion in some
-                // cases. One common case is when people define
-                // `trait Sized: Sized { }` rather than `trait Sized { }`.
-                let visited = &mut self.visited;
-                let obligations = obligations.filter(|o| visited.insert(o.predicate));
-
-                self.stack.extend(obligations);
+                self.extend(obligations);
             }
             ty::PredicateKind::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,
@@ -206,10 +205,9 @@ impl<'tcx> Elaborator<'tcx> {
                     return;
                 }
 
-                let visited = &mut self.visited;
                 let mut components = smallvec![];
                 push_outlives_components(tcx, ty_max, &mut components);
-                self.stack.extend(
+                self.extend(
                     components
                         .into_iter()
                         .filter_map(|component| match component {
@@ -249,7 +247,6 @@ impl<'tcx> Elaborator<'tcx> {
                         .map(|predicate_kind| {
                             bound_predicate.rebind(predicate_kind).to_predicate(tcx)
                         })
-                        .filter(|&predicate| visited.insert(predicate))
                         .map(|predicate| {
                             predicate_obligation(
                                 predicate,
@@ -277,7 +274,7 @@ impl<'tcx> Iterator for Elaborator<'tcx> {
     fn next(&mut self) -> Option<Self::Item> {
         // Extract next item from top-most stack frame, if any.
         if let Some(obligation) = self.stack.pop() {
-            self.elaborate(&obligation);
+            self.elaborate_obligation(&obligation);
             Some(obligation)
         } else {
             None
@@ -295,14 +292,7 @@ pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Supertraits<'tcx> {
-    Elaborator::new(tcx, trait_ref).filter_to_traits()
-}
-
-pub fn transitive_bounds<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-) -> Supertraits<'tcx> {
-    Elaborator::new_many(tcx, bounds).filter_to_traits()
+    Elaborator::elaborate(tcx, trait_ref).filter_to_traits()
 }
 
 /// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may

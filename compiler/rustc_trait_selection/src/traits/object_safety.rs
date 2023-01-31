@@ -352,7 +352,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
-    Elaborator::new_many(tcx, predicates.into_iter()).any(|obligation| {
+    Elaborator::elaborate_many(tcx, predicates.into_iter()).any(|obligation| {
         match obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::Clause::Trait(ref trait_pred)) => {
                 trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
@@ -640,7 +640,7 @@ fn object_ty_for_trait<'tcx>(
     });
     debug!(?trait_predicate);
 
-    let mut elaborated_predicates: Vec<_> = Elaborator::new(tcx, trait_ref)
+    let mut elaborated_predicates: Vec<_> = Elaborator::elaborate(tcx, trait_ref)
         .filter_map(|obligation| {
             debug!(?obligation);
             let pred = obligation.predicate.to_opt_poly_projection_pred()?;

@@ -355,7 +355,7 @@ fn negative_impl_exists<'tcx>(
     }
 
     // Try to prove a negative obligation exists for super predicates
-    for elaborated in Elaborator::new(infcx.tcx, obligation.clone()) {
+    for elaborated in Elaborator::elaborate(infcx.tcx, obligation.clone()) {
         if resolve_negative_obligation(infcx.fork(), &elaborated, body_def_id) {
             return true;
         }

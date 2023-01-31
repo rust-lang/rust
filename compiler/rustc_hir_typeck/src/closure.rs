@@ -204,7 +204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut expected_sig = None;
         let mut expected_kind = None;
 
-        for obligation in Elaborator::new_many(
+        for obligation in Elaborator::elaborate_many(
             self.tcx,
             // Reverse the obligations here, since `elaborate_*` uses a stack,
             // and we want to keep inference generally in the same order of

@@ -358,7 +358,7 @@ impl<'tcx> WfPredicates<'tcx> {
         };
 
         if let Elaborate::All = elaborate {
-            let implied_obligations = Elaborator::new_many(tcx, obligations);
+            let implied_obligations = Elaborator::elaborate_many(tcx, obligations);
             let implied_obligations = implied_obligations.map(extend);
             self.out.extend(implied_obligations);
         } else {
@@ -914,7 +914,7 @@ pub(crate) fn required_region_bounds<'tcx>(
 ) -> Vec<ty::Region<'tcx>> {
     assert!(!erased_self_ty.has_escaping_bound_vars());
 
-    Elaborator::new_many(tcx, predicates)
+    Elaborator::elaborate_many(tcx, predicates)
         .filter_map(|obligation| {
             debug!(?obligation);
             match obligation.predicate.kind().skip_binder() {

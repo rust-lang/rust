@@ -451,9 +451,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         };
 
         let tcx = self.tcx();
-        for assumption in
-            Elaborator::new_many(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
-        {
+        for assumption in Elaborator::elaborate_many(
+            tcx,
+            bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)),
+        ) {
             match G::consider_assumption(self, goal, assumption.predicate) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })

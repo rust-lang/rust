@@ -1418,7 +1418,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for (base_trait_ref, span, constness) in regular_traits_refs_spans {
             assert_eq!(constness, ty::BoundConstness::NotConst);
 
-            for obligation in Elaborator::new(tcx, base_trait_ref) {
+            for obligation in Elaborator::elaborate(tcx, base_trait_ref) {
                 debug!(
                     "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
                     obligation.predicate

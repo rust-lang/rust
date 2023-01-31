@@ -82,7 +82,7 @@ pub fn recompute_applicable_impls<'tcx>(
 
     let predicates =
         tcx.predicates_of(obligation.cause.body_id.to_def_id()).instantiate_identity(tcx);
-    for obligation in Elaborator::new_many(tcx, predicates) {
+    for obligation in Elaborator::elaborate_many(tcx, predicates) {
         let kind = obligation.predicate.kind();
         if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = kind.skip_binder()
             && param_env_candidate_may_apply(kind.rebind(trait_pred))

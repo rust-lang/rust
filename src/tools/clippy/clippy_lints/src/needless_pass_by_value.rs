@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
 
-        let preds = Elaborator::new_many(cx.tcx, cx.param_env.caller_bounds())
+        let preds = Elaborator::elaborate_many(cx.tcx, cx.param_env.caller_bounds())
             .filter(|p| !p.is_global())
             .filter_map(|obligation| {
                 // Note that we do not want to deal with qualified predicates here.

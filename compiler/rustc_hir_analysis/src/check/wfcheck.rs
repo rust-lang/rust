@@ -1914,7 +1914,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
         let predicates_with_span = tcx.predicates_of(self.body_def_id).predicates.iter().copied();
         // Check elaborated bounds.
-        let implied_obligations = Elaborator::new_many(tcx, predicates_with_span);
+        let implied_obligations = Elaborator::elaborate_many(tcx, predicates_with_span);
 
         for obligation in implied_obligations {
             // We lower empty bounds like `Vec<dyn Copy>:` as

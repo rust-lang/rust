@@ -1614,7 +1614,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         };
 
-        for obligation in Elaborator::new(self.tcx, cond) {
+        for obligation in Elaborator::elaborate(self.tcx, cond) {
             let bound_predicate = obligation.predicate.kind();
             if let ty::PredicateKind::Clause(ty::Clause::Trait(implication)) =
                 bound_predicate.skip_binder()

@@ -98,7 +98,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
             .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
         if traits::impossible_predicates(
             tcx,
-            traits::Elaborator::new_many(tcx, predicates).map(|o| o.predicate).collect(),
+            traits::Elaborator::elaborate_many(tcx, predicates).map(|o| o.predicate).collect(),
         ) {
             trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
             return;

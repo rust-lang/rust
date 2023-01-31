@@ -345,7 +345,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected error for '{:?}': {:?}", ty, result),
             };
 
-            let normalized_preds = Elaborator::new_many(
+            let normalized_preds = Elaborator::elaborate_many(
                 tcx,
                 computed_preds.clone().chain(user_computed_preds.iter().cloned()),
             )
