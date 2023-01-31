@@ -15,6 +15,7 @@ use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
@@ -288,21 +289,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let trait_def_id = projection.trait_def_id(tcx);
 
         let is_fn = tcx.is_fn_trait(trait_def_id);
-        let gen_trait = tcx.require_lang_item(LangItem::Generator, cause_span);
-        let is_gen = gen_trait == trait_def_id;
+
+        let gen_trait = tcx.lang_items().gen_trait();
+        let is_gen = gen_trait == Some(trait_def_id);
+
         if !is_fn && !is_gen {
             debug!("not fn or generator");
             return None;
         }
 
-        if is_gen {
-            // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
-            // associated item and not yield.
-            let return_assoc_item = self.tcx.associated_item_def_ids(gen_trait)[1];
-            if return_assoc_item != projection.projection_def_id() {
-                debug!("not return assoc item of generator");
-                return None;
-            }
+        // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
+        // associated item and not yield.
+        if is_gen && self.tcx.associated_item(projection.projection_def_id()).name != sym::Return {
+            debug!("not `Return` assoc item of `Generator`");
+            return None;
         }
 
         let input_tys = if is_fn {
