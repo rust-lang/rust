@@ -1,10 +1,10 @@
 pub trait ScopeHandle<'scope> {}
 
 // @has issue_54705/struct.ScopeFutureContents.html
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header"]' \
+// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<'scope, S> Send for ScopeFutureContents<'scope, S>where S: Sync"
 //
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header"]' \
+// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<'scope, S> Sync for ScopeFutureContents<'scope, S>where S: Sync"
 pub struct ScopeFutureContents<'scope, S>
     where S: ScopeHandle<'scope>,

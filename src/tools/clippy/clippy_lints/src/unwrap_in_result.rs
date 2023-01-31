@@ -64,8 +64,8 @@ impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
             // first check if it's a method or function
             if let hir::ImplItemKind::Fn(ref _signature, _) = impl_item.kind;
             // checking if its return type is `result` or `option`
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::Result)
-                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::Option);
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.owner_id), sym::Result)
+                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.owner_id), sym::Option);
             then {
                 lint_impl_body(cx, impl_item.span, impl_item);
             }

@@ -5,7 +5,7 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
     let mut _0: std::result::Result<T, E>; // return place in scope 0 at $DIR/try_identity_e2e.rs:+0:34: +0:46
     let mut _2: isize;                   // in scope 0 at $DIR/try_identity_e2e.rs:+3:13: +3:18
     let _3: T;                           // in scope 0 at $DIR/try_identity_e2e.rs:+3:16: +3:17
-    let mut _4: E;                       // in scope 0 at $DIR/try_identity_e2e.rs:+4:34: +4:35
+    let _4: E;                           // in scope 0 at $DIR/try_identity_e2e.rs:+4:17: +4:18
     scope 1 {
         debug v => _3;                   // in scope 1 at $DIR/try_identity_e2e.rs:+3:16: +3:17
     }
@@ -19,6 +19,7 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
     }
 
     bb1: {
+        StorageLive(_4);                 // scope 0 at $DIR/try_identity_e2e.rs:+4:17: +4:18
         _4 = move ((_1 as Err).0: E);    // scope 0 at $DIR/try_identity_e2e.rs:+4:17: +4:18
         Deinit(_0);                      // scope 2 at $DIR/try_identity_e2e.rs:+4:30: +4:36
         ((_0 as Err).0: E) = move _4;    // scope 2 at $DIR/try_identity_e2e.rs:+4:30: +4:36
@@ -31,6 +32,7 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
     }
 
     bb3: {
+        StorageLive(_3);                 // scope 0 at $DIR/try_identity_e2e.rs:+3:16: +3:17
         _3 = move ((_1 as Ok).0: T);     // scope 0 at $DIR/try_identity_e2e.rs:+3:16: +3:17
         Deinit(_0);                      // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +6:6
         ((_0 as Ok).0: T) = move _3;     // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +6:6

@@ -14,7 +14,7 @@ use rustc_hir::{ItemKind, Node, PathSegment};
 use rustc_infer::infer::opaque_types::ConstrainOpaqueTypeRegionVisitor;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{DefiningAnchor, RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::Obligation;
+use rustc_infer::traits::{Obligation, TraitEngineExt as _};
 use rustc_lint::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::stability::EvalResult;
@@ -28,7 +28,7 @@ use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCtxt};
+use rustc_trait_selection::traits::{self, ObligationCtxt, TraitEngine, TraitEngineExt as _};
 
 use std::ops::ControlFlow;
 
@@ -412,7 +412,6 @@ fn check_opaque_meets_bounds<'tcx>(
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let defining_use_anchor = match *origin {
         hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
         hir::OpaqueTyOrigin::TyAlias => def_id,
@@ -438,7 +437,7 @@ fn check_opaque_meets_bounds<'tcx>(
         _ => re,
     });
 
-    let misc_cause = traits::ObligationCause::misc(span, hir_id);
+    let misc_cause = traits::ObligationCause::misc(span, def_id);
 
     match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
         Ok(()) => {}
@@ -666,7 +665,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
         DefKind::GlobalAsm => {
             let it = tcx.hir().item(id);
             let hir::ItemKind::GlobalAsm(asm) = it.kind else { span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it) };
-            InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, id.hir_id());
+            InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, id.owner_id.def_id);
         }
         _ => {}
     }
@@ -1461,7 +1460,8 @@ fn opaque_type_cycle_error(
                 for def_id in visitor.opaques {
                     let ty_span = tcx.def_span(def_id);
                     if !seen.contains(&ty_span) {
-                        err.span_label(ty_span, &format!("returning this opaque type `{ty}`"));
+                        let descr = if ty.is_impl_trait() { "opaque " } else { "" };
+                        err.span_label(ty_span, &format!("returning this {descr}type `{ty}`"));
                         seen.insert(ty_span);
                     }
                     err.span_label(sp, &format!("returning here with type `{ty}`"));
@@ -1507,4 +1507,35 @@ fn opaque_type_cycle_error(
         err.span_label(span, "cannot resolve opaque type");
     }
     err.emit()
+}
+
+pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    debug_assert!(tcx.sess.opts.unstable_opts.drop_tracking_mir);
+    debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Generator));
+
+    let typeck = tcx.typeck(def_id);
+    let param_env = tcx.param_env(def_id);
+
+    let generator_interior_predicates = &typeck.generator_interior_predicates[&def_id];
+    debug!(?generator_interior_predicates);
+
+    let infcx = tcx
+        .infer_ctxt()
+        // typeck writeback gives us predicates with their regions erased.
+        // As borrowck already has checked lifetimes, we do not need to do it again.
+        .ignoring_regions()
+        // Bind opaque types to `def_id` as they should have been checked by borrowck.
+        .with_opaque_type_inference(DefiningAnchor::Bind(def_id))
+        .build();
+
+    let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
+    for (predicate, cause) in generator_interior_predicates {
+        let obligation = Obligation::new(tcx, cause.clone(), param_env, *predicate);
+        fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+    }
+    let errors = fulfillment_cx.select_all_or_error(&infcx);
+    debug!(?errors);
+    if !errors.is_empty() {
+        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+    }
 }

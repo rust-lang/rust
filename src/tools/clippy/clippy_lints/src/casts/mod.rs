@@ -80,7 +80,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for casts between numerical types that may
     /// truncate large values. This is expected behavior, so the cast is `Allow` by
-    /// default.
+    /// default. It suggests user either explicitly ignore the lint,
+    /// or use `try_from()` and handle the truncation, default, or panic explicitly.
     ///
     /// ### Why is this bad?
     /// In some problem domains, it is good practice to avoid
@@ -91,6 +92,21 @@ declare_clippy_lint! {
     /// ```rust
     /// fn as_u8(x: u64) -> u8 {
     ///     x as u8
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```
+    /// fn as_u8(x: u64) -> u8 {
+    ///     if let Ok(x) = u8::try_from(x) {
+    ///         x
+    ///     } else {
+    ///         todo!();
+    ///     }
+    /// }
+    /// // Or
+    /// #[allow(clippy::cast_possible_truncation)]
+    /// fn as_u16(x: u64) -> u16 {
+    ///     x as u16
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -712,7 +728,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
 
             if cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
-                cast_possible_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
+                cast_possible_truncation::check(cx, expr, cast_expr, cast_from, cast_to, cast_to_hir.span);
                 if cast_from.is_numeric() {
                     cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);

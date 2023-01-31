@@ -129,6 +129,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // FIXME(#73156): Handle source code coverage in const eval
             Coverage(..) => {}
 
+            ConstEvalCounter => {
+                M::increment_const_eval_counter(self)?;
+            }
+
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}

@@ -13,13 +13,13 @@
           StorageLive(_2);                 // scope 0 at $DIR/ref_deref_project.rs:+1:6: +1:17
           _4 = const _;                    // scope 0 at $DIR/ref_deref_project.rs:+1:6: +1:17
                                            // mir::Constant
-                                           // + span: $DIR/ref_deref_project.rs:6:6: 6:17
+                                           // + span: $DIR/ref_deref_project.rs:5:6: 5:17
                                            // + literal: Const { ty: &(i32, i32), val: Unevaluated(main, [], Some(promoted[0])) }
           _2 = &((*_4).1: i32);            // scope 0 at $DIR/ref_deref_project.rs:+1:6: +1:17
           _1 = (*_2);                      // scope 0 at $DIR/ref_deref_project.rs:+1:5: +1:17
           StorageDead(_2);                 // scope 0 at $DIR/ref_deref_project.rs:+1:17: +1:18
           StorageDead(_1);                 // scope 0 at $DIR/ref_deref_project.rs:+1:17: +1:18
-          nop;                             // scope 0 at $DIR/ref_deref_project.rs:+0:11: +2:2
+          _0 = const ();                   // scope 0 at $DIR/ref_deref_project.rs:+0:11: +2:2
           return;                          // scope 0 at $DIR/ref_deref_project.rs:+2:2: +2:2
       }
   }

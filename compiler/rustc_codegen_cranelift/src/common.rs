@@ -35,7 +35,8 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
         },
         Primitive::F32 => types::F32,
         Primitive::F64 => types::F64,
-        Primitive::Pointer => pointer_ty(tcx),
+        // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+        Primitive::Pointer(_) => pointer_ty(tcx),
     }
 }
 
@@ -165,6 +166,15 @@ pub(crate) fn codegen_icmp_imm(
         let rhs = rhs as i64; // Truncates on purpose in case rhs is actually an unsigned value
         fx.bcx.ins().icmp_imm(intcc, lhs, rhs)
     }
+}
+
+pub(crate) fn codegen_bitcast(fx: &mut FunctionCx<'_, '_, '_>, dst_ty: Type, val: Value) -> Value {
+    let mut flags = MemFlags::new();
+    flags.set_endianness(match fx.tcx.data_layout.endian {
+        rustc_target::abi::Endian::Big => cranelift_codegen::ir::Endianness::Big,
+        rustc_target::abi::Endian::Little => cranelift_codegen::ir::Endianness::Little,
+    });
+    fx.bcx.ins().bitcast(dst_ty, flags, val)
 }
 
 pub(crate) fn type_zero_value(bcx: &mut FunctionBuilder<'_>, ty: Type) -> Value {

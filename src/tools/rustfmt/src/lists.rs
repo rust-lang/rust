@@ -297,9 +297,9 @@ where
         } else {
             inner_item.as_ref()
         };
-        let mut item_last_line_width = item_last_line.len() + item_sep_len;
+        let mut item_last_line_width = unicode_str_width(item_last_line) + item_sep_len;
         if item_last_line.starts_with(&**indent_str) {
-            item_last_line_width -= indent_str.len();
+            item_last_line_width -= unicode_str_width(indent_str);
         }
 
         if !item.is_substantial() {
@@ -449,7 +449,7 @@ where
                 } else if starts_with_newline(comment) {
                     false
                 } else {
-                    comment.trim().contains('\n') || comment.trim().len() > width
+                    comment.trim().contains('\n') || unicode_str_width(comment.trim()) > width
                 };
 
                 rewrite_comment(
@@ -465,7 +465,7 @@ where
             if !starts_with_newline(comment) {
                 if formatting.align_comments {
                     let mut comment_alignment =
-                        post_comment_alignment(item_max_width, inner_item.len());
+                        post_comment_alignment(item_max_width, unicode_str_width(inner_item));
                     if first_line_width(&formatted_comment)
                         + last_line_width(&result)
                         + comment_alignment
@@ -475,7 +475,7 @@ where
                         item_max_width = None;
                         formatted_comment = rewrite_post_comment(&mut item_max_width)?;
                         comment_alignment =
-                            post_comment_alignment(item_max_width, inner_item.len());
+                            post_comment_alignment(item_max_width, unicode_str_width(inner_item));
                     }
                     for _ in 0..=comment_alignment {
                         result.push(' ');
@@ -533,7 +533,7 @@ where
     let mut first = true;
     for item in items.clone().into_iter().skip(i) {
         let item = item.as_ref();
-        let inner_item_width = item.inner_as_ref().len();
+        let inner_item_width = unicode_str_width(item.inner_as_ref());
         if !first
             && (item.is_different_group()
                 || item.post_comment.is_none()
@@ -552,8 +552,8 @@ where
     max_width
 }
 
-fn post_comment_alignment(item_max_width: Option<usize>, inner_item_len: usize) -> usize {
-    item_max_width.unwrap_or(0).saturating_sub(inner_item_len)
+fn post_comment_alignment(item_max_width: Option<usize>, inner_item_width: usize) -> usize {
+    item_max_width.unwrap_or(0).saturating_sub(inner_item_width)
 }
 
 pub(crate) struct ListItems<'a, I, F1, F2, F3>

@@ -267,6 +267,7 @@ extern "C" {
 /// family of functions. It contains a function to format the given value. At
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
+#[cfg_attr(not(bootstrap), lang = "format_argument")]
 #[derive(Copy, Clone)]
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
@@ -279,6 +280,7 @@ pub struct ArgumentV1<'a> {
 /// This struct represents the unsafety of constructing an `Arguments`.
 /// It exists, rather than an unsafe function, in order to simplify the expansion
 /// of `format_args!(..)` and reduce the scope of the `unsafe` block.
+#[cfg_attr(not(bootstrap), lang = "format_unsafe_arg")]
 #[allow(missing_debug_implementations)]
 #[doc(hidden)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
@@ -473,8 +475,8 @@ impl<'a> Arguments<'a> {
 /// ```
 ///
 /// [`format()`]: ../../std/fmt/fn.format.html
+#[cfg_attr(not(bootstrap), lang = "format_arguments")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Arguments")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
@@ -489,9 +491,26 @@ pub struct Arguments<'a> {
 }
 
 impl<'a> Arguments<'a> {
-    /// Get the formatted string, if it has no arguments to be formatted.
+    /// Get the formatted string, if it has no arguments to be formatted at runtime.
     ///
-    /// This can be used to avoid allocations in the most trivial case.
+    /// This can be used to avoid allocations in some cases.
+    ///
+    /// # Guarantees
+    ///
+    /// For `format_args!("just a literal")`, this function is guaranteed to
+    /// return `Some("just a literal")`.
+    ///
+    /// For most cases with placeholders, this function will return `None`.
+    ///
+    /// However, the compiler may perform optimizations that can cause this
+    /// function to return `Some(_)` even if the format string contains
+    /// placeholders. For example, `format_args!("Hello, {}!", "world")` may be
+    /// optimized to `format_args!("Hello, world!")`, such that `as_str()`
+    /// returns `Some("Hello, world!")`.
+    ///
+    /// The behavior for anything but the trivial case (without placeholders)
+    /// is not guaranteed, and should not be relied upon for anything other
+    /// than optimization.
     ///
     /// # Examples
     ///
@@ -512,7 +531,7 @@ impl<'a> Arguments<'a> {
     /// ```rust
     /// assert_eq!(format_args!("hello").as_str(), Some("hello"));
     /// assert_eq!(format_args!("").as_str(), Some(""));
-    /// assert_eq!(format_args!("{}", 1).as_str(), None);
+    /// assert_eq!(format_args!("{:?}", std::env::current_dir()).as_str(), None);
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]

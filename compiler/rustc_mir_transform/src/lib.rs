@@ -54,7 +54,9 @@ mod const_debuginfo;
 mod const_goto;
 mod const_prop;
 mod const_prop_lint;
+mod copy_prop;
 mod coverage;
+mod ctfe_limit;
 mod dataflow_const_prop;
 mod dead_store_elimination;
 mod deaggregator;
@@ -86,11 +88,11 @@ mod required_consts;
 mod reveal_all;
 mod separate_const_switch;
 mod shim;
+mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
-mod simplify_try;
 mod sroa;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
@@ -102,7 +104,6 @@ use rustc_mir_dataflow::rustc_peek;
 
 pub fn provide(providers: &mut Providers) {
     check_unsafety::provide(providers);
-    check_packed_ref::provide(providers);
     coverage::query::provide(providers);
     ffi_unwind_calls::provide(providers);
     shim::provide(providers);
@@ -124,6 +125,7 @@ pub fn provide(providers: &mut Providers) {
         mir_drops_elaborated_and_const_checked,
         mir_for_ctfe,
         mir_for_ctfe_of_const_arg,
+        mir_generator_witnesses: generator::mir_generator_witnesses,
         optimized_mir,
         is_mir_available,
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
@@ -410,6 +412,8 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
         }
     }
 
+    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None);
+
     debug_assert!(!body.has_free_regions(), "Free regions in MIR for CTFE");
 
     body
@@ -426,6 +430,9 @@ fn mir_drops_elaborated_and_const_checked(
         return tcx.mir_drops_elaborated_and_const_checked(def);
     }
 
+    if tcx.generator_kind(def.did).is_some() && tcx.sess.opts.unstable_opts.drop_tracking_mir {
+        tcx.ensure().mir_generator_witnesses(def.did);
+    }
     let mir_borrowck = tcx.mir_borrowck_opt_const_arg(def);
 
     let is_fn_like = tcx.def_kind(def.did).is_fn_like();
@@ -541,13 +548,13 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &[
             &reveal_all::RevealAll, // has to be done before inlining, since inlined code is in RevealAll mode.
             &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
-            &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &o1(simplify::SimplifyCfg::new("after-uninhabited-enum-branching")),
             &inline::Inline,
             &remove_storage_markers::RemoveStorageMarkers,
             &remove_zsts::RemoveZsts,
+            &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
             &const_goto::ConstGoto,
             &remove_unneeded_drops::RemoveUnneededDrops,
             &sroa::ScalarReplacementOfAggregates,
@@ -557,6 +564,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &instcombine::InstCombine,
             &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::new("before-const-prop"),
+            &copy_prop::CopyProp,
             //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
@@ -567,8 +575,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
-            &simplify_try::SimplifyArmIdentity,
-            &simplify_try::SimplifyBranchSame,
             &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::new("final")),

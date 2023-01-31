@@ -1,6 +1,8 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::infcx_ext::InferCtxtExt;
+#[cfg(doc)]
+use super::trait_goals::structural_traits::*;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
@@ -76,7 +78,7 @@ pub(super) enum CandidateSource {
     ///     let _y = x.clone();
     /// }
     /// ```
-    AliasBound(usize),
+    AliasBound,
 }
 
 pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
@@ -98,38 +100,76 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx>;
 
+    // A type implements an `auto trait` if its components do as well. These components
+    // are given by built-in rules from [`instantiate_constituent_tys_for_auto_trait`].
     fn consider_auto_trait_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A trait alias holds if the RHS traits and `where` clauses hold.
     fn consider_trait_alias_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is `Copy` or `Clone` if its components are `Sized`. These components
+    // are given by built-in rules from [`instantiate_constituent_tys_for_sized_trait`].
     fn consider_builtin_sized_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is `Copy` or `Clone` if its components are `Copy` or `Clone`. These
+    // components are given by built-in rules from [`instantiate_constituent_tys_for_copy_clone_trait`].
     fn consider_builtin_copy_clone_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is `PointerSized` if we can compute its layout, and that layout
+    // matches the layout of `usize`.
     fn consider_builtin_pointer_sized_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A callable type (a closure, fn def, or fn ptr) is known to implement the `Fn<A>`
+    // family of traits where `A` is given by the signature of the type.
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         kind: ty::ClosureKind,
     ) -> QueryResult<'tcx>;
 
+    // `Tuple` is implemented if the `Self` type is a tuple.
     fn consider_builtin_tuple_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    // `Pointee` is always implemented.
+    //
+    // See the projection implementation for the `Metadata` types for all of
+    // the built-in types. For structs, the metadata type is given by the struct
+    // tail.
+    fn consider_builtin_pointee_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    // A generator (that comes from an `async` desugaring) is known to implement
+    // `Future<Output = O>`, where `O` is given by the generator's return type
+    // that was computed during type-checking.
+    fn consider_builtin_future_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    // A generator (that doesn't come from an `async` desugaring) is known to
+    // implement `Generator<R, Yield = Y, Return = O>`, given the resume, yield,
+    // and return types of the generator computed during type-checking.
+    fn consider_builtin_generator_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
@@ -202,8 +242,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
             // This doesn't work as long as we use `CandidateSource` in winnowing.
             let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-            // FIXME: This is broken if we care about the `usize` of `AliasBound` because the self type
-            // could be normalized to yet another projection with different item bounds.
             let normalized_candidates = self.assemble_and_evaluate_candidates(goal);
             for mut normalized_candidate in normalized_candidates {
                 normalized_candidate.result =
@@ -259,6 +297,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
         } else if lang_items.tuple_trait() == Some(trait_def_id) {
             G::consider_builtin_tuple_candidate(self, goal)
+        } else if lang_items.pointee_trait() == Some(trait_def_id) {
+            G::consider_builtin_pointee_candidate(self, goal)
+        } else if lang_items.future_trait() == Some(trait_def_id) {
+            G::consider_builtin_future_candidate(self, goal)
+        } else if lang_items.gen_trait() == Some(trait_def_id) {
+            G::consider_builtin_generator_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
@@ -310,25 +354,26 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
             | ty::Placeholder(..)
-            | ty::Infer(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
-            ty::Bound(..) => bug!("unexpected bound type: {goal:?}"),
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
             ty::Alias(_, alias_ty) => alias_ty,
         };
 
-        for (i, (assumption, _)) in self
+        for (assumption, _) in self
             .tcx()
             .bound_explicit_item_bounds(alias_ty.def_id)
             .subst_iter_copied(self.tcx(), alias_ty.substs)
-            .enumerate()
         {
             match G::consider_assumption(self, goal, assumption) {
                 Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound(i), result })
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result })
                 }
                 Err(NoSolution) => (),
             }
@@ -360,13 +405,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
             | ty::Placeholder(..)
-            | ty::Infer(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
-            ty::Bound(..) => bug!("unexpected bound type: {goal:?}"),
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
             ty::Dynamic(bounds, ..) => bounds,
         };
 

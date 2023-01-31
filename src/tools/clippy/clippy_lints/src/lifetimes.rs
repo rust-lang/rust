@@ -15,7 +15,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
-use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
@@ -154,7 +153,7 @@ fn check_fn_inner<'tcx>(
         .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
 
     for typ in types {
-        for pred in generics.bounds_for_param(cx.tcx.hir().local_def_id(typ.hir_id)) {
+        for pred in generics.bounds_for_param(typ.def_id) {
             if pred.origin == PredicateOrigin::WhereClause {
                 // has_where_lifetimes checked that this predicate contains no lifetime.
                 continue;
@@ -251,7 +250,7 @@ fn could_use_elision<'tcx>(
     // level of the current item.
 
     // check named LTs
-    let allowed_lts = allowed_lts_from(cx.tcx, named_generics);
+    let allowed_lts = allowed_lts_from(named_generics);
 
     // these will collect all the lifetimes for references in arg/return types
     let mut input_visitor = RefVisitor::new(cx);
@@ -360,11 +359,11 @@ fn could_use_elision<'tcx>(
     }
 }
 
-fn allowed_lts_from(tcx: TyCtxt<'_>, named_generics: &[GenericParam<'_>]) -> FxHashSet<RefLt> {
+fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<RefLt> {
     let mut allowed_lts = FxHashSet::default();
     for par in named_generics.iter() {
         if let GenericParamKind::Lifetime { .. } = par.kind {
-            allowed_lts.insert(RefLt::Named(tcx.hir().local_def_id(par.hir_id)));
+            allowed_lts.insert(RefLt::Named(par.def_id));
         }
     }
     allowed_lts.insert(RefLt::Unnamed);
@@ -516,7 +515,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                     return true;
                 }
                 // if the bounds define new lifetimes, they are fine to occur
-                let allowed_lts = allowed_lts_from(cx.tcx, pred.bound_generic_params);
+                let allowed_lts = allowed_lts_from(pred.bound_generic_params);
                 // now walk the bounds
                 for bound in pred.bounds.iter() {
                     walk_param_bound(&mut visitor, bound);

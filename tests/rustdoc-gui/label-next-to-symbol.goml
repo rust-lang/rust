@@ -20,7 +20,7 @@ assert-css: (
 // table like view
 assert-css: (".item-right.docblock-short", { "padding-left": "0px" })
 compare-elements-position-near: (
-    "//*[@class='item-left module-item']//a[text()='replaced_function']",
+    "//*[@class='item-left']//a[text()='replaced_function']",
     ".item-left .stab.deprecated",
     {"y": 2},
 )
@@ -32,7 +32,7 @@ compare-elements-position: (
 
 // Ensure no wrap
 compare-elements-position: (
-    "//*[@class='item-left module-item']//a[text()='replaced_function']/..",
+    "//*[@class='item-left']//a[text()='replaced_function']/..",
     "//*[@class='item-right docblock-short'][text()='a thing with a label']",
     ("y"),
 )
@@ -43,7 +43,7 @@ size: (600, 600)
 // staggered layout with 2em spacing
 assert-css: (".item-right.docblock-short", { "padding-left": "32px" })
 compare-elements-position-near: (
-    "//*[@class='item-left module-item']//a[text()='replaced_function']",
+    "//*[@class='item-left']//a[text()='replaced_function']",
     ".item-left .stab.deprecated",
     {"y": 2},
 )
@@ -55,7 +55,7 @@ compare-elements-position: (
 
 // Ensure wrap
 compare-elements-position-false: (
-    "//*[@class='item-left module-item']//a[text()='replaced_function']/..",
+    "//*[@class='item-left']//a[text()='replaced_function']/..",
     "//*[@class='item-right docblock-short'][text()='a thing with a label']",
     ("y"),
 )

@@ -100,6 +100,8 @@ lint_cstring_ptr = getting the inner pointer of a temporary `CString`
     .note = pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
     .help = for more information, see https://doc.rust-lang.org/reference/destructors.html
 
+lint_multple_supertrait_upcastable = `{$ident}` is object-safe and has multiple supertraits
+
 lint_identifier_non_ascii_char = identifier contains non-ASCII characters
 
 lint_identifier_uncommon_codepoints = identifier contains uncommon Unicode codepoints

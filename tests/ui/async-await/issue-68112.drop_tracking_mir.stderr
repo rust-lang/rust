@@ -1,0 +1,80 @@
+error: future cannot be sent between threads safely
+  --> $DIR/issue-68112.rs:37:5
+   |
+LL |     require_send(send_fut);
+   |     ^^^^^^^^^^^^ future created by async block is not `Send`
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+note: future is not `Send` as it awaits another future which is not `Send`
+  --> $DIR/issue-68112.rs:34:17
+   |
+LL |         let _ = non_send_fut.await;
+   |                 ^^^^^^^^^^^^ await occurs here on type `impl Future<Output = Arc<RefCell<i32>>>`, which is not `Send`
+note: required by a bound in `require_send`
+  --> $DIR/issue-68112.rs:14:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
+
+error: future cannot be sent between threads safely
+  --> $DIR/issue-68112.rs:46:5
+   |
+LL |     require_send(send_fut);
+   |     ^^^^^^^^^^^^ future created by async block is not `Send`
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+note: future is not `Send` as it awaits another future which is not `Send`
+  --> $DIR/issue-68112.rs:43:17
+   |
+LL |         let _ = make_non_send_future1().await;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ await occurs here on type `impl Future<Output = Arc<RefCell<i32>>>`, which is not `Send`
+note: required by a bound in `require_send`
+  --> $DIR/issue-68112.rs:14:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
+
+error[E0277]: `RefCell<i32>` cannot be shared between threads safely
+  --> $DIR/issue-68112.rs:65:5
+   |
+LL |     require_send(send_fut);
+   |     ^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+   = note: required for `Arc<RefCell<i32>>` to implement `Send`
+note: required because it's used within this `async fn` body
+  --> $DIR/issue-68112.rs:50:31
+   |
+LL |   async fn ready2<T>(t: T) -> T {
+   |  _______________________________^
+LL | |     t
+LL | | }
+   | |_^
+note: required because it appears within the type `impl Future<Output = Arc<RefCell<i32>>>`
+  --> $DIR/issue-68112.rs:53:31
+   |
+LL | fn make_non_send_future2() -> impl Future<Output = Arc<RefCell<i32>>> {
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: required because it captures the following types: `impl Future<Output = Arc<RefCell<i32>>>`, `Ready<i32>`
+note: required because it's used within this `async` block
+  --> $DIR/issue-68112.rs:60:20
+   |
+LL |       let send_fut = async {
+   |  ____________________^
+LL | |         let non_send_fut = make_non_send_future2();
+LL | |         let _ = non_send_fut.await;
+LL | |         ready(0).await;
+LL | |     };
+   | |_____^
+note: required by a bound in `require_send`
+  --> $DIR/issue-68112.rs:14:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -202,6 +202,7 @@ provide! { tcx, def_id, other, cdata,
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
+    mir_generator_witnesses => { table }
     promoted_mir => { table }
     def_span => { table }
     def_ident_span => { table }
@@ -226,12 +227,7 @@ provide! { tcx, def_id, other, cdata,
     deduced_param_attrs => { table }
     is_type_alias_impl_trait => {
         debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
-        cdata
-            .root
-            .tables
-            .is_type_alias_impl_trait
-            .get(cdata, def_id.index)
-            .is_some()
+        cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
     }
     collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
@@ -636,6 +632,12 @@ impl CStore {
         self.get_crate_data(def_id.krate)
             .get_attr_flags(def_id.index)
             .contains(AttrFlags::MAY_HAVE_DOC_LINKS)
+    }
+
+    pub fn is_doc_hidden_untracked(&self, def_id: DefId) -> bool {
+        self.get_crate_data(def_id.krate)
+            .get_attr_flags(def_id.index)
+            .contains(AttrFlags::IS_DOC_HIDDEN)
     }
 }
 

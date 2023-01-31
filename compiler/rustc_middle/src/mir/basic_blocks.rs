@@ -41,7 +41,6 @@ impl<'tcx> BasicBlocks<'tcx> {
         *self.cache.is_cyclic.get_or_init(|| graph::is_cyclic(self))
     }
 
-    #[inline]
     pub fn dominators(&self) -> Dominators<BasicBlock> {
         dominators(&self)
     }

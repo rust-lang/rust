@@ -19,8 +19,7 @@ use crate::passes::source_span_for_markdown_range;
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item) {
     if let Some(dox) = &item.attrs.collapsed_doc_value() {
         let sp = item.attr_span(cx.tcx);
-        let extra =
-            crate::html::markdown::ExtraInfo::new_did(cx.tcx, item.item_id.expect_def_id(), sp);
+        let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, item.item_id.expect_def_id(), sp);
         for code_block in markdown::rust_code_blocks(dox, &extra) {
             check_rust_syntax(cx, item, dox, code_block);
         }
@@ -73,7 +72,6 @@ fn check_rust_syntax(
             return;
         };
 
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id);
     let empty_block = code_block.lang_string == Default::default() && code_block.is_fenced;
     let is_ignore = code_block.lang_string.ignore != markdown::Ignore::None;
 
@@ -93,6 +91,7 @@ fn check_rust_syntax(
     // Finally build and emit the completed diagnostic.
     // All points of divergence have been handled earlier so this can be
     // done the same way whether the span is precise or not.
+    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id);
     cx.tcx.struct_span_lint_hir(crate::lint::INVALID_RUST_CODEBLOCKS, hir_id, sp, msg, |lint| {
         let explanation = if is_ignore {
             "`ignore` code blocks require valid Rust code for syntax highlighting; \

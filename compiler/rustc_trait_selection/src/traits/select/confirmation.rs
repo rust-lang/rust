@@ -8,12 +8,11 @@
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::{
-    self, Binder, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
-    ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt,
+    self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
+    TraitRef, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
@@ -1009,7 +1008,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `T` -> `Trait`
             (_, &ty::Dynamic(ref data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
-                if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
+                if let Some(did) = object_dids.find(|did| !tcx.check_is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
                 }
 
@@ -1064,50 +1063,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // `Struct<T>` -> `Struct<U>`
             (&ty::Adt(def, substs_a), &ty::Adt(_, substs_b)) => {
-                let maybe_unsizing_param_idx = |arg: GenericArg<'tcx>| match arg.unpack() {
-                    GenericArgKind::Type(ty) => match ty.kind() {
-                        ty::Param(p) => Some(p.index),
-                        _ => None,
-                    },
-
-                    // Lifetimes aren't allowed to change during unsizing.
-                    GenericArgKind::Lifetime(_) => None,
-
-                    GenericArgKind::Const(ct) => match ct.kind() {
-                        ty::ConstKind::Param(p) => Some(p.index),
-                        _ => None,
-                    },
-                };
-
-                // FIXME(eddyb) cache this (including computing `unsizing_params`)
-                // by putting it in a query; it would only need the `DefId` as it
-                // looks at declared field types, not anything substituted.
-
-                // The last field of the structure has to exist and contain type/const parameters.
-                let (tail_field, prefix_fields) =
-                    def.non_enum_variant().fields.split_last().ok_or(Unimplemented)?;
-                let tail_field_ty = tcx.bound_type_of(tail_field.did);
-
-                let mut unsizing_params = GrowableBitSet::new_empty();
-                for arg in tail_field_ty.0.walk() {
-                    if let Some(i) = maybe_unsizing_param_idx(arg) {
-                        unsizing_params.insert(i);
-                    }
-                }
-
-                // Ensure none of the other fields mention the parameters used
-                // in unsizing.
-                for field in prefix_fields {
-                    for arg in tcx.type_of(field.did).walk() {
-                        if let Some(i) = maybe_unsizing_param_idx(arg) {
-                            unsizing_params.remove(i);
-                        }
-                    }
-                }
-
+                let unsizing_params = tcx.unsizing_params_for_adt(def.did());
                 if unsizing_params.is_empty() {
                     return Err(Unimplemented);
                 }
+
+                let tail_field = def
+                    .non_enum_variant()
+                    .fields
+                    .last()
+                    .expect("expected unsized ADT to have a tail field");
+                let tail_field_ty = tcx.bound_type_of(tail_field.did);
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`,
                 // normalizing in the process, since `type_of` returns something directly from
@@ -1284,6 +1250,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::GeneratorWitness(tys) => {
                     stack.extend(tcx.erase_late_bound_regions(tys).to_vec());
+                }
+                ty::GeneratorWitnessMIR(def_id, substs) => {
+                    let tcx = self.tcx();
+                    stack.extend(tcx.generator_hidden_types(def_id).map(|bty| {
+                        let ty = bty.subst(tcx, substs);
+                        debug_assert!(!ty.has_late_bound_regions());
+                        ty
+                    }))
                 }
 
                 // If we have a projection type, make sure to normalize it so we replace it

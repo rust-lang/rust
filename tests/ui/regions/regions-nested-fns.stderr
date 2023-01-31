@@ -13,6 +13,8 @@ LL |         ay = z;
 error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns.rs:5:18
    |
+LL |     let y = 3;
+   |         - binding `y` declared here
 LL |     let mut ay = &y;
    |                  ^^ borrowed value does not live long enough
 ...

@@ -37,7 +37,7 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
     bb3: {
         _5 = move ((_1 as Some).0: i32); // scope 1 at $DIR/simple_option_map_e2e.rs:7:14: 7:15
         StorageLive(_4);                 // scope 2 at $DIR/simple_option_map_e2e.rs:7:25: 7:29
-        _4 = Add(move _5, const 1_i32);  // scope 3 at $DIR/simple_option_map_e2e.rs:+1:16: +1:21
+        _4 = Add(_5, const 1_i32);       // scope 3 at $DIR/simple_option_map_e2e.rs:+1:16: +1:21
         Deinit(_0);                      // scope 2 at $DIR/simple_option_map_e2e.rs:7:20: 7:30
         ((_0 as Some).0: i32) = move _4; // scope 2 at $DIR/simple_option_map_e2e.rs:7:20: 7:30
         discriminant(_0) = 1;            // scope 2 at $DIR/simple_option_map_e2e.rs:7:20: 7:30

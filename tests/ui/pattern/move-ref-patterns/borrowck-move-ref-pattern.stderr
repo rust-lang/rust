@@ -1,6 +1,8 @@
 error[E0505]: cannot move out of `arr[..]` because it is borrowed
   --> $DIR/borrowck-move-ref-pattern.rs:8:24
    |
+LL |     let mut arr = [U, U, U, U, U];
+   |         ------- binding `arr` declared here
 LL |     let hold_all = &arr;
    |                    ---- borrow of `arr` occurs here
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;

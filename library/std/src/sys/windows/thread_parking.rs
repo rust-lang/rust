@@ -221,7 +221,7 @@ impl Parker {
 
 fn keyed_event_handle() -> c::HANDLE {
     const INVALID: c::HANDLE = ptr::invalid_mut(!0);
-    static HANDLE: AtomicPtr<libc::c_void> = AtomicPtr::new(INVALID);
+    static HANDLE: AtomicPtr<crate::ffi::c_void> = AtomicPtr::new(INVALID);
     match HANDLE.load(Relaxed) {
         INVALID => {
             let mut handle = c::INVALID_HANDLE_VALUE;

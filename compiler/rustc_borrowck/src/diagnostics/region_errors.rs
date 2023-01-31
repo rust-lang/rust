@@ -813,17 +813,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if *outlived_f != ty::ReStatic {
                 return;
             }
+            let suitable_region = self.infcx.tcx.is_suitable_region(f);
+            let Some(suitable_region) = suitable_region else { return; };
 
-            let fn_returns = self
-                .infcx
-                .tcx
-                .is_suitable_region(f)
-                .map(|r| self.infcx.tcx.return_type_impl_or_dyn_traits(r.def_id))
-                .unwrap_or_default();
-
-            if fn_returns.is_empty() {
-                return;
-            }
+            let fn_returns = self.infcx.tcx.return_type_impl_or_dyn_traits(suitable_region.def_id);
 
             let param = if let Some(param) = find_param_with_region(self.infcx.tcx, f, outlived_f) {
                 param
@@ -839,15 +832,43 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             };
             let captures = format!("captures data from {arg}");
 
-            return nice_region_error::suggest_new_region_bound(
-                self.infcx.tcx,
-                diag,
-                fn_returns,
-                lifetime.to_string(),
-                Some(arg),
-                captures,
-                Some((param.param_ty_span, param.param_ty.to_string())),
-                self.infcx.tcx.is_suitable_region(f).map(|r| r.def_id),
+            if !fn_returns.is_empty() {
+                nice_region_error::suggest_new_region_bound(
+                    self.infcx.tcx,
+                    diag,
+                    fn_returns,
+                    lifetime.to_string(),
+                    Some(arg),
+                    captures,
+                    Some((param.param_ty_span, param.param_ty.to_string())),
+                    Some(suitable_region.def_id),
+                );
+                return;
+            }
+
+            let Some((alias_tys, alias_span)) = self
+                .infcx
+                .tcx
+                .return_type_impl_or_dyn_traits_with_type_alias(suitable_region.def_id) else { return; };
+
+            // in case the return type of the method is a type alias
+            let mut spans_suggs: Vec<_> = Vec::new();
+            for alias_ty in alias_tys {
+                if alias_ty.span.desugaring_kind().is_some() {
+                    // Skip `async` desugaring `impl Future`.
+                    ()
+                }
+                if let TyKind::TraitObject(_, lt, _) = alias_ty.kind {
+                    spans_suggs.push((lt.ident.span.shrink_to_hi(), " + 'a".to_string()));
+                }
+            }
+            spans_suggs.push((alias_span.shrink_to_hi(), "<'a>".to_string()));
+            diag.multipart_suggestion_verbose(
+                &format!(
+                    "to declare that the trait object {captures}, you can add a lifetime parameter `'a` in the type alias"
+                ),
+                spans_suggs,
+                Applicability::MaybeIncorrect,
             );
         }
     }

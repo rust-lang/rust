@@ -250,6 +250,7 @@ pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
         AscribeUserType(..) => "AscribeUserType",
         Coverage(..) => "Coverage",
         Intrinsic(..) => "Intrinsic",
+        ConstEvalCounter => "ConstEvalCounter",
         Nop => "Nop",
     }
 }
@@ -670,7 +671,7 @@ fn fn_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
 
 fn hir_body(tcx: TyCtxt<'_>, def_id: DefId) -> Option<&rustc_hir::Body<'_>> {
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
-    hir::map::associated_body(hir_node).map(|fn_body_id| tcx.hir().body(fn_body_id))
+    hir::map::associated_body(hir_node).map(|(_, fn_body_id)| tcx.hir().body(fn_body_id))
 }
 
 fn escape_html(s: &str) -> String {

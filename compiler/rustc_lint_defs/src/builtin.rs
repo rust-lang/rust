@@ -3381,6 +3381,7 @@ declare_lint_pass! {
         REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         IMPLIED_BOUNDS_ENTAILMENT,
+        BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
     ]
 }
 
@@ -3531,9 +3532,15 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Previously, there were very like checks being performed on `#[doc(..)]`
-    /// unlike the other attributes. It'll now catch all the issues that it
-    /// silently ignored previously.
+    /// Previously, incorrect usage of the `#[doc(..)]` attribute was not
+    /// being validated. Usually these should be rejected as a hard error,
+    /// but this lint was introduced to avoid breaking any existing
+    /// crates which included them.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard
+    /// error in the future. See [issue #82730] for more details.
+    ///
+    /// [issue #82730]: https://github.com/rust-lang/rust/issues/82730
     pub INVALID_DOC_ATTRIBUTES,
     Warn,
     "detects invalid `#[doc(...)]` attributes",
@@ -4108,4 +4115,36 @@ declare_lint! {
         reference: "issue #105572 <https://github.com/rust-lang/rust/issues/105572>",
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
+}
+
+declare_lint! {
+    /// The `byte_slice_in_packed_struct_with_derive` lint detects cases where a byte slice field
+    /// (`[u8]`) is used in a `packed` struct that derives one or more built-in traits.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[repr(packed)]
+    /// #[derive(Hash)]
+    /// struct FlexZeroSlice {
+    ///     width: u8,
+    ///     data: [u8],
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This was previously accepted but is being phased out, because fields in packed structs are
+    /// now required to implement `Copy` for `derive` to work. Byte slices are a temporary
+    /// exception because certain crates depended on them.
+    pub BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
+    Warn,
+    "`[u8]` slice used in a packed struct with `derive`",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #107457 <https://github.com/rust-lang/rust/issues/107457>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+    };
+    report_in_external_macro
 }

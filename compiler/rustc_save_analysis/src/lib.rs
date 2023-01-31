@@ -21,7 +21,7 @@ use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast_pretty::pprust::attribute_to_string;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_hir_pretty::{enum_def_to_string, fn_to_string, ty_to_string};
@@ -318,7 +318,7 @@ impl<'tcx> SaveContext<'tcx> {
                     qualname,
                     value,
                     parent: None,
-                    children: def.variants.iter().map(|v| id_from_hir_id(v.hir_id, self)).collect(),
+                    children: def.variants.iter().map(|v| id_from_def_id(v.def_id.to_def_id())).collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
@@ -379,12 +379,11 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    pub fn get_field_data(&self, field: &hir::FieldDef<'_>, scope: hir::HirId) -> Option<Def> {
+    pub fn get_field_data(&self, field: &hir::FieldDef<'_>, scope: LocalDefId) -> Option<Def> {
         let name = field.ident.to_string();
-        let scope_def_id = self.tcx.hir().local_def_id(scope).to_def_id();
-        let qualname = format!("::{}::{}", self.tcx.def_path_str(scope_def_id), field.ident);
+        let qualname = format!("::{}::{}", self.tcx.def_path_str(scope.to_def_id()), field.ident);
         filter!(self.span_utils, field.ident.span);
-        let field_def_id = self.tcx.hir().local_def_id(field.hir_id).to_def_id();
+        let field_def_id = field.def_id.to_def_id();
         let typ = self.tcx.type_of(field_def_id).to_string();
 
         let id = id_from_def_id(field_def_id);
@@ -398,7 +397,7 @@ impl<'tcx> SaveContext<'tcx> {
             name,
             qualname,
             value: typ,
-            parent: Some(id_from_def_id(scope_def_id)),
+            parent: Some(id_from_def_id(scope.to_def_id())),
             children: vec![],
             decl_id: None,
             docs: self.docs_for_attrs(attrs),
@@ -409,12 +408,11 @@ impl<'tcx> SaveContext<'tcx> {
 
     // FIXME would be nice to take a MethodItem here, but the ast provides both
     // trait and impl flavours, so the caller must do the disassembly.
-    pub fn get_method_data(&self, hir_id: hir::HirId, ident: Ident, span: Span) -> Option<Def> {
+    pub fn get_method_data(&self, owner_id: hir::OwnerId, ident: Ident, span: Span) -> Option<Def> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
-        let def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
         let (qualname, parent_scope, decl_id, docs, attributes) =
-            match self.tcx.impl_of_method(def_id) {
+            match self.tcx.impl_of_method(owner_id.to_def_id()) {
                 Some(impl_id) => match self.tcx.hir().get_if_local(impl_id) {
                     Some(Node::Item(item)) => match item.kind {
                         hir::ItemKind::Impl(hir::Impl { ref self_ty, .. }) => {
@@ -427,8 +425,8 @@ impl<'tcx> SaveContext<'tcx> {
                             let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut docs = String::new();
                             let mut attrs = vec![];
-                            if let Some(Node::ImplItem(_)) = hir.find(hir_id) {
-                                attrs = self.tcx.hir().attrs(hir_id).to_vec();
+                            if let Some(Node::ImplItem(_)) = hir.find(owner_id.into()) {
+                                attrs = self.tcx.hir().attrs(owner_id.into()).to_vec();
                                 docs = self.docs_for_attrs(&attrs);
                             }
 
@@ -452,29 +450,29 @@ impl<'tcx> SaveContext<'tcx> {
                         _ => {
                             span_bug!(
                                 span,
-                                "Container {:?} for method {} not an impl?",
+                                "Container {:?} for method {:?} not an impl?",
                                 impl_id,
-                                hir_id
+                                owner_id,
                             );
                         }
                     },
                     r => {
                         span_bug!(
                             span,
-                            "Container {:?} for method {} is not a node item {:?}",
+                            "Container {:?} for method {:?} is not a node item {:?}",
                             impl_id,
-                            hir_id,
+                            owner_id,
                             r
                         );
                     }
                 },
-                None => match self.tcx.trait_of_item(def_id) {
+                None => match self.tcx.trait_of_item(owner_id.to_def_id()) {
                     Some(def_id) => {
                         let mut docs = String::new();
                         let mut attrs = vec![];
 
-                        if let Some(Node::TraitItem(_)) = self.tcx.hir().find(hir_id) {
-                            attrs = self.tcx.hir().attrs(hir_id).to_vec();
+                        if let Some(Node::TraitItem(_)) = self.tcx.hir().find(owner_id.into()) {
+                            attrs = self.tcx.hir().attrs(owner_id.into()).to_vec();
                             docs = self.docs_for_attrs(&attrs);
                         }
 
@@ -487,7 +485,7 @@ impl<'tcx> SaveContext<'tcx> {
                         )
                     }
                     None => {
-                        debug!("could not find container for method {} at {:?}", hir_id, span);
+                        debug!("could not find container for method {:?} at {:?}", owner_id, span);
                         // This is not necessarily a bug, if there was a compilation error,
                         // the typeck results we need might not exist.
                         return None;
@@ -501,7 +499,7 @@ impl<'tcx> SaveContext<'tcx> {
 
         Some(Def {
             kind: DefKind::Method,
-            id: id_from_def_id(def_id),
+            id: id_from_def_id(owner_id.to_def_id()),
             span: self.span_from_span(ident.span),
             name: ident.name.to_string(),
             qualname,
@@ -669,7 +667,7 @@ impl<'tcx> SaveContext<'tcx> {
 
         match res {
             Res::Local(id) => {
-                Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_hir_id(id, self) })
+                Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_hir_id(id) })
             }
             Res::Def(HirDefKind::Trait, def_id) if fn_type(path_seg) => {
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) })
@@ -1033,18 +1031,15 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
     rls_data::Id { krate: id.krate.as_u32(), index: id.index.as_u32() }
 }
 
-fn id_from_hir_id(id: hir::HirId, scx: &SaveContext<'_>) -> rls_data::Id {
-    let def_id = scx.tcx.hir().opt_local_def_id(id);
-    def_id.map(|id| id_from_def_id(id.to_def_id())).unwrap_or_else(|| {
-        // Create a *fake* `DefId` out of a `HirId` by combining the owner
-        // `local_def_index` and the `local_id`.
-        // This will work unless you have *billions* of definitions in a single
-        // crate (very unlikely to actually happen).
-        rls_data::Id {
-            krate: LOCAL_CRATE.as_u32(),
-            index: id.owner.def_id.local_def_index.as_u32() | id.local_id.as_u32().reverse_bits(),
-        }
-    })
+fn id_from_hir_id(id: hir::HirId) -> rls_data::Id {
+    // Create a *fake* `DefId` out of a `HirId` by combining the owner
+    // `local_def_index` and the `local_id`.
+    // This will work unless you have *billions* of definitions in a single
+    // crate (very unlikely to actually happen).
+    rls_data::Id {
+        krate: LOCAL_CRATE.as_u32(),
+        index: id.owner.def_id.local_def_index.as_u32() | id.local_id.as_u32().reverse_bits(),
+    }
 }
 
 fn null_id() -> rls_data::Id {

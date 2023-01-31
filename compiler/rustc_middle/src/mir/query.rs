@@ -135,11 +135,20 @@ rustc_index::newtype_index! {
     pub struct GeneratorSavedLocal {}
 }
 
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub struct GeneratorSavedTy<'tcx> {
+    pub ty: Ty<'tcx>,
+    /// Source info corresponding to the local in the original MIR body.
+    pub source_info: SourceInfo,
+    /// Whether the local should be ignored for trait bound computations.
+    pub ignore_for_traits: bool,
+}
+
 /// The layout of generator state.
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct GeneratorLayout<'tcx> {
     /// The type of every local stored inside the generator.
-    pub field_tys: IndexVec<GeneratorSavedLocal, Ty<'tcx>>,
+    pub field_tys: IndexVec<GeneratorSavedLocal, GeneratorSavedTy<'tcx>>,
 
     /// Which of the above fields are in each variant. Note that one field may
     /// be stored in multiple variants.

@@ -146,7 +146,8 @@ For cargo lints, the process of testing differs in that we are interested in the
 manifest.
 
 If our new lint is named e.g. `foo_categories`, after running `cargo dev
-new_lint` we will find by default two new crates, each with its manifest file:
+new_lint --name=foo_categories --type=cargo --category=cargo` we will find by
+default two new crates, each with its manifest file:
 
 * `tests/ui-cargo/foo_categories/fail/Cargo.toml`: this file should cause the
   new lint to raise an error.
@@ -698,6 +699,10 @@ for some users. Adding a configuration is done in the following steps:
        Simply add a new subfolder with a fitting name. This folder contains a
        `clippy.toml` file with the configuration value and a rust file that
        should be linted by Clippy. The test can otherwise be written as usual.
+
+5. Update [Lint Configuration](../lint_configuration.md)
+
+   Run `cargo collect-metadata` to generate documentation changes for the book.
 
 [`clippy_lints::utils::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/conf.rs
 [`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs

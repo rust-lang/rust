@@ -1499,6 +1499,11 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
         return;
     }
 
+    // When full debuginfo is enabled, we want to try and prevent vtables from being
+    // merged. Otherwise debuggers will have a hard time mapping from dyn pointer
+    // to concrete type.
+    llvm::SetUnnamedAddress(vtable, llvm::UnnamedAddr::No);
+
     let vtable_name =
         compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::GlobalVariable);
     let vtable_type_di_node = build_vtable_type_di_node(cx, ty, poly_trait_ref);

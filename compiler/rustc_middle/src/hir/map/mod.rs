@@ -18,24 +18,30 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 #[inline]
-pub fn associated_body(node: Node<'_>) -> Option<BodyId> {
+pub fn associated_body(node: Node<'_>) -> Option<(LocalDefId, BodyId)> {
     match node {
         Node::Item(Item {
+            owner_id,
             kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
             ..
         })
         | Node::TraitItem(TraitItem {
+            owner_id,
             kind:
                 TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
             ..
         })
         | Node::ImplItem(ImplItem {
+            owner_id,
             kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
             ..
-        })
-        | Node::Expr(Expr { kind: ExprKind::Closure(Closure { body, .. }), .. }) => Some(*body),
+        }) => Some((owner_id.def_id, *body)),
 
-        Node::AnonConst(constant) => Some(constant.body),
+        Node::Expr(Expr { kind: ExprKind::Closure(Closure { def_id, body, .. }), .. }) => {
+            Some((*def_id, *body))
+        }
+
+        Node::AnonConst(constant) => Some((constant.def_id, constant.body)),
 
         _ => None,
     }
@@ -43,7 +49,7 @@ pub fn associated_body(node: Node<'_>) -> Option<BodyId> {
 
 fn is_body_owner(node: Node<'_>, hir_id: HirId) -> bool {
     match associated_body(node) {
-        Some(b) => b.hir_id == hir_id,
+        Some((_, b)) => b.hir_id == hir_id,
         None => false,
     }
 }
@@ -154,10 +160,6 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions_untracked().def_key(def_id)
     }
 
-    pub fn def_path_from_hir_id(self, id: HirId) -> Option<DefPath> {
-        self.opt_local_def_id(id).map(|def_id| self.def_path(def_id))
-    }
-
     pub fn def_path(self, def_id: LocalDefId) -> DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
         self.tcx.definitions_untracked().def_path(def_id)
@@ -167,32 +169,6 @@ impl<'hir> Map<'hir> {
     pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
         // Accessing the DefPathHash is ok, it is incr. comp. stable.
         self.tcx.definitions_untracked().def_path_hash(def_id)
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn local_def_id(self, hir_id: HirId) -> LocalDefId {
-        self.opt_local_def_id(hir_id).unwrap_or_else(|| {
-            bug!(
-                "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
-                hir_id,
-                self.find(hir_id)
-            )
-        })
-    }
-
-    #[inline]
-    pub fn opt_local_def_id(self, hir_id: HirId) -> Option<LocalDefId> {
-        if hir_id.local_id == ItemLocalId::new(0) {
-            Some(hir_id.owner.def_id)
-        } else {
-            self.tcx
-                .hir_owner_nodes(hir_id.owner)
-                .as_owner()?
-                .local_id_to_def_id
-                .get(&hir_id.local_id)
-                .copied()
-        }
     }
 
     #[inline]
@@ -410,8 +386,8 @@ impl<'hir> Map<'hir> {
     #[track_caller]
     pub fn enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
         for (_, node) in self.parent_iter(hir_id) {
-            if let Some(body) = associated_body(node) {
-                return self.body_owner_def_id(body);
+            if let Some((def_id, _)) = associated_body(node) {
+                return def_id;
             }
         }
 
@@ -427,14 +403,17 @@ impl<'hir> Map<'hir> {
         parent
     }
 
-    pub fn body_owner_def_id(self, id: BodyId) -> LocalDefId {
-        self.local_def_id(self.body_owner(id))
+    pub fn body_owner_def_id(self, BodyId { hir_id }: BodyId) -> LocalDefId {
+        let parent = self.parent_id(hir_id);
+        associated_body(self.get(parent)).unwrap().0
     }
 
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
-        self.find_by_def_id(id).and_then(associated_body)
+        let node = self.find_by_def_id(id)?;
+        let (_, body_id) = associated_body(node)?;
+        Some(body_id)
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.

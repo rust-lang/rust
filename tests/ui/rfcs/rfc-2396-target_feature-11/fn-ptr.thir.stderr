@@ -5,12 +5,15 @@ LL | #[target_feature(enable = "sse2")]
    | ---------------------------------- `#[target_feature]` added here
 ...
 LL |     let foo: fn() = foo;
-   |              ----   ^^^ cannot coerce functions with `#[target_feature]` to safe function pointers
-   |              |
+   |              ----   ^^^
+   |              |      |
+   |              |      cannot coerce functions with `#[target_feature]` to safe function pointers
+   |              |      help: consider casting to a fn pointer: `foo as fn()`
    |              expected due to this
    |
    = note: expected fn pointer `fn()`
                  found fn item `fn() {foo}`
+   = note: fn items are distinct from fn pointers
    = note: functions with `#[target_feature]` can only be coerced to `unsafe` function pointers
 
 error: aborting due to previous error

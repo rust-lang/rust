@@ -1,7 +1,8 @@
 // edition:2018
-// revisions: no_drop_tracking drop_tracking
-// [drop_tracking] compile-flags: -Zdrop-tracking=yes
-// [no_drop_tracking] compile-flags: -Zdrop-tracking=no
+// revisions: no_drop_tracking drop_tracking drop_tracking_mir
+// [drop_tracking] compile-flags: -Zdrop-tracking
+// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
+
 #![feature(must_not_suspend)]
 #![deny(must_not_suspend)]
 
@@ -22,6 +23,7 @@ impl Bar {
 
         other().await;
 
+        let _g = &*guard;
         *guard = Umm { i: 2 }
     }
 }

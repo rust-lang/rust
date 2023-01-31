@@ -20,13 +20,14 @@ use crate::interpret::{InterpCx, MemoryKind, OpTy};
 /// to the full uninit check).
 pub fn might_permit_raw_init<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
     ty: TyAndLayout<'tcx>,
     kind: InitKind,
 ) -> bool {
     if tcx.sess.opts.unstable_opts.strict_init_checks {
         might_permit_raw_init_strict(ty, tcx, kind)
     } else {
-        let layout_cx = LayoutCx { tcx, param_env: ParamEnv::reveal_all() };
+        let layout_cx = LayoutCx { tcx, param_env };
         might_permit_raw_init_lax(ty, &layout_cx, kind)
     }
 }

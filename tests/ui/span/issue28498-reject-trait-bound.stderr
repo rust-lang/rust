@@ -1,6 +1,9 @@
 error[E0597]: `first_dropped` does not live long enough
   --> $DIR/issue28498-reject-trait-bound.rs:34:19
    |
+LL |     let (foo1, first_dropped);
+   |                ------------- binding `first_dropped` declared here
+...
 LL |     foo1 = Foo(1, &first_dropped);
    |                   ^^^^^^^^^^^^^^ borrowed value does not live long enough
 ...

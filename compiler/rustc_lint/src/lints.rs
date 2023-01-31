@@ -917,6 +917,13 @@ pub struct CStringPtr {
     pub unwrap: Span,
 }
 
+// multiple_supertrait_upcastable.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_multple_supertrait_upcastable)]
+pub struct MultipleSupertraitUpcastable {
+    pub ident: Ident,
+}
+
 // non_ascii_idents.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_identifier_non_ascii_char)]

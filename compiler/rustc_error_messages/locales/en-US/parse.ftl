@@ -199,6 +199,17 @@ parse_match_arm_body_without_braces = `match` arm body without braces
         } with a body
     .suggestion_use_comma_not_semicolon = use a comma to end a `match` arm expression
 
+parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
+    .suggestion_remove_eq = use `..=` instead
+    .note = inclusive ranges end with a single equals sign (`..=`)
+
+parse_inclusive_range_match_arrow = unexpected `=>` after open range
+    .suggestion_add_space = add a space between the pattern and `=>`
+
+parse_inclusive_range_no_end = inclusive range with no end
+    .suggestion_open_range = use `..` instead
+    .note = inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
 parse_struct_literal_not_allowed_here = struct literals are not allowed here
     .suggestion = surround the struct literal with parentheses
 
@@ -238,6 +249,7 @@ parse_const_let_mutually_exclusive = `const` and `let` are mutually exclusive
 
 parse_invalid_expression_in_let_else = a `{$operator}` expression cannot be directly assigned in `let...else`
 parse_invalid_curly_in_let_else = right curly brace `{"}"}` before `else` in a `let...else` statement not allowed
+parse_extra_if_in_let_else = remove the `if` if you meant to write a `let...else` statement
 
 parse_compound_assignment_expression_in_let = can't reassign to an uninitialized variable
     .suggestion = initialize the variable

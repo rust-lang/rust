@@ -12,11 +12,12 @@ mod vec_box;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Body, FnDecl, FnRetTy, GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitItem,
+    Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitItem,
     TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
@@ -311,15 +312,27 @@ pub struct Types {
 impl_lint_pass!(Types => [BOX_COLLECTION, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, RC_MUTEX, TYPE_COMPLEXITY]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
-    fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
-        let is_in_trait_impl =
-            if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(id).def_id) {
-                matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
-            } else {
-                false
-            };
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'_>,
+        _: FnKind<'_>,
+        decl: &FnDecl<'_>,
+        _: &Body<'_>,
+        _: Span,
+        def_id: LocalDefId,
+    ) {
+        let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(
+            cx.tcx
+                .hir()
+                .get_parent_item(cx.tcx.hir().local_def_id_to_hir_id(def_id))
+                .def_id,
+        ) {
+            matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
+        } else {
+            false
+        };
 
-        let is_exported = cx.effective_visibilities.is_exported(cx.tcx.hir().local_def_id(id));
+        let is_exported = cx.effective_visibilities.is_exported(def_id);
 
         self.check_fn_decl(
             cx,
@@ -381,7 +394,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         let is_exported = cx
             .effective_visibilities
-            .is_exported(cx.tcx.hir().local_def_id(field.hir_id));
+            .is_exported(field.def_id);
 
         self.check_ty(
             cx,

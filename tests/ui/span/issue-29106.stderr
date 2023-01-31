@@ -1,6 +1,9 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-29106.rs:16:26
    |
+LL |         let (y, x);
+   |                 - binding `x` declared here
+LL |         x = "alive".to_string();
 LL |         y = Arc::new(Foo(&x));
    |                          ^^ borrowed value does not live long enough
 LL |     }
@@ -14,6 +17,9 @@ LL |     }
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-29106.rs:23:25
    |
+LL |         let (y, x);
+   |                 - binding `x` declared here
+LL |         x = "alive".to_string();
 LL |         y = Rc::new(Foo(&x));
    |                         ^^ borrowed value does not live long enough
 LL |     }

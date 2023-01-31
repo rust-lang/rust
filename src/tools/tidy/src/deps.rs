@@ -59,7 +59,6 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-egraph", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-isle", "Apache-2.0 WITH LLVM-exception"),
@@ -286,7 +285,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-codegen",
     "cranelift-codegen-meta",
     "cranelift-codegen-shared",
-    "cranelift-egraph",
     "cranelift-entity",
     "cranelift-frontend",
     "cranelift-isle",
@@ -321,10 +319,12 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",
     "windows-sys",
+    "windows_aarch64_gnullvm",
     "windows_aarch64_msvc",
     "windows_i686_gnu",
     "windows_i686_msvc",
     "windows_x86_64_gnu",
+    "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
 ];
 

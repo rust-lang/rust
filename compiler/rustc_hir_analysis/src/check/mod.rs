@@ -105,6 +105,7 @@ pub fn provide(providers: &mut Providers) {
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_const: compare_impl_item::compare_impl_const_raw,
+        check_generator_obligations: check::check_generator_obligations,
         ..*providers
     };
 }
@@ -445,7 +446,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
             // regions just fine, showing `fn(&MyType)`.
             fn_sig_suggestion(
                 tcx,
-                tcx.fn_sig(assoc.def_id).skip_binder(),
+                tcx.fn_sig(assoc.def_id).subst_identity().skip_binder(),
                 assoc.ident(tcx),
                 tcx.predicates_of(assoc.def_id),
                 assoc,

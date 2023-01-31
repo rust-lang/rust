@@ -5,11 +5,11 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     let mut _0: std::result::Result<T, E>; // return place in scope 0 at $DIR/try_identity_e2e.rs:+0:34: +0:46
     let mut _2: std::ops::ControlFlow<E, T>; // in scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
     let mut _3: isize;                   // in scope 0 at $DIR/try_identity_e2e.rs:+4:17: +4:22
-    let mut _4: T;                       // in scope 0 at $DIR/try_identity_e2e.rs:+4:48: +4:49
-    let mut _5: E;                       // in scope 0 at $DIR/try_identity_e2e.rs:+5:46: +5:47
+    let _4: T;                           // in scope 0 at $DIR/try_identity_e2e.rs:+4:20: +4:21
+    let _5: E;                           // in scope 0 at $DIR/try_identity_e2e.rs:+5:21: +5:22
     let mut _6: isize;                   // in scope 0 at $DIR/try_identity_e2e.rs:+8:13: +8:37
     let _7: T;                           // in scope 0 at $DIR/try_identity_e2e.rs:+8:35: +8:36
-    let mut _8: E;                       // in scope 0 at $DIR/try_identity_e2e.rs:+9:49: +9:50
+    let _8: E;                           // in scope 0 at $DIR/try_identity_e2e.rs:+9:32: +9:33
     scope 1 {
         debug v => _4;                   // in scope 1 at $DIR/try_identity_e2e.rs:+4:20: +4:21
     }
@@ -30,6 +30,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     }
 
     bb1: {
+        StorageLive(_5);                 // scope 0 at $DIR/try_identity_e2e.rs:+5:21: +5:22
         _5 = move ((_1 as Err).0: E);    // scope 0 at $DIR/try_identity_e2e.rs:+5:21: +5:22
         Deinit(_2);                      // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
         ((_2 as Break).0: E) = move _5;  // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
@@ -39,6 +40,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     }
 
     bb2: {
+        StorageLive(_4);                 // scope 0 at $DIR/try_identity_e2e.rs:+4:20: +4:21
         _4 = move ((_1 as Ok).0: T);     // scope 0 at $DIR/try_identity_e2e.rs:+4:20: +4:21
         Deinit(_2);                      // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
         ((_2 as Continue).0: T) = move _4; // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
@@ -48,6 +50,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     }
 
     bb3: {
+        StorageLive(_8);                 // scope 0 at $DIR/try_identity_e2e.rs:+9:32: +9:33
         _8 = move ((_2 as Break).0: E);  // scope 0 at $DIR/try_identity_e2e.rs:+9:32: +9:33
         Deinit(_0);                      // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
         ((_0 as Err).0: E) = move _8;    // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
@@ -61,6 +64,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     }
 
     bb5: {
+        StorageLive(_7);                 // scope 0 at $DIR/try_identity_e2e.rs:+8:35: +8:36
         _7 = move ((_2 as Continue).0: T); // scope 0 at $DIR/try_identity_e2e.rs:+8:35: +8:36
         Deinit(_0);                      // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
         ((_0 as Ok).0: T) = move _7;     // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6

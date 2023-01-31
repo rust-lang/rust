@@ -7,7 +7,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::CRATE_DEF_ID;
-use rustc_hir::CRATE_HIR_ID;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
@@ -2022,7 +2021,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|constraint| BlameConstraint {
                 category: constraint.category,
                 from_closure: constraint.from_closure,
-                cause: ObligationCause::new(constraint.span, CRATE_HIR_ID, cause_code.clone()),
+                cause: ObligationCause::new(constraint.span, CRATE_DEF_ID, cause_code.clone()),
                 variance_info: constraint.variance_info,
                 outlives_constraint: *constraint,
             })

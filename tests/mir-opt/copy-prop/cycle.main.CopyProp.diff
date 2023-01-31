@@ -1,0 +1,60 @@
+- // MIR for `main` before CopyProp
++ // MIR for `main` after CopyProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/cycle.rs:+0:11: +0:11
+      let mut _1: i32;                     // in scope 0 at $DIR/cycle.rs:+1:9: +1:14
+      let mut _4: i32;                     // in scope 0 at $DIR/cycle.rs:+4:9: +4:10
+      let _5: ();                          // in scope 0 at $DIR/cycle.rs:+6:5: +6:12
+      let mut _6: i32;                     // in scope 0 at $DIR/cycle.rs:+6:10: +6:11
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/cycle.rs:+1:9: +1:14
+          let _2: i32;                     // in scope 1 at $DIR/cycle.rs:+2:9: +2:10
+          scope 2 {
+              debug y => _2;               // in scope 2 at $DIR/cycle.rs:+2:9: +2:10
+              let _3: i32;                 // in scope 2 at $DIR/cycle.rs:+3:9: +3:10
+              scope 3 {
+-                 debug z => _3;           // in scope 3 at $DIR/cycle.rs:+3:9: +3:10
++                 debug z => _2;           // in scope 3 at $DIR/cycle.rs:+3:9: +3:10
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/cycle.rs:+1:9: +1:14
+          _1 = val() -> bb1;               // scope 0 at $DIR/cycle.rs:+1:17: +1:22
+                                           // mir::Constant
+                                           // + span: $DIR/cycle.rs:9:17: 9:20
+                                           // + literal: Const { ty: fn() -> i32 {val}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
+          StorageLive(_2);                 // scope 1 at $DIR/cycle.rs:+2:9: +2:10
+          _2 = _1;                         // scope 1 at $DIR/cycle.rs:+2:13: +2:14
+-         StorageLive(_3);                 // scope 2 at $DIR/cycle.rs:+3:9: +3:10
+-         _3 = _2;                         // scope 2 at $DIR/cycle.rs:+3:13: +3:14
+-         StorageLive(_4);                 // scope 3 at $DIR/cycle.rs:+4:9: +4:10
+-         _4 = _3;                         // scope 3 at $DIR/cycle.rs:+4:9: +4:10
+-         _1 = move _4;                    // scope 3 at $DIR/cycle.rs:+4:5: +4:10
+-         StorageDead(_4);                 // scope 3 at $DIR/cycle.rs:+4:9: +4:10
++         _1 = _2;                         // scope 3 at $DIR/cycle.rs:+4:5: +4:10
+          StorageLive(_5);                 // scope 3 at $DIR/cycle.rs:+6:5: +6:12
+          StorageLive(_6);                 // scope 3 at $DIR/cycle.rs:+6:10: +6:11
+          _6 = _1;                         // scope 3 at $DIR/cycle.rs:+6:10: +6:11
+          _5 = std::mem::drop::<i32>(move _6) -> bb2; // scope 3 at $DIR/cycle.rs:+6:5: +6:12
+                                           // mir::Constant
+                                           // + span: $DIR/cycle.rs:14:5: 14:9
+                                           // + literal: Const { ty: fn(i32) {std::mem::drop::<i32>}, val: Value(<ZST>) }
+      }
+  
+      bb2: {
+          StorageDead(_6);                 // scope 3 at $DIR/cycle.rs:+6:11: +6:12
+          StorageDead(_5);                 // scope 3 at $DIR/cycle.rs:+6:12: +6:13
+          _0 = const ();                   // scope 0 at $DIR/cycle.rs:+0:11: +7:2
+-         StorageDead(_3);                 // scope 2 at $DIR/cycle.rs:+7:1: +7:2
+-         StorageDead(_2);                 // scope 1 at $DIR/cycle.rs:+7:1: +7:2
+          StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:+7:1: +7:2
+          return;                          // scope 0 at $DIR/cycle.rs:+7:2: +7:2
+      }
+  }
+  

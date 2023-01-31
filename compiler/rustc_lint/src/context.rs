@@ -882,6 +882,9 @@ pub trait LintContext: Sized {
                         );
                     }
                 }
+                BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive => {
+                    db.help("consider implementing the trait by hand, or remove the `packed` attribute");
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(db)

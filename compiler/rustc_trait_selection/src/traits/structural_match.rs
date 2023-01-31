@@ -101,7 +101,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
             ty::Closure(..) => {
                 return ControlFlow::Break(ty);
             }
-            ty::Generator(..) | ty::GeneratorWitness(..) => {
+            ty::Generator(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => {
                 return ControlFlow::Break(ty);
             }
             ty::FnDef(..) => {

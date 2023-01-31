@@ -19,7 +19,7 @@ fn concrete_ty() -> OneTy<u32> {
 
 fn concrete_lifetime() -> OneLifetime<'static> {
     6u32
-    //~^ ERROR non-defining opaque type use in defining scope
+    //~^ ERROR expected generic lifetime parameter, found `'static`
 }
 
 fn concrete_const() -> OneConst<{ 123 }> {

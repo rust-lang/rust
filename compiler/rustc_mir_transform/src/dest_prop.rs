@@ -328,7 +328,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
         match &statement.kind {
             StatementKind::Assign(box (dest, rvalue)) => {
                 match rvalue {
-                    Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
+                    Rvalue::CopyForDeref(place)
+                    | Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
                         // These might've been turned into self-assignments by the replacement
                         // (this includes the original statement we wanted to eliminate).
                         if dest == place {
@@ -577,6 +578,7 @@ impl WriteInfo {
                 self.add_place(**place);
             }
             StatementKind::Intrinsic(_)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop
             | StatementKind::Coverage(_)
             | StatementKind::StorageLive(_)
@@ -754,7 +756,7 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         if let StatementKind::Assign(box (
             lhs,
-            Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
+            Rvalue::CopyForDeref(rhs) | Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
         )) = &statement.kind
         {
             let Some((src, dest)) = places_to_candidate_pair(*lhs, *rhs, self.body) else {

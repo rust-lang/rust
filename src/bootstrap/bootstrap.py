@@ -712,7 +712,7 @@ class RustBuild(object):
 
     def build_bootstrap(self, color):
         """Build bootstrap"""
-        print("Building rustbuild")
+        print("Building bootstrap")
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)

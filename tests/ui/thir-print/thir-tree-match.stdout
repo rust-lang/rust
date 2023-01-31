@@ -1,0 +1,342 @@
+DefId(0:16 ~ thir_tree_match[3c9a]::has_match):
+params: [
+    Param {
+        ty: Foo
+        ty_span: Some($DIR/thir-tree-match.rs:15:19: 15:22 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).1))
+        param: Some( 
+            Pat: {
+                ty: Foo
+                span: $DIR/thir-tree-match.rs:15:14: 15:17 (#0)
+                kind: PatKind {
+                    Binding {
+                        mutability: Not
+                        name: "foo"
+                        mode: ByValue
+                        var: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).2))
+                        ty: Foo
+                        is_primary: true
+                        subpattern: None
+                    }
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: bool
+        temp_lifetime: Some(Node(26))
+        span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Destruction(26)
+                lint_level: Inherited
+                value:
+                    Expr {
+                        ty: bool
+                        temp_lifetime: Some(Node(26))
+                        span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
+                        kind: 
+                            Scope {
+                                region_scope: Node(26)
+                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).26))
+                                value:
+                                    Expr {
+                                        ty: bool
+                                        temp_lifetime: Some(Node(26))
+                                        span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
+                                        kind: 
+                                            Block {
+                                                targeted_by_break: false
+                                                opt_destruction_scope: None
+                                                span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
+                                                region_scope: Node(25)
+                                                safety_mode: Safe
+                                                stmts: []
+                                                expr:
+                                                    Expr {
+                                                        ty: bool
+                                                        temp_lifetime: Some(Node(26))
+                                                        span: $DIR/thir-tree-match.rs:16:5: 20:6 (#0)
+                                                        kind: 
+                                                            Scope {
+                                                                region_scope: Node(3)
+                                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).3))
+                                                                value:
+                                                                    Expr {
+                                                                        ty: bool
+                                                                        temp_lifetime: Some(Node(26))
+                                                                        span: $DIR/thir-tree-match.rs:16:5: 20:6 (#0)
+                                                                        kind: 
+                                                                            Match {
+                                                                                scrutinee:
+                                                                                    Expr {
+                                                                                        ty: Foo
+                                                                                        temp_lifetime: Some(Node(26))
+                                                                                        span: $DIR/thir-tree-match.rs:16:11: 16:14 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(4)
+                                                                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).4))
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: Foo
+                                                                                                        temp_lifetime: Some(Node(26))
+                                                                                                        span: $DIR/thir-tree-match.rs:16:11: 16:14 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                arms: [
+                                                                                    Arm {
+                                                                                        pattern: 
+                                                                                            Pat: {
+                                                                                                ty: Foo
+                                                                                                span: $DIR/thir-tree-match.rs:17:9: 17:32 (#0)
+                                                                                                kind: PatKind {
+                                                                                                    Variant {
+                                                                                                        adt_def: 
+                                                                                                            AdtDef {
+                                                                                                                did: DefId(0:10 ~ thir_tree_match[3c9a]::Foo)
+                                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[3c9a]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[3c9a]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[3c9a]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[3c9a])) }], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[3c9a]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[3c9a]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }]
+                                                                                                                flags: IS_ENUM
+                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 11573694388057581 }
+                                                                                                        substs: []
+                                                                                                        variant_index: 0
+                                                                                                        subpatterns: [
+                                                                                                            Pat: {
+                                                                                                                ty: Bar
+                                                                                                                span: $DIR/thir-tree-match.rs:17:21: 17:31 (#0)
+                                                                                                                kind: PatKind {
+                                                                                                                    Variant {
+                                                                                                                        adt_def: 
+                                                                                                                            AdtDef {
+                                                                                                                                did: DefId(0:3 ~ thir_tree_match[3c9a]::Bar)
+                                                                                                                                variants: [VariantDef { def_id: DefId(0:4 ~ thir_tree_match[3c9a]::Bar::First), ctor: Some((Const, DefId(0:5 ~ thir_tree_match[3c9a]::Bar::First::{constructor#0}))), name: "First", discr: Relative(0), fields: [], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:6 ~ thir_tree_match[3c9a]::Bar::Second), ctor: Some((Const, DefId(0:7 ~ thir_tree_match[3c9a]::Bar::Second::{constructor#0}))), name: "Second", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:8 ~ thir_tree_match[3c9a]::Bar::Third), ctor: Some((Const, DefId(0:9 ~ thir_tree_match[3c9a]::Bar::Third::{constructor#0}))), name: "Third", discr: Relative(2), fields: [], flags: NO_VARIANT_FLAGS }]
+                                                                                                                                flags: IS_ENUM
+                                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 3125160937860410723 }
+                                                                                                                        substs: []
+                                                                                                                        variant_index: 0
+                                                                                                                        subpatterns: []
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            }
+                                                                                                        ]
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        guard: None
+                                                                                        body: 
+                                                                                            Expr {
+                                                                                                ty: bool
+                                                                                                temp_lifetime: Some(Node(13))
+                                                                                                span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Destruction(13)
+                                                                                                        lint_level: Inherited
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: bool
+                                                                                                                temp_lifetime: Some(Node(13))
+                                                                                                                span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
+                                                                                                                kind: 
+                                                                                                                    Scope {
+                                                                                                                        region_scope: Node(13)
+                                                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).13))
+                                                                                                                        value:
+                                                                                                                            Expr {
+                                                                                                                                ty: bool
+                                                                                                                                temp_lifetime: Some(Node(13))
+                                                                                                                                span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
+                                                                                                                                kind: 
+                                                                                                                                    Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0) }, neg: false)
+
+                                                                                                                            }
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).12))
+                                                                                        scope: Node(12)
+                                                                                        span: $DIR/thir-tree-match.rs:17:9: 17:40 (#0)
+                                                                                    }
+                                                                                    Arm {
+                                                                                        pattern: 
+                                                                                            Pat: {
+                                                                                                ty: Foo
+                                                                                                span: $DIR/thir-tree-match.rs:18:9: 18:23 (#0)
+                                                                                                kind: PatKind {
+                                                                                                    Variant {
+                                                                                                        adt_def: 
+                                                                                                            AdtDef {
+                                                                                                                did: DefId(0:10 ~ thir_tree_match[3c9a]::Foo)
+                                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[3c9a]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[3c9a]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[3c9a]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[3c9a])) }], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[3c9a]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[3c9a]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }]
+                                                                                                                flags: IS_ENUM
+                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 11573694388057581 }
+                                                                                                        substs: []
+                                                                                                        variant_index: 0
+                                                                                                        subpatterns: [
+                                                                                                            Pat: {
+                                                                                                                ty: Bar
+                                                                                                                span: $DIR/thir-tree-match.rs:18:21: 18:22 (#0)
+                                                                                                                kind: PatKind {
+                                                                                                                    Wild
+                                                                                                                }
+                                                                                                            }
+                                                                                                        ]
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        guard: None
+                                                                                        body: 
+                                                                                            Expr {
+                                                                                                ty: bool
+                                                                                                temp_lifetime: Some(Node(19))
+                                                                                                span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Destruction(19)
+                                                                                                        lint_level: Inherited
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: bool
+                                                                                                                temp_lifetime: Some(Node(19))
+                                                                                                                span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
+                                                                                                                kind: 
+                                                                                                                    Scope {
+                                                                                                                        region_scope: Node(19)
+                                                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).19))
+                                                                                                                        value:
+                                                                                                                            Expr {
+                                                                                                                                ty: bool
+                                                                                                                                temp_lifetime: Some(Node(19))
+                                                                                                                                span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
+                                                                                                                                kind: 
+                                                                                                                                    Literal( lit: Spanned { node: Bool(false), span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0) }, neg: false)
+
+                                                                                                                            }
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).18))
+                                                                                        scope: Node(18)
+                                                                                        span: $DIR/thir-tree-match.rs:18:9: 18:32 (#0)
+                                                                                    }
+                                                                                    Arm {
+                                                                                        pattern: 
+                                                                                            Pat: {
+                                                                                                ty: Foo
+                                                                                                span: $DIR/thir-tree-match.rs:19:9: 19:20 (#0)
+                                                                                                kind: PatKind {
+                                                                                                    Variant {
+                                                                                                        adt_def: 
+                                                                                                            AdtDef {
+                                                                                                                did: DefId(0:10 ~ thir_tree_match[3c9a]::Foo)
+                                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[3c9a]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[3c9a]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[3c9a]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[3c9a])) }], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[3c9a]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[3c9a]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }]
+                                                                                                                flags: IS_ENUM
+                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 11573694388057581 }
+                                                                                                        substs: []
+                                                                                                        variant_index: 1
+                                                                                                        subpatterns: []
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        guard: None
+                                                                                        body: 
+                                                                                            Expr {
+                                                                                                ty: bool
+                                                                                                temp_lifetime: Some(Node(24))
+                                                                                                span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Destruction(24)
+                                                                                                        lint_level: Inherited
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: bool
+                                                                                                                temp_lifetime: Some(Node(24))
+                                                                                                                span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
+                                                                                                                kind: 
+                                                                                                                    Scope {
+                                                                                                                        region_scope: Node(24)
+                                                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).24))
+                                                                                                                        value:
+                                                                                                                            Expr {
+                                                                                                                                ty: bool
+                                                                                                                                temp_lifetime: Some(Node(24))
+                                                                                                                                span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
+                                                                                                                                kind: 
+                                                                                                                                    Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0) }, neg: false)
+
+                                                                                                                            }
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).23))
+                                                                                        scope: Node(23)
+                                                                                        span: $DIR/thir-tree-match.rs:19:9: 19:28 (#0)
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                    }
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(0:17 ~ thir_tree_match[3c9a]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_lifetime: Some(Node(2))
+        span: $DIR/thir-tree-match.rs:23:11: 23:13 (#0)
+        kind: 
+            Scope {
+                region_scope: Destruction(2)
+                lint_level: Inherited
+                value:
+                    Expr {
+                        ty: ()
+                        temp_lifetime: Some(Node(2))
+                        span: $DIR/thir-tree-match.rs:23:11: 23:13 (#0)
+                        kind: 
+                            Scope {
+                                region_scope: Node(2)
+                                lint_level: Explicit(HirId(DefId(0:17 ~ thir_tree_match[3c9a]::main).2))
+                                value:
+                                    Expr {
+                                        ty: ()
+                                        temp_lifetime: Some(Node(2))
+                                        span: $DIR/thir-tree-match.rs:23:11: 23:13 (#0)
+                                        kind: 
+                                            Block {
+                                                targeted_by_break: false
+                                                opt_destruction_scope: None
+                                                span: $DIR/thir-tree-match.rs:23:11: 23:13 (#0)
+                                                region_scope: Node(1)
+                                                safety_mode: Safe
+                                                stmts: []
+                                                expr: []
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+

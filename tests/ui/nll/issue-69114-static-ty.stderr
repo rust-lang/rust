@@ -1,6 +1,8 @@
 error[E0597]: `n` does not live long enough
   --> $DIR/issue-69114-static-ty.rs:7:9
    |
+LL |     let n = 42;
+   |         - binding `n` declared here
 LL |     FOO(&n);
    |     ----^^-
    |     |   |

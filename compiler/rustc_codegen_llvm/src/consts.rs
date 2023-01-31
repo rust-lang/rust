@@ -13,7 +13,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ConstAllocation, ErrorHandled, GlobalAlloc, InitChunk, Pointer,
+    read_target_uint, Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer,
     Scalar as InterpScalar,
 };
 use rustc_middle::mir::mono::MonoItem;
@@ -21,9 +21,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::Lto;
-use rustc_target::abi::{
-    AddressSpace, Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
-};
+use rustc_target::abi::{Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
 use std::ops::Range;
 
 pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
@@ -98,12 +96,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
         .expect("const_alloc_to_llvm: could not read relocation pointer")
             as u64;
 
-        let address_space = match cx.tcx.global_alloc(alloc_id) {
-            GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
-            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
-                AddressSpace::DATA
-            }
-        };
+        let address_space = cx.tcx.global_alloc(alloc_id).address_space(cx);
 
         llvals.push(cx.scalar_to_backend(
             InterpScalar::from_pointer(
@@ -111,7 +104,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
                 &cx.tcx,
             ),
             Scalar::Initialized {
-                value: Primitive::Pointer,
+                value: Primitive::Pointer(address_space),
                 valid_range: WrappingRange::full(dl.pointer_size),
             },
             cx.type_i8p_ext(address_space),

@@ -160,6 +160,32 @@ pub enum TyKind<I: Interner> {
     /// ```
     GeneratorWitness(I::BinderListTy),
 
+    /// A type representing the types stored inside a generator.
+    /// This should only appear as part of the `GeneratorSubsts`.
+    ///
+    /// Unlike upvars, the witness can reference lifetimes from
+    /// inside of the generator itself. To deal with them in
+    /// the type of the generator, we convert them to higher ranked
+    /// lifetimes bound by the witness itself.
+    ///
+    /// This variant is only using when `drop_tracking_mir` is set.
+    /// This contains the `DefId` and the `SubstRef` of the generator.
+    /// The actual witness types are computed on MIR by the `mir_generator_witnesses` query.
+    ///
+    /// Looking at the following example, the witness for this generator
+    /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
+    ///
+    /// ```ignore UNSOLVED (ask @compiler-errors, should this error? can we just swap the yields?)
+    /// #![feature(generators)]
+    /// |a| {
+    ///     let x = &vec![3];
+    ///     yield a;
+    ///     yield x[0];
+    /// }
+    /// # ;
+    /// ```
+    GeneratorWitnessMIR(I::DefId, I::SubstsRef),
+
     /// The never type `!`.
     Never,
 
@@ -241,6 +267,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Placeholder(_) => 23,
         Infer(_) => 24,
         Error(_) => 25,
+        GeneratorWitnessMIR(_, _) => 26,
     }
 }
 
@@ -266,6 +293,7 @@ impl<I: Interner> Clone for TyKind<I> {
             Closure(d, s) => Closure(d.clone(), s.clone()),
             Generator(d, s, m) => Generator(d.clone(), s.clone(), m.clone()),
             GeneratorWitness(g) => GeneratorWitness(g.clone()),
+            GeneratorWitnessMIR(d, s) => GeneratorWitnessMIR(d.clone(), s.clone()),
             Never => Never,
             Tuple(t) => Tuple(t.clone()),
             Alias(k, p) => Alias(*k, p.clone()),
@@ -303,6 +331,10 @@ impl<I: Interner> PartialEq for TyKind<I> {
                     a_d == b_d && a_s == b_s && a_m == b_m
                 }
                 (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g == b_g,
+                (
+                    &GeneratorWitnessMIR(ref a_d, ref a_s),
+                    &GeneratorWitnessMIR(ref b_d, ref b_s),
+                ) => a_d == b_d && a_s == b_s,
                 (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
                 (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
                 (Param(a_p), Param(b_p)) => a_p == b_p,
@@ -360,6 +392,13 @@ impl<I: Interner> Ord for TyKind<I> {
                     a_d.cmp(b_d).then_with(|| a_s.cmp(b_s).then_with(|| a_m.cmp(b_m)))
                 }
                 (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g.cmp(b_g),
+                (
+                    &GeneratorWitnessMIR(ref a_d, ref a_s),
+                    &GeneratorWitnessMIR(ref b_d, ref b_s),
+                ) => match Ord::cmp(a_d, b_d) {
+                    Ordering::Equal => Ord::cmp(a_s, b_s),
+                    cmp => cmp,
+                },
                 (Tuple(a_t), Tuple(b_t)) => a_t.cmp(b_t),
                 (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i.cmp(b_i).then_with(|| a_p.cmp(b_p)),
                 (Param(a_p), Param(b_p)) => a_p.cmp(b_p),
@@ -421,6 +460,10 @@ impl<I: Interner> hash::Hash for TyKind<I> {
                 m.hash(state)
             }
             GeneratorWitness(g) => g.hash(state),
+            GeneratorWitnessMIR(d, s) => {
+                d.hash(state);
+                s.hash(state);
+            }
             Tuple(t) => t.hash(state),
             Alias(i, p) => {
                 i.hash(state);
@@ -461,6 +504,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Closure(d, s) => f.debug_tuple_field2_finish("Closure", d, s),
             Generator(d, s, m) => f.debug_tuple_field3_finish("Generator", d, s, m),
             GeneratorWitness(g) => f.debug_tuple_field1_finish("GeneratorWitness", g),
+            GeneratorWitnessMIR(d, s) => f.debug_tuple_field2_finish("GeneratorWitnessMIR", d, s),
             Never => f.write_str("Never"),
             Tuple(t) => f.debug_tuple_field1_finish("Tuple", t),
             Alias(i, a) => f.debug_tuple_field2_finish("Alias", i, a),
@@ -559,6 +603,10 @@ where
             GeneratorWitness(b) => e.emit_enum_variant(disc, |e| {
                 b.encode(e);
             }),
+            GeneratorWitnessMIR(def_id, substs) => e.emit_enum_variant(disc, |e| {
+                def_id.encode(e);
+                substs.encode(e);
+            }),
             Never => e.emit_enum_variant(disc, |_| {}),
             Tuple(substs) => e.emit_enum_variant(disc, |e| {
                 substs.encode(e);
@@ -641,6 +689,7 @@ where
             23 => Placeholder(Decodable::decode(d)),
             24 => Infer(Decodable::decode(d)),
             25 => Error(Decodable::decode(d)),
+            26 => GeneratorWitnessMIR(Decodable::decode(d), Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
@@ -741,6 +790,10 @@ where
             }
             GeneratorWitness(b) => {
                 b.hash_stable(__hcx, __hasher);
+            }
+            GeneratorWitnessMIR(def_id, substs) => {
+                def_id.hash_stable(__hcx, __hasher);
+                substs.hash_stable(__hcx, __hasher);
             }
             Never => {}
             Tuple(substs) => {

@@ -25,10 +25,8 @@ use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
-use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
-use std::iter;
 use std::ops::Index;
 
 /// A "canonicalized" type `V` is one where all free inference
@@ -62,23 +60,23 @@ impl<'tcx> ty::TypeFoldable<'tcx> for CanonicalVarInfos<'tcx> {
 /// vectors with the original values that were replaced by canonical
 /// variables. You will need to supply it later to instantiate the
 /// canonicalized query response.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct CanonicalVarValues<'tcx> {
-    pub var_values: IndexVec<BoundVar, GenericArg<'tcx>>,
+    pub var_values: ty::SubstsRef<'tcx>,
 }
 
 impl CanonicalVarValues<'_> {
     pub fn is_identity(&self) -> bool {
-        self.var_values.iter_enumerated().all(|(bv, arg)| match arg.unpack() {
+        self.var_values.iter().enumerate().all(|(bv, arg)| match arg.unpack() {
             ty::GenericArgKind::Lifetime(r) => {
-                matches!(*r, ty::ReLateBound(ty::INNERMOST, br) if br.var == bv)
+                matches!(*r, ty::ReLateBound(ty::INNERMOST, br) if br.var.as_usize() == bv)
             }
             ty::GenericArgKind::Type(ty) => {
-                matches!(*ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var == bv)
+                matches!(*ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var.as_usize() == bv)
             }
             ty::GenericArgKind::Const(ct) => {
-                matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc == bv)
+                matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc.as_usize() == bv)
             }
         })
     }
@@ -339,57 +337,57 @@ TrivialTypeTraversalAndLiftImpls! {
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {
+    // Given a list of canonical variables, construct a set of values which are
+    // the identity response.
+    pub fn make_identity(
+        tcx: TyCtxt<'tcx>,
+        infos: CanonicalVarInfos<'tcx>,
+    ) -> CanonicalVarValues<'tcx> {
+        CanonicalVarValues {
+            var_values: tcx.mk_substs(infos.iter().enumerate().map(
+                |(i, info)| -> ty::GenericArg<'tcx> {
+                    match info.kind {
+                        CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => tcx
+                            .mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into()))
+                            .into(),
+                        CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
+                            let br = ty::BoundRegion {
+                                var: ty::BoundVar::from_usize(i),
+                                kind: ty::BrAnon(i as u32, None),
+                            };
+                            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
+                        }
+                        CanonicalVarKind::Const(_, ty)
+                        | CanonicalVarKind::PlaceholderConst(_, ty) => tcx
+                            .mk_const(
+                                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i)),
+                                ty,
+                            )
+                            .into(),
+                    }
+                },
+            )),
+        }
+    }
+
     /// Creates dummy var values which should not be used in a
     /// canonical response.
     pub fn dummy() -> CanonicalVarValues<'tcx> {
-        CanonicalVarValues { var_values: Default::default() }
+        CanonicalVarValues { var_values: ty::List::empty() }
     }
 
     #[inline]
     pub fn len(&self) -> usize {
         self.var_values.len()
     }
-
-    /// Makes an identity substitution from this one: each bound var
-    /// is matched to the same bound var, preserving the original kinds.
-    /// For example, if we have:
-    /// `self.var_values == [Type(u32), Lifetime('a), Type(u64)]`
-    /// we'll return a substitution `subst` with:
-    /// `subst.var_values == [Type(^0), Lifetime(^1), Type(^2)]`.
-    pub fn make_identity(&self, tcx: TyCtxt<'tcx>) -> Self {
-        use crate::ty::subst::GenericArgKind;
-
-        CanonicalVarValues {
-            var_values: iter::zip(&self.var_values, 0..)
-                .map(|(kind, i)| match kind.unpack() {
-                    GenericArgKind::Type(..) => {
-                        tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())).into()
-                    }
-                    GenericArgKind::Lifetime(..) => {
-                        let br = ty::BoundRegion {
-                            var: ty::BoundVar::from_u32(i),
-                            kind: ty::BrAnon(i, None),
-                        };
-                        tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
-                    }
-                    GenericArgKind::Const(ct) => tcx
-                        .mk_const(
-                            ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
-                            ct.ty(),
-                        )
-                        .into(),
-                })
-                .collect(),
-        }
-    }
 }
 
 impl<'a, 'tcx> IntoIterator for &'a CanonicalVarValues<'tcx> {
     type Item = GenericArg<'tcx>;
-    type IntoIter = ::std::iter::Cloned<::std::slice::Iter<'a, GenericArg<'tcx>>>;
+    type IntoIter = ::std::iter::Copied<::std::slice::Iter<'a, GenericArg<'tcx>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.var_values.iter().cloned()
+        self.var_values.iter()
     }
 }
 
@@ -397,6 +395,6 @@ impl<'tcx> Index<BoundVar> for CanonicalVarValues<'tcx> {
     type Output = GenericArg<'tcx>;
 
     fn index(&self, value: BoundVar) -> &GenericArg<'tcx> {
-        &self.var_values[value]
+        &self.var_values[value.as_usize()]
     }
 }

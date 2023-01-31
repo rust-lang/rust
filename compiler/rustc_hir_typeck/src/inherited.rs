@@ -56,7 +56,7 @@ pub struct Inherited<'tcx> {
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, hir::HirId)>>,
 
     pub(super) deferred_generator_interiors:
-        RefCell<Vec<(hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
+        RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
 
     pub(super) body_id: Option<hir::BodyId>,
 

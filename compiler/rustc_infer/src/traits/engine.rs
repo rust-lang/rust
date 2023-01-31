@@ -36,11 +36,19 @@ pub trait TraitEngine<'tcx>: 'tcx {
         obligation: PredicateObligation<'tcx>,
     );
 
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
-
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
+    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>>;
+
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
+
+    /// Among all pending obligations, collect those are stalled on a inference variable which has
+    /// changed since the last call to `select_where_possible`. Those obligations are marked as
+    /// successful and returned.
+    fn drain_unstalled_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>>;
 }
 
 pub trait TraitEngineExt<'tcx> {
@@ -49,6 +57,8 @@ pub trait TraitEngineExt<'tcx> {
         infcx: &InferCtxt<'tcx>,
         obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
     );
+
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 }
 
 impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
@@ -60,5 +70,14 @@ impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
         for obligation in obligations {
             self.register_predicate_obligation(infcx, obligation);
         }
+    }
+
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+        let errors = self.select_where_possible(infcx);
+        if !errors.is_empty() {
+            return errors;
+        }
+
+        self.collect_remaining_errors()
     }
 }

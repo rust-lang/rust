@@ -18,7 +18,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, ItemId, Node, PatKind};
 use rustc_middle::bug;
@@ -198,7 +198,8 @@ where
                 // Something like `fn() -> Priv {my_func}` is considered a private type even if
                 // `my_func` is public, so we need to visit signatures.
                 if let ty::FnDef(..) = ty.kind() {
-                    tcx.fn_sig(def_id).visit_with(self)?;
+                    // FIXME: this should probably use `substs` from `FnDef`
+                    tcx.fn_sig(def_id).subst_identity().visit_with(self)?;
                 }
                 // Inherent static methods don't have self type in substs.
                 // Something like `fn() {my_method}` type of the method
@@ -270,7 +271,8 @@ where
             | ty::FnPtr(..)
             | ty::Param(..)
             | ty::Error(_)
-            | ty::GeneratorWitness(..) => {}
+            | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..) => {}
             ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
@@ -1877,7 +1879,7 @@ impl<'tcx> DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
 
 struct PrivateItemsInPublicInterfacesChecker<'tcx> {
     tcx: TyCtxt<'tcx>,
-    old_error_set_ancestry: LocalDefIdSet,
+    old_error_set_ancestry: HirIdSet,
 }
 
 impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
@@ -1890,7 +1892,9 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
             tcx: self.tcx,
             item_def_id: def_id,
             required_visibility,
-            has_old_errors: self.old_error_set_ancestry.contains(&def_id),
+            has_old_errors: self
+                .old_error_set_ancestry
+                .contains(&self.tcx.hir().local_def_id_to_hir_id(def_id)),
             in_assoc_ty: false,
         }
     }
@@ -2156,15 +2160,7 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
     }
 
     // Check for private types and traits in public interfaces.
-    let mut checker = PrivateItemsInPublicInterfacesChecker {
-        tcx,
-        // Only definition IDs are ever searched in `old_error_set_ancestry`,
-        // so we can filter away all non-definition IDs at this point.
-        old_error_set_ancestry: old_error_set_ancestry
-            .into_iter()
-            .filter_map(|hir_id| tcx.hir().opt_local_def_id(hir_id))
-            .collect(),
-    };
+    let mut checker = PrivateItemsInPublicInterfacesChecker { tcx, old_error_set_ancestry };
 
     for id in tcx.hir().items() {
         checker.check_item(id);

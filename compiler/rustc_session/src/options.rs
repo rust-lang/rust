@@ -1290,6 +1290,8 @@ options! {
         (default: no)"),
     drop_tracking: bool = (false, parse_bool, [TRACKED],
         "enables drop tracking in generators (default: no)"),
+    drop_tracking_mir: bool = (false, parse_bool, [TRACKED],
+        "enables drop tracking on MIR in generators (default: no)"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -1616,6 +1618,8 @@ options! {
         "measure time of each LLVM pass (default: no)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass (default: no)"),
+    tiny_const_eval_limit: bool = (false, parse_bool, [TRACKED],
+        "sets a tiny, non-configurable limit for const eval; useful for compiler tests"),
     #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
     tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`rustc --print tls-models` for details)"),

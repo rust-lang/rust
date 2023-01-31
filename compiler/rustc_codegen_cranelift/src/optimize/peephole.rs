@@ -7,7 +7,7 @@ use cranelift_frontend::FunctionBuilder;
 /// otherwise return the given value and false.
 pub(crate) fn maybe_unwrap_bool_not(bcx: &mut FunctionBuilder<'_>, arg: Value) -> (Value, bool) {
     if let ValueDef::Result(arg_inst, 0) = bcx.func.dfg.value_def(arg) {
-        match bcx.func.dfg[arg_inst] {
+        match bcx.func.dfg.insts[arg_inst] {
             // This is the lowering of `Rvalue::Not`
             InstructionData::IntCompareImm {
                 opcode: Opcode::IcmpImm,
@@ -34,7 +34,7 @@ pub(crate) fn maybe_known_branch_taken(
         return None;
     };
 
-    match bcx.func.dfg[arg_inst] {
+    match bcx.func.dfg.insts[arg_inst] {
         InstructionData::UnaryImm { opcode: Opcode::Iconst, imm } => {
             if test_zero {
                 Some(imm.bits() == 0)

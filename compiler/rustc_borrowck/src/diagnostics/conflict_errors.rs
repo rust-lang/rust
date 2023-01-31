@@ -766,7 +766,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let copy_did = infcx.tcx.require_lang_item(LangItem::Copy, Some(span));
         let cause = ObligationCause::new(
             span,
-            self.mir_hir_id(),
+            self.mir_def_id(),
             rustc_infer::traits::ObligationCauseCode::MiscObligation,
         );
         let errors = rustc_trait_selection::traits::fully_solve_bound(
@@ -1736,7 +1736,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 &self.local_names,
                 &mut err,
                 "",
-                None,
+                Some(borrow_span),
                 None,
             );
         }
@@ -2599,7 +2599,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
                         self.mir_def_id(),
-                        self.infcx.tcx.fn_sig(self.mir_def_id()),
+                        self.infcx.tcx.fn_sig(self.mir_def_id()).subst_identity(),
                     ),
                     _ => None,
                 }

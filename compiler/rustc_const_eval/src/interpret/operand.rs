@@ -319,7 +319,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
                 let scalar = alloc.read_scalar(
                     alloc_range(Size::ZERO, size),
-                    /*read_provenance*/ s.is_ptr(),
+                    /*read_provenance*/ matches!(s, abi::Pointer(_)),
                 )?;
                 Some(ImmTy { imm: scalar.into(), layout: mplace.layout })
             }
@@ -335,11 +335,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
                 let a_val = alloc.read_scalar(
                     alloc_range(Size::ZERO, a_size),
-                    /*read_provenance*/ a.is_ptr(),
+                    /*read_provenance*/ matches!(a, abi::Pointer(_)),
                 )?;
                 let b_val = alloc.read_scalar(
                     alloc_range(b_offset, b_size),
-                    /*read_provenance*/ b.is_ptr(),
+                    /*read_provenance*/ matches!(b, abi::Pointer(_)),
                 )?;
                 Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout })
             }

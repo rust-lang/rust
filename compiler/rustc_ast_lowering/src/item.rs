@@ -67,7 +67,6 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             current_hir_id_owner: hir::CRATE_OWNER_ID,
             item_local_id_counter: hir::ItemLocalId::new(0),
             node_id_to_local_id: Default::default(),
-            local_id_to_def_id: SortedMap::new(),
             trait_map: Default::default(),
 
             // Lowering state.

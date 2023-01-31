@@ -132,20 +132,62 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        {
-            let errors = self.select_where_possible(infcx);
-            if !errors.is_empty() {
-                return errors;
-            }
-        }
-
+    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>> {
         self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
         let selcx = SelectionContext::new(infcx);
         self.select(selcx)
+    }
+
+    fn drain_unstalled_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>> {
+        let mut processor = DrainProcessor { removed_predicates: Vec::new(), infcx };
+        let outcome: Outcome<_, _> = self.predicates.process_obligations(&mut processor);
+        assert!(outcome.errors.is_empty());
+        return processor.removed_predicates;
+
+        struct DrainProcessor<'a, 'tcx> {
+            infcx: &'a InferCtxt<'tcx>,
+            removed_predicates: Vec<PredicateObligation<'tcx>>,
+        }
+
+        impl<'tcx> ObligationProcessor for DrainProcessor<'_, 'tcx> {
+            type Obligation = PendingPredicateObligation<'tcx>;
+            type Error = !;
+            type OUT = Outcome<Self::Obligation, Self::Error>;
+
+            fn needs_process_obligation(&self, pending_obligation: &Self::Obligation) -> bool {
+                pending_obligation
+                    .stalled_on
+                    .iter()
+                    .any(|&var| self.infcx.ty_or_const_infer_var_changed(var))
+            }
+
+            fn process_obligation(
+                &mut self,
+                pending_obligation: &mut PendingPredicateObligation<'tcx>,
+            ) -> ProcessResult<PendingPredicateObligation<'tcx>, !> {
+                assert!(self.needs_process_obligation(pending_obligation));
+                self.removed_predicates.push(pending_obligation.obligation.clone());
+                ProcessResult::Changed(vec![])
+            }
+
+            fn process_backedge<'c, I>(
+                &mut self,
+                cycle: I,
+                _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>,
+            ) -> Result<(), !>
+            where
+                I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
+            {
+                self.removed_predicates.extend(cycle.map(|c| c.obligation.clone()));
+                Ok(())
+            }
+        }
     }
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
@@ -327,7 +369,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::ObjectSafe(trait_def_id) => {
-                    if !self.selcx.tcx().is_object_safe(trait_def_id) {
+                    if !self.selcx.tcx().check_is_object_safe(trait_def_id) {
                         ProcessResult::Error(CodeSelectionError(Unimplemented))
                     } else {
                         ProcessResult::Changed(vec![])

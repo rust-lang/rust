@@ -331,7 +331,7 @@ impl<'tcx> Inliner<'tcx> {
                     return None;
                 }
 
-                let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, substs);
+                let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
                 let source_info = SourceInfo { span: fn_span, ..terminator.source_info };
 
                 return Some(CallSite { callee, fn_sig, block: bb, target, source_info });
@@ -947,12 +947,12 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                             return;
                         };
 
-                        let Some(&f_ty) = layout.field_tys.get(local) else {
+                        let Some(f_ty) = layout.field_tys.get(local) else {
                             self.validation = Err("malformed MIR");
                             return;
                         };
 
-                        f_ty
+                        f_ty.ty
                     } else {
                         let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index()) else {
                             self.validation = Err("malformed MIR");

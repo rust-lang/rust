@@ -675,22 +675,42 @@ impl<'a> Parser<'a> {
             GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
             // Parse type argument.
-            let is_const_fn =
-                self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Parenthesis));
-            let mut snapshot = self.create_snapshot_for_diagnostic();
+
+            // Proactively create a parser snapshot enabling us to rewind and try to reparse the
+            // input as a const expression in case we fail to parse a type. If we successfully
+            // do so, we will report an error that it needs to be wrapped in braces.
+            let mut snapshot = None;
+            if self.may_recover() && self.token.can_begin_expr() {
+                snapshot = Some(self.create_snapshot_for_diagnostic());
+            }
+
             match self.parse_ty() {
-                Ok(ty) => GenericArg::Type(ty),
+                Ok(ty) => {
+                    // Since the type parser recovers from some malformed slice and array types and
+                    // successfully returns a type, we need to look for `TyKind::Err`s in the
+                    // type to determine if error recovery has occurred and if the input is not a
+                    // syntactically valid type after all.
+                    if let ast::TyKind::Slice(inner_ty) | ast::TyKind::Array(inner_ty, _) = &ty.kind
+                        && let ast::TyKind::Err = inner_ty.kind
+                        && let Some(snapshot) = snapshot
+                        && let Some(expr) = self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
+                    {
+                        return Ok(Some(self.dummy_const_arg_needs_braces(
+                            self.struct_span_err(expr.span, "invalid const generic expression"),
+                            expr.span,
+                        )));
+                    }
+
+                    GenericArg::Type(ty)
+                }
                 Err(err) => {
-                    if is_const_fn {
-                        match (*snapshot).parse_expr_res(Restrictions::CONST_EXPR, None) {
-                            Ok(expr) => {
-                                self.restore_snapshot(snapshot);
-                                return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
-                            }
-                            Err(err) => {
-                                err.cancel();
-                            }
-                        }
+                    if let Some(snapshot) = snapshot
+                        && let Some(expr) = self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
+                    {
+                        return Ok(Some(self.dummy_const_arg_needs_braces(
+                            err,
+                            expr.span,
+                        )));
                     }
                     // Try to recover from possible `const` arg without braces.
                     return self.recover_const_arg(start, err).map(Some);

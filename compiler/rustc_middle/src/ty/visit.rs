@@ -100,6 +100,9 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     fn has_opaque_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
     }
+    fn has_generators(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_GENERATOR)
+    }
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }

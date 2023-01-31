@@ -4,12 +4,12 @@
 extern crate reexport_check;
 
 // @!has 'foo/index.html' '//code' 'pub use self::i32;'
-// @has 'foo/index.html' '//div[@class="item-left deprecated module-item"]' 'i32'
+// @has 'foo/index.html' '//div[@class="item-left deprecated"]' 'i32'
 // @has 'foo/i32/index.html'
 #[allow(deprecated, deprecated_in_future)]
 pub use std::i32;
 // @!has 'foo/index.html' '//code' 'pub use self::string::String;'
-// @has 'foo/index.html' '//div[@class="item-left module-item"]' 'String'
+// @has 'foo/index.html' '//div[@class="item-left"]' 'String'
 pub use std::string::String;
 
 // @has 'foo/index.html' '//div[@class="item-right docblock-short"]' 'Docs in original'

@@ -280,7 +280,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             }
 
             let hir::GenericParamKind::Lifetime { .. } = duplicate.kind else { continue };
-            let dup_def = tcx.hir().local_def_id(duplicate.hir_id).to_def_id();
+            let dup_def = duplicate.def_id.to_def_id();
 
             let Some(dup_index) = generics.param_def_id_to_index(tcx, dup_def) else { bug!() };
 

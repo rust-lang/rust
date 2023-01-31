@@ -1,5 +1,8 @@
+// revisions: no_drop_tracking drop_tracking drop_tracking_mir
+// [drop_tracking] compile-flags: -Zdrop-tracking
+// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 // edition:2018
-// compile-flags: --crate-type lib -Zdrop-tracking
+// compile-flags: --crate-type lib
 
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
@@ -65,10 +68,13 @@ fn assert_send(_: impl Send) {}
 
 pub fn pass_assert() {
     assert_send(local_dropped_before_await());
+    //[no_drop_tracking]~^ ERROR future cannot be sent between threads safely
     assert_send(non_send_temporary_in_match());
     //~^ ERROR future cannot be sent between threads safely
     assert_send(non_sync_with_method_call());
     //~^ ERROR future cannot be sent between threads safely
     assert_send(non_sync_with_method_call_panic());
+    //[no_drop_tracking]~^ ERROR future cannot be sent between threads safely
     assert_send(non_sync_with_method_call_infinite_loop());
+    //[no_drop_tracking]~^ ERROR future cannot be sent between threads safely
 }
