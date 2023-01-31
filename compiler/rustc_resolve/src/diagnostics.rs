@@ -1717,7 +1717,7 @@ impl<'a> Resolver<'a> {
                         Applicability::MaybeIncorrect,
                     )),
                 )
-            } else if self.session.edition() == Edition::Edition2015 {
+            } else if self.session.edition().rust_2015() {
                 (
                     format!("maybe a missing crate `{ident}`?"),
                     Some((
