@@ -977,10 +977,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 		0 -1px 0 black;
 }
 
-.item-left.unstable {
-	opacity: 0.65;
-}
-
 .since {
 	font-weight: normal;
 	font-size: initial;
