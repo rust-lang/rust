@@ -80,7 +80,7 @@ class Pipeline:
     def rustc_stage_2(self) -> Path:
         return self.build_artifacts() / "stage2" / "bin" / "rustc"
 
-    def lib_llvm(self) -> Path:
+    def stage2_lib_llvm(self) -> Path:
         raise NotImplementedError()
 
     def opt_artifacts(self) -> Path:
@@ -130,8 +130,11 @@ class LinuxPipeline(Pipeline):
     def build_root(self) -> Path:
         return self.checkout_path() / "obj"
 
-    def lib_llvm(self) -> Path:
-        return (self.build_artifacts() / "llvm" / "lib" / "libLLVM.so").resolve()
+    def stage2_lib_llvm(self) -> Path:
+        stage2_lib_dir = self.build_artifacts() / "stage2" / "lib"
+        lib_llvms = list(stage2_lib_dir.glob("libLLVM*"))
+        assert len(lib_llvms) == 1, "There should be exactly one libLLVM file found"
+        return lib_llvms[0]
 
     def opt_artifacts(self) -> Path:
         return Path("/tmp/tmp-multistage/opt-artifacts")
@@ -629,19 +632,16 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
         env["LDFLAGS"] = "-Wl,-q"
 
     # Stage 3: Build PGO optimized rustc + PGO optimized LLVM
-    # TODO: Because "dist" is run here, I think we will end up packaging the libLLVM.so
+    # FIXME: Because "dist" is run here, I think we will end up packaging the libLLVM.so
     # at this point, so the optimization below won't apply to the shipped artifacts.
     with timer.stage("Build rustc (rustc PGO use, LLVM PGO use)"):
         cmd(final_build_args, env)
 
     # Stage 4: BOLT optimize LLVM.
     if pipeline.supports_bolt():
-        lib_llvm = pipeline.lib_llvm()
+        lib_llvm = pipeline.stage2_lib_llvm()
 
         # Back up the original libLLVM shared object.
-        # TODO: I think this is currently instrumenting the wrong libLLVM.so
-        # This is the one in the llvm/ directory, while the one that actually get
-        # used is something like stage2/lib/libLLVM-15-rust-1.69.0-nightly.so.
         orig_lib_llvm = pipeline.opt_artifacts() / "libLLVM.orig"
         shutil.move(lib_llvm, orig_lib_llvm)
 
