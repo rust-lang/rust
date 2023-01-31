@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
+use cargo_metadata::Edition;
 use clap::{CommandFactory, Parser};
 
 #[path = "test/mod.rs"]
@@ -270,7 +271,7 @@ pub struct Target {
     /// A kind of target (e.g., lib, bin, example, ...).
     kind: String,
     /// Rust edition for this target.
-    edition: String,
+    edition: Edition,
 }
 
 impl Target {
@@ -281,7 +282,7 @@ impl Target {
         Target {
             path: canonicalized,
             kind: target.kind[0].clone(),
-            edition: target.edition.clone(),
+            edition: target.edition,
         }
     }
 }
@@ -506,7 +507,7 @@ fn run_rustfmt(
         let mut command = rustfmt_command()
             .stdout(stdout)
             .args(files)
-            .args(&["--edition", edition])
+            .args(&["--edition", edition.as_str()])
             .args(fmt_args)
             .spawn()
             .map_err(|e| match e.kind() {
