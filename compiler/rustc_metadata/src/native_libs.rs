@@ -107,7 +107,7 @@ impl<'tcx> Collector<'tcx> {
             return;
         };
 
-        if abi == Abi::Rust || abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
+        if matches!(abi, Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic) {
             return;
         }
 

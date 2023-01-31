@@ -29,7 +29,6 @@ use crate::{id_from_def_id, SaveContext};
 
 use rls_data::{SigElement, Signature};
 
-use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir_pretty::id_to_string;
@@ -769,9 +768,8 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
             }
             hir::ForeignItemKind::Static(ref ty, m) => {
                 let mut text = "static ".to_owned();
-                if m == Mutability::Mut {
-                    text.push_str("mut ");
-                }
+                text.push_str(m.prefix_str());
+
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
                     id: id_from_def_id(self.owner_id.to_def_id()),

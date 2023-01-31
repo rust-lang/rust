@@ -622,10 +622,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         let alloc = alloc.inner();
         if is_write {
             // Write access. These are never allowed, but we give a targeted error message.
-            if alloc.mutability == Mutability::Not {
-                Err(err_ub!(WriteToReadOnly(alloc_id)).into())
-            } else {
-                Err(ConstEvalErrKind::ModifiedGlobal.into())
+            match alloc.mutability {
+                Mutability::Not => Err(err_ub!(WriteToReadOnly(alloc_id)).into()),
+                Mutability::Mut => Err(ConstEvalErrKind::ModifiedGlobal.into()),
             }
         } else {
             // Read access. These are usually allowed, with some exceptions.

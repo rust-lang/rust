@@ -1230,20 +1230,23 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
 
                     ty::PredicateKind::WellFormed(ty) => {
-                        if self.tcx.sess.opts.unstable_opts.trait_solver == TraitSolver::Classic {
-                            // WF predicates cannot themselves make
-                            // errors. They can only block due to
-                            // ambiguity; otherwise, they always
-                            // degenerate into other obligations
-                            // (which may fail).
-                            span_bug!(span, "WF predicate not satisfied for {:?}", ty);
-                        } else {
-                            // FIXME: we'll need a better message which takes into account
-                            // which bounds actually failed to hold.
-                            self.tcx.sess.struct_span_err(
-                                span,
-                                &format!("the type `{}` is not well-formed", ty),
-                            )
+                        match self.tcx.sess.opts.unstable_opts.trait_solver {
+                            TraitSolver::Classic => {
+                                // WF predicates cannot themselves make
+                                // errors. They can only block due to
+                                // ambiguity; otherwise, they always
+                                // degenerate into other obligations
+                                // (which may fail).
+                                span_bug!(span, "WF predicate not satisfied for {:?}", ty);
+                            }
+                            TraitSolver::Chalk | TraitSolver::Next => {
+                                // FIXME: we'll need a better message which takes into account
+                                // which bounds actually failed to hold.
+                                self.tcx.sess.struct_span_err(
+                                    span,
+                                    &format!("the type `{}` is not well-formed", ty),
+                                )
+                            }
                         }
                     }
 

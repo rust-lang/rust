@@ -44,7 +44,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_ty = expr.ty;
         let temp = {
             let mut local_decl = LocalDecl::new(expr_ty, expr_span);
-            if mutability == Mutability::Not {
+            if mutability.is_not() {
                 local_decl = local_decl.immutable();
             }
 
