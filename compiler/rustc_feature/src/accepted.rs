@@ -49,7 +49,7 @@ declare_features! (
     /// Allows `#[target_feature(...)]` on aarch64 platforms
     (accepted, aarch64_target_feature, "1.61.0", Some(44839), None),
     /// Allows using the `efiapi` ABI.
-    (accepted, abi_efiapi, "CURRENT_RUSTC_VERSION", Some(65815), None),
+    (accepted, abi_efiapi, "1.68.0", Some(65815), None),
     /// Allows the sysV64 ABI to be specified on all platforms
     /// instead of just the platforms on which it is the C ABI.
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
@@ -129,7 +129,7 @@ declare_features! (
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477), None),
     /// Allows rustc to inject a default alloc_error_handler
-    (accepted, default_alloc_error_handler, "CURRENT_RUSTC_VERSION", Some(66741), None),
+    (accepted, default_alloc_error_handler, "1.68.0", Some(66741), None),
     /// Allows using assigning a default type to type parameters in algebraic data type definitions.
     (accepted, default_type_params, "1.0.0", None, None),
     /// Allows `#[deprecated]` attribute.
@@ -164,7 +164,7 @@ declare_features! (
     /// Allows access to crate names passed via `--extern` through prelude.
     (accepted, extern_prelude, "1.30.0", Some(44660), None),
     /// Allows using F16C intrinsics from `core::arch::{x86, x86_64}`.
-    (accepted, f16c_target_feature, "CURRENT_RUSTC_VERSION", Some(44839), None),
+    (accepted, f16c_target_feature, "1.68.0", Some(44839), None),
     /// Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (accepted, field_init_shorthand, "1.17.0", Some(37340), None),
     /// Allows `#[must_use]` on functions, and introduces must-use operators (RFC 1940).
