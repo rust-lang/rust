@@ -632,25 +632,30 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
         env["LDFLAGS"] = "-Wl,-q"
 
     # Stage 3: Build PGO optimized rustc + PGO optimized LLVM
-    # FIXME: Because "dist" is run here, I think we will end up packaging the libLLVM.so
-    # at this point, so the optimization below won't apply to the shipped artifacts.
     with timer.stage("Build rustc (rustc PGO use, LLVM PGO use)"):
-        cmd(final_build_args, env)
+        build_rustc(pipeline, [
+            "--llvm-profile-use", pipeline.llvm_profile_merged_file(),
+            "--rust-profile-use", pipeline.rustc_profile_merged_file(),
+        ], env)
 
     # Stage 4: BOLT optimize LLVM.
     if pipeline.supports_bolt():
-        lib_llvm = pipeline.stage2_lib_llvm()
+        # Instrument the stage2 libLLVM...
+        stage2_lib_llvm = pipeline.stage2_lib_llvm()
+        # ...and write the optimized one into the LLVM build directory,
+        # because we'll copy it from there when reassembling the stage2 compiler.
+        build_lib_llvm = pipeline.build_artifacts() / "llvm" / "lib" / stage2_lib_llvm.name
 
         # Back up the original libLLVM shared object.
         orig_lib_llvm = pipeline.opt_artifacts() / "libLLVM.orig"
-        shutil.move(lib_llvm, orig_lib_llvm)
+        shutil.move(stage2_lib_llvm, orig_lib_llvm)
 
         with timer.stage("Bolt instrument LLVM"):
             cmd([
                 "llvm-bolt", "-instrument", orig_lib_llvm,
                 # Make sure that each process will write its profiles into a separate file
                 "--instrumentation-file-append-pid",
-                "-o", lib_llvm
+                "-o", stage2_lib_llvm
             ])
 
         with timer.stage("Gather profiles (LLVM BOLT)"):
@@ -660,7 +665,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
             cmd([
                 "llvm-bolt", orig_lib_llvm,
                 "-data", pipeline.llvm_bolt_profile_merged_file(),
-                "-o", lib_llvm,
+                "-o", build_lib_llvm,
                 # Reorder basic blocks within functions
                 "-reorder-blocks=ext-tsp",
                 # Reorder functions within the binary
@@ -681,6 +686,11 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
                 # Print optimization statistics
                 "-dyno-stats",
             ])
+
+    # Stage 5: Execute the orinal dist command.
+    # This is supposed to reuse the already built rustc and LLVM.
+    with timer.stage("Dist rustc"):
+        cmd(final_build_args, env)
 
 if __name__ == "__main__":
     logging.basicConfig(
