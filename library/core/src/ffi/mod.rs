@@ -144,10 +144,6 @@ mod c_char_definition {
                 )
             ),
             all(target_os = "fuchsia", target_arch = "aarch64"),
-            all(
-                target_os = "trusty",
-                any(target_arch = "aarch64", target_arch = "arm")
-            ),
             target_os = "horizon"
         ))] {
             pub type c_char = u8;

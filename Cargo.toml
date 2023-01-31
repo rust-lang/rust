@@ -115,7 +115,5 @@ rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
 
-libc = { git = "https://github.com/randomPoison/libc.git", rev = "7ccd2753aa1e26301c73bdb6f9e2df8085ac39e6" }
-
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
