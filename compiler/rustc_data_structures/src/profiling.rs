@@ -393,7 +393,7 @@ impl SelfProfilerRef {
     }
 
     /// Record a query in-memory cache hit.
-    #[inline(always)]
+    #[inline(never)]
     pub fn query_cache_hit(&self, query_invocation_id: QueryInvocationId) {
         self.instant_query_event(
             |profiler| profiler.query_cache_hit_event_kind,

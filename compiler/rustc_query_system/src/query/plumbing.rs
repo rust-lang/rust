@@ -722,7 +722,9 @@ where
         }
         Some((_, dep_node_index)) => {
             dep_graph.read_index(dep_node_index);
-            qcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
+            if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
+                qcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
+            }
             (false, None)
         }
     }
