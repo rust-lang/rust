@@ -1,5 +1,5 @@
 // @has issue_85454/trait.FromResidual.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub trait FromResidual<R = <Self as Try>::Residual> { fn from_residual(residual: R) -> Self; }'
+// @has - '//pre[@class="rust item-decl"]' 'pub trait FromResidual<R = <Self as Try>::Residual> { fn from_residual(residual: R) -> Self; }'
 pub trait FromResidual<R = <Self as Try>::Residual> {
     fn from_residual(residual: R) -> Self;
 }

@@ -4,7 +4,7 @@
 
 extern crate reexports;
 
-// @has 'foo/macro.addr_of.html' '//*[@class="item-decl"]' 'pub macro addr_of($place:expr) {'
+// @has 'foo/macro.addr_of.html' '//*[@class="rust item-decl"]' 'pub macro addr_of($place:expr) {'
 pub use reexports::addr_of;
 // @!has 'foo/macro.addr_of_crate.html'
 pub(crate) use reexports::addr_of_crate;
@@ -13,7 +13,7 @@ pub(self) use reexports::addr_of_self;
 // @!has 'foo/macro.addr_of_local.html'
 use reexports::addr_of_local;
 
-// @has 'foo/struct.Foo.html' '//*[@class="item-decl"]' 'pub struct Foo;'
+// @has 'foo/struct.Foo.html' '//*[@class="rust item-decl"]' 'pub struct Foo;'
 pub use reexports::Foo;
 // @!has 'foo/struct.FooCrate.html'
 pub(crate) use reexports::FooCrate;
@@ -22,7 +22,7 @@ pub(self) use reexports::FooSelf;
 // @!has 'foo/struct.FooLocal.html'
 use reexports::FooLocal;
 
-// @has 'foo/enum.Bar.html' '//*[@class="item-decl"]' 'pub enum Bar {'
+// @has 'foo/enum.Bar.html' '//*[@class="rust item-decl"]' 'pub enum Bar {'
 pub use reexports::Bar;
 // @!has 'foo/enum.BarCrate.html'
 pub(crate) use reexports::BarCrate;
@@ -31,7 +31,7 @@ pub(self) use reexports::BarSelf;
 // @!has 'foo/enum.BarLocal.html'
 use reexports::BarLocal;
 
-// @has 'foo/fn.foo.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn foo()'
+// @has 'foo/fn.foo.html' '//pre[@class="rust item-decl"]' 'pub fn foo()'
 pub use reexports::foo;
 // @!has 'foo/fn.foo_crate.html'
 pub(crate) use reexports::foo_crate;
@@ -40,7 +40,7 @@ pub(self) use reexports::foo_self;
 // @!has 'foo/fn.foo_local.html'
 use reexports::foo_local;
 
-// @has 'foo/type.Type.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub type Type ='
+// @has 'foo/type.Type.html' '//pre[@class="rust item-decl"]' 'pub type Type ='
 pub use reexports::Type;
 // @!has 'foo/type.TypeCrate.html'
 pub(crate) use reexports::TypeCrate;
@@ -49,7 +49,7 @@ pub(self) use reexports::TypeSelf;
 // @!has 'foo/type.TypeLocal.html'
 use reexports::TypeLocal;
 
-// @has 'foo/union.Union.html' '//*[@class="item-decl"]' 'pub union Union {'
+// @has 'foo/union.Union.html' '//*[@class="rust item-decl"]' 'pub union Union {'
 pub use reexports::Union;
 // @!has 'foo/union.UnionCrate.html'
 pub(crate) use reexports::UnionCrate;
@@ -60,7 +60,7 @@ use reexports::UnionLocal;
 
 pub mod outer {
     pub mod inner {
-        // @has 'foo/outer/inner/macro.addr_of.html' '//*[@class="item-decl"]' 'pub macro addr_of($place:expr) {'
+        // @has 'foo/outer/inner/macro.addr_of.html' '//*[@class="rust item-decl"]' 'pub macro addr_of($place:expr) {'
         pub use reexports::addr_of;
         // @!has 'foo/outer/inner/macro.addr_of_crate.html'
         pub(crate) use reexports::addr_of_crate;
@@ -71,7 +71,7 @@ pub mod outer {
         // @!has 'foo/outer/inner/macro.addr_of_local.html'
         use reexports::addr_of_local;
 
-        // @has 'foo/outer/inner/struct.Foo.html' '//*[@class="item-decl"]' 'pub struct Foo;'
+        // @has 'foo/outer/inner/struct.Foo.html' '//*[@class="rust item-decl"]' 'pub struct Foo;'
         pub use reexports::Foo;
         // @!has 'foo/outer/inner/struct.FooCrate.html'
         pub(crate) use reexports::FooCrate;
@@ -82,7 +82,7 @@ pub mod outer {
         // @!has 'foo/outer/inner/struct.FooLocal.html'
         use reexports::FooLocal;
 
-        // @has 'foo/outer/inner/enum.Bar.html' '//*[@class="item-decl"]' 'pub enum Bar {'
+        // @has 'foo/outer/inner/enum.Bar.html' '//*[@class="rust item-decl"]' 'pub enum Bar {'
         pub use reexports::Bar;
         // @!has 'foo/outer/inner/enum.BarCrate.html'
         pub(crate) use reexports::BarCrate;
@@ -93,7 +93,7 @@ pub mod outer {
         // @!has 'foo/outer/inner/enum.BarLocal.html'
         use reexports::BarLocal;
 
-        // @has 'foo/outer/inner/fn.foo.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn foo()'
+        // @has 'foo/outer/inner/fn.foo.html' '//pre[@class="rust item-decl"]' 'pub fn foo()'
         pub use reexports::foo;
         // @!has 'foo/outer/inner/fn.foo_crate.html'
         pub(crate) use reexports::foo_crate;
@@ -104,7 +104,7 @@ pub mod outer {
         // @!has 'foo/outer/inner/fn.foo_local.html'
         use reexports::foo_local;
 
-        // @has 'foo/outer/inner/type.Type.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub type Type ='
+        // @has 'foo/outer/inner/type.Type.html' '//pre[@class="rust item-decl"]' 'pub type Type ='
         pub use reexports::Type;
         // @!has 'foo/outer/inner/type.TypeCrate.html'
         pub(crate) use reexports::TypeCrate;
@@ -115,7 +115,7 @@ pub mod outer {
         // @!has 'foo/outer/inner/type.TypeLocal.html'
         use reexports::TypeLocal;
 
-        // @has 'foo/outer/inner/union.Union.html' '//*[@class="item-decl"]' 'pub union Union {'
+        // @has 'foo/outer/inner/union.Union.html' '//*[@class="rust item-decl"]' 'pub union Union {'
         pub use reexports::Union;
         // @!has 'foo/outer/inner/union.UnionCrate.html'
         pub(crate) use reexports::UnionCrate;

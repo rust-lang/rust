@@ -58,11 +58,11 @@ pub(crate) fn render_example_with_highlighting(
     write_footer(out, playground_button);
 }
 
-/// Highlights `src` as a macro, returning the HTML output.
-pub(crate) fn render_macro_with_highlighting(src: &str, out: &mut Buffer) {
-    write_header(out, "macro", None, Tooltip::None);
+/// Highlights `src` as an item-decl, returning the HTML output.
+pub(crate) fn render_item_decl_with_highlighting(src: &str, out: &mut Buffer) {
+    write!(out, "<pre class=\"rust item-decl\">");
     write_code(out, src, None, None);
-    write_footer(out, None);
+    write!(out, "</pre>");
 }
 
 /// Highlights `src` as a source code page, returning the HTML output.

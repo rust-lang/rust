@@ -9,16 +9,16 @@ size: (1080, 600)
 // Check that their content is inside <pre><code>
 assert-count: (".example-wrap pre > code", 4)
 // Check that function signature is inside <pre><code>
-assert: ".item-decl pre.rust > code"
+assert: "pre.rust.item-decl > code"
 
 goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
-assert: ".item-decl pre.rust > code"
+assert: "pre.rust.item-decl > code"
 
 goto: "file://" + |DOC_PATH| + "/test_docs/enum.AnEnum.html"
-assert: ".item-decl pre.rust > code"
+assert: "pre.rust.item-decl > code"
 
 goto: "file://" + |DOC_PATH| + "/test_docs/trait.AnotherOne.html"
-assert: ".item-decl pre.rust > code"
+assert: "pre.rust.item-decl > code"
 
 goto: "file://" + |DOC_PATH| + "/test_docs/type.SomeType.html"
-assert: ".item-decl pre.rust > code"
+assert: "pre.rust.item-decl > code"

@@ -3,7 +3,7 @@
 #![crate_name = "foo"]
 
 // @has foo/fn.bar.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn bar() -> '
+// @has - '//pre[@class="rust item-decl"]' 'pub fn bar() -> '
 /// foo
 pub fn bar() -> usize {
     2

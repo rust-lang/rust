@@ -335,7 +335,7 @@ pre {
 	padding: 14px;
 	line-height: 1.5; /* https://github.com/rust-lang/rust/issues/105906 */
 }
-.item-decl pre {
+pre.item-decl {
 	overflow-x: auto;
 }
 /* This rule allows to have scrolling on the X axis. */

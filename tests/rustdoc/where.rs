@@ -22,13 +22,13 @@ impl<D> Delta<D> where D: MyTrait {
 pub struct Echo<E>(E);
 
 // @has 'foo/struct.Simd.html'
-// @snapshot SWhere_Simd_item-decl - '//div[@class="item-decl"]'
+// @snapshot SWhere_Simd_item-decl - '//pre[@class="rust item-decl"]'
 pub struct Simd<T>([T; 1])
 where
     T: MyTrait;
 
 // @has 'foo/trait.TraitWhere.html'
-// @snapshot SWhere_TraitWhere_item-decl - '//div[@class="item-decl"]'
+// @snapshot SWhere_TraitWhere_item-decl - '//pre[@class="rust item-decl"]'
 pub trait TraitWhere {
     type Item<'a> where Self: 'a;
 
@@ -57,6 +57,6 @@ pub enum Foxtrot<F> { Foxtrot1(F) }
 //          "impl<F> MyTrait for Foxtrot<F>where F: MyTrait"
 impl<F> MyTrait for Foxtrot<F>where F: MyTrait {}
 
-// @has foo/type.Golf.html '//div[@class="item-decl"]/pre[@class="rust"]' \
+// @has foo/type.Golf.html '//pre[@class="rust item-decl"]' \
 //          "type Golf<T>where T: Clone, = (T, T)"
 pub type Golf<T> where T: Clone = (T, T);

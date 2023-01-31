@@ -4,37 +4,37 @@
 extern crate impl_trait_aux;
 
 // @has impl_trait/fn.func.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "pub fn func<'a>(_x: impl Clone + Into<Vec<u8, Global>> + 'a)"
-// @!has - '//div[@class="item-decl"]/pre[@class="rust"]' 'where'
+// @has - '//pre[@class="rust item-decl"]' "pub fn func<'a>(_x: impl Clone + Into<Vec<u8, Global>> + 'a)"
+// @!has - '//pre[@class="rust item-decl"]' 'where'
 pub use impl_trait_aux::func;
 
 // @has impl_trait/fn.func2.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "func2<T>("
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "_x: impl Deref<Target = Option<T>> + Iterator<Item = T>,"
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "_y: impl Iterator<Item = u8>)"
-// @!has - '//div[@class="item-decl"]/pre[@class="rust"]' 'where'
+// @has - '//pre[@class="rust item-decl"]' "func2<T>("
+// @has - '//pre[@class="rust item-decl"]' "_x: impl Deref<Target = Option<T>> + Iterator<Item = T>,"
+// @has - '//pre[@class="rust item-decl"]' "_y: impl Iterator<Item = u8>)"
+// @!has - '//pre[@class="rust item-decl"]' 'where'
 pub use impl_trait_aux::func2;
 
 // @has impl_trait/fn.func3.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "func3("
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "_x: impl Iterator<Item = impl Iterator<Item = u8>> + Clone)"
-// @!has - '//div[@class="item-decl"]/pre[@class="rust"]' 'where'
+// @has - '//pre[@class="rust item-decl"]' "func3("
+// @has - '//pre[@class="rust item-decl"]' "_x: impl Iterator<Item = impl Iterator<Item = u8>> + Clone)"
+// @!has - '//pre[@class="rust item-decl"]' 'where'
 pub use impl_trait_aux::func3;
 
 // @has impl_trait/fn.func4.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "func4<T>("
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "T: Iterator<Item = impl Clone>,"
+// @has - '//pre[@class="rust item-decl"]' "func4<T>("
+// @has - '//pre[@class="rust item-decl"]' "T: Iterator<Item = impl Clone>,"
 pub use impl_trait_aux::func4;
 
 // @has impl_trait/fn.func5.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "func5("
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "_f: impl for<'any> Fn(&'any str, &'any str) -> bool + for<'r> Other<T<'r> = ()>,"
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "_a: impl for<'alpha, 'beta> Auxiliary<'alpha, Item<'beta> = fn(_: &'beta ())>"
-// @!has - '//div[@class="item-decl"]/pre[@class="rust"]' 'where'
+// @has - '//pre[@class="rust item-decl"]' "func5("
+// @has - '//pre[@class="rust item-decl"]' "_f: impl for<'any> Fn(&'any str, &'any str) -> bool + for<'r> Other<T<'r> = ()>,"
+// @has - '//pre[@class="rust item-decl"]' "_a: impl for<'alpha, 'beta> Auxiliary<'alpha, Item<'beta> = fn(_: &'beta ())>"
+// @!has - '//pre[@class="rust item-decl"]' 'where'
 pub use impl_trait_aux::func5;
 
 // @has impl_trait/fn.async_fn.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "pub async fn async_fn()"
+// @has - '//pre[@class="rust item-decl"]' "pub async fn async_fn()"
 pub use impl_trait_aux::async_fn;
 
 // @has impl_trait/struct.Foo.html
