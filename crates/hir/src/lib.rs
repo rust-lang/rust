@@ -2165,6 +2165,16 @@ impl AsAssocItem for ModuleDef {
         }
     }
 }
+impl AsAssocItem for DefWithBody {
+    fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
+        match self {
+            DefWithBody::Function(it) => it.as_assoc_item(db),
+            DefWithBody::Const(it) => it.as_assoc_item(db),
+            DefWithBody::Static(_) | DefWithBody::Variant(_) => None,
+        }
+    }
+}
+
 fn as_assoc_item<ID, DEF, CTOR, AST>(db: &dyn HirDatabase, ctor: CTOR, id: ID) -> Option<AssocItem>
 where
     ID: Lookup<Data = AssocItemLoc<AST>>,
@@ -2558,6 +2568,14 @@ impl GenericParam {
             GenericParam::TypeParam(it) => it.name(db),
             GenericParam::ConstParam(it) => it.name(db),
             GenericParam::LifetimeParam(it) => it.name(db),
+        }
+    }
+
+    pub fn parent(self) -> GenericDef {
+        match self {
+            GenericParam::TypeParam(it) => it.id.parent().into(),
+            GenericParam::ConstParam(it) => it.id.parent().into(),
+            GenericParam::LifetimeParam(it) => it.id.parent.into(),
         }
     }
 }
