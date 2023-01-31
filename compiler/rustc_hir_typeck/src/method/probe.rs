@@ -14,6 +14,7 @@ use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::util::Elaborator;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
@@ -877,7 +878,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         F: for<'b> FnMut(&mut ProbeContext<'b, 'tcx>, ty::PolyTraitRef<'tcx>, ty::AssocItem),
     {
         let tcx = self.tcx;
-        for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
+        // TODO:
+        for bound_trait_ref in Elaborator::new_many(tcx, bounds).filter_to_traits() {
             debug!("elaborate_bounds(bound_trait_ref={:?})", bound_trait_ref);
             for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                 if !self.has_applicable_self(&item) {
@@ -1578,30 +1580,31 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         .chain(normalization_obligations.into_iter());
 
                     // Evaluate those obligations to see if they might possibly hold.
-                    for o in candidate_obligations {
-                        let o = self.resolve_vars_if_possible(o);
-                        if !self.predicate_may_hold(&o) {
+                    for obligation in candidate_obligations {
+                        let obligation = self.resolve_vars_if_possible(obligation);
+                        if !self.predicate_may_hold(&obligation) {
                             result = ProbeResult::NoMatch;
-                            let parent_o = o.clone();
-                            let implied_obligations =
-                                traits::elaborate_obligations(self.tcx, vec![o]);
-                            for o in implied_obligations {
-                                let parent = if o == parent_o {
+                            let parent_obligation = obligation.clone();
+                            for elaborated_obligation in Elaborator::new(self.tcx, obligation) {
+                                let parent = if elaborated_obligation == parent_obligation {
                                     None
                                 } else {
-                                    if o.predicate.to_opt_poly_trait_pred().map(|p| p.def_id())
+                                    if elaborated_obligation
+                                        .predicate
+                                        .to_opt_poly_trait_pred()
+                                        .map(|p| p.def_id())
                                         == self.tcx.lang_items().sized_trait()
                                     {
                                         // We don't care to talk about implicit `Sized` bounds.
                                         continue;
                                     }
-                                    Some(parent_o.predicate)
+                                    Some(parent_obligation.predicate)
                                 };
-                                if !self.predicate_may_hold(&o) {
+                                if !self.predicate_may_hold(&elaborated_obligation) {
                                     possibly_unsatisfied_predicates.push((
-                                        o.predicate,
+                                        elaborated_obligation.predicate,
                                         parent,
-                                        Some(o.cause),
+                                        Some(elaborated_obligation.cause),
                                     ));
                                 }
                             }

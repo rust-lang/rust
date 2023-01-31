@@ -16,6 +16,7 @@ use rustc_hir::{
 use rustc_hir::{HirIdMap, HirIdSet, LangItem};
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::util::Elaborator;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, TypeVisitable};
@@ -122,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
 
-        let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds().iter())
+        let preds = Elaborator::new_many(cx.tcx, cx.param_env.caller_bounds())
             .filter(|p| !p.is_global())
             .filter_map(|obligation| {
                 // Note that we do not want to deal with qualified predicates here.

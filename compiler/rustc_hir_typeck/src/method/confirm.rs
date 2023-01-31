@@ -17,7 +17,7 @@ use rustc_middle::ty::subst::{self, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_middle::ty::{InternalSubsts, UserSubsts, UserType};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::{self, Elaborator};
 
 use std::ops::Deref;
 
@@ -566,7 +566,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
-        traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
+        // TODO:
+        Elaborator::new_many(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.
             .filter_map(|obligation| match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))

@@ -113,6 +113,7 @@ use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Integer;
+use rustc_infer::traits::util::Elaborator;
 
 use crate::consts::{constant, Constant};
 use crate::ty::{can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type, ty_is_fn_once_param};
@@ -2114,7 +2115,7 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
         .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     traits::impossible_predicates(
         cx.tcx,
-        traits::elaborate_predicates(cx.tcx, predicates)
+        Elaborator::new_many(cx.tcx, predicates)
             .map(|o| o.predicate)
             .collect::<Vec<_>>(),
     )

@@ -28,7 +28,7 @@ use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
+    self, Elaborator, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
 };
 
 use std::cell::LazyCell;
@@ -1914,7 +1914,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
         let predicates_with_span = tcx.predicates_of(self.body_def_id).predicates.iter().copied();
         // Check elaborated bounds.
-        let implied_obligations = traits::elaborate_predicates_with_span(tcx, predicates_with_span);
+        let implied_obligations = Elaborator::new_many(tcx, predicates_with_span);
 
         for obligation in implied_obligations {
             // We lower empty bounds like `Vec<dyn Copy>:` as

@@ -7,6 +7,7 @@ use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
+use rustc_infer::traits::util::Elaborator;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
@@ -344,7 +345,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected error for '{:?}': {:?}", ty, result),
             };
 
-            let normalized_preds = elaborate_predicates(
+            let normalized_preds = Elaborator::new_many(
                 tcx,
                 computed_preds.clone().chain(user_computed_preds.iter().cloned()),
             )

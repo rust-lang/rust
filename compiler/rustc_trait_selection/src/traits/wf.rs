@@ -2,6 +2,7 @@ use crate::infer::InferCtxt;
 use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::traits::util::Elaborator;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
@@ -357,7 +358,7 @@ impl<'tcx> WfPredicates<'tcx> {
         };
 
         if let Elaborate::All = elaborate {
-            let implied_obligations = traits::util::elaborate_obligations(tcx, obligations);
+            let implied_obligations = Elaborator::new_many(tcx, obligations);
             let implied_obligations = implied_obligations.map(extend);
             self.out.extend(implied_obligations);
         } else {
@@ -913,7 +914,7 @@ pub(crate) fn required_region_bounds<'tcx>(
 ) -> Vec<ty::Region<'tcx>> {
     assert!(!erased_self_ty.has_escaping_bound_vars());
 
-    traits::elaborate_predicates(tcx, predicates)
+    Elaborator::new_many(tcx, predicates)
         .filter_map(|obligation| {
             debug!(?obligation);
             match obligation.predicate.kind().skip_binder() {

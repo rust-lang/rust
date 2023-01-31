@@ -18,7 +18,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::util;
+use rustc_infer::traits::util::Elaborator;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::TypeVisitable;
@@ -347,16 +347,16 @@ fn equate<'tcx>(
 #[instrument(level = "debug", skip(infcx))]
 fn negative_impl_exists<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    o: &PredicateObligation<'tcx>,
+    obligation: &PredicateObligation<'tcx>,
     body_def_id: DefId,
 ) -> bool {
-    if resolve_negative_obligation(infcx.fork(), o, body_def_id) {
+    if resolve_negative_obligation(infcx.fork(), obligation, body_def_id) {
         return true;
     }
 
     // Try to prove a negative obligation exists for super predicates
-    for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
-        if resolve_negative_obligation(infcx.fork(), &o, body_def_id) {
+    for elaborated in Elaborator::new(infcx.tcx, obligation.clone()) {
+        if resolve_negative_obligation(infcx.fork(), &elaborated, body_def_id) {
             return true;
         }
     }

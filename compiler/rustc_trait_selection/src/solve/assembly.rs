@@ -6,7 +6,7 @@ use super::trait_goals::structural_traits::*;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::util::elaborate_predicates;
+use rustc_infer::traits::util::Elaborator;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::fmt::Debug;
@@ -452,7 +452,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         let tcx = self.tcx();
         for assumption in
-            elaborate_predicates(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
+            Elaborator::new_many(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
         {
             match G::consider_assumption(self, goal, assumption.predicate) {
                 Ok(result) => {

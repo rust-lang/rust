@@ -26,6 +26,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
+pub use rustc_infer::traits::util::Elaborator;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeSuperVisitable};
@@ -57,10 +58,6 @@ pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
 pub use self::structural_match::{
     search_for_adt_const_param_violation, search_for_structural_match_violation,
-};
-pub use self::util::{
-    elaborate_obligations, elaborate_predicates, elaborate_predicates_with_span,
-    elaborate_trait_ref, elaborate_trait_refs,
 };
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{
@@ -273,10 +270,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     // parameter environments once for every fn as it goes,
     // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
-    let mut predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds().into_iter())
-            .map(|obligation| obligation.predicate)
-            .collect();
+    let mut predicates: Vec<_> = Elaborator::new_many(tcx, unnormalized_env.caller_bounds())
+        .map(|obligation| obligation.predicate)
+        .collect();
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 

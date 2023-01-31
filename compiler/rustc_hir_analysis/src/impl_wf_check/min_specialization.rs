@@ -80,7 +80,7 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, translate_substs, wf, ObligationCtxt};
+use rustc_trait_selection::traits::{translate_substs, wf, Elaborator, ObligationCtxt};
 
 pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     if let Some(node) = parent_specialization_node(tcx, impl_def_id) {
@@ -318,7 +318,7 @@ fn check_predicates<'tcx>(
     span: Span,
 ) {
     let instantiated = tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs);
-    let impl1_predicates: Vec<_> = traits::elaborate_predicates_with_span(
+    let impl1_predicates: Vec<_> = Elaborator::new_many(
         tcx,
         std::iter::zip(
             instantiated.predicates,
@@ -334,7 +334,7 @@ fn check_predicates<'tcx>(
         // assumptions.
         Vec::new()
     } else {
-        traits::elaborate_predicates(
+        Elaborator::new_many(
             tcx,
             tcx.predicates_of(impl2_node.def_id())
                 .instantiate(tcx, impl2_substs)
@@ -376,13 +376,11 @@ fn check_predicates<'tcx>(
                 .unwrap();
 
         assert!(!obligations.needs_infer());
-        impl2_predicates.extend(
-            traits::elaborate_obligations(tcx, obligations).map(|obligation| obligation.predicate),
-        )
+        impl2_predicates
+            .extend(Elaborator::new_many(tcx, obligations).map(|obligation| obligation.predicate))
     }
     impl2_predicates.extend(
-        traits::elaborate_predicates_with_span(tcx, always_applicable_traits)
-            .map(|obligation| obligation.predicate),
+        Elaborator::new_many(tcx, always_applicable_traits).map(|obligation| obligation.predicate),
     );
 
     for (predicate, span) in impl1_predicates {

@@ -39,12 +39,12 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::spec::abi;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
 use rustc_trait_selection::traits::error_reporting::{
     report_object_safety_error, suggestions::NextTypeParamName,
 };
 use rustc_trait_selection::traits::wf::object_region_bounds;
+use rustc_trait_selection::traits::{self, Elaborator};
 
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
@@ -1418,7 +1418,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for (base_trait_ref, span, constness) in regular_traits_refs_spans {
             assert_eq!(constness, ty::BoundConstness::NotConst);
 
-            for obligation in traits::elaborate_trait_ref(tcx, base_trait_ref) {
+            for obligation in Elaborator::new(tcx, base_trait_ref) {
                 debug!(
                     "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
                     obligation.predicate

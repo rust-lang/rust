@@ -71,57 +71,28 @@ pub struct Elaborator<'tcx> {
     visited: PredicateSet<'tcx>,
 }
 
-pub fn elaborate_trait_ref<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>,
-) -> Elaborator<'tcx> {
-    elaborate_predicates(tcx, std::iter::once(trait_ref.without_const().to_predicate(tcx)))
+impl<'tcx> Elaborator<'tcx> {
+    pub fn new(_tcx: TyCtxt<'tcx>, _e: impl Elaboratable<'tcx>) -> Self {
+        todo!()
+    }
+
+    pub fn new_many(
+        _tcx: TyCtxt<'tcx>,
+        _e: impl IntoIterator<Item = impl Elaboratable<'tcx>>,
+    ) -> Self {
+        todo!()
+    }
 }
 
-pub fn elaborate_trait_refs<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-) -> Elaborator<'tcx> {
-    let predicates = trait_refs.map(|trait_ref| trait_ref.without_const().to_predicate(tcx));
-    elaborate_predicates(tcx, predicates)
-}
+pub trait Elaboratable<'tcx> {}
 
-pub fn elaborate_predicates<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
-) -> Elaborator<'tcx> {
-    let obligations = predicates
-        .map(|predicate| {
-            predicate_obligation(predicate, ty::ParamEnv::empty(), ObligationCause::dummy())
-        })
-        .collect();
-    elaborate_obligations(tcx, obligations)
-}
+impl<'tcx> Elaboratable<'tcx> for ty::PolyTraitRef<'tcx> {}
 
-pub fn elaborate_predicates_with_span<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    predicates: impl Iterator<Item = (ty::Predicate<'tcx>, Span)>,
-) -> Elaborator<'tcx> {
-    let obligations = predicates
-        .map(|(predicate, span)| {
-            predicate_obligation(
-                predicate,
-                ty::ParamEnv::empty(),
-                ObligationCause::dummy_with_span(span),
-            )
-        })
-        .collect();
-    elaborate_obligations(tcx, obligations)
-}
+impl<'tcx> Elaboratable<'tcx> for ty::Predicate<'tcx> {}
 
-pub fn elaborate_obligations<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    mut obligations: Vec<PredicateObligation<'tcx>>,
-) -> Elaborator<'tcx> {
-    let mut visited = PredicateSet::new(tcx);
-    obligations.retain(|obligation| visited.insert(obligation.predicate));
-    Elaborator { stack: obligations, visited }
-}
+impl<'tcx> Elaboratable<'tcx> for (ty::Predicate<'tcx>, Span) {}
+
+impl<'tcx> Elaboratable<'tcx> for PredicateObligation<'tcx> {}
 
 fn predicate_obligation<'tcx>(
     predicate: ty::Predicate<'tcx>,
@@ -324,14 +295,14 @@ pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Supertraits<'tcx> {
-    elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
+    Elaborator::new(tcx, trait_ref).filter_to_traits()
 }
 
 pub fn transitive_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> Supertraits<'tcx> {
-    elaborate_trait_refs(tcx, bounds).filter_to_traits()
+    Elaborator::new_many(tcx, bounds).filter_to_traits()
 }
 
 /// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may
