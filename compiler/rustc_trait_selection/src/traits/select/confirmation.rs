@@ -10,6 +10,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
+use rustc_infer::traits::util::Elaborator;
 use rustc_middle::ty::{
     self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
     TraitRef, Ty, TyCtxt, TypeVisitable,
@@ -446,7 +447,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut nested = vec![];
 
-        let mut supertraits = util::supertraits(tcx, ty::Binder::dummy(object_trait_ref));
+        let mut supertraits =
+            Elaborator::elaborate_supertraits(tcx, ty::Binder::dummy(object_trait_ref));
         let unnormalized_upcast_trait_ref =
             supertraits.nth(index).expect("supertraits iterator no longer has as many elements");
 
@@ -858,7 +860,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let principal_a = data_a.principal().unwrap();
                 source_trait_ref = principal_a.with_self_ty(tcx, source);
-                upcast_trait_ref = util::supertraits(tcx, source_trait_ref).nth(idx).unwrap();
+                upcast_trait_ref =
+                    Elaborator::elaborate_supertraits(tcx, source_trait_ref).nth(idx).unwrap();
                 assert_eq!(data_b.principal_def_id(), Some(upcast_trait_ref.def_id()));
                 let existential_predicate = upcast_trait_ref.map_bound(|trait_ref| {
                     ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(

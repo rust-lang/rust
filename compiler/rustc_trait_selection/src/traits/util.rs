@@ -257,7 +257,9 @@ pub fn upcast_choices<'tcx>(
         return vec![source_trait_ref]; // Shortcut the most common case.
     }
 
-    supertraits(tcx, source_trait_ref).filter(|r| r.def_id() == target_trait_def_id).collect()
+    Elaborator::elaborate_supertraits(tcx, source_trait_ref)
+        .filter(|r| r.def_id() == target_trait_def_id)
+        .collect()
 }
 
 /// Given an upcast trait object described by `object`, returns the

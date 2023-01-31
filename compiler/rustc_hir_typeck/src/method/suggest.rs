@@ -23,7 +23,6 @@ use rustc_infer::infer::{
     RegionVariableOrigin,
 };
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
@@ -35,6 +34,7 @@ use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::Elaborator;
 use rustc_trait_selection::traits::{
     FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
 };
@@ -2025,8 +2025,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let self_name = trait_pred.self_ty().to_string();
                     let self_span = self.tcx.def_span(adt.did());
                     if let Some(poly_trait_ref) = pred.to_opt_poly_trait_pred() {
-                        for super_trait in supertraits(self.tcx, poly_trait_ref.to_poly_trait_ref())
-                        {
+                        for super_trait in Elaborator::elaborate_supertraits(
+                            self.tcx,
+                            poly_trait_ref.to_poly_trait_ref(),
+                        ) {
                             if let Some(parent_diagnostic_name) =
                                 self.tcx.get_diagnostic_name(super_trait.def_id())
                             {

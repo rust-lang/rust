@@ -7,6 +7,7 @@
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
 use hir::LangItem;
 use rustc_hir as hir;
+use rustc_infer::traits::util::Elaborator;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_middle::ty::{self, Ty, TypeVisitable};
@@ -14,7 +15,6 @@ use rustc_target::spec::abi::Abi;
 
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::util;
 
 use super::BuiltinImplConditions;
 use super::SelectionCandidate::*;
@@ -495,19 +495,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // correct trait, but also the correct type parameters.
             // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
             // but `Foo` is declared as `trait Foo: Bar<u32>`.
-            let candidate_supertraits = util::supertraits(self.tcx(), poly_trait_ref)
-                .enumerate()
-                .filter(|&(_, upcast_trait_ref)| {
-                    self.infcx.probe(|_| {
-                        self.match_normalize_trait_ref(
-                            obligation,
-                            upcast_trait_ref,
-                            placeholder_trait_predicate.trait_ref,
-                        )
-                        .is_ok()
+            let candidate_supertraits =
+                Elaborator::elaborate_supertraits(self.tcx(), poly_trait_ref)
+                    .enumerate()
+                    .filter(|&(_, upcast_trait_ref)| {
+                        self.infcx.probe(|_| {
+                            self.match_normalize_trait_ref(
+                                obligation,
+                                upcast_trait_ref,
+                                placeholder_trait_predicate.trait_ref,
+                            )
+                            .is_ok()
+                        })
                     })
-                })
-                .map(|(idx, _)| ObjectCandidate(idx));
+                    .map(|(idx, _)| ObjectCandidate(idx));
 
             candidates.vec.extend(candidate_supertraits);
         })
@@ -620,7 +621,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
 
                         for (idx, upcast_trait_ref) in
-                            util::supertraits(self.tcx(), source_trait_ref).enumerate()
+                            Elaborator::elaborate_supertraits(self.tcx(), source_trait_ref)
+                                .enumerate()
                         {
                             if upcast_trait_ref.def_id() == target_trait_did {
                                 candidates.vec.push(TraitUpcastingUnsizeCandidate(idx));

@@ -152,13 +152,11 @@ pub enum SelectionCandidate<'tcx> {
     TraitAliasCandidate,
 
     /// Matching `dyn Trait` with a supertrait of `Trait`. The index is the
-    /// position in the iterator returned by
-    /// `rustc_infer::traits::util::supertraits`.
+    /// position in the iterator returned by `Elaborator::elaborate_supertraits`.
     ObjectCandidate(usize),
 
     /// Perform trait upcasting coercion of `dyn Trait` to a supertrait of `Trait`.
-    /// The index is the position in the iterator returned by
-    /// `rustc_infer::traits::util::supertraits`.
+    /// The index is the position in the iterator returned by `Elaborator::elaborate_supertraits`.
     TraitUpcastingUnsizeCandidate(usize),
 
     BuiltinObjectCandidate,

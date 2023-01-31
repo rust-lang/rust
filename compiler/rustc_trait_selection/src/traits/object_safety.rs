@@ -858,7 +858,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
                     if self.supertraits.is_none() {
                         let trait_ref = ty::TraitRef::identity(self.tcx, self.trait_def_id);
                         self.supertraits = Some(
-                            traits::supertraits(self.tcx, trait_ref).map(|t| t.def_id()).collect(),
+                            Elaborator::elaborate_supertraits(self.tcx, trait_ref)
+                                .map(|t| t.def_id())
+                                .collect(),
                         );
                     }
 

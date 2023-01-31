@@ -8,7 +8,7 @@ use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::util::supertraits;
+use rustc_infer::traits::util::Elaborator;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitable};
@@ -425,7 +425,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         } else if let Some(a_principal) = a_data.principal()
             && let Some(b_principal) = b_data.principal()
         {
-            for super_trait_ref in supertraits(tcx, a_principal.with_self_ty(tcx, a_ty)) {
+            for super_trait_ref in Elaborator::elaborate_supertraits(tcx, a_principal.with_self_ty(tcx, a_ty)) {
                 if super_trait_ref.def_id() != b_principal.def_id() {
                     continue;
                 }

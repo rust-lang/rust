@@ -72,10 +72,12 @@ pub struct Elaborator<'tcx> {
 }
 
 impl<'tcx> Elaborator<'tcx> {
+    /// Elaborate the transitive implied predicates of an elaboratable thing `e`.
     pub fn elaborate(tcx: TyCtxt<'tcx>, e: impl Elaboratable<'tcx>) -> Self {
         Self::elaborate_many(tcx, [e])
     }
 
+    /// Elaborate the transitive implied predicates of an iterator of elaboratable things.
     pub fn elaborate_many(
         tcx: TyCtxt<'tcx>,
         es: impl IntoIterator<Item = impl Elaboratable<'tcx>>,
@@ -83,6 +85,14 @@ impl<'tcx> Elaborator<'tcx> {
         let mut elaborator = Elaborator { stack: vec![], seen: PredicateSet::new(tcx) };
         elaborator.extend(es.into_iter().map(|e| e.to_obligation(tcx)));
         elaborator
+    }
+
+    /// Elaborate the transitive super-trait refs of some trait ref.
+    pub fn elaborate_supertraits(
+        tcx: TyCtxt<'tcx>,
+        e: ty::PolyTraitRef<'tcx>,
+    ) -> FilterToTraits<Elaborator<'tcx>> {
+        Self::elaborate(tcx, e).filter_to_traits()
     }
 
     fn extend(&mut self, iterator: impl IntoIterator<Item = PredicateObligation<'tcx>>) {
@@ -310,15 +320,6 @@ impl<'tcx> Iterator for Elaborator<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Supertrait iterator
 ///////////////////////////////////////////////////////////////////////////
-
-pub type Supertraits<'tcx> = FilterToTraits<Elaborator<'tcx>>;
-
-pub fn supertraits<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>,
-) -> Supertraits<'tcx> {
-    Elaborator::elaborate(tcx, trait_ref).filter_to_traits()
-}
 
 /// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may
 /// define the given associated type `assoc_name`. It uses the

@@ -1085,7 +1085,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // Otherwise, we have to walk through the supertraits to find
                 // those that do.
                 self.one_bound_for_assoc_type(
-                    || traits::supertraits(tcx, trait_ref),
+                    || Elaborator::elaborate_supertraits(tcx, trait_ref),
                     || trait_ref.print_only_trait_path().to_string(),
                     binding.item_name,
                     path_span,
@@ -2068,7 +2068,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
 
                 self.one_bound_for_assoc_type(
-                    || traits::supertraits(tcx, ty::Binder::dummy(trait_ref.subst_identity())),
+                    || {
+                        Elaborator::elaborate_supertraits(
+                            tcx,
+                            ty::Binder::dummy(trait_ref.subst_identity()),
+                        )
+                    },
                     || "Self".to_string(),
                     assoc_ident,
                     span,
