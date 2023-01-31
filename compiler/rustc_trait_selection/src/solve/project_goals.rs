@@ -554,6 +554,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             .to_predicate(tcx),
         )
     }
+
+    fn consider_builtin_unsize_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`Unsize` does not have an associated type: {:?}", goal);
+    }
+
+    fn consider_builtin_dyn_upcast_candidates(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> Vec<super::CanonicalResponse<'tcx>> {
+        bug!("`Unsize` does not have an associated type: {:?}", goal);
+    }
 }
 
 /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.

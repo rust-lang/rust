@@ -4,10 +4,11 @@ use std::iter;
 
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
-use super::{Certainty, EvalCtxt, Goal, QueryResult};
+use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitable};
@@ -237,6 +238,206 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             )
             .to_predicate(tcx),
         )
+    }
+
+    fn consider_builtin_unsize_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+        let a_ty = goal.predicate.self_ty();
+        let b_ty = goal.predicate.trait_ref.substs.type_at(1);
+        if b_ty.is_ty_var() {
+            return ecx.make_canonical_response(Certainty::AMBIGUOUS);
+        }
+        ecx.infcx.probe(|_| {
+            match (a_ty.kind(), b_ty.kind()) {
+                // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`
+                (&ty::Dynamic(_, _, ty::Dyn), &ty::Dynamic(_, _, ty::Dyn)) => {
+                    // Dyn upcasting is handled separately, since due to upcasting,
+                    // when there are two supertraits that differ by substs, we
+                    // may return more than one query response.
+                    return Err(NoSolution);
+                }
+                // `T` -> `dyn Trait` unsizing
+                (_, &ty::Dynamic(data, region, ty::Dyn)) => {
+                    // Can only unsize to an object-safe type
+                    if data
+                        .principal_def_id()
+                        .map_or(false, |def_id| !tcx.check_is_object_safe(def_id))
+                    {
+                        return Err(NoSolution);
+                    }
+
+                    let Some(sized_def_id) = tcx.lang_items().sized_trait() else {
+                        return Err(NoSolution);
+                    };
+                    let nested_goals: Vec<_> = data
+                        .iter()
+                        // Check that the type implements all of the predicates of the def-id.
+                        // (i.e. the principal, all of the associated types match, and any auto traits)
+                        .map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty)))
+                        .chain([
+                            // The type must be Sized to be unsized.
+                            goal.with(
+                                tcx,
+                                ty::Binder::dummy(tcx.mk_trait_ref(sized_def_id, [a_ty])),
+                            ),
+                            // The type must outlive the lifetime of the `dyn` we're unsizing into.
+                            goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region))),
+                        ])
+                        .collect();
+
+                    ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                }
+                // `[T; n]` -> `[T]` unsizing
+                (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => {
+                    // We just require that the element type stays the same
+                    let nested_goals = ecx.infcx.eq(goal.param_env, a_elem_ty, b_elem_ty)?;
+                    ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                }
+                // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
+                (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
+                    if a_def.is_struct() && a_def.did() == b_def.did() =>
+                {
+                    let unsizing_params = tcx.unsizing_params_for_adt(a_def.did());
+                    // We must be unsizing some type parameters. This also implies
+                    // that the struct has a tail field.
+                    if unsizing_params.is_empty() {
+                        return Err(NoSolution);
+                    }
+
+                    let tail_field = a_def
+                        .non_enum_variant()
+                        .fields
+                        .last()
+                        .expect("expected unsized ADT to have a tail field");
+                    let tail_field_ty = tcx.bound_type_of(tail_field.did);
+
+                    let a_tail_ty = tail_field_ty.subst(tcx, a_substs);
+                    let b_tail_ty = tail_field_ty.subst(tcx, b_substs);
+
+                    // Substitute just the unsizing params from B into A. The type after
+                    // this substitution must be equal to B. This is so we don't unsize
+                    // unrelated type parameters.
+                    let new_a_substs = tcx.mk_substs(a_substs.iter().enumerate().map(|(i, a)| {
+                        if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
+                    }));
+                    let unsized_a_ty = tcx.mk_adt(a_def, new_a_substs);
+
+                    // Finally, we require that `TailA: Unsize<TailB>` for the tail field
+                    // types.
+                    let mut nested_goals = ecx.infcx.eq(goal.param_env, unsized_a_ty, b_ty)?;
+                    nested_goals.push(goal.with(
+                        tcx,
+                        ty::Binder::dummy(
+                            tcx.mk_trait_ref(goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
+                        ),
+                    ));
+
+                    ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                }
+                // Tuple unsizing `(.., T)` -> `(.., U)` where `T: Unsize<U>`
+                (&ty::Tuple(a_tys), &ty::Tuple(b_tys))
+                    if a_tys.len() == b_tys.len() && !a_tys.is_empty() =>
+                {
+                    let (a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
+                    let b_last_ty = b_tys.last().unwrap();
+
+                    // Substitute just the tail field of B., and require that they're equal.
+                    let unsized_a_ty = tcx.mk_tup(a_rest_tys.iter().chain([b_last_ty]));
+                    let mut nested_goals = ecx.infcx.eq(goal.param_env, unsized_a_ty, b_ty)?;
+
+                    // Similar to ADTs, require that the rest of the fields are equal.
+                    nested_goals.push(goal.with(
+                        tcx,
+                        ty::Binder::dummy(
+                            tcx.mk_trait_ref(goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
+                        ),
+                    ));
+
+                    ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                }
+                _ => Err(NoSolution),
+            }
+        })
+    }
+
+    fn consider_builtin_dyn_upcast_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> Vec<CanonicalResponse<'tcx>> {
+        let tcx = ecx.tcx();
+
+        let a_ty = goal.predicate.self_ty();
+        let b_ty = goal.predicate.trait_ref.substs.type_at(1);
+        let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else {
+            return vec![];
+        };
+        let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else {
+            return vec![];
+        };
+
+        // All of a's auto traits need to be in b's auto traits.
+        let auto_traits_compatible =
+            b_data.auto_traits().all(|b| a_data.auto_traits().any(|a| a == b));
+        if !auto_traits_compatible {
+            return vec![];
+        }
+
+        let mut unsize_dyn_to_principal = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
+            ecx.infcx.probe(|_| -> Result<_, NoSolution> {
+                // Require that all of the trait predicates from A match B, except for
+                // the auto traits. We do this by constructing a new A type with B's
+                // auto traits, and equating these types.
+                let new_a_data = principal
+                    .into_iter()
+                    .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait))
+                    .chain(a_data.iter().filter(|a| {
+                        matches!(a.skip_binder(), ty::ExistentialPredicate::Projection(_))
+                    }))
+                    .chain(
+                        b_data
+                            .auto_traits()
+                            .map(ty::ExistentialPredicate::AutoTrait)
+                            .map(ty::Binder::dummy),
+                    );
+                let new_a_data = tcx.mk_poly_existential_predicates(new_a_data);
+                let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
+
+                // We also require that A's lifetime outlives B's lifetime.
+                let mut nested_obligations = ecx.infcx.eq(goal.param_env, new_a_ty, b_ty)?;
+                nested_obligations.push(
+                    goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region))),
+                );
+
+                ecx.evaluate_all_and_make_canonical_response(nested_obligations)
+            })
+        };
+
+        let mut responses = vec![];
+        // If the principal def ids match (or are both none), then we're not doing
+        // trait upcasting. We're just removing auto traits (or shortening the lifetime).
+        if a_data.principal_def_id() == b_data.principal_def_id() {
+            if let Ok(response) = unsize_dyn_to_principal(a_data.principal()) {
+                responses.push(response);
+            }
+        } else if let Some(a_principal) = a_data.principal()
+            && let Some(b_principal) = b_data.principal()
+        {
+            for super_trait_ref in supertraits(tcx, a_principal.with_self_ty(tcx, a_ty)) {
+                if super_trait_ref.def_id() != b_principal.def_id() {
+                    continue;
+                }
+                let erased_trait_ref = super_trait_ref
+                    .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+                if let Ok(response) = unsize_dyn_to_principal(Some(erased_trait_ref)) {
+                    responses.push(response);
+                }
+            }
+        }
+
+        responses
     }
 }
 
