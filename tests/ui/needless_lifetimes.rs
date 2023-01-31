@@ -1,3 +1,4 @@
+// aux-build:macro_rules.rs
 #![warn(clippy::needless_lifetimes)]
 #![allow(
     dead_code,
@@ -7,6 +8,9 @@
     dyn_drop,
     clippy::get_first
 )]
+
+#[macro_use]
+extern crate macro_rules;
 
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
 
@@ -493,6 +497,22 @@ mod pr_9743_output_lifetime_checks {
     fn multiple_inputs_output_would_be_elided<'a, 'b>(x: &'a u8, y: &'b u8, z: &'b u8) -> &'a u8 {
         unimplemented!()
     }
+}
+
+mod in_macro {
+    macro_rules! local_one_input_macro {
+        () => {
+            fn one_input<'a>(x: &'a u8) -> &'a u8 {
+                unimplemented!()
+            }
+        };
+    }
+
+    // lint local macro expands to function with needless lifetimes
+    local_one_input_macro!();
+
+    // no lint on external macro
+    macro_rules::needless_lifetime!();
 }
 
 fn main() {}
