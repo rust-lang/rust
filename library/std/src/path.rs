@@ -2688,6 +2688,7 @@ impl Path {
     /// escapes the path please use [`Debug`] instead.
     ///
     /// [`Display`]: fmt::Display
+    /// [`Debug`]: fmt::Debug
     ///
     /// # Examples
     ///
