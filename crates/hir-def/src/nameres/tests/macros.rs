@@ -264,7 +264,7 @@ fn prelude_is_macro_use() {
     cov_mark::check!(prelude_is_macro_use);
     check(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs edition:2018 crate:main deps:std
 structs!(Foo);
 structs_priv!(Bar);
 structs_outside!(Out);
@@ -634,7 +634,7 @@ fn macro_dollar_crate_is_correct_in_indirect_deps() {
     // From std
     check(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs edition:2018 crate:main deps:std
 foo!();
 
 //- /std.rs crate:std deps:core
@@ -1034,7 +1034,7 @@ structs!(Foo);
 fn macro_in_prelude() {
     check(
         r#"
-//- /lib.rs crate:lib deps:std
+//- /lib.rs edition:2018 crate:lib deps:std
 global_asm!();
 
 //- /std.rs crate:std
