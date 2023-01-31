@@ -9,7 +9,9 @@ use syntax::{
     SmolStr,
 };
 
-use crate::{db::AstDatabase, name, quote, ExpandError, ExpandResult, MacroCallId, MacroCallLoc};
+use crate::{
+    db::AstDatabase, name, quote, tt, ExpandError, ExpandResult, MacroCallId, MacroCallLoc,
+};
 
 macro_rules! register_builtin {
     ( LAZY: $(($name:ident, $kind: ident) => $expand:ident),* , EAGER: $(($e_name:ident, $e_kind: ident) => $e_expand:ident),*  ) => {
@@ -61,7 +63,7 @@ macro_rules! register_builtin {
     };
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ExpandedEager {
     pub(crate) subtree: tt::Subtree,
     /// The included file ID of the include macro.
@@ -116,7 +118,7 @@ register_builtin! {
 }
 
 const DOLLAR_CRATE: tt::Ident =
-    tt::Ident { text: SmolStr::new_inline("$crate"), id: tt::TokenId::unspecified() };
+    tt::Ident { text: SmolStr::new_inline("$crate"), span: tt::TokenId::unspecified() };
 
 fn module_path_expand(
     _db: &dyn AstDatabase,
@@ -162,7 +164,7 @@ fn stringify_expand(
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
-    let pretty = tt::pretty(&tt.token_trees);
+    let pretty = ::tt::pretty(&tt.token_trees);
 
     let expanded = quote! {
         #pretty
@@ -194,11 +196,11 @@ fn assert_expand(
     let expanded = match &*args {
         [cond, panic_args @ ..] => {
             let comma = tt::Subtree {
-                delimiter: None,
+                delimiter: tt::Delimiter::unspecified(),
                 token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
                     char: ',',
                     spacing: tt::Spacing::Alone,
-                    id: tt::TokenId::unspecified(),
+                    span: tt::TokenId::unspecified(),
                 }))],
             };
             let cond = cond.clone();
@@ -247,7 +249,10 @@ fn format_args_expand(
     let mut args = parse_exprs_with_sep(tt, ',');
 
     if args.is_empty() {
-        return ExpandResult::only_err(mbe::ExpandError::NoMatchingRule.into());
+        return ExpandResult::with_err(
+            tt::Subtree::empty(),
+            mbe::ExpandError::NoMatchingRule.into(),
+        );
     }
     for arg in &mut args {
         // Remove `key =`.
@@ -282,7 +287,7 @@ fn asm_expand(
     for tt in tt.token_trees.chunks(2) {
         match tt {
             [tt::TokenTree::Leaf(tt::Leaf::Literal(lit))]
-            | [tt::TokenTree::Leaf(tt::Leaf::Literal(lit)), tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', id: _, spacing: _ }))] =>
+            | [tt::TokenTree::Leaf(tt::Leaf::Literal(lit)), tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', span: _, spacing: _ }))] =>
             {
                 let krate = DOLLAR_CRATE.clone();
                 literals.push(quote!(#krate::format_args!(#lit);));
@@ -400,7 +405,7 @@ fn concat_expand(
         // FIXME: hack on top of a hack: `$e:expr` captures get surrounded in parentheses
         // to ensure the right parsing order, so skip the parentheses here. Ideally we'd
         // implement rustc's model. cc https://github.com/rust-lang/rust-analyzer/pull/10623
-        if let tt::TokenTree::Subtree(tt::Subtree { delimiter: Some(delim), token_trees }) = t {
+        if let tt::TokenTree::Subtree(tt::Subtree { delimiter: delim, token_trees }) = t {
             if let [tt] = &**token_trees {
                 if delim.kind == tt::DelimiterKind::Parenthesis {
                     t = tt;
@@ -459,9 +464,7 @@ fn concat_bytes_expand(
                 }
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
-            tt::TokenTree::Subtree(tree)
-                if tree.delimiter_kind() == Some(tt::DelimiterKind::Bracket) =>
-            {
+            tt::TokenTree::Subtree(tree) if tree.delimiter.kind == tt::DelimiterKind::Bracket => {
                 if let Err(e) = concat_bytes_expand_subtree(tree, &mut bytes) {
                     err.get_or_insert(e);
                     break;
@@ -473,7 +476,7 @@ fn concat_bytes_expand(
             }
         }
     }
-    let ident = tt::Ident { text: bytes.join(", ").into(), id: tt::TokenId::unspecified() };
+    let ident = tt::Ident { text: bytes.join(", ").into(), span: tt::TokenId::unspecified() };
     ExpandResult { value: ExpandedEager::new(quote!([#ident])), err }
 }
 
@@ -521,7 +524,7 @@ fn concat_idents_expand(
             }
         }
     }
-    let ident = tt::Ident { text: ident.into(), id: tt::TokenId::unspecified() };
+    let ident = tt::Ident { text: ident.into(), span: tt::TokenId::unspecified() };
     ExpandResult { value: ExpandedEager::new(quote!(#ident)), err }
 }
 
@@ -572,7 +575,10 @@ fn include_expand(
         Ok((subtree, file_id)) => {
             ExpandResult::ok(ExpandedEager { subtree, included_file: Some(file_id) })
         }
-        Err(e) => ExpandResult::only_err(e),
+        Err(e) => ExpandResult::with_err(
+            ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
+            e,
+        ),
     }
 }
 
@@ -582,15 +588,18 @@ fn include_bytes_expand(
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
     if let Err(e) = parse_string(tt) {
-        return ExpandResult::only_err(e);
+        return ExpandResult::with_err(
+            ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
+            e,
+        );
     }
 
     // FIXME: actually read the file here if the user asked for macro expansion
     let res = tt::Subtree {
-        delimiter: None,
+        delimiter: tt::Delimiter::unspecified(),
         token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             text: r#"b"""#.into(),
-            id: tt::TokenId::unspecified(),
+            span: tt::TokenId::unspecified(),
         }))],
     };
     ExpandResult::ok(ExpandedEager::new(res))
@@ -603,7 +612,12 @@ fn include_str_expand(
 ) -> ExpandResult<ExpandedEager> {
     let path = match parse_string(tt) {
         Ok(it) => it,
-        Err(e) => return ExpandResult::only_err(e),
+        Err(e) => {
+            return ExpandResult::with_err(
+                ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
+                e,
+            )
+        }
     };
 
     // FIXME: we're not able to read excluded files (which is most of them because
@@ -635,7 +649,12 @@ fn env_expand(
 ) -> ExpandResult<ExpandedEager> {
     let key = match parse_string(tt) {
         Ok(it) => it,
-        Err(e) => return ExpandResult::only_err(e),
+        Err(e) => {
+            return ExpandResult::with_err(
+                ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
+                e,
+            )
+        }
     };
 
     let mut err = None;
@@ -666,7 +685,12 @@ fn option_env_expand(
 ) -> ExpandResult<ExpandedEager> {
     let key = match parse_string(tt) {
         Ok(it) => it,
-        Err(e) => return ExpandResult::only_err(e),
+        Err(e) => {
+            return ExpandResult::with_err(
+                ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
+                e,
+            )
+        }
     };
 
     let expanded = match get_env_inner(db, arg_id, &key) {

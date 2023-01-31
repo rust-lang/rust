@@ -12,7 +12,7 @@ use cfg::CfgOptions;
 use rustc_hash::FxHashMap;
 use stdx::hash::{NoHashHashMap, NoHashHashSet};
 use syntax::SmolStr;
-use tt::Subtree;
+use tt::token_id::Subtree;
 use vfs::{file_set::FileSet, AnchoredPath, FileId, VfsPath};
 
 /// Files are grouped into source roots. A source root is a directory on the

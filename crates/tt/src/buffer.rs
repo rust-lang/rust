@@ -12,10 +12,10 @@ struct EntryPtr(EntryId, usize);
 /// Internal type which is used instead of `TokenTree` to represent a token tree
 /// within a `TokenBuffer`.
 #[derive(Debug)]
-enum Entry<'t> {
+enum Entry<'t, Span> {
     // Mimicking types from proc-macro.
-    Subtree(Option<&'t TokenTree>, &'t Subtree, EntryId),
-    Leaf(&'t TokenTree),
+    Subtree(Option<&'t TokenTree<Span>>, &'t Subtree<Span>, EntryId),
+    Leaf(&'t TokenTree<Span>),
     // End entries contain a pointer to the entry from the containing
     // token tree, or None if this is the outermost level.
     End(Option<EntryPtr>),
@@ -24,16 +24,21 @@ enum Entry<'t> {
 /// A token tree buffer
 /// The safe version of `syn` [`TokenBuffer`](https://github.com/dtolnay/syn/blob/6533607f91686545cb034d2838beea338d9d0742/src/buffer.rs#L41)
 #[derive(Debug)]
-pub struct TokenBuffer<'t> {
-    buffers: Vec<Box<[Entry<'t>]>>,
+pub struct TokenBuffer<'t, Span> {
+    buffers: Vec<Box<[Entry<'t, Span>]>>,
 }
 
-trait TokenList<'a> {
-    fn entries(&self) -> (Vec<(usize, (&'a Subtree, Option<&'a TokenTree>))>, Vec<Entry<'a>>);
+trait TokenList<'a, Span> {
+    fn entries(
+        &self,
+    ) -> (Vec<(usize, (&'a Subtree<Span>, Option<&'a TokenTree<Span>>))>, Vec<Entry<'a, Span>>);
 }
 
-impl<'a> TokenList<'a> for &'a [TokenTree] {
-    fn entries(&self) -> (Vec<(usize, (&'a Subtree, Option<&'a TokenTree>))>, Vec<Entry<'a>>) {
+impl<'a, Span> TokenList<'a, Span> for &'a [TokenTree<Span>] {
+    fn entries(
+        &self,
+    ) -> (Vec<(usize, (&'a Subtree<Span>, Option<&'a TokenTree<Span>>))>, Vec<Entry<'a, Span>>)
+    {
         // Must contain everything in tokens and then the Entry::End
         let start_capacity = self.len() + 1;
         let mut entries = Vec::with_capacity(start_capacity);
@@ -53,8 +58,11 @@ impl<'a> TokenList<'a> for &'a [TokenTree] {
     }
 }
 
-impl<'a> TokenList<'a> for &'a Subtree {
-    fn entries(&self) -> (Vec<(usize, (&'a Subtree, Option<&'a TokenTree>))>, Vec<Entry<'a>>) {
+impl<'a, Span> TokenList<'a, Span> for &'a Subtree<Span> {
+    fn entries(
+        &self,
+    ) -> (Vec<(usize, (&'a Subtree<Span>, Option<&'a TokenTree<Span>>))>, Vec<Entry<'a, Span>>)
+    {
         // Must contain everything in tokens and then the Entry::End
         let mut entries = vec![];
         let mut children = vec![];
@@ -64,25 +72,25 @@ impl<'a> TokenList<'a> for &'a Subtree {
     }
 }
 
-impl<'t> TokenBuffer<'t> {
-    pub fn from_tokens(tokens: &'t [TokenTree]) -> TokenBuffer<'t> {
+impl<'t, Span> TokenBuffer<'t, Span> {
+    pub fn from_tokens(tokens: &'t [TokenTree<Span>]) -> TokenBuffer<'t, Span> {
         Self::new(tokens)
     }
 
-    pub fn from_subtree(subtree: &'t Subtree) -> TokenBuffer<'t> {
+    pub fn from_subtree(subtree: &'t Subtree<Span>) -> TokenBuffer<'t, Span> {
         Self::new(subtree)
     }
 
-    fn new<T: TokenList<'t>>(tokens: T) -> TokenBuffer<'t> {
+    fn new<T: TokenList<'t, Span>>(tokens: T) -> TokenBuffer<'t, Span> {
         let mut buffers = vec![];
         let idx = TokenBuffer::new_inner(tokens, &mut buffers, None);
         assert_eq!(idx, 0);
         TokenBuffer { buffers }
     }
 
-    fn new_inner<T: TokenList<'t>>(
+    fn new_inner<T: TokenList<'t, Span>>(
         tokens: T,
-        buffers: &mut Vec<Box<[Entry<'t>]>>,
+        buffers: &mut Vec<Box<[Entry<'t, Span>]>>,
         next: Option<EntryPtr>,
     ) -> usize {
         let (children, mut entries) = tokens.entries();
@@ -105,25 +113,25 @@ impl<'t> TokenBuffer<'t> {
 
     /// Creates a cursor referencing the first token in the buffer and able to
     /// traverse until the end of the buffer.
-    pub fn begin(&self) -> Cursor<'_> {
+    pub fn begin(&self) -> Cursor<'_, Span> {
         Cursor::create(self, EntryPtr(EntryId(0), 0))
     }
 
-    fn entry(&self, ptr: &EntryPtr) -> Option<&Entry<'_>> {
+    fn entry(&self, ptr: &EntryPtr) -> Option<&Entry<'_, Span>> {
         let id = ptr.0;
         self.buffers[id.0].get(ptr.1)
     }
 }
 
 #[derive(Debug)]
-pub enum TokenTreeRef<'a> {
-    Subtree(&'a Subtree, Option<&'a TokenTree>),
-    Leaf(&'a Leaf, &'a TokenTree),
+pub enum TokenTreeRef<'a, Span> {
+    Subtree(&'a Subtree<Span>, Option<&'a TokenTree<Span>>),
+    Leaf(&'a Leaf<Span>, &'a TokenTree<Span>),
 }
 
-impl<'a> TokenTreeRef<'a> {
-    pub fn cloned(&self) -> TokenTree {
-        match &self {
+impl<'a, Span: Clone> TokenTreeRef<'a, Span> {
+    pub fn cloned(&self) -> TokenTree<Span> {
+        match self {
             TokenTreeRef::Subtree(subtree, tt) => match tt {
                 Some(it) => (*it).clone(),
                 None => (*subtree).clone().into(),
@@ -135,20 +143,20 @@ impl<'a> TokenTreeRef<'a> {
 
 /// A safe version of `Cursor` from `syn` crate <https://github.com/dtolnay/syn/blob/6533607f91686545cb034d2838beea338d9d0742/src/buffer.rs#L125>
 #[derive(Copy, Clone, Debug)]
-pub struct Cursor<'a> {
-    buffer: &'a TokenBuffer<'a>,
+pub struct Cursor<'a, Span> {
+    buffer: &'a TokenBuffer<'a, Span>,
     ptr: EntryPtr,
 }
 
-impl<'a> PartialEq for Cursor<'a> {
-    fn eq(&self, other: &Cursor<'_>) -> bool {
+impl<'a, Span> PartialEq for Cursor<'a, Span> {
+    fn eq(&self, other: &Cursor<'_, Span>) -> bool {
         self.ptr == other.ptr && std::ptr::eq(self.buffer, other.buffer)
     }
 }
 
-impl<'a> Eq for Cursor<'a> {}
+impl<'a, Span> Eq for Cursor<'a, Span> {}
 
-impl<'a> Cursor<'a> {
+impl<'a, Span> Cursor<'a, Span> {
     /// Check whether it is eof
     pub fn eof(self) -> bool {
         matches!(self.buffer.entry(&self.ptr), None | Some(Entry::End(None)))
@@ -156,7 +164,7 @@ impl<'a> Cursor<'a> {
 
     /// If the cursor is pointing at the end of a subtree, returns
     /// the parent subtree
-    pub fn end(self) -> Option<&'a Subtree> {
+    pub fn end(self) -> Option<&'a Subtree<Span>> {
         match self.entry() {
             Some(Entry::End(Some(ptr))) => {
                 let idx = ptr.1;
@@ -171,13 +179,13 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn entry(self) -> Option<&'a Entry<'a>> {
+    fn entry(&self) -> Option<&'a Entry<'a, Span>> {
         self.buffer.entry(&self.ptr)
     }
 
     /// If the cursor is pointing at a `Subtree`, returns
     /// a cursor into that subtree
-    pub fn subtree(self) -> Option<Cursor<'a>> {
+    pub fn subtree(self) -> Option<Cursor<'a, Span>> {
         match self.entry() {
             Some(Entry::Subtree(_, _, entry_id)) => {
                 Some(Cursor::create(self.buffer, EntryPtr(*entry_id, 0)))
@@ -187,7 +195,7 @@ impl<'a> Cursor<'a> {
     }
 
     /// If the cursor is pointing at a `TokenTree`, returns it
-    pub fn token_tree(self) -> Option<TokenTreeRef<'a>> {
+    pub fn token_tree(self) -> Option<TokenTreeRef<'a, Span>> {
         match self.entry() {
             Some(Entry::Leaf(tt)) => match tt {
                 TokenTree::Leaf(leaf) => Some(TokenTreeRef::Leaf(leaf, tt)),
@@ -198,12 +206,12 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn create(buffer: &'a TokenBuffer<'_>, ptr: EntryPtr) -> Cursor<'a> {
+    fn create(buffer: &'a TokenBuffer<'_, Span>, ptr: EntryPtr) -> Cursor<'a, Span> {
         Cursor { buffer, ptr }
     }
 
     /// Bump the cursor
-    pub fn bump(self) -> Cursor<'a> {
+    pub fn bump(self) -> Cursor<'a, Span> {
         if let Some(Entry::End(exit)) = self.buffer.entry(&self.ptr) {
             match exit {
                 Some(exit) => Cursor::create(self.buffer, *exit),
@@ -216,7 +224,7 @@ impl<'a> Cursor<'a> {
 
     /// Bump the cursor, if it is a subtree, returns
     /// a cursor into that subtree
-    pub fn bump_subtree(self) -> Cursor<'a> {
+    pub fn bump_subtree(self) -> Cursor<'a, Span> {
         match self.entry() {
             Some(Entry::Subtree(_, _, _)) => self.subtree().unwrap(),
             _ => self.bump(),

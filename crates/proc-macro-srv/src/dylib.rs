@@ -13,6 +13,8 @@ use object::Object;
 use paths::AbsPath;
 use proc_macro_api::{read_dylib_info, ProcMacroKind};
 
+use crate::tt;
+
 use super::abis::Abi;
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";

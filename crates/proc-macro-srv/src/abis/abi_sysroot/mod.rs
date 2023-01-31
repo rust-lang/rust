@@ -9,7 +9,7 @@ mod ra_server;
 use libloading::Library;
 use proc_macro_api::ProcMacroKind;
 
-use super::PanicMessage;
+use super::{tt, PanicMessage};
 
 pub use ra_server::TokenStream;
 

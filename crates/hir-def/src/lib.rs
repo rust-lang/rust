@@ -79,6 +79,8 @@ use nameres::DefMap;
 use stdx::impl_from;
 use syntax::ast;
 
+use ::tt::token_id as tt;
+
 use crate::{
     adt::VariantData,
     builtin_type::BuiltinType,
@@ -973,15 +975,19 @@ fn attr_macro_as_call_id(
     def: MacroDefId,
     is_derive: bool,
 ) -> MacroCallId {
-    let mut arg = match macro_attr.input.as_deref() {
-        Some(AttrInput::TokenTree(tt, map)) => (tt.clone(), map.clone()),
-        _ => Default::default(),
+    let arg = match macro_attr.input.as_deref() {
+        Some(AttrInput::TokenTree(tt, map)) => (
+            {
+                let mut tt = tt.clone();
+                tt.delimiter = tt::Delimiter::UNSPECIFIED;
+                tt
+            },
+            map.clone(),
+        ),
+        _ => (tt::Subtree::empty(), Default::default()),
     };
 
-    // The parentheses are always disposed here.
-    arg.0.delimiter = None;
-
-    let res = def.as_lazy_macro(
+    def.as_lazy_macro(
         db.upcast(),
         krate,
         MacroCallKind::Attr {
@@ -990,8 +996,7 @@ fn attr_macro_as_call_id(
             invoc_attr_index: macro_attr.id,
             is_derive,
         },
-    );
-    res
+    )
 }
 intern::impl_internable!(
     crate::type_ref::TypeRef,

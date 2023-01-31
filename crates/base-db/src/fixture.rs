@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use test_utils::{
     extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER, ESCAPED_CURSOR_MARKER,
 };
-use tt::Subtree;
+use tt::token_id::Subtree;
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
@@ -495,16 +495,15 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
         _: &Env,
     ) -> Result<Subtree, ProcMacroExpansionError> {
         fn traverse(input: &Subtree) -> Subtree {
-            let mut res = Subtree::default();
-            res.delimiter = input.delimiter;
+            let mut token_trees = vec![];
             for tt in input.token_trees.iter().rev() {
                 let tt = match tt {
                     tt::TokenTree::Leaf(leaf) => tt::TokenTree::Leaf(leaf.clone()),
                     tt::TokenTree::Subtree(sub) => tt::TokenTree::Subtree(traverse(sub)),
                 };
-                res.token_trees.push(tt);
+                token_trees.push(tt);
             }
-            res
+            Subtree { delimiter: input.delimiter, token_trees }
         }
         Ok(traverse(input))
     }

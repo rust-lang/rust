@@ -8,13 +8,13 @@ use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
 use syntax::{ast, match_ast, AstNode, SmolStr, SyntaxNode};
-use tt::Subtree;
 
 use crate::{
     db::AstDatabase,
     hygiene::Hygiene,
     mod_path::{ModPath, PathKind},
     name::AsName,
+    tt::{self, Subtree},
     InFile,
 };
 
@@ -117,7 +117,10 @@ impl RawAttrs {
                 let index = attr.id;
                 let attrs =
                     parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(|(idx, attr)| {
-                        let tree = Subtree { delimiter: None, token_trees: attr.to_vec() };
+                        let tree = Subtree {
+                            delimiter: tt::Delimiter::unspecified(),
+                            token_trees: attr.to_vec(),
+                        };
                         // FIXME hygiene
                         let hygiene = Hygiene::new_unhygienic();
                         Attr::from_tt(db, &tree, &hygiene, index.with_cfg_attr(idx))
@@ -266,7 +269,7 @@ impl Attr {
     pub fn parse_path_comma_token_tree(&self) -> Option<impl Iterator<Item = ModPath> + '_> {
         let args = self.token_tree_value()?;
 
-        if args.delimiter_kind() != Some(DelimiterKind::Parenthesis) {
+        if args.delimiter.kind != DelimiterKind::Parenthesis {
             return None;
         }
         let paths = args

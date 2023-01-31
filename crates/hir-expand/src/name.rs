@@ -191,7 +191,7 @@ impl AsName for ast::NameOrNameRef {
     }
 }
 
-impl AsName for tt::Ident {
+impl<Span> AsName for tt::Ident<Span> {
     fn as_name(&self) -> Name {
         Name::resolve(&self.text)
     }
