@@ -12,7 +12,7 @@ size: (1100, 800)
 // Logically, the <body> scroll width should be the width of the window.
 assert-property: ("body", {"scrollWidth": "1100"})
 // However, since there is overflow in the type declaration, its scroll width is bigger.
-assert-property: (".item-decl pre", {"scrollWidth": "1324"})
+assert-property: ("pre.item-decl", {"scrollWidth": "1324"})
 
 // In the table-ish view on the module index, the name should not be wrapped more than necessary.
 goto: "file://" + |DOC_PATH| + "/lib2/too_long/index.html"
@@ -24,7 +24,7 @@ assert-property: ("body", {"scrollWidth": "1100"})
 // We now check that the section width hasn't grown because of it.
 assert-property: ("#main-content", {"scrollWidth": "840"})
 // And now checking that it has scrollable content.
-assert-property: (".item-decl pre", {"scrollWidth": "1103"})
+assert-property: ("pre.item-decl", {"scrollWidth": "1103"})
 
 // ... and constant.
 // On a sidenote, it also checks that the (very) long title isn't changing the docblock width.
@@ -33,7 +33,7 @@ assert-property: ("body", {"scrollWidth": "1100"})
 // We now check that the section width hasn't grown because of it.
 assert-property: ("#main-content", {"scrollWidth": "840"})
 // And now checking that it has scrollable content.
-assert-property: (".item-decl pre", {"scrollWidth": "950"})
+assert-property: ("pre.item-decl", {"scrollWidth": "950"})
 
 // On mobile:
 size: (600, 600)
@@ -65,12 +65,12 @@ compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-ban
 goto: "file://" + |DOC_PATH| + "/lib2/scroll_traits/trait.Iterator.html"
 
 click: ".item-decl .type-contents-toggle"
-assert-property: (".item-decl > pre", {"scrollLeft": 0})
-scroll-to: "//*[@class='item-decl']//details/a[text()='String']"
-assert-property-false: (".item-decl > pre", {"scrollLeft": 0})
+assert-property: ("pre.item-decl", {"scrollLeft": 0})
+scroll-to: "//*[@class='rust item-decl']//details/a[text()='String']"
+assert-property-false: ("pre.item-decl", {"scrollLeft": 0})
 
 // Then on an item without "hidden methods".
 goto: "file://" + |DOC_PATH| + "/lib2/scroll_traits/trait.TraitWithLongItemsName.html"
-assert-property: (".item-decl > pre", {"scrollLeft": 0})
-scroll-to: "//*[@class='item-decl']//code/a[text()='String']"
-assert-property-false: (".item-decl > pre", {"scrollLeft": 0})
+assert-property: ("pre.item-decl", {"scrollLeft": 0})
+scroll-to: "//*[@class='rust item-decl']//code/a[text()='String']"
+assert-property-false: ("pre.item-decl", {"scrollLeft": 0})

@@ -46,6 +46,10 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-results-alias-color: #c5c5c5;
 	--search-results-grey-color: #999;
 	--search-tab-title-count-color: #888;
+	--search-tab-button-not-selected-border-top-color: none;
+	--search-tab-button-not-selected-background: transparent !important;
+	--search-tab-button-selected-border-top-color: none;
+	--search-tab-button-selected-background: #141920 !important;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ff7733;
@@ -171,27 +175,16 @@ pre, .rustdoc.source .example-wrap {
 }
 
 #search-tabs > button.selected {
-	background-color: #141920 !important;
 	border-bottom: 1px solid #ffb44c !important;
 	border-top: none;
 }
-
 #search-tabs > button:not(.selected) {
-	background-color: transparent !important;
 	border: none;
+	background-color: transparent !important;
 }
-
 #search-tabs > button:hover {
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
-
-/* rules that this theme does not need to set, here to satisfy the rule checker */
-/* note that a lot of these are partially set in some way (meaning they are set
-individually rather than as a group) */
-/* FIXME: these rules should be at the bottom of the file but currently must be
-above the `@media (max-width: 700px)` rules due to a bug in the css checker */
-/* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
-#search-tabs > button:hover, #search-tabs > button.selected {}
 
 #settings-menu > a img {
 	filter: invert(100);

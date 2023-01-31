@@ -18,7 +18,7 @@ use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
     collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
-    LinkFromSrc, NameDoc, StylePath, BASIC_KEYWORDS,
+    LinkFromSrc, NameDoc, StylePath,
 };
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
@@ -195,7 +195,6 @@ impl<'tcx> Context<'tcx> {
                 self.shared.layout.krate
             )
         };
-        let keywords = make_item_keywords(it);
         let name;
         let tyname_s = if it.is_crate() {
             name = format!("{} crate", tyname);
@@ -212,7 +211,6 @@ impl<'tcx> Context<'tcx> {
                 static_root_path: clone_shared.static_root_path.as_deref(),
                 title: &title,
                 description: &desc,
-                keywords: &keywords,
                 resource_suffix: &clone_shared.resource_suffix,
             };
             let mut page_buffer = Buffer::html();
@@ -598,7 +596,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             root_path: "../",
             static_root_path: shared.static_root_path.as_deref(),
             description: "List of all items in this crate",
-            keywords: BASIC_KEYWORDS,
             resource_suffix: &shared.resource_suffix,
         };
         let all = shared.all.replace(AllTypes::new());
@@ -827,8 +824,4 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn cache(&self) -> &Cache {
         &self.shared.cache
     }
-}
-
-fn make_item_keywords(it: &clean::Item) -> String {
-    format!("{}, {}", BASIC_KEYWORDS, it.name.as_ref().unwrap())
 }

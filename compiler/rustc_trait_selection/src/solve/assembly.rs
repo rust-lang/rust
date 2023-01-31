@@ -173,6 +173,21 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
+
+    // The most common forms of unsizing are array to slice, and concrete (Sized)
+    // type into a `dyn Trait`. ADTs and Tuples can also have their final field
+    // unsized if it's generic.
+    fn consider_builtin_unsize_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    // `dyn Trait1` can be unsized to `dyn Trait2` if they are the same trait, or
+    // if `Trait2` is a (transitive) supertrait of `Trait2`.
+    fn consider_builtin_dyn_upcast_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> Vec<CanonicalResponse<'tcx>>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -303,6 +318,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_future_candidate(self, goal)
         } else if lang_items.gen_trait() == Some(trait_def_id) {
             G::consider_builtin_generator_candidate(self, goal)
+        } else if lang_items.unsize_trait() == Some(trait_def_id) {
+            G::consider_builtin_unsize_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
@@ -312,6 +329,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
             }
             Err(NoSolution) => (),
+        }
+
+        // There may be multiple unsize candidates for a trait with several supertraits:
+        // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
+        if lang_items.unsize_trait() == Some(trait_def_id) {
+            for result in G::consider_builtin_dyn_upcast_candidates(self, goal) {
+                candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result });
+            }
         }
     }
 
