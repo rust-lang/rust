@@ -1,5 +1,5 @@
 error[E0586]: inclusive range with no end
-  --> $DIR/bad_pat.rs:3:29
+  --> $DIR/bad_pat.rs:4:29
    |
 LL | type NonNullU32_2 = u32 is 1..=;
    |                             ^^^ help: use `..` instead
@@ -7,7 +7,7 @@ LL | type NonNullU32_2 = u32 is 1..=;
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/bad_pat.rs:5:26
+  --> $DIR/bad_pat.rs:6:26
    |
 LL | type Positive2 = i32 is 0..=;
    |                          ^^^ help: use `..` instead
@@ -15,7 +15,7 @@ LL | type Positive2 = i32 is 0..=;
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: "wildcard patterns are not permitted for pattern types"
-  --> $DIR/bad_pat.rs:7:19
+  --> $DIR/bad_pat.rs:8:19
    |
 LL | type Wild = () is _;
    |                   ^

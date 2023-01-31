@@ -478,7 +478,7 @@ declare_features! (
     /// Allows using `#[optimize(X)]`.
     (active, optimize_attribute, "1.34.0", Some(54882), None),
     /// Allows using pattern types.
-    (active, pattern_types, "CURRENT_RUSTC_VERSION", Some(54882), None),
+    (incomplete, pattern_types, "CURRENT_RUSTC_VERSION", Some(54882), None),
     /// Allows `extern "platform-intrinsic" { ... }`.
     (active, platform_intrinsics, "1.4.0", Some(27731), None),
     /// Allows using `#![plugin(myplugin)]`.

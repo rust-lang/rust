@@ -1,4 +1,5 @@
 #![feature(pattern_types)]
+#![allow(incomplete_features)]
 
 type NonNullU32_2 = u32 is 1..=;
 //~^ ERROR: inclusive range with no end
