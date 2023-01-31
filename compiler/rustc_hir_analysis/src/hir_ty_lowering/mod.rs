@@ -21,7 +21,7 @@ mod object_safety;
 
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
-use crate::errors::AmbiguousLifetimeBound;
+use crate::errors::{AmbiguousLifetimeBound, WildPatTy};
 use crate::hir_ty_lowering::errors::{prohibit_assoc_item_binding, GenericsArgsErrExtend};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -2195,7 +2195,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, hir_ty.span)
             }
-            hir::TyKind::Pat(..) => span_bug!(hir_ty.span, "{hir_ty:#?}"),
+            hir::TyKind::Pat(_ty, pat) => match pat.kind {
+                hir::PatKind::Wild => {
+                    let err = tcx.dcx().emit_err(WildPatTy { span: pat.span });
+                    Ty::new_error(tcx, err)
+                }
+                hir::PatKind::Range(_, _, _) => Ty::new_misc_error(tcx),
+                hir::PatKind::Err(e) => Ty::new_error(tcx, e),
+                _ => span_bug!(pat.span, "unsupported pattern for pattern type: {pat:#?}"),
+            },
             hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };
 
