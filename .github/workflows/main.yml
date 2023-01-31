@@ -185,3 +185,45 @@ jobs:
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
       run: ./y.rs abi-cafe
+
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Cache cargo target dir
+      uses: actions/cache@v3
+      with:
+        path: build/cg_clif
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Cache cargo bin dir
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/bin
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-bin-dir-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Use sparse cargo registry
+      run: |
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
+
+    - name: Install hyperfine
+      run: cargo install hyperfine
+
+    - name: Prepare dependencies
+      run: ./y.rs prepare
+
+    - name: Build
+      run: ./y.rs build --sysroot none
+
+    - name: Benchmark
+      run: ./y.rs bench

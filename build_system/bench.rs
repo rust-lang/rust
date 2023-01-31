@@ -5,7 +5,7 @@ use std::path::Path;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
 use super::rustc_info::get_file_name;
-use super::utils::{hyperfine_command, is_ci, spawn_and_wait, CargoProject, Compiler};
+use super::utils::{hyperfine_command, spawn_and_wait, CargoProject, Compiler};
 
 static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
@@ -54,10 +54,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     )
     .unwrap();
 
-    let run_runs = env::var("RUN_RUNS")
-        .unwrap_or(if is_ci() { "2" } else { "10" }.to_string())
-        .parse()
-        .unwrap();
+    let bench_runs = env::var("BENCH_RUNS").unwrap_or_else(|_| "10".to_string()).parse().unwrap();
 
     eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
     let cargo_clif =
@@ -83,7 +80,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     );
 
     let bench_compile =
-        hyperfine_command(1, run_runs, Some(&clean_cmd), &llvm_build_cmd, &clif_build_cmd);
+        hyperfine_command(1, bench_runs, Some(&clean_cmd), &llvm_build_cmd, &clif_build_cmd);
 
     spawn_and_wait(bench_compile);
 
@@ -96,7 +93,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
 
     let mut bench_run = hyperfine_command(
         0,
-        run_runs,
+        bench_runs,
         None,
         Path::new(".").join(get_file_name("raytracer_cg_llvm", "bin")).to_str().unwrap(),
         Path::new(".").join(get_file_name("raytracer_cg_clif", "bin")).to_str().unwrap(),
