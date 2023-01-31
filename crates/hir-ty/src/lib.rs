@@ -39,11 +39,13 @@ use std::sync::Arc;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
-    NoSolution,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
+    NoSolution, TyData,
 };
 use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
 use hir_expand::name;
 use itertools::Either;
+use rustc_hash::FxHashSet;
 use traits::FnTrait;
 use utils::Generics;
 
@@ -561,4 +563,69 @@ pub fn callable_sig_from_fnonce(
         args_ty.as_tuple()?.iter(Interner).map(|it| it.assert_ty_ref(Interner)).cloned().collect();
 
     Some(CallableSig::from_params_and_return(params, ret_ty, false, Safety::Safe))
+}
+
+struct PlaceholderCollector<'db> {
+    db: &'db dyn HirDatabase,
+    placeholders: FxHashSet<TypeOrConstParamId>,
+}
+
+impl PlaceholderCollector<'_> {
+    fn collect(&mut self, idx: PlaceholderIndex) {
+        let id = from_placeholder_idx(self.db, idx);
+        self.placeholders.insert(id);
+    }
+}
+
+impl TypeVisitor<Interner> for PlaceholderCollector<'_> {
+    type BreakTy = ();
+
+    fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
+        self
+    }
+
+    fn interner(&self) -> Interner {
+        Interner
+    }
+
+    fn visit_ty(
+        &mut self,
+        ty: &Ty,
+        outer_binder: DebruijnIndex,
+    ) -> std::ops::ControlFlow<Self::BreakTy> {
+        let has_placeholder_bits = TypeFlags::HAS_TY_PLACEHOLDER | TypeFlags::HAS_CT_PLACEHOLDER;
+        let TyData { kind, flags } = ty.data(Interner);
+
+        if let TyKind::Placeholder(idx) = kind {
+            self.collect(*idx);
+        } else if flags.intersects(has_placeholder_bits) {
+            return ty.super_visit_with(self, outer_binder);
+        } else {
+            // Fast path: don't visit inner types (e.g. generic arguments) when `flags` indicate
+            // that there are no placeholders.
+        }
+
+        std::ops::ControlFlow::Continue(())
+    }
+
+    fn visit_const(
+        &mut self,
+        constant: &chalk_ir::Const<Interner>,
+        _outer_binder: DebruijnIndex,
+    ) -> std::ops::ControlFlow<Self::BreakTy> {
+        if let chalk_ir::ConstValue::Placeholder(idx) = constant.data(Interner).value {
+            self.collect(idx);
+        }
+        std::ops::ControlFlow::Continue(())
+    }
+}
+
+/// Returns unique placeholders for types and consts contained in `value`.
+pub fn collect_placeholders<T>(value: &T, db: &dyn HirDatabase) -> Vec<TypeOrConstParamId>
+where
+    T: ?Sized + TypeVisitable<Interner>,
+{
+    let mut collector = PlaceholderCollector { db, placeholders: FxHashSet::default() };
+    value.visit_with(&mut collector, DebruijnIndex::INNERMOST);
+    collector.placeholders.into_iter().collect()
 }

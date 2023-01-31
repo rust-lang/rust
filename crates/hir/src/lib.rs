@@ -3599,6 +3599,14 @@ impl Type {
             _ => None,
         }
     }
+
+    /// Returns unique `GenericParam`s contained in this type.
+    pub fn generic_params(&self, db: &dyn HirDatabase) -> FxHashSet<GenericParam> {
+        hir_ty::collect_placeholders(&self.ty, db)
+            .into_iter()
+            .map(|id| TypeOrConstParam { id }.split(db).either_into())
+            .collect()
+    }
 }
 
 #[derive(Debug)]
