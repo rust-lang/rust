@@ -1357,7 +1357,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             1,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {
@@ -1404,7 +1404,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             2,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {
@@ -1441,7 +1441,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             3,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {
@@ -1478,7 +1478,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             4,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {
@@ -1515,7 +1515,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             5,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {
@@ -1562,7 +1562,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             6,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {
@@ -1599,7 +1599,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             7,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {
@@ -1709,7 +1709,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             8,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {
@@ -1746,7 +1746,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             9,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {
@@ -1783,7 +1783,7 @@ fn rust_project_hello_world_project_model() {
                         root_file_id: FileId(
                             10,
                         ),
-                        edition: Edition2018,
+                        edition: Edition2021,
                         version: None,
                         display_name: Some(
                             CrateDisplayName {

@@ -813,7 +813,7 @@ fn test() {
 fn method_resolution_trait_from_prelude() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- /main.rs edition:2018 crate:main deps:core
 struct S;
 impl Clone for S {}
 
@@ -1527,7 +1527,7 @@ fn f(x: U2) {
 fn skip_array_during_method_dispatch() {
     check_types(
         r#"
-//- /main2018.rs crate:main2018 deps:core
+//- /main2018.rs crate:main2018 deps:core edition:2018
 use core::IntoIterator;
 
 fn f() {
