@@ -755,8 +755,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{:?}` is forbidden", kind));
                 }
             }
-            StatementKind::StorageLive(..)
-            | StatementKind::StorageDead(..)
+            StatementKind::StorageLive(local) => {
+                if self.reachable_blocks.contains(location.block) {
+                    self.storage_liveness.seek_before_primary_effect(location);
+                    let locals_with_storage = self.storage_liveness.get();
+                    if locals_with_storage.contains(*local) {
+                        self.fail(
+                            location,
+                            format!("StorageLive({local:?}) which already has storage here"),
+                        );
+                    }
+                }
+            }
+            StatementKind::StorageDead(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}
