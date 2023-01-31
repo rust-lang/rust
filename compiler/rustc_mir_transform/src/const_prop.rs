@@ -5,7 +5,6 @@ use std::cell::Cell;
 
 use either::Right;
 
-use rustc_ast::Mutability;
 use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
@@ -289,7 +288,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         }
         // If the static allocation is mutable, then we can't const prop it as its content
         // might be different at runtime.
-        if alloc.inner().mutability == Mutability::Mut {
+        if alloc.inner().mutability.is_mut() {
             throw_machine_stop_str!("can't access mutable globals in ConstProp");
         }
 
@@ -528,7 +527,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let r = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(right, None)?));
         let l = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
-        if op == BinOp::Shr || op == BinOp::Shl {
+        if matches!(op, BinOp::Shr | BinOp::Shl) {
             let r = r.clone()?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!

@@ -580,27 +580,28 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        // If the method is an impl for a trait, don't doc.
         let context = method_context(cx, impl_item.owner_id.def_id);
-        if context == MethodLateContext::TraitImpl {
-            return;
-        }
 
-        // If the method is an impl for an item with docs_hidden, don't doc.
-        if context == MethodLateContext::PlainImpl {
-            let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
-            let impl_ty = cx.tcx.type_of(parent);
-            let outerdef = match impl_ty.kind() {
-                ty::Adt(def, _) => Some(def.did()),
-                ty::Foreign(def_id) => Some(*def_id),
-                _ => None,
-            };
-            let is_hidden = match outerdef {
-                Some(id) => cx.tcx.is_doc_hidden(id),
-                None => false,
-            };
-            if is_hidden {
-                return;
+        match context {
+            // If the method is an impl for a trait, don't doc.
+            MethodLateContext::TraitImpl => return,
+            MethodLateContext::TraitAutoImpl => {}
+            // If the method is an impl for an item with docs_hidden, don't doc.
+            MethodLateContext::PlainImpl => {
+                let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
+                let impl_ty = cx.tcx.type_of(parent);
+                let outerdef = match impl_ty.kind() {
+                    ty::Adt(def, _) => Some(def.did()),
+                    ty::Foreign(def_id) => Some(*def_id),
+                    _ => None,
+                };
+                let is_hidden = match outerdef {
+                    Some(id) => cx.tcx.is_doc_hidden(id),
+                    None => false,
+                };
+                if is_hidden {
+                    return;
+                }
             }
         }
 

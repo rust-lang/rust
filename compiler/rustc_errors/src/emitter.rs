@@ -2113,30 +2113,38 @@ impl EmitterWriter {
                         }
                     }
                     for sugg in suggestions {
-                        if sugg.style == SuggestionStyle::CompletelyHidden {
-                            // do not display this suggestion, it is meant only for tools
-                        } else if sugg.style == SuggestionStyle::HideCodeAlways {
-                            if let Err(e) = self.emit_message_default(
-                                &MultiSpan::new(),
-                                &[(sugg.msg.to_owned(), Style::HeaderMsg)],
-                                args,
-                                &None,
-                                &Level::Help,
-                                max_line_num_len,
-                                true,
-                                None,
-                            ) {
-                                panic!("failed to emit error: {}", e);
+                        match sugg.style {
+                            SuggestionStyle::CompletelyHidden => {
+                                // do not display this suggestion, it is meant only for tools
                             }
-                        } else if let Err(e) = self.emit_suggestion_default(
-                            span,
-                            sugg,
-                            args,
-                            &Level::Help,
-                            max_line_num_len,
-                        ) {
-                            panic!("failed to emit error: {}", e);
-                        };
+                            SuggestionStyle::HideCodeAlways => {
+                                if let Err(e) = self.emit_message_default(
+                                    &MultiSpan::new(),
+                                    &[(sugg.msg.to_owned(), Style::HeaderMsg)],
+                                    args,
+                                    &None,
+                                    &Level::Help,
+                                    max_line_num_len,
+                                    true,
+                                    None,
+                                ) {
+                                    panic!("failed to emit error: {}", e);
+                                }
+                            }
+                            SuggestionStyle::HideCodeInline
+                            | SuggestionStyle::ShowCode
+                            | SuggestionStyle::ShowAlways => {
+                                if let Err(e) = self.emit_suggestion_default(
+                                    span,
+                                    sugg,
+                                    args,
+                                    &Level::Help,
+                                    max_line_num_len,
+                                ) {
+                                    panic!("failed to emit error: {}", e);
+                                }
+                            }
+                        }
                     }
                 }
             }
