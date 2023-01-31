@@ -43,7 +43,8 @@ function run_tests {
     # optimizations up all the way, too).
     # Optimizations change diagnostics (mostly backtraces), so we don't check
     # them. Also error locations change so we don't run the failing tests.
-    MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
+    #FIXME: temporarily disabled due to <https://github.com/rust-lang/rust/issues/107511>.
+    #MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
 
     # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
     for FILE in tests/many-seeds/*.rs; do
