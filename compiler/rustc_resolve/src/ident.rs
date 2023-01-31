@@ -7,7 +7,6 @@ use rustc_middle::ty;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, DUMMY_SP};
@@ -86,7 +85,7 @@ impl<'a> Resolver<'a> {
         // 4c. Standard library prelude (de-facto closed, controlled).
         // 6. Language prelude: builtin attributes (closed, controlled).
 
-        let rust_2015 = ctxt.edition() == Edition::Edition2015;
+        let rust_2015 = ctxt.edition().rust_2015();
         let (ns, macro_kind, is_absolute_path) = match scope_set {
             ScopeSet::All(ns, _) => (ns, None, false),
             ScopeSet::AbsolutePath(ns) => (ns, None, true),
