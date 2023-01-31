@@ -287,7 +287,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             // sync with the `rfc-2011-nicer-assert-messages/all-expr-kinds.rs` test.
             ExprKind::Assign(_, _, _)
             | ExprKind::AssignOp(_, _, _)
-            | ExprKind::Async(_, _, _)
+            | ExprKind::Async(_, _)
             | ExprKind::Await(_)
             | ExprKind::Block(_, _)
             | ExprKind::Break(_, _)

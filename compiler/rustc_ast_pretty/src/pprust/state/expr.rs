@@ -439,7 +439,7 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Async(capture_clause, _, blk) => {
+            ast::ExprKind::Async(capture_clause, blk) => {
                 self.word_nbsp("async");
                 self.print_capture_clause(*capture_clause);
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above

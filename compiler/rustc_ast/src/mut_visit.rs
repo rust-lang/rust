@@ -1407,8 +1407,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_block(blk);
             visit_opt(label, |label| vis.visit_label(label));
         }
-        ExprKind::Async(_capture_by, node_id, body) => {
-            vis.visit_id(node_id);
+        ExprKind::Async(_capture_by, body) => {
             vis.visit_block(body);
         }
         ExprKind::Await(expr) => vis.visit_expr(expr),

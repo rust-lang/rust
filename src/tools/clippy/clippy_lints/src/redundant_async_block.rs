@@ -42,7 +42,7 @@ impl EarlyLintPass for RedundantAsyncBlock {
         if expr.span.from_expansion() {
             return;
         }
-        if let ExprKind::Async(_, _, block) = &expr.kind && block.stmts.len() == 1 &&
+        if let ExprKind::Async(_, block) = &expr.kind && block.stmts.len() == 1 &&
             let Some(Stmt { kind: StmtKind::Expr(last), .. }) = block.stmts.last() &&
             let ExprKind::Await(future) = &last.kind &&
             !future.span.from_expansion() &&
