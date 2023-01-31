@@ -454,8 +454,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error_with_guaranteed(e),
             None => {
                 bug!(
-                    "no type for node {}: {} in fcx {}",
-                    id,
+                    "no type for node {} in fcx {}",
                     self.tcx.hir().node_to_string(id),
                     self.tag()
                 );
