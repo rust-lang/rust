@@ -37,7 +37,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
         }
 
         let available_cgus =
-            tcx.collect_and_partition_mono_items(()).1.iter().map(|cgu| cgu.name()).collect();
+            tcx.collect_and_partition_mono_items(()).2.iter().map(|cgu| cgu.name()).collect();
 
         let ams = AssertModuleSource { tcx, available_cgus };
 

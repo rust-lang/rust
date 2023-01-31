@@ -217,8 +217,8 @@ pub struct InliningMap<'tcx> {
     // Maps a source mono item to the range of mono items
     // accessed by it.
     // The range selects elements within the `targets` vecs.
-    index: FxHashMap<MonoItem<'tcx>, Range<usize>>,
-    targets: Vec<MonoItem<'tcx>>,
+    pub index: FxHashMap<MonoItem<'tcx>, Range<usize>>,
+    pub targets: Vec<MonoItem<'tcx>>,
 
     // Contains one bit per mono item in the `targets` field. That bit
     // is true if that mono item needs to be inlined into every CGU.
@@ -311,13 +311,6 @@ pub fn collect_crate_mono_items(
                 );
             });
         });
-
-        tcx.autodiff_functions(())
-            .into_iter()
-            //.map(|x| x.source.as_local().&unwrap())
-            .map(|x| Instance::mono(tcx, x.source))
-            .map(|x| MonoItem::Fn(x.polymorphize(tcx)))
-            .for_each(|x| {visited.lock_mut().insert(x);});
     }
 
     (visited.into_inner(), inlining_map.into_inner())
@@ -334,12 +327,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
-        let autodiff_fncs = tcx.autodiff_functions(())
-                .into_iter()
-                .map(|x| x.source.as_local().unwrap())
-                .collect();
-
-        let mut visitor = RootCollector { tcx, mode, entry_fn, output: &mut roots, autodiff_fncs };
+        let mut visitor = RootCollector { tcx, mode, entry_fn, output: &mut roots };
 
         tcx.hir().visit_all_item_likes(&mut visitor);
 
@@ -1148,7 +1136,6 @@ struct RootCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mode: MonoItemCollectionMode,
     output: &'a mut Vec<Spanned<MonoItem<'tcx>>>,
-    autodiff_fncs: FxHashSet<LocalDefId>,
     entry_fn: Option<(DefId, EntryFnType)>,
 }
 
@@ -1239,7 +1226,6 @@ impl<'v> RootCollector<'_, 'v> {
                 MonoItemCollectionMode::Eager => true,
                 MonoItemCollectionMode::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
-                        || self.autodiff_fncs.contains(&def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
                         || self
                             .tcx

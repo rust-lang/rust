@@ -4,7 +4,7 @@ use crate::ModuleCodegen;
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::FatalError;
-use rustc_middle::metadata::DiffItem;
+use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
 
 use std::ffi::CString;
 use std::sync::Arc;
@@ -85,7 +85,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     pub unsafe fn autodiff(
         &mut self,
         cgcx: &CodegenContext<B>,
-        diff_fncs: Vec<(DiffItem, String)>,
+        diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<LtoModuleCodegen<B>, FatalError> {
         match *self {
             LtoModuleCodegen::Fat { ref mut module, .. } => {

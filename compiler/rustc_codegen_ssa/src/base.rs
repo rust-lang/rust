@@ -495,7 +495,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None, 1);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None, 1, Vec::new());
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -508,7 +508,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let codegen_units = tcx.collect_and_partition_mono_items(()).1;
+    let (_, autodiff_fncs, codegen_units) = tcx.collect_and_partition_mono_items(());
+    let autodiff_fncs = autodiff_fncs.to_vec();
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -555,6 +556,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         metadata,
         metadata_module,
         codegen_units.len(),
+        autodiff_fncs,
     );
     let ongoing_codegen = AbortCodegenOnDrop::<B>(Some(ongoing_codegen));
 
@@ -586,7 +588,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             )
         });
 
-        Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator, diff_fncs: Vec::new() })
+        Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator })
     } else {
         None
     };
@@ -909,7 +911,7 @@ pub fn provide(providers: &mut Providers) {
             config::OptLevel::SizeMin => config::OptLevel::Default,
         };
 
-        let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
+        let (defids, _, _) = tcx.collect_and_partition_mono_items(cratenum);
         for id in &*defids {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
             match optimize {

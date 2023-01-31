@@ -26,7 +26,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::bug;
-use rustc_middle::metadata::{DiffItem, DiffMode};
+use rustc_middle::middle::autodiff_attrs::{AutoDiffItem, DiffMode, DiffActivity};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
 use rustc_session::Session;
@@ -647,7 +647,7 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, tasks
     let rust_name2 = &tasks.target;
 
     let args_activity = tasks.input_activity.clone();
-    let ret_activity: rustc_middle::metadata::DiffActivity = tasks.ret_activity;
+    let ret_activity: DiffActivity = tasks.ret_activity;
 
     let name = CString::new(rust_name.to_owned()).unwrap();
     let name2 = CString::new(rust_name2.clone()).unwrap();
@@ -670,7 +670,8 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, tasks
     let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
     let mut res: &Value = match tasks.mode {
         DiffMode::Forward => enzyme_rust_forward_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret),
-        DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, diff_primary_ret)
+        DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, diff_primary_ret),
+        _ => unreachable!(),
     };
     dbg!(res);
     let f_type = LLVMTypeOf(res);
@@ -707,23 +708,29 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, tasks
 pub(crate) unsafe fn differentiate(
     module: &ModuleCodegen<ModuleLlvm>,
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diff_fncs: Vec<(DiffItem, String)>,
+    diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<(), FatalError> {
 
     let llmod = module.module_llvm.llmod();
-    let llcx = &module.module_llvm.llcx;
+    //let llcx = &module.module_llvm.llcx;
 
-    dbg!(&diff_fncs);
-    let names: Vec<String> = diff_fncs.iter().map(|(_fnc, name)| name.clone()).collect();
-    let tasks = &module.module_llvm.lldiff_items;
-
-    assert_eq!(names.len(), tasks.len());
-    // dbg!(names.len());
-    // dbg!(tasks.len());
-    for (task, name) in tasks.iter().zip(names) {
-        let res = enzyme_ad(llmod, llcx, &task, name);
-        assert!(res.is_ok());
+    for diff_fnc in diff_fncs {
+        let name = CString::new(diff_fnc.target.clone()).unwrap();
+        dbg!(&llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr()));
+        let name = CString::new(diff_fnc.source.clone()).unwrap();
+        dbg!(&llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr()));
+        dbg!(&diff_fnc.attrs);
     }
+    //let names: Vec<String> = diff_fncs.iter().map(|(_fnc, name)| name.clone()).collect();
+    //let tasks = &module.module_llvm.lldiff_items;
+
+    //assert_eq!(names.len(), tasks.len());
+    //// dbg!(names.len());
+    //// dbg!(tasks.len());
+    //for (task, name) in tasks.iter().zip(names) {
+    //    let res = enzyme_ad(llmod, llcx, &task, name);
+    //    assert!(res.is_ok());
+    //}
 
     Ok(())
 }

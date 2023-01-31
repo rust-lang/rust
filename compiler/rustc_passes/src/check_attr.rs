@@ -2007,17 +2007,17 @@ impl CheckAttrVisitor<'_> {
     }
 
     /// Checks if `#[autodiff]` is applied to an item other than a foreign module.
-    fn check_autodiff(&self, _hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::ForeignMod => {}
-            _ => {
-                self.tcx
-                    .sess
-                    .struct_span_err(attr.span, "attribute should be applied to an `extern` block")
-                    .span_label(span, "not an `extern` block")
-                    .emit();
-            }
-        }
+    fn check_autodiff(&self, _hir_id: HirId, _attr: &Attribute, _span: Span, _target: Target) {
+        //match target {
+        //    Target::ForeignMod => {}
+        //    _ => {
+        //        self.tcx
+        //            .sess
+        //            .struct_span_err(attr.span, "attribute should be applied to an `extern` block")
+        //            .span_label(span, "not an `extern` block")
+        //            .emit();
+        //    }
+        //}
     }
 }
 

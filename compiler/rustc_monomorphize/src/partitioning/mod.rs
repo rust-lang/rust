@@ -100,10 +100,13 @@ use rustc_data_structures::sync;
 use rustc_hir::def_id::DefIdSet;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
+use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
+use rustc_symbol_mangling::symbol_name_for_instance_in_crate;
 
 use crate::collector::InliningMap;
 use crate::collector::{self, MonoItemCollectionMode};
@@ -344,7 +347,7 @@ where
 fn collect_and_partition_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+) -> (&'tcx DefIdSet, &'tcx [AutoDiffItem], &'tcx [CodegenUnit<'tcx>]) {
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
@@ -413,6 +416,51 @@ fn collect_and_partition_mono_items<'tcx>(
         })
         .collect();
 
+    let autodiff_items = items.iter().filter_map(|item| {
+        match *item {
+            MonoItem::Fn(ref instance) => {
+                let target_id = instance.def_id();
+                let target_attrs = tcx.autodiff_attrs(target_id);
+                if target_attrs.apply_autodiff() {
+                    let target_symbol = symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
+                    let range = inlining_map.index.get(&item).unwrap();
+
+                    inlining_map.targets[range.clone()].into_iter()
+                        .filter_map(|item| match *item {
+                            MonoItem::Fn(ref instance_s) => {
+                                let source_id = instance_s.def_id();
+
+                                if tcx.autodiff_attrs(source_id).is_source() {
+                                    Some(symbol_name_for_instance_in_crate(tcx, instance_s.clone(), LOCAL_CRATE))
+                                } else {
+                                    None
+                                }
+                            },
+                            _ => None,
+                        }).next().map(|source_symbol|
+                            target_attrs.clone().into_item(source_symbol, target_symbol))
+                } else {
+                    None
+                }
+            },
+            _ => None,
+        }
+    });
+
+    let autodiff_items = tcx.arena.alloc_from_iter(autodiff_items);
+
+    //let autodiff_items = mono_items.iter()
+    //    .map(|def_id| tcx.autodiff_attrs(def_id))
+    //    .filter(|x| x.is_active())
+    //    .collect::<Vec<_>>();
+
+
+    //for item in autodiff_items2 {
+    //    if let Some(range) = inlining_map.index.get(&item) {
+    //        dbg!(&inlining_map.targets[range.clone()]);
+    //    }
+    //}
+
     if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
@@ -464,11 +512,11 @@ fn collect_and_partition_mono_items<'tcx>(
         }
     }
 
-    (tcx.arena.alloc(mono_items), codegen_units)
+    (tcx.arena.alloc(mono_items), autodiff_items, codegen_units)
 }
 
 fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSet {
-    let (items, cgus) = tcx.collect_and_partition_mono_items(());
+    let (items, _, cgus) = tcx.collect_and_partition_mono_items(());
     let mut visited = DefIdSet::default();
     let mut result = items.clone();
 
@@ -496,12 +544,12 @@ pub fn provide(providers: &mut Providers) {
     providers.codegened_and_inlined_items = codegened_and_inlined_items;
 
     providers.is_codegened_item = |tcx, def_id| {
-        let (all_mono_items, _) = tcx.collect_and_partition_mono_items(());
+        let (all_mono_items, _, _) = tcx.collect_and_partition_mono_items(());
         all_mono_items.contains(&def_id)
     };
 
     providers.codegen_unit = |tcx, name| {
-        let (_, all) = tcx.collect_and_partition_mono_items(());
+        let (_, _, all) = tcx.collect_and_partition_mono_items(());
         all.iter()
             .find(|cgu| cgu.name() == name)
             .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))

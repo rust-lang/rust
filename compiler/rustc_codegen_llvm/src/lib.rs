@@ -38,7 +38,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{TyCtxt, self, Ty, ParamEnvAnd};
-use rustc_middle::metadata::{DiffItem, DiffMode, DiffActivity};
+use rustc_middle::middle::autodiff_attrs::{DiffMode, DiffActivity, AutoDiffItem};
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -248,7 +248,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn autodiff(
         cgcx: &CodegenContext<Self>,
         module: &ModuleCodegen<Self::Module>,
-        diff_fncs: Vec<(DiffItem, String)>,
+        diff_fncs: Vec<AutoDiffItem>,
         ) -> Result<(), FatalError> {
         unsafe {
             back::write::differentiate(module, cgcx, diff_fncs)
@@ -527,45 +527,46 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            let out = tcx.autodiff_functions(()).into_iter()
-                .map(|item| {
-                    let id: DefId = item.source;
-                    let fn_ty: Ty<'_> = tcx.type_of(id);
-                    if !fn_ty.is_fn() {
-                        panic!("should be a fn");
-                    }
-                    dbg!(fn_ty);
-                    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
+            //let out = tcx.autodiff_functions(()).into_iter()
+            //    .map(|item| {
+            //        let id: DefId = item.source;
+            //        let fn_ty: Ty<'_> = tcx.type_of(id);
+            //        if !fn_ty.is_fn() {
+            //            panic!("should be a fn");
+            //        }
+            //        dbg!(fn_ty);
+            //        let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
 
-                    // TODO: verify.
-                    // I think we don't need lifetimes here, so skip_binder is valid?
-                    // let tmp = fnc_binder.no_bound_vars();
-                    // assert!(tmp.is_some());
-                    // let x: ty::FnSig<'_> = tmp.unwrap();
-                    let x: ty::FnSig<'_> = fnc_binder.skip_binder();
+            //        // TODO: verify.
+            //        // I think we don't need lifetimes here, so skip_binder is valid?
+            //        // let tmp = fnc_binder.no_bound_vars();
+            //        // assert!(tmp.is_some());
+            //        // let x: ty::FnSig<'_> = tmp.unwrap();
+            //        let x: ty::FnSig<'_> = fnc_binder.skip_binder();
 
-                    let output: Ty<'_> = x.output();
-                    let inputs: &[Ty<'_>] = x.inputs();
-                    let llvm_data_layout = llvm::LLVMGetDataLayoutStr(&*llmod_raw);
-                    let llvm_data_layout = std::str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
-                        .expect("got a non-UTF8 data-layout from LLVM");
-                    let mut input_tt = vec![];
-                    for input in inputs {
-                        input_tt.push(get_enzyme_typtree(*input, llvm_data_layout, tcx, llcx));
-                    }
-                    let ret_tt = get_enzyme_typtree(output, llvm_data_layout, tcx, llcx);
-                    println!("ret_tt: {}", ret_tt);
-                    LLVMDiffItem {
-                        ret_tt,
-                        input_tt: vec![],
-                        source: item.source,
-                        target: item.target.clone(),
-                        mode: item.mode,
-                        ret_activity: item.ret_activity,
-                        input_activity: item.input_activity.clone(),
-                    }
-                })
-            .collect::<Vec<_>>();
+            //        let output: Ty<'_> = x.output();
+            //        let inputs: &[Ty<'_>] = x.inputs();
+            //        let llvm_data_layout = llvm::LLVMGetDataLayoutStr(&*llmod_raw);
+            //        let llvm_data_layout = std::str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
+            //            .expect("got a non-UTF8 data-layout from LLVM");
+            //        let mut input_tt = vec![];
+            //        for input in inputs {
+            //            input_tt.push(get_enzyme_typtree(*input, llvm_data_layout, tcx, llcx));
+            //        }
+            //        let ret_tt = get_enzyme_typtree(output, llvm_data_layout, tcx, llcx);
+            //        println!("ret_tt: {}", ret_tt);
+            //        LLVMDiffItem {
+            //            ret_tt,
+            //            input_tt: vec![],
+            //            source: item.source,
+            //            target: item.target.clone(),
+            //            mode: item.mode,
+            //            ret_activity: item.ret_activity,
+            //            input_activity: item.input_activity.clone(),
+            //        }
+            //    })
+            //.collect::<Vec<_>>();
+            let out = Vec::new();
             ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name), lldiff_items: out }
         }
     }

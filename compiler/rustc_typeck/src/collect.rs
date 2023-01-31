@@ -22,7 +22,8 @@ use crate::constrained_generic_params as cgp;
 use crate::errors;
 use crate::middle::resolve_lifetime as rl;
 use rustc_ast as ast;
-use rustc_ast::{MetaItemKind, NestedMetaItem};
+use rustc_ast::{MetaItemKind, NestedMetaItem, MetaItem};
+use rustc_ast::{Lit, LitIntType, LitKind};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
@@ -35,6 +36,7 @@ use rustc_hir::weak_lang_items;
 use rustc_hir::{GenericParamKind, HirId, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::middle::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
@@ -87,6 +89,7 @@ pub fn provide(providers: &mut Providers) {
         is_foreign_item,
         generator_kind,
         codegen_fn_attrs,
+        autodiff_attrs,
         asm_target_features,
         collect_mod_item_types,
         should_inherit_track_caller,
@@ -2747,6 +2750,194 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Linkage {
     }
 }
 
+fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
+    let attrs = tcx.get_attrs(id);
+
+    let attrs = attrs
+        .into_iter()
+        .filter(|attr| attr.name_or_empty() == sym::autodiff)
+        .collect::<Vec<_>>();
+
+    // check for exactly one autodiff attribute on extern block
+    let attr = match &attrs[..] {
+        &[] => return AutoDiffAttrs::inactive(),
+        &[elm] => elm,
+        x => {
+            tcx
+                .sess
+                .struct_span_err(x[1].span, "autodiff attribute can only be applied once")
+                .span_label(x[1].span, "more than one")
+                .emit();
+
+            return AutoDiffAttrs::inactive();
+        }
+    };
+
+    let list = attr.meta_item_list().unwrap_or_default();
+
+    if list.len() == 0 {
+        return AutoDiffAttrs {
+            mode: DiffMode::Source,
+            ret_activity: DiffActivity::None,
+            input_activity: Vec::new(),
+        };
+    }
+
+    let mode = match &list[0] {
+        NestedMetaItem::MetaItem(MetaItem {
+            path: ref p2,
+            kind: MetaItemKind::NameValue(Lit { kind: LitKind::Str(mode, _), .. }),
+            ..
+        }) if *p2 == sym::mode => mode,
+        _ => {
+            tcx
+                .sess
+                .struct_span_err(
+                    attr.span,
+                    "autodiff attribute must contain the source function",
+                    )
+                .span_label(attr.span, "empty argument list")
+                .emit();
+
+            return AutoDiffAttrs::inactive();
+        }
+    };
+
+    // parse mode
+    let mode = match mode.as_str() {//map(|x| x.as_str()) {
+        "forward" => DiffMode::Forward,
+        "reverse" => DiffMode::Reverse,
+        _ => {
+            tcx
+                .sess
+                .struct_span_err(attr.span, "mode should be either forward or reverse")
+                .span_label(attr.span, "invalid mode")
+                .emit();
+
+            return AutoDiffAttrs::inactive();
+        }
+    };
+
+    let ret_symbol = match &list[1] {
+        NestedMetaItem::MetaItem(MetaItem {
+            path: ref p2,
+            kind: MetaItemKind::Word,
+            ..
+        }) => {
+            let id = p2.segments.first().unwrap().ident;
+            id
+        },
+        _ => {
+            tcx
+                .sess
+                .struct_span_err(
+                    attr.span,
+                    "autodiff attribute must contain the return activity",
+                    )
+                .span_label(attr.span, "missing return activity")
+                .emit();
+
+            return AutoDiffAttrs::inactive();
+        },
+    };
+
+
+    let ret_activity = match ret_symbol.as_str() {
+        "None" => DiffActivity::None,
+        "Active" => DiffActivity::Active,
+        "Const" => DiffActivity::Const,
+        "Duplicated" => DiffActivity::Duplicated,
+        "DuplicatedNoNeed" => DiffActivity::DuplicatedNoNeed,
+        _ => {
+            tcx
+                .sess
+                .struct_span_err(attr.span, "unknown return activity")
+                .span_label(attr.span, "invalid return activity")
+                .emit();
+            return AutoDiffAttrs::inactive();
+        }
+    };
+
+    let mut input_activity: Vec<DiffActivity> = vec![];
+    for foo in &list[2..] {
+        let foo_symbol = match foo {
+            NestedMetaItem::MetaItem(MetaItem {
+                path: ref p2,
+                kind: MetaItemKind::Word,
+                ..
+            }) => {
+                let id = p2.segments.first().unwrap().ident;
+                dbg!(&id);
+                id
+            },
+            _ => {
+                tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "autodiff attribute must contain the return activity",
+                        )
+                    .span_label(attr.span, "missing return activity")
+                    .emit();
+
+                return AutoDiffAttrs::inactive();
+            },
+        };
+        let act = match foo_symbol.as_str() {
+            "None" => DiffActivity::None,
+            "Active" => DiffActivity::Active,
+            "Const" => DiffActivity::Const,
+            "Duplicated" => DiffActivity::Duplicated,
+            "DuplicatedNoNeed" => DiffActivity::DuplicatedNoNeed,
+            _ => {
+                tcx
+                    .sess
+                    .struct_span_err(attr.span, "unknown return activity")
+                    .span_label(attr.span, "invalid input activity")
+                    .emit();
+                return AutoDiffAttrs::inactive();
+            }
+        };
+        input_activity.push(act);
+    }
+
+    if mode == DiffMode::Forward {
+        if ret_activity == DiffActivity::Active {
+            tcx
+                .sess
+                .struct_span_err(attr.span, "Forward Mode is incompatible with Active ret")
+                .span_label(attr.span, "invalid return activity")
+                .emit();
+            return AutoDiffAttrs::inactive();
+        }
+        if input_activity.iter().filter(|&x| *x == DiffActivity::Active).count() > 0 {
+            tcx
+                .sess
+                .struct_span_err(attr.span, "Forward Mode is incompatible with Active args")
+                .span_label(attr.span, "invalid input activity")
+                .emit();
+            return AutoDiffAttrs::inactive();
+        }
+    }
+
+    if mode == DiffMode::Reverse {
+        if ret_activity == DiffActivity::Duplicated || ret_activity == DiffActivity::DuplicatedNoNeed {
+            tcx
+                .sess
+                .struct_span_err(attr.span, "Reverse Mode is only compatible with Active, None, or Const ret")
+                .span_label(attr.span, "invalid return activity")
+                .emit();
+            return AutoDiffAttrs::inactive();
+        }
+    }
+
+    AutoDiffAttrs {
+        mode,
+        ret_activity,
+        input_activity,
+    }
+}
+
 fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     let attrs = tcx.get_attrs(id);
 
@@ -3290,7 +3481,6 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
-    use rustc_ast::{Lit, LitIntType, LitKind};
     let meta_item_list = attr.meta_item_list();
     let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
     let sole_meta_list = match meta_item_list {

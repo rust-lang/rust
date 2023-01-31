@@ -1,4 +1,5 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::middle::autodiff_attrs::AutoDiffAttrs;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::subst::Subst;
@@ -2975,8 +2976,8 @@ fn fn_abi_of_fn_ptr<'tcx>(
         extra_args,
         None,
         CodegenFnAttrFlags::empty(),
+        &AutoDiffAttrs::inactive(),
         false,
-        false
     )
 }
 
@@ -2994,23 +2995,16 @@ fn fn_abi_of_instance<'tcx>(
         None
     };
 
-    let attrs = tcx.codegen_fn_attrs(instance.def_id()).flags;
-
-    let is_autodiff = tcx.autodiff_functions(()).into_iter()
-        .any(|fnc| {
-            let def_id = instance.def_id();
-
-            fnc.source == def_id 
-        });
-    dbg!(&is_autodiff);
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id()).flags;
+    let autodiff_attrs = tcx.autodiff_attrs(instance.def_id());
 
     LayoutCx { tcx, param_env }.fn_abi_new_uncached(
         sig,
         extra_args,
         caller_location,
-        attrs,
+        codegen_fn_attrs,
+        autodiff_attrs,
         matches!(instance.def, ty::InstanceDef::Virtual(..)),
-        is_autodiff,
     )
 }
 
@@ -3023,9 +3017,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         extra_args: &[Ty<'tcx>],
         caller_location: Option<Ty<'tcx>>,
         codegen_fn_attr_flags: CodegenFnAttrFlags,
+        autodiff_attrs: &AutoDiffAttrs,
         // FIXME(eddyb) replace this with something typed, like an `enum`.
         force_thin_self_ptr: bool,
-        is_autodiff: bool,
     ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
         debug!("fn_abi_new_uncached({:?}, {:?})", sig, extra_args);
 
@@ -3197,10 +3191,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             conv,
             can_unwind: fn_can_unwind(self.tcx(), codegen_fn_attr_flags, sig.abi),
         };
-        if !is_autodiff {
+        if !autodiff_attrs.is_active() {
             self.fn_abi_adjust_for_abi(&mut fn_abi, sig.abi)?;
         } else {
-            dbg!(&fn_abi);
+            //dbg!(&fn_abi);
         }
 
         debug!("fn_abi_new_uncached = {:?}", fn_abi);

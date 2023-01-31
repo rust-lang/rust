@@ -83,6 +83,7 @@ macro_rules! arena_types {
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<'tcx>,
             [] attribute: rustc_ast::Attribute,
+            [] autodiff_item: rustc_middle::middle::autodiff_attrs::AutoDiffItem,
             [] name_set: rustc_data_structures::fx::FxHashSet<rustc_span::symbol::Symbol>,
             [] hir_id_set: rustc_hir::HirIdSet,
 

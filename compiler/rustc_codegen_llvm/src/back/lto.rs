@@ -243,7 +243,6 @@ fn fat_lto(
             }
         }
     }
-    dbg!(&in_memory.len(), &serialized_modules.len());
     // Find the "costliest" module and merge everything into that codegen unit.
     // All the other modules will be serialized and reparsed into the new
     // context, so this hopefully avoids serializing and parsing the largest
@@ -278,7 +277,6 @@ fn fat_lto(
                 module_llvm: ModuleLlvm::parse(cgcx, &name, buffer.data(), diag_handler)?,
                 name: name.into_string().unwrap(),
                 kind: ModuleKind::Regular,
-                diff_fncs: Vec::new(),
             }
         }
     };
@@ -749,7 +747,6 @@ pub unsafe fn optimize_thin_module(
         module_llvm: ModuleLlvm { llmod_raw, llcx, tm, lldiff_items },
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
-        diff_fncs: Vec::new(),
     };
     {
         let target = &*module.module_llvm.tm;

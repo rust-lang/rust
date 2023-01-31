@@ -24,6 +24,7 @@ use rustc_incremental::{
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
@@ -33,7 +34,6 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
-use rustc_middle::metadata::DiffItem;
 
 use std::any::Any;
 use std::fs;
@@ -366,9 +366,10 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
     }
 }
 
-fn generate_lto_work<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    needs_fat_lto: Vec<(FatLTOInput<B>, Vec<(DiffItem, String)>)>,
+fn generate_lto_work<'tcx, B: ExtraBackendMethods>(
+    cgcx: &'tcx CodegenContext<B>,
+    autodiff: Vec<AutoDiffItem>,
+    needs_fat_lto: Vec<FatLTOInput<B>>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
     ) -> Vec<(WorkItem<B>, u64)> {
@@ -377,18 +378,11 @@ fn generate_lto_work<B: ExtraBackendMethods>(
     let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
 
-        let (needs_fat_lto, diff_fncs): (Vec<FatLTOInput<B>>, Vec<Vec<(DiffItem, String)>>) = needs_fat_lto.into_iter()
-            .unzip();
-
-        let diff_fncs = diff_fncs.into_iter().flatten().collect();
-
         let mut lto_module =
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
 
-        dbg!(&diff_fncs);
-
         if cgcx.lto == Lto::Fat {
-            lto_module = unsafe { lto_module.autodiff(cgcx, diff_fncs).unwrap() };
+            lto_module = unsafe { lto_module.autodiff(cgcx, autodiff).unwrap() };
         }
 
         (vec![lto_module], vec![])
@@ -446,6 +440,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     metadata: EncodedMetadata,
     metadata_module: Option<CompiledModule>,
     total_cgus: usize,
+    autodiff: Vec<AutoDiffItem>,
     ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
     let sess = tcx.sess;
@@ -480,6 +475,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         Arc::new(metadata_config),
         Arc::new(allocator_config),
         coordinator_send.clone(),
+        autodiff,
         );
 
     OngoingCodegen {
@@ -740,7 +736,7 @@ impl<B: WriteBackendMethods> WorkItem<B> {
 enum WorkItemResult<B: WriteBackendMethods> {
     Compiled(CompiledModule),
     NeedsLink(ModuleCodegen<B::Module>),
-    NeedsFatLTO(FatLTOInput<B>, Vec<(DiffItem, String)>),
+    NeedsFatLTO(FatLTOInput<B>),
     NeedsThinLTO(String, B::ThinBuffer),
 }
 
@@ -823,8 +819,6 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
         B::optimize(cgcx, &diag_handler, &module, module_config)?;
     }
 
-    let diff_fncs = module.diff_fncs.clone();
-
     // After we've done the initial round of optimizations we need to
     // decide whether to synchronously codegen this module or ship it
     // back to the coordinator thread for further LTO processing (which
@@ -858,9 +852,9 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
                 fs::write(&path, buffer.data()).unwrap_or_else(|e| {
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
                 });
-                Ok(WorkItemResult::NeedsFatLTO(FatLTOInput::Serialized { name, buffer }, diff_fncs))
+                Ok(WorkItemResult::NeedsFatLTO(FatLTOInput::Serialized { name, buffer }))
             }
-            None => Ok(WorkItemResult::NeedsFatLTO(FatLTOInput::InMemory(module), diff_fncs)),
+            None => Ok(WorkItemResult::NeedsFatLTO(FatLTOInput::InMemory(module))),
         },
     }
 }
@@ -934,7 +928,7 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
 pub enum Message<B: WriteBackendMethods> {
     Token(io::Result<Acquired>),
     NeedsFatLTO {
-        result: (FatLTOInput<B>, Vec<(DiffItem, String)>),
+        result: FatLTOInput<B>,
         worker_id: usize,
     },
     NeedsThinLTO {
@@ -989,6 +983,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     metadata_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
     tx_to_llvm_workers: Sender<Box<dyn Any + Send>>,
+    autodiff: Vec<AutoDiffItem>,
     ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tx_to_llvm_workers;
     let sess = tcx.sess;
@@ -1334,7 +1329,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                                     for (work, cost) in
-                                        generate_lto_work(&cgcx, needs_fat_lto, needs_thin_lto, import_only_modules)
+                                        generate_lto_work(&cgcx, autodiff.clone(), needs_fat_lto, needs_thin_lto, import_only_modules)
                                         {
                                             let insertion_index = work_items
                                                 .binary_search_by_key(&cost, |&(_, cost)| cost)
@@ -1542,7 +1537,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     .map_err(|_| ())?
             };
             compiled_modules.push(module);
-            //cgcx.backend.create_autodiff();
         }
 
         // Drop to print timings
@@ -1650,8 +1644,8 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
                     Some(Ok(WorkItemResult::NeedsLink(m))) => {
                         Message::NeedsLink::<B> { module: m, worker_id }
                     }
-                    Some(Ok(WorkItemResult::NeedsFatLTO(m, n))) => {
-                        Message::NeedsFatLTO::<B> { result: (m, n), worker_id }
+                    Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
+                        Message::NeedsFatLTO::<B> { result: m, worker_id }
                     }
                     Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
                         Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }

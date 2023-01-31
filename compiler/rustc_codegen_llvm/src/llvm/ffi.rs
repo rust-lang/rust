@@ -2,7 +2,7 @@
 #![allow(non_upper_case_globals)]
 
 use rustc_codegen_ssa::coverageinfo::map as coverage_map;
-use rustc_middle::metadata::DiffActivity;
+use rustc_middle::middle::autodiff_attrs::DiffActivity;
 
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,

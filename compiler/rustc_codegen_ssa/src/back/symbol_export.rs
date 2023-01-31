@@ -178,14 +178,6 @@ fn exported_symbols_provider_local<'tcx>(
 
     // export functions which are used to synthesize AD functions to make sure they are
     // not removed during optimization passes
-    //symbols.extend(
-    //    tcx.autodiff_functions(()).into_iter()
-    //        .map(|x| vec![
-    //            (ExportedSymbol::NonGeneric(x.source), SymbolExportLevel::C),
-    //            (ExportedSymbol::NoDefId(SymbolName::new(tcx, &x.target)), SymbolExportLevel::C),
-    //        ])
-    //        .flatten()
-    //);
     
     if tcx.allocator_kind(()).is_some() {
         for method in ALLOCATOR_METHODS {
@@ -237,7 +229,7 @@ fn exported_symbols_provider_local<'tcx>(
         // external linkage is enough for monomorphization to be linked to.
         let need_visibility = tcx.sess.target.dynamic_linking && !tcx.sess.target.only_cdylib;
 
-        let (_, cgus) = tcx.collect_and_partition_mono_items(());
+        let (_, _, cgus) = tcx.collect_and_partition_mono_items(());
 
         for (mono_item, &(linkage, visibility)) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
             if linkage != Linkage::External {

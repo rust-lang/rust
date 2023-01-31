@@ -331,7 +331,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Autodiff
     ungated!(
         autodiff, Normal,
-        template!(List: r#"function, /*opt*/ mode = "forward|backward""#),
+        template!(List: r#""...""#),
         DuplicatesOk,
     ),
 

@@ -1052,6 +1052,13 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
+    /// The list autodiff extern functions in current crate
+    query autodiff_attrs(def_id: DefId) -> AutoDiffAttrs {
+        desc { |tcx| "computing autodiff attributes of `{}`", tcx.def_path_str(def_id) }
+        storage(ArenaCacheSelector<'tcx>)
+        cache_on_disk_if { true }
+    }
+
     query asm_target_features(def_id: DefId) -> &'tcx FxHashSet<Symbol> {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
@@ -1673,7 +1680,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+    query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [AutoDiffItem], &'tcx [CodegenUnit<'tcx>]) {
         eval_always
         desc { "collect_and_partition_mono_items" }
     }
@@ -1961,12 +1968,5 @@ rustc_queries! {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "computing the backend features for CLI flags" }
-    }
-
-
-    /// The list autodiff extern functions in current crate
-    query autodiff_functions(_: ()) -> DiffItems {
-        storage(ArenaCacheSelector<'tcx>)
-        desc { "autodiff functions" }
     }
 }
