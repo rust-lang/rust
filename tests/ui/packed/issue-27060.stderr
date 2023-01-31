@@ -1,99 +1,39 @@
-error: reference to packed field is unaligned
+error[E0793]: reference to packed field is unaligned
   --> $DIR/issue-27060.rs:15:13
    |
 LL |     let _ = &good.data;
    |             ^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
 
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:17:13
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/issue-27060.rs:16:13
    |
 LL |     let _ = &good.data2[0];
    |             ^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:20:13
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/issue-27060.rs:18:13
    |
 LL |     let _ = &good.data;
    |             ^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:22:13
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/issue-27060.rs:19:13
    |
 LL |     let _ = &good.data2[0];
    |             ^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error: aborting due to 4 previous errors
 
-Future incompatibility report: Future breakage diagnostic:
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:15:13
-   |
-LL |     let _ = &good.data;
-   |             ^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
-
-Future breakage diagnostic:
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:17:13
-   |
-LL |     let _ = &good.data2[0];
-   |             ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
-
-Future breakage diagnostic:
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:20:13
-   |
-LL |     let _ = &good.data;
-   |             ^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
-
-Future breakage diagnostic:
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:22:13
-   |
-LL |     let _ = &good.data2[0];
-   |             ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
-
+For more information about this error, try `rustc --explain E0793`.
