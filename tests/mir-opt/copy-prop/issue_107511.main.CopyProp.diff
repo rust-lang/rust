@@ -98,7 +98,7 @@
       }
   
       bb5: {
-          StorageLive(_17);                // scope 3 at $DIR/issue_107511.rs:+6:9: +6:10
+-         StorageLive(_17);                // scope 3 at $DIR/issue_107511.rs:+6:9: +6:10
           _17 = ((_12 as Some).0: usize);  // scope 3 at $DIR/issue_107511.rs:+6:9: +6:10
           StorageLive(_18);                // scope 4 at $DIR/issue_107511.rs:+7:16: +7:20
 -         StorageLive(_19);                // scope 4 at $DIR/issue_107511.rs:+7:18: +7:19
