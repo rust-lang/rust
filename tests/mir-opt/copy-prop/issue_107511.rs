@@ -10,6 +10,4 @@ fn main() {
     for i in 0..a.len() {
         sum += a[i];
     }
-
-    let _ = sum;
 }
