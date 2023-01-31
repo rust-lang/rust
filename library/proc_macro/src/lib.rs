@@ -22,6 +22,7 @@
 // to make it compile with rust-analyzer on stable.
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(staged_api)]
+#![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
 #![feature(local_key_cell_methods)]
@@ -33,7 +34,9 @@
 #![feature(min_specialization)]
 #![feature(strict_provenance)]
 #![recursion_limit = "256"]
+#![feature(global_co_alloc)]
 #![feature(global_co_alloc_default)]
+#![feature(global_co_alloc_meta)]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
