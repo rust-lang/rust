@@ -1,6 +1,5 @@
 // edition: 2021
 // run-pass
-// ignore-pass
 
 async fn test(_arg: [u8; 8192]) {}
 

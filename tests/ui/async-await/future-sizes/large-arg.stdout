@@ -1,11 +1,11 @@
-print-type-size type: `[async fn body@$DIR/large-arg.rs:5:21: 7:2]`: 3076 bytes, alignment: 1 bytes
+print-type-size type: `[async fn body@$DIR/large-arg.rs:6:21: 8:2]`: 3076 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Suspend0`: 3075 bytes
 print-type-size         field `.__awaitee`: 3075 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Unresumed`: 0 bytes
 print-type-size     variant `Returned`: 0 bytes
 print-type-size     variant `Panicked`: 0 bytes
-print-type-size type: `[async fn body@$DIR/large-arg.rs:9:30: 11:2]`: 3075 bytes, alignment: 1 bytes
+print-type-size type: `[async fn body@$DIR/large-arg.rs:10:30: 12:2]`: 3075 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Suspend0`: 3074 bytes
 print-type-size         field `.t`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
@@ -16,13 +16,13 @@ print-type-size     variant `Returned`: 1024 bytes
 print-type-size         field `.t`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         field `.t`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
-print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/large-arg.rs:9:30: 11:2]>`: 3075 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/large-arg.rs:10:30: 12:2]>`: 3075 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 3075 bytes
-print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/large-arg.rs:9:30: 11:2]>`: 3075 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/large-arg.rs:10:30: 12:2]>`: 3075 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 3075 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 3075 bytes
-print-type-size type: `[async fn body@$DIR/large-arg.rs:12:26: 14:2]`: 2050 bytes, alignment: 1 bytes
+print-type-size type: `[async fn body@$DIR/large-arg.rs:13:26: 15:2]`: 2050 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Suspend0`: 2049 bytes
 print-type-size         field `.t`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
@@ -33,13 +33,13 @@ print-type-size     variant `Returned`: 1024 bytes
 print-type-size         field `.t`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         field `.t`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
-print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/large-arg.rs:12:26: 14:2]>`: 2050 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/large-arg.rs:13:26: 15:2]>`: 2050 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 2050 bytes
-print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/large-arg.rs:12:26: 14:2]>`: 2050 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/large-arg.rs:13:26: 15:2]>`: 2050 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 2050 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 2050 bytes
-print-type-size type: `[async fn body@$DIR/large-arg.rs:15:26: 17:2]`: 1025 bytes, alignment: 1 bytes
+print-type-size type: `[async fn body@$DIR/large-arg.rs:16:26: 18:2]`: 1025 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 1024 bytes
 print-type-size         field `.t`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
@@ -47,9 +47,9 @@ print-type-size     variant `Returned`: 1024 bytes
 print-type-size         field `.t`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         field `.t`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
-print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/large-arg.rs:15:26: 17:2]>`: 1025 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/large-arg.rs:16:26: 18:2]>`: 1025 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1025 bytes
-print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/large-arg.rs:15:26: 17:2]>`: 1025 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/large-arg.rs:16:26: 18:2]>`: 1025 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 1025 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 1025 bytes
