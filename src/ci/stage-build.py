@@ -80,6 +80,9 @@ class Pipeline:
     def rustc_stage_2(self) -> Path:
         return self.build_artifacts() / "stage2" / "bin" / "rustc"
 
+    def lib_llvm(self) -> Path:
+        raise NotImplementedError()
+
     def opt_artifacts(self) -> Path:
         raise NotImplementedError
 
@@ -126,6 +129,9 @@ class LinuxPipeline(Pipeline):
 
     def build_root(self) -> Path:
         return self.checkout_path() / "obj"
+
+    def lib_llvm(self) -> Path:
+        return (self.build_artifacts() / "llvm" / "lib" / "libLLVM.so").resolve()
 
     def opt_artifacts(self) -> Path:
         return Path("/tmp/tmp-multistage/opt-artifacts")
@@ -585,7 +591,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
     pipeline.build_rustc_perf()
 
     # Stage 1: Build rustc + PGO instrumented LLVM
-    with timer.stage("Build rustc (LLVM PGO)"):
+    with timer.stage("Build rustc (LLVM PGO generate)"):
         build_rustc(pipeline, args=[
             "--llvm-profile-generate"
         ], env=dict(
@@ -602,7 +608,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
     ]
 
     # Stage 2: Build PGO instrumented rustc + LLVM
-    with timer.stage("Build rustc (rustc PGO)"):
+    with timer.stage("Build rustc (rustc PGO generate)"):
         build_rustc(pipeline, args=[
             "--rust-profile-generate",
             pipeline.rustc_profile_dir_root()
@@ -617,27 +623,64 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
         pipeline.rustc_profile_merged_file()
     ]
 
-    # Stage 3: Build rustc + BOLT instrumented LLVM
+    # Bolt requires relocations.
+    env = {}
     if pipeline.supports_bolt():
-        with timer.stage("Build rustc (LLVM BOLT)"):
-            build_rustc(pipeline, args=[
-                "--llvm-profile-use",
-                pipeline.llvm_profile_merged_file(),
-                "--llvm-bolt-profile-generate",
+        env["LDFLAGS"] = "-Wl,-q"
+
+    # Stage 3: Build PGO optimized rustc + PGO optimized LLVM
+    # TODO: Because "dist" is run here, I think we will end up packaging the libLLVM.so
+    # at this point, so the optimization below won't apply to the shipped artifacts.
+    with timer.stage("Build rustc (rustc PGO use, LLVM PGO use)"):
+        cmd(final_build_args, env)
+
+    # Stage 4: BOLT optimize LLVM.
+    if pipeline.supports_bolt():
+        lib_llvm = pipeline.lib_llvm()
+
+        # Back up the original libLLVM shared object.
+        # TODO: I think this is currently instrumenting the wrong libLLVM.so
+        # This is the one in the llvm/ directory, while the one that actually get
+        # used is something like stage2/lib/libLLVM-15-rust-1.69.0-nightly.so.
+        orig_lib_llvm = pipeline.opt_artifacts() / "libLLVM.orig"
+        shutil.move(lib_llvm, orig_lib_llvm)
+
+        with timer.stage("Bolt instrument LLVM"):
+            cmd([
+                "llvm-bolt", "-instrument", orig_lib_llvm,
+                # Make sure that each process will write its profiles into a separate file
+                "--instrumentation-file-append-pid",
+                "-o", lib_llvm
             ])
+
         with timer.stage("Gather profiles (LLVM BOLT)"):
             gather_llvm_bolt_profiles(pipeline)
 
-        clear_llvm_files(pipeline)
-        final_build_args += [
-            "--llvm-bolt-profile-use",
-            pipeline.llvm_bolt_profile_merged_file()
-        ]
-
-    # Stage 4: Build PGO optimized rustc + PGO/BOLT optimized LLVM
-    with timer.stage("Final build"):
-        cmd(final_build_args)
-
+        with timer.stage("Bolt optimize LLVM"):
+            cmd([
+                "llvm-bolt", orig_lib_llvm,
+                "-data", pipeline.llvm_bolt_profile_merged_file(),
+                "-o", lib_llvm,
+                # Reorder basic blocks within functions
+                "-reorder-blocks=ext-tsp",
+                # Reorder functions within the binary
+                "-reorder-functions=hfsort+",
+                # Split function code into hot and code regions
+                "-split-functions=2",
+                # Split as many basic blocks as possible
+                "-split-all-cold",
+                # Move jump tables to a separate section
+                "-jump-tables=move",
+                # Use GNU_STACK program header for new segment (workaround for issues with
+                # strip/objcopy)
+                "-use-gnu-stack",
+                # Fold functions with identical code
+                "-icf=1",
+                # Update DWARF debug info in the final binary
+                "-update-debug-sections",
+                # Print optimization statistics
+                "-dyno-stats",
+            ])
 
 if __name__ == "__main__":
     logging.basicConfig(
