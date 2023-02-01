@@ -2826,7 +2826,7 @@ where
     #[cfg(not(test))]
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
-        <[T]>::to_vec_in(&**self, alloc)
+        <[T]>::to_vec_in_co(&**self, alloc)
     }
 
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is

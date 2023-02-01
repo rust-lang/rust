@@ -2051,7 +2051,7 @@ where
     fn clone(&self) -> Self {
         let alloc = Box::allocator(self).clone();
         // false = no need for co-alloc metadata, since it would get lost once converted to the boxed slice.
-        self.to_vec_in::<A, {CO_ALLOC_PREF_META_NO!()}>(alloc).into_boxed_slice()
+        self.to_vec_in_co::<A, {CO_ALLOC_PREF_META_NO!()}>(alloc).into_boxed_slice()
     }
 
     fn clone_from(&mut self, other: &Self) {
