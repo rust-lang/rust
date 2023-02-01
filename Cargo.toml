@@ -15,14 +15,12 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { version = "0.92", features = ["unwind", "all-arch"] }
-cranelift-frontend = { version = "0.92" }
-cranelift-module = { version = "0.92" }
-# NOTE vendored as src/cranelift_native.rs
-# FIXME revert back to the external crate with Cranelift 0.93
-#cranelift-native = { version = "0.92" }
-cranelift-jit = { version = "0.92", optional = true }
-cranelift-object = { version = "0.92" }
+cranelift-codegen = { version = "0.93", features = ["unwind", "all-arch"] }
+cranelift-frontend = { version = "0.93" }
+cranelift-module = { version = "0.93" }
+cranelift-native = { version = "0.93" }
+cranelift-jit = { version = "0.93", optional = true }
+cranelift-object = { version = "0.93" }
 target-lexicon = "0.12.0"
 gimli = { version = "0.26.0", default-features = false, features = ["write"]}
 object = { version = "0.29.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
