@@ -115,7 +115,7 @@ impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
     pub fn spawn(
         process_path: AbsPathBuf,
-        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>> + Clone,
     ) -> io::Result<ProcMacroServer> {
         let process = ProcMacroProcessSrv::run(process_path, args)?;
         Ok(ProcMacroServer { process: Arc::new(Mutex::new(process)) })
@@ -174,7 +174,7 @@ impl ProcMacro {
         let response = self.process.lock().unwrap_or_else(|e| e.into_inner()).send_task(request)?;
         match response {
             msg::Response::ExpandMacro(it) => Ok(it.map(FlatTree::to_subtree)),
-            msg::Response::ListMacros { .. } => {
+            msg::Response::ListMacros(..) | msg::Response::ApiVersionCheck(..) => {
                 Err(ServerError { message: "unexpected response".to_string(), io: None })
             }
         }

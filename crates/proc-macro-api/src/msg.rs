@@ -12,16 +12,21 @@ use crate::ProcMacroKind;
 
 pub use crate::msg::flat::FlatTree;
 
+pub const NO_VERSION_CHECK_VERSION: u32 = 0;
+pub const API_VERSION: u32 = 1;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
     ListMacros { dylib_path: PathBuf },
     ExpandMacro(ExpandMacro),
+    ApiVersionCheck {},
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
     ExpandMacro(Result<FlatTree, PanicMessage>),
+    ApiVersionCheck(u32),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
