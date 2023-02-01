@@ -100,8 +100,8 @@ entry:
 ; CHECK-DAG:   %[[i10:.+]] = icmp eq i32 42, %val
 ; CHECK-DAG:   %11 = or i1 %[[i9]], %[[i10]]
 ; CHECK-NEXT:   %12 = select {{(fast )?}}i1 %11, double 0.000000e+00, double %8
-; CHECK-NEXT:   %13 = select {{(fast )?}}i1 %10, double %8, double 0.000000e+00
-; CHECK-NEXT:   %14 = select {{(fast )?}}i1 %9, double %8, double 0.000000e+00
+; CHECK-NEXT:   %13 = select {{(fast )?}}i1 %[[i10]], double %8, double 0.000000e+00
+; CHECK-NEXT:   %14 = select {{(fast )?}}i1 %[[i9]], double %8, double 0.000000e+00
 ; CHECK-NEXT:   switch i32 %val, label %invertbdef [
 ; CHECK-NEXT:     i32 17, label %invertb1
 ; CHECK-NEXT:     i32 42, label %invertb2
