@@ -405,7 +405,7 @@ pub struct Vec<
     //@FIXME: #[unstable(feature ="global_co_alloc_vec", issue="none")]
     const CO_ALLOC_PREF: CoAllocPref = { CO_ALLOC_PREF_DEFAULT!() },
 > where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     buf: RawVec<T, A, CO_ALLOC_PREF>,
     len: usize,
@@ -413,12 +413,12 @@ pub struct Vec<
 
 /// "Cooperative" Vector. Preferring co-alloc API (if Global alloc supports it).
 #[unstable(feature = "global_co_alloc_covec", issue = "none")]
-pub type CoVec<T, A = Global> = Vec<T, A, {CO_ALLOC_PREF_META_YES!()}>;
+pub type CoVec<T, A = Global> = Vec<T, A, { CO_ALLOC_PREF_META_YES!() }>;
 
 /// "Plain" Vec. Not "cooperative" - not carrying extra data to assist the allocator.
 /// FIXME after cleanup, see if we still use this in core:: and/or alloc::
 #[unstable(feature = "global_co_alloc_plvec", issue = "none")]
-pub type PlVec<T, A = Global> = Vec<T, A, {CO_ALLOC_PREF_META_NO!()}>;
+pub type PlVec<T, A = Global> = Vec<T, A, { CO_ALLOC_PREF_META_NO!() }>;
 
 /// "Default" Vec. Either "cooperative" or not - as specified by `DEFAULT_CO_ALLOC_PREF`. The
 /// difference to `Vec` (used without specifying `CO_ALLOC_PREF`): `DefVec` indicates that the
@@ -518,7 +518,7 @@ impl<T> Vec<T> {
 #[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> Vec<T, Global, CO_ALLOC_PREF>
 where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     /// Like new(), but it respects CO_ALLOC_PREF.
     #[inline]
@@ -594,11 +594,9 @@ where
     pub unsafe fn from_raw_parts_co(ptr: *mut T, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_raw_parts_in(ptr, length, capacity, Global) }
     }
-
 }
 
-impl<T> Vec<T>
-{
+impl<T> Vec<T> {
     /// Creates a `Vec<T>` directly from a pointer, a capacity, and a length.
     ///
     /// # Safety
@@ -712,7 +710,7 @@ impl<T> Vec<T>
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Constructs a new, empty `Vec<T, A>`.
     ///
@@ -1726,9 +1724,14 @@ where
         // This drop guard will be invoked when predicate or `drop` of element panicked.
         // It shifts unchecked elements to cover holes and `set_len` to the correct length.
         // In cases when predicate and `drop` never panick, it will be optimized out.
-        struct BackshiftOnDrop<'a, T, A: Allocator, const VEC_CO_ALLOC_PREF: CoAllocPref = {CO_ALLOC_PREF_META_DEFAULT!()}>
+        struct BackshiftOnDrop<
+            'a,
+            T,
+            A: Allocator,
+            const VEC_CO_ALLOC_PREF: CoAllocPref = { CO_ALLOC_PREF_META_DEFAULT!() },
+        >
         where
-            [(); {crate::meta_num_slots!(A, VEC_CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, VEC_CO_ALLOC_PREF) }]:,
         {
             v: &'a mut Vec<T, A, VEC_CO_ALLOC_PREF>,
             processed_len: usize,
@@ -1737,9 +1740,10 @@ where
         }
 
         #[allow(unused_braces)]
-        impl<T, A: Allocator, const VEC_CO_ALLOC_PREF: CoAllocPref> Drop for BackshiftOnDrop<'_, T, A, VEC_CO_ALLOC_PREF>
+        impl<T, A: Allocator, const VEC_CO_ALLOC_PREF: CoAllocPref> Drop
+            for BackshiftOnDrop<'_, T, A, VEC_CO_ALLOC_PREF>
         where
-            [(); {crate::meta_num_slots!(A, VEC_CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, VEC_CO_ALLOC_PREF) }]:,
         {
             fn drop(&mut self) {
                 if self.deleted_cnt > 0 {
@@ -1766,13 +1770,19 @@ where
             original_len,
         };
 
-        fn process_loop<F, T, A: Allocator, const DELETED: bool, const VEC_CO_ALLOC_PREF: CoAllocPref>(
+        fn process_loop<
+            F,
+            T,
+            A: Allocator,
+            const DELETED: bool,
+            const VEC_CO_ALLOC_PREF: CoAllocPref,
+        >(
             original_len: usize,
             f: &mut F,
             g: &mut BackshiftOnDrop<'_, T, A, VEC_CO_ALLOC_PREF>,
         ) where
             F: FnMut(&mut T) -> bool,
-            [(); {crate::meta_num_slots!(A, VEC_CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, VEC_CO_ALLOC_PREF) }]:,
         {
             while g.processed_len != original_len {
                 // SAFETY: Unchecked element must be valid.
@@ -1867,8 +1877,10 @@ where
         /* INVARIANT: vec.len() > read >= write > write-1 >= 0 */
         struct FillGapOnDrop<'a, T, A: core::alloc::Allocator, const CO_ALLOC_PREF: CoAllocPref>
         where
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
+            crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
@@ -1884,7 +1896,7 @@ where
         impl<'a, T, A: core::alloc::Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
             for FillGapOnDrop<'a, T, A, CO_ALLOC_PREF>
         where
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             fn drop(&mut self) {
                 /* This code gets executed when `same_bucket` panics */
@@ -2481,7 +2493,7 @@ where
 #[allow(unused_braces)]
 impl<T: Clone, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
@@ -2582,9 +2594,10 @@ where
 }
 
 #[allow(unused_braces)]
-impl<T, A: Allocator, const N: usize, const CO_ALLOC_PREF: CoAllocPref> Vec<[T; N], A, CO_ALLOC_PREF>
+impl<T, A: Allocator, const N: usize, const CO_ALLOC_PREF: CoAllocPref>
+    Vec<[T; N], A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Takes a `Vec<[T; N]>` and flattens it into a `Vec<T>`.
     ///
@@ -2626,7 +2639,9 @@ where
         // - `new_cap` refers to the same sized allocation as `cap` because
         // `new_cap * size_of::<T>()` == `cap * size_of::<[T; N]>()`
         // - `len` <= `cap`, so `len * N` <= `cap * N`.
-        unsafe { Vec::<T, A, CO_ALLOC_PREF>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc) }
+        unsafe {
+            Vec::<T, A, CO_ALLOC_PREF>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc)
+        }
     }
 }
 
@@ -2649,7 +2664,7 @@ impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` values, using the given generator.
@@ -2685,7 +2700,7 @@ where
 #[allow(unused_braces)]
 impl<T: PartialEq, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Removes consecutive repeated elements in the vector according to the
     /// [`PartialEq`] trait implementation.
@@ -2729,7 +2744,7 @@ pub fn from_elem_in<T: Clone, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
     alloc: A,
 ) -> Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     <T as SpecFromElem>::from_elem(elem, n, alloc)
 }
@@ -2743,9 +2758,10 @@ trait ExtendFromWithinSpec {
 }
 
 #[allow(unused_braces)]
-impl<T: Clone, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExtendFromWithinSpec for Vec<T, A, CO_ALLOC_PREF>
+impl<T: Clone, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExtendFromWithinSpec
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         // SAFETY:
@@ -2766,9 +2782,10 @@ where
 }
 
 #[allow(unused_braces)]
-impl<T: Copy, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExtendFromWithinSpec for Vec<T, A, CO_ALLOC_PREF>
+impl<T: Copy, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExtendFromWithinSpec
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         let count = src.len();
@@ -2805,7 +2822,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ops::Deref for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Target = [T];
 
@@ -2819,7 +2836,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ops::DerefMut for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn deref_mut(&mut self) -> &mut [T] {
@@ -2830,9 +2847,10 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T: Clone, A: Allocator + Clone, const CO_ALLOC_PREF: CoAllocPref> Clone for Vec<T, A, CO_ALLOC_PREF>
+impl<T: Clone, A: Allocator + Clone, const CO_ALLOC_PREF: CoAllocPref> Clone
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
@@ -2871,7 +2889,7 @@ where
 #[allow(unused_braces)]
 impl<T: Hash, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Hash for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -2885,9 +2903,10 @@ where
     label = "vector indices are of type `usize` or ranges of `usize`"
 )]
 #[allow(unused_braces)]
-impl<T, I: SliceIndex<[T]>, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Index<I> for Vec<T, A, CO_ALLOC_PREF>
+impl<T, I: SliceIndex<[T]>, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Index<I>
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Output = I::Output;
 
@@ -2906,7 +2925,7 @@ where
 impl<T, I: SliceIndex<[T]>, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IndexMut<I>
     for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
@@ -2917,8 +2936,7 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T> FromIterator<T> for Vec<T>
-{
+impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
         <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
@@ -2926,11 +2944,11 @@ impl<T> FromIterator<T> for Vec<T>
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "global_co_alloc", issue="none")]
+#[unstable(feature = "global_co_alloc", issue = "none")]
 #[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> Vec<T, Global, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     /// Coallocation-aware alternative to `from_iter`.
     #[inline]
@@ -2943,7 +2961,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIterator for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Item = T;
     type IntoIter = IntoIter<T, A, CO_ALLOC_PREF>;
@@ -2990,9 +3008,10 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIterator for &'a Vec<T, A, CO_ALLOC_PREF>
+impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIterator
+    for &'a Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
@@ -3004,9 +3023,10 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIterator for &'a mut Vec<T, A, CO_ALLOC_PREF>
+impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIterator
+    for &'a mut Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
@@ -3021,7 +3041,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Extend<T> for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
@@ -3042,7 +3062,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
@@ -3149,7 +3169,7 @@ where
     where
         R: RangeBounds<usize>,
         I: IntoIterator<Item = T>,
-        [(); {crate::meta_num_slots!(A, crate::CO_ALLOC_PREF_META_YES!())}]:,
+        [(); { crate::meta_num_slots!(A, crate::CO_ALLOC_PREF_META_YES!()) }]:,
     {
         Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
     }
@@ -3202,7 +3222,7 @@ where
     pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F, A, CO_ALLOC_PREF>
     where
         F: FnMut(&mut T) -> bool,
-        [(); {crate::meta_num_slots!(A, crate::CO_ALLOC_PREF_META_YES!())}]:,
+        [(); { crate::meta_num_slots!(A, crate::CO_ALLOC_PREF_META_YES!()) }]:,
     {
         let old_len = self.len();
 
@@ -3227,7 +3247,7 @@ where
 impl<'a, T: Copy + 'a, A: Allocator + 'a, const CO_ALLOC_PREF: CoAllocPref> Extend<&'a T>
     for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter())
@@ -3247,9 +3267,10 @@ where
 /// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T: PartialOrd, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> PartialOrd for Vec<T, A, CO_ALLOC_PREF>
+impl<T: PartialOrd, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> PartialOrd
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -3260,7 +3281,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
 impl<T: Eq, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Eq for Vec<T, A, CO_ALLOC_PREF> where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
 {
 }
 
@@ -3269,7 +3290,7 @@ impl<T: Eq, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Eq for Vec<T, A, CO_
 #[allow(unused_braces)]
 impl<T: Ord, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Ord for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
@@ -3279,9 +3300,10 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for Vec<T, A, CO_ALLOC_PREF>
+unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn drop(&mut self) {
         unsafe {
@@ -3299,7 +3321,7 @@ where
 #[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> const Default for Vec<T, Global, CO_ALLOC_PREF>
 where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     /// Creates an empty `Vec<T>`.
     ///
@@ -3311,9 +3333,10 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T: fmt::Debug, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> fmt::Debug for Vec<T, A, CO_ALLOC_PREF>
+impl<T: fmt::Debug, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> fmt::Debug
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
@@ -3322,9 +3345,10 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> AsRef<Vec<T, A, CO_ALLOC_PREF>> for Vec<T, A, CO_ALLOC_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> AsRef<Vec<T, A, CO_ALLOC_PREF>>
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn as_ref(&self) -> &Vec<T, A, CO_ALLOC_PREF> {
         self
@@ -3333,9 +3357,10 @@ where
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> AsMut<Vec<T, A, CO_ALLOC_PREF>> for Vec<T, A, CO_ALLOC_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> AsMut<Vec<T, A, CO_ALLOC_PREF>>
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn as_mut(&mut self) -> &mut Vec<T, A, CO_ALLOC_PREF> {
         self
@@ -3346,7 +3371,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> AsRef<[T]> for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn as_ref(&self) -> &[T] {
         self
@@ -3357,7 +3382,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> AsMut<[T]> for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn as_mut(&mut self) -> &mut [T] {
         self
@@ -3460,9 +3485,10 @@ where
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> From<Box<[T], A>> for Vec<T, A, CO_ALLOC_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> From<Box<[T], A>>
+    for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Convert a boxed slice into a vector by transferring ownership of
     /// the existing heap allocation.
@@ -3483,9 +3509,10 @@ where
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> From<Vec<T, A, CO_ALLOC_PREF>> for Box<[T], A>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> From<Vec<T, A, CO_ALLOC_PREF>>
+    for Box<[T], A>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Convert a vector into a boxed slice.
     ///
@@ -3528,10 +3555,10 @@ impl From<&str> for Vec<u8, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
 
 #[stable(feature = "array_try_from_vec", since = "1.48.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator, const N: usize, const CO_ALLOC_PREF: CoAllocPref> TryFrom<Vec<T, A, CO_ALLOC_PREF>>
-    for [T; N]
+impl<T, A: Allocator, const N: usize, const CO_ALLOC_PREF: CoAllocPref>
+    TryFrom<Vec<T, A, CO_ALLOC_PREF>> for [T; N]
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Error = Vec<T, A, CO_ALLOC_PREF>;
 

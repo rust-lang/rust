@@ -14,10 +14,11 @@ pub(super) trait SpecExtend<T, I> {
 }
 
 #[allow(unused_braces)]
-impl<T, I, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecExtend<T, I> for VecDeque<T, A, CO_ALLOC_PREF>
+impl<T, I, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecExtend<T, I>
+    for VecDeque<T, A, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T>,
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     default fn spec_extend(&mut self, mut iter: I) {
         // This function should be the moral equivalent of:
@@ -31,7 +32,7 @@ where
             deque: &mut VecDeque<T, A, CO_ALLOC_PREF>,
             element: T,
         ) where
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             // SAFETY: Because of the precondition, it's guaranteed that there is space
             // in the logical array after the last element.
@@ -60,10 +61,11 @@ where
 }
 
 #[allow(unused_braces)]
-impl<T, I, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecExtend<T, I> for VecDeque<T, A, CO_ALLOC_PREF>
+impl<T, I, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecExtend<T, I>
+    for VecDeque<T, A, CO_ALLOC_PREF>
 where
     I: TrustedLen<Item = T>,
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     default fn spec_extend(&mut self, iter: I) {
         // This is the case for a TrustedLen iterator.
@@ -100,7 +102,7 @@ where
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecExtend<T, vec::IntoIter<T>>
     for VecDeque<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn spec_extend(&mut self, mut iterator: vec::IntoIter<T>) {
         let slice = iterator.as_slice();
@@ -120,7 +122,7 @@ impl<'a, T: 'a, I, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecExtend<&'
 where
     I: Iterator<Item = &'a T>,
     T: Copy,
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     default fn spec_extend(&mut self, iterator: I) {
         self.spec_extend(iterator.copied())
@@ -128,11 +130,11 @@ where
 }
 
 #[allow(unused_braces)]
-impl<'a, T: 'a, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecExtend<&'a T, slice::Iter<'a, T>>
-    for VecDeque<T, A, CO_ALLOC_PREF>
+impl<'a, T: 'a, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+    SpecExtend<&'a T, slice::Iter<'a, T>> for VecDeque<T, A, CO_ALLOC_PREF>
 where
     T: Copy,
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();

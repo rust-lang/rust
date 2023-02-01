@@ -143,9 +143,9 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::co_alloc::CoAllocPref;
 use core::fmt;
 use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
-use crate::co_alloc::CoAllocPref;
 use core::mem::{self, swap, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
@@ -1529,7 +1529,7 @@ unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
 #[allow(unused_braces)]
 pub struct Drain<'a, T: 'a, const CO_ALLOC_PREF: CoAllocPref>
 where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     iter: vec::Drain<'a, T, Global, CO_ALLOC_PREF>,
 }
@@ -1538,7 +1538,7 @@ where
 #[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> Iterator for Drain<'_, T, CO_ALLOC_PREF>
 where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     type Item = T;
 
@@ -1557,7 +1557,7 @@ where
 #[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator for Drain<'_, T, CO_ALLOC_PREF>
 where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1569,7 +1569,7 @@ where
 #[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator for Drain<'_, T, CO_ALLOC_PREF>
 where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
@@ -1579,7 +1579,7 @@ where
 #[stable(feature = "fused", since = "1.26.0")]
 #[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> FusedIterator for Drain<'_, T, CO_ALLOC_PREF> where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:
 {
 }
 

@@ -1,9 +1,9 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
+use crate::co_alloc::CoAllocPref;
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
-use crate::co_alloc::CoAllocPref;
 use crate::raw_vec::RawVec;
 use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
@@ -14,7 +14,7 @@ use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::Deref;
 use core::ptr::{self, NonNull};
 use core::slice::{self};
-use core::{ array, fmt};
+use core::{array, fmt};
 
 /// An iterator that moves out of a vector.
 ///
@@ -35,7 +35,7 @@ pub struct IntoIter<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
     const CO_ALLOC_PREF: CoAllocPref = { SHORT_TERM_VEC_CO_ALLOC_PREF!() },
 > where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     pub(super) buf: NonNull<T>,
     pub(super) phantom: PhantomData<T>,
@@ -51,9 +51,10 @@ pub struct IntoIter<
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
 #[allow(unused_braces)]
-impl<T: fmt::Debug, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> fmt::Debug for IntoIter<T, A, CO_ALLOC_PREF>
+impl<T: fmt::Debug, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> fmt::Debug
+    for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter").field(&self.as_slice()).finish()
@@ -63,7 +64,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Returns the remaining items of this iterator as a slice.
     ///
@@ -139,11 +140,17 @@ where
             //
             //NonNull::new_unchecked(RawVec::<T, Global, CO_ALLOC_PREF>::NEW.ptr());
             let meta_num_slots = crate::meta_num_slots!(A, CO_ALLOC_PREF);
-            if  meta_num_slots>0 {
-                debug_assert!(meta_num_slots==1, "Number of coallocation meta slots can be only 0 or 1, but it is {}!", meta_num_slots);
-                NonNull::new_unchecked(RawVec::<T, Global, {CO_ALLOC_PREF_META_YES!()}>::NEW.ptr())
+            if meta_num_slots > 0 {
+                debug_assert!(
+                    meta_num_slots == 1,
+                    "Number of coallocation meta slots can be only 0 or 1, but it is {}!",
+                    meta_num_slots
+                );
+                NonNull::new_unchecked(
+                    RawVec::<T, Global, { CO_ALLOC_PREF_META_YES!() }>::NEW.ptr(),
+                )
             } else {
-                NonNull::new_unchecked(RawVec::<T, Global, {CO_ALLOC_PREF_META_NO!()}>::NEW.ptr())
+                NonNull::new_unchecked(RawVec::<T, Global, { CO_ALLOC_PREF_META_NO!() }>::NEW.ptr())
             }
         };
         self.ptr = self.buf.as_ptr();
@@ -195,7 +202,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> AsRef<[T]> for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn as_ref(&self) -> &[T] {
         self.as_slice()
@@ -204,14 +211,18 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-unsafe impl<T: Send, A: Allocator + Send, const CO_ALLOC_PREF: CoAllocPref> Send for IntoIter<T, A, CO_ALLOC_PREF> where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:
+unsafe impl<T: Send, A: Allocator + Send, const CO_ALLOC_PREF: CoAllocPref> Send
+    for IntoIter<T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-unsafe impl<T: Sync, A: Allocator + Sync, const CO_ALLOC_PREF: CoAllocPref> Sync for IntoIter<T, A, CO_ALLOC_PREF> where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:
+unsafe impl<T: Sync, A: Allocator + Sync, const CO_ALLOC_PREF: CoAllocPref> Sync
+    for IntoIter<T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
 }
 
@@ -219,7 +230,7 @@ unsafe impl<T: Sync, A: Allocator + Sync, const CO_ALLOC_PREF: CoAllocPref> Sync
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Iterator for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Item = T;
 
@@ -335,9 +346,10 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator for IntoIter<T, A, CO_ALLOC_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator
+    for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -380,9 +392,10 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator for IntoIter<T, A, CO_ALLOC_PREF>
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator
+    for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn is_empty(&self) -> bool {
         self.ptr == self.end
@@ -391,15 +404,19 @@ where
 
 #[stable(feature = "fused", since = "1.26.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> FusedIterator for IntoIter<T, A, CO_ALLOC_PREF> where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> FusedIterator
+    for IntoIter<T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 #[allow(unused_braces)]
-unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> TrustedLen for IntoIter<T, A, CO_ALLOC_PREF> where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:
+unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> TrustedLen
+    for IntoIter<T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
 }
 
@@ -422,7 +439,7 @@ unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> TrustedRandomAcce
     for IntoIter<T, A, CO_ALLOC_PREF>
 where
     T: NonDrop,
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
@@ -430,9 +447,10 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 #[allow(unused_braces)]
-impl<T: Clone, A: Allocator + Clone, const CO_ALLOC_PREF: CoAllocPref> Clone for IntoIter<T, A, CO_ALLOC_PREF>
+impl<T: Clone, A: Allocator + Clone, const CO_ALLOC_PREF: CoAllocPref> Clone
+    for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
@@ -453,20 +471,21 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for IntoIter<T, A, CO_ALLOC_PREF>
+unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+    for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn drop(&mut self) {
         struct DropGuard<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
             &'a mut IntoIter<T, A, CO_ALLOC_PREF>,
         )
         where
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:;
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:;
 
         impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for DropGuard<'_, T, A, CO_ALLOC_PREF>
         where
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             fn drop(&mut self) {
                 unsafe {
@@ -497,17 +516,20 @@ where
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 #[allow(unused_braces)]
-unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> InPlaceIterable for IntoIter<T, A, CO_ALLOC_PREF> where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:
+unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> InPlaceIterable
+    for IntoIter<T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 #[allow(unused_braces)]
-unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SourceIter for IntoIter<T, A, CO_ALLOC_PREF>
+unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SourceIter
+    for IntoIter<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Source = Self;
 

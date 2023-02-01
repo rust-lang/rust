@@ -27,9 +27,7 @@ where
 }
 
 #[allow(unused_braces)]
-impl<T> SpecFromIter<T, crate::vec::IntoIter<T>>
-    for VecDeque<T>
-{
+impl<T> SpecFromIter<T, crate::vec::IntoIter<T>> for VecDeque<T> {
     #[inline]
     fn spec_from_iter(iterator: crate::vec::IntoIter<T>) -> Self {
         iterator.into_vecdeque()
@@ -37,9 +35,7 @@ impl<T> SpecFromIter<T, crate::vec::IntoIter<T>>
 }
 
 #[allow(unused_braces)]
-impl<T> SpecFromIter<T, IntoIter<T>>
-    for VecDeque<T>
-{
+impl<T> SpecFromIter<T, IntoIter<T>> for VecDeque<T> {
     #[inline]
     fn spec_from_iter(iterator: IntoIter<T>) -> Self {
         iterator.into_vecdeque()
@@ -48,10 +44,11 @@ impl<T> SpecFromIter<T, IntoIter<T>>
 // ----
 
 #[allow(unused_braces)]
-impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIterCo<T, I> for VecDeque<T, Global, CO_ALLOC_PREF>
+impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIterCo<T, I>
+    for VecDeque<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T>,
-    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     default fn spec_from_iter_co(iterator: I) -> Self {
         // Since converting is O(1) now, just re-use the `Vec` logic for
@@ -63,10 +60,11 @@ where
 }
 
 #[allow(unused_braces)]
-impl<T, const CO_ALLOC_PREF: CoAllocPref> SpecFromIterCo<T, crate::vec::IntoIter<T, Global, CO_ALLOC_PREF>>
+impl<T, const CO_ALLOC_PREF: CoAllocPref>
+    SpecFromIterCo<T, crate::vec::IntoIter<T, Global, CO_ALLOC_PREF>>
     for VecDeque<T, Global, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn spec_from_iter_co(iterator: crate::vec::IntoIter<T, Global, CO_ALLOC_PREF>) -> Self {
@@ -78,7 +76,7 @@ where
 impl<T, const CO_ALLOC_PREF: CoAllocPref> SpecFromIterCo<T, IntoIter<T, Global, CO_ALLOC_PREF>>
     for VecDeque<T, Global, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn spec_from_iter_co(iterator: IntoIter<T, Global, CO_ALLOC_PREF>) -> Self {

@@ -382,7 +382,7 @@ impl Write for &mut [u8] {
 #[allow(unused_braces)]
 impl<A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Write for Vec<u8, A, CO_ALLOC_PREF>
 where
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -422,7 +422,7 @@ where
 #[allow(unused_braces)]
 impl<A: Allocator, const _CO_ALLOC_PREF: CoAllocPref> Read for VecDeque<u8, A, _CO_ALLOC_PREF>
 where
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Fill `buf` with the contents of the "front" slice as returned by
     /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are
@@ -450,7 +450,7 @@ where
 #[allow(unused_braces)]
 impl<A: Allocator, const _CO_ALLOC_PREF: CoAllocPref> Write for VecDeque<u8, A, _CO_ALLOC_PREF>
 where
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {

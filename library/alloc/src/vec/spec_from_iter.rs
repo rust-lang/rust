@@ -31,7 +31,7 @@ pub(super) trait SpecFromIter<T, I> {
 impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, I> for Vec<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T>,
-    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     default fn from_iter(iterator: I) -> Self {
         SpecFromIterNested::from_iter(iterator)
@@ -39,9 +39,10 @@ where
 }
 
 #[allow(unused_braces)]
-impl<T, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, IntoIter<T>> for Vec<T, Global, CO_ALLOC_PREF>
+impl<T, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, IntoIter<T>>
+    for Vec<T, Global, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately

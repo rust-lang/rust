@@ -26,10 +26,10 @@ pub struct DrainFilter<
     T,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-    const CO_ALLOC_PREF: CoAllocPref = {CO_ALLOC_PREF_DEFAULT!()},
+    const CO_ALLOC_PREF: CoAllocPref = { CO_ALLOC_PREF_DEFAULT!() },
 > where
     F: FnMut(&mut T) -> bool,
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     pub(super) vec: &'a mut Vec<T, A, CO_ALLOC_PREF>,
     /// The index of the item that will be inspected by the next call to `next`.
@@ -52,7 +52,7 @@ pub struct DrainFilter<
 impl<T, F, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> DrainFilter<'_, T, F, A, CO_ALLOC_PREF>
 where
     F: FnMut(&mut T) -> bool,
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -119,10 +119,11 @@ where
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[allow(unused_braces)]
-impl<T, F, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Iterator for DrainFilter<'_, T, F, A, CO_ALLOC_PREF>
+impl<T, F, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Iterator
+    for DrainFilter<'_, T, F, A, CO_ALLOC_PREF>
 where
     F: FnMut(&mut T) -> bool,
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Item = T;
 
@@ -159,17 +160,18 @@ where
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[allow(unused_braces)]
-impl<T, F, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for DrainFilter<'_, T, F, A, CO_ALLOC_PREF>
+impl<T, F, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+    for DrainFilter<'_, T, F, A, CO_ALLOC_PREF>
 where
     F: FnMut(&mut T) -> bool,
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[allow(unused_braces)]
     fn drop(&mut self) {
         struct BackshiftOnDrop<'a, 'b, T, F, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
         where
             F: FnMut(&mut T) -> bool,
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             drain: &'b mut DrainFilter<'a, T, F, A, CO_ALLOC_PREF>,
         }
@@ -179,7 +181,7 @@ where
             for BackshiftOnDrop<'a, 'b, T, F, A, CO_ALLOC_PREF>
         where
             F: FnMut(&mut T) -> bool,
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             fn drop(&mut self) {
                 unsafe {

@@ -425,8 +425,6 @@ pub use alloc_crate::boxed;
 #[unstable(feature = "global_co_alloc", issue = "none")]
 pub use alloc_crate::co_alloc;
 // @FIXME ugly - someone move this to a better place, please
-#[unstable(feature = "global_co_alloc", issue = "none")]
-pub use alloc_crate::{CO_ALLOC_PREF_DEFAULT, SHORT_TERM_VEC_CO_ALLOC_PREF};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -441,6 +439,8 @@ pub use alloc_crate::str;
 pub use alloc_crate::string;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::vec;
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub use alloc_crate::{CO_ALLOC_PREF_DEFAULT, SHORT_TERM_VEC_CO_ALLOC_PREF};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "core_array", since = "1.36.0")]
