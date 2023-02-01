@@ -1826,6 +1826,13 @@ pub enum LitKind {
 }
 
 impl LitKind {
+    pub fn str(&self) -> Option<Symbol> {
+        match *self {
+            LitKind::Str(s, _) => Some(s),
+            _ => None,
+        }
+    }
+
     /// Returns `true` if this literal is a string.
     pub fn is_str(&self) -> bool {
         matches!(self, LitKind::Str(..))
