@@ -3,32 +3,49 @@
 //! All the static files are included here for centralized access in case anything other than the
 //! HTML rendering code (say, the theme checker) needs to access one of these files.
 
-use rustc_data_structures::fx::FxHasher;
+use rustc_data_structures::fx::{FxHashMap, FxHasher};
+use std::borrow::Cow;
 use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 use std::{fmt, str};
 
 pub(crate) struct StaticFile {
     pub(crate) filename: PathBuf,
-    pub(crate) bytes: &'static [u8],
+    pub(crate) bytes: Cow<'static, [u8]>,
 }
 
 impl StaticFile {
-    fn new(filename: &str, bytes: &'static [u8]) -> StaticFile {
-        Self { filename: static_filename(filename, bytes), bytes }
+    fn new(
+        filename: &str,
+        bytes: &'static [u8],
+        file_map: &mut FxHashMap<String, String>,
+    ) -> StaticFile {
+        // For now, only `rustdoc.css` style file needs this mechanism but it can be extended
+        // pretty easily by changing this condition.
+        if filename.ends_with("/rustdoc.css") {
+            let bytes = replace_static_files_include(bytes, file_map);
+            Self { filename: static_filename(filename, &bytes), bytes: Cow::Owned(bytes) }
+        } else {
+            let ret =
+                Self { filename: static_filename(filename, bytes), bytes: Cow::Borrowed(bytes) };
+            let filename = Path::new(filename).file_name().unwrap().to_str().unwrap().to_string();
+            file_map
+                .insert(filename, ret.filename.file_name().unwrap().to_str().unwrap().to_string());
+            ret
+        }
     }
 
     pub(crate) fn minified(&self) -> Vec<u8> {
         let extension = match self.filename.extension() {
             Some(e) => e,
-            None => return self.bytes.to_owned(),
+            None => return self.bytes.to_vec(),
         };
         if extension == "css" {
-            minifier::css::minify(str::from_utf8(self.bytes).unwrap()).unwrap().to_string().into()
+            minifier::css::minify(str::from_utf8(&self.bytes).unwrap()).unwrap().to_string().into()
         } else if extension == "js" {
-            minifier::js::minify(str::from_utf8(self.bytes).unwrap()).to_string().into()
+            minifier::js::minify(str::from_utf8(&self.bytes).unwrap()).to_string().into()
         } else {
-            self.bytes.to_owned()
+            self.bytes.to_vec()
         }
     }
 
@@ -43,6 +60,26 @@ impl fmt::Display for StaticFile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.output_filename().display())
     }
+}
+
+/// This function goes through the CSS content and replaces all content wrapped between:
+/// `/* REPLACE {content} */` (where `{content}` is what will be replaced.)
+fn replace_static_files_include(bytes: &[u8], file_map: &FxHashMap<String, String>) -> Vec<u8> {
+    let bytes = str::from_utf8(bytes).unwrap();
+    let mut it = bytes.split("/* REPLACE ");
+    let mut content = String::with_capacity(bytes.len());
+    while let Some(entry) = it.next() {
+        if content.is_empty() {
+            content.push_str(entry);
+            continue;
+        }
+        let mut parts = entry.splitn(2, " */");
+        let file = parts.next().unwrap();
+        let rest = parts.next().unwrap();
+        content.push_str(file_map.get(file).unwrap());
+        content.push_str(rest);
+    }
+    content.into()
 }
 
 /// Insert the provided suffix into a filename just before the extension.
@@ -74,8 +111,11 @@ macro_rules! static_files {
             $(pub $field: StaticFile,)+
         }
 
-        pub(crate) static STATIC_FILES: std::sync::LazyLock<StaticFiles> = std::sync::LazyLock::new(|| StaticFiles {
-            $($field: StaticFile::new($file_path, include_bytes!($file_path)),)+
+        pub(crate) static STATIC_FILES: std::sync::LazyLock<StaticFiles> = std::sync::LazyLock::new(|| {
+            let mut map = FxHashMap::default();
+            StaticFiles {
+                $($field: StaticFile::new($file_path, include_bytes!($file_path), &mut map),)+
+            }
         });
 
         pub(crate) fn for_each<E>(f: impl Fn(&StaticFile) -> Result<(), E>) -> Result<(), E> {
@@ -90,10 +130,6 @@ macro_rules! static_files {
 }
 
 static_files! {
-    rustdoc_css => "static/css/rustdoc.css",
-    settings_css => "static/css/settings.css",
-    noscript_css => "static/css/noscript.css",
-    normalize_css => "static/css/normalize.css",
     main_js => "static/js/main.js",
     search_js => "static/js/search.js",
     settings_js => "static/js/settings.js",
@@ -125,6 +161,12 @@ static_files! {
     source_code_pro_license => "static/fonts/SourceCodePro-LICENSE.txt",
     nanum_barun_gothic_regular => "static/fonts/NanumBarunGothic.ttf.woff2",
     nanum_barun_gothic_license => "static/fonts/NanumBarunGothic-LICENSE.txt",
+    // It's important for the CSS files to be the last since we need to replace some of their
+    // content (the static file names).
+    rustdoc_css => "static/css/rustdoc.css",
+    settings_css => "static/css/settings.css",
+    noscript_css => "static/css/noscript.css",
+    normalize_css => "static/css/normalize.css",
 }
 
 pub(crate) static SCRAPE_EXAMPLES_HELP_MD: &str = include_str!("static/scrape-examples-help.md");

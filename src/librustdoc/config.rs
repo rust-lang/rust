@@ -417,7 +417,7 @@ impl Options {
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
             let paths = match theme::load_css_paths(
-                std::str::from_utf8(static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
+                std::str::from_utf8(&static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
             ) {
                 Ok(p) => p,
                 Err(e) => {
@@ -560,7 +560,7 @@ impl Options {
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
             let paths = match theme::load_css_paths(
-                std::str::from_utf8(static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
+                std::str::from_utf8(&static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
             ) {
                 Ok(p) => p,
                 Err(e) => {
