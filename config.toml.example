@@ -427,6 +427,12 @@ changelog-seen = 2
 # Uses the rustc defaults: https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
 #codegen-units = if incremental { 256 } else { 16 }
 
+# Tweaks the numbers of codegen units to improve compile time, typically by
+# using a single codegen unit for crates. The `codegen-units` configuration is
+# preferred over this field. This is recommended to set for release builds and CI,
+# but not for development as it can slow down partial rebuilds.
+#codegen-units-fast = false
+
 # Sets the number of codegen units to build the standard library with,
 # regardless of what the codegen-unit setting for the rest of the compiler is.
 # NOTE: building with anything other than 1 is known to occasionally have bugs.

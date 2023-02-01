@@ -145,6 +145,7 @@ pub struct Config {
     pub rust_optimize: bool,
     pub rust_codegen_units: Option<u32>,
     pub rust_codegen_units_std: Option<u32>,
+    pub rust_codegen_units_fast: bool,
     pub rust_debug_assertions: bool,
     pub rust_debug_assertions_std: bool,
     pub rust_overflow_checks: bool,
@@ -717,6 +718,7 @@ define_config! {
         debug: Option<bool> = "debug",
         codegen_units: Option<u32> = "codegen-units",
         codegen_units_std: Option<u32> = "codegen-units-std",
+        codegen_units_fast: Option<bool> = "codegen-units-fast",
         debug_assertions: Option<bool> = "debug-assertions",
         debug_assertions_std: Option<bool> = "debug-assertions-std",
         overflow_checks: Option<bool> = "overflow-checks",
@@ -1130,6 +1132,7 @@ impl Config {
 
             config.rust_codegen_units = rust.codegen_units.map(threads_from_config);
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
+            set(&mut config.rust_codegen_units_fast, rust.codegen_units_fast);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
             config.download_rustc_commit = config.download_ci_rustc_commit(rust.download_rustc);
