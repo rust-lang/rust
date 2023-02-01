@@ -40,7 +40,7 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    /// Finds the span of `*` token withing the larger `span`.
+    /// Finds the span of `*` token within the larger `span`.
     pub fn sub_span_of_star(&self, mut span: Span) -> Option<Span> {
         let begin = self.sess.source_map().lookup_byte_offset(span.lo());
         let end = self.sess.source_map().lookup_byte_offset(span.hi());

@@ -70,7 +70,7 @@ impl MacroDylib {
 
 /// A handle to a specific macro (a `#[proc_macro]` annotated function).
 ///
-/// It exists withing a context of a specific [`ProcMacroProcess`] -- currently
+/// It exists within a context of a specific [`ProcMacroProcess`] -- currently
 /// we share a single expander process for all macros.
 #[derive(Debug, Clone)]
 pub struct ProcMacro {

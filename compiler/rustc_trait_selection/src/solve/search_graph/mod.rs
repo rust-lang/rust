@@ -109,10 +109,10 @@ impl<'tcx> SearchGraph<'tcx> {
     }
 
     /// We cannot simply store the result of [super::EvalCtxt::compute_goal] as we have to deal with
-    /// coinductive cycles.
+    /// continuously cycles.
     ///
-    /// When we encounter a coinductive cycle, we have to prove the final result of that cycle
-    /// while we are still computing that result. Because of this we continously recompute the
+    /// When we encounter a continuously cycle, we have to prove the final result of that cycle
+    /// while we are still computing that result. Because of this we continuously recompute the
     /// cycle until the result of the previous iteration is equal to the final result, at which
     /// point we are done.
     ///
@@ -137,7 +137,7 @@ impl<'tcx> SearchGraph<'tcx> {
         // Was the current goal the root of a cycle and was the provisional response
         // different from the final one.
         if has_been_used && provisional_entry.response != response {
-            // If so, update the provisional reponse for this goal...
+            // If so, update the provisional response for this goal...
             provisional_entry.response = response;
             // ...remove all entries whose result depends on this goal
             // from the provisional cache...
