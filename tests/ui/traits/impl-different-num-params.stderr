@@ -6,6 +6,11 @@ LL |     fn bar(&self, x: usize) -> Self;
 ...
 LL |     fn bar(&self) -> isize {
    |            ^^^^^ expected 2 parameters, found 1
+   |
+help: modify the signature to match the trait definition
+   |
+LL |     fn bar(&self, x: usize) -> isize {
+   |            ~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

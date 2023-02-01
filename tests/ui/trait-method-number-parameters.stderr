@@ -5,8 +5,14 @@ LL |       fn foo(&mut self, x: i32, y: i32) -> i32;
    |              ------------------------- trait requires 3 parameters
 ...
 LL | /         &mut self,
+LL | |
 LL | |         x: i32,
    | |______________^ expected 3 parameters, found 2
+   |
+help: modify the signature to match the trait definition
+   |
+LL |         &mut self, x: i32, y: i32,
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

@@ -5,6 +5,7 @@ trait Foo {
 impl Foo for i32 {
     fn foo(
         &mut self, //~ ERROR
+        //~| HELP: modify the signature to match the trait definition
         x: i32,
     ) {
     }

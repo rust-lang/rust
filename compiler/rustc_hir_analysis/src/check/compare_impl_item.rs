@@ -1404,6 +1404,15 @@ fn compare_number_of_method_arguments<'tcx>(
                     potentially_plural_count(trait_number_args, "parameter")
                 ),
             );
+            if let Ok(snip) = tcx.sess.source_map().span_to_snippet(trait_span) {
+                let args_suggestion = if trait_number_args != 0 { snip } else { "".to_string() };
+                err.span_suggestion_verbose(
+                    impl_span,
+                    "modify the signature to match the trait definition",
+                    format!("{}", args_suggestion),
+                    Applicability::HasPlaceholders,
+                );
+            }
         } else {
             err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
         }
