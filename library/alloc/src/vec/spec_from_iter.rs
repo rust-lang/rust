@@ -59,7 +59,7 @@ where
                 if has_advanced {
                     ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
                 }
-                return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
+                return Vec::from_raw_parts_co(it.buf.as_ptr(), it.len(), it.cap);
             }
         }
 

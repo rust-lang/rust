@@ -588,6 +588,17 @@ where
         Self::with_capacity_in(capacity, Global)
     }
 
+    /// Coallocation-aware alternative to `from_row_parts`.
+    #[inline]
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    pub unsafe fn from_raw_parts_co(ptr: *mut T, length: usize, capacity: usize) -> Self {
+        unsafe { Self::from_raw_parts_in(ptr, length, capacity, Global) }
+    }
+
+}
+
+impl<T> Vec<T>
+{
     /// Creates a `Vec<T>` directly from a pointer, a capacity, and a length.
     ///
     /// # Safety
@@ -2906,12 +2917,24 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T, const CO_ALLOC_PREF: CoAllocPref> FromIterator<T> for Vec<T, Global, CO_ALLOC_PREF>
+impl<T> FromIterator<T> for Vec<T>
+{
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
+        <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "global_co_alloc", issue="none")]
+#[allow(unused_braces)]
+impl<T, const CO_ALLOC_PREF: CoAllocPref> Vec<T, Global, CO_ALLOC_PREF>
 where
     [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
+    /// Coallocation-aware alternative to `from_iter`.
     #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T, Global, CO_ALLOC_PREF> {
+    pub fn from_iter_co<I: IntoIterator<Item = T>>(iter: I) -> Vec<T, Global, CO_ALLOC_PREF> {
         <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
 }

@@ -210,7 +210,7 @@ where
         src.forget_allocation_drop_remaining();
         mem::forget(dst_guard);
 
-        let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
+        let vec = unsafe { Vec::from_raw_parts_co(dst_buf, len, cap) };
 
         vec
     }
