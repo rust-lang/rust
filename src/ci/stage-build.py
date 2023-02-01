@@ -234,18 +234,27 @@ class Timer:
     def print_stats(self):
         total_duration = sum(self.stages.values())
 
-        # 57 is the width of the whole table
-        divider = "-" * 57
+        total_duration_label = "Total duration:"
+
+        # 1 is for ":", 2 is horizontal space
+        max_label_length = max(16, max(
+            len(label) for label in list(self.stages.keys()) + [total_duration_label[:-1]]
+        )) + 1 + 2
+
+        table_width = max_label_length + 24
+        divider = "-" * table_width
 
         with StringIO() as output:
             print(divider, file=output)
             for (name, duration) in self.stages.items():
                 pct = (duration / total_duration) * 100
                 name_str = f"{name}:"
-                print(f"{name_str:<34} {duration:>12.2f}s ({pct:>5.2f}%)", file=output)
+                print(f"{name_str:<{max_label_length}} {duration:>12.2f}s ({pct:>5.2f}%)",
+                      file=output)
 
-            total_duration_label = "Total duration:"
-            print(f"{total_duration_label:<34} {total_duration:>12.2f}s", file=output)
+            print(file=output)
+            print(f"{total_duration_label:<{max_label_length}} {total_duration:>12.2f}s",
+                  file=output)
             print(divider, file=output, end="")
             LOGGER.info(f"Timer results\n{output.getvalue()}")
 
