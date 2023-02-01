@@ -68,9 +68,11 @@ impl_lint_pass!(ManualLetElse => [MANUAL_LET_ELSE]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &'tcx Stmt<'tcx>) {
-        if self.msrv.meets(msrvs::LET_ELSE) &&
-            !in_external_macro(cx.sess(), stmt.span) &&
-            let StmtKind::Local(local) = stmt.kind &&
+        if !self.msrv.meets(msrvs::LET_ELSE) || in_external_macro(cx.sess(), stmt.span) {
+            return;
+        }
+
+        if let StmtKind::Local(local) = stmt.kind &&
             let Some(init) = local.init &&
             local.els.is_none() &&
             local.ty.is_none() &&
