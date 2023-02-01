@@ -1167,7 +1167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(format!("provide the argument{}", if plural { "s" } else { "" }))
             }
             SuggestionText::Remove(plural) => {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     &format!("remove the extra argument{}", if plural { "s" } else { "" }),
                     suggestions,
                     Applicability::HasPlaceholders,

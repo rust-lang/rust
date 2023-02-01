@@ -6,18 +6,16 @@ LL |       (|| {})(|| {
 LL | |
 LL | |         let b = 1;
 LL | |     });
-   | |_____- unexpected argument of type `[closure@$DIR/wrong_argument_ice-4.rs:2:13: 2:15]`
+   | |     -
+   | |     |
+   | |_____unexpected argument of type `[closure@$DIR/wrong_argument_ice-4.rs:2:13: 2:15]`
+   |       help: remove the extra argument
    |
 note: closure defined here
   --> $DIR/wrong_argument_ice-4.rs:2:6
    |
 LL |     (|| {})(|| {
    |      ^^
-help: remove the extra argument
-   |
-LL -     (|| {})(|| {
-LL +     (|| {})();
-   |
 
 error: aborting due to previous error
 
