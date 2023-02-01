@@ -85,6 +85,9 @@ pub use hack::into_vec;
 #[cfg(test)]
 pub use hack::to_vec;
 
+#[cfg(test)]
+pub use hack::to_vec_co;
+
 // HACK(japaric): With cfg(test) `impl [T]` is not available, these three
 // functions are actually methods that are in `impl [T]` but not in
 // `core::slice::SliceExt` - we need to supply these functions for the
@@ -548,7 +551,20 @@ impl<T> [T] {
     #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn to_vec<const CO_ALLOC_PREF: CoAllocPref>(&self) -> Vec<T, Global, CO_ALLOC_PREF>
+    pub fn to_vec(&self) -> Vec<T>
+    where T:Clone
+    {
+        self.to_vec_in::<Global>(Global)
+    }
+
+    /// Coallocation-aware alternative to `to_vec`.
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[allow(unused_braces)]
+    #[rustc_conversion_suggestion]
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    #[inline]
+    pub fn to_vec_co<const CO_ALLOC_PREF: CoAllocPref>(&self) -> Vec<T, Global, CO_ALLOC_PREF>
     where
         T: Clone,
         [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
@@ -587,7 +603,7 @@ impl<T> [T] {
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "global_co_alloc", issue = "none")]
     #[allow(unused_braces)]
     pub fn to_vec_in_co<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(&self, alloc: A) -> Vec<T, A, CO_ALLOC_PREF>
     where
