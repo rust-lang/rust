@@ -586,20 +586,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        let self_ty = goal.predicate.self_ty();
-
-        let tcx = ecx.tcx();
-        let term = self_ty.discriminant_ty(tcx).into();
-
-        Self::consider_assumption(
-            ecx,
-            goal,
-            ty::Binder::dummy(ty::ProjectionPredicate {
-                projection_ty: tcx.mk_alias_ty(goal.predicate.def_id(), [self_ty]),
-                term,
-            })
-            .to_predicate(tcx),
-        )
+        let discriminant = goal.predicate.self_ty().discriminant_ty(ecx.tcx());
+        let nested_goals = ecx.infcx.eq(
+            goal.param_env,
+            goal.predicate.term.ty().expect("expected ty goal"),
+            discriminant,
+        )?;
+        ecx.evaluate_all_and_make_canonical_response(nested_goals)
     }
 }
 
