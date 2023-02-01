@@ -190,11 +190,11 @@ macro_rules! CO_ALLOC_PREF_META_NO {
 
 /// "Default" as a type's preference for coallocation using metadata (in either user space, or
 /// `alloc` or `std` space).
-/// 
+///
 /// This value and its type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
 /// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence DO NOT hard
 /// code/replace/mix this any other values/parameters.
-/// 
+///
 /// (@FIXME) This WILL BE BECOME OBSOLETE and it WILL BE REPLACED with a `const` (and/or some kind
 /// of compile time preference) once a related ICE is fixed (@FIXME add the ICE link here). Then
 /// consider moving such a `const` to a submodule, for example `::alloc::co_alloc`.
@@ -210,7 +210,9 @@ macro_rules! CO_ALLOC_PREF_META_DEFAULT {
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_DEFAULT {
-    () => { $crate::CO_ALLOC_PREF_META_DEFAULT!() };
+    () => {
+        $crate::CO_ALLOC_PREF_META_DEFAULT!()
+    };
 }
 
 /// Coallocation preference for (internal) short term vectors.
@@ -218,17 +220,19 @@ macro_rules! CO_ALLOC_PREF_DEFAULT {
 //pub const SHORT_TERM_VEC_CO_ALLOC_PREF: bool = true;
 #[macro_export]
 macro_rules! SHORT_TERM_VEC_CO_ALLOC_PREF {
-    () => { $crate::CO_ALLOC_PREF_META_NO!() };
+    () => {
+        $crate::CO_ALLOC_PREF_META_NO!()
+    };
 }
 
 // ------ CoAlloc preference/config conversion macros:
 
 /// Create a `CoAllocPref` value based on the given parameter(s). For now, only one parameter is
 /// supported, and it's required: `meta_pref`.
-/// 
+///
 /// @param `meta_pref` is one of: `CO_ALLOC_PREF_META_YES, CO_ALLOC_PREF_META_NO`, or
 /// `CO_ALLOC_PREF_META_DEFAULT`.
-/// 
+///
 /// @return `CoAllocPref` value
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[macro_export]
@@ -238,7 +242,8 @@ macro_rules! co_alloc_pref {
     // report the incorrect type of $meta_pref (if $meta_pref were some other integer, casting would
     // compile, and we would not be notified).
     ($meta_pref:expr) => {
-        (($meta_pref + (0 as $crate::co_alloc::CoAllocMetaNumSlotsPref)) as $crate::co_alloc::CoAllocPref)
+        (($meta_pref + (0 as $crate::co_alloc::CoAllocMetaNumSlotsPref))
+            as $crate::co_alloc::CoAllocPref)
     };
 }
 
@@ -248,13 +253,13 @@ macro_rules! co_alloc_pref {
 /// NOT for public use. Param `co_alloc_pref` - can override the allocator's default preference for
 /// cooperation, or can make the type not cooperative, regardless of whether allocator `A` is
 /// cooperative.
-/// 
+///
 /// @param `alloc` Allocator (implementation) type. @param `co_alloc_pref` The heap-based type's
 /// preference for coallocation, as an [::alloc::CoAllocPref] value.
-/// 
+///
 /// The type of second parameter `co_alloc_pref` WILL CHANGE. DO NOT hardcode/cast/mix that type.
 /// Instead, use [::alloc::CoAllocPref].
-/// 
+///
 // FIXME replace the macro with an (updated version of the below) `const` function). Only once
 // generic_const_exprs is stable (that is, when consumer crates don't need to declare
 // generic_const_exprs feature anymore). Then consider moving the function to a submodule, for
@@ -299,7 +304,7 @@ macro_rules! meta_num_slots_default {
     // Can't generate if ... {1} else {0}
     // because it's "overly complex generic constant".
     ($alloc:ty) => {
-        $crate::meta_num_slots!( $alloc, $crate::CO_ALLOC_PREF_DEFAULT!() )
+        $crate::meta_num_slots!($alloc, $crate::CO_ALLOC_PREF_DEFAULT!())
     };
 }
 
@@ -315,7 +320,7 @@ macro_rules! meta_num_slots_default {
 #[macro_export]
 macro_rules! meta_num_slots_global {
     ($co_alloc_pref:expr) => {
-        $crate::meta_num_slots!( $crate::alloc::Global, $co_alloc_pref)
+        $crate::meta_num_slots!($crate::alloc::Global, $co_alloc_pref)
     };
 }
 
@@ -328,6 +333,6 @@ macro_rules! meta_num_slots_global {
 #[macro_export]
 macro_rules! meta_num_slots_default_global {
     () => {
-        $crate::meta_num_slots!( $crate::alloc::Global, $crate::CO_ALLOC_PREF_DEFAULT!())
+        $crate::meta_num_slots!($crate::alloc::Global, $crate::CO_ALLOC_PREF_DEFAULT!())
     };
 }

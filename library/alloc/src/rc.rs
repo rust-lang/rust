@@ -1991,7 +1991,7 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
 #[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> From<Vec<T, Global, CO_ALLOC_PREF>> for Rc<[T]>
 where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     /// Allocate a reference-counted slice and move `v`'s items into it.
     ///
@@ -2007,7 +2007,7 @@ where
     #[allow(unused_braces)]
     fn from(mut v: Vec<T, Global, CO_ALLOC_PREF>) -> Rc<[T]>
     where
-        [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+        [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
     {
         unsafe {
             let rc = Rc::copy_from_slice(&v);

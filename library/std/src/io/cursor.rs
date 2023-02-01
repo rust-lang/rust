@@ -405,7 +405,7 @@ fn reserve_and_pad<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
     buf_len: usize,
 ) -> io::Result<usize>
 where
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     let pos: usize = (*pos_mut).try_into().map_err(|_| {
         io::const_io_error!(
@@ -453,7 +453,7 @@ unsafe fn vec_write_unchecked<A, const CO_ALLOC_PREF: CoAllocPref>(
 ) -> usize
 where
     A: Allocator,
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     debug_assert!(vec.capacity() >= pos + buf.len());
     vec.as_mut_ptr().add(pos).copy_from(buf.as_ptr(), buf.len());
@@ -477,7 +477,7 @@ fn vec_write<A, const CO_ALLOC_PREF: CoAllocPref>(
 ) -> io::Result<usize>
 where
     A: Allocator,
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     let buf_len = buf.len();
     let mut pos = reserve_and_pad(pos_mut, vec, buf_len)?;
@@ -514,7 +514,7 @@ fn vec_write_vectored<A, const CO_ALLOC_PREF: CoAllocPref>(
 ) -> io::Result<usize>
 where
     A: Allocator,
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     // For safety reasons, we don't want this sum to overflow ever.
     // If this saturates, the reserve should panic to avoid any unsound writing.
@@ -566,7 +566,7 @@ impl Write for Cursor<&mut [u8]> {
 impl<A, const CO_ALLOC_PREF: CoAllocPref> Write for Cursor<&mut Vec<u8, A, CO_ALLOC_PREF>>
 where
     A: Allocator,
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, self.inner, buf)
@@ -592,7 +592,7 @@ where
 impl<A, const CO_ALLOC_PREF: CoAllocPref> Write for Cursor<Vec<u8, A, CO_ALLOC_PREF>>
 where
     A: Allocator,
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, &mut self.inner, buf)

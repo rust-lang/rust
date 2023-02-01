@@ -15,7 +15,7 @@ pub(super) trait SpecFromElem: Sized {
         alloc: A,
     ) -> Vec<Self, A, CO_ALLOC_PREF>
     where
-        [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:;
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:;
 }
 
 #[allow(unused_braces)]
@@ -26,7 +26,7 @@ impl<T: Clone> SpecFromElem for T {
         alloc: A,
     ) -> Vec<Self, A, CO_ALLOC_PREF>
     where
-        [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         let mut v = Vec::with_capacity_in(n, alloc);
         v.extend_with(n, ExtendElement(elem));
@@ -43,7 +43,7 @@ impl<T: Clone + IsZero> SpecFromElem for T {
         alloc: A,
     ) -> Vec<T, A, CO_ALLOC_PREF>
     where
-        [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         if elem.is_zero() {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
@@ -63,7 +63,7 @@ impl SpecFromElem for i8 {
         alloc: A,
     ) -> Vec<i8, A, CO_ALLOC_PREF>
     where
-        [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         if elem == 0 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
@@ -86,7 +86,7 @@ impl SpecFromElem for u8 {
         alloc: A,
     ) -> Vec<u8, A, CO_ALLOC_PREF>
     where
-        [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         if elem == 0 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };

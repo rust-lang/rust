@@ -101,12 +101,12 @@ impl const CoAllocMetaBase for CoAllocMetaPlain {
 }
 
 /// Whether an `Allocator` implementation supports coallocation.
-/// 
+///
 /// This type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
 /// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence:
 /// - DO NOT mix this/cast this with/to `u8`, `u16`, (nor any other integer); and
 /// - DO NOT hard code any values, but use `CO_ALLOCATOR_SUPPORTS_META_YES` and `CO_ALLOCATOR_SUPPORTS_META_NO`.
-/// 
+///
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 pub type CoAllocatorMetaNumSlots = u32;
 
@@ -182,7 +182,7 @@ pub unsafe trait Allocator {
 
     /// Type to store coallocation metadata (if both the allocator and the heap-based type support
     /// coallocation, and if coallocation is used).
-    /// 
+    ///
     /// If this is any type with non-zero size, then the actual `Allocator` implementation supports
     /// cooperative functions (`co_*`) as first class citizens. NOT for public use. The default
     /// value MAY be REMOVED or CHANGED.

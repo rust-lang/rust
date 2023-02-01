@@ -103,9 +103,11 @@ pub(crate) mod hack {
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
     #[allow(unused_braces)]
-    pub fn into_vec<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(b: Box<[T], A>) -> Vec<T, A, CO_ALLOC_PREF>
+    pub fn into_vec<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+        b: Box<[T], A>,
+    ) -> Vec<T, A, CO_ALLOC_PREF>
     where
-        [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         unsafe {
             let len = b.len();
@@ -117,12 +119,9 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[allow(unused_braces)]
-    pub fn to_vec<T: ConvertVec, A: Allocator>(
-        s: &[T],
-        alloc: A,
-    ) -> Vec<T, A>
+    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A>
     where
-        [(); {crate::meta_num_slots_default!(A)}]:,
+        [(); { crate::meta_num_slots_default!(A) }]:,
     {
         T::to_vec(s, alloc)
     }
@@ -135,7 +134,7 @@ pub(crate) mod hack {
         alloc: A,
     ) -> Vec<T, A, CO_ALLOC_PREF>
     where
-        [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         T::to_vec_co(s, alloc)
     }
@@ -143,13 +142,10 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     #[allow(unused_braces)]
     pub trait ConvertVec {
-        fn to_vec<A: Allocator>(
-            s: &[Self],
-            alloc: A,
-        ) -> Vec<Self, A>
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
         where
             Self: Sized,
-            [(); {crate::meta_num_slots_default!(A)}]:;
+            [(); { crate::meta_num_slots_default!(A) }]:;
     }
 
     #[allow(unused_braces)]
@@ -160,7 +156,7 @@ pub(crate) mod hack {
         ) -> Vec<Self, A, CO_ALLOC_PREF>
         where
             Self: Sized,
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:;
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:;
     }
 
     #[cfg(not(no_global_oom_handling))]
@@ -168,24 +164,21 @@ pub(crate) mod hack {
     impl<T: Clone> ConvertVec for T {
         #[inline]
         #[allow(unused_braces)]
-        default fn to_vec<A: Allocator>(
-            s: &[Self],
-            alloc: A,
-        ) -> Vec<Self, A>
+        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
         where
-            [(); {crate::meta_num_slots_default!(A)}]:,
+            [(); { crate::meta_num_slots_default!(A) }]:,
         {
             #[allow(unused_braces)]
             struct DropGuard<'a, T, A: Allocator>
             where
-                [(); {crate::meta_num_slots_default!(A)}]:,
+                [(); { crate::meta_num_slots_default!(A) }]:,
             {
                 vec: &'a mut Vec<T, A>,
                 num_init: usize,
             }
             impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A>
             where
-                [(); {crate::meta_num_slots_default!(A)}]:,
+                [(); { crate::meta_num_slots_default!(A) }]:,
             {
                 #[inline]
                 fn drop(&mut self) {
@@ -219,12 +212,9 @@ pub(crate) mod hack {
     impl<T: Copy> ConvertVec for T {
         #[inline]
         #[allow(unused_braces)]
-        fn to_vec<A: Allocator>(
-            s: &[Self],
-            alloc: A,
-        ) -> Vec<Self, A>
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
         where
-            [(); {crate::meta_num_slots_default!(A)}]:,
+            [(); { crate::meta_num_slots_default!(A) }]:,
         {
             let mut v = Vec::with_capacity_in(s.len(), alloc);
             // SAFETY:
@@ -248,19 +238,20 @@ pub(crate) mod hack {
             alloc: A,
         ) -> Vec<Self, A, CO_ALLOC_PREF>
         where
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             #[allow(unused_braces)]
             struct DropGuard<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
             where
-                [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+                [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
             {
                 vec: &'a mut Vec<T, A, CO_ALLOC_PREF>,
                 num_init: usize,
             }
-            impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for DropGuard<'a, T, A, CO_ALLOC_PREF>
+            impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+                for DropGuard<'a, T, A, CO_ALLOC_PREF>
             where
-                [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+                [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
             {
                 #[inline]
                 fn drop(&mut self) {
@@ -299,7 +290,7 @@ pub(crate) mod hack {
             alloc: A,
         ) -> Vec<Self, A, CO_ALLOC_PREF>
         where
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             let mut v = Vec::with_capacity_in(s.len(), alloc);
             // SAFETY:
@@ -311,7 +302,8 @@ pub(crate) mod hack {
             }
             v
         }
-    }}
+    }
+}
 
 #[cfg(not(test))]
 impl<T> [T] {
@@ -552,7 +544,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_vec(&self) -> Vec<T>
-    where T:Clone
+    where
+        T: Clone,
     {
         self.to_vec_in::<Global>(Global)
     }
@@ -567,7 +560,7 @@ impl<T> [T] {
     pub fn to_vec_co<const CO_ALLOC_PREF: CoAllocPref>(&self) -> Vec<T, Global, CO_ALLOC_PREF>
     where
         T: Clone,
-        [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+        [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
     {
         self.to_vec_in_co::<Global, CO_ALLOC_PREF>(Global)
     }
@@ -593,7 +586,7 @@ impl<T> [T] {
     pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
     where
         T: Clone,
-        [(); {crate::meta_num_slots_default!(A)}]:,
+        [(); { crate::meta_num_slots_default!(A) }]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self, alloc)
@@ -605,10 +598,13 @@ impl<T> [T] {
     #[inline]
     #[unstable(feature = "global_co_alloc", issue = "none")]
     #[allow(unused_braces)]
-    pub fn to_vec_in_co<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(&self, alloc: A) -> Vec<T, A, CO_ALLOC_PREF>
+    pub fn to_vec_in_co<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+        &self,
+        alloc: A,
+    ) -> Vec<T, A, CO_ALLOC_PREF>
     where
         T: Clone,
-        [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec_co(self, alloc)
@@ -632,9 +628,11 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[allow(unused_braces)]
-    pub fn into_vec<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(self: Box<Self, A>) -> Vec<T, A, CO_ALLOC_PREF>
+    pub fn into_vec<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+        self: Box<Self, A>,
+    ) -> Vec<T, A, CO_ALLOC_PREF>
     where
-        [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+        [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
@@ -952,7 +950,7 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Borrow<[T]> for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn borrow(&self) -> &[T] {
         &self[..]
@@ -963,7 +961,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> BorrowMut<[T]> for Vec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn borrow_mut(&mut self) -> &mut [T] {
         &mut self[..]

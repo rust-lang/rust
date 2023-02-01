@@ -17,10 +17,11 @@ pub(super) trait SpecFromIterNested<T, I> {
 }
 
 #[allow(unused_braces)]
-impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIterNested<T, I> for Vec<T, Global, CO_ALLOC_PREF>
+impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIterNested<T, I>
+    for Vec<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T>,
-    [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be

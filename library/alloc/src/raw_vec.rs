@@ -59,7 +59,7 @@ pub(crate) struct RawVec<
     A: Allocator = Global,
     const CO_ALLOC_PREF: CoAllocPref = { CO_ALLOC_PREF_DEFAULT!() },
 > where
-    [(); {meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     ptr: Unique<T>,
     cap: usize,
@@ -67,14 +67,13 @@ pub(crate) struct RawVec<
     // As of v1.67.0, `cmp` for `TypeId` is not `const`, unfortunately:
     //pub(crate) meta: [GlobalCoAllocMeta; {if core::any::TypeId::of::<A>()==core::any::TypeId::of::<Global>() {1} else {0}}],
     //pub(crate) meta: [GlobalCoAllocMeta; mem::size_of::<A::IsCoAllocator>()],
-    pub(crate) metas:
-        [A::CoAllocMeta; {crate::meta_num_slots!(A, CO_ALLOC_PREF)}],
+    pub(crate) metas: [A::CoAllocMeta; { crate::meta_num_slots!(A, CO_ALLOC_PREF) }],
 }
 
 #[allow(unused_braces)]
 impl<T, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, Global, CO_ALLOC_PREF>
 where
-    [(); {meta_num_slots_global!(CO_ALLOC_PREF)}]:,
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     /// HACK(Centril): This exists because stable `const fn` can only call stable `const fn`, so
     /// they cannot call `Self::new()`.
@@ -125,7 +124,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     #[allow(dead_code)]
     const fn new_plain_metas() -> [A::CoAllocMeta; { meta_num_slots_default!(A) }] {
@@ -333,7 +332,7 @@ where
             len: usize,
             additional: usize,
         ) where
-            [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
             handle_reserve(slf.grow_amortized(len, additional));
         }
@@ -410,7 +409,7 @@ where
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> RawVec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
@@ -532,16 +531,21 @@ where
 }
 
 #[allow(unused_braces)]
-unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for RawVec<T, A, CO_ALLOC_PREF>
+unsafe impl<#[may_dangle] T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+    for RawVec<T, A, CO_ALLOC_PREF>
 where
-    [(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     default fn drop(&mut self) {
         if let Some((ptr, layout)) = self.current_memory() {
             let meta_num_slots = crate::meta_num_slots!(A, CO_ALLOC_PREF);
-            if  meta_num_slots!=0 {
-                debug_assert!(meta_num_slots==1, "Number of coallocation meta slots can be only 0 or 1, but it is {}!", meta_num_slots);
+            if meta_num_slots != 0 {
+                debug_assert!(
+                    meta_num_slots == 1,
+                    "Number of coallocation meta slots can be only 0 or 1, but it is {}!",
+                    meta_num_slots
+                );
                 let meta = self.metas[0];
                 unsafe { self.alloc.co_deallocate(PtrAndMeta { ptr, meta }, layout) }
             } else {
