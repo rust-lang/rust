@@ -217,7 +217,7 @@ jobs:
         EOF
 
     - name: Install hyperfine
-      run: cargo install hyperfine
+      run: cargo install hyperfine || true
 
     - name: Prepare dependencies
       run: ./y.rs prepare
