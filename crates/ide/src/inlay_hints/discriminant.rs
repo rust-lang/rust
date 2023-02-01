@@ -4,29 +4,40 @@
 //!    Bar/* = 0*/,
 //! }
 //! ```
-use ide_db::{base_db::FileId, famous_defs::FamousDefs};
+use hir::Semantics;
+use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{
     DiscriminantHints, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind, InlayTooltip,
 };
 
-pub(super) fn hints(
+pub(super) fn enum_hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     _: FileId,
+    enum_: ast::Enum,
+) -> Option<()> {
+    let disabled = match config.discriminant_hints {
+        DiscriminantHints::Always => false,
+        DiscriminantHints::Fieldless => sema.to_def(&enum_)?.is_data_carrying(sema.db),
+        DiscriminantHints::Never => true,
+    };
+    if disabled {
+        return None;
+    }
+    for variant in enum_.variant_list()?.variants() {
+        variant_hints(acc, sema, &variant);
+    }
+    None
+}
+
+fn variant_hints(
+    acc: &mut Vec<InlayHint>,
+    sema: &Semantics<'_, RootDatabase>,
     variant: &ast::Variant,
 ) -> Option<()> {
-    let field_list = match config.discriminant_hints {
-        DiscriminantHints::Always => variant.field_list(),
-        DiscriminantHints::Fieldless => match variant.field_list() {
-            Some(_) => return None,
-            None => None,
-        },
-        DiscriminantHints::Never => return None,
-    };
-
     if variant.eq_token().is_some() {
         return None;
     }
@@ -39,7 +50,7 @@ pub(super) fn hints(
     let d = v.eval(sema.db);
 
     acc.push(InlayHint {
-        range: match field_list {
+        range: match variant.field_list() {
             Some(field_list) => name.syntax().text_range().cover(field_list.syntax().text_range()),
             None => name.syntax().text_range(),
         },
@@ -91,15 +102,30 @@ mod tests {
         check_discriminants(
             r#"
 enum Enum {
-    Variant,
-  //^^^^^^^0
-    Variant1,
-  //^^^^^^^^1
-    Variant2,
-  //^^^^^^^^2
-    Variant5 = 5,
-    Variant6,
-  //^^^^^^^^6
+  Variant,
+//^^^^^^^0
+  Variant1,
+//^^^^^^^^1
+  Variant2,
+//^^^^^^^^2
+  Variant5 = 5,
+  Variant6,
+//^^^^^^^^6
+}
+"#,
+        );
+        check_discriminants_fieldless(
+            r#"
+enum Enum {
+  Variant,
+//^^^^^^^0
+  Variant1,
+//^^^^^^^^1
+  Variant2,
+//^^^^^^^^2
+  Variant5 = 5,
+  Variant6,
+//^^^^^^^^6
 }
 "#,
         );
@@ -133,13 +159,10 @@ enum Enum {
 enum Enum {
     Variant(),
     Variant1,
-  //^^^^^^^^1
     Variant2 {},
     Variant3,
-  //^^^^^^^^3
     Variant5 = 5,
     Variant6,
-  //^^^^^^^^6
 }
 "#,
         );
