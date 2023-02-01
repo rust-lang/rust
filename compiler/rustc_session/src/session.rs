@@ -919,8 +919,8 @@ impl Session {
     }
 
     /// Is this edition 2015?
-    pub fn rust_2015(&self) -> bool {
-        self.edition().rust_2015()
+    pub fn is_rust_2015(&self) -> bool {
+        self.edition().is_rust_2015()
     }
 
     /// Are we allowed to use features from the Rust 2018 edition?
