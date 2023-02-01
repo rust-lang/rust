@@ -1505,7 +1505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &hir::Expr<'_>,
         expected: Expectation<'tcx>,
-        qpath: &QPath<'_>,
+        qpath: &QPath<'tcx>,
         fields: &'tcx [hir::ExprField<'tcx>],
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {

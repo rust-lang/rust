@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {
 }
 
 /// Returns true if the given item is a union with at least two non-ZST fields.
-fn is_union_with_two_non_zst_fields(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
+fn is_union_with_two_non_zst_fields<'tcx>(cx: &LateContext<'tcx>, item: &Item<'tcx>) -> bool {
     if let ItemKind::Union(data, _) = &item.kind {
         data.fields().iter().filter(|f| !is_zst(cx, f.ty)).count() >= 2
     } else {
@@ -77,7 +77,7 @@ fn is_union_with_two_non_zst_fields(cx: &LateContext<'_>, item: &Item<'_>) -> bo
     }
 }
 
-fn is_zst(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) -> bool {
+fn is_zst<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> bool {
     if hir_ty.span.from_expansion() {
         return false;
     }

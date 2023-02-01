@@ -355,7 +355,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             fn args_for_def_id(
                 &mut self,
                 def_id: DefId,
-            ) -> (Option<&'a hir::GenericArgs<'a>>, bool) {
+            ) -> (Option<&'a hir::GenericArgs<'tcx>>, bool) {
                 if def_id == self.pick.item.def_id {
                     if let Some(data) = self.seg.args {
                         return (Some(data), false);
@@ -367,7 +367,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             fn provided_kind(
                 &mut self,
                 param: &ty::GenericParamDef,
-                arg: &GenericArg<'_>,
+                arg: &GenericArg<'tcx>,
             ) -> subst::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
