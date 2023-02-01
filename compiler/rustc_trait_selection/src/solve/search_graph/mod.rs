@@ -45,6 +45,7 @@ impl<'tcx> SearchGraph<'tcx> {
     /// Tries putting the new goal on the stack, returning an error if it is already cached.
     ///
     /// This correctly updates the provisional cache if there is a cycle.
+    #[instrument(level = "debug", skip(self, tcx), ret)]
     pub(super) fn try_push_stack(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -79,8 +80,10 @@ impl<'tcx> SearchGraph<'tcx> {
             Entry::Occupied(entry_index) => {
                 let entry_index = *entry_index.get();
 
-                cache.add_dependency_of_leaf_on(entry_index);
                 let stack_depth = cache.depth(entry_index);
+                debug!("encountered cycle with depth {stack_depth:?}");
+
+                cache.add_dependency_of_leaf_on(entry_index);
 
                 self.stack[stack_depth].has_been_used = true;
                 // NOTE: The goals on the stack aren't the only goals involved in this cycle.
@@ -117,6 +120,7 @@ impl<'tcx> SearchGraph<'tcx> {
     /// updated the provisional cache and we have to recompute the current goal.
     ///
     /// FIXME: Refer to the rustc-dev-guide entry once it exists.
+    #[instrument(level = "debug", skip(self, tcx, actual_goal), ret)]
     pub(super) fn try_finalize_goal(
         &mut self,
         tcx: TyCtxt<'tcx>,

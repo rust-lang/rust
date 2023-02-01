@@ -918,23 +918,24 @@ impl Session {
         ret
     }
 
+    /// Is this edition 2015?
     pub fn rust_2015(&self) -> bool {
-        self.edition() == Edition::Edition2015
+        self.edition().rust_2015()
     }
 
     /// Are we allowed to use features from the Rust 2018 edition?
     pub fn rust_2018(&self) -> bool {
-        self.edition() >= Edition::Edition2018
+        self.edition().rust_2018()
     }
 
     /// Are we allowed to use features from the Rust 2021 edition?
     pub fn rust_2021(&self) -> bool {
-        self.edition() >= Edition::Edition2021
+        self.edition().rust_2021()
     }
 
     /// Are we allowed to use features from the Rust 2024 edition?
     pub fn rust_2024(&self) -> bool {
-        self.edition() >= Edition::Edition2024
+        self.edition().rust_2024()
     }
 
     /// Returns `true` if we cannot skip the PLT for shared library calls.

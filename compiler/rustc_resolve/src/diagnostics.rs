@@ -1552,12 +1552,12 @@ impl<'a> Resolver<'a> {
             if b.is_extern_crate() && ident.span.rust_2018() {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
-            if misc == AmbiguityErrorMisc::SuggestCrate {
-                help_msgs
-                    .push(format!("use `crate::{ident}` to refer to this {thing} unambiguously"))
-            } else if misc == AmbiguityErrorMisc::SuggestSelf {
-                help_msgs
-                    .push(format!("use `self::{ident}` to refer to this {thing} unambiguously"))
+            match misc {
+                AmbiguityErrorMisc::SuggestCrate => help_msgs
+                    .push(format!("use `crate::{ident}` to refer to this {thing} unambiguously")),
+                AmbiguityErrorMisc::SuggestSelf => help_msgs
+                    .push(format!("use `self::{ident}` to refer to this {thing} unambiguously")),
+                AmbiguityErrorMisc::FromPrelude | AmbiguityErrorMisc::None => {}
             }
 
             err.span_note(b.span, &note_msg);
@@ -1717,7 +1717,7 @@ impl<'a> Resolver<'a> {
                         Applicability::MaybeIncorrect,
                     )),
                 )
-            } else if self.session.edition() == Edition::Edition2015 {
+            } else if self.session.rust_2015() {
                 (
                     format!("maybe a missing crate `{ident}`?"),
                     Some((

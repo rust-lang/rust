@@ -606,59 +606,66 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             };
             check_abi(tcx, it.hir_id(), it.span, abi);
 
-            if abi == Abi::RustIntrinsic {
-                for item in items {
-                    let item = tcx.hir().foreign_item(item.id);
-                    intrinsic::check_intrinsic_type(tcx, item);
-                }
-            } else if abi == Abi::PlatformIntrinsic {
-                for item in items {
-                    let item = tcx.hir().foreign_item(item.id);
-                    intrinsic::check_platform_intrinsic_type(tcx, item);
-                }
-            } else {
-                for item in items {
-                    let def_id = item.id.owner_id.def_id;
-                    let generics = tcx.generics_of(def_id);
-                    let own_counts = generics.own_counts();
-                    if generics.params.len() - own_counts.lifetimes != 0 {
-                        let (kinds, kinds_pl, egs) = match (own_counts.types, own_counts.consts) {
-                            (_, 0) => ("type", "types", Some("u32")),
-                            // We don't specify an example value, because we can't generate
-                            // a valid value for any type.
-                            (0, _) => ("const", "consts", None),
-                            _ => ("type or const", "types or consts", None),
-                        };
-                        struct_span_err!(
-                            tcx.sess,
-                            item.span,
-                            E0044,
-                            "foreign items may not have {kinds} parameters",
-                        )
-                        .span_label(item.span, &format!("can't have {kinds} parameters"))
-                        .help(
-                            // FIXME: once we start storing spans for type arguments, turn this
-                            // into a suggestion.
-                            &format!(
-                                "replace the {} parameters with concrete {}{}",
-                                kinds,
-                                kinds_pl,
-                                egs.map(|egs| format!(" like `{}`", egs)).unwrap_or_default(),
-                            ),
-                        )
-                        .emit();
+            match abi {
+                Abi::RustIntrinsic => {
+                    for item in items {
+                        let item = tcx.hir().foreign_item(item.id);
+                        intrinsic::check_intrinsic_type(tcx, item);
                     }
+                }
 
-                    let item = tcx.hir().foreign_item(item.id);
-                    match &item.kind {
-                        hir::ForeignItemKind::Fn(fn_decl, _, _) => {
-                            require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
+                Abi::PlatformIntrinsic => {
+                    for item in items {
+                        let item = tcx.hir().foreign_item(item.id);
+                        intrinsic::check_platform_intrinsic_type(tcx, item);
+                    }
+                }
+
+                _ => {
+                    for item in items {
+                        let def_id = item.id.owner_id.def_id;
+                        let generics = tcx.generics_of(def_id);
+                        let own_counts = generics.own_counts();
+                        if generics.params.len() - own_counts.lifetimes != 0 {
+                            let (kinds, kinds_pl, egs) = match (own_counts.types, own_counts.consts)
+                            {
+                                (_, 0) => ("type", "types", Some("u32")),
+                                // We don't specify an example value, because we can't generate
+                                // a valid value for any type.
+                                (0, _) => ("const", "consts", None),
+                                _ => ("type or const", "types or consts", None),
+                            };
+                            struct_span_err!(
+                                tcx.sess,
+                                item.span,
+                                E0044,
+                                "foreign items may not have {kinds} parameters",
+                            )
+                            .span_label(item.span, &format!("can't have {kinds} parameters"))
+                            .help(
+                                // FIXME: once we start storing spans for type arguments, turn this
+                                // into a suggestion.
+                                &format!(
+                                    "replace the {} parameters with concrete {}{}",
+                                    kinds,
+                                    kinds_pl,
+                                    egs.map(|egs| format!(" like `{}`", egs)).unwrap_or_default(),
+                                ),
+                            )
+                            .emit();
                         }
-                        hir::ForeignItemKind::Static(..) => {
-                            check_static_inhabited(tcx, def_id);
-                            check_static_linkage(tcx, def_id);
+
+                        let item = tcx.hir().foreign_item(item.id);
+                        match &item.kind {
+                            hir::ForeignItemKind::Fn(fn_decl, _, _) => {
+                                require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
+                            }
+                            hir::ForeignItemKind::Static(..) => {
+                                check_static_inhabited(tcx, def_id);
+                                check_static_linkage(tcx, def_id);
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
             }

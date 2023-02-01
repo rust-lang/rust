@@ -416,11 +416,7 @@ impl<'tcx> Body<'tcx> {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
-            if decl.is_user_variable() && decl.mutability == Mutability::Mut {
-                Some(local)
-            } else {
-                None
-            }
+            (decl.is_user_variable() && decl.mutability.is_mut()).then(|| local)
         })
     }
 
