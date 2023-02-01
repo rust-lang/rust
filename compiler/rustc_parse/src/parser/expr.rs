@@ -1966,7 +1966,13 @@ impl<'a> Parser<'a> {
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus`.
     pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
-        maybe_whole_expr!(self);
+        if let token::Interpolated(nt) = &self.token.kind
+            && let token::NtExpr(e) | token::NtLiteral(e) = &**nt
+        {
+            let e = e.clone();
+            self.bump();
+            return Ok(e);
+        }
 
         let lo = self.token.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));
