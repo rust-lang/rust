@@ -422,10 +422,8 @@ fn hints(
                 // static type elisions
                 ast::Item::Static(it) => implicit_static::hints(hints, config, Either::Left(it)),
                 ast::Item::Const(it) => implicit_static::hints(hints, config, Either::Right(it)),
+                ast::Item::Enum(it) => discriminant::enum_hints(hints, famous_defs, config, file_id, it),
                 _ => None,
-            },
-            ast::Variant(v) => {
-                discriminant::hints(hints, famous_defs, config, file_id, &v)
             },
             // FIXME: fn-ptr type, dyn fn type, and trait object type elisions
             ast::Type(_) => None,
