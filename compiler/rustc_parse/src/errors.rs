@@ -351,7 +351,7 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
 }
 
 #[derive(Subdiagnostic)]
-#[help(parse_extra_if_in_let_else)]
+#[suggestion(parse_extra_if_in_let_else, applicability = "maybe-incorrect", code = "")]
 pub(crate) struct IfExpressionLetSomeSub {
     #[primary_span]
     pub if_span: Span,

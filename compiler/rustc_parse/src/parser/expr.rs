@@ -2290,7 +2290,7 @@ impl<'a> Parser<'a> {
                 block
             } else {
                 let let_else_sub = matches!(cond.kind, ExprKind::Let(..))
-                    .then(|| IfExpressionLetSomeSub { if_span: lo });
+                    .then(|| IfExpressionLetSomeSub { if_span: lo.until(cond_span) });
 
                 self.sess.emit_err(IfExpressionMissingThenBlock {
                     if_span: lo,
