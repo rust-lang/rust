@@ -168,7 +168,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 336);
+rustc_data_structures::static_assert_size!(Parser<'_>, 312);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -223,16 +223,21 @@ impl<'a> Drop for Parser<'a> {
 
 #[derive(Clone)]
 struct TokenCursor {
-    // The current (innermost) frame. `frame` and `stack` could be combined,
-    // but it's faster to keep them separate and access `frame` directly
-    // rather than via something like `stack.last().unwrap()` or
-    // `stack[stack.len() - 1]`.
-    frame: TokenCursorFrame,
-    // Additional frames that enclose `frame`.
-    stack: Vec<TokenCursorFrame>,
+    // Cursor for the current (innermost) token stream. The delimiters for this
+    // token stream are found in `self.stack.last()`; when that is `None` then
+    // we are in the outermost token stream which never has delimiters.
+    tree_cursor: tokenstream::Cursor,
+
+    // Token streams surrounding the current one. The delimiters for stack[n]'s
+    // tokens are in `stack[n-1]`. `stack[0]` (when present) has no delimiters
+    // because it's the outermost token stream which never has delimiters.
+    stack: Vec<(tokenstream::Cursor, Delimiter, DelimSpan)>,
+
     desugar_doc_comments: bool,
+
     // Counts the number of calls to `{,inlined_}next`.
     num_next_calls: usize,
+
     // During parsing, we may sometimes need to 'unglue' a
     // glued token into two component tokens
     // (e.g. '>>' into '>' and '>), so that the parser
@@ -257,19 +262,6 @@ struct TokenCursor {
     break_last_token: bool,
 }
 
-#[derive(Clone)]
-struct TokenCursorFrame {
-    // This is `None` only for the outermost frame.
-    delim_sp: Option<(Delimiter, DelimSpan)>,
-    tree_cursor: tokenstream::Cursor,
-}
-
-impl TokenCursorFrame {
-    fn new(delim_sp: Option<(Delimiter, DelimSpan)>, tts: TokenStream) -> Self {
-        TokenCursorFrame { delim_sp, tree_cursor: tts.into_trees() }
-    }
-}
-
 impl TokenCursor {
     fn next(&mut self, desugar_doc_comments: bool) -> (Token, Spacing) {
         self.inlined_next(desugar_doc_comments)
@@ -282,12 +274,12 @@ impl TokenCursor {
             // FIXME: we currently don't return `Delimiter` open/close delims. To fix #67062 we will
             // need to, whereupon the `delim != Delimiter::Invisible` conditions below can be
             // removed.
-            if let Some(tree) = self.frame.tree_cursor.next_ref() {
+            if let Some(tree) = self.tree_cursor.next_ref() {
                 match tree {
                     &TokenTree::Token(ref token, spacing) => match (desugar_doc_comments, token) {
                         (true, &Token { kind: token::DocComment(_, attr_style, data), span }) => {
                             let desugared = self.desugar(attr_style, data, span);
-                            self.frame.tree_cursor.replace_prev_and_rewind(desugared);
+                            self.tree_cursor.replace_prev_and_rewind(desugared);
                             // Continue to get the first token of the desugared doc comment.
                         }
                         _ => {
@@ -299,25 +291,23 @@ impl TokenCursor {
                         }
                     },
                     &TokenTree::Delimited(sp, delim, ref tts) => {
-                        // Set `open_delim` to true here because we deal with it immediately.
-                        let frame = TokenCursorFrame::new(Some((delim, sp)), tts.clone());
-                        self.stack.push(mem::replace(&mut self.frame, frame));
+                        let trees = tts.clone().into_trees();
+                        self.stack.push((mem::replace(&mut self.tree_cursor, trees), delim, sp));
                         if delim != Delimiter::Invisible {
                             return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
                         }
                         // No open delimiter to return; continue on to the next iteration.
                     }
                 };
-            } else if let Some(frame) = self.stack.pop() {
-                // We have exhausted this frame. Move back to its parent frame.
-                let (delim, span) = self.frame.delim_sp.unwrap();
-                self.frame = frame;
+            } else if let Some((tree_cursor, delim, span)) = self.stack.pop() {
+                // We have exhausted this token stream. Move back to its parent token stream.
+                self.tree_cursor = tree_cursor;
                 if delim != Delimiter::Invisible {
                     return (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone);
                 }
                 // No close delimiter to return; continue on to the next iteration.
             } else {
-                // We have exhausted the outermost frame.
+                // We have exhausted the outermost token stream.
                 return (Token::new(token::Eof, DUMMY_SP), Spacing::Alone);
             }
         }
@@ -475,7 +465,7 @@ impl<'a> Parser<'a> {
             restrictions: Restrictions::empty(),
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
-                frame: TokenCursorFrame::new(None, tokens),
+                tree_cursor: tokens.into_trees(),
                 stack: Vec::new(),
                 num_next_calls: 0,
                 desugar_doc_comments,
@@ -1142,14 +1132,16 @@ impl<'a> Parser<'a> {
             return looker(&self.token);
         }
 
-        let frame = &self.token_cursor.frame;
-        if let Some((delim, span)) = frame.delim_sp && delim != Delimiter::Invisible {
+        let tree_cursor = &self.token_cursor.tree_cursor;
+        if let Some(&(_, delim, span)) = self.token_cursor.stack.last()
+            && delim != Delimiter::Invisible
+        {
             let all_normal = (0..dist).all(|i| {
-                let token = frame.tree_cursor.look_ahead(i);
+                let token = tree_cursor.look_ahead(i);
                 !matches!(token, Some(TokenTree::Delimited(_, Delimiter::Invisible, _)))
             });
             if all_normal {
-                return match frame.tree_cursor.look_ahead(dist - 1) {
+                return match tree_cursor.look_ahead(dist - 1) {
                     Some(tree) => match tree {
                         TokenTree::Token(token, _) => looker(token),
                         TokenTree::Delimited(dspan, delim, _) => {
@@ -1310,10 +1302,10 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
             token::OpenDelim(..) => {
-                // Grab the tokens from this frame.
-                let frame = &self.token_cursor.frame;
-                let stream = frame.tree_cursor.stream.clone();
-                let (delim, span) = frame.delim_sp.unwrap();
+                // Grab the tokens within the delimiters.
+                let tree_cursor = &self.token_cursor.tree_cursor;
+                let stream = tree_cursor.stream.clone();
+                let (_, delim, span) = *self.token_cursor.stack.last().unwrap();
 
                 // Advance the token cursor through the entire delimited
                 // sequence. After getting the `OpenDelim` we are *within* the
