@@ -644,7 +644,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
         stage2_lib_llvm = pipeline.stage2_lib_llvm()
         # ...and write the optimized one into the LLVM build directory,
         # because we'll copy it from there when reassembling the stage2 compiler.
-        build_lib_llvm = pipeline.build_artifacts() / "llvm" / "lib" / stage2_lib_llvm.name
+        build_lib_llvm = pipeline.build_artifacts() / "llvm" / "build" / "lib" / stage2_lib_llvm.name
 
         # Back up the original libLLVM shared object.
         orig_lib_llvm = pipeline.opt_artifacts() / "libLLVM.orig"
