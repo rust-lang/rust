@@ -24,6 +24,7 @@ pub fn target() -> Target {
             crt_static_respected: false,
             relro_level: RelroLevel::Full,
             panic_strategy: PanicStrategy::Abort,
+            position_independent_executables: true,
             static_position_independent_executables: true,
 
             ..Default::default()

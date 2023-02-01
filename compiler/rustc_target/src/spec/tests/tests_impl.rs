@@ -143,8 +143,9 @@ impl Target {
             assert!(self.executables);
         }
 
-        // Check crt static stuff
-        if self.crt_static_default || self.crt_static_allows_dylibs {
+        // Check crt static stuff. Trusy only supports crt static and so does not enable
+        // `crt_static_respected`.
+        if (self.crt_static_default || self.crt_static_allows_dylibs) && self.os != "trusty" {
             assert!(self.crt_static_respected);
         }
     }
