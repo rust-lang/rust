@@ -14,7 +14,7 @@ use crate::sys::net::{cvt, cvt_gai, cvt_r, init, wrlen_t, Socket};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
-use crate::ffi::{c_int, c_void};
+use libc::{c_int, c_void};
 
 cfg_if::cfg_if! {
     if #[cfg(any(
