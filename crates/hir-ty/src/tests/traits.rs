@@ -1757,25 +1757,19 @@ fn test() {
 fn fn_trait() {
     check_infer_with_mismatches(
         r#"
-trait FnOnce<Args> {
-    type Output;
-
-    fn call_once(self, args: Args) -> <Self as FnOnce<Args>>::Output;
-}
+//- minicore: fn
 
 fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
     f.call_once((1, 2));
 }"#,
         expect![[r#"
-            56..60 'self': Self
-            62..66 'args': Args
-            149..150 'f': F
-            155..183 '{     ...2)); }': ()
-            161..162 'f': F
-            161..180 'f.call...1, 2))': u128
-            173..179 '(1, 2)': (u32, u64)
-            174..175 '1': u32
-            177..178 '2': u64
+            38..39 'f': F
+            44..72 '{     ...2)); }': ()
+            50..51 'f': F
+            50..69 'f.call...1, 2))': u128
+            62..68 '(1, 2)': (u32, u64)
+            63..64 '1': u32
+            66..67 '2': u64
         "#]],
     );
 }
@@ -1784,12 +1778,7 @@ fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
 fn fn_ptr_and_item() {
     check_infer_with_mismatches(
         r#"
-#[lang="fn_once"]
-trait FnOnce<Args> {
-    type Output;
-
-    fn call_once(self, args: Args) -> Self::Output;
-}
+//- minicore: fn
 
 trait Foo<T> {
     fn foo(&self) -> T;
@@ -1815,27 +1804,25 @@ fn test() {
     opt.map(f);
 }"#,
         expect![[r#"
-            74..78 'self': Self
-            80..84 'args': Args
-            139..143 'self': &Self
-            243..247 'self': &Bar<F>
-            260..271 '{ loop {} }': (A1, R)
-            262..269 'loop {}': !
-            267..269 '{}': ()
-            355..359 'self': Opt<T>
-            361..362 'f': F
-            377..388 '{ loop {} }': Opt<U>
-            379..386 'loop {}': !
-            384..386 '{}': ()
-            402..518 '{     ...(f); }': ()
-            412..415 'bar': Bar<fn(u8) -> u32>
-            441..444 'bar': Bar<fn(u8) -> u32>
-            441..450 'bar.foo()': (u8, u32)
-            461..464 'opt': Opt<u8>
-            483..484 'f': fn(u8) -> u32
-            505..508 'opt': Opt<u8>
-            505..515 'opt.map(f)': Opt<u32>
-            513..514 'f': fn(u8) -> u32
+            28..32 'self': &Self
+            132..136 'self': &Bar<F>
+            149..160 '{ loop {} }': (A1, R)
+            151..158 'loop {}': !
+            156..158 '{}': ()
+            244..248 'self': Opt<T>
+            250..251 'f': F
+            266..277 '{ loop {} }': Opt<U>
+            268..275 'loop {}': !
+            273..275 '{}': ()
+            291..407 '{     ...(f); }': ()
+            301..304 'bar': Bar<fn(u8) -> u32>
+            330..333 'bar': Bar<fn(u8) -> u32>
+            330..339 'bar.foo()': (u8, u32)
+            350..353 'opt': Opt<u8>
+            372..373 'f': fn(u8) -> u32
+            394..397 'opt': Opt<u8>
+            394..404 'opt.map(f)': Opt<u32>
+            402..403 'f': fn(u8) -> u32
         "#]],
     );
 }
@@ -2308,10 +2295,8 @@ fn unselected_projection_in_trait_env_no_cycle() {
     // this is not a cycle
     check_types(
         r#"
-//- /main.rs
-trait Index {
-    type Output;
-}
+//- minicore: index
+use core::ops::Index;
 
 type Key<S: UnificationStoreBase> = <S as UnificationStoreBase>::Key;
 

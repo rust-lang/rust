@@ -938,19 +938,24 @@ impl<'a> InferenceContext<'a> {
         self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
 
-    fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item(LangItem::Try)?.as_trait()?;
+    fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+    }
+
+    fn resolve_lang_trait(&self, lang: LangItem) -> Option<TraitId> {
+        self.resolve_lang_item(lang)?.as_trait()
+    }
+
+    fn resolve_ops_try_output(&self) -> Option<TypeAliasId> {
+        self.resolve_output_on(self.resolve_lang_trait(LangItem::Try)?)
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item(LangItem::Neg)?.as_trait()?;
-        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+        self.resolve_output_on(self.resolve_lang_trait(LangItem::Neg)?)
     }
 
     fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item(LangItem::Not)?.as_trait()?;
-        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+        self.resolve_output_on(self.resolve_lang_trait(LangItem::Not)?)
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
@@ -960,7 +965,7 @@ impl<'a> InferenceContext<'a> {
             .lookup(self.db.upcast())
             .container
         else { return None };
-        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+        self.resolve_output_on(trait_)
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
@@ -998,13 +1003,8 @@ impl<'a> InferenceContext<'a> {
         Some(struct_.into())
     }
 
-    fn resolve_ops_index(&self) -> Option<TraitId> {
-        self.resolve_lang_item(LangItem::Index)?.as_trait()
-    }
-
     fn resolve_ops_index_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_ops_index()?;
-        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+        self.resolve_output_on(self.resolve_lang_trait(LangItem::Index)?)
     }
 
     fn resolve_va_list(&self) -> Option<AdtId> {
