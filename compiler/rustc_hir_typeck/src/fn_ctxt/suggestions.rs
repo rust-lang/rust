@@ -784,7 +784,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn suggest_missing_return_type(
         &self,
         err: &mut Diagnostic,
-        fn_decl: &hir::FnDecl<'_>,
+        fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         can_suggest: bool,
@@ -995,7 +995,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         expr: &'tcx hir::Expr<'tcx>,
-        fn_decl: &hir::FnDecl<'_>,
+        fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         id: hir::HirId,
@@ -1468,7 +1468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn suggest_associated_const(
         &self,
         err: &mut Diagnostic,
-        expr: &hir::Expr<'_>,
+        expr: &hir::Expr<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
         let Some((DefKind::AssocFn, old_def_id)) =

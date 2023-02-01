@@ -168,7 +168,7 @@ fn generic_arg_mismatch_err(
 ///   instantiate a `GenericArg`.
 /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
 ///   creates a suitable inference variable.
-pub fn create_args_for_parent_generic_args<'tcx, 'a>(
+pub fn create_args_for_parent_generic_args<'tcx: 'a, 'a>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     parent_args: &[ty::GenericArg<'tcx>],

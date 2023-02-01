@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {
 /// (ZST fields having an arbitrary offset is completely inconsequential, and
 /// if there is only one field left after ignoring ZST fields then the offset
 /// of that field does not matter either.)
-fn is_union_with_two_non_zst_fields(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
+fn is_union_with_two_non_zst_fields<'tcx>(cx: &LateContext<'tcx>, item: &Item<'tcx>) -> bool {
     if let ItemKind::Union(..) = &item.kind
         && let ty::Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
     {
