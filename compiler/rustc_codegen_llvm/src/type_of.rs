@@ -1,6 +1,5 @@
 use crate::common::*;
 use crate::context::TypeLowering;
-use crate::llvm_util::get_version;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
@@ -43,10 +42,8 @@ fn uncached_llvm_type<'a, 'tcx>(
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
         ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str
-            // For performance reasons we use names only when emitting LLVM IR. Unless we are on
-            // LLVM < 14, where the use of unnamed types resulted in various issues, e.g., #76213,
-            // #79564, and #79246.
-            if get_version() < (14, 0, 0) || !cx.sess().fewer_names() =>
+            // For performance reasons we use names only when emitting LLVM IR.
+            if !cx.sess().fewer_names() =>
         {
             let mut name = with_no_visible_paths!(with_no_trimmed_paths!(layout.ty.to_string()));
             if let (&ty::Adt(def, _), &Variants::Single { index }) =

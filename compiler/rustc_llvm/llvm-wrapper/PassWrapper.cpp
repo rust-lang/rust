@@ -14,6 +14,7 @@
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -25,11 +26,6 @@
 #include "llvm/Support/VirtualFileSystem.h"
 #endif
 #include "llvm/Support/Host.h"
-#if LLVM_VERSION_LT(14, 0)
-#include "llvm/Support/TargetRegistry.h"
-#else
-#include "llvm/MC/TargetRegistry.h"
-#endif
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
@@ -266,10 +262,6 @@ enum class LLVMRustPassBuilderOptLevel {
   Os,
   Oz,
 };
-
-#if LLVM_VERSION_LT(14,0)
-using OptimizationLevel = PassBuilder::OptimizationLevel;
-#endif
 
 static OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
   switch (Level) {
@@ -747,27 +739,18 @@ LLVMRustOptimize(
 
   if (SanitizerOptions) {
     if (SanitizerOptions->SanitizeMemory) {
-#if LLVM_VERSION_GE(14, 0)
       MemorySanitizerOptions Options(
           SanitizerOptions->SanitizeMemoryTrackOrigins,
           SanitizerOptions->SanitizeMemoryRecover,
           /*CompileKernel=*/false,
           /*EagerChecks=*/true);
-#else
-      MemorySanitizerOptions Options(
-          SanitizerOptions->SanitizeMemoryTrackOrigins,
-          SanitizerOptions->SanitizeMemoryRecover,
-          /*CompileKernel=*/false);
-#endif
       OptimizerLastEPCallbacks.push_back(
         [Options](ModulePassManager &MPM, OptimizationLevel Level) {
-#if LLVM_VERSION_GE(14, 0) && LLVM_VERSION_LT(16, 0)
+#if LLVM_VERSION_LT(16, 0)
           MPM.addPass(ModuleMemorySanitizerPass(Options));
+          MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
 #else
           MPM.addPass(MemorySanitizerPass(Options));
-#endif
-#if LLVM_VERSION_LT(16, 0)
-          MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
 #endif
         }
       );
@@ -776,11 +759,7 @@ LLVMRustOptimize(
     if (SanitizerOptions->SanitizeThread) {
       OptimizerLastEPCallbacks.push_back(
         [](ModulePassManager &MPM, OptimizationLevel Level) {
-#if LLVM_VERSION_GE(14, 0)
           MPM.addPass(ModuleThreadSanitizerPass());
-#else
-          MPM.addPass(ThreadSanitizerPass());
-#endif
           MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
         }
       );
@@ -792,7 +771,6 @@ LLVMRustOptimize(
 #if LLVM_VERSION_LT(15, 0)
           MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
 #endif
-#if LLVM_VERSION_GE(14, 0)
           AddressSanitizerOptions opts = AddressSanitizerOptions{
             /*CompileKernel=*/false,
             SanitizerOptions->SanitizeAddressRecover,
@@ -804,28 +782,16 @@ LLVMRustOptimize(
 #else
           MPM.addPass(AddressSanitizerPass(opts));
 #endif
-#else
-          MPM.addPass(ModuleAddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
-          MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover,
-              /*UseAfterScope=*/true)));
-#endif
         }
       );
     }
     if (SanitizerOptions->SanitizeHWAddress) {
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
-#if LLVM_VERSION_GE(14, 0)
           HWAddressSanitizerOptions opts(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover,
               /*DisableOptimization=*/false);
           MPM.addPass(HWAddressSanitizerPass(opts));
-#else
-          MPM.addPass(HWAddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover));
-#endif
         }
       );
     }
@@ -1328,11 +1294,7 @@ extern "C" bool
 LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
   Module &Mod = *unwrap(M);
   const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(Mod.getModuleIdentifier());
-#if LLVM_VERSION_GE(14, 0)
   thinLTOFinalizeInModule(Mod, DefinedGlobals, /*PropagateAttrs=*/true);
-#else
-  thinLTOResolvePrevailingInModule(Mod, DefinedGlobals);
-#endif
   return true;
 }
 

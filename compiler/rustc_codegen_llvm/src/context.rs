@@ -143,17 +143,6 @@ pub unsafe fn create_module<'ll>(
 
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
-    if llvm_version < (14, 0, 0) {
-        if sess.target.llvm_target == "i686-pc-windows-msvc"
-            || sess.target.llvm_target == "i586-pc-windows-msvc"
-        {
-            target_data_layout =
-                "e-m:x-p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:32-n8:16:32-a:0:32-S32"
-                    .to_string();
-        } else if sess.target.arch == "wasm32" {
-            target_data_layout = target_data_layout.replace("-p10:8:8-p20:8:8", "");
-        }
-    }
     if llvm_version < (16, 0, 0) {
         if sess.target.arch == "s390x" {
             target_data_layout = target_data_layout.replace("-v128:64", "");

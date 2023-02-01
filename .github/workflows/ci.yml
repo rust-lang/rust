@@ -54,7 +54,7 @@ jobs:
             tidy: true
             os: ubuntu-20.04-xl
             env: {}
-          - name: x86_64-gnu-llvm-13
+          - name: x86_64-gnu-llvm-14
             tidy: false
             os: ubuntu-20.04-xl
             env: {}
@@ -300,11 +300,7 @@ jobs:
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-xl
-          - name: x86_64-gnu-llvm-13
-            env:
-              RUST_BACKTRACE: 1
-            os: ubuntu-20.04-xl
-          - name: x86_64-gnu-llvm-13-stage1
+          - name: x86_64-gnu-llvm-14-stage1
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-xl

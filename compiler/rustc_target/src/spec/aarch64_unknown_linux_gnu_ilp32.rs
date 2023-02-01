@@ -8,7 +8,7 @@ pub fn target() -> Target {
         arch: "aarch64".into(),
         options: TargetOptions {
             abi: "ilp32".into(),
-            features: "+outline-atomics".into(),
+            features: "+v8a,+outline-atomics".into(),
             max_atomic_width: Some(128),
             mcount: "\u{1}_mcount".into(),
             ..super::linux_gnu_base::opts()
