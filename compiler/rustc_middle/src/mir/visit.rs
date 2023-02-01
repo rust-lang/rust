@@ -370,7 +370,7 @@ macro_rules! make_mir_visitor {
                     StatementKind::FakeRead(box (_, place)) => {
                         self.visit_place(
                             place,
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect(InspectKind::Other)),
                             location
                         );
                     }
@@ -652,7 +652,7 @@ macro_rules! make_mir_visitor {
                     Rvalue::CopyForDeref(place) => {
                         self.visit_place(
                             place,
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect(InspectKind::Other)),
                             location
                         );
                     }
@@ -672,7 +672,7 @@ macro_rules! make_mir_visitor {
                     Rvalue::Len(path) => {
                         self.visit_place(
                             path,
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect(InspectKind::Other)),
                             location
                         );
                     }
@@ -695,7 +695,7 @@ macro_rules! make_mir_visitor {
                     Rvalue::Discriminant(place) => {
                         self.visit_place(
                             place,
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect(InspectKind::Discriminant)),
                             location
                         );
                     }
@@ -1132,7 +1132,7 @@ macro_rules! visit_place_fns {
             let mut context = context;
 
             if !place.projection.is_empty() {
-                if context.is_use() {
+                if context.is_use() && !context.is_drop() {
                     // ^ Only change the context if it is a real use, not a "use" in debuginfo.
                     context = if context.is_mutating_use() {
                         PlaceContext::MutatingUse(MutatingUseContext::Projection)
@@ -1237,9 +1237,15 @@ pub enum TyContext {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum InspectKind {
+    Other,
+    Discriminant,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum NonMutatingUseContext {
     /// Being inspected in some way, like loading a len.
-    Inspect,
+    Inspect(InspectKind),
     /// Consumed as part of an operand.
     Copy,
     /// Consumed as part of an operand.

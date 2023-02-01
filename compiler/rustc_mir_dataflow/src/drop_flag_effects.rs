@@ -29,6 +29,35 @@ where
     None
 }
 
+// Drop elaboration of a Box makes the inner fields (pointer and allocator) explicit in MIR,
+// which causes those path to be tracked by dataflow and checked by the borrowck.
+// However, those are not considered to be children of *_box_place (and only of _box_place),
+// which causes issues in initialization analysis when accessing _box_place.
+// This code basically check if the parent of the path is a box and if so, apply the callback
+// to its children to fix such cases.
+fn maybe_recurse_box_parent<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    move_data: &MoveData<'tcx>,
+    move_path_index: MovePathIndex,
+    mut each_child: F,
+) where
+    F: FnMut(MovePathIndex),
+{
+    if let Some(path) = move_data.move_paths[move_path_index].parent {
+        let place = move_data.move_paths[path].place;
+        let ty = place.ty(body, tcx).ty;
+        if let ty::Adt(def, _) = ty.kind() {
+            if def.is_box() {
+                each_child(move_path_index);
+                on_all_children_bits(tcx, body, move_data, path, each_child);
+                return;
+            }
+        }
+    }
+    on_all_children_bits(tcx, body, move_data, move_path_index, each_child);
+}
+
 pub fn on_lookup_result_bits<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -42,7 +71,7 @@ pub fn on_lookup_result_bits<'tcx, F>(
         LookupResult::Parent(..) => {
             // access to untracked value - do not touch children
         }
-        LookupResult::Exact(e) => on_all_children_bits(tcx, body, move_data, e, each_child),
+        LookupResult::Exact(e) => maybe_recurse_box_parent(tcx, body, move_data, e, each_child),
     }
 }
 
@@ -194,6 +223,19 @@ pub fn drop_flag_effects_for_location<'tcx, F>(
         on_all_children_bits(tcx, body, move_data, path, |mpi| callback(mpi, DropFlagState::Absent))
     }
 
+    use rustc_middle::mir::{Terminator, TerminatorKind};
+
+    // Drop does not count as a move but we should still consider the variable uninitialized.
+    if let Some(Terminator { kind: TerminatorKind::Drop { place, .. }, .. }) =
+        body.stmt_at(loc).right()
+    {
+        if let LookupResult::Exact(mpi) = move_data.rev_lookup.find(place.as_ref()) {
+            on_all_children_bits(tcx, body, move_data, mpi, |mpi| {
+                callback(mpi, DropFlagState::Absent)
+            })
+        }
+    }
+
     debug!("drop_flag_effects: assignment for location({:?})", loc);
 
     for_location_inits(tcx, body, move_data, loc, |mpi| callback(mpi, DropFlagState::Present));
@@ -212,9 +254,7 @@ pub fn for_location_inits<'tcx, F>(
         let init = move_data.inits[*ii];
         match init.kind {
             InitKind::Deep => {
-                let path = init.path;
-
-                on_all_children_bits(tcx, body, move_data, path, &mut callback)
+                maybe_recurse_box_parent(tcx, body, move_data, init.path, &mut callback)
             }
             InitKind::Shallow => {
                 let mpi = init.path;

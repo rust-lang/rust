@@ -934,7 +934,7 @@ impl Visitor<'_> for CanConstProp {
             // Reading constants is allowed an arbitrary number of times
             NonMutatingUse(NonMutatingUseContext::Copy)
             | NonMutatingUse(NonMutatingUseContext::Move)
-            | NonMutatingUse(NonMutatingUseContext::Inspect)
+            | NonMutatingUse(NonMutatingUseContext::Inspect(_))
             | NonMutatingUse(NonMutatingUseContext::Projection)
             | NonUse(_) => {}
 

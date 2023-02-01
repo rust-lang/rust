@@ -376,7 +376,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | TerminatorKind::Resume
             | TerminatorKind::Abort
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Unreachable => {}
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Drop { .. } => {}
 
             TerminatorKind::Assert { ref cond, .. } => {
                 self.gather_operand(cond);
@@ -390,10 +391,6 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_operand(value);
                 self.create_move_path(place);
                 self.gather_init(place.as_ref(), InitKind::Deep);
-            }
-
-            TerminatorKind::Drop { place, target: _, unwind: _ } => {
-                self.gather_move(place);
             }
             TerminatorKind::DropAndReplace { place, ref value, .. } => {
                 self.create_move_path(place);
@@ -410,12 +407,25 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 fn_span: _,
             } => {
                 self.gather_operand(func);
-                for arg in args {
-                    self.gather_operand(arg);
-                }
+
                 if let Some(_bb) = target {
                     self.create_move_path(destination);
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
+                }
+
+                // drop glue for nested boxes moves inner pointers in a way that is invalid according
+                // to move analysis. This is a hack to avoid triggering an error.
+                let func_ty = func.ty(self.builder.body, self.builder.tcx);
+                use rustc_hir::lang_items::LangItem;
+                if let ty::FnDef(func_id, _) = func_ty.kind() {
+                    if Some(func_id) == self.builder.tcx.lang_items().get(LangItem::BoxFree).as_ref()
+                    {
+                        return;
+                    }
+                }
+
+                for arg in args {
+                    self.gather_operand(arg);
                 }
             }
             TerminatorKind::InlineAsm {

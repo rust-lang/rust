@@ -576,7 +576,11 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
 
         match &stmt.kind {
             StatementKind::Assign(box (lhs, rhs)) => {
-                self.consume_rvalue(location, (rhs, span), flow_state);
+                // FIXME: drop-elaboration checks the discriminant of an enum after it has been
+                // moved out. This is a known isses and should be fixed in the future.
+                if !matches!(rhs, Rvalue::Discriminant(_)) {
+                    self.consume_rvalue(location, (rhs, span), flow_state);
+                }
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
             }
@@ -661,13 +665,12 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 );
             }
             TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: new_value,
+                place: _drop_place,
+                value: _new_value,
                 target: _,
                 unwind: _,
             } => {
-                self.mutate_place(loc, (*drop_place, span), Deep, flow_state);
-                self.consume_operand(loc, (new_value, span), flow_state);
+                bug!("undesugared drop and replace in borrowck")
             }
             TerminatorKind::Call {
                 func,
@@ -678,11 +681,22 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 from_hir_call: _,
                 fn_span: _,
             } => {
+                self.mutate_place(loc, (*destination, span), Deep, flow_state);
                 self.consume_operand(loc, (func, span), flow_state);
+
+                // drop glue for box does not pass borrowck
+                let func_ty = func.ty(self.body, self.infcx.tcx);
+                use rustc_hir::lang_items::LangItem;
+                if let ty::FnDef(func_id, _) = func_ty.kind() {
+                    if Some(func_id) == self.infcx.tcx.lang_items().get(LangItem::BoxFree).as_ref()
+                    {
+                        return;
+                    }
+                }
+
                 for arg in args {
                     self.consume_operand(loc, (arg, span), flow_state);
                 }
-                self.mutate_place(loc, (*destination, span), Deep, flow_state);
             }
             TerminatorKind::Assert { cond, expected: _, msg, target: _, cleanup: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
@@ -1100,13 +1114,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 this.report_conflicting_borrow(location, place_span, bk, borrow);
                             this.buffer_error(err);
                         }
-                        WriteKind::StorageDeadOrDrop => this
-                            .report_borrowed_value_does_not_live_long_enough(
-                                location,
-                                borrow,
-                                place_span,
-                                Some(kind),
-                            ),
+                        WriteKind::StorageDeadOrDrop => {
+                            use rustc_span::DesugaringKind;
+                            if let Some(DesugaringKind::Replace) = place_span.1.desugaring_kind() {
+                                // If this is a drop triggered by a reassignment, it's more user friendly
+                                // to report a problem with the explicit assignment than the implicit drop.
+                                this.report_illegal_mutation_of_borrowed(
+                                    location, place_span, borrow,
+                                )
+                            } else {
+                                this.report_borrowed_value_does_not_live_long_enough(
+                                    location,
+                                    borrow,
+                                    place_span,
+                                    Some(kind),
+                                )
+                            }
+                        }
                         WriteKind::Mutate => {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }

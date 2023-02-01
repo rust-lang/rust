@@ -58,7 +58,9 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
 
         match &statement.kind {
             StatementKind::Assign(box (lhs, rhs)) => {
-                self.consume_rvalue(location, rhs);
+                if !matches!(rhs, Rvalue::Discriminant(_)) {
+                    self.consume_rvalue(location, rhs);
+                }
 
                 self.mutate_place(location, *lhs, Shallow(None));
             }
@@ -119,13 +121,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 );
             }
             TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: new_value,
+                place: _drop_place,
+                value: _new_value,
                 target: _,
                 unwind: _,
             } => {
-                self.mutate_place(location, *drop_place, Deep);
-                self.consume_operand(location, new_value);
+                bug!("undesugared drop and replace in borrowck")
             }
             TerminatorKind::Call {
                 func,

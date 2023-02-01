@@ -230,7 +230,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 | MutatingUseContext::Projection,
             )
             | PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::Inspect
+                NonMutatingUseContext::Inspect(_)
                 | NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::UniqueBorrow
                 | NonMutatingUseContext::ShallowBorrow

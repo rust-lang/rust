@@ -1,12 +1,12 @@
 error[E0506]: cannot assign to `vec[_]` because it is borrowed
-  --> $DIR/borrowck-vec-pattern-nesting.rs:9:13
+  --> $DIR/borrowck-vec-pattern-nesting.rs:8:13
    |
 LL |         [box ref _a, _, _] => {
    |              ------ `vec[_]` is borrowed here
 LL |
 LL |             vec[0] = Box::new(4);
    |             ^^^^^^ `vec[_]` is assigned to here but it was already borrowed
-LL |
+...
 LL |             _a.use_ref();
    |             ------------ borrow later used here
 
@@ -18,12 +18,12 @@ LL |         &mut [ref _b @ ..] => {
 LL |
 LL |             vec[0] = Box::new(4);
    |             ^^^^^^ `vec[_]` is assigned to here but it was already borrowed
-LL |
+...
 LL |             _b.use_ref();
    |             ------------ borrow later used here
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:34:11
+  --> $DIR/borrowck-vec-pattern-nesting.rs:35:11
    |
 LL |     match vec {
    |           ^^^ cannot move out of here
@@ -41,7 +41,7 @@ LL +         [_a,
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:46:13
+  --> $DIR/borrowck-vec-pattern-nesting.rs:47:13
    |
 LL |     let a = vec[0];
    |             ^^^^^^
@@ -55,7 +55,7 @@ LL |     let a = &vec[0];
    |             +
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:55:11
+  --> $DIR/borrowck-vec-pattern-nesting.rs:56:11
    |
 LL |     match vec {
    |           ^^^ cannot move out of here
@@ -73,7 +73,7 @@ LL +         [
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:65:13
+  --> $DIR/borrowck-vec-pattern-nesting.rs:66:13
    |
 LL |     let a = vec[0];
    |             ^^^^^^
@@ -87,7 +87,7 @@ LL |     let a = &vec[0];
    |             +
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:74:11
+  --> $DIR/borrowck-vec-pattern-nesting.rs:75:11
    |
 LL |     match vec {
    |           ^^^ cannot move out of here
@@ -106,7 +106,7 @@ LL +         [_a, _b, _c] => {}
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:85:13
+  --> $DIR/borrowck-vec-pattern-nesting.rs:86:13
    |
 LL |     let a = vec[0];
    |             ^^^^^^

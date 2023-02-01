@@ -339,6 +339,10 @@ fn mir_promoted(
         &[
             &promote_pass,
             &simplify::SimplifyCfg::new("promote-consts"),
+            // These next passes must be executed together
+            &add_call_guards::CriticalCallEdges,
+            &elaborate_drops::ElaborateDrops,
+            &simplify::SimplifyCfg::new("elaborate-drops"),
             &coverage::InstrumentCoverage,
         ],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
@@ -507,9 +511,6 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 /// Returns the sequence of passes that lowers analysis to runtime MIR.
 fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
-        // These next passes must be executed together
-        &add_call_guards::CriticalCallEdges,
-        &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer
         // necessary as well as well as forcing any call in a non-unwinding
         // function calling a possibly-unwinding function to abort the process.

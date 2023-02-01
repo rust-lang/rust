@@ -1,6 +1,6 @@
 use rustc_data_structures::vec_linked_list as vll;
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
 
 use crate::def_use::{self, DefUse};
@@ -158,6 +158,20 @@ impl LocalUseMapBuild<'_> {
 
 impl Visitor<'_> for LocalUseMapBuild<'_> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+        if matches!(
+            context,
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect(
+                rustc_middle::mir::visit::InspectKind::Discriminant
+            ))
+        ) {
+            // drop elaboration inserts discriminant reads for enums, but such reads should
+            // really be counted as a drop access for liveness computation.
+            // However, doing so messes with the way we calculate drop points, so for now just ignore
+            // those, as discriminant reads are ignored anyway by the borrowck.
+            // FIXME: found a better solution for drop-elab discriminant reads
+            return;
+        }
+
         if self.locals_with_use_data[local] {
             match def_use::categorize(context) {
                 Some(DefUse::Def) => self.insert_def(local, location),

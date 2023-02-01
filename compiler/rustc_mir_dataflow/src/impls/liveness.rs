@@ -195,7 +195,7 @@ impl DefUse {
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::AddressOf
                 | NonMutatingUseContext::Copy
-                | NonMutatingUseContext::Inspect
+                | NonMutatingUseContext::Inspect(_)
                 | NonMutatingUseContext::Move
                 | NonMutatingUseContext::ShallowBorrow
                 | NonMutatingUseContext::SharedBorrow

@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 
-
 fn a() {
     let mut vec = [Box::new(1), Box::new(2), Box::new(3)];
     match vec {
@@ -8,6 +7,7 @@ fn a() {
         //~^ NOTE `vec[_]` is borrowed here
             vec[0] = Box::new(4); //~ ERROR cannot assign
             //~^ NOTE `vec[_]` is assigned to here
+            //~| NOTE in this expansion of desugaring of drop and replace
             _a.use_ref();
             //~^ NOTE borrow later used here
         }
@@ -22,6 +22,7 @@ fn b() {
         //~^ `vec[_]` is borrowed here
             vec[0] = Box::new(4); //~ ERROR cannot assign
             //~^ NOTE `vec[_]` is assigned to here
+            //~| NOTE in this expansion of desugaring of drop and replace
             _b.use_ref();
             //~^ NOTE borrow later used here
         }
@@ -44,9 +45,9 @@ fn c() {
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
-    //~| NOTE cannot move out of here
-    //~| NOTE move occurs because
-    //~| HELP consider borrowing here
+                    //~| NOTE cannot move out of here
+                    //~| NOTE move occurs because
+                    //~| HELP consider borrowing here
 }
 
 fn d() {
@@ -63,9 +64,9 @@ fn d() {
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
-    //~| NOTE cannot move out of here
-    //~| NOTE move occurs because
-    //~| HELP consider borrowing here
+                    //~| NOTE cannot move out of here
+                    //~| NOTE move occurs because
+                    //~| HELP consider borrowing here
 }
 
 fn e() {
@@ -83,12 +84,15 @@ fn e() {
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
-    //~| NOTE cannot move out of here
-    //~| NOTE move occurs because
-    //~| HELP consider borrowing here
+                    //~| NOTE cannot move out of here
+                    //~| NOTE move occurs because
+                    //~| HELP consider borrowing here
 }
 
 fn main() {}
 
-trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
-impl<T> Fake for T { }
+trait Fake {
+    fn use_mut(&mut self) {}
+    fn use_ref(&self) {}
+}
+impl<T> Fake for T {}
