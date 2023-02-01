@@ -13,9 +13,12 @@ use std::borrow::Cow;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
+        // Never call the const constructor of `fmt::Arguments` if the
+        // format_args!() had any arguments _before_ flattening/inlining.
+        let allow_const = fmt.arguments.all_args().is_empty();
         let fmt = flatten_format_args(Cow::Borrowed(fmt));
         let fmt = inline_literals(fmt);
-        expand_format_args(self, sp, &fmt)
+        expand_format_args(self, sp, &fmt, allow_const)
     }
 }
 
@@ -342,6 +345,7 @@ fn expand_format_args<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     macsp: Span,
     fmt: &FormatArgs,
+    allow_const: bool,
 ) -> hir::ExprKind<'hir> {
     let mut incomplete_lit = String::new();
     let lit_pieces =
@@ -410,6 +414,18 @@ fn expand_format_args<'hir>(
     });
 
     let arguments = fmt.arguments.all_args();
+
+    if allow_const && arguments.is_empty() && argmap.is_empty() {
+        // Generate:
+        //     <core::fmt::Arguments>::new_const(lit_pieces)
+        let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            macsp,
+            hir::LangItem::FormatArguments,
+            sym::new_const,
+        ));
+        let new_args = ctx.arena.alloc_from_iter([lit_pieces]);
+        return hir::ExprKind::Call(new, new_args);
+    }
 
     // If the args array contains exactly all the original arguments once,
     // in order, we can use a simple array instead of a `match` construction.

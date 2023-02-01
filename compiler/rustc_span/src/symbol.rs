@@ -984,6 +984,7 @@ symbols! {
         never_type_fallback,
         new,
         new_binary,
+        new_const,
         new_debug,
         new_display,
         new_lower_exp,

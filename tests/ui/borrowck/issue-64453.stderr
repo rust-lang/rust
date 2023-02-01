@@ -1,4 +1,4 @@
-error: `Arguments::<'a>::new_v1` is not yet stable as a const fn
+error: `Arguments::<'a>::new_const` is not yet stable as a const fn
   --> $DIR/issue-64453.rs:4:31
    |
 LL | static settings_dir: String = format!("");
