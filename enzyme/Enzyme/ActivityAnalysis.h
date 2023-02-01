@@ -186,8 +186,11 @@ private:
   /// Is the use of value val as an argument of call CI known to be inactive
   bool isFunctionArgumentConstant(llvm::CallInst *CI, llvm::Value *val);
 
-  /// Is the instruction guaranteed to be inactive because of its operands
-  bool isInstructionInactiveFromOrigin(TypeResults const &TR, llvm::Value *val);
+  /// Is the instruction guaranteed to be inactive because of its operands.
+  /// \p considerValue specifies that we ask whether the returned value, rather
+  /// than the instruction itself is active.
+  bool isInstructionInactiveFromOrigin(TypeResults const &TR, llvm::Value *val,
+                                       bool considerValue);
 
 public:
   enum class UseActivity {

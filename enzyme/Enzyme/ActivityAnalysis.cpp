@@ -605,6 +605,30 @@ static inline void propagateArgumentInformation(
   }
 }
 
+bool isPossibleFloat(const TypeResults &TR, Value *I, const DataLayout &DL) {
+  bool possibleFloat = false;
+  if (!I->getType()->isVoidTy()) {
+    auto Size = (DL.getTypeSizeInBits(I->getType()) + 7) / 8;
+    auto vd = TR.query(I);
+    auto ct0 = vd[{-1}];
+    if (ct0.isPossibleFloat() && ct0 != BaseType::Anything) {
+      for (unsigned i = 0; i < Size;) {
+        auto ct = vd[{(int)i}];
+        if (ct.isPossibleFloat() && ct != BaseType::Anything) {
+          possibleFloat = true;
+          break;
+        }
+        size_t chunk = 1;
+        // Implicit pointer
+        if (ct == BaseType::Pointer)
+          chunk = DL.getPointerSizeInBits() / 8;
+        i += chunk;
+      }
+    }
+  }
+  return possibleFloat;
+}
+
 /// Return whether this instruction is known not to propagate adjoints
 /// Note that instructions could return an active pointer, but
 /// do not propagate adjoints themselves
@@ -815,10 +839,12 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults const &TR,
     }
   }
   if (noActiveWrite) {
+    auto &DL = I->getParent()->getParent()->getParent()->getDataLayout();
+    bool possibleFloat = isPossibleFloat(TR, I, DL);
     // Even if returning a pointer, this instruction is considered inactive
     // since the instruction doesn't prop gradients. Thus, so long as we don't
     // return an object containing a float, this instruction is inactive
-    if (!TR.intType(1, I, /*errifNotFound*/ false).isPossibleFloat()) {
+    if (!possibleFloat) {
       if (EnzymePrintActivity)
         llvm::errs()
             << " constant instruction from known non-float non-writing "
@@ -886,7 +912,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults const &TR,
         std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
     UpHypothesis->ConstantInstructions.insert(I);
     assert(directions & UP);
-    if (UpHypothesis->isInstructionInactiveFromOrigin(TR, I)) {
+    if (UpHypothesis->isInstructionInactiveFromOrigin(TR, I, false)) {
       if (EnzymePrintActivity)
         llvm::errs() << " constant instruction from origin "
                         "instruction "
@@ -1573,12 +1599,12 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
       if (auto inst = dyn_cast<Instruction>(Val)) {
         if (!inst->mayReadFromMemory() && !isa<AllocaInst>(Val)) {
           if (directions == UP && !isa<PHINode>(inst)) {
-            if (isInstructionInactiveFromOrigin(TR, inst)) {
+            if (isInstructionInactiveFromOrigin(TR, inst, true)) {
               InsertConstantValue(TR, Val);
               return true;
             }
           } else {
-            if (UpHypothesis->isInstructionInactiveFromOrigin(TR, inst)) {
+            if (UpHypothesis->isInstructionInactiveFromOrigin(TR, inst, true)) {
               InsertConstantValue(TR, Val);
               insertConstantsFrom(TR, *UpHypothesis);
               return true;
@@ -1616,7 +1642,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
             new ActivityAnalyzer(*this, directions));
     Hypothesis->ActiveValues.insert(Val);
     if (auto VI = dyn_cast<Instruction>(Val)) {
-      if (UpHypothesis->isInstructionInactiveFromOrigin(TR, VI)) {
+      if (UpHypothesis->isInstructionInactiveFromOrigin(TR, VI, true)) {
         Hypothesis->DeducingPointers.insert(Val);
         if (EnzymePrintActivity)
           llvm::errs() << " constant instruction hypothesis: " << *VI << "\n";
@@ -2012,8 +2038,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
       if (DeducingPointers.size() == 0)
         UpHypothesis->insertConstantsFrom(TR, *Hypothesis);
       assert(directions & UP);
-      bool ActiveUp = !isa<Argument>(Val) &&
-                      !UpHypothesis->isInstructionInactiveFromOrigin(TR, Val);
+      bool ActiveUp =
+          !isa<Argument>(Val) &&
+          !UpHypothesis->isInstructionInactiveFromOrigin(TR, Val, true);
 
       // Case b) can occur if:
       //    1) this memory is used as part of an active return
@@ -2117,7 +2144,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
   // prove, we can inductively assume this is inactive
   if (directions & UP) {
     if (directions == UP && !isa<PHINode>(Val)) {
-      if (isInstructionInactiveFromOrigin(TR, Val)) {
+      if (isInstructionInactiveFromOrigin(TR, Val, true)) {
         InsertConstantValue(TR, Val);
         return true;
       } else if (auto I = dyn_cast<Instruction>(Val)) {
@@ -2133,7 +2160,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
       UpHypothesis =
           std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
       UpHypothesis->ConstantValues.insert(Val);
-      if (UpHypothesis->isInstructionInactiveFromOrigin(TR, Val)) {
+      if (UpHypothesis->isInstructionInactiveFromOrigin(TR, Val, true)) {
         insertConstantsFrom(TR, *UpHypothesis);
         InsertConstantValue(TR, Val);
         return true;
@@ -2190,7 +2217,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
 
 /// Is the instruction guaranteed to be inactive because of its operands
 bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults const &TR,
-                                                       llvm::Value *val) {
+                                                       llvm::Value *val,
+                                                       bool considerValue) {
   // Must be an analyzer only searching up
   assert(directions == UP);
   assert(!isa<Argument>(val));
@@ -2233,6 +2261,69 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults const &TR,
         llvm::errs() << " constant instruction as store operand is inactive "
                      << *inst << "\n";
       return true;
+    }
+  }
+
+  if (!considerValue) {
+    if (auto IEI = dyn_cast<InsertElementInst>(inst)) {
+      auto &DL = IEI->getParent()->getParent()->getParent()->getDataLayout();
+      if ((!isPossibleFloat(TR, IEI->getOperand(0), DL) ||
+           isConstantValue(TR, IEI->getOperand(0))) &&
+          (!isPossibleFloat(TR, IEI->getOperand(1), DL) ||
+           isConstantValue(TR, IEI->getOperand(1)))) {
+        if (EnzymePrintActivity)
+          llvm::errs()
+              << " constant instruction as inserting known pointer or inactive"
+              << *inst << "\n";
+        return true;
+      }
+    }
+    if (auto IEI = dyn_cast<InsertValueInst>(inst)) {
+      auto &DL = IEI->getParent()->getParent()->getParent()->getDataLayout();
+      if ((!isPossibleFloat(TR, IEI->getAggregateOperand(), DL) ||
+           isConstantValue(TR, IEI->getAggregateOperand())) &&
+          (!isPossibleFloat(TR, IEI->getInsertedValueOperand(), DL) ||
+           isConstantValue(TR, IEI->getInsertedValueOperand()))) {
+        if (EnzymePrintActivity)
+          llvm::errs()
+              << " constant instruction as inserting known pointer or inactive"
+              << *inst << "\n";
+        return true;
+      }
+    }
+    if (auto PN = dyn_cast<PHINode>(inst)) {
+      std::deque<PHINode *> todo = {PN};
+      SmallPtrSet<PHINode *, 1> done;
+      SmallVector<Value *, 2> incoming;
+      while (todo.size()) {
+        auto cur = todo.back();
+        todo.pop_back();
+        if (done.count(cur))
+          continue;
+        done.insert(cur);
+        for (auto &V : cur->incoming_values()) {
+          if (auto P = dyn_cast<PHINode>(V)) {
+            todo.push_back(P);
+            continue;
+          }
+          incoming.push_back(V);
+        }
+      }
+      bool legal = true;
+      auto &DL = PN->getParent()->getParent()->getParent()->getDataLayout();
+      for (auto V : incoming) {
+        if (isPossibleFloat(TR, V, DL) && !isConstantValue(TR, V)) {
+          legal = false;
+          break;
+        }
+      }
+      if (legal) {
+        if (EnzymePrintActivity)
+          llvm::errs()
+              << " constant instruction as phi of known pointer or inactive"
+              << *inst << "\n";
+        return true;
+      }
     }
   }
 
