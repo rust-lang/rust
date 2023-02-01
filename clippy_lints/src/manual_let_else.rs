@@ -68,29 +68,21 @@ impl_lint_pass!(ManualLetElse => [MANUAL_LET_ELSE]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &'tcx Stmt<'tcx>) {
-        let if_let_or_match = if_chain! {
-            if self.msrv.meets(msrvs::LET_ELSE);
-            if !in_external_macro(cx.sess(), stmt.span);
-            if let StmtKind::Local(local) = stmt.kind;
-            if let Some(init) = local.init;
-            if local.els.is_none();
-            if local.ty.is_none();
-            if init.span.ctxt() == stmt.span.ctxt();
-            if let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init);
-            then {
-                if_let_or_match
-            } else {
-                return;
-            }
-        };
-
+        if self.msrv.meets(msrvs::LET_ELSE) &&
+            !in_external_macro(cx.sess(), stmt.span) &&
+            let StmtKind::Local(local) = stmt.kind &&
+            let Some(init) = local.init &&
+            local.els.is_none() &&
+            local.ty.is_none() &&
+            init.span.ctxt() == stmt.span.ctxt() &&
+            let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init) {
         match if_let_or_match {
             IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => if_chain! {
                 if expr_is_simple_identity(let_pat, if_then);
                 if let Some(if_else) = if_else;
                 if expr_diverges(cx, if_else);
                 then {
-                    emit_manual_let_else(cx, stmt.span, if_let_expr, let_pat, if_else);
+                    emit_manual_let_else(cx, stmt.span, if_let_expr, local.pat, let_pat, if_else);
                 }
             },
             IfLetOrMatch::Match(match_expr, arms, source) => {
@@ -120,15 +112,23 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
                     return;
                 }
 
-                emit_manual_let_else(cx, stmt.span, match_expr, pat_arm.pat, diverging_arm.body);
+                emit_manual_let_else(cx, stmt.span, match_expr, local.pat, pat_arm.pat, diverging_arm.body);
             },
         }
+        };
     }
 
     extract_msrv_attr!(LateContext);
 }
 
-fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: &Pat<'_>, else_body: &Expr<'_>) {
+fn emit_manual_let_else(
+    cx: &LateContext<'_>,
+    span: Span,
+    expr: &Expr<'_>,
+    local: &Pat<'_>,
+    pat: &Pat<'_>,
+    else_body: &Expr<'_>,
+) {
     span_lint_and_then(
         cx,
         MANUAL_LET_ELSE,
@@ -137,12 +137,11 @@ fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: 
         |diag| {
             // This is far from perfect, for example there needs to be:
             // * mut additions for the bindings
-            // * renamings of the bindings
+            // * renamings of the bindings for `PatKind::Or`
             // * unused binding collision detection with existing ones
             // * putting patterns with at the top level | inside ()
             // for this to be machine applicable.
             let mut app = Applicability::HasPlaceholders;
-            let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", &mut app);
             let (sn_expr, _) = snippet_with_context(cx, expr.span, span.ctxt(), "", &mut app);
             let (sn_else, _) = snippet_with_context(cx, else_body.span, span.ctxt(), "", &mut app);
 
@@ -151,10 +150,20 @@ fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: 
             } else {
                 format!("{{ {sn_else} }}")
             };
-            let sn_bl = if matches!(pat.kind, PatKind::Or(..)) {
-                format!("({sn_pat})")
-            } else {
-                sn_pat.into_owned()
+            let sn_bl = match pat.kind {
+                PatKind::Or(..) => {
+                    let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", &mut app);
+                    format!("({sn_pat})")
+                },
+                PatKind::TupleStruct(ref w, ..) => {
+                    let sn_wrapper = cx.sess().source_map().span_to_snippet(w.span()).unwrap_or_default();
+                    let (sn_inner, _) = snippet_with_context(cx, local.span, span.ctxt(), "", &mut app);
+                    format!("{sn_wrapper}({sn_inner})")
+                },
+                _ => {
+                    let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", &mut app);
+                    sn_pat.into_owned()
+                },
             };
             let sugg = format!("let {sn_bl} = {sn_expr} else {else_bl};");
             diag.span_suggestion(span, "consider writing", sugg, app);
