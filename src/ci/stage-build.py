@@ -241,7 +241,7 @@ class Timer:
             len(label) for label in list(self.stages.keys()) + [total_duration_label[:-1]]
         )) + 1 + 2
 
-        table_width = max_label_length + 24
+        table_width = max_label_length + 23
         divider = "-" * table_width
 
         with StringIO() as output:
@@ -253,7 +253,7 @@ class Timer:
                       file=output)
 
             print(file=output)
-            print(f"{total_duration_label:<{max_label_length}} {total_duration:>12.2f}s",
+            print(f"{total_duration_label:<{max_label_length}} {humantime(total_duration):>22}",
                   file=output)
             print(divider, file=output, end="")
             LOGGER.info(f"Timer results\n{output.getvalue()}")
@@ -272,6 +272,21 @@ def change_cwd(dir: Path):
     finally:
         LOGGER.debug(f"Reverting working dir to `{cwd}`")
         os.chdir(cwd)
+
+
+def humantime(time_s: int) -> str:
+    hours = time_s // 3600
+    time_s = time_s % 3600
+    minutes = time_s // 60
+    seconds = time_s % 60
+
+    result = ""
+    if hours > 0:
+        result += f"{int(hours)}h "
+    if minutes > 0:
+        result += f"{int(minutes)}m "
+    result += f"{round(seconds)}s"
+    return result
 
 
 def move_path(src: Path, dst: Path):
