@@ -383,6 +383,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut oprnd_t = self.check_expr_with_expectation(&oprnd, expected_inner);
 
         if !oprnd_t.references_error() {
+            match (unop, oprnd_t.kind()) {
+                (hir::UnOp::Not | hir::UnOp::Neg, ty::Infer(ty::TyVar(_))) => {
+                    return oprnd_t;
+                }
+                _ => {}
+            }
+
             oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
             match unop {
                 hir::UnOp::Deref => {

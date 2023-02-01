@@ -11,7 +11,7 @@ use rustc_middle::mir::{
     traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, CastKind, CopyNonOverlapping,
     Local, Location, MirPass, MirPhase, NonDivergingIntrinsic, Operand, Place, PlaceElem, PlaceRef,
     ProjectionElem, RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind,
-    Terminator, TerminatorKind, UnOp, START_BLOCK,
+    Terminator, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
@@ -573,21 +573,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     _ => self.fail(location, format!("There is no checked version of {:?}", op)),
                 }
             }
-            Rvalue::UnaryOp(op, operand) => {
-                let a = operand.ty(&self.body.local_decls, self.tcx);
-                match op {
-                    UnOp::Neg => {
-                        check_kinds!(a, "Cannot negate type {:?}", ty::Int(..) | ty::Float(..))
-                    }
-                    UnOp::Not => {
-                        check_kinds!(
-                            a,
-                            "Cannot binary not type {:?}",
-                            ty::Int(..) | ty::Uint(..) | ty::Bool
-                        );
-                    }
-                }
-            }
+            Rvalue::UnaryOp(..) => {}
             Rvalue::ShallowInitBox(operand, _) => {
                 let a = operand.ty(&self.body.local_decls, self.tcx);
                 check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
