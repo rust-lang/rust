@@ -41,7 +41,8 @@ use std::{fmt, iter};
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum TokenTree {
-    /// A single token.
+    /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
+    /// delimiters are implicitly represented by `Delimited`.
     Token(Token, Spacing),
     /// A delimited sequence of token trees.
     Delimited(DelimSpan, Delimiter, TokenStream),

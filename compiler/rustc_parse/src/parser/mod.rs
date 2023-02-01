@@ -290,7 +290,13 @@ impl TokenCursor {
                             self.frame.tree_cursor.replace_prev_and_rewind(desugared);
                             // Continue to get the first token of the desugared doc comment.
                         }
-                        _ => return (token.clone(), spacing),
+                        _ => {
+                            debug_assert!(!matches!(
+                                token.kind,
+                                token::OpenDelim(_) | token::CloseDelim(_)
+                            ));
+                            return (token.clone(), spacing);
+                        }
                     },
                     &TokenTree::Delimited(sp, delim, ref tts) => {
                         // Set `open_delim` to true here because we deal with it immediately.
