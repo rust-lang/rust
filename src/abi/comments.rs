@@ -98,12 +98,12 @@ pub(super) fn add_local_place_comments<'tcx>(
         }
         CPlaceInner::VarPair(place_local, var1, var2) => {
             assert_eq!(local, place_local);
-            ("ssa", Cow::Owned(format!(",var=({}, {})", var1.index(), var2.index())))
+            ("ssa", Cow::Owned(format!("var=({}, {})", var1.index(), var2.index())))
         }
         CPlaceInner::VarLane(_local, _var, _lane) => unreachable!(),
         CPlaceInner::Addr(ptr, meta) => {
             let meta = if let Some(meta) = meta {
-                Cow::Owned(format!(",meta={}", meta))
+                Cow::Owned(format!("meta={}", meta))
             } else {
                 Cow::Borrowed("")
             };
