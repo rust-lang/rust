@@ -588,7 +588,7 @@ impl<'tcx> CPlace<'tcx> {
                 return;
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
-                let (data1, data2) = if self.layout().ty == dst_layout.ty {
+                let (data1, data2) = if from.layout().ty == dst_layout.ty {
                     CValue(from.0, dst_layout).load_scalar_pair(fx)
                 } else {
                     let (ptr, meta) = from.force_stack(fx);
