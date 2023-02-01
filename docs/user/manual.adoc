@@ -520,12 +520,41 @@ There is a package named `ra_ap_rust_analyzer` available on https://crates.io/cr
 
 For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/publish.yml[the publish workflow].
 
-=== Visual Studio IDE
+=== Visual Studio 2022
+
+There are multiple rust-analyzer extensions for Visual Studio 2022 on Windows:
+
+==== rust-analyzer.vs
+
+(License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International)
+
+https://marketplace.visualstudio.com/items?itemName=kitamstudios.RustAnalyzer[Visual Studio Marketplace]
+
+https://github.com/kitamstudios/rust-analyzer/[GitHub]
 
 Support for Rust development in the Visual Studio IDE is enabled by the link:https://marketplace.visualstudio.com/items?itemName=kitamstudios.RustAnalyzer[rust-analyzer] package. Either click on the download link or install from IDE's extension manager.
 For now link:https://visualstudio.microsoft.com/downloads/[Visual Studio 2022] is required. All editions are supported viz. Community, Professional & Enterprise.
 The package aims to provide 0-friction installation and therefore comes loaded with most things required including rust-analyzer binary. If anything it needs is missing, appropriate errors / warnings will guide the user. E.g. cargo.exe needs to be in path and the package will tell you as much.
 This package is under rapid active development. So if you encounter any issues please file it at link:https://github.com/kitamstudios/rust-analyzer/[rust-analyzer.vs].
+
+==== VS_RustAnalyzer
+
+(License: GPL)
+
+https://marketplace.visualstudio.com/items?itemName=cchharris.vsrustanalyzer[Visual Studio Marketplace]
+
+https://github.com/cchharris/VS-RustAnalyzer[GitHub]
+
+==== SourceGear Rust
+
+(License: closed source)
+
+https://marketplace.visualstudio.com/items?itemName=SourceGear.SourceGearRust[Visual Studio Marketplace]
+
+https://github.com/sourcegear/rust-vs-extension[GitHub (docs, issues, discussions)]
+
+* Free (no-cost)
+* Supports all editions of Visual Studio 2022 on Windows: Community, Professional, or Enterprise
 
 == Troubleshooting
 
