@@ -987,7 +987,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, span), level = "debug")]
     pub fn instantiate_value_path(
         &self,
-        segments: &[hir::PathSegment<'tcx>],
+        segments: &'tcx [hir::PathSegment<'tcx>],
         self_ty: Option<RawTy<'tcx>>,
         res: Res,
         span: Span,
@@ -1166,7 +1166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span: Span,
             path_segs: &'a [PathSeg],
             infer_args_for_err: &'a FxHashSet<usize>,
-            segments: &'a [hir::PathSegment<'tcx>],
+            segments: &'tcx [hir::PathSegment<'tcx>],
         }
         impl<'tcx, 'a> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for CreateCtorSubstsContext<'a, 'tcx> {
             fn args_for_def_id(
