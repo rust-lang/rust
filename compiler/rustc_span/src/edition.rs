@@ -77,7 +77,7 @@ impl Edition {
     }
 
     /// Is this edition 2015?
-    pub fn rust_2015(self) -> bool {
+    pub fn is_rust_2015(self) -> bool {
         self == Edition::Edition2015
     }
 
