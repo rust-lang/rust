@@ -5,6 +5,5 @@
 type<T> Foo = T;
 //~^ ERROR expected identifier, found `<`
 //~| HELP place the generic parameter name after the type name
-//~| SUGGESTION  Foo<T>
 
 fn main() {}

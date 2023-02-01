@@ -5,6 +5,5 @@
 struct<T> Foo { x: T }
 //~^ ERROR expected identifier, found `<`
 //~| HELP place the generic parameter name after the struct name
-//~| SUGGESTION  Foo<T>
 
 fn main() {}

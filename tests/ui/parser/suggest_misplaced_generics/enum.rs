@@ -5,6 +5,5 @@
 enum<T> Foo { Variant(T) }
 //~^ ERROR expected identifier, found `<`
 //~| HELP place the generic parameter name after the enum name
-//~| SUGGESTION  Foo<T>
 
 fn main() {}

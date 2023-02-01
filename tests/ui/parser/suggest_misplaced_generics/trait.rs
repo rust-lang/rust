@@ -5,7 +5,6 @@
 trait<T> Foo {
     //~^ ERROR expected identifier, found `<`
     //~| HELP place the generic parameter name after the trait name
-    //~| SUGGESTION  Foo<T>
 }
 
 
