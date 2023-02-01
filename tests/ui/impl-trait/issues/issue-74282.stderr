@@ -10,7 +10,7 @@ LL |       Anonymous(|| {
    | |     arguments to this struct are incorrect
 LL | |         3
 LL | |     })
-   | |_____^ expected closure, found a different closure
+   | |_____^ expected opaque type, found closure
    |
    = note: expected opaque type `Closure`
                   found closure `[closure@$DIR/issue-74282.rs:8:15: 8:17]`
@@ -33,7 +33,7 @@ LL | |         3
 LL | |     })
    | |      ^- help: consider using a semicolon here: `;`
    | |______|
-   |        expected `()`, found struct `Anonymous`
+   |        expected `()`, found `Anonymous`
 
 error: aborting due to 2 previous errors
 

@@ -1,15 +1,15 @@
 print-type-size type: `[async fn body@$DIR/async.rs:8:36: 11:2]`: 16386 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Suspend0`: 16385 bytes
-print-type-size         field `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
-print-type-size         field `.arg`: 8192 bytes
-print-type-size         field `.__awaitee`: 1 bytes
+print-type-size         upvar `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         local `.arg`: 8192 bytes
+print-type-size         local `.__awaitee`: 1 bytes
 print-type-size     variant `Unresumed`: 8192 bytes
-print-type-size         field `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Returned`: 8192 bytes
-print-type-size         field `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Panicked`: 8192 bytes
-print-type-size         field `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size type: `std::mem::ManuallyDrop<[u8; 8192]>`: 8192 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 8192 bytes
 print-type-size type: `std::mem::MaybeUninit<[u8; 8192]>`: 8192 bytes, alignment: 1 bytes

@@ -368,7 +368,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?)
         });
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
-        if op == BinOp::Shr || op == BinOp::Shl {
+        if matches!(op, BinOp::Shr | BinOp::Shl) {
             let r = r.clone()?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!

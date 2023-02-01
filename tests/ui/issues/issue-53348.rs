@@ -9,7 +9,7 @@ fn main() {
     for i in v {
         a = *i.to_string();
         //~^ ERROR mismatched types
-        //~| NOTE expected struct `String`, found `str`
+        //~| NOTE expected `String`, found `str`
         v2.push(a);
     }
 }

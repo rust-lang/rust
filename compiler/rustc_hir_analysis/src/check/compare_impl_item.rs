@@ -1930,7 +1930,7 @@ pub(super) fn check_type_bounds<'tcx>(
         smallvec::SmallVec::with_capacity(defs.count());
     InternalSubsts::fill_single(&mut substs, defs, &mut |param, _| match param.kind {
         GenericParamDefKind::Type { .. } => {
-            let kind = ty::BoundTyKind::Param(param.name);
+            let kind = ty::BoundTyKind::Param(param.def_id, param.name);
             let bound_var = ty::BoundVariableKind::Ty(kind);
             bound_vars.push(bound_var);
             tcx.mk_ty(ty::Bound(

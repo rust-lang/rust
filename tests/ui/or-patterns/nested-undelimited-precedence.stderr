@@ -42,7 +42,7 @@ error[E0308]: mismatched types
 LL |     let &A(_) | B(_): F = A(3);
    |         ^^^^^         - expected due to this
    |         |
-   |         expected enum `F`, found reference
+   |         expected `F`, found `&_`
    |
    = note:   expected enum `F`
            found reference `&_`
@@ -53,7 +53,7 @@ error[E0308]: mismatched types
 LL |     let &&A(_) | B(_): F = A(3);
    |         ^^^^^^         - expected due to this
    |         |
-   |         expected enum `F`, found reference
+   |         expected `F`, found `&_`
    |
    = note:   expected enum `F`
            found reference `&_`
@@ -64,7 +64,7 @@ error[E0308]: mismatched types
 LL |     let &mut A(_) | B(_): F = A(3);
    |         ^^^^^^^^^         - expected due to this
    |         |
-   |         expected enum `F`, found `&mut _`
+   |         expected `F`, found `&mut _`
    |
    = note:           expected enum `F`
            found mutable reference `&mut _`
@@ -75,7 +75,7 @@ error[E0308]: mismatched types
 LL |     let &&mut A(_) | B(_): F = A(3);
    |         ^^^^^^^^^^         - expected due to this
    |         |
-   |         expected enum `F`, found reference
+   |         expected `F`, found `&_`
    |
    = note:   expected enum `F`
            found reference `&_`

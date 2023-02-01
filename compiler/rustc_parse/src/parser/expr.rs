@@ -1882,7 +1882,16 @@ impl<'a> Parser<'a> {
                 if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) =
                     next_token.kind
                 {
-                    if self.token.span.hi() == next_token.span.lo() {
+                    // If this integer looks like a float, then recover as such.
+                    //
+                    // We will never encounter the exponent part of a floating
+                    // point literal here, since there's no use of the exponent
+                    // syntax that also constitutes a valid integer, so we need
+                    // not check for that.
+                    if suffix.map_or(true, |s| s == sym::f32 || s == sym::f64)
+                        && symbol.as_str().chars().all(|c| c.is_numeric() || c == '_')
+                        && self.token.span.hi() == next_token.span.lo()
+                    {
                         let s = String::from("0.") + symbol.as_str();
                         let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
                         return Some(Token::new(kind, self.token.span.to(next_token.span)));
@@ -2281,7 +2290,7 @@ impl<'a> Parser<'a> {
                 block
             } else {
                 let let_else_sub = matches!(cond.kind, ExprKind::Let(..))
-                    .then(|| IfExpressionLetSomeSub { if_span: lo });
+                    .then(|| IfExpressionLetSomeSub { if_span: lo.until(cond_span) });
 
                 self.sess.emit_err(IfExpressionMissingThenBlock {
                     if_span: lo,

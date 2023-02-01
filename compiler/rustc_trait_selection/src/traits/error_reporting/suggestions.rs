@@ -133,7 +133,7 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
                                         .cloned()
                                         .unwrap_or_else(|| {
                                             bug!(
-                                                "node_type: no type for node `{}`",
+                                                "node_type: no type for node {}",
                                                 ty::tls::with(|tcx| tcx
                                                     .hir()
                                                     .node_to_string(await_expr.hir_id))

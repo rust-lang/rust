@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch-signature-deduction.rs:14:9
    |
 LL |         5
-   |         ^ expected enum `Result`, found integer
+   |         ^ expected `Result<{integer}, _>`, found integer
    |
    = note: expected enum `Result<{integer}, _>`
               found type `{integer}`
@@ -22,7 +22,7 @@ error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-
   --> $DIR/type-mismatch-signature-deduction.rs:5:13
    |
 LL | fn foo() -> impl Generator<Return = i32> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Result`, found `i32`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<{integer}, _>`, found `i32`
    |
    = note: expected enum `Result<{integer}, _>`
               found type `i32`

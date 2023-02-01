@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/const-eval-span.rs:9:9
    |
 LL |     V = CONSTANT,
-   |         ^^^^^^^^ expected `isize`, found struct `S`
+   |         ^^^^^^^^ expected `isize`, found `S`
 
 error: aborting due to previous error
 

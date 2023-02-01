@@ -4,14 +4,15 @@ error[E0308]: arguments to this function are incorrect
 LL |     foo(f, w);
    |     ^^^
    |
-note: expected `i32`, found `u32`
+note: expected fn pointer, found fn item
   --> $DIR/two-mismatch-notes.rs:10:9
    |
 LL |     foo(f, w);
    |         ^
    = note: expected fn pointer `fn(i32)`
                  found fn item `fn(u32) {f}`
-note: expected `i32`, found `isize`
+   = note: when the arguments and return types match, functions can be coerced to function pointers
+note: expected `Wrapper<i32>`, found `Wrapper<isize>`
   --> $DIR/two-mismatch-notes.rs:10:12
    |
 LL |     foo(f, w);

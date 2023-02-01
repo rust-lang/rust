@@ -5,7 +5,7 @@ LL |     let u = match e {
    |                   - this expression has type `E`
 LL |         E::B(
 LL |           Tau{t: x},
-   |           ^^^^^^^^^ expected enum `R`, found struct `Tau`
+   |           ^^^^^^^^^ expected `R`, found `Tau`
 
 error: aborting due to previous error
 

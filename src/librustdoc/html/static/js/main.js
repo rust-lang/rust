@@ -180,7 +180,6 @@ function browserSupportsHistoryApi() {
     return window.history && typeof window.history.pushState === "function";
 }
 
-// eslint-disable-next-line no-unused-vars
 function loadCss(cssUrl) {
     const link = document.createElement("link");
     link.href = cssUrl;

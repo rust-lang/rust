@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/terr-in-field.rs:13:14
    |
 LL |     want_foo(b);
-   |     -------- ^ expected struct `Foo`, found struct `Bar`
+   |     -------- ^ expected `Foo`, found `Bar`
    |     |
    |     arguments to this function are incorrect
    |

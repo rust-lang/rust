@@ -1,5 +1,5 @@
-name: Internal Compiler Error
-description: Create a report for an internal compiler error in `rustc`
+name: Internal Compiler Error (Structured form)
+description: For now, you'll want to use the other ICE template, as GitHub forms have strict limits on the size of fields so backtraces cannot be pasted directly.
 labels: ["C-bug", "I-ICE", "T-compiler"]
 title: "[ICE]: "
 body:

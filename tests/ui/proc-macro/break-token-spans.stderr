@@ -8,7 +8,7 @@ error[E0308]: mismatched types
   --> $DIR/break-token-spans.rs:14:32
    |
 LL |     let a: Option<Option<u8>>= true;
-   |            ------------------  ^^^^ expected enum `Option`, found `bool`
+   |            ------------------  ^^^^ expected `Option<Option<u8>>`, found `bool`
    |            |
    |            expected due to this
    |

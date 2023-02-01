@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     Foo::bar(x);
    |     -------- ^
    |     |        |
-   |     |        expected `&Foo`, found struct `Foo`
+   |     |        expected `&Foo`, found `Foo`
    |     |        help: consider borrowing here: `&x`
    |     arguments to this function are incorrect
    |
@@ -18,7 +18,7 @@ error[E0308]: mismatched types
   --> $DIR/method-self-arg-1.rs:13:14
    |
 LL |     Foo::bar(&42);
-   |     -------- ^^^ expected struct `Foo`, found integer
+   |     -------- ^^^ expected `&Foo`, found `&{integer}`
    |     |
    |     arguments to this function are incorrect
    |

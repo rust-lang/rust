@@ -12,7 +12,7 @@ error[E0308]: mismatched types
 LL | fn main() {
    |           - expected `()` because of default return type
 LL |     resolve_located_at!(a b)
-   |                           ^ expected `()`, found struct `S`
+   |                           ^ expected `()`, found `S`
    |
    = note: this error originates in the macro `resolve_located_at` (in Nightly builds, run with -Z macro-backtrace for more info)
 

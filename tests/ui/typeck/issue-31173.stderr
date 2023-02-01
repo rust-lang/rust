@@ -2,7 +2,7 @@ error[E0271]: expected `TakeWhile<&mut IntoIter<u8>, [closure@issue-31173.rs:7:2
   --> $DIR/issue-31173.rs:11:10
    |
 LL |         .cloned()
-   |          ^^^^^^ expected reference, found `u8`
+   |          ^^^^^^ expected `&_`, found `u8`
    |
    = note: expected reference `&_`
                    found type `u8`

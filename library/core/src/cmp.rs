@@ -798,16 +798,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        #[cfg(not(bootstrap))]
-        {
-            max_by(self, other, Ord::cmp)
-        }
-
-        #[cfg(bootstrap)]
-        match self.cmp(&other) {
-            Ordering::Less | Ordering::Equal => other,
-            Ordering::Greater => self,
-        }
+        max_by(self, other, Ord::cmp)
     }
 
     /// Compares and returns the minimum of two values.
@@ -828,16 +819,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        #[cfg(not(bootstrap))]
-        {
-            min_by(self, other, Ord::cmp)
-        }
-
-        #[cfg(bootstrap)]
-        match self.cmp(&other) {
-            Ordering::Less | Ordering::Equal => self,
-            Ordering::Greater => other,
-        }
+        min_by(self, other, Ord::cmp)
     }
 
     /// Restrict a value to a certain interval.
@@ -1234,23 +1216,7 @@ where
     F: ~const Destruct,
     K: ~const Destruct,
 {
-    cfg_if! {
-        if #[cfg(bootstrap)] {
-            const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
-                f: &mut F,
-                (v1, v2): (&T, &T),
-            ) -> Ordering
-            where
-                T: ~const Destruct,
-                K: ~const Destruct,
-            {
-                f(v1).cmp(&f(v2))
-            }
-            min_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
-        } else {
-            min_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
-        }
-    }
+    min_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
 }
 
 /// Compares and returns the maximum of two values.

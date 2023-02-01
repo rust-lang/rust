@@ -110,7 +110,7 @@ fn write_graph_label<'tcx, W: std::fmt::Write>(
         let decl = &body.local_decls[local];
 
         write!(w, "let ")?;
-        if decl.mutability == Mutability::Mut {
+        if decl.mutability.is_mut() {
             write!(w, "mut ")?;
         }
 

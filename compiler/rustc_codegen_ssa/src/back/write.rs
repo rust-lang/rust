@@ -305,8 +305,12 @@ impl TargetMachineFactoryConfig {
 }
 
 pub type TargetMachineFactoryFn<B> = Arc<
-    dyn Fn(TargetMachineFactoryConfig) -> Result<<B as WriteBackendMethods>::TargetMachine, String>
-        + Send
+    dyn Fn(
+            TargetMachineFactoryConfig,
+        ) -> Result<
+            <B as WriteBackendMethods>::TargetMachine,
+            <B as WriteBackendMethods>::TargetMachineError,
+        > + Send
         + Sync,
 >;
 

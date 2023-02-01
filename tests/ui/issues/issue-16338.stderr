@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let Slice { data: data, len: len } = "foo";
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ----- this expression has type `&str`
    |         |
-   |         expected `str`, found struct `Slice`
+   |         expected `str`, found `Slice<_>`
    |
    = note: expected type `str`
             found struct `Slice<_>`

@@ -4,7 +4,7 @@ error[E0053]: method `bar` has an incompatible return type for trait
 LL |     fn bar() -> i32 { 0 }
    |                 ^^^
    |                 |
-   |                 expected struct `Wrapper`, found `i32`
+   |                 expected `Wrapper<_>`, found `i32`
    |                 return type in trait
    |
    = note: expected struct `Wrapper<_>`

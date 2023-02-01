@@ -192,7 +192,7 @@
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
-#![cfg_attr(not(bootstrap), feature(const_closures))]
+#![feature(const_closures)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
@@ -250,7 +250,6 @@
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
-#![cfg_attr(bootstrap, feature(f16c_target_feature))]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]

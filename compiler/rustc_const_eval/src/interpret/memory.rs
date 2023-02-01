@@ -304,7 +304,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .into());
         };
 
-        if alloc.mutability == Mutability::Not {
+        if alloc.mutability.is_not() {
             throw_ub_format!("deallocating immutable allocation {alloc_id:?}");
         }
         if alloc_kind != kind {
@@ -631,7 +631,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         let (_kind, alloc) = self.memory.alloc_map.get_mut(id).unwrap();
-        if alloc.mutability == Mutability::Not {
+        if alloc.mutability.is_not() {
             throw_ub!(WriteToReadOnly(id))
         }
         Ok((alloc, &mut self.machine))

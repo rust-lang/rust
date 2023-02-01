@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/pat-type-err-let-stmt.rs:6:29
    |
 LL |     let Ok(0): Option<u8> = 42u8;
-   |                ----------   ^^^^ expected enum `Option`, found `u8`
+   |                ----------   ^^^^ expected `Option<u8>`, found `u8`
    |                |
    |                expected due to this
    |
@@ -19,7 +19,7 @@ error[E0308]: mismatched types
 LL |     let Ok(0): Option<u8> = 42u8;
    |         ^^^^^  ---------- expected due to this
    |         |
-   |         expected enum `Option`, found enum `Result`
+   |         expected `Option<u8>`, found `Result<_, _>`
    |
    = note: expected enum `Option<u8>`
               found enum `Result<_, _>`
@@ -30,7 +30,7 @@ error[E0308]: mismatched types
 LL |     let Ok(0): Option<u8>;
    |         ^^^^^  ---------- expected due to this
    |         |
-   |         expected enum `Option`, found enum `Result`
+   |         expected `Option<u8>`, found `Result<_, _>`
    |
    = note: expected enum `Option<u8>`
               found enum `Result<_, _>`
@@ -41,7 +41,7 @@ error[E0308]: mismatched types
 LL |     let Ok(0) = 42u8;
    |         ^^^^^   ---- this expression has type `u8`
    |         |
-   |         expected `u8`, found enum `Result`
+   |         expected `u8`, found `Result<_, _>`
    |
    = note: expected type `u8`
               found enum `Result<_, _>`

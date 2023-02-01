@@ -16,7 +16,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-61882.rs:4:22
    |
 LL |     const B: A<u8> = Self(0);
-   |                      ^^^^^^^ expected `u8`, found `bool`
+   |                      ^^^^^^^ expected `A<u8>`, found `A<bool>`
    |
    = note: expected struct `A<u8>`
               found struct `A<bool>`

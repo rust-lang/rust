@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn suggestion(opt: &mut Option<String>) {
    |                    ------------------- expected due to this parameter type
 LL |     opt = None;
-   |           ^^^^ expected mutable reference, found enum `Option`
+   |           ^^^^ expected `&mut Option<String>`, found `Option<_>`
    |
    = note: expected mutable reference `&mut Option<String>`
                            found enum `Option<_>`
@@ -19,7 +19,7 @@ error[E0308]: mismatched types
 LL | fn no_suggestion(opt: &mut Result<String, ()>) {
    |                       ----------------------- expected due to this parameter type
 LL |     opt = None
-   |           ^^^^ expected mutable reference, found enum `Option`
+   |           ^^^^ expected `&mut Result<String, ()>`, found `Option<_>`
    |
    = note: expected mutable reference `&mut Result<String, ()>`
                            found enum `Option<_>`
@@ -30,7 +30,7 @@ error[E0308]: mismatched types
 LL | fn suggestion2(opt: &mut Option<String>) {
    |                     ------------------- expected due to this parameter type
 LL |     opt = Some(String::new())
-   |           ^^^^^^^^^^^^^^^^^^^ expected mutable reference, found enum `Option`
+   |           ^^^^^^^^^^^^^^^^^^^ expected `&mut Option<String>`, found `Option<String>`
    |
    = note: expected mutable reference `&mut Option<String>`
                            found enum `Option<String>`
@@ -45,7 +45,7 @@ error[E0308]: mismatched types
 LL | fn no_suggestion2(opt: &mut Option<String>) {
    |                        ------------------- expected due to this parameter type
 LL |     opt = Some(42)
-   |           ^^^^^^^^ expected mutable reference, found enum `Option`
+   |           ^^^^^^^^ expected `&mut Option<String>`, found `Option<{integer}>`
    |
    = note: expected mutable reference `&mut Option<String>`
                            found enum `Option<{integer}>`

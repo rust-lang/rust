@@ -1,11 +1,11 @@
-error[E0271]: expected `fn() -> impl Sized {hi}` to be a fn item that returns `Box<u8>`, but it returns `impl Sized`
+error[E0271]: expected `hi` to be a fn item that returns `Box<u8>`, but it returns `impl Sized`
   --> $DIR/issue-98608.rs:6:39
    |
 LL | fn hi() -> impl Sized {
    |            ---------- the found opaque type
 ...
 LL |     let b: Box<dyn Fn() -> Box<u8>> = Box::new(hi);
-   |                                       ^^^^^^^^^^^^ expected struct `Box`, found opaque type
+   |                                       ^^^^^^^^^^^^ expected `Box<u8>`, found opaque type
    |
    = note:   expected struct `Box<u8>`
            found opaque type `impl Sized`

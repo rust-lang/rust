@@ -8,6 +8,7 @@ LL | fn main() { f(bar) }
    |
    = note: expected fn pointer `fn()`
                  found fn item `extern "C" fn() {bar}`
+   = note: when the arguments and return types match, functions can be coerced to function pointers
 note: function defined here
   --> $DIR/issue-10764.rs:1:4
    |

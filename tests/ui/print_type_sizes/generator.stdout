@@ -1,10 +1,10 @@
 print-type-size type: `[generator@$DIR/generator.rs:10:5: 10:14]`: 8193 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 8192 bytes
-print-type-size         field `.array`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.array`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Returned`: 8192 bytes
-print-type-size         field `.array`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.array`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Panicked`: 8192 bytes
-print-type-size         field `.array`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.array`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Suspend0`: 8192 bytes
-print-type-size         field `.array`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         upvar `.array`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes

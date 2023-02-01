@@ -5,7 +5,7 @@ LL |         foo.push(i);
    |                  - this is of type `&{integer}`, which causes `foo` to be inferred as `Vec<&{integer}>`
 ...
 LL |     bar(foo);
-   |     --- ^^^ expected `i32`, found `&{integer}`
+   |     --- ^^^ expected `Vec<i32>`, found `Vec<&{integer}>`
    |     |
    |     arguments to this function are incorrect
    |

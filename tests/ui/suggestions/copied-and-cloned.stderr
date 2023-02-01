@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/copied-and-cloned.rs:7:26
    |
 LL |     expect::<Option<()>>(x);
-   |     -------------------- ^ expected `()`, found `&()`
+   |     -------------------- ^ expected `Option<()>`, found `Option<&()>`
    |     |
    |     arguments to this function are incorrect
    |
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
   --> $DIR/copied-and-cloned.rs:11:30
    |
 LL |     expect::<Result<(), ()>>(x);
-   |     ------------------------ ^ expected `()`, found `&()`
+   |     ------------------------ ^ expected `Result<(), ()>`, found `Result<&(), _>`
    |     |
    |     arguments to this function are incorrect
    |
@@ -42,7 +42,7 @@ error[E0308]: mismatched types
   --> $DIR/copied-and-cloned.rs:16:30
    |
 LL |     expect::<Option<String>>(x);
-   |     ------------------------ ^ expected struct `String`, found `&String`
+   |     ------------------------ ^ expected `Option<String>`, found `Option<&String>`
    |     |
    |     arguments to this function are incorrect
    |
@@ -62,7 +62,7 @@ error[E0308]: mismatched types
   --> $DIR/copied-and-cloned.rs:20:34
    |
 LL |     expect::<Result<String, ()>>(x);
-   |     ---------------------------- ^ expected struct `String`, found `&String`
+   |     ---------------------------- ^ expected `Result<String, ()>`, found `Result<&String, _>`
    |     |
    |     arguments to this function are incorrect
    |

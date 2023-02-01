@@ -32,7 +32,7 @@ pub fn main() {
     let z: Box<dyn ToBar> = Box::new(Bar1 {f: 36});
     f5.2 = Bar1 {f: 36};
     //~^ ERROR mismatched types
-    //~| expected trait object `dyn ToBar`, found struct `Bar1`
+    //~| expected `dyn ToBar`, found `Bar1`
     //~| expected trait object `dyn ToBar`
     //~| found struct `Bar1`
     //~| ERROR the size for values of type

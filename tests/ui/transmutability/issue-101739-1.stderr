@@ -8,7 +8,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-101739-1.rs:8:50
    |
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME_ALIGNMENT>,
-   |                                                  ^^^^^^^^^^^^^^^^ expected struct `Assume`, found `bool`
+   |                                                  ^^^^^^^^^^^^^^^^ expected `Assume`, found `bool`
 
 error: aborting due to 2 previous errors
 

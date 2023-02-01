@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/const-tup-index-span.rs:3:23
    |
 LL | const TUP: (usize,) = 5usize << 64;
-   |                       ^^^^^^^^^^^^ expected tuple, found `usize`
+   |                       ^^^^^^^^^^^^ expected `(usize,)`, found `usize`
    |
    = note: expected tuple `(usize,)`
                found type `usize`

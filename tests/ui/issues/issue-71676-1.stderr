@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-71676-1.rs:43:24
    |
 LL |     let _: *const u8 = &a;
-   |            ---------   ^^ expected `u8`, found struct `Emm`
+   |            ---------   ^^ expected `*const u8`, found `&Emm`
    |            |
    |            expected due to this
    |
@@ -32,7 +32,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-71676-1.rs:49:24
    |
 LL |     let _: *const u8 = &mut a;
-   |            ---------   ^^^^^^ expected `u8`, found struct `Emm`
+   |            ---------   ^^^^^^ expected `*const u8`, found `&mut Emm`
    |            |
    |            expected due to this
    |
@@ -47,7 +47,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-71676-1.rs:52:22
    |
 LL |     let _: *mut u8 = &mut a;
-   |            -------   ^^^^^^ expected `u8`, found struct `Emm`
+   |            -------   ^^^^^^ expected `*mut u8`, found `&mut Emm`
    |            |
    |            expected due to this
    |

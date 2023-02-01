@@ -1230,20 +1230,23 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
 
                     ty::PredicateKind::WellFormed(ty) => {
-                        if self.tcx.sess.opts.unstable_opts.trait_solver == TraitSolver::Classic {
-                            // WF predicates cannot themselves make
-                            // errors. They can only block due to
-                            // ambiguity; otherwise, they always
-                            // degenerate into other obligations
-                            // (which may fail).
-                            span_bug!(span, "WF predicate not satisfied for {:?}", ty);
-                        } else {
-                            // FIXME: we'll need a better message which takes into account
-                            // which bounds actually failed to hold.
-                            self.tcx.sess.struct_span_err(
-                                span,
-                                &format!("the type `{}` is not well-formed", ty),
-                            )
+                        match self.tcx.sess.opts.unstable_opts.trait_solver {
+                            TraitSolver::Classic => {
+                                // WF predicates cannot themselves make
+                                // errors. They can only block due to
+                                // ambiguity; otherwise, they always
+                                // degenerate into other obligations
+                                // (which may fail).
+                                span_bug!(span, "WF predicate not satisfied for {:?}", ty);
+                            }
+                            TraitSolver::Chalk | TraitSolver::Next => {
+                                // FIXME: we'll need a better message which takes into account
+                                // which bounds actually failed to hold.
+                                self.tcx.sess.struct_span_err(
+                                    span,
+                                    &format!("the type `{}` is not well-formed", ty),
+                                )
+                            }
                         }
                     }
 
@@ -1866,10 +1869,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         with_forced_trimmed_paths! {
             if Some(pred.projection_ty.def_id) == self.tcx.lang_items().fn_once_output() {
+                let fn_kind = self_ty.prefix_string(self.tcx);
+                let item = match self_ty.kind() {
+                    ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
+                    _ => self_ty.to_string(),
+                };
                 Some(format!(
-                    "expected `{self_ty}` to be a {fn_kind} that returns `{expected_ty}`, but it \
+                    "expected `{item}` to be a {fn_kind} that returns `{expected_ty}`, but it \
                      returns `{normalized_ty}`",
-                    fn_kind = self_ty.prefix_string(self.tcx)
                 ))
             } else if Some(trait_def_id) == self.tcx.lang_items().future_trait() {
                 Some(format!(

@@ -30,7 +30,7 @@ fn baz(n: bool) -> i32 {
 
 const fn return_ty_mismatch() {
     const_eval_select((1,), foo, bar);
-    //~^ ERROR expected `fn(i32) -> bool {bar}` to be a fn item that returns `i32`, but it returns `bool`
+    //~^ ERROR expected `bar` to be a fn item that returns `i32`, but it returns `bool`
 }
 
 const fn args_ty_mismatch() {

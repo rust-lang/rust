@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |   match t {
    |         - this expression has type `Result<_, {integer}>`
 LL |     Some(k) => match k {
-   |     ^^^^^^^ expected enum `Result`, found enum `Option`
+   |     ^^^^^^^ expected `Result<_, {integer}>`, found `Option<_>`
    |
    = note: expected enum `Result<_, {integer}>`
               found enum `Option<_>`
@@ -20,7 +20,7 @@ LL |   match t {
    |         - this expression has type `Result<_, {integer}>`
 ...
 LL |     None => ()
-   |     ^^^^ expected enum `Result`, found enum `Option`
+   |     ^^^^ expected `Result<_, {integer}>`, found `Option<_>`
    |
    = note: expected enum `Result<_, {integer}>`
               found enum `Option<_>`

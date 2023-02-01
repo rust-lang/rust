@@ -20,7 +20,6 @@ fn test_missing_unsafe_warning_on_repr_packed() {
     let c = || {
         println!("{}", foo.x);
         //~^ ERROR: reference to packed field is unaligned
-        //~| WARNING: this was previously accepted by the compiler but is being phased out
         let _z = foo.x;
     };
 

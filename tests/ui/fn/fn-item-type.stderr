@@ -38,7 +38,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:34:23
    |
 LL |     eq(bar::<String>, bar::<Vec<u8>>);
-   |     --                ^^^^^^^^^^^^^^ expected struct `String`, found struct `Vec`
+   |     --                ^^^^^^^^^^^^^^ expected `String`, found `Vec<u8>`
    |     |
    |     arguments to this function are incorrect
    |
@@ -53,7 +53,7 @@ LL | fn eq<T>(x: T, y: T) {}
    = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-item-type.rs:41:26
+  --> $DIR/fn-item-type.rs:40:26
    |
 LL |     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
    |     --                   ^^^^^^^^^^^^^^^^^ expected `u8`, found `u16`
@@ -71,7 +71,7 @@ LL | fn eq<T>(x: T, y: T) {}
    = help: consider casting both fn items to fn pointers using `as fn()`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-item-type.rs:46:19
+  --> $DIR/fn-item-type.rs:45:19
    |
 LL |     eq(foo::<u8>, bar::<u8> as fn(isize) -> isize);
    |     --            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected fn item, found fn pointer

@@ -7,7 +7,7 @@ fn main() {
     match (true, false) {
         A::B => (),
 //~^ ERROR mismatched types
-//~| expected tuple, found enum `A`
+//~| expected `(bool, bool)`, found `A`
 //~| expected tuple `(bool, bool)`
 //~| found enum `A`
         _ => ()
@@ -39,7 +39,7 @@ fn main() {
     match (true, false) {
         &(true, false) => ()
 //~^ ERROR mismatched types
-//~| expected tuple, found reference
+//~| expected `(bool, bool)`, found `&_`
 //~| expected tuple `(bool, bool)`
 //~| found reference `&_`
     }

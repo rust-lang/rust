@@ -404,7 +404,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         (msg, sug)
                     }
                 };
-                diag.span_suggestion(span, msg, sug, Applicability::MaybeIncorrect);
+                diag.span_suggestion_verbose(span, msg, sug, Applicability::MaybeIncorrect);
             }
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
                 let expected_sig =
