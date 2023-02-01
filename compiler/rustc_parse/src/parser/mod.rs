@@ -19,9 +19,8 @@ pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::AttributesData;
-use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenstream::{AttributesData, DelimSpan, Spacing};
+use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
@@ -221,17 +220,21 @@ impl<'a> Drop for Parser<'a> {
     }
 }
 
+/// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that
+/// we (a) lex tokens into a nice tree structure (`TokenStream`), and then (b)
+/// use this type to emit them as a linear sequence. But a linear sequence is
+/// what the parser expects, for the most part.
 #[derive(Clone)]
 struct TokenCursor {
     // Cursor for the current (innermost) token stream. The delimiters for this
     // token stream are found in `self.stack.last()`; when that is `None` then
     // we are in the outermost token stream which never has delimiters.
-    tree_cursor: tokenstream::Cursor,
+    tree_cursor: TokenTreeCursor,
 
     // Token streams surrounding the current one. The delimiters for stack[n]'s
     // tokens are in `stack[n-1]`. `stack[0]` (when present) has no delimiters
     // because it's the outermost token stream which never has delimiters.
-    stack: Vec<(tokenstream::Cursor, Delimiter, DelimSpan)>,
+    stack: Vec<(TokenTreeCursor, Delimiter, DelimSpan)>,
 
     desugar_doc_comments: bool,
 
