@@ -85,55 +85,11 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::rustc_allocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
         } else if attr.has_name(sym::ffi_returns_twice) {
-            if tcx.is_foreign_item(did) {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
-            } else {
-                // `#[ffi_returns_twice]` is only allowed `extern fn`s.
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0724,
-                    "`#[ffi_returns_twice]` may only be used on foreign functions"
-                )
-                .emit();
-            }
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
         } else if attr.has_name(sym::ffi_pure) {
-            if tcx.is_foreign_item(did) {
-                if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
-                    // `#[ffi_const]` functions cannot be `#[ffi_pure]`
-                    struct_span_err!(
-                        tcx.sess,
-                        attr.span,
-                        E0757,
-                        "`#[ffi_const]` function cannot be `#[ffi_pure]`"
-                    )
-                    .emit();
-                } else {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
-                }
-            } else {
-                // `#[ffi_pure]` is only allowed on foreign functions
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0755,
-                    "`#[ffi_pure]` may only be used on foreign functions"
-                )
-                .emit();
-            }
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
         } else if attr.has_name(sym::ffi_const) {
-            if tcx.is_foreign_item(did) {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
-            } else {
-                // `#[ffi_const]` is only allowed on foreign functions
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0756,
-                    "`#[ffi_const]` may only be used on foreign functions"
-                )
-                .emit();
-            }
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
         } else if attr.has_name(sym::rustc_nounwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
         } else if attr.has_name(sym::rustc_reallocator) {
