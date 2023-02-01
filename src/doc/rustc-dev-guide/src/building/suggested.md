@@ -34,7 +34,7 @@ you can write: <!-- date-check: nov 2022 --><!-- the date comment is for the edi
         "--json-output"
     ],
     "rust-analyzer.rustfmt.overrideCommand": [
-        "./build/host/stage0/bin/rustfmt",
+        "./build/host/rustfmt/bin/rustfmt",
         "--edition=2021"
     ],
     "rust-analyzer.procMacro.server": "./build/host/stage0/libexec/rust-analyzer-proc-macro-srv",
