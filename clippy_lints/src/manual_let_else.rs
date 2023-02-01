@@ -37,7 +37,6 @@ declare_clippy_lint! {
     /// Could be written:
     ///
     /// ```rust
-    /// # #![feature(let_else)]
     /// # fn main () {
     /// # let w = Some(0);
     /// let Some(v) = w else { return };
