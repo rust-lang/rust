@@ -11,7 +11,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use super::{collect_paths_for_type, ensure_trailing_slash, Context, BASIC_KEYWORDS};
+use super::{collect_paths_for_type, ensure_trailing_slash, Context};
 use crate::clean::Crate;
 use crate::config::{EmitType, RenderOptions};
 use crate::docfs::PathError;
@@ -340,7 +340,6 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
                 root_path: "./",
                 static_root_path: shared.static_root_path.as_deref(),
                 description: "List of crates",
-                keywords: BASIC_KEYWORDS,
                 resource_suffix: &shared.resource_suffix,
             };
 

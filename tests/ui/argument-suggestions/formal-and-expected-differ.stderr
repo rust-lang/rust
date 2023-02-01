@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/formal-and-expected-differ.rs:22:29
    |
 LL |     let _: U<_, u32> = U(1, S(3u32));
-   |                        -    ^^^^^^^ expected `f32`, found `u32`
+   |                        -    ^^^^^^^ expected `S<f32>`, found `S<u32>`
    |                        |
    |                        arguments to this struct are incorrect
    |
@@ -18,7 +18,7 @@ error[E0308]: mismatched types
   --> $DIR/formal-and-expected-differ.rs:22:24
    |
 LL |     let _: U<_, u32> = U(1, S(3u32));
-   |            ---------   ^^^^^^^^^^^^^ expected `u32`, found `f32`
+   |            ---------   ^^^^^^^^^^^^^ expected `U<_, u32>`, found `U<i32, f32>`
    |            |
    |            expected due to this
    |

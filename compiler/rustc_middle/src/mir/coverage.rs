@@ -135,7 +135,10 @@ impl Debug for CoverageKind {
                 "Expression({:?}) = {} {} {}",
                 id.index(),
                 lhs.index(),
-                if *op == Op::Add { "+" } else { "-" },
+                match op {
+                    Op::Add => "+",
+                    Op::Subtract => "-",
+                },
                 rhs.index(),
             ),
             Unreachable => write!(fmt, "Unreachable"),

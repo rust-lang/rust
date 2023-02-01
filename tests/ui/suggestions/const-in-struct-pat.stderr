@@ -7,7 +7,7 @@ LL | struct foo;
 LL |     let Thing { foo } = t;
    |                 ^^^     - this expression has type `Thing`
    |                 |
-   |                 expected struct `String`, found struct `foo`
+   |                 expected `String`, found `foo`
    |                 `foo` is interpreted as a unit struct, not a new binding
    |
 help: bind the struct field to a different name instead

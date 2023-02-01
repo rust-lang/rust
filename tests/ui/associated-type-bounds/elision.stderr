@@ -14,7 +14,7 @@ error[E0308]: mismatched types
   --> $DIR/elision.rs:5:79
    |
 LL | fn f(x: &mut dyn Iterator<Item: Iterator<Item = &'_ ()>>) -> Option<&'_ ()> { x.next() }
-   |                           -----------------------------      --------------   ^^^^^^^^ expected `&()`, found type parameter `impl Iterator<Item = &'_ ()>`
+   |                           -----------------------------      --------------   ^^^^^^^^ expected `Option<&()>`, found `Option<impl Iterator<Item = &'_ ()>>`
    |                           |                                  |
    |                           |                                  expected `Option<&'static ()>` because of return type
    |                           this type parameter

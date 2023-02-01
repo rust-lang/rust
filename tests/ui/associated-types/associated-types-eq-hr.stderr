@@ -1,8 +1,8 @@
-error[E0271]: type mismatch resolving `for<'x> <UintStruct as TheTrait<&'x isize>>::A == &'x isize`
+error[E0271]: type mismatch resolving `<UintStruct as TheTrait<&isize>>::A == &isize`
   --> $DIR/associated-types-eq-hr.rs:87:11
    |
 LL |     foo::<UintStruct>();
-   |           ^^^^^^^^^^ type mismatch resolving `for<'x> <UintStruct as TheTrait<&'x isize>>::A == &'x isize`
+   |           ^^^^^^^^^^ type mismatch resolving `<UintStruct as TheTrait<&isize>>::A == &isize`
    |
 note: expected this to be `&isize`
   --> $DIR/associated-types-eq-hr.rs:26:14
@@ -20,11 +20,11 @@ LL | where
 LL |     T: for<'x> TheTrait<&'x isize, A = &'x isize>,
    |                                    ^^^^^^^^^^^^^ required by this bound in `foo`
 
-error[E0271]: type mismatch resolving `for<'x> <IntStruct as TheTrait<&'x isize>>::A == &'x usize`
+error[E0271]: type mismatch resolving `<IntStruct as TheTrait<&isize>>::A == &usize`
   --> $DIR/associated-types-eq-hr.rs:91:11
    |
 LL |     bar::<IntStruct>();
-   |           ^^^^^^^^^ type mismatch resolving `for<'x> <IntStruct as TheTrait<&'x isize>>::A == &'x usize`
+   |           ^^^^^^^^^ type mismatch resolving `<IntStruct as TheTrait<&isize>>::A == &usize`
    |
 note: expected this to be `&usize`
   --> $DIR/associated-types-eq-hr.rs:14:14

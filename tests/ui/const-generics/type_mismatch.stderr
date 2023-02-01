@@ -8,7 +8,7 @@ error[E0308]: mismatched types
   --> $DIR/type_mismatch.rs:5:26
    |
 LL | fn bar<const N: u8>() -> [u8; N] {}
-   |    ---                   ^^^^^^^ expected array `[u8; N]`, found `()`
+   |    ---                   ^^^^^^^ expected `[u8; N]`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 

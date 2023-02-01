@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-block-tail-26978.rs:9:9
    |
 LL |     f(&{x});
-   |         ^ expected `i32`, found struct `Box`
+   |         ^ expected `i32`, found `Box<i32>`
    |
    = note: expected type `i32`
             found struct `Box<i32>`

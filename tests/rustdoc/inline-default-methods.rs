@@ -4,6 +4,6 @@
 extern crate inline_default_methods;
 
 // @has inline_default_methods/trait.Foo.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'fn bar(&self);'
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'fn foo(&mut self) { ... }'
+// @has - '//pre[@class="rust item-decl"]' 'fn bar(&self);'
+// @has - '//pre[@class="rust item-decl"]' 'fn foo(&mut self) { ... }'
 pub use inline_default_methods::Foo;

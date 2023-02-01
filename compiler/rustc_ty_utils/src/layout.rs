@@ -9,7 +9,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{
     self, subst::SubstsRef, AdtDef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeVisitable,
 };
-use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
+use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::*;
@@ -881,6 +881,7 @@ fn variant_info_for_adt<'tcx>(
                 let offset = layout.fields.offset(i);
                 min_size = min_size.max(offset + field_layout.size);
                 FieldInfo {
+                    kind: FieldKind::AdtField,
                     name,
                     offset: offset.bytes(),
                     size: field_layout.size.bytes(),
@@ -960,6 +961,7 @@ fn variant_info_for_generator<'tcx>(
             let offset = layout.fields.offset(field_idx);
             upvars_size = upvars_size.max(offset + field_layout.size);
             FieldInfo {
+                kind: FieldKind::Upvar,
                 name: Symbol::intern(&name),
                 offset: offset.bytes(),
                 size: field_layout.size.bytes(),
@@ -983,6 +985,7 @@ fn variant_info_for_generator<'tcx>(
                     // The struct is as large as the last field's end
                     variant_size = variant_size.max(offset + field_layout.size);
                     FieldInfo {
+                        kind: FieldKind::GeneratorLocal,
                         name: state_specific_names.get(*local).copied().flatten().unwrap_or(
                             Symbol::intern(&format!(".generator_field{}", local.as_usize())),
                         ),

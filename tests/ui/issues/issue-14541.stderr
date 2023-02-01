@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let Vec3 { y: _, z: _ } = v;
    |         ^^^^^^^^^^^^^^^^^^^   - this expression has type `Vec2`
    |         |
-   |         expected struct `Vec2`, found struct `Vec3`
+   |         expected `Vec2`, found `Vec3`
 
 error: aborting due to previous error
 

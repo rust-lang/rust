@@ -290,7 +290,7 @@ impl<'hir> Map<'hir> {
     #[track_caller]
     pub fn parent_id(self, hir_id: HirId) -> HirId {
         self.opt_parent_id(hir_id)
-            .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
+            .unwrap_or_else(|| bug!("No parent for node {}", self.node_to_string(hir_id)))
     }
 
     pub fn get_parent(self, hir_id: HirId) -> Node<'hir> {
@@ -1191,12 +1191,10 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
 }
 
 fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
-    let id_str = format!(" (hir_id={})", id);
-
     let path_str = |def_id: LocalDefId| map.tcx.def_path_str(def_id.to_def_id());
 
     let span_str = || map.tcx.sess.source_map().span_to_snippet(map.span(id)).unwrap_or_default();
-    let node_str = |prefix| format!("{} {}{}", prefix, span_str(), id_str);
+    let node_str = |prefix| format!("{id} ({prefix} `{}`)", span_str());
 
     match map.find(id) {
         Some(Node::Item(item)) => {
@@ -1225,10 +1223,10 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ItemKind::TraitAlias(..) => "trait alias",
                 ItemKind::Impl { .. } => "impl",
             };
-            format!("{} {}{}", item_str, path_str(item.owner_id.def_id), id_str)
+            format!("{id} ({item_str} {})", path_str(item.owner_id.def_id))
         }
         Some(Node::ForeignItem(item)) => {
-            format!("foreign item {}{}", path_str(item.owner_id.def_id), id_str)
+            format!("{id} (foreign item {})", path_str(item.owner_id.def_id))
         }
         Some(Node::ImplItem(ii)) => {
             let kind = match ii.kind {
@@ -1236,7 +1234,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ImplItemKind::Fn(..) => "method",
                 ImplItemKind::Type(_) => "assoc type",
             };
-            format!("{} {} in {}{}", kind, ii.ident, path_str(ii.owner_id.def_id), id_str)
+            format!("{id} ({kind} `{}` in {})", ii.ident, path_str(ii.owner_id.def_id))
         }
         Some(Node::TraitItem(ti)) => {
             let kind = match ti.kind {
@@ -1245,13 +1243,13 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 TraitItemKind::Type(..) => "assoc type",
             };
 
-            format!("{} {} in {}{}", kind, ti.ident, path_str(ti.owner_id.def_id), id_str)
+            format!("{id} ({kind} `{}` in {})", ti.ident, path_str(ti.owner_id.def_id))
         }
         Some(Node::Variant(ref variant)) => {
-            format!("variant {} in {}{}", variant.ident, path_str(variant.def_id), id_str)
+            format!("{id} (variant `{}` in {})", variant.ident, path_str(variant.def_id))
         }
         Some(Node::Field(ref field)) => {
-            format!("field {} in {}{}", field.ident, path_str(field.def_id), id_str)
+            format!("{id} (field `{}` in {})", field.ident, path_str(field.def_id))
         }
         Some(Node::AnonConst(_)) => node_str("const"),
         Some(Node::Expr(_)) => node_str("expr"),
@@ -1269,16 +1267,15 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Some(Node::Infer(_)) => node_str("infer"),
         Some(Node::Local(_)) => node_str("local"),
         Some(Node::Ctor(ctor)) => format!(
-            "ctor {}{}",
+            "{id} (ctor {})",
             ctor.ctor_def_id().map_or("<missing path>".into(), |def_id| path_str(def_id)),
-            id_str
         ),
         Some(Node::Lifetime(_)) => node_str("lifetime"),
         Some(Node::GenericParam(ref param)) => {
-            format!("generic_param {}{}", path_str(param.def_id), id_str)
+            format!("{id} (generic_param {})", path_str(param.def_id))
         }
-        Some(Node::Crate(..)) => String::from("root_crate"),
-        None => format!("unknown node{}", id_str),
+        Some(Node::Crate(..)) => String::from("(root_crate)"),
+        None => format!("{id} (unknown node)"),
     }
 }
 

@@ -9,7 +9,7 @@ fn main() {
         //~^ ERROR mismatched types
         //~| expected unit type `()`
         //~| found struct `Slice<_>`
-        //~| expected `()`, found struct `Slice`
+        //~| expected `()`, found `Slice<_>`
         _ => unreachable!()
     }
 }

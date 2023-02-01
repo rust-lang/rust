@@ -1,13 +1,14 @@
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
-pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
+pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::Input;
 use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, SwitchWithOptPath};
 use crate::errors::{
     BranchProtectionRequiresAArch64, CannotEnableCrtStaticLinux, CannotMixAndMatchSanitizers,
-    LinkerPluginToWindowsNotSupported, NotCircumventFeature, ProfileSampleUseFileDoesNotExist,
-    ProfileUseFileDoesNotExist, SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported,
-    SkippingConstChecks, SplitDebugInfoUnstablePlatform, StackProtectorNotSupportedForTarget,
+    LinkerPluginToWindowsNotSupported, NotCircumventFeature, OptimisationFuelExhausted,
+    ProfileSampleUseFileDoesNotExist, ProfileUseFileDoesNotExist, SanitizerCfiEnabled,
+    SanitizerNotSupported, SanitizersNotSupported, SkippingConstChecks,
+    SplitDebugInfoUnstablePlatform, StackProtectorNotSupportedForTarget,
     TargetRequiresUnwindTables, UnleashedFeatureHelp, UnstableVirtualFunctionElimination,
     UnsupportedDwarfVersion,
 };
@@ -483,6 +484,8 @@ impl Session {
         self.diagnostic().span_err_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.diagnostic().err(msg)
     }
@@ -583,12 +586,16 @@ impl Session {
             ))
         }
     }
+
+    #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[track_caller]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().span_warn(sp, msg)
     }
+
+    #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_warn_with_code<S: Into<MultiSpan>>(
@@ -599,6 +606,10 @@ impl Session {
     ) {
         self.diagnostic().span_warn_with_code(sp, msg, code)
     }
+
+    #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().warn(msg)
     }
@@ -641,11 +652,17 @@ impl Session {
         self.diagnostic().delay_good_path_bug(msg)
     }
 
+    #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn note_without_error(&self, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().note_without_error(msg)
     }
 
     #[track_caller]
+    #[rustc_lint_diagnostics]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_note_without_error<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -653,6 +670,8 @@ impl Session {
     ) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
+
+    #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_note_without_error(
@@ -882,7 +901,7 @@ impl Session {
                         // We only call `msg` in case we can actually emit warnings.
                         // Otherwise, this could cause a `delay_good_path_bug` to
                         // trigger (issue #79546).
-                        self.warn(&format!("optimization-fuel-exhausted: {}", msg()));
+                        self.emit_warning(OptimisationFuelExhausted { msg: msg() });
                     }
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {
@@ -899,23 +918,24 @@ impl Session {
         ret
     }
 
+    /// Is this edition 2015?
     pub fn rust_2015(&self) -> bool {
-        self.edition() == Edition::Edition2015
+        self.edition().rust_2015()
     }
 
     /// Are we allowed to use features from the Rust 2018 edition?
     pub fn rust_2018(&self) -> bool {
-        self.edition() >= Edition::Edition2018
+        self.edition().rust_2018()
     }
 
     /// Are we allowed to use features from the Rust 2021 edition?
     pub fn rust_2021(&self) -> bool {
-        self.edition() >= Edition::Edition2021
+        self.edition().rust_2021()
     }
 
     /// Are we allowed to use features from the Rust 2024 edition?
     pub fn rust_2024(&self) -> bool {
-        self.edition() >= Edition::Edition2024
+        self.edition().rust_2024()
     }
 
     /// Returns `true` if we cannot skip the PLT for shared library calls.

@@ -125,7 +125,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if let Some((depr, span)) = &depr {
             is_deprecated = true;
 
-            if kind == AnnotationKind::Prohibited || kind == AnnotationKind::DeprecationProhibited {
+            if matches!(kind, AnnotationKind::Prohibited | AnnotationKind::DeprecationProhibited) {
                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                 self.tcx.emit_spanned_lint(
                     USELESS_DEPRECATED,

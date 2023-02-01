@@ -5,7 +5,7 @@
 // /!\ IMPORTANT /!\
 //
 // Error messages' format must follow the RFC 1567 available here:
-// https://github.com/rust-lang/rfcs/pull/1567
+// https://rust-lang.github.io/rfcs/1567-long-error-codes-explanation-normalization.html
 
 register_diagnostics! {
 E0001: include_str!("./error_codes/E0001.md"),
@@ -510,6 +510,7 @@ E0789: include_str!("./error_codes/E0789.md"),
 E0790: include_str!("./error_codes/E0790.md"),
 E0791: include_str!("./error_codes/E0791.md"),
 E0792: include_str!("./error_codes/E0792.md"),
+E0793: include_str!("./error_codes/E0793.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard

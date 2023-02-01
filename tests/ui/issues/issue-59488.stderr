@@ -15,7 +15,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-59488.rs:14:11
    |
 LL |     foo > 12;
-   |           ^^ expected fn item, found integer
+   |           ^^ expected fn item, found `i32`
    |
    = note: expected fn item `fn() -> i32 {foo}`
                  found type `i32`
@@ -37,7 +37,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-59488.rs:18:11
    |
 LL |     bar > 13;
-   |           ^^ expected fn item, found integer
+   |           ^^ expected fn item, found `i64`
    |
    = note: expected fn item `fn(i64) -> i64 {bar}`
                  found type `i64`

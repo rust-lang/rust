@@ -342,7 +342,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.69.0"
+version = "0.70.0"
 dependencies = [
  "anyhow",
  "base64",

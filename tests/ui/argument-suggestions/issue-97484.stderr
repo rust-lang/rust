@@ -4,7 +4,7 @@ error[E0061]: this function takes 4 arguments but 7 arguments were supplied
 LL |     foo(&&A, B, C, D, E, F, G);
    |     ^^^      -  -     -  - argument of type `F` unexpected
    |              |  |     |
-   |              |  |     expected `&E`, found struct `E`
+   |              |  |     expected `&E`, found `E`
    |              |  argument of type `C` unexpected
    |              argument of type `B` unexpected
    |

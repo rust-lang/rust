@@ -8,7 +8,7 @@ pub enum Order {
     Unsorted,
 }
 
-// @has foo/struct.VSet.html '//div[@class="item-decl"]/pre[@class="rust"]' 'pub struct VSet<T, const ORDER: Order>'
+// @has foo/struct.VSet.html '//pre[@class="rust item-decl"]' 'pub struct VSet<T, const ORDER: Order>'
 // @has foo/struct.VSet.html '//*[@id="impl-Send-for-VSet%3CT%2C%20ORDER%3E"]/h3[@class="code-header"]' 'impl<T, const ORDER: Order> Send for VSet<T, ORDER>'
 // @has foo/struct.VSet.html '//*[@id="impl-Sync-for-VSet%3CT%2C%20ORDER%3E"]/h3[@class="code-header"]' 'impl<T, const ORDER: Order> Sync for VSet<T, ORDER>'
 pub struct VSet<T, const ORDER: Order> {

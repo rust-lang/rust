@@ -6,5 +6,5 @@ fn main() {
     x = 5;
     //~^ ERROR mismatched types
     //~| NOTE expected enum `Option<usize>`
-    //~| NOTE expected enum `Option`, found integer
+    //~| NOTE expected `Option<usize>`, found integer
 }

@@ -82,7 +82,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:50:21
    |
 LL |     let x: [!; 2] = [return, 22];
-   |            ------   ^^^^^^^^^^^^ expected `!`, found integer
+   |            ------   ^^^^^^^^^^^^ expected `[!; 2]`, found `[{integer}; 2]`
    |            |
    |            expected due to this
    |

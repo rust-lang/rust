@@ -60,8 +60,7 @@
 //!
 //! # Examples
 //!
-#![cfg_attr(bootstrap, doc = "```rust,compile_fail")]
-#![cfg_attr(not(bootstrap), doc = "```rust")]
+//! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
 //!
 //! extern crate core;
@@ -300,8 +299,7 @@ define!(
     ///
     /// # Examples
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,compile_fail")]
-    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// ```rust
     /// #![feature(custom_mir, core_intrinsics)]
     ///
     /// extern crate core;

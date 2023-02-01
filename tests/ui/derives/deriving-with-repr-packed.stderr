@@ -1,5 +1,5 @@
 warning: byte slice in a packed struct that derives a built-in trait
-  --> $DIR/deriving-with-repr-packed.rs:33:5
+  --> $DIR/deriving-with-repr-packed.rs:31:5
    |
 LL | #[derive(Debug)]
    |          ----- in this derive macro expansion
@@ -14,7 +14,7 @@ LL |     data: [u8],
    = note: this warning originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0507]: cannot move out of `self` which is behind a shared reference
-  --> $DIR/deriving-with-repr-packed.rs:24:10
+  --> $DIR/deriving-with-repr-packed.rs:22:10
    |
 LL | #[derive(Debug, Default)]
    |          ----- in this derive macro expansion
@@ -29,7 +29,7 @@ error: aborting due to previous error; 1 warning emitted
 For more information about this error, try `rustc --explain E0507`.
 Future incompatibility report: Future breakage diagnostic:
 warning: byte slice in a packed struct that derives a built-in trait
-  --> $DIR/deriving-with-repr-packed.rs:33:5
+  --> $DIR/deriving-with-repr-packed.rs:31:5
    |
 LL | #[derive(Debug)]
    |          ----- in this derive macro expansion

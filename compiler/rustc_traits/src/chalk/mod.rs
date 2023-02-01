@@ -6,12 +6,10 @@
 pub(crate) mod db;
 pub(crate) mod lowering;
 
-use rustc_data_structures::fx::FxHashMap;
-
 use rustc_middle::infer::canonical::{CanonicalTyVarKind, CanonicalVarKind};
 use rustc_middle::traits::ChalkRustInterner;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, ParamTy, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitable};
 
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalVarValues, Certainty, QueryRegionConstraints, QueryResponse,
@@ -41,7 +39,7 @@ pub(crate) fn evaluate_goal<'tcx>(
     let mut params_substitutor =
         ParamsSubstitutor::new(tcx, placeholders_collector.next_ty_placeholder);
     let obligation = obligation.fold_with(&mut params_substitutor);
-    let params: FxHashMap<usize, ParamTy> = params_substitutor.params;
+    let params = params_substitutor.params;
 
     let max_universe = obligation.max_universe.index();
 

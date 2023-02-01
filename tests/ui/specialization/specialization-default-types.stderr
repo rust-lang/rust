@@ -16,7 +16,7 @@ LL |     default type Output = Box<T>;
 LL |     default fn generate(self) -> Self::Output {
    |                                  ------------ expected `<T as Example>::Output` because of return type
 LL |         Box::new(self)
-   |         ^^^^^^^^^^^^^^ expected associated type, found struct `Box`
+   |         ^^^^^^^^^^^^^^ expected associated type, found `Box<T>`
    |
    = note: expected associated type `<T as Example>::Output`
                        found struct `Box<T>`
@@ -27,7 +27,7 @@ error[E0308]: mismatched types
 LL | fn trouble<T>(t: T) -> Box<T> {
    |                        ------ expected `Box<T>` because of return type
 LL |     Example::generate(t)
-   |     ^^^^^^^^^^^^^^^^^^^^ expected struct `Box`, found associated type
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `Box<T>`, found associated type
    |
    = note:       expected struct `Box<T>`
            found associated type `<T as Example>::Output`

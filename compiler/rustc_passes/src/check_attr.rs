@@ -864,33 +864,39 @@ impl CheckAttrVisitor<'_> {
         target: Target,
         specified_inline: &mut Option<(bool, Span)>,
     ) -> bool {
-        if target == Target::Use || target == Target::ExternCrate {
-            let do_inline = meta.name_or_empty() == sym::inline;
-            if let Some((prev_inline, prev_span)) = *specified_inline {
-                if do_inline != prev_inline {
-                    let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
-                    spans.push_span_label(prev_span, fluent::passes_doc_inline_conflict_first);
-                    spans.push_span_label(meta.span(), fluent::passes_doc_inline_conflict_second);
-                    self.tcx.sess.emit_err(errors::DocKeywordConflict { spans });
-                    return false;
+        match target {
+            Target::Use | Target::ExternCrate => {
+                let do_inline = meta.name_or_empty() == sym::inline;
+                if let Some((prev_inline, prev_span)) = *specified_inline {
+                    if do_inline != prev_inline {
+                        let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
+                        spans.push_span_label(prev_span, fluent::passes_doc_inline_conflict_first);
+                        spans.push_span_label(
+                            meta.span(),
+                            fluent::passes_doc_inline_conflict_second,
+                        );
+                        self.tcx.sess.emit_err(errors::DocKeywordConflict { spans });
+                        return false;
+                    }
+                    true
+                } else {
+                    *specified_inline = Some((do_inline, meta.span()));
+                    true
                 }
-                true
-            } else {
-                *specified_inline = Some((do_inline, meta.span()));
-                true
             }
-        } else {
-            self.tcx.emit_spanned_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                errors::DocInlineOnlyUse {
-                    attr_span: meta.span(),
-                    item_span: (attr.style == AttrStyle::Outer)
-                        .then(|| self.tcx.hir().span(hir_id)),
-                },
-            );
-            false
+            _ => {
+                self.tcx.emit_spanned_lint(
+                    INVALID_DOC_ATTRIBUTES,
+                    hir_id,
+                    meta.span(),
+                    errors::DocInlineOnlyUse {
+                        attr_span: meta.span(),
+                        item_span: (attr.style == AttrStyle::Outer)
+                            .then(|| self.tcx.hir().span(hir_id)),
+                    },
+                );
+                false
+            }
         }
     }
 
@@ -1137,7 +1143,7 @@ impl CheckAttrVisitor<'_> {
                                     errors::DocTestUnknownInclude {
                                         path,
                                         value: value.to_string(),
-                                        inner: if attr.style == AttrStyle::Inner { "!" } else { "" },
+                                        inner: match attr.style { AttrStyle::Inner=>  "!" , AttrStyle::Outer => "" },
                                         sugg: (attr.meta().unwrap().span, applicability),
                                     }
                                 );

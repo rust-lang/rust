@@ -7,7 +7,7 @@ LL |     Fst,
 LL |     if let B::Fst = a {};
    |            ^^^^^^   - this expression has type `A`
    |            |
-   |            expected struct `A`, found enum `B`
+   |            expected `A`, found `B`
    |
 help: you might have meant to use field `b` whose type is `B`
    |
@@ -24,7 +24,7 @@ LL |     match a {
    |           - this expression has type `A`
 ...
 LL |         B::Fst => (),
-   |         ^^^^^^ expected struct `A`, found enum `B`
+   |         ^^^^^^ expected `A`, found `B`
    |
 help: you might have meant to use field `b` whose type is `B`
    |
@@ -41,7 +41,7 @@ LL |     match a {
    |           - this expression has type `A`
 ...
 LL |         B::Snd => (),
-   |         ^^^^^^ expected struct `A`, found enum `B`
+   |         ^^^^^^ expected `A`, found `B`
    |
 help: you might have meant to use field `b` whose type is `B`
    |
@@ -55,7 +55,7 @@ LL |     match foo {
    |           --- this expression has type `Foo`
 LL |
 LL |         1u32 => (),
-   |         ^^^^ expected union `Foo`, found `u32`
+   |         ^^^^ expected `Foo`, found `u32`
    |
 help: you might have meant to use field `bar` whose type is `u32`
    |

@@ -5,7 +5,7 @@ LL | fn crash<R, C>(input: Matrix<R, C, ()>) -> Matrix<R, C, u32>
    |                                            ----------------- expected `Matrix<R, C, u32>` because of return type
 ...
 LL |     input.into_owned()
-   |     ^^^^^^^^^^^^^^^^^^ expected `u32`, found associated type
+   |     ^^^^^^^^^^^^^^^^^^ expected `Matrix<R, C, u32>`, found `Matrix<R, C, ...>`
    |
    = note: expected struct `Matrix<_, _, u32>`
               found struct `Matrix<_, _, <() as Allocator<R, C>>::Buffer>`

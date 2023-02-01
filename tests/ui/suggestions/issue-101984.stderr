@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |         let (cmp, router) = self.router.at()?;
    |             ^^^^^^^^^^^^^   ----------------- this expression has type `Match<&(for<'a> fn(&'a ()), Box<Wrapper>)>`
    |             |
-   |             expected struct `Match`, found tuple
+   |             expected `Match<&(fn(&()), Box<Wrapper>)>`, found `(_, _)`
    |
    = note: expected struct `Match<&(for<'a> fn(&'a ()), Box<Wrapper>)>`
                found tuple `(_, _)`

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/slice-to-vec-comparison.rs:4:9
    |
 LL |     a > b;
-   |         ^ expected array of 0 elements, found struct `Vec`
+   |         ^ expected `&[_; 0]`, found `&Vec<u8>`
    |
    = note: expected reference `&[_; 0]`
               found reference `&Vec<u8>`

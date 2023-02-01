@@ -1,50 +1,41 @@
-error: reference to packed field is unaligned
+error[E0793]: reference to packed field is unaligned
   --> $DIR/issue-53114-safety-checks.rs:23:13
    |
 LL |     let _ = &p.b;
    |             ^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
 
-error: reference to packed field is unaligned
-  --> $DIR/issue-53114-safety-checks.rs:29:17
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/issue-53114-safety-checks.rs:28:17
    |
 LL |     let (_,) = (&p.b,);
    |                 ^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
-error: reference to packed field is unaligned
-  --> $DIR/issue-53114-safety-checks.rs:39:11
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/issue-53114-safety-checks.rs:37:11
    |
 LL |     match &p.b  { _ => { } }
    |           ^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
-error: reference to packed field is unaligned
-  --> $DIR/issue-53114-safety-checks.rs:45:12
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/issue-53114-safety-checks.rs:42:12
    |
 LL |     match (&p.b,)  { (_,) => { } }
    |            ^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/issue-53114-safety-checks.rs:26:13
+  --> $DIR/issue-53114-safety-checks.rs:25:13
    |
 LL |     let _ = &u2.a;
    |             ^^^^^ access to union field
@@ -52,7 +43,7 @@ LL |     let _ = &u2.a;
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/issue-53114-safety-checks.rs:31:17
+  --> $DIR/issue-53114-safety-checks.rs:29:17
    |
 LL |     let (_,) = (u1.a,);
    |                 ^^^^ access to union field
@@ -60,7 +51,7 @@ LL |     let (_,) = (u1.a,);
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/issue-53114-safety-checks.rs:32:17
+  --> $DIR/issue-53114-safety-checks.rs:30:17
    |
 LL |     let (_,) = (&u2.a,);
    |                 ^^^^^ access to union field
@@ -68,7 +59,7 @@ LL |     let (_,) = (&u2.a,);
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/issue-53114-safety-checks.rs:41:11
+  --> $DIR/issue-53114-safety-checks.rs:38:11
    |
 LL |     match u1.a  { _ => { } }
    |           ^^^^ access to union field
@@ -76,7 +67,7 @@ LL |     match u1.a  { _ => { } }
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/issue-53114-safety-checks.rs:42:11
+  --> $DIR/issue-53114-safety-checks.rs:39:11
    |
 LL |     match &u2.a { _ => { } }
    |           ^^^^^ access to union field
@@ -84,7 +75,7 @@ LL |     match &u2.a { _ => { } }
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/issue-53114-safety-checks.rs:47:12
+  --> $DIR/issue-53114-safety-checks.rs:43:12
    |
 LL |     match (u1.a,)  { (_,) => { } }
    |            ^^^^ access to union field
@@ -92,7 +83,7 @@ LL |     match (u1.a,)  { (_,) => { } }
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/issue-53114-safety-checks.rs:48:12
+  --> $DIR/issue-53114-safety-checks.rs:44:12
    |
 LL |     match (&u2.a,) { (_,) => { } }
    |            ^^^^^ access to union field
@@ -101,56 +92,5 @@ LL |     match (&u2.a,) { (_,) => { } }
 
 error: aborting due to 11 previous errors
 
-For more information about this error, try `rustc --explain E0133`.
-Future incompatibility report: Future breakage diagnostic:
-error: reference to packed field is unaligned
-  --> $DIR/issue-53114-safety-checks.rs:23:13
-   |
-LL |     let _ = &p.b;
-   |             ^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
-
-Future breakage diagnostic:
-error: reference to packed field is unaligned
-  --> $DIR/issue-53114-safety-checks.rs:29:17
-   |
-LL |     let (_,) = (&p.b,);
-   |                 ^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
-
-Future breakage diagnostic:
-error: reference to packed field is unaligned
-  --> $DIR/issue-53114-safety-checks.rs:39:11
-   |
-LL |     match &p.b  { _ => { } }
-   |           ^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
-
-Future breakage diagnostic:
-error: reference to packed field is unaligned
-  --> $DIR/issue-53114-safety-checks.rs:45:12
-   |
-LL |     match (&p.b,)  { (_,) => { } }
-   |            ^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: `#[deny(unaligned_references)]` on by default
-
+Some errors have detailed explanations: E0133, E0793.
+For more information about an error, try `rustc --explain E0133`.

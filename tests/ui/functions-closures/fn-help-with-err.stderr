@@ -4,7 +4,7 @@ error[E0425]: cannot find value `oops` in this scope
 LL |     let arc = std::sync::Arc::new(oops);
    |                                   ^^^^ not found in this scope
 
-error[E0599]: no method named `bar` found for struct `Arc<[closure@fn-help-with-err.rs:18:36]>` in the current scope
+error[E0599]: no method named `bar` found for struct `Arc<[closure@$DIR/fn-help-with-err.rs:18:36: 18:38]>` in the current scope
   --> $DIR/fn-help-with-err.rs:19:10
    |
 LL |     arc2.bar();

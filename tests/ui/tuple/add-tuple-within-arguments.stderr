@@ -18,7 +18,7 @@ error[E0308]: mismatched types
   --> $DIR/add-tuple-within-arguments.rs:8:15
    |
 LL |     bar("hi", "hi", "hi");
-   |     ---       ^^^^ expected tuple, found `&str`
+   |     ---       ^^^^ expected `(&str,)`, found `&str`
    |     |
    |     arguments to this function are incorrect
    |

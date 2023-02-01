@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-59819.rs:28:18
    |
 LL |     let y: i32 = x;
-   |            ---   ^ expected `i32`, found struct `Foo`
+   |            ---   ^ expected `i32`, found `Foo`
    |            |
    |            expected due to this
    |
@@ -30,7 +30,7 @@ error[E0308]: mismatched types
 LL |     let g: String = f;
    |            ------   ^- help: try using a conversion method: `.to_string()`
    |            |        |
-   |            |        expected struct `String`, found struct `Bar`
+   |            |        expected `String`, found `Bar`
    |            expected due to this
 
 error: aborting due to 3 previous errors

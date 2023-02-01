@@ -1,35 +1,35 @@
 // edition:2018
-// @has async_fn/fn.foo.html '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn foo() -> Option<Foo>'
+// @has async_fn/fn.foo.html '//pre[@class="rust item-decl"]' 'pub async fn foo() -> Option<Foo>'
 pub async fn foo() -> Option<Foo> {
     None
 }
 
-// @has async_fn/fn.bar.html '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn bar(a: i32, b: i32) -> i32'
+// @has async_fn/fn.bar.html '//pre[@class="rust item-decl"]' 'pub async fn bar(a: i32, b: i32) -> i32'
 pub async fn bar(a: i32, b: i32) -> i32 {
     0
 }
 
-// @has async_fn/fn.baz.html '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn baz<T>(a: T) -> T'
+// @has async_fn/fn.baz.html '//pre[@class="rust item-decl"]' 'pub async fn baz<T>(a: T) -> T'
 pub async fn baz<T>(a: T) -> T {
     a
 }
 
-// @has async_fn/fn.qux.html '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async unsafe fn qux() -> char'
+// @has async_fn/fn.qux.html '//pre[@class="rust item-decl"]' 'pub async unsafe fn qux() -> char'
 pub async unsafe fn qux() -> char {
     '⚠'
 }
 
-// @has async_fn/fn.mut_args.html '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn mut_args(a: usize)'
+// @has async_fn/fn.mut_args.html '//pre[@class="rust item-decl"]' 'pub async fn mut_args(a: usize)'
 pub async fn mut_args(mut a: usize) {}
 
-// @has async_fn/fn.mut_ref.html '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn mut_ref(x: i32)'
+// @has async_fn/fn.mut_ref.html '//pre[@class="rust item-decl"]' 'pub async fn mut_ref(x: i32)'
 pub async fn mut_ref(ref mut x: i32) {}
 
 trait Bar {}
 
 impl Bar for () {}
 
-// @has async_fn/fn.quux.html '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn quux() -> impl Bar'
+// @has async_fn/fn.quux.html '//pre[@class="rust item-decl"]' 'pub async fn quux() -> impl Bar'
 pub async fn quux() -> impl Bar {
     ()
 }
@@ -50,27 +50,27 @@ pub trait Pattern<'a> {}
 
 pub trait Trait<const N: usize> {}
 // @has async_fn/fn.const_generics.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn const_generics<const N: usize>(_: impl Trait<N>)'
+// @has - '//pre[@class="rust item-decl"]' 'pub async fn const_generics<const N: usize>(_: impl Trait<N>)'
 pub async fn const_generics<const N: usize>(_: impl Trait<N>) {}
 
 // test that elided lifetimes are properly elided and not displayed as `'_`
 // regression test for #63037
 // @has async_fn/fn.elided.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn elided(foo: &str) -> &str'
+// @has - '//pre[@class="rust item-decl"]' 'pub async fn elided(foo: &str) -> &str'
 pub async fn elided(foo: &str) -> &str {}
 // This should really be shown as written, but for implementation reasons it's difficult.
 // See `impl Clean for TyKind::Ref`.
 // @has async_fn/fn.user_elided.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn user_elided(foo: &str) -> &str'
+// @has - '//pre[@class="rust item-decl"]' 'pub async fn user_elided(foo: &str) -> &str'
 pub async fn user_elided(foo: &'_ str) -> &str {}
 // @has async_fn/fn.static_trait.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub async fn static_trait(foo: &str) -> Box<dyn Bar>'
+// @has - '//pre[@class="rust item-decl"]' 'pub async fn static_trait(foo: &str) -> Box<dyn Bar>'
 pub async fn static_trait(foo: &str) -> Box<dyn Bar> {}
 // @has async_fn/fn.lifetime_for_trait.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "pub async fn lifetime_for_trait(foo: &str) -> Box<dyn Bar + '_>"
+// @has - '//pre[@class="rust item-decl"]' "pub async fn lifetime_for_trait(foo: &str) -> Box<dyn Bar + '_>"
 pub async fn lifetime_for_trait(foo: &str) -> Box<dyn Bar + '_> {}
 // @has async_fn/fn.elided_in_input_trait.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "pub async fn elided_in_input_trait(t: impl Pattern<'_>)"
+// @has - '//pre[@class="rust item-decl"]' "pub async fn elided_in_input_trait(t: impl Pattern<'_>)"
 pub async fn elided_in_input_trait(t: impl Pattern<'_>) {}
 
 struct AsyncFdReadyGuard<'a, T> { x: &'a T }
@@ -88,8 +88,8 @@ impl Foo {
 
 // test named lifetimes, just in case
 // @has async_fn/fn.named.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "pub async fn named<'a, 'b>(foo: &'a str) -> &'b str"
+// @has - '//pre[@class="rust item-decl"]' "pub async fn named<'a, 'b>(foo: &'a str) -> &'b str"
 pub async fn named<'a, 'b>(foo: &'a str) -> &'b str {}
 // @has async_fn/fn.named_trait.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' "pub async fn named_trait<'a, 'b>(foo: impl Pattern<'a>) -> impl Pattern<'b>"
+// @has - '//pre[@class="rust item-decl"]' "pub async fn named_trait<'a, 'b>(foo: impl Pattern<'a>) -> impl Pattern<'b>"
 pub async fn named_trait<'a, 'b>(foo: impl Pattern<'a>) -> impl Pattern<'b> {}

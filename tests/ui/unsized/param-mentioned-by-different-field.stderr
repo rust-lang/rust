@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/param-mentioned-by-different-field.rs:8:25
    |
 LL |     let y: &Foo<[u8]> = &x;
-   |            ----------   ^^ expected slice `[u8]`, found array `[u8; 1]`
+   |            ----------   ^^ expected `&Foo<[u8]>`, found `&Foo<[u8; 1]>`
    |            |
    |            expected due to this
    |

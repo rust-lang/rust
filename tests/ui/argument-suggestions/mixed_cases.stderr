@@ -41,7 +41,7 @@ error[E0061]: this function takes 3 arguments but 2 arguments were supplied
 LL |   three_args(1, X {});
    |   ^^^^^^^^^^---------
    |             |   |
-   |             |   expected `f32`, found struct `X`
+   |             |   expected `f32`, found `X`
    |             an argument of type `&str` is missing
    |
 note: function defined here
@@ -78,7 +78,7 @@ error[E0308]: arguments to this function are incorrect
 LL |   three_args("", X {}, 1);
    |   ^^^^^^^^^^ --  ----  - expected `&str`, found `{integer}`
    |              |   |
-   |              |   expected `f32`, found struct `X`
+   |              |   expected `f32`, found `X`
    |              expected `i32`, found `&'static str`
    |
 note: function defined here

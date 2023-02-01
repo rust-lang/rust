@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match x {
    |           - this expression has type `Whatever`
 LL |         Some(field) =>
-   |         ^^^^^^^^^^^ expected enum `Whatever`, found enum `Option`
+   |         ^^^^^^^^^^^ expected `Whatever`, found `Option<_>`
    |
    = note: expected enum `Whatever`
               found enum `Option<_>`

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-13446.rs:3:26
    |
 LL | static VEC: [u32; 256] = vec![];
-   |                          ^^^^^^ expected array `[u32; 256]`, found struct `Vec`
+   |                          ^^^^^^ expected `[u32; 256]`, found `Vec<_>`
    |
    = note: expected array `[u32; 256]`
              found struct `Vec<_>`

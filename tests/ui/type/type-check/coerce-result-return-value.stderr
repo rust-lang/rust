@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn foo1(x: Result<(), A>) -> Result<(), B> {
    |                              ------------- expected `Result<(), B>` because of return type
 LL |     x
-   |     ^ expected struct `B`, found struct `A`
+   |     ^ expected `Result<(), B>`, found `Result<(), A>`
    |
    = note: expected enum `Result<_, B>`
               found enum `Result<_, A>`
@@ -19,7 +19,7 @@ error[E0308]: mismatched types
 LL | fn foo2(x: Result<(), A>) -> Result<(), B> {
    |                              ------------- expected `Result<(), B>` because of return type
 LL |     return x;
-   |            ^ expected struct `B`, found struct `A`
+   |            ^ expected `Result<(), B>`, found `Result<(), A>`
    |
    = note: expected enum `Result<_, B>`
               found enum `Result<_, A>`
@@ -35,7 +35,7 @@ LL | fn foo3(x: Result<(), A>) -> Result<(), B> {
    |                              ------------- expected `Result<(), B>` because of return type
 LL |     if true {
 LL |         x
-   |         ^ expected struct `B`, found struct `A`
+   |         ^ expected `Result<(), B>`, found `Result<(), A>`
    |
    = note: expected enum `Result<_, B>`
               found enum `Result<_, A>`
@@ -51,7 +51,7 @@ LL | fn foo3(x: Result<(), A>) -> Result<(), B> {
    |                              ------------- expected `Result<(), B>` because of return type
 ...
 LL |         x
-   |         ^ expected struct `B`, found struct `A`
+   |         ^ expected `Result<(), B>`, found `Result<(), A>`
    |
    = note: expected enum `Result<_, B>`
               found enum `Result<_, A>`

@@ -219,7 +219,7 @@ fn satisfied_from_param_env<'tcx>(
     }
 
     if let Some(Ok(c)) = single_match {
-        let ocx = ObligationCtxt::new(infcx);
+        let ocx = ObligationCtxt::new_in_snapshot(infcx);
         assert!(ocx.eq(&ObligationCause::dummy(), param_env, c.ty(), ct.ty()).is_ok());
         assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
         assert!(ocx.select_all_or_error().is_empty());

@@ -580,7 +580,7 @@ fn write_scope_tree(
             continue;
         }
 
-        let mut_str = if local_decl.mutability == Mutability::Mut { "mut " } else { "" };
+        let mut_str = local_decl.mutability.prefix_str();
 
         let mut indented_decl =
             format!("{0:1$}let {2}{3:?}: {4:?}", INDENT, indent, mut_str, local, local_decl.ty);

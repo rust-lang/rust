@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/switched-expectations.rs:3:30
    |
 LL |     let ref string: String = var;
-   |                              ^^^ expected struct `String`, found `i32`
+   |                              ^^^ expected `String`, found `i32`
 
 error: aborting due to previous error
 
