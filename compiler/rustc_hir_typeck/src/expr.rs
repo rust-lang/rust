@@ -1220,7 +1220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_method_call(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        segment: &hir::PathSegment<'_>,
+        segment: &'tcx hir::PathSegment<'tcx>,
         rcvr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
