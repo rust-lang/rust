@@ -930,7 +930,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "".to_string()
                     };
                     labels
-                        .push((provided_span, format!("argument{} unexpected", provided_ty_name)));
+                        .push((provided_span, format!("unexpected argument{}", provided_ty_name)));
                     let mut span = provided_span;
                     if arg_idx.index() > 0
                         && let Some((_, prev)) = provided_arg_tys

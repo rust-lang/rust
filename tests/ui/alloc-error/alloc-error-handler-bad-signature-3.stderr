@@ -7,7 +7,7 @@ LL |   fn oom() -> ! {
    |  _-^^^^^^^^^^^^
 LL | |     loop {}
 LL | | }
-   | |_- argument of type `core::alloc::Layout` unexpected
+   | |_- unexpected argument of type `core::alloc::Layout`
    |
 note: function defined here
   --> $DIR/alloc-error-handler-bad-signature-3.rs:10:4

@@ -2,7 +2,7 @@ error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:2:5
    |
 LL |     t(1i32);
-   |     ^ ---- argument of type `i32` unexpected
+   |     ^ ---- unexpected argument of type `i32`
    |
 note: callable defined here
   --> $DIR/exotic-calls.rs:1:11
@@ -19,7 +19,7 @@ error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:7:5
    |
 LL |     t(1i32);
-   |     ^ ---- argument of type `i32` unexpected
+   |     ^ ---- unexpected argument of type `i32`
    |
 note: type parameter defined here
   --> $DIR/exotic-calls.rs:6:11
@@ -36,7 +36,7 @@ error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:16:5
    |
 LL |     baz()(1i32)
-   |     ^^^^^ ---- argument of type `i32` unexpected
+   |     ^^^^^ ---- unexpected argument of type `i32`
    |
 note: opaque type defined here
   --> $DIR/exotic-calls.rs:11:13
@@ -53,7 +53,7 @@ error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:22:5
    |
 LL |     x(1i32);
-   |     ^ ---- argument of type `i32` unexpected
+   |     ^ ---- unexpected argument of type `i32`
    |
 note: closure defined here
   --> $DIR/exotic-calls.rs:21:13

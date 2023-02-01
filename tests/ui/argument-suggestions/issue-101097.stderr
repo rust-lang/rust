@@ -4,7 +4,7 @@ error[E0061]: this function takes 6 arguments but 7 arguments were supplied
 LL |     f(C, A, A, A, B, B, C);
    |     ^ -     -  -  - expected `C`, found `B`
    |       |     |  |
-   |       |     |  argument of type `A` unexpected
+   |       |     |  unexpected argument of type `A`
    |       |     expected `B`, found `A`
    |       expected `A`, found `C`
    |
@@ -64,8 +64,8 @@ error[E0308]: arguments to this function are incorrect
 LL |     f(A, A, D, D, B, B);
    |     ^       -  -  ---- two arguments of type `C` and `C` are missing
    |             |  |
-   |             |  argument of type `D` unexpected
-   |             argument of type `D` unexpected
+   |             |  unexpected argument of type `D`
+   |             unexpected argument of type `D`
    |
 note: function defined here
   --> $DIR/issue-101097.rs:6:4
