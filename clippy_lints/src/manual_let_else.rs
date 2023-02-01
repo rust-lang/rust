@@ -156,7 +156,8 @@ fn emit_manual_let_else(
                     let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", &mut app);
                     format!("({sn_pat})")
                 },
-                PatKind::TupleStruct(ref w, ..) => {
+                // Replace the variable name iff `TupleStruct` has one argument like `Variant(v)`.
+                PatKind::TupleStruct(ref w, args, ..) if args.len() == 1 => {
                     let sn_wrapper = cx.sess().source_map().span_to_snippet(w.span()).unwrap_or_default();
                     let (sn_inner, _) = snippet_with_context(cx, local.span, span.ctxt(), "", &mut app);
                     format!("{sn_wrapper}({sn_inner})")

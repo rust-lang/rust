@@ -8,6 +8,12 @@
 )]
 #![warn(clippy::manual_let_else)]
 
+enum Variant {
+    A(usize, usize),
+    B(usize),
+    C,
+}
+
 fn g() -> Option<()> {
     None
 }
@@ -135,6 +141,15 @@ fn fire() {
         };
     }
     create_binding_if_some!(w, g());
+
+    fn e() -> Variant {
+        Variant::A(0, 0)
+    }
+
+    // Should not be renamed
+    let v = if let Variant::A(a, 0) = e() { a } else { return };
+    // Should be renamed
+    let v = if let Variant::B(b) = e() { b } else { return };
 }
 
 fn not_fire() {
