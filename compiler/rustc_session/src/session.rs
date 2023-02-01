@@ -1,6 +1,6 @@
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
-pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
+pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::Input;
 use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, SwitchWithOptPath};
 use crate::errors::{
