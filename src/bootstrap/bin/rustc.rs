@@ -74,7 +74,7 @@ fn main() {
         if let Some(profile) = env::var_os("RUSTC_TUNE_COMPILER_CODEGEN_UNITS") {
             let cgus = match crate_name {
                 // This crate is large and at the tail of the compiler crates, give it extra CGUs.
-                "rustc_query_impl" => Some(96),
+                //"rustc_query_impl" => Some(96),
                 // This compiles after all other crates so give it default CGUs to speed it up.
                 "rustc_driver" => None,
                 _ => {

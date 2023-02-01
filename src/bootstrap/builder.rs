@@ -1885,10 +1885,7 @@ impl<'a> Builder<'a> {
                 cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
             }
             (Mode::Rustc, _, _) => {
-                cargo.env(
-                    "RUSTC_TUNE_COMPILER_CODEGEN_UNITS",
-                    if self.config.rust_codegen_units_fast { "fast" } else { "1" },
-                );
+                cargo.env("RUSTC_TUNE_COMPILER_CODEGEN_UNITS", "fast");
             }
             _ => {
                 // Don't set anything
