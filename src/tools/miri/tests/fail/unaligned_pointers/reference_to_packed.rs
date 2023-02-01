@@ -3,7 +3,7 @@
 
 #![allow(dead_code, unused_variables)]
 
-use std::{ptr, mem};
+use std::{mem, ptr};
 
 #[repr(packed)]
 struct Foo {
