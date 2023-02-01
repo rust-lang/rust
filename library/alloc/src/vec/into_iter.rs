@@ -439,7 +439,7 @@ where
         // @FIXME Remove the following extras - used for type checks only
         let slice = self.as_slice();
         let vec: crate::vec::Vec<T, A, CO_ALLOC_PREF> =
-            slice.to_vec_in::<A, CO_ALLOC_PREF>(self.alloc.deref().clone());
+            slice.to_vec_in_co::<A, CO_ALLOC_PREF>(self.alloc.deref().clone());
         let _iter: IntoIter<T, A, CO_ALLOC_PREF> = vec.into_iter();
 
         //self.as_slice().to_vec_in::<A, CO_ALLOC_PREF>(self.alloc.deref().clone()).into_iter()
