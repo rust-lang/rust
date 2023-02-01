@@ -57,7 +57,7 @@ use self::spec_extend::SpecExtend;
 
 mod spec_extend;
 
-use self::spec_from_iter::SpecFromIter;
+use self::spec_from_iter::SpecFromIterCo;
 
 mod spec_from_iter;
 
@@ -2809,7 +2809,7 @@ where
     [(); {crate::meta_num_slots_global!(CO_ALLOC_PREF)}]:,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T, Global, CO_ALLOC_PREF> {
-        SpecFromIter::spec_from_iter(iter.into_iter())
+        SpecFromIterCo::spec_from_iter_co(iter.into_iter())
     }
 }
 
@@ -2913,6 +2913,33 @@ where
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
 #[allow(unused_braces)]
+impl<T, A: Allocator, /*const CO_ALLOC_PREF: CoAllocPref,*/ const OTHER_CO_ALLOC_PREF: CoAllocPref>
+    From<Vec<T, A, OTHER_CO_ALLOC_PREF>> for VecDeque<T, A>//, CO_ALLOC_PREF>
+where
+    //[(); {crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
+    [(); {crate::meta_num_slots!(A, OTHER_CO_ALLOC_PREF)}]:,
+{
+    /// Turn a [`Vec<T>`] into a [`VecDeque<T>`].
+    ///
+    /// [`Vec<T>`]: crate::vec::Vec
+    /// [`VecDeque<T>`]: crate::collections::VecDeque
+    ///
+    /// This conversion is guaranteed to run in *O*(1) time
+    /// and to not re-allocate the `Vec`'s buffer or allocate
+    /// any additional memory.
+    #[inline]
+    default fn from(other: Vec<T, A, OTHER_CO_ALLOC_PREF>) -> Self {
+        let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
+        Self {
+            head: 0,
+            len,
+            buf: unsafe { RawVec::<T, A/*, CO_ALLOC_PREF*/>::from_raw_parts_in(ptr, cap, alloc) },
+        }
+    }
+}
+
+#[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
+#[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref, const OTHER_CO_ALLOC_PREF: CoAllocPref>
     From<Vec<T, A, OTHER_CO_ALLOC_PREF>> for VecDeque<T, A, CO_ALLOC_PREF>
 where
@@ -2928,7 +2955,7 @@ where
     /// and to not re-allocate the `Vec`'s buffer or allocate
     /// any additional memory.
     #[inline]
-    fn from(other: Vec<T, A, OTHER_CO_ALLOC_PREF>) -> Self {
+    default fn from(other: Vec<T, A, OTHER_CO_ALLOC_PREF>) -> Self {
         let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
         Self {
             head: 0,
