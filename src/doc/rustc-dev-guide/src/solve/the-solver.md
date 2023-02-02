@@ -12,6 +12,6 @@ While the actual solver is not fully pure to deal with overflow and cycles, we a
 going to defer that for now.
 
 To deal with inference variables and to improve caching, we use
-[canonicalization](/canonicalization.html).
+[canonicalization](./canonicalization.md).
 
 TODO: write the remaining code for this as well.
