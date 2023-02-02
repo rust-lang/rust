@@ -33,7 +33,7 @@ borrowck_var_here_defined = variable defined here
 
 borrowck_var_here_captured = variable captured here
 
-borrowck_closure_inferred_mut =  inferred to be a `FnMut` closure
+borrowck_closure_inferred_mut = inferred to be a `FnMut` closure
 
 borrowck_returned_closure_escaped =
     returns a closure that contains a reference to a captured variable, which then escapes the closure body
