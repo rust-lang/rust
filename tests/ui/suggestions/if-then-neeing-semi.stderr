@@ -1,5 +1,5 @@
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/if-then-neeing-semi.rs:37:9
+  --> $DIR/if-then-neeing-semi.rs:28:9
    |
 LL |       let _ = if true {
    |  _____________-
@@ -15,11 +15,6 @@ LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
-note: while checking the return type of the `async fn`
-  --> $DIR/if-then-neeing-semi.rs:18:24
-   |
-LL | async fn async_dummy() {}
-   |                        ^ checked the `Output` of this `async fn`, found opaque type
    = note: expected unit type `()`
             found opaque type `impl Future<Output = ()>`
 help: consider `await`ing on the `Future`
@@ -33,7 +28,7 @@ LL +         async_dummy()
    |
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/if-then-neeing-semi.rs:50:9
+  --> $DIR/if-then-neeing-semi.rs:41:9
    |
 LL |       let _ = if true {
    |  _____________-
@@ -49,11 +44,6 @@ LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
-note: while checking the return type of the `async fn`
-  --> $DIR/if-then-neeing-semi.rs:24:25
-   |
-LL | async fn async_dummy2() {}
-   |                         ^ checked the `Output` of this `async fn`, found opaque type
    = note: expected unit type `()`
             found opaque type `impl Future<Output = ()>`
 help: consider `await`ing on the `Future`
@@ -69,7 +59,7 @@ LL ~         Box::new(async_dummy2())
    |
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/if-then-neeing-semi.rs:63:9
+  --> $DIR/if-then-neeing-semi.rs:54:9
    |
 LL |       let _ = if true {
    |  _____________-
@@ -85,18 +75,8 @@ LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
-note: while checking the return type of the `async fn`
-  --> $DIR/if-then-neeing-semi.rs:18:24
-   |
-LL | async fn async_dummy() {}
-   |                        ^ checked the `Output` of this `async fn`, expected opaque type
-note: while checking the return type of the `async fn`
-  --> $DIR/if-then-neeing-semi.rs:24:25
-   |
-LL | async fn async_dummy2() {}
-   |                         ^ checked the `Output` of this `async fn`, found opaque type
    = note: expected opaque type `impl Future<Output = ()>` (opaque type at <$DIR/if-then-neeing-semi.rs:18:24>)
-              found opaque type `impl Future<Output = ()>` (opaque type at <$DIR/if-then-neeing-semi.rs:24:25>)
+              found opaque type `impl Future<Output = ()>` (opaque type at <$DIR/if-then-neeing-semi.rs:20:25>)
    = note: distinct uses of `impl Trait` result in different opaque types
 help: consider `await`ing on both `Future`s
    |

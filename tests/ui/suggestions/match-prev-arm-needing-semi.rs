@@ -13,18 +13,9 @@ fn extra_semicolon() {
     };
 }
 
-async fn async_dummy() {} //~ NOTE checked the `Output` of this `async fn`, found opaque type
-//~| NOTE while checking the return type of the `async fn`
-//~| NOTE in this expansion of desugaring of `async` block or function
-//~| NOTE checked the `Output` of this `async fn`, expected opaque type
-//~| NOTE while checking the return type of the `async fn`
-//~| NOTE in this expansion of desugaring of `async` block or function
-async fn async_dummy2() {} //~ NOTE checked the `Output` of this `async fn`, found opaque type
-//~| NOTE checked the `Output` of this `async fn`, found opaque type
-//~| NOTE while checking the return type of the `async fn`
-//~| NOTE in this expansion of desugaring of `async` block or function
-//~| NOTE while checking the return type of the `async fn`
-//~| NOTE in this expansion of desugaring of `async` block or function
+async fn async_dummy() {}
+
+async fn async_dummy2() {}
 
 async fn async_extra_semicolon_same() {
     let _ = match true { //~ NOTE `match` arms have incompatible types

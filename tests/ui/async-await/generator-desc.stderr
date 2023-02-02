@@ -21,16 +21,6 @@ LL |     fun(one(), two());
    |     |
    |     arguments to this function are incorrect
    |
-note: while checking the return type of the `async fn`
-  --> $DIR/generator-desc.rs:5:16
-   |
-LL | async fn one() {}
-   |                ^ checked the `Output` of this `async fn`, expected opaque type
-note: while checking the return type of the `async fn`
-  --> $DIR/generator-desc.rs:6:16
-   |
-LL | async fn two() {}
-   |                ^ checked the `Output` of this `async fn`, found opaque type
    = note: expected opaque type `impl Future<Output = ()>` (opaque type at <$DIR/generator-desc.rs:5:16>)
               found opaque type `impl Future<Output = ()>` (opaque type at <$DIR/generator-desc.rs:6:16>)
    = help: consider `await`ing on both `Future`s
