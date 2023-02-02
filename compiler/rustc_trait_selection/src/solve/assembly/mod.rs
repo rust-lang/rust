@@ -498,7 +498,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let tcx = self.tcx();
         let own_bounds: FxIndexSet<_> =
             bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)).collect();
-        for assumption in elaborate(tcx, own_bounds.iter().copied()) {
+        for assumption in elaborate(tcx, own_bounds.iter().copied())
+            // we only care about bounds that match the `Self` type
+            .filter_only_self()
+        {
             // FIXME: Predicates are fully elaborated in the object type's existential bounds
             // list. We want to only consider these pre-elaborated projections, and not other
             // projection predicates that we reach by elaborating the principal trait ref,
