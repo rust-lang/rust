@@ -6,7 +6,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deprecated(
-    since = "TBD",
+    since = "1.69.0",
     note = "all constants in this module replaced by associated constants on `u32`"
 )]
 

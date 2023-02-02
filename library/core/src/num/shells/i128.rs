@@ -6,7 +6,7 @@
 
 #![stable(feature = "i128", since = "1.26.0")]
 #![deprecated(
-    since = "TBD",
+    since = "1.69.0",
     note = "all constants in this module replaced by associated constants on `i128`"
 )]
 
