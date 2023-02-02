@@ -18,6 +18,7 @@ use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
+use crate::{get_enzyme_typtree, DiffTypeTree};
 
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
@@ -26,13 +27,14 @@ use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::mir::mono::{Linkage, Visibility, MonoItem};
+use rustc_middle::ty::{self, Ty, TyCtxt, ParamEnv};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use std::time::Instant;
+use std::ffi::CStr;
 
 pub struct ValueIter<'ll> {
     cur: Option<&'ll Value>,
@@ -79,8 +81,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             &[cgu_name.to_string(), cgu.size_estimate().to_string()],
             );
         // Instantiate monomorphizations without filling out definitions yet...
-        let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
-        {
+        let mut llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
+        let typetrees = {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
 
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
@@ -127,7 +129,27 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             if cx.sess().opts.debuginfo != DebugInfo::None {
                 cx.debuginfo_finalize();
             }
-        }
+
+            // find autodiff items and build typetrees for them
+            mono_items.iter()
+                .filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).apply_autodiff()).unwrap_or(false))
+                .filter_map(|(mono_item, _)| {
+                    let symbol = mono_item.symbol_name(cx.tcx).to_string();
+                    match mono_item {
+                        MonoItem::Fn(instance) => {
+                            let ty = instance.ty(tcx, ParamEnv::empty());
+
+                            Some((
+                                symbol,
+                                unsafe { parse_typetree(tcx, ty, &llvm_module) }
+                            ))
+                        },
+                        _ => None
+                    }
+                }).collect()
+        };
+
+        llvm_module.typetrees = typetrees;
 
         ModuleCodegen {
             name: cgu_name.to_string(),
@@ -137,6 +159,33 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
     }
 
     (module, cost)
+}
+
+unsafe fn parse_typetree<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, llvm_module: &ModuleLlvm) -> DiffTypeTree {
+    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
+    
+    // TODO: verify.
+    // I think we don't need lifetimes here, so skip_binder is valid?
+    // let tmp = fnc_binder.no_bound_vars();
+    // assert!(tmp.is_some());
+    // let x: ty::FnSig<'_> = tmp.unwrap();
+    let x: ty::FnSig<'_> = fnc_binder.skip_binder();
+    
+    let output: Ty<'_> = x.output();
+    let inputs: &[Ty<'_>] = x.inputs();
+    let llvm_data_layout = llvm::LLVMGetDataLayoutStr(&*llvm_module.llmod_raw);
+    let llvm_data_layout = std::str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
+        .expect("got a non-UTF8 data-layout from LLVM");
+    let mut input_tt = vec![];
+    for input in inputs {
+        input_tt.push(get_enzyme_typtree(*input, llvm_data_layout, tcx, llvm_module.llcx, 0));
+    }
+    let ret_tt = get_enzyme_typtree(output, llvm_data_layout, tcx, llvm_module.llcx, 0);
+    println!("ret_tt: {}", ret_tt);
+    DiffTypeTree {
+        ret_tt,
+        input_tt,
+    }
 }
 
 pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {

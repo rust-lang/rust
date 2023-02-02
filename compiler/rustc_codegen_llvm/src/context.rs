@@ -54,57 +54,57 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// Cache generated vtables
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
-        /// Cache of constant strings,
-        pub const_str_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
+    /// Cache of constant strings,
+    pub const_str_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
-        /// Reverse-direction for const ptrs cast from globals.
-        ///
-        /// Key is a Value holding a `*T`,
-        /// Val is a Value holding a `*[T]`.
-        ///
-        /// Needed because LLVM loses pointer->pointee association
-        /// when we ptrcast, and we have to ptrcast during codegen
-        /// of a `[T]` const because we form a slice, a `(*T,usize)` pair, not
-        /// a pointer to an LLVM array type. Similar for trait objects.
-        pub const_unsized: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
+    /// Reverse-direction for const ptrs cast from globals.
+    ///
+    /// Key is a Value holding a `*T`,
+    /// Val is a Value holding a `*[T]`.
+    ///
+    /// Needed because LLVM loses pointer->pointee association
+    /// when we ptrcast, and we have to ptrcast during codegen
+    /// of a `[T]` const because we form a slice, a `(*T,usize)` pair, not
+    /// a pointer to an LLVM array type. Similar for trait objects.
+    pub const_unsized: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
-        /// Cache of emitted const globals (value -> global)
-        pub const_globals: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
+    /// Cache of emitted const globals (value -> global)
+    pub const_globals: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
-        /// List of globals for static variables which need to be passed to the
-        /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
-        /// (We have to make sure we don't invalidate any Values referring
-        /// to constants.)
-        pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
+    /// List of globals for static variables which need to be passed to the
+    /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
+    /// (We have to make sure we don't invalidate any Values referring
+    /// to constants.)
+    pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
-        /// Statics that will be placed in the llvm.used variable
-        /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
-        pub used_statics: RefCell<Vec<&'ll Value>>,
+    /// Statics that will be placed in the llvm.used variable
+    /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
+    pub used_statics: RefCell<Vec<&'ll Value>>,
 
-        /// Statics that will be placed in the llvm.compiler.used variable
-        /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
-        pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
+    /// Statics that will be placed in the llvm.compiler.used variable
+    /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
+    pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
 
-        /// Mapping of non-scalar types to llvm types and field remapping if needed.
-        pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), TypeLowering<'ll>>>,
+    /// Mapping of non-scalar types to llvm types and field remapping if needed.
+    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), TypeLowering<'ll>>>,
 
-        /// Mapping of scalar types to llvm types.
-        pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
+    /// Mapping of scalar types to llvm types.
+    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
 
-        pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
-        pub isize_ty: &'ll Type,
+    pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
+    pub isize_ty: &'ll Type,
 
-        pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
-        pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
+    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
+    pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
-        eh_personality: Cell<Option<&'ll Value>>,
-        eh_catch_typeinfo: Cell<Option<&'ll Value>>,
-        pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
+    eh_personality: Cell<Option<&'ll Value>>,
+    eh_catch_typeinfo: Cell<Option<&'ll Value>>,
+    pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
 
-        intrinsics: RefCell<FxHashMap<&'static str, (&'ll Type, &'ll Value)>>,
+    intrinsics: RefCell<FxHashMap<&'static str, (&'ll Type, &'ll Value)>>,
 
-        /// A counter that is used for generating local symbol names
-        local_gen_sym_counter: Cell<usize>,
+    /// A counter that is used for generating local symbol names
+    local_gen_sym_counter: Cell<usize>,
 }
 
 pub struct TypeLowering<'ll> {

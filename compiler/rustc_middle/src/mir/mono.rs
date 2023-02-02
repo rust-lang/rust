@@ -200,6 +200,15 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
         }
     }
+
+    /// Returns the item's `DefId`
+    pub fn def_id(&self) -> Option<DefId> {
+        match *self {
+            MonoItem::Fn(Instance { def, .. }) => Some(def.def_id()),
+            MonoItem::Static(def_id) => Some(def_id),
+            MonoItem::GlobalAsm(_) => None,
+        }
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {

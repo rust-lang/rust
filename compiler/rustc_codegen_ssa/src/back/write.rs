@@ -1937,6 +1937,7 @@ pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
     module: ModuleCodegen<B::Module>,
     cost: u64,
     ) {
+    // BLUB
     let llvm_work_item = WorkItem::Optimize(module);
     drop(tx_to_llvm_workers.send(Box::new(Message::CodegenDone::<B> { llvm_work_item, cost })));
 }

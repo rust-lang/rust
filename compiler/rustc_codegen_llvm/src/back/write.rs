@@ -3,7 +3,7 @@ use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
 };
 
-use crate::{base, LLVMDiffItem};
+use crate::{base, DiffTypeTree};
 use crate::common;
 use crate::consts;
 use crate::llvm::{Value, LLVMVerifyFunction, LLVMReplaceAllUsesWith};
@@ -640,14 +640,14 @@ pub(crate) unsafe fn extract_return_type<'a>(
 // As unsafe as it can be.
 #[allow(unused_variables)]
 #[allow(unused)]
-pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, tasks: &LLVMDiffItem, source: String) -> Result<(), FatalError> {
+pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item: AutoDiffItem, tt: &DiffTypeTree) -> Result<(), FatalError> {
 
-    let autodiff_mode = tasks.mode;
-    let rust_name = source;
-    let rust_name2 = &tasks.target;
+    let autodiff_mode = item.attrs.mode;
+    let rust_name = item.source;
+    let rust_name2 = &item.target;
 
-    let args_activity = tasks.input_activity.clone();
-    let ret_activity: DiffActivity = tasks.ret_activity;
+    let args_activity = item.attrs.input_activity.clone();
+    let ret_activity: DiffActivity = item.attrs.ret_activity;
 
     let name = CString::new(rust_name.to_owned()).unwrap();
     let name2 = CString::new(rust_name2.clone()).unwrap();
@@ -668,7 +668,7 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, tasks
     let diff_primary_ret = false;
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
-    let mut res: &Value = match tasks.mode {
+    let mut res: &Value = match item.attrs.mode {
         DiffMode::Forward => enzyme_rust_forward_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret),
         DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, diff_primary_ret),
         _ => unreachable!(),
@@ -677,7 +677,7 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, tasks
     let f_type = LLVMTypeOf(res);
     let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
     let void_type = LLVMVoidTypeInContext(llcx);
-    if tasks.mode == DiffMode::Reverse && f_return_type != void_type{
+    if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type{
         dbg!("Reverse Mode sanitizer");
         dbg!(f_type);
         dbg!(f_return_type);
@@ -708,31 +708,19 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, tasks
 pub(crate) unsafe fn differentiate(
     module: &ModuleCodegen<ModuleLlvm>,
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diff_fncs: Vec<AutoDiffItem>,
+    diff_items: Vec<AutoDiffItem>,
     ) -> Result<(), FatalError> {
 
     let llmod = module.module_llvm.llmod();
-    //let llcx = &module.module_llvm.llcx;
+    let llcx = &module.module_llvm.llcx;
+    let typetrees = &module.module_llvm.typetrees;
 
-    for diff_fnc in diff_fncs {
-        let name = CString::new(diff_fnc.target.clone()).unwrap();
-        dbg!(&name);
-        dbg!(&llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr()));
-        let name = CString::new(diff_fnc.source.clone()).unwrap();
-        dbg!(&name);
-        dbg!(&llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr()));
-        dbg!(&diff_fnc.attrs);
+    for item in diff_items {
+        let tt = typetrees.get(&item.target).unwrap();
+
+        let res = enzyme_ad(llmod, llcx, item, tt);
+        assert!(res.is_ok());
     }
-    //let names: Vec<String> = diff_fncs.iter().map(|(_fnc, name)| name.clone()).collect();
-    //let tasks = &module.module_llvm.lldiff_items;
-
-    //assert_eq!(names.len(), tasks.len());
-    //// dbg!(names.len());
-    //// dbg!(tasks.len());
-    //for (task, name) in tasks.iter().zip(names) {
-    //    let res = enzyme_ad(llmod, llcx, &task, name);
-    //    assert!(res.is_ok());
-    //}
 
     Ok(())
 }
@@ -950,8 +938,10 @@ pub(crate) fn link(
     use super::lto::{Linker, ModuleBuffer};
     // Sort the modules by name to ensure to ensure deterministic behavior.
     modules.sort_by(|a, b| a.name.cmp(&b.name));
+
     let (first, elements) =
         modules.split_first().expect("Bug! modules must contain at least one module.");
+
 
     let mut linker = Linker::new(first.module_llvm.llmod());
     for module in elements {

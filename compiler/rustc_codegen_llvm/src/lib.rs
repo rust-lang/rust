@@ -33,12 +33,11 @@ use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
-use rustc_hir::def_id::DefId;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{TyCtxt, self, Ty, ParamEnvAnd};
-use rustc_middle::middle::autodiff_attrs::{DiffMode, DiffActivity, AutoDiffItem};
+use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -46,7 +45,6 @@ use rustc_target::abi::FieldsShape;
 
 use std::any::Any;
 use std::ffi::CStr;
-
 
 mod back {
     pub mod archive;
@@ -520,14 +518,9 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
 }
 
 
-pub struct LLVMDiffItem {
-    pub source: DefId,
-    pub target: String,
-    pub mode: DiffMode,
+pub struct DiffTypeTree {
     pub ret_tt: TypeTree,
-    pub ret_activity: DiffActivity,
     pub input_tt: Vec<TypeTree>,
-    pub input_activity: Vec<DiffActivity>,
 }
 
 #[allow(dead_code)]
@@ -535,6 +528,7 @@ pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
     tm: &'static mut llvm::TargetMachine,
+    typetrees: FxHashMap<String, DiffTypeTree>,
 }
 
 unsafe impl Send for ModuleLlvm {}
@@ -545,7 +539,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name) }
+            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name), typetrees: Default::default(), }
         }
     }
 
@@ -553,7 +547,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess) }
+            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess) , typetrees: Default::default() }
         }
     }
 
@@ -576,7 +570,7 @@ impl ModuleLlvm {
             };
 
 
-            Ok(ModuleLlvm { llmod_raw, llcx, tm })
+            Ok(ModuleLlvm { llmod_raw, llcx, tm, typetrees: Default::default() })
         }
     }
 
