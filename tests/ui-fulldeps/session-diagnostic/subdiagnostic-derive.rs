@@ -798,3 +798,13 @@ struct SuggestionStyleInvalid4 {
     #[primary_span]
     sub: Span,
 }
+
+#[derive(Subdiagnostic)]
+#[suggestion(parse_add_paren, code = "")]
+//~^ ERROR suggestion without `#[primary_span]` field
+struct PrimarySpanOnVec {
+    #[primary_span]
+    //~^ ERROR `#[primary_span]` is not a valid attribute
+    //~| NOTE there must be exactly one primary span
+    sub: Vec<Span>,
+}

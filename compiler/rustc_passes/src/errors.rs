@@ -348,6 +348,34 @@ pub struct HasIncoherentInherentImpl {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_both_ffi_const_and_pure, code = "E0757")]
+pub struct BothFfiConstAndPure {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_ffi_pure_invalid_target, code = "E0755")]
+pub struct FfiPureInvalidTarget {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_ffi_const_invalid_target, code = "E0756")]
+pub struct FfiConstInvalidTarget {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_ffi_returns_twice_invalid_target, code = "E0724")]
+pub struct FfiReturnsTwiceInvalidTarget {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_must_use_async)]
 pub struct MustUseAsync {

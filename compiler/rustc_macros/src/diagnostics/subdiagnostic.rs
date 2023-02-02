@@ -247,11 +247,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     return quote! {};
                 }
 
-                let info = FieldInfo {
-                    binding,
-                    ty: inner_ty.inner_type().unwrap_or(&ast.ty),
-                    span: &ast.span(),
-                };
+                let info = FieldInfo { binding, ty: inner_ty, span: &ast.span() };
 
                 let generated = self
                     .generate_field_code_inner(kind_stats, attr, info, inner_ty.will_iterate())
@@ -312,6 +308,21 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     let binding = info.binding.binding.clone();
                     // FIXME(#100717): support `Option<Span>` on `primary_span` like in the
                     // diagnostic derive
+                    if !matches!(info.ty, FieldInnerTy::Plain(_)) {
+                        throw_invalid_attr!(attr, &Meta::Path(path), |diag| {
+                            let diag = diag.note("there must be exactly one primary span");
+
+                            if kind_stats.has_normal_suggestion {
+                                diag.help(
+                                    "to create a suggestion with multiple spans, \
+                                     use `#[multipart_suggestion]` instead",
+                                )
+                            } else {
+                                diag
+                            }
+                        });
+                    }
+
                     self.span_field.set_once(binding, span);
                 }
 

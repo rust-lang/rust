@@ -60,7 +60,7 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
+use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -1470,51 +1470,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 for (key, values) in types.iter() {
                     let count = values.len();
                     let kind = key.descr();
-                    let mut returned_async_output_error = false;
                     for &sp in values {
-                        if sp.is_desugaring(DesugaringKind::Async) && !returned_async_output_error {
-                            if [sp] != err.span.primary_spans() {
-                                let mut span: MultiSpan = sp.into();
-                                span.push_span_label(
-                                    sp,
-                                    format!(
-                                        "checked the `Output` of this `async fn`, {}{} {}{}",
-                                        if count > 1 { "one of the " } else { "" },
-                                        target,
-                                        kind,
-                                        pluralize!(count),
-                                    ),
-                                );
-                                err.span_note(
-                                    span,
-                                    "while checking the return type of the `async fn`",
-                                );
-                            } else {
-                                err.span_label(
-                                    sp,
-                                    format!(
-                                        "checked the `Output` of this `async fn`, {}{} {}{}",
-                                        if count > 1 { "one of the " } else { "" },
-                                        target,
-                                        kind,
-                                        pluralize!(count),
-                                    ),
-                                );
-                                err.note("while checking the return type of the `async fn`");
-                            }
-                            returned_async_output_error = true;
-                        } else {
-                            err.span_label(
-                                sp,
-                                format!(
-                                    "{}{} {}{}",
-                                    if count == 1 { "the " } else { "one of the " },
-                                    target,
-                                    kind,
-                                    pluralize!(count),
-                                ),
-                            );
-                        }
+                        err.span_label(
+                            sp,
+                            format!(
+                                "{}{} {}{}",
+                                if count == 1 { "the " } else { "one of the " },
+                                target,
+                                kind,
+                                pluralize!(count),
+                            ),
+                        );
                     }
                 }
             }
@@ -1537,7 +1503,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     //    |
                     //    = note: expected unit type `()`
                     //                 found closure `[closure@$DIR/issue-20862.rs:2:5: 2:14 x:_]`
-                    if !self.ignore_span.overlaps(span) {
+                    //
+                    // Also ignore opaque `Future`s that come from async fns.
+                    if !self.ignore_span.overlaps(span)
+                        && !span.is_desugaring(DesugaringKind::Async)
+                    {
                         self.types.entry(kind).or_default().insert(span);
                     }
                 }

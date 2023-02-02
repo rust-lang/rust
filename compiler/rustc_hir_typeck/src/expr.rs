@@ -8,7 +8,7 @@ use crate::coercion::DynamicCoerceMany;
 use crate::errors::TypeMismatchFruTypo;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use crate::errors::{
-    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
+    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
     YieldExprOutsideOfGenerator,
 };
 use crate::fatally_break_rust;
@@ -23,8 +23,8 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
-    ErrorGuaranteed, StashKey,
+    pluralize, struct_span_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
+    DiagnosticId, ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -2433,7 +2433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We know by construction that `<expr>.await` is either on Rust 2015
             // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
             err.note("to `.await` a `Future`, switch to Rust 2018 or later");
-            err.help_use_latest_edition();
+            HelpUseLatestEdition::new().add_to_diagnostic(&mut err);
         }
 
         err.emit();

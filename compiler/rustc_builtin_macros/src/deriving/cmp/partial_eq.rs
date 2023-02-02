@@ -29,16 +29,30 @@ pub fn expand_deriving_partial_eq(
                         cx.span_bug(field.span, "not exactly 2 arguments in `derive(PartialEq)`");
                     };
 
-                    // We received `&T` arguments. Convert them to `T` by
-                    // stripping `&` or adding `*`. This isn't necessary for
-                    // type checking, but it results in much better error
-                    // messages if something goes wrong.
+                    // We received arguments of type `&T`. Convert them to type `T` by stripping
+                    // any leading `&` or adding `*`. This isn't necessary for type checking, but
+                    // it results in better error messages if something goes wrong.
+                    //
+                    // Note: for arguments that look like `&{ x }`, which occur with packed
+                    // structs, this would cause expressions like `{ self.x } == { other.x }`,
+                    // which isn't valid Rust syntax. This wouldn't break compilation because these
+                    // AST nodes are constructed within the compiler. But it would mean that code
+                    // printed by `-Zunpretty=expanded` (or `cargo expand`) would have invalid
+                    // syntax, which would be suboptimal. So we wrap these in parens, giving
+                    // `({ self.x }) == ({ other.x })`, which is valid syntax.
                     let convert = |expr: &P<Expr>| {
                         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) =
                             &expr.kind
                         {
-                            inner.clone()
+                            if let ExprKind::Block(..) = &inner.kind {
+                                // `&{ x }` form: remove the `&`, add parens.
+                                cx.expr_paren(field.span, inner.clone())
+                            } else {
+                                // `&x` form: remove the `&`.
+                                inner.clone()
+                            }
                         } else {
+                            // No leading `&`: add a leading `*`.
                             cx.expr_deref(field.span, expr.clone())
                         }
                     };

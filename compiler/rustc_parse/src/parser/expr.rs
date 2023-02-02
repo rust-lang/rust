@@ -1,25 +1,26 @@
 use super::diagnostics::SnapshotParser;
-use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
+use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
     SemiColonMode, SeqSep, TokenExpectType, TokenType, TrailingToken,
 };
 use crate::errors::{
-    ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncMoveOrderIncorrect,
-    BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct, ComparisonInterpretedAsGeneric,
-    ComparisonOrShiftInterpretedAsGenericSugg, DoCatchSyntaxRemoved, DotDotDot, EqFieldInit,
-    ExpectedElseBlock, ExpectedEqForLetExpr, ExpectedExpressionFoundLet,
-    FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
-    IfExpressionLetSomeSub, IfExpressionMissingCondition, IfExpressionMissingThenBlock,
-    IfExpressionMissingThenBlockSub, InvalidBlockMacroSegment, InvalidComparisonOperator,
-    InvalidComparisonOperatorSub, InvalidInterpolatedExpression, InvalidLiteralSuffixOnTupleIndex,
-    InvalidLogicalOperator, InvalidLogicalOperatorSub, LabeledLoopInBreak, LeadingPlusNotSupported,
-    LeftArrowOperator, LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath,
-    MalformedLoopLabel, MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg,
-    MissingCommaAfterMatchArm, MissingDotDot, MissingInInForLoop, MissingInInForLoopSub,
-    MissingSemicolonBeforeArray, NoFieldsForFnCall, NotAsNegationOperator,
-    NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
+    ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncBlockIn2015,
+    AsyncMoveOrderIncorrect, BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct,
+    ComparisonInterpretedAsGeneric, ComparisonOrShiftInterpretedAsGenericSugg,
+    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedEqForLetExpr,
+    ExpectedExpressionFoundLet, FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart,
+    FoundExprWouldBeStmt, HelpUseLatestEdition, IfExpressionLetSomeSub,
+    IfExpressionMissingCondition, IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub,
+    InvalidBlockMacroSegment, InvalidComparisonOperator, InvalidComparisonOperatorSub,
+    InvalidInterpolatedExpression, InvalidLiteralSuffixOnTupleIndex, InvalidLogicalOperator,
+    InvalidLogicalOperatorSub, LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator,
+    LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
+    MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm,
+    MissingDotDot, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
+    NoFieldsForFnCall, NotAsNegationOperator, NotAsNegationOperatorSub,
+    OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
     RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
     StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedIfWithIf,
     UnexpectedTokenAfterLabel, UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
@@ -39,8 +40,8 @@ use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, R
 use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{
-    Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
-    StashKey,
+    AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
+    PResult, StashKey,
 };
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
@@ -2221,7 +2222,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
-            let pat = this.parse_pat_no_top_alt(PARAM_EXPECTED)?;
+            let pat = this.parse_pat_no_top_alt(Some(Expected::ParameterName))?;
             let ty = if this.eat(&token::Colon) {
                 this.parse_ty()?
             } else {
@@ -2926,8 +2927,8 @@ impl<'a> Parser<'a> {
 
         let mut async_block_err = |e: &mut Diagnostic, span: Span| {
             recover_async = true;
-            e.span_label(span, "`async` blocks are only allowed in Rust 2018 or later");
-            e.help_use_latest_edition();
+            AsyncBlockIn2015 { span }.add_to_diagnostic(e);
+            HelpUseLatestEdition::new().add_to_diagnostic(e);
         };
 
         while self.token != token::CloseDelim(close_delim) {
