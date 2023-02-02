@@ -160,6 +160,19 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
+impl<T, const CO_ALLOC_PREF: CoAllocPref> Default for VecDeque<T, Global, CO_ALLOC_PREF>
+where
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
+    /// Creates an empty deque.
+    #[inline]
+    default fn default() -> VecDeque<T, Global, CO_ALLOC_PREF> {
+        VecDeque::<T, Global, CO_ALLOC_PREF>::new_co()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_braces)]
 impl<T> Default for VecDeque<T> {
     /// Creates an empty deque.
     #[inline]
@@ -586,6 +599,32 @@ impl<T> VecDeque<T> {
     #[allow(unused_braces)]
     pub fn with_capacity(capacity: usize) -> VecDeque<T, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
         VecDeque::<T, Global, { CO_ALLOC_PREF_DEFAULT!() }>::with_capacity_in(capacity, Global)
+    }
+}
+
+#[allow(unused_braces)]
+impl<T, const CO_ALLOC_PREF: CoAllocPref> VecDeque<T, Global, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
+    /// Coallocation-aware version of `new`.
+    #[inline]
+    #[unstable(feature = "co_alloc_global", issue="none")]
+    #[must_use]
+    #[allow(unused_braces)]
+    pub const fn new_co() -> VecDeque<T, Global, CO_ALLOC_PREF>
+    {
+        // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
+        VecDeque { head: 0, len: 0, buf: RawVec::NEW }
+    }
+
+    /// Coallocation-aware version of `with_capacity`.
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
+    #[allow(unused_braces)]
+    pub fn with_capacity_co(capacity: usize) -> VecDeque<T, Global, CO_ALLOC_PREF> {
+        VecDeque::<T, Global, CO_ALLOC_PREF>::with_capacity_in(capacity, Global)
     }
 }
 
