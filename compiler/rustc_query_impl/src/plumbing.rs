@@ -104,7 +104,7 @@ impl QueryContext for QueryCtxt<'_> {
         token: QueryJobId,
         depth_limit: bool,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: impl FnOnce() -> R,
+        compute: &mut dyn FnMut() -> R,
     ) -> R {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
