@@ -167,7 +167,8 @@ equal when testing whether they can be assigned to each other (which is a common
 diagnostics code). `==` on them will return `false` though, since they are different types.
 
 The simplest way to compare two types correctly requires an inference context (`infcx`).
-If you have one, you can use `infcx.can_eq(ty1, ty2)` to check whether the types can be made equal.
+If you have one, you can use `infcx.can_eq(param_env, ty1, ty2)`
+to check whether the types can be made equal.
 This is typically what you want to check during diagnostics, which is concerned with questions such
 as whether two types can be assigned to each other, not whether they're represented identically in
 the compiler's type-checking layer.
@@ -183,7 +184,7 @@ primarily a concern during HIR type checking and with all types from a `TyCtxt` 
 (for example from `tcx.type_of()`).
 
 When a `FnCtxt` or an `ObligationCtxt` is available during type checking, `.normalize(ty)`
-can be used on them to normalize the type. After type checking, diagnostics code can use
+should be used on them to normalize the type. After type checking, diagnostics code can use
 `tcx.normalize_erasing_regions(ty)`.
 
 There are also cases where using `==` on `Ty` is fine. This is for example the case in late lints
