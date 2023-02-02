@@ -1,7 +1,7 @@
 use super::attr::InnerAttrForbiddenReason;
 use super::diagnostics::AttemptLocalParseRecovery;
 use super::expr::LhsExpr;
-use super::pat::RecoverComma;
+use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
 use super::TrailingToken;
 use super::{
@@ -275,7 +275,8 @@ impl<'a> Parser<'a> {
         }
 
         self.report_invalid_identifier_error()?;
-        let (pat, colon) = self.parse_pat_before_ty(None, RecoverComma::Yes, "`let` bindings")?;
+        let (pat, colon) =
+            self.parse_pat_before_ty(None, RecoverComma::Yes, PatternLocation::LetBinding)?;
 
         let (err, ty) = if colon {
             // Save the state of the parser before parsing type normally, in case there is a `:`
