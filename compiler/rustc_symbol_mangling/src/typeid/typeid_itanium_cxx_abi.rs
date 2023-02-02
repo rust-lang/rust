@@ -536,6 +536,16 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        ty::Pat(ty0, pat) => {
+            // u3patI<element-type><pattern>E as vendor extended type
+            let mut s = String::from("u3patI");
+            s.push_str(&encode_ty(tcx, *ty0, dict, options));
+            write!(s, "{:?}", **pat).unwrap();
+            s.push('E');
+            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            typeid.push_str(&s);
+        }
+
         ty::Slice(ty0) => {
             // u5sliceI<element-type>E as vendor extended type
             let mut s = String::from("u5sliceI");
@@ -858,6 +868,10 @@ fn transform_ty<'tcx>(
             let len = len.eval_target_usize(tcx, ty::ParamEnv::reveal_all());
 
             ty = Ty::new_array(tcx, transform_ty(tcx, *ty0, parents, options), len);
+        }
+
+        ty::Pat(ty0, pat) => {
+            ty = Ty::new_pat(tcx, transform_ty(tcx, *ty0, parents, options), *pat);
         }
 
         ty::Slice(ty0) => {

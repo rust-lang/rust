@@ -69,6 +69,11 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
                 throw_inval!(TooGeneric)
             }
+            ty::Pat(..) => {
+                unimplemented!(
+                    "pattern types need to calculate available variants from their pattern"
+                )
+            }
             ty::Bound(_, _) => bug!("bound ty during ctfe"),
             ty::Bool
             | ty::Char

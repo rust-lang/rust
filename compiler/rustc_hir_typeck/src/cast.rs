@@ -130,6 +130,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::CoroutineWitness(..)
             | ty::RawPtr(_, _)
             | ty::Ref(..)
+            | ty::Pat(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Closure(..)

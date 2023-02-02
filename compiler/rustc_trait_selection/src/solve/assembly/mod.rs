@@ -356,6 +356,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(_, _)
+            | ty::Pat(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
@@ -589,6 +590,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(_, _)
+            | ty::Pat(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
@@ -677,6 +679,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(_, _)
+            | ty::Pat(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)

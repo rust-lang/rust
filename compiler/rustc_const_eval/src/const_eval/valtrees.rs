@@ -98,6 +98,9 @@ fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::Leaf(val.assert_int()))
         }
 
+        ty::Pat(..) => const_to_valtree_inner(ecx, &ecx.project_field(place, 0).unwrap(), num_nodes),
+
+
         ty::RawPtr(_, _) => {
             // Not all raw pointers are allowed, as we cannot properly test them for
             // equality at compile-time (see `ptr_guaranteed_cmp`).
@@ -273,7 +276,7 @@ pub fn valtree_to_const_value<'tcx>(
 
     let (param_env, ty) = param_env_ty.into_parts();
 
-    match ty.kind() {
+    match *ty.kind() {
         ty::FnDef(..) => {
             assert!(valtree.unwrap_branch().is_empty());
             mir::ConstValue::ZeroSized
@@ -286,10 +289,11 @@ pub fn valtree_to_const_value<'tcx>(
                 ),
             }
         }
+        ty::Pat(ty, _) => valtree_to_const_value(tcx, param_env.and(ty), valtree),
         ty::Ref(_, inner_ty, _) => {
             let mut ecx =
                 mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
-            let imm = valtree_to_ref(&mut ecx, valtree, *inner_ty);
+            let imm = valtree_to_ref(&mut ecx, valtree, inner_ty);
             let imm = ImmTy::from_immediate(imm, tcx.layout_of(param_env_ty).unwrap());
             op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
         }
