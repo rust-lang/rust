@@ -16,9 +16,7 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
           _1 = const u8::MAX;              // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
-          StorageLive(_2);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
           _2 = const 1_u8;                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
           _5 = CheckedAdd(const u8::MAX, const 1_u8); // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
           assert(!move (_5.1: bool), "attempt to compute `{} + {}`, which would overflow", const u8::MAX, const 1_u8) -> bb1; // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
