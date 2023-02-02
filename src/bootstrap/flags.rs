@@ -82,8 +82,7 @@ pub struct Flags {
     pub llvm_bolt_profile_use: Option<String>,
 }
 
-#[derive(Debug)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Clone, Debug)]
 pub enum Subcommand {
     Build {
         paths: Vec<PathBuf>,
