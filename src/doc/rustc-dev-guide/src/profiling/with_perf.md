@@ -90,14 +90,15 @@ You can also use that same command to use cachegrind or other profiling tools.
 
 If you prefer to run things manually, that is also possible. You first
 need to find the source for the test you want. Sources for the tests
-are found in [the `collector/benchmarks` directory][dir]. So let's go
-into the directory of a specific test; we'll use `clap-rs` as an
-example:
+are found in [the `collector/compile-benchmarks` directory][compile-time dir]
+and [the `collector/runtime-benchmarks` directory][runtime dir]. So let's
+go into the directory of a specific test; we'll use `clap-rs` as an example:
 
-[dir]: https://github.com/rust-lang/rustc-perf/tree/master/collector/benchmarks
+[compile-time dir]: https://github.com/rust-lang/rustc-perf/tree/master/collector/compile-benchmarks
+[runtime dir]: https://github.com/rust-lang/rustc-perf/tree/master/collector/runtime-benchmarks
 
 ```bash
-cd collector/benchmarks/clap-rs
+cd collector/compile-benchmarks/clap-3.1.6
 ```
 
 In this case, let's say we want to profile the `cargo check`
