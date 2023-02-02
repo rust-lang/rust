@@ -1135,20 +1135,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        // Incorporate the argument changes in the removal suggestion.
-        let mut prev = -1;
-        for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
-            if let Some(provided_idx) = provided_idx {
-                prev = provided_idx.index() as i64;
-            }
-            let idx = ProvidedIdx::from_usize((prev + 1) as usize);
-            if let None = provided_idx
-                && let Some((_, arg_span)) = provided_arg_tys.get(idx)
-            {
-                let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
-                suggestions.push((*arg_span, ty_to_snippet(expected_ty, expected_idx)));
-            }
-        }
+        // // Incorporate the argument changes in the removal suggestion.
+        // let mut prev = -1;
+        // for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
+        //     if let Some(provided_idx) = provided_idx {
+        //         prev = provided_idx.index() as i64;
+        //     }
+        //     let idx = ProvidedIdx::from_usize((prev + 1) as usize);
+        //     if let None = provided_idx
+        //         && let Some((_, arg_span)) = provided_arg_tys.get(idx)
+        //     {
+        //         let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
+        //         suggestions.push((*arg_span, ty_to_snippet(expected_ty, expected_idx)));
+        //     }
+        // }
 
         // If we have less than 5 things to say, it would be useful to call out exactly what's wrong
         if labels.len() <= 5 {
