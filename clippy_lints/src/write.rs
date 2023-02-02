@@ -1,14 +1,12 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::macros::{
-    find_format_args, format_arg_removal_span, populate_ast_format_args, root_macro_call_first_node, MacroCall,
-};
+use clippy_utils::macros::{find_format_args, format_arg_removal_span, root_macro_call_first_node, MacroCall};
 use clippy_utils::source::{expand_past_previous_comma, snippet_opt};
 use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_ast::token::LitKind;
 use rustc_ast::{FormatArgPosition, FormatArgs, FormatArgsPiece, FormatOptions, FormatPlaceholder, FormatTrait};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Impl, Item, ItemKind};
-use rustc_lint::{EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, BytePos};
 
@@ -259,12 +257,6 @@ impl_lint_pass!(Write => [
     WRITELN_EMPTY_STRING,
     WRITE_LITERAL,
 ]);
-
-impl EarlyLintPass for Write {
-    fn check_expr(&mut self, _: &rustc_lint::EarlyContext<'_>, expr: &rustc_ast::Expr) {
-        populate_ast_format_args(expr);
-    }
-}
 
 impl<'tcx> LateLintPass<'tcx> for Write {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {

@@ -19,7 +19,7 @@ use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Pos, Span, SpanData, Symbol};
 use std::cell::RefCell;
 use std::iter::{once, zip};
-use std::ops::{ControlFlow, Deref};
+use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
@@ -361,14 +361,12 @@ thread_local! {
     };
 }
 
-/// Record [`rustc_ast::FormatArgs`] for use in late lint passes, this only needs to be called by
-/// one lint pass.
-pub fn populate_ast_format_args(expr: &rustc_ast::Expr) {
-    if let rustc_ast::ExprKind::FormatArgs(args) = &expr.kind {
-        AST_FORMAT_ARGS.with(|ast_format_args| {
-            ast_format_args.borrow_mut().insert(expr.span, args.deref().clone());
-        });
-    }
+/// Record [`rustc_ast::FormatArgs`] for use in late lint passes, this should only be called by
+/// `FormatArgsCollector`
+pub fn collect_ast_format_args(span: Span, format_args: &FormatArgs) {
+    AST_FORMAT_ARGS.with(|ast_format_args| {
+        ast_format_args.borrow_mut().insert(span, format_args.clone());
+    });
 }
 
 /// Calls `callback` with an AST [`FormatArgs`] node if one is found
