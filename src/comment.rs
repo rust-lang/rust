@@ -432,7 +432,7 @@ impl CodeBlockAttribute {
 
 /// Block that is formatted as an item.
 ///
-/// An item starts with either a star `*` a dash `-` or a greater-than `>`.
+/// An item starts with either a star `*` a dash `-` a greater-than `>` or a plus '+'.
 /// Different level of indentation are handled by shrinking the shape accordingly.
 struct ItemizedBlock {
     /// the lines that are identified as part of an itemized block
@@ -449,7 +449,8 @@ impl ItemizedBlock {
     /// Returns `true` if the line is formatted as an item
     fn is_itemized_line(line: &str) -> bool {
         let trimmed = line.trim_start();
-        trimmed.starts_with("* ") || trimmed.starts_with("- ") || trimmed.starts_with("> ")
+        let itemized_start = ["* ", "- ", "> ", "+ "];
+        itemized_start.iter().any(|s| trimmed.starts_with(s))
     }
 
     /// Creates a new ItemizedBlock described with the given line.
