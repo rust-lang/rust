@@ -743,7 +743,7 @@ impl<'a> Parser<'a> {
             }
             token::Gt if no_space => {
                 let after_pat = span.with_hi(span.hi() - rustc_span::BytePos(1)).shrink_to_hi();
-                self.sess.emit_err(InclusiveRangeMatchArrow { span, after_pat });
+                self.sess.emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span, after_pat });
             }
             _ => {
                 self.sess.emit_err(InclusiveRangeNoEnd { span });
@@ -962,12 +962,15 @@ impl<'a> Parser<'a> {
             }
             ate_comma = false;
 
-            if self.check(&token::DotDot) || self.token == token::DotDotDot {
+            if self.check(&token::DotDot)
+                || self.check_noexpect(&token::DotDotDot)
+                || self.check_keyword(kw::Underscore)
+            {
                 etc = true;
                 let mut etc_sp = self.token.span;
 
-                self.recover_one_fewer_dotdot();
-                self.bump(); // `..` || `...`
+                self.recover_bad_dot_dot();
+                self.bump(); // `..` || `...` || `_`
 
                 if self.token == token::CloseDelim(Delimiter::Brace) {
                     etc_span = Some(etc_sp);
@@ -1060,14 +1063,15 @@ impl<'a> Parser<'a> {
         Ok((fields, etc))
     }
 
-    /// Recover on `...` as if it were `..` to avoid further errors.
+    /// Recover on `...` or `_` as if it were `..` to avoid further errors.
     /// See issue #46718.
-    fn recover_one_fewer_dotdot(&self) {
-        if self.token != token::DotDotDot {
+    fn recover_bad_dot_dot(&self) {
+        if self.token == token::DotDot {
             return;
         }
 
-        self.sess.emit_err(DotDotDotForRemainingFields { span: self.token.span });
+        let token_str = pprust::token_to_string(&self.token);
+        self.sess.emit_err(DotDotDotForRemainingFields { span: self.token.span, token_str });
     }
 
     fn parse_pat_field(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, PatField> {

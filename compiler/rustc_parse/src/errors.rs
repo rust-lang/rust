@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
@@ -668,13 +670,10 @@ pub(crate) struct InclusiveRangeExtraEquals {
 #[diag(parse_inclusive_range_match_arrow)]
 pub(crate) struct InclusiveRangeMatchArrow {
     #[primary_span]
+    pub arrow: Span,
+    #[label]
     pub span: Span,
-    #[suggestion(
-        suggestion_add_space,
-        style = "verbose",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
+    #[suggestion(style = "verbose", code = " ", applicability = "machine-applicable")]
     pub after_pat: Span,
 }
 
@@ -1802,8 +1801,9 @@ pub(crate) struct EnumPatternInsteadOfIdentifier {
 #[diag(parse_dot_dot_dot_for_remaining_fields)]
 pub(crate) struct DotDotDotForRemainingFields {
     #[primary_span]
-    #[suggestion(code = "..", applicability = "machine-applicable")]
+    #[suggestion(code = "..", style = "verbose", applicability = "machine-applicable")]
     pub span: Span,
+    pub token_str: Cow<'static, str>,
 }
 
 #[derive(Diagnostic)]

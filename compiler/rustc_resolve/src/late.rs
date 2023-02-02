@@ -2145,7 +2145,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let segments = &use_tree.prefix.segments;
         if !segments.is_empty() {
             let ident = segments[0].ident;
-            if ident.is_path_segment_keyword() || ident.span.rust_2015() {
+            if ident.is_path_segment_keyword() || ident.span.is_rust_2015() {
                 return;
             }
 

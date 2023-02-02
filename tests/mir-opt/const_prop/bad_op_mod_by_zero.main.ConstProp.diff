@@ -18,7 +18,6 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/bad_op_mod_by_zero.rs:+1:9: +1:10
           _1 = const 0_i32;                // scope 0 at $DIR/bad_op_mod_by_zero.rs:+1:13: +1:14
           StorageLive(_2);                 // scope 1 at $DIR/bad_op_mod_by_zero.rs:+2:9: +2:11
 -         _4 = Eq(_1, const 0_i32);        // scope 1 at $DIR/bad_op_mod_by_zero.rs:+2:14: +2:19

@@ -203,8 +203,9 @@ parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
     .suggestion_remove_eq = use `..=` instead
     .note = inclusive ranges end with a single equals sign (`..=`)
 
-parse_inclusive_range_match_arrow = unexpected `=>` after open range
-    .suggestion_add_space = add a space between the pattern and `=>`
+parse_inclusive_range_match_arrow = unexpected `>` after inclusive range
+    .label = this is parsed as an inclusive range `..=`
+    .suggestion = add a space between the pattern and `=>`
 
 parse_inclusive_range_no_end = inclusive range with no end
     .suggestion_open_range = use `..` instead
@@ -535,8 +536,8 @@ parse_dot_dot_dot_range_to_pattern_not_allowed = range-to patterns with `...` ar
 
 parse_enum_pattern_instead_of_identifier = expected identifier, found enum pattern
 
-parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `...`
-    .suggestion = to omit remaining fields, use one fewer `.`
+parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `{$token_str}`
+    .suggestion = to omit remaining fields, use `..`
 
 parse_expected_comma_after_pattern_field = expected `,`
 
