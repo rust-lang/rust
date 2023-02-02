@@ -138,7 +138,7 @@ pub(super) fn write_shared(
         Ok((ret, krates))
     }
 
-    /// Read a file and return all lines that match the <code>"{crate}":{data},\</code> format,
+    /// Read a file and return all lines that match the <code>"{crate}":{data},\ </code> format,
     /// and return a tuple `(Vec<DataString>, Vec<CrateNameString>)`.
     ///
     /// This forms the payload of files that look like this:

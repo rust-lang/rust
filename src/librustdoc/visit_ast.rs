@@ -5,7 +5,9 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
+use rustc_hir::intravisit::{walk_item, Visitor};
 use rustc_hir::{Node, CRATE_HIR_ID};
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -53,18 +55,25 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
-pub(crate) fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: LocalDefId) -> bool {
-    while let Some(id) = tcx.opt_local_parent(node) {
-        node = id;
-        if tcx.is_doc_hidden(node.to_def_id()) {
+pub(crate) fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut def_id: LocalDefId) -> bool {
+    let hir = tcx.hir();
+    while let Some(id) = tcx.opt_local_parent(def_id) {
+        def_id = id;
+        if tcx.is_doc_hidden(def_id.to_def_id()) {
             return true;
+        } else if let Some(node) = hir.find_by_def_id(def_id) &&
+            matches!(
+                node,
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),
+            )
+        {
+            // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
+            // on them, they don't inherit it from the parent context.
+            return false;
         }
     }
     false
 }
-
-// Also, is there some reason that this doesn't use the 'visit'
-// framework from syntax?.
 
 pub(crate) struct RustdocVisitor<'a, 'tcx> {
     cx: &'a mut core::DocContext<'tcx>,
@@ -73,6 +82,7 @@ pub(crate) struct RustdocVisitor<'a, 'tcx> {
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
     exact_paths: DefIdMap<Vec<Symbol>>,
+    modules: Vec<Module<'tcx>>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -80,12 +90,19 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = LocalDefIdSet::default();
         stack.insert(CRATE_DEF_ID);
+        let om = Module::new(
+            cx.tcx.crate_name(LOCAL_CRATE),
+            CRATE_DEF_ID,
+            cx.tcx.hir().root_module().spans.inner_span,
+        );
+
         RustdocVisitor {
             cx,
             view_item_stack: stack,
             inlining: false,
             inside_public_path: true,
             exact_paths: Default::default(),
+            modules: vec![om],
         }
     }
 
@@ -95,12 +112,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub(crate) fn visit(mut self) -> Module<'tcx> {
-        let mut top_level_module = self.visit_mod_contents(
-            CRATE_DEF_ID,
-            self.cx.tcx.hir().root_module(),
-            self.cx.tcx.crate_name(LOCAL_CRATE),
-            None,
-        );
+        let root_module = self.cx.tcx.hir().root_module();
+        self.visit_mod_contents(CRATE_DEF_ID, root_module);
+
+        let mut top_level_module = self.modules.pop().unwrap();
 
         // `#[macro_export] macro_rules!` items are reexported at the top level of the
         // crate, regardless of where they're defined. We want to document the
@@ -115,15 +130,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // macro in the same module.
         let mut inserted = FxHashSet::default();
         for export in self.cx.tcx.module_reexports(CRATE_DEF_ID).unwrap_or(&[]) {
-            if let Res::Def(DefKind::Macro(_), def_id) = export.res {
-                if let Some(local_def_id) = def_id.as_local() {
-                    if self.cx.tcx.has_attr(def_id, sym::macro_export) {
-                        if inserted.insert(def_id) {
-                            let item = self.cx.tcx.hir().expect_item(local_def_id);
-                            top_level_module.items.push((item, None, None));
-                        }
-                    }
-                }
+            if let Res::Def(DefKind::Macro(_), def_id) = export.res &&
+                let Some(local_def_id) = def_id.as_local() &&
+                self.cx.tcx.has_attr(def_id, sym::macro_export) &&
+                inserted.insert(def_id)
+            {
+                    let item = self.cx.tcx.hir().expect_item(local_def_id);
+                    top_level_module.items.push((item, None, None));
             }
         }
 
@@ -157,23 +170,22 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         top_level_module
     }
 
-    fn visit_mod_contents(
-        &mut self,
-        def_id: LocalDefId,
-        m: &'tcx hir::Mod<'tcx>,
-        name: Symbol,
-        parent_id: Option<LocalDefId>,
-    ) -> Module<'tcx> {
-        let mut om = Module::new(name, def_id, m.spans.inner_span);
+    /// This method will go through the given module items in two passes:
+    /// 1. The items which are not glob imports/reexports.
+    /// 2. The glob imports/reexports.
+    fn visit_mod_contents(&mut self, def_id: LocalDefId, m: &'tcx hir::Mod<'tcx>) {
+        debug!("Going through module {:?}", m);
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= self.cx.tcx.local_visibility(def_id).is_public();
+
+        // Reimplementation of `walk_mod` because we need to do it in two passes (explanations in
+        // the second loop):
         for &i in m.item_ids {
             let item = self.cx.tcx.hir().item(i);
-            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
-                continue;
+            if !matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+                self.visit_item(item);
             }
-            self.visit_item(item, None, &mut om, parent_id);
         }
         for &i in m.item_ids {
             let item = self.cx.tcx.hir().item(i);
@@ -181,11 +193,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // Later passes in rustdoc will de-duplicate by name and kind, so if glob-
             // imported items appear last, then they'll be the ones that get discarded.
             if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
-                self.visit_item(item, None, &mut om, parent_id);
+                self.visit_item(item);
             }
         }
         self.inside_public_path = orig_inside_public_path;
-        om
+        debug!("Leaving module {:?}", m);
     }
 
     /// Tries to resolve the target of a `pub use` statement and inlines the
@@ -203,7 +215,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         res: Res,
         renamed: Option<Symbol>,
         glob: bool,
-        om: &mut Module<'tcx>,
         please_inline: bool,
     ) -> bool {
         debug!("maybe_inline_local res: {:?}", res);
@@ -213,33 +224,30 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
 
         let tcx = self.cx.tcx;
-        let Some(res_did) = res.opt_def_id() else {
+        let Some(ori_res_did) = res.opt_def_id() else {
             return false;
         };
 
         let use_attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
         let is_no_inline = use_attrs.lists(sym::doc).has_word(sym::no_inline)
-            || tcx.is_doc_hidden(def_id.to_def_id());
+            || use_attrs.lists(sym::doc).has_word(sym::hidden);
 
         // For cross-crate impl inlining we need to know whether items are
         // reachable in documentation -- a previously unreachable item can be
         // made reachable by cross-crate inlining which we're checking here.
         // (this is done here because we need to know this upfront).
-        if !res_did.is_local() && !is_no_inline {
-            crate::visit_lib::lib_embargo_visit_item(self.cx, res_did);
+        if !ori_res_did.is_local() && !is_no_inline {
+            crate::visit_lib::lib_embargo_visit_item(self.cx, ori_res_did);
             return false;
         }
 
-        let Some(res_did) = res_did.as_local() else {
+        let Some(res_did) = ori_res_did.as_local() else {
             return false;
         };
 
-        let is_private = !self
-            .cx
-            .cache
-            .effective_visibilities
-            .is_directly_public(self.cx.tcx, res_did.to_def_id());
+        let is_private =
+            !self.cx.cache.effective_visibilities.is_directly_public(self.cx.tcx, ori_res_did);
         let is_hidden = inherits_doc_hidden(self.cx.tcx, res_did);
 
         // Only inline if requested or if the item would otherwise be stripped.
@@ -256,20 +264,20 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
                     let i = self.cx.tcx.hir().item(i);
-                    self.visit_item(i, None, om, Some(def_id));
+                    self.visit_item_inner(i, None, Some(def_id));
                 }
                 self.inlining = prev;
                 true
             }
             Node::Item(it) if !glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                self.visit_item(it, renamed, om, Some(def_id));
+                self.visit_item_inner(it, renamed, Some(def_id));
                 self.inlining = prev;
                 true
             }
             Node::ForeignItem(it) if !glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                self.visit_foreign_item(it, renamed, om);
+                self.visit_foreign_item_inner(it, renamed);
                 self.inlining = prev;
                 true
             }
@@ -279,18 +287,28 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         ret
     }
 
-    fn visit_item(
+    #[inline]
+    fn add_to_current_mod(
         &mut self,
         item: &'tcx hir::Item<'_>,
         renamed: Option<Symbol>,
-        om: &mut Module<'tcx>,
         parent_id: Option<LocalDefId>,
     ) {
+        self.modules.last_mut().unwrap().items.push((item, renamed, parent_id))
+    }
+
+    fn visit_item_inner(
+        &mut self,
+        item: &'tcx hir::Item<'_>,
+        renamed: Option<Symbol>,
+        import_id: Option<LocalDefId>,
+    ) -> bool {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
+        let tcx = self.cx.tcx;
 
         let def_id = item.owner_id.to_def_id();
-        let is_pub = self.cx.tcx.visibility(def_id).is_public();
+        let is_pub = tcx.visibility(def_id).is_public();
 
         if is_pub {
             self.store_path(item.owner_id.to_def_id());
@@ -299,8 +317,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         match item.kind {
             hir::ItemKind::ForeignMod { items, .. } => {
                 for item in items {
-                    let item = self.cx.tcx.hir().foreign_item(item.id);
-                    self.visit_foreign_item(item, None, om);
+                    let item = tcx.hir().foreign_item(item.id);
+                    self.visit_foreign_item_inner(item, None);
                 }
             }
             // If we're inlining, skip private items or item reexported as "_".
@@ -315,7 +333,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         continue;
                     }
 
-                    let attrs = self.cx.tcx.hir().attrs(item.hir_id());
+                    let attrs =
+                        tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(item.owner_id.def_id));
 
                     // If there was a private module in the current path then don't bother inlining
                     // anything as it will probably be stripped anyway.
@@ -333,14 +352,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             res,
                             ident,
                             is_glob,
-                            om,
                             please_inline,
                         ) {
                             continue;
                         }
                     }
 
-                    om.items.push((item, renamed, parent_id))
+                    self.add_to_current_mod(item, renamed, import_id);
                 }
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
@@ -357,14 +375,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                 let def_id = item.owner_id.to_def_id();
                 let is_macro_2_0 = !macro_def.macro_rules;
-                let nonexported = !self.cx.tcx.has_attr(def_id, sym::macro_export);
+                let nonexported = !tcx.has_attr(def_id, sym::macro_export);
 
                 if is_macro_2_0 || nonexported || self.inlining {
-                    om.items.push((item, renamed, None));
+                    self.add_to_current_mod(item, renamed, None);
                 }
             }
             hir::ItemKind::Mod(ref m) => {
-                om.mods.push(self.visit_mod_contents(item.owner_id.def_id, m, name, parent_id));
+                self.enter_mod(item.owner_id.def_id, m, name);
             }
             hir::ItemKind::Fn(..)
             | hir::ItemKind::ExternCrate(..)
@@ -375,33 +393,87 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Trait(..)
-            | hir::ItemKind::TraitAlias(..) => om.items.push((item, renamed, parent_id)),
+            | hir::ItemKind::TraitAlias(..) => {
+                self.add_to_current_mod(item, renamed, import_id);
+            }
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
                 if name != kw::Underscore {
-                    om.items.push((item, renamed, parent_id));
+                    self.add_to_current_mod(item, renamed, import_id);
                 }
             }
             hir::ItemKind::Impl(impl_) => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
                 if !self.inlining && impl_.of_trait.is_none() {
-                    om.items.push((item, None, None));
+                    self.add_to_current_mod(item, None, None);
                 }
             }
         }
+        true
     }
 
-    fn visit_foreign_item(
+    fn visit_foreign_item_inner(
         &mut self,
         item: &'tcx hir::ForeignItem<'_>,
         renamed: Option<Symbol>,
-        om: &mut Module<'tcx>,
     ) {
         // If inlining we only want to include public functions.
         if !self.inlining || self.cx.tcx.visibility(item.owner_id).is_public() {
-            om.foreigns.push((item, renamed));
+            self.modules.last_mut().unwrap().foreigns.push((item, renamed));
         }
+    }
+
+    /// This method will create a new module and push it onto the "modules stack" then call
+    /// `visit_mod_contents`. Once done, it'll remove it from the "modules stack" and instead
+    /// add into the list of modules of the current module.
+    fn enter_mod(&mut self, id: LocalDefId, m: &'tcx hir::Mod<'tcx>, name: Symbol) {
+        self.modules.push(Module::new(name, id, m.spans.inner_span));
+
+        self.visit_mod_contents(id, m);
+
+        let last = self.modules.pop().unwrap();
+        self.modules.last_mut().unwrap().mods.push(last);
+    }
+}
+
+// We need to implement this visitor so it'll go everywhere and retrieve items we're interested in
+// such as impl blocks in const blocks.
+impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
+    type NestedFilter = nested_filter::All;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
+    }
+
+    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
+        if self.visit_item_inner(i, None, None) {
+            walk_item(self, i);
+        }
+    }
+
+    fn visit_mod(&mut self, _: &hir::Mod<'tcx>, _: Span, _: hir::HirId) {
+        // Handled in `visit_item_inner`
+    }
+
+    fn visit_use(&mut self, _: &hir::UsePath<'tcx>, _: hir::HirId) {
+        // Handled in `visit_item_inner`
+    }
+
+    fn visit_path(&mut self, _: &hir::Path<'tcx>, _: hir::HirId) {
+        // Handled in `visit_item_inner`
+    }
+
+    fn visit_label(&mut self, _: &rustc_ast::Label) {
+        // Unneeded.
+    }
+
+    fn visit_infer(&mut self, _: &hir::InferArg) {
+        // Unneeded.
+    }
+
+    fn visit_lifetime(&mut self, _: &hir::Lifetime) {
+        // Unneeded.
     }
 }
