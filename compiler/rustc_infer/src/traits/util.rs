@@ -381,10 +381,8 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
         while let Some(trait_ref) = stack.pop() {
             let anon_trait_ref = tcx.anonymize_bound_vars(trait_ref);
             if visited.insert(anon_trait_ref) {
-                let super_predicates = tcx.super_predicates_that_define_assoc_type((
-                    trait_ref.def_id(),
-                    Some(assoc_name),
-                ));
+                let super_predicates =
+                    tcx.super_predicates_that_define_assoc_type((trait_ref.def_id(), assoc_name));
                 for (super_predicate, _) in super_predicates.predicates {
                     let subst_predicate = super_predicate.subst_supertrait(tcx, &trait_ref);
                     if let Some(binder) = subst_predicate.to_opt_poly_trait_pred() {

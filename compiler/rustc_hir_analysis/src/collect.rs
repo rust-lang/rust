@@ -64,8 +64,9 @@ pub fn provide(providers: &mut Providers) {
         predicates_defined_on,
         explicit_predicates_of: predicates_of::explicit_predicates_of,
         super_predicates_of: predicates_of::super_predicates_of,
-        super_predicates_that_define_assoc_type:
-            predicates_of::super_predicates_that_define_assoc_type,
+        super_predicates_that_define_assoc_type: |tcx, (def_id, assoc_name)| {
+            predicates_of::super_predicates_that_define_assoc_type(tcx, (def_id, Some(assoc_name)))
+        },
         trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
