@@ -1819,3 +1819,20 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI,
                << " maybeWriter: " << *maybeWriter << "\n";
   llvm_unreachable("unknown inst2");
 }
+
+Function *GetFunctionFromValue(Value *fn) {
+  while (auto ci = dyn_cast<CastInst>(fn)) {
+    fn = ci->getOperand(0);
+  }
+  while (auto ci = dyn_cast<BlockAddress>(fn)) {
+    fn = ci->getFunction();
+  }
+  while (auto ci = dyn_cast<ConstantExpr>(fn)) {
+    fn = ci->getOperand(0);
+  }
+  if (!isa<Function>(fn)) {
+    return nullptr;
+  }
+
+  return cast<Function>(fn);
+}

@@ -60,6 +60,7 @@
 #include "GradientUtils.h"
 #include "InstructionBatcher.h"
 #include "LibraryFuncs.h"
+#include "TraceGenerator.h"
 #include "Utils.h"
 
 #if LLVM_VERSION_MAJOR >= 14
@@ -4804,6 +4805,40 @@ llvm::Function *EnzymeLogic::CreateBatch(Function *tobatch, unsigned width,
 
   return BatchCachedFunctions[tup] = NewF;
 };
+
+llvm::Function *
+EnzymeLogic::CreateTrace(llvm::Function *totrace,
+                         SmallPtrSetImpl<Function *> &GenerativeFunctions,
+                         ProbProgMode mode, bool dynamic_interface) {
+  TraceCacheKey tup = std::make_tuple(totrace, mode, dynamic_interface);
+  if (TraceCachedFunctions.find(tup) != TraceCachedFunctions.end()) {
+    return TraceCachedFunctions.find(tup)->second;
+  }
+
+  TraceUtils *tutils =
+      new TraceUtils(mode, dynamic_interface, totrace, GenerativeFunctions);
+
+  TraceGenerator *tracer = new TraceGenerator(*this, tutils);
+
+  for (auto &&BB : *totrace) {
+    for (auto &&Inst : BB) {
+      tracer->visit(Inst);
+    }
+  }
+
+  if (llvm::verifyFunction(*tutils->newFunc, &llvm::errs())) {
+    llvm::errs() << *totrace << "\n";
+    llvm::errs() << *tutils->newFunc << "\n";
+    report_fatal_error("function failed verification (4)");
+  }
+
+  Function *NewF = tutils->newFunc;
+
+  delete tracer;
+  delete tutils;
+
+  return TraceCachedFunctions[tup] = NewF;
+}
 
 llvm::Value *EnzymeLogic::CreateNoFree(llvm::Value *todiff) {
   if (auto F = dyn_cast<Function>(todiff))

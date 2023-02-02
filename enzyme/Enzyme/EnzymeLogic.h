@@ -48,6 +48,7 @@
 
 #include "ActivityAnalysis.h"
 #include "FunctionUtils.h"
+#include "TraceUtils.h"
 #include "TypeAnalysis/TypeAnalysis.h"
 #include "Utils.h"
 
@@ -432,6 +433,9 @@ public:
                                    std::vector<BATCH_TYPE>, BATCH_TYPE>;
   std::map<BatchCacheKey, llvm::Function *> BatchCachedFunctions;
 
+  using TraceCacheKey = std::tuple<llvm::Function *, ProbProgMode, bool>;
+  std::map<TraceCacheKey, llvm::Function *> TraceCachedFunctions;
+
   /// Create the derivative function itself.
   ///  \p todiff is the function to differentiate
   ///  \p retType is the activity info of the return
@@ -462,6 +466,10 @@ public:
   llvm::Function *CreateBatch(llvm::Function *tobatch, unsigned width,
                               llvm::ArrayRef<BATCH_TYPE> arg_types,
                               BATCH_TYPE ret_type);
+
+  llvm::Function *CreateTrace(llvm::Function *totrace,
+                              SmallPtrSetImpl<Function *> &GenerativeFunctions,
+                              ProbProgMode mode, bool dynamic_interface);
 
   void clear();
 };
