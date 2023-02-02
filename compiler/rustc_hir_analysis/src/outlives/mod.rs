@@ -51,8 +51,8 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Clause<'_
                     let mut pred: Vec<String> = predicates
                         .iter()
                         .map(|(out_pred, _)| match out_pred {
-                            ty::Clause::RegionOutlives(p) => p.to_string(),
-                            ty::Clause::TypeOutlives(p) => p.to_string(),
+                            ty::clause::RegionOutlives(p) => p.to_string(),
+                            ty::clause::TypeOutlives(p) => p.to_string(),
                             err => bug!("unexpected clause {:?}", err),
                         })
                         .collect();
@@ -101,11 +101,11 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
                 |(ty::OutlivesPredicate(kind1, region2), &span)| {
                     match kind1.unpack() {
                         GenericArgKind::Type(ty1) => Some((
-                            ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
+                            ty::clause::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
                             span,
                         )),
                         GenericArgKind::Lifetime(region1) => Some((
-                            ty::Clause::RegionOutlives(ty::OutlivesPredicate(region1, *region2)),
+                            ty::clause::RegionOutlives(ty::OutlivesPredicate(region1, *region2)),
                             span,
                         )),
                         GenericArgKind::Const(_) => {

@@ -15,7 +15,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         // `&T`, accounts for about 60% percentage of the predicates
         // we have to prove. No need to canonicalize and all that for
         // such cases.
-        if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_ref)) =
+        if let ty::PredicateKind::Clause(ty::clause::Trait(trait_ref)) =
             key.value.predicate.kind().skip_binder()
         {
             if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
@@ -35,7 +35,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         mut canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalQueryResponse<'tcx, ()>> {
         match canonicalized.value.value.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
+            ty::PredicateKind::Clause(ty::clause::Trait(pred)) => {
                 canonicalized.value.param_env.remap_constness_with(pred.constness);
             }
             _ => canonicalized.value.param_env = canonicalized.value.param_env.without_const(),

@@ -293,7 +293,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 // Evaluation will discard candidates using the leak check.
                 // This means we need to pass it the bound version of our
                 // predicate.
-                ty::PredicateKind::Clause(ty::Clause::Trait(trait_ref)) => {
+                ty::PredicateKind::Clause(ty::clause::Trait(trait_ref)) => {
                     let trait_obligation = obligation.with(infcx.tcx, binder.rebind(trait_ref));
 
                     self.process_trait_obligation(
@@ -302,7 +302,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         &mut pending_obligation.stalled_on,
                     )
                 }
-                ty::PredicateKind::Clause(ty::Clause::Projection(data)) => {
+                ty::PredicateKind::Clause(ty::clause::Projection(data)) => {
                     let project_obligation = obligation.with(infcx.tcx, binder.rebind(data));
 
                     self.process_projection_obligation(
@@ -311,8 +311,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         &mut pending_obligation.stalled_on,
                     )
                 }
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(_))
-                | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_))
+                ty::PredicateKind::Clause(ty::clause::RegionOutlives(_))
+                | ty::PredicateKind::Clause(ty::clause::TypeOutlives(_))
                 | ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::ObjectSafe(_)
                 | ty::PredicateKind::ClosureKind(..)
@@ -330,7 +330,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
             },
             Some(pred) => match pred {
-                ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+                ty::PredicateKind::Clause(ty::clause::Trait(data)) => {
                     let trait_obligation = obligation.with(infcx.tcx, Binder::dummy(data));
 
                     self.process_trait_obligation(
@@ -340,7 +340,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     )
                 }
 
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(data)) => {
+                ty::PredicateKind::Clause(ty::clause::RegionOutlives(data)) => {
                     if infcx.considering_regions {
                         infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data));
                     }
@@ -348,7 +348,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(vec![])
                 }
 
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                ty::PredicateKind::Clause(ty::clause::TypeOutlives(ty::OutlivesPredicate(
                     t_a,
                     r_b,
                 ))) => {
@@ -358,7 +358,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(vec![])
                 }
 
-                ty::PredicateKind::Clause(ty::Clause::Projection(ref data)) => {
+                ty::PredicateKind::Clause(ty::clause::Projection(ref data)) => {
                     let project_obligation = obligation.with(infcx.tcx, Binder::dummy(*data));
 
                     self.process_projection_obligation(

@@ -584,8 +584,8 @@ impl<'a> TraitDef<'a> {
                     defaultness: ast::Defaultness::Final,
                     generics: Generics::default(),
                     where_clauses: (
-                        ast::TyAliasWhereClause::default(),
-                        ast::TyAliasWhereClause::default(),
+                        ast::TyAliasWhereclause::default(),
+                        ast::TyAliasWhereclause::default(),
                     ),
                     where_predicates_split: 0,
                     bounds: Vec::new(),
@@ -595,7 +595,7 @@ impl<'a> TraitDef<'a> {
             })
         });
 
-        let mut where_clause = ast::WhereClause::default();
+        let mut where_clause = ast::Whereclause::default();
         where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
         let span = generics.span.with_ctxt(ctxt);

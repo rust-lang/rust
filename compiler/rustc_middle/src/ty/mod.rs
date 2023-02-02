@@ -504,11 +504,11 @@ impl<'tcx> Predicate<'tcx> {
         let kind = self
             .kind()
             .map_bound(|kind| match kind {
-                PredicateKind::Clause(Clause::Trait(TraitPredicate {
+                PredicateKind::Clause(clause::Trait(TraitPredicate {
                     trait_ref,
                     constness,
                     polarity,
-                })) => Some(PredicateKind::Clause(Clause::Trait(TraitPredicate {
+                })) => Some(PredicateKind::Clause(clause::Trait(TraitPredicate {
                     trait_ref,
                     constness,
                     polarity: polarity.flip()?,
@@ -522,10 +522,10 @@ impl<'tcx> Predicate<'tcx> {
     }
 
     pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
-        if let PredicateKind::Clause(Clause::Trait(TraitPredicate { trait_ref, constness, polarity })) = self.kind().skip_binder()
+        if let PredicateKind::Clause(clause::Trait(TraitPredicate { trait_ref, constness, polarity })) = self.kind().skip_binder()
             && constness != BoundConstness::NotConst
         {
-            self = tcx.mk_predicate(self.kind().rebind(PredicateKind::Clause(Clause::Trait(TraitPredicate {
+            self = tcx.mk_predicate(self.kind().rebind(PredicateKind::Clause(clause::Trait(TraitPredicate {
                 trait_ref,
                 constness: BoundConstness::NotConst,
                 polarity,
@@ -537,7 +537,7 @@ impl<'tcx> Predicate<'tcx> {
     #[instrument(level = "debug", skip(tcx), ret)]
     pub fn is_coinductive(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+            ty::PredicateKind::Clause(ty::clause::Trait(data)) => {
                 tcx.trait_is_coinductive(data.def_id())
             }
             ty::PredicateKind::WellFormed(_) => true,
@@ -554,10 +554,10 @@ impl<'tcx> Predicate<'tcx> {
     pub fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
             PredicateKind::WellFormed(_) => false,
-            PredicateKind::Clause(Clause::Trait(_))
-            | PredicateKind::Clause(Clause::RegionOutlives(_))
-            | PredicateKind::Clause(Clause::TypeOutlives(_))
-            | PredicateKind::Clause(Clause::Projection(_))
+            PredicateKind::Clause(clause::Trait(_))
+            | PredicateKind::Clause(clause::RegionOutlives(_))
+            | PredicateKind::Clause(clause::TypeOutlives(_))
+            | PredicateKind::Clause(clause::Projection(_))
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::ClosureKind(_, _, _)
             | PredicateKind::Subtype(_)
@@ -1137,25 +1137,25 @@ impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for Binder<'tcx, TraitRef
 
 impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(|p| PredicateKind::Clause(Clause::Trait(p))).to_predicate(tcx)
+        self.map_bound(|p| PredicateKind::Clause(clause::Trait(p))).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(|p| PredicateKind::Clause(Clause::RegionOutlives(p))).to_predicate(tcx)
+        self.map_bound(|p| PredicateKind::Clause(clause::RegionOutlives(p))).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(|p| PredicateKind::Clause(Clause::TypeOutlives(p))).to_predicate(tcx)
+        self.map_bound(|p| PredicateKind::Clause(clause::TypeOutlives(p))).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(|p| PredicateKind::Clause(Clause::Projection(p))).to_predicate(tcx)
+        self.map_bound(|p| PredicateKind::Clause(clause::Projection(p))).to_predicate(tcx)
     }
 }
 
@@ -1163,15 +1163,15 @@ impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_pred(self) -> Option<PolyTraitPredicate<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateKind::Clause(Clause::Trait(t)) => Some(predicate.rebind(t)),
-            PredicateKind::Clause(Clause::Projection(..))
+            PredicateKind::Clause(clause::Trait(t)) => Some(predicate.rebind(t)),
+            PredicateKind::Clause(clause::Projection(..))
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
-            | PredicateKind::Clause(Clause::RegionOutlives(..))
+            | PredicateKind::Clause(clause::RegionOutlives(..))
             | PredicateKind::WellFormed(..)
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
-            | PredicateKind::Clause(Clause::TypeOutlives(..))
+            | PredicateKind::Clause(clause::TypeOutlives(..))
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
@@ -1182,15 +1182,15 @@ impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_projection_pred(self) -> Option<PolyProjectionPredicate<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateKind::Clause(Clause::Projection(t)) => Some(predicate.rebind(t)),
-            PredicateKind::Clause(Clause::Trait(..))
+            PredicateKind::Clause(clause::Projection(t)) => Some(predicate.rebind(t)),
+            PredicateKind::Clause(clause::Trait(..))
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
-            | PredicateKind::Clause(Clause::RegionOutlives(..))
+            | PredicateKind::Clause(clause::RegionOutlives(..))
             | PredicateKind::WellFormed(..)
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
-            | PredicateKind::Clause(Clause::TypeOutlives(..))
+            | PredicateKind::Clause(clause::TypeOutlives(..))
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
@@ -1201,12 +1201,12 @@ impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateKind::Clause(Clause::TypeOutlives(data)) => Some(predicate.rebind(data)),
-            PredicateKind::Clause(Clause::Trait(..))
-            | PredicateKind::Clause(Clause::Projection(..))
+            PredicateKind::Clause(clause::TypeOutlives(data)) => Some(predicate.rebind(data)),
+            PredicateKind::Clause(clause::Trait(..))
+            | PredicateKind::Clause(clause::Projection(..))
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
-            | PredicateKind::Clause(Clause::RegionOutlives(..))
+            | PredicateKind::Clause(clause::RegionOutlives(..))
             | PredicateKind::WellFormed(..)
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)

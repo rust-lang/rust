@@ -142,23 +142,23 @@ where
 
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<V::BreakTy> {
         match predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+            ty::PredicateKind::Clause(ty::clause::Trait(ty::TraitPredicate {
                 trait_ref,
                 constness: _,
                 polarity: _,
             })) => self.visit_trait(trait_ref),
-            ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
+            ty::PredicateKind::Clause(ty::clause::Projection(ty::ProjectionPredicate {
                 projection_ty,
                 term,
             })) => {
                 term.visit_with(self)?;
                 self.visit_projection_ty(projection_ty)
             }
-            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+            ty::PredicateKind::Clause(ty::clause::TypeOutlives(ty::OutlivesPredicate(
                 ty,
                 _region,
             ))) => ty.visit_with(self),
-            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => ControlFlow::Continue(()),
+            ty::PredicateKind::Clause(ty::clause::RegionOutlives(..)) => ControlFlow::Continue(()),
             ty::PredicateKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::PredicateKind::WellFormed(arg) => arg.visit_with(self),
             _ => bug!("unexpected predicate: {:?}", predicate),
@@ -1230,12 +1230,12 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
             for (pred, _) in bounds.predicates() {
                 match pred.kind().skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
+                    ty::PredicateKind::Clause(ty::clause::Trait(trait_predicate)) => {
                         if self.visit_trait(trait_predicate.trait_ref).is_break() {
                             return;
                         }
                     }
-                    ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) => {
+                    ty::PredicateKind::Clause(ty::clause::Projection(proj_predicate)) => {
                         let term = self.visit(proj_predicate.term);
                         if term.is_break()
                             || self.visit_projection_ty(proj_predicate.projection_ty).is_break()

@@ -237,14 +237,14 @@ impl FlagComputation {
 
     fn add_predicate_atom(&mut self, atom: ty::PredicateKind<'_>) {
         match atom {
-            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => {
+            ty::PredicateKind::Clause(ty::clause::Trait(trait_pred)) => {
                 self.add_substs(trait_pred.trait_ref.substs);
             }
-            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(a, b))) => {
+            ty::PredicateKind::Clause(ty::clause::RegionOutlives(ty::OutlivesPredicate(a, b))) => {
                 self.add_region(a);
                 self.add_region(b);
             }
-            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+            ty::PredicateKind::Clause(ty::clause::TypeOutlives(ty::OutlivesPredicate(
                 ty,
                 region,
             ))) => {
@@ -259,7 +259,7 @@ impl FlagComputation {
                 self.add_ty(a);
                 self.add_ty(b);
             }
-            ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
+            ty::PredicateKind::Clause(ty::clause::Projection(ty::ProjectionPredicate {
                 projection_ty,
                 term,
             })) => {

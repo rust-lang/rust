@@ -85,10 +85,10 @@ fn compute_implied_outlives_bounds<'tcx>(
             match obligation.predicate.kind().no_bound_vars() {
                 None => None,
                 Some(pred) => match pred {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(..))
+                    ty::PredicateKind::Clause(ty::clause::Trait(..))
                     | ty::PredicateKind::Subtype(..)
                     | ty::PredicateKind::Coerce(..)
-                    | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                    | ty::PredicateKind::Clause(ty::clause::Projection(..))
                     | ty::PredicateKind::ClosureKind(..)
                     | ty::PredicateKind::ObjectSafe(..)
                     | ty::PredicateKind::ConstEvaluatable(..)
@@ -100,11 +100,11 @@ fn compute_implied_outlives_bounds<'tcx>(
                         None
                     }
 
-                    ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                    ty::PredicateKind::Clause(ty::clause::RegionOutlives(
                         ty::OutlivesPredicate(r_a, r_b),
                     )) => Some(ty::OutlivesPredicate(r_a.into(), r_b)),
 
-                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                    ty::PredicateKind::Clause(ty::clause::TypeOutlives(ty::OutlivesPredicate(
                         ty_a,
                         r_b,
                     ))) => Some(ty::OutlivesPredicate(ty_a.into(), r_b)),

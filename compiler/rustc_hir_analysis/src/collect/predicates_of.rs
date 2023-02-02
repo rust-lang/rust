@@ -225,7 +225,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         _ => bug!(),
                     };
                     let pred = ty::Binder::dummy(ty::PredicateKind::Clause(
-                        ty::Clause::RegionOutlives(ty::OutlivesPredicate(r1, r2)),
+                        ty::clause::RegionOutlives(ty::OutlivesPredicate(r1, r2)),
                     ))
                     .to_predicate(icx.tcx);
 
@@ -290,14 +290,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 name: duplicate.name.ident().name,
             }));
             predicates.push((
-                ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                ty::Binder::dummy(ty::PredicateKind::Clause(ty::clause::RegionOutlives(
                     ty::OutlivesPredicate(orig_region, dup_region),
                 )))
                 .to_predicate(icx.tcx),
                 duplicate.span,
             ));
             predicates.push((
-                ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                ty::Binder::dummy(ty::PredicateKind::Clause(ty::clause::RegionOutlives(
                     ty::OutlivesPredicate(dup_region, orig_region),
                 )))
                 .to_predicate(icx.tcx),
@@ -416,11 +416,11 @@ pub(super) fn explicit_predicates_of<'tcx>(
             .iter()
             .copied()
             .filter(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(tr)) => !is_assoc_item_ty(tr.self_ty()),
-                ty::PredicateKind::Clause(ty::Clause::Projection(proj)) => {
+                ty::PredicateKind::Clause(ty::clause::Trait(tr)) => !is_assoc_item_ty(tr.self_ty()),
+                ty::PredicateKind::Clause(ty::clause::Projection(proj)) => {
                     !is_assoc_item_ty(proj.projection_ty.self_ty())
                 }
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(outlives)) => {
+                ty::PredicateKind::Clause(ty::clause::TypeOutlives(outlives)) => {
                     !is_assoc_item_ty(outlives.0)
                 }
                 _ => true,
@@ -553,7 +553,7 @@ pub(super) fn super_predicates_that_define_assoc_type(
             // which will, in turn, reach indirect supertraits.
             for &(pred, span) in superbounds {
                 debug!("superbound: {:?}", pred);
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(bound)) =
+                if let ty::PredicateKind::Clause(ty::clause::Trait(bound)) =
                     pred.kind().skip_binder()
                 {
                     tcx.at(span).super_predicates_of(bound.def_id());
@@ -655,7 +655,7 @@ pub(super) fn type_param_predicates(
         )
         .into_iter()
         .filter(|(predicate, _)| match predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => data.self_ty().is_param(index),
+            ty::PredicateKind::Clause(ty::clause::Trait(data)) => data.self_ty().is_param(index),
             _ => false,
         }),
     );

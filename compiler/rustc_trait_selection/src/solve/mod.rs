@@ -252,16 +252,16 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let kind = predicate.kind();
         if let Some(kind) = kind.no_bound_vars() {
             match kind {
-                ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) => {
+                ty::PredicateKind::Clause(ty::clause::Trait(predicate)) => {
                     self.compute_trait_goal(Goal { param_env, predicate })
                 }
-                ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => {
+                ty::PredicateKind::Clause(ty::clause::Projection(predicate)) => {
                     self.compute_projection_goal(Goal { param_env, predicate })
                 }
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => {
+                ty::PredicateKind::Clause(ty::clause::TypeOutlives(predicate)) => {
                     self.compute_type_outlives_goal(Goal { param_env, predicate })
                 }
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => {
+                ty::PredicateKind::Clause(ty::clause::RegionOutlives(predicate)) => {
                     self.compute_region_outlives_goal(Goal { param_env, predicate })
                 }
                 ty::PredicateKind::Subtype(predicate) => {

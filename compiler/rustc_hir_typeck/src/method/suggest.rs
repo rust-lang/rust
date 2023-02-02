@@ -448,7 +448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut unimplemented_traits = FxHashMap::default();
             let mut unimplemented_traits_only = true;
             for (predicate, _parent_pred, cause) in unsatisfied_predicates {
-                if let (ty::PredicateKind::Clause(ty::Clause::Trait(p)), Some(cause)) =
+                if let (ty::PredicateKind::Clause(ty::clause::Trait(p)), Some(cause)) =
                     (predicate.kind().skip_binder(), cause.as_ref())
                 {
                     if p.trait_ref.self_ty() != rcvr_ty {
@@ -475,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // because of some non-Clone item being iterated over.
             for (predicate, _parent_pred, _cause) in unsatisfied_predicates {
                 match predicate.kind().skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(p))
+                    ty::PredicateKind::Clause(ty::clause::Trait(p))
                         if unimplemented_traits.contains_key(&p.trait_ref.def_id) => {}
                     _ => {
                         unimplemented_traits_only = false;
@@ -487,7 +487,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut collect_type_param_suggestions =
                 |self_ty: Ty<'tcx>, parent_pred: ty::Predicate<'tcx>, obligation: &str| {
                     // We don't care about regions here, so it's fine to skip the binder here.
-                    if let (ty::Param(_), ty::PredicateKind::Clause(ty::Clause::Trait(p))) =
+                    if let (ty::Param(_), ty::PredicateKind::Clause(ty::clause::Trait(p))) =
                         (self_ty.kind(), parent_pred.kind().skip_binder())
                     {
                         let hir = self.tcx.hir();
@@ -547,7 +547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut format_pred = |pred: ty::Predicate<'tcx>| {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
+                    ty::PredicateKind::Clause(ty::clause::Projection(pred)) => {
                         let pred = bound_predicate.rebind(pred);
                         // `<Foo as Iterator>::Item = String`.
                         let projection_ty = pred.skip_binder().projection_ty;
@@ -571,7 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
                         Some((obligation, projection_ty.self_ty()))
                     }
-                    ty::PredicateKind::Clause(ty::Clause::Trait(poly_trait_ref)) => {
+                    ty::PredicateKind::Clause(ty::clause::Trait(poly_trait_ref)) => {
                         let p = poly_trait_ref.trait_ref;
                         let self_ty = p.self_ty();
                         let path = p.print_only_trait_path();
@@ -636,7 +636,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let sized_pred =
                             unsatisfied_predicates.iter().any(|(pred, _, _)| {
                                 match pred.kind().skip_binder() {
-                                    ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
+                                    ty::PredicateKind::Clause(ty::clause::Trait(pred)) => {
                                         Some(pred.def_id()) == self.tcx.lang_items().sized_trait()
                                             && pred.polarity == ty::ImplPolarity::Positive
                                     }
@@ -1901,7 +1901,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let all_local_types_needing_impls =
             errors.iter().all(|e| match e.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => match pred.self_ty().kind() {
+                ty::PredicateKind::Clause(ty::clause::Trait(pred)) => match pred.self_ty().kind() {
                     ty::Adt(def, _) => def.did().is_local(),
                     _ => false,
                 },
@@ -1910,7 +1910,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut preds: Vec<_> = errors
             .iter()
             .filter_map(|e| match e.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => Some(pred),
+                ty::PredicateKind::Clause(ty::clause::Trait(pred)) => Some(pred),
                 _ => None,
             })
             .collect();
@@ -1981,7 +1981,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut derives = Vec::<(String, Span, Symbol)>::new();
         let mut traits = Vec::new();
         for (pred, _, _) in unsatisfied_predicates {
-            let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = pred.kind().skip_binder() else { continue };
+            let ty::PredicateKind::Clause(ty::clause::Trait(trait_pred)) = pred.kind().skip_binder() else { continue };
             let adt = match trait_pred.self_ty().ty_adt_def() {
                 Some(adt) if adt.did().is_local() => adt,
                 _ => continue,
@@ -2416,10 +2416,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     match p.kind().skip_binder() {
                         // Hide traits if they are present in predicates as they can be fixed without
                         // having to implement them.
-                        ty::PredicateKind::Clause(ty::Clause::Trait(t)) => {
+                        ty::PredicateKind::Clause(ty::clause::Trait(t)) => {
                             t.def_id() == info.def_id
                         }
-                        ty::PredicateKind::Clause(ty::Clause::Projection(p)) => {
+                        ty::PredicateKind::Clause(ty::clause::Projection(p)) => {
                             p.projection_ty.def_id == info.def_id
                         }
                         _ => false,

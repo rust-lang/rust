@@ -1772,8 +1772,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let generics = self.tcx.generics_of(def_id);
         let predicate_substs = match unsubstituted_pred.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => pred.trait_ref.substs,
-            ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => pred.projection_ty.substs,
+            ty::PredicateKind::Clause(ty::clause::Trait(pred)) => pred.trait_ref.substs,
+            ty::PredicateKind::Clause(ty::clause::Projection(pred)) => pred.projection_ty.substs,
             _ => ty::List::empty(),
         };
 
@@ -2148,7 +2148,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // do that, so it's OK.
                         for (predicate, span) in instantiated
                         {
-                            if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = predicate.kind().skip_binder()
+                            if let ty::PredicateKind::Clause(ty::clause::Trait(pred)) = predicate.kind().skip_binder()
                                 && pred.self_ty().peel_refs() == callee_ty
                                 && self.tcx.is_fn_trait(pred.def_id())
                             {

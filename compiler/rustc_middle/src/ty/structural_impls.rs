@@ -148,10 +148,10 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
 impl<'tcx> fmt::Debug for ty::Clause<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::Clause::Trait(ref a) => a.fmt(f),
-            ty::Clause::RegionOutlives(ref pair) => pair.fmt(f),
-            ty::Clause::TypeOutlives(ref pair) => pair.fmt(f),
-            ty::Clause::Projection(ref pair) => pair.fmt(f),
+            ty::clause::Trait(ref a) => a.fmt(f),
+            ty::clause::RegionOutlives(ref pair) => pair.fmt(f),
+            ty::clause::TypeOutlives(ref pair) => pair.fmt(f),
+            ty::clause::Projection(ref pair) => pair.fmt(f),
         }
     }
 }

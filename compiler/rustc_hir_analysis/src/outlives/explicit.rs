@@ -30,7 +30,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
             // process predicates and convert to `RequiredPredicates` entry, see below
             for &(predicate, span) in predicates.predicates {
                 match predicate.kind().skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(OutlivesPredicate(
+                    ty::PredicateKind::Clause(ty::clause::TypeOutlives(OutlivesPredicate(
                         ty,
                         reg,
                     ))) => insert_outlives_predicate(
@@ -41,7 +41,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                         &mut required_predicates,
                     ),
 
-                    ty::PredicateKind::Clause(ty::Clause::RegionOutlives(OutlivesPredicate(
+                    ty::PredicateKind::Clause(ty::clause::RegionOutlives(OutlivesPredicate(
                         reg1,
                         reg2,
                     ))) => insert_outlives_predicate(
@@ -52,8 +52,8 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                         &mut required_predicates,
                     ),
 
-                    ty::PredicateKind::Clause(ty::Clause::Trait(..))
-                    | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                    ty::PredicateKind::Clause(ty::clause::Trait(..))
+                    | ty::PredicateKind::Clause(ty::clause::Projection(..))
                     | ty::PredicateKind::WellFormed(..)
                     | ty::PredicateKind::ObjectSafe(..)
                     | ty::PredicateKind::ClosureKind(..)

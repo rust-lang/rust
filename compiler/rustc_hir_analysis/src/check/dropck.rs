@@ -184,23 +184,23 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             let p = p.kind();
             match (predicate.skip_binder(), p.skip_binder()) {
                 (
-                    ty::PredicateKind::Clause(ty::Clause::Trait(a)),
-                    ty::PredicateKind::Clause(ty::Clause::Trait(b)),
+                    ty::PredicateKind::Clause(ty::clause::Trait(a)),
+                    ty::PredicateKind::Clause(ty::clause::Trait(b)),
                 ) => relator.relate(predicate.rebind(a), p.rebind(b)).is_ok(),
                 (
-                    ty::PredicateKind::Clause(ty::Clause::Projection(a)),
-                    ty::PredicateKind::Clause(ty::Clause::Projection(b)),
+                    ty::PredicateKind::Clause(ty::clause::Projection(a)),
+                    ty::PredicateKind::Clause(ty::clause::Projection(b)),
                 ) => relator.relate(predicate.rebind(a), p.rebind(b)).is_ok(),
                 (
                     ty::PredicateKind::ConstEvaluatable(a),
                     ty::PredicateKind::ConstEvaluatable(b),
                 ) => relator.relate(predicate.rebind(a), predicate.rebind(b)).is_ok(),
                 (
-                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                    ty::PredicateKind::Clause(ty::clause::TypeOutlives(ty::OutlivesPredicate(
                         ty_a,
                         lt_a,
                     ))),
-                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                    ty::PredicateKind::Clause(ty::clause::TypeOutlives(ty::OutlivesPredicate(
                         ty_b,
                         lt_b,
                     ))),

@@ -652,7 +652,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ensure_sufficient_stack(|| {
             let bound_predicate = obligation.predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(t)) => {
+                ty::PredicateKind::Clause(ty::clause::Trait(t)) => {
                     let t = bound_predicate.rebind(t);
                     debug_assert!(!t.has_escaping_bound_vars());
                     let obligation = obligation.with(self.tcx(), t);
@@ -779,7 +779,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(pred)) => {
+                ty::PredicateKind::Clause(ty::clause::TypeOutlives(pred)) => {
                     // A global type with no late-bound regions can only
                     // contain the "'static" lifetime (any other lifetime
                     // would either be late-bound or local), so it is guaranteed
@@ -791,7 +791,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => {
+                ty::PredicateKind::Clause(ty::clause::RegionOutlives(..)) => {
                     // We do not consider region relationships when evaluating trait matches.
                     Ok(EvaluatedToOkModuloRegions)
                 }
@@ -804,7 +804,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Clause(ty::Clause::Projection(data)) => {
+                ty::PredicateKind::Clause(ty::clause::Projection(data)) => {
                     let data = bound_predicate.rebind(data);
                     let project_obligation = obligation.with(self.tcx(), data);
                     match project::poly_project_and_unify_type(self, &project_obligation) {
@@ -1645,7 +1645,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .enumerate()
             .filter_map(|(idx, bound)| {
                 let bound_predicate = bound.kind();
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
+                if let ty::PredicateKind::Clause(ty::clause::Trait(pred)) =
                     bound_predicate.skip_binder()
                 {
                     let bound = bound_predicate.rebind(pred.trait_ref);

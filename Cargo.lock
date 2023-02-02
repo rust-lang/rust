@@ -2003,9 +2003,9 @@ dependencies = [
 
 [[package]]
 name = "http-auth"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0b40b39d66c28829a0cf4d09f7e139ff8201f7500a5083732848ed3b4b4d850"
+checksum = "3d4ad8df7ddb631856ed3e5a385b781ae8d731727ae5dd7c5aa4784bfa878405"
 dependencies = [
  "memchr",
 ]

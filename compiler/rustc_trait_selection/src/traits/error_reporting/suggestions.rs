@@ -893,7 +893,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return false;
         }
 
-        if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = obligation.predicate.kind().skip_binder()
+        if let ty::PredicateKind::Clause(ty::clause::Trait(trait_pred)) = obligation.predicate.kind().skip_binder()
             && Some(trait_pred.def_id()) == self.tcx.lang_items().sized_trait()
         {
             // Don't suggest calling to turn an unsized type into a sized type
@@ -1128,7 +1128,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                     self.tcx.item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
-                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
+                        if let ty::PredicateKind::Clause(ty::clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be substs[1]
                         && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
@@ -1172,7 +1172,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         DefIdOrName::Name("type parameter")
                     };
                     param_env.caller_bounds().iter().find_map(|pred| {
-                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
+                        if let ty::PredicateKind::Clause(ty::clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                         && proj.projection_ty.self_ty() == found
                         // args tuple will always be substs[1]
@@ -1550,7 +1550,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 );
                 // FIXME: account for associated `async fn`s.
                 if let hir::Expr { span, kind: hir::ExprKind::Call(base, _), .. } = expr {
-                    if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
+                    if let ty::PredicateKind::Clause(ty::clause::Trait(pred)) =
                         obligation.predicate.kind().skip_binder()
                     {
                         err.span_label(*span, &format!("this call returns `{}`", pred.self_ty()));
@@ -2062,7 +2062,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = cause
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
             && let Some(pred) = predicates.predicates.get(*idx)
-            && let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = pred.kind().skip_binder()
+            && let ty::PredicateKind::Clause(ty::clause::Trait(trait_pred)) = pred.kind().skip_binder()
             && self.tcx.is_fn_trait(trait_pred.def_id())
         {
             let expected_self =
@@ -2076,7 +2076,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let other_pred = predicates.into_iter()
                 .enumerate()
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
+                    ty::PredicateKind::Clause(ty::clause::Trait(trait_pred))
                         if self.tcx.is_fn_trait(trait_pred.def_id())
                             && other_idx != idx
                             // Make sure that the self type matches
@@ -2202,7 +2202,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // bound was introduced. At least one generator should be present for this diagnostic to be
         // modified.
         let (mut trait_ref, mut target_ty) = match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(p)) => (Some(p), Some(p.self_ty())),
+            ty::PredicateKind::Clause(ty::clause::Trait(p)) => (Some(p), Some(p.self_ty())),
             _ => (None, None),
         };
         let mut generator = None;
@@ -2865,7 +2865,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::SizedArgumentType(sp) => {
                 if let Some(span) = sp {
                     if let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder()
-                        && let ty::Clause::Trait(trait_pred) = clause
+                        && let ty::clause::Trait(trait_pred) = clause
                         && let ty::Dynamic(..) = trait_pred.self_ty().kind()
                     {
                         let span = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
@@ -3765,7 +3765,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // in. For example, this would be what `Iterator::Item` is here.
             let ty_var = self.infcx.next_ty_var(origin);
             // This corresponds to `<ExprTy as Iterator>::Item = _`.
-            let projection = ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::Projection(
+            let projection = ty::Binder::dummy(ty::PredicateKind::Clause(ty::clause::Projection(
                 ty::ProjectionPredicate {
                     projection_ty: self.tcx.mk_alias_ty(proj.def_id, substs),
                     term: ty_var.into(),

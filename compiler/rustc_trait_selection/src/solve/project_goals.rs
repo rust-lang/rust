@@ -41,7 +41,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 ty::TermKind::Ty(_) => self.infcx.next_ty_infer().into(),
                 ty::TermKind::Const(ct) => self.infcx.next_const_infer(ct.ty()).into(),
             };
-            let unconstrained_predicate = ty::Clause::Projection(ProjectionPredicate {
+            let unconstrained_predicate = ty::clause::Projection(ProjectionPredicate {
                 projection_ty: goal.predicate.projection_ty,
                 term: unconstrained_rhs,
             });

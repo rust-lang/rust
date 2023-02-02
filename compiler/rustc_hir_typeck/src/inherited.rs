@@ -164,7 +164,7 @@ impl<'tcx> Inherited<'tcx> {
         let infer_var_info = &mut self.infer_var_info.borrow_mut();
 
         // (*) binder skipped
-        if let ty::PredicateKind::Clause(ty::Clause::Trait(tpred)) = obligation.predicate.kind().skip_binder()
+        if let ty::PredicateKind::Clause(ty::clause::Trait(tpred)) = obligation.predicate.kind().skip_binder()
             && let Some(ty) = self.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| self.root_var(t))
             && self.tcx.lang_items().sized_trait().map_or(false, |st| st != tpred.trait_ref.def_id)
         {
@@ -178,7 +178,7 @@ impl<'tcx> Inherited<'tcx> {
                     .kind()
                     .rebind(
                         // (*) binder moved here
-                        ty::PredicateKind::Clause(ty::Clause::Trait(tpred.with_self_ty(self.tcx, new_self_ty)))
+                        ty::PredicateKind::Clause(ty::clause::Trait(tpred.with_self_ty(self.tcx, new_self_ty)))
                     ),
             );
             // Don't report overflow errors. Otherwise equivalent to may_hold.
@@ -187,7 +187,7 @@ impl<'tcx> Inherited<'tcx> {
             }
         }
 
-        if let ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) =
+        if let ty::PredicateKind::Clause(ty::clause::Projection(predicate)) =
             obligation.predicate.kind().skip_binder()
         {
             // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,

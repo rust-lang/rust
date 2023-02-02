@@ -463,7 +463,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
         let mut unsatisfied_bounds: Vec<_> = required_bounds
             .into_iter()
             .filter(|clause| match clause.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(
+                ty::PredicateKind::Clause(ty::clause::RegionOutlives(ty::OutlivesPredicate(
                     a,
                     b,
                 ))) => !region_known_to_outlive(
@@ -474,7 +474,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                     a,
                     b,
                 ),
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                ty::PredicateKind::Clause(ty::clause::TypeOutlives(ty::OutlivesPredicate(
                     a,
                     b,
                 ))) => !ty_known_to_outlive(
@@ -616,7 +616,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
                     }));
                 // The predicate we expect to see. (In our example,
                 // `Self: 'me`.)
-                let clause = ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                let clause = ty::PredicateKind::Clause(ty::clause::TypeOutlives(
                     ty::OutlivesPredicate(ty_param, region_param),
                 ));
                 let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
@@ -654,7 +654,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
                         name: region_b_param.name,
                     }));
                 // The predicate we expect to see.
-                let clause = ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                let clause = ty::PredicateKind::Clause(ty::clause::RegionOutlives(
                     ty::OutlivesPredicate(region_a_param, region_b_param),
                 ));
                 let clause = tcx.mk_predicate(ty::Binder::dummy(clause));

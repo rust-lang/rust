@@ -1309,7 +1309,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
                 ty::PredicateKind::Clause(clause) => match clause {
-                    ty::Clause::Trait(trait_pred) => {
+                    ty::clause::Trait(trait_pred) => {
                         assert_eq!(trait_pred.polarity, ty::ImplPolarity::Positive);
                         trait_bounds.push((
                             bound_pred.rebind(trait_pred.trait_ref),
@@ -1317,13 +1317,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             trait_pred.constness,
                         ));
                     }
-                    ty::Clause::Projection(proj) => {
+                    ty::clause::Projection(proj) => {
                         projection_bounds.push((bound_pred.rebind(proj), span));
                     }
-                    ty::Clause::TypeOutlives(_) => {
+                    ty::clause::TypeOutlives(_) => {
                         // Do nothing, we deal with regions separately
                     }
-                    ty::Clause::RegionOutlives(_) => bug!(),
+                    ty::clause::RegionOutlives(_) => bug!(),
                 },
                 ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::ObjectSafe(_)
@@ -1424,7 +1424,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
+                    ty::PredicateKind::Clause(ty::clause::Trait(pred)) => {
                         let pred = bound_predicate.rebind(pred);
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
@@ -1433,7 +1433,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .map(|item| item.def_id),
                         );
                     }
-                    ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
+                    ty::PredicateKind::Clause(ty::clause::Projection(pred)) => {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.

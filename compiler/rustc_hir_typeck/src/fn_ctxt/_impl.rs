@@ -649,7 +649,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.fulfillment_cx.borrow().pending_obligations().into_iter().filter_map(
             move |obligation| match &obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Projection(data))
+                ty::PredicateKind::Clause(ty::clause::Projection(data))
                     if self.self_type_matches_expected_vid(
                         data.projection_ty.self_ty(),
                         ty_var_root,
@@ -657,18 +657,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     Some(obligation)
                 }
-                ty::PredicateKind::Clause(ty::Clause::Trait(data))
+                ty::PredicateKind::Clause(ty::clause::Trait(data))
                     if self.self_type_matches_expected_vid(data.self_ty(), ty_var_root) =>
                 {
                     Some(obligation)
                 }
 
-                ty::PredicateKind::Clause(ty::Clause::Trait(..))
-                | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                ty::PredicateKind::Clause(ty::clause::Trait(..))
+                | ty::PredicateKind::Clause(ty::clause::Projection(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-                | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
+                | ty::PredicateKind::Clause(ty::clause::RegionOutlives(..))
+                | ty::PredicateKind::Clause(ty::clause::TypeOutlives(..))
                 | ty::PredicateKind::WellFormed(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
@@ -692,7 +692,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sized_did = self.tcx.lang_items().sized_trait();
         self.obligations_for_self_ty(self_ty).any(|obligation| {
             match obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+                ty::PredicateKind::Clause(ty::clause::Trait(data)) => {
                     Some(data.def_id()) == sized_did
                 }
                 _ => false,
