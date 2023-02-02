@@ -232,6 +232,27 @@ The `rust-analyzer` binary can be installed via https://brew.sh/[Homebrew].
 $ brew install rust-analyzer
 ----
 
+=== VS Code or VSCodium in Flatpak
+
+Setting up `rust-analyzer` with a Flatpak version of Code is not trivial because of the Flatpak sandbox.
+While the sandbox can be disabled for some directories, `/usr/bin` will always be mounted under `/run/host/usr/bin`.
+This prevents access to the system's C compiler, a system-wide installation of Rust, or any other libraries you might want to link to.
+Some compilers and libraries can be acquired as Flatpak SDKs, such as `org.freedesktop.Sdk.Extension.rust-stable` or `org.freedesktop.Sdk.Extension.llvm15`.
+
+If you use a Flatpak SDK for Rust, there should be no extra steps necessary.
+
+If you want to use Flatpak in combination with `rustup`, the following steps might help:
+
+ - both Rust and `rustup` have to be installed using https://rustup.rs. Distro packages _will not_ work.
+ - you need to launch Code, open a terminal and run `echo $PATH`
+ - using https://flathub.org/apps/details/com.github.tchx84.Flatseal[Flatseal], you must add an environment variable called `PATH`.
+   Set its value to the output from above, appending `:~/.cargo/bin`, where `~` is the path to your home directory.
+   You must replace `~`, as it won't be expanded otherwise.
+ - while Flatseal is open, you must enable access to "All user files"
+
+A C compiler should already be available via `org.freedesktop.Sdk`.
+Any other tools or libraries you will need to acquire  from Flatpak.
+
 === Emacs
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
