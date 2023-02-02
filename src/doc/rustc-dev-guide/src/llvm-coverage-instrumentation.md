@@ -299,11 +299,10 @@ $ ./x.py test tests/run-make-fulldeps/coverage --bless
 ```
 
 [mir-opt-test]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/instrument_coverage.rs
-[coverage-test-samples]: https://github.com/rust-lang/rust/tree/master/tests/run-make-fulldeps/coverage
-[`coverage-reports`]: https://github.com/rust-lang/rust/tree/master/tests/run-make-fulldeps/coverage-reports
-[`coverage-spanview`]: https://github.com/rust-lang/rust/tree/master/tests/run-make-fulldeps/coverage-spanview
+[coverage-test-samples]: https://github.com/rust-lang/rust/tree/master/tests/run-make/coverage
+[`coverage-reports`]: https://github.com/rust-lang/rust/tree/master/tests/run-make/coverage-reports
 [spanview-debugging]: compiler-debugging.md#viewing-spanview-output
-[`coverage-llvmir`]: https://github.com/rust-lang/rust/tree/master/tests/run-make-fulldeps/coverage-llvmir
+[`coverage-llvmir`]: https://github.com/rust-lang/rust/tree/master/tests/run-make/coverage-llvmir
 
 ## Implementation Details of the `InstrumentCoverage` MIR Pass
 
