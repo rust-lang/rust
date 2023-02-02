@@ -25,5 +25,9 @@ fn main() {
 }
 
 fn last_modified_bootstrap_commit(config: &MinimalConfig) -> Option<String> {
-    config.last_modified_commit(&["src/bootstrap"], "download-bootstrap", true)
+    config.last_modified_commit(
+        &["src/bootstrap", "src/tools/build_helper"],
+        "download-bootstrap",
+        true,
+    )
 }
