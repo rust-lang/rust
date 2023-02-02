@@ -169,7 +169,7 @@ fn dtorck_constraint_for_ty<'tcx>(
             // these types never have a destructor
         }
 
-        ty::Array(ety, _) | ty::Slice(ety) => {
+        ty::Pat(ety, _) | ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
                 dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, *ety, constraints)

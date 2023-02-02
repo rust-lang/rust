@@ -761,6 +761,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Never
             | ty::Foreign(_)
             | ty::Array(..)
+            | ty::Pat(..)
             | ty::Slice(_)
             | ty::Closure(..)
             | ty::Generator(..)
@@ -822,6 +823,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::RawPtr(_)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
+            | ty::Pat(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)

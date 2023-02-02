@@ -419,6 +419,25 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 self = mt.ty.print(self)?;
             }
 
+            ty::Pat(ty, pat) => {
+                self.push("T");
+                self = ty.print(self)?;
+                match *pat {
+                    ty::PatternKind::Range { start, end, include_end } => {
+                        if let Some(start) = start {
+                            self = self.print_const(start)?;
+                        }
+                        let _ = write!(self.out, "_");
+                        if let Some(end) = end {
+                            self = self.print_const(end)?;
+                        }
+
+                        let _ = write!(self.out, "{:x}_", include_end as u8);
+                    }
+                }
+                self.push("E");
+            }
+
             ty::Array(ty, len) => {
                 self.push("A");
                 self = ty.print(self)?;

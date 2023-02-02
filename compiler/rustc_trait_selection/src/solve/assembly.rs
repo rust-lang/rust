@@ -378,6 +378,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::Generator(..)
+            | ty::Pat(..)
             | ty::GeneratorWitness(_)
             | ty::GeneratorWitnessMIR(..)
             | ty::Never
@@ -425,6 +426,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::RawPtr(_)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
+            | ty::Pat(_, _)
             | ty::FnPtr(_)
             | ty::Alias(..)
             | ty::Closure(..)

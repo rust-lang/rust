@@ -11,8 +11,9 @@ use crate::astconv::generics::{
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
 use crate::errors::{
-    AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
-    TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified, WildPatTy,
+    AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, NonConstRange,
+    TraitObjectDeclaredWithNoTraits, TypeofReservedKeywordUsed,
+    ValueOfAssociatedStructAlreadySpecified, WildPatTy,
 };
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
@@ -29,6 +30,7 @@ use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::middle::stability::AllowUnstable;
+use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeVisitable};
@@ -2968,23 +2970,72 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, ast_ty.span)
             }
-            hir::TyKind::Pat(_ty, pat) => match pat.kind {
-                hir::PatKind::Wild => {
-                    let err = tcx.sess.emit_err(WildPatTy { span: pat.span });
-                    tcx.ty_error_with_guaranteed(err)
-                }
-                hir::PatKind::Binding(_, _, _, _) => todo!(),
-                hir::PatKind::Struct(_, _, _) => todo!(),
-                hir::PatKind::TupleStruct(_, _, _) => todo!(),
-                hir::PatKind::Or(_) => todo!(),
-                hir::PatKind::Path(_) => todo!(),
-                hir::PatKind::Tuple(_, _) => todo!(),
-                hir::PatKind::Box(_) => todo!(),
-                hir::PatKind::Ref(_, _) => todo!(),
-                hir::PatKind::Lit(_) => todo!(),
-                hir::PatKind::Range(_, _, _) => tcx.ty_error(),
-                hir::PatKind::Slice(_, _, _) => todo!(),
-            },
+            hir::TyKind::Pat(ty, pat) => {
+                let ty = self.ast_ty_to_ty(ty);
+                let pat_ty = match pat.kind {
+                    hir::PatKind::Wild => {
+                        let err = tcx.sess.emit_err(WildPatTy { span: pat.span });
+                        tcx.ty_error_with_guaranteed(err)
+                    }
+                    hir::PatKind::Binding(_, _, _, _) => todo!(),
+                    hir::PatKind::Struct(_, _, _) => todo!(),
+                    hir::PatKind::TupleStruct(_, _, _) => todo!(),
+                    hir::PatKind::Or(_) => todo!(),
+                    hir::PatKind::Path(_) => todo!(),
+                    hir::PatKind::Tuple(_, _) => todo!(),
+                    hir::PatKind::Box(_) => todo!(),
+                    hir::PatKind::Ref(_, _) => todo!(),
+                    hir::PatKind::Lit(_) => todo!(),
+                    hir::PatKind::Range(start, end, include_end) => {
+                        let expr_to_const = |expr: &'tcx hir::Expr<'tcx>, neg| -> ty::Const<'tcx> {
+                            match &expr.kind {
+                                hir::ExprKind::Lit(lit) => {
+                                    let lit_input = LitToConstInput { lit: &lit.node, ty, neg };
+                                    match tcx.lit_to_const(lit_input) {
+                                        Ok(c) => c,
+                                        Err(LitToConstError::Reported(err)) => {
+                                            tcx.const_error_with_guaranteed(ty, err)
+                                        }
+                                        Err(LitToConstError::TypeError) => todo!(),
+                                    }
+                                }
+                                _ => {
+                                    let err = tcx.sess.emit_err(NonConstRange { span: expr.span });
+                                    tcx.const_error_with_guaranteed(ty, err)
+                                }
+                            }
+                        };
+                        let expr_to_const = |expr, neg| {
+                            let c = expr_to_const(expr, neg);
+                            self.record_ty(expr.hir_id, c.ty(), expr.span);
+                            c
+                        };
+                        let expr_to_const = |expr: &'tcx hir::Expr<'tcx>| match &expr.kind {
+                            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => expr_to_const(expr, true),
+                            _ => expr_to_const(expr, false),
+                        };
+                        let expr_to_const = |expr| {
+                            let c = expr_to_const(expr);
+                            self.record_ty(expr.hir_id, c.ty(), expr.span);
+                            c
+                        };
+
+                        let start = start.map(expr_to_const);
+                        let end = end.map(expr_to_const);
+
+                        let include_end = match include_end {
+                            hir::RangeEnd::Included => true,
+                            hir::RangeEnd::Excluded => false,
+                        };
+
+                        let pat = tcx.mk_pat(ty::PatternKind::Range { start, end, include_end });
+                        tcx.mk_ty(ty::Pat(ty, pat))
+                    }
+                    hir::PatKind::Slice(_, _, _) => todo!(),
+                };
+                self.record_ty(pat.hir_id, ty, pat.span);
+                pat_ty
+            }
             hir::TyKind::Err => tcx.ty_error(),
         };
 

@@ -13,6 +13,8 @@ use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi;
 use std::iter;
 
+use super::Pattern;
+
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
 #[derive(Clone, Debug)]
@@ -394,6 +396,29 @@ impl<'tcx> Relate<'tcx> for Ty<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for Pattern<'tcx> {
+    #[inline]
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: Self,
+        b: Self,
+    ) -> RelateResult<'tcx, Self> {
+        match (&*a, &*b) {
+            (
+                &ty::PatternKind::Range { start: start_a, end: end_a, include_end: inc_a },
+                &ty::PatternKind::Range { start: start_b, end: end_b, include_end: inc_b },
+            ) => {
+                let start = relation.relate(start_a, start_b)?;
+                let end = relation.relate(end_a, end_b)?;
+                if inc_a != inc_b {
+                    todo!()
+                }
+                Ok(relation.tcx().mk_pat(ty::PatternKind::Range { start, end, include_end: inc_a }))
+            }
+        }
+    }
+}
+
 /// The main "type relation" routine. Note that this does not handle
 /// inference artifacts, so you should filter those out before calling
 /// it.
@@ -577,6 +602,12 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                 )?;
                 Ok(tcx.mk_opaque(a_def_id, substs))
             }
+        }
+
+        (&ty::Pat(a_ty, a_pat), &ty::Pat(b_ty, b_pat)) => {
+            let ty = relation.relate(a_ty, b_ty)?;
+            let pat = relation.relate(a_pat, b_pat)?;
+            Ok(tcx.mk_ty(ty::Pat(ty, pat)))
         }
 
         _ => Err(TypeError::Sorts(expected_found(relation, a, b))),
@@ -804,6 +835,20 @@ impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::Binder<'tcx, T> {
         b: ty::Binder<'tcx, T>,
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>> {
         relation.binders(a, b)
+    }
+}
+
+impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Option<T> {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: Self,
+        b: Self,
+    ) -> RelateResult<'tcx, Self> {
+        match (a, b) {
+            (None, None) => Ok(None),
+            (Some(a), Some(b)) => relation.relate(a, b).map(Some),
+            _ => Err(TypeError::Mismatch),
+        }
     }
 }
 

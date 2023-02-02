@@ -39,7 +39,9 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             Ok(vec![element_ty])
         }
 
-        ty::Array(element_ty, _) | ty::Slice(element_ty) => Ok(vec![element_ty]),
+        ty::Pat(element_ty, _) | ty::Array(element_ty, _) | ty::Slice(element_ty) => {
+            Ok(vec![element_ty])
+        }
 
         ty::Tuple(ref tys) => {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
@@ -111,6 +113,7 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         }
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
+        ty::Pat(ty, _) => Ok(vec![ty]),
 
         ty::Adt(def, substs) => {
             let sized_crit = def.sized_constraint(infcx.tcx);
@@ -161,6 +164,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         }
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
+        ty::Pat(ty, _) => Ok(vec![ty]),
 
         ty::Closure(_, substs) => Ok(vec![substs.as_closure().tupled_upvars_ty()]),
 
@@ -224,6 +228,7 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Never
         | ty::Tuple(_)
         | ty::Alias(_, _)
+        | ty::Pat(_, _)
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))

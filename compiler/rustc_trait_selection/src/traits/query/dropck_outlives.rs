@@ -38,8 +38,8 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Foreign(..)
         | ty::Error(_) => true,
 
-        // [T; N] and [T] have same properties as T.
-        ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
+        // `T is PAT` [T; N] and [T] have same properties as T.
+        ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
 
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *all* of them are trivial.

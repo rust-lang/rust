@@ -127,3 +127,5 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
 
 hir_analysis_pattern_type_wild_pat = "wildcard patterns are not permitted for pattern types"
     .label = "this type is the same as the inner type without a pattern"
+
+hir_analysis_pattern_type_non_const_range = "range patterns must have constant range start and end"

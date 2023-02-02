@@ -424,6 +424,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::Float(..)
                 | ty::Array(..)
                 | ty::RawPtr(..)
+                | ty::Pat(..)
                 | ty::Ref(..)
                 | ty::FnDef(..)
                 | ty::FnPtr(..)

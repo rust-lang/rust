@@ -112,6 +112,32 @@ fn layout_of_uncached<'tcx>(
     debug_assert!(!ty.has_non_region_infer());
 
     Ok(match *ty.kind() {
+        ty::Pat(ty, pat) => {
+            let layout = cx.layout_of(ty)?.layout;
+            let mut abi = layout.abi();
+            match *pat {
+                ty::PatternKind::Range { start, end, include_end } => {
+                    if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &mut abi {
+                        if let Some(start) = start {
+                            scalar.valid_range_mut().start =
+                                start.eval_bits(tcx, param_env, start.ty());
+                        }
+                        if let Some(end) = end {
+                            let mut end = end.eval_bits(tcx, param_env, end.ty());
+                            if !include_end {
+                                end = end.wrapping_sub(1);
+                            }
+                            scalar.valid_range_mut().end = end;
+                        }
+
+                        tcx.intern_layout(LayoutS { abi, ..LayoutS::clone(&layout.0) })
+                    } else {
+                        bug!("pattern type with range but not scalar layout: {ty:?}, {layout:?}")
+                    }
+                }
+            }
+        }
+
         // Basic scalars.
         ty::Bool => tcx.intern_layout(LayoutS::scalar(
             cx,
