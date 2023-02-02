@@ -203,8 +203,9 @@ parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
     .suggestion_remove_eq = use `..=` instead
     .note = inclusive ranges end with a single equals sign (`..=`)
 
-parse_inclusive_range_match_arrow = unexpected `=>` after open range
-    .suggestion_add_space = add a space between the pattern and `=>`
+parse_inclusive_range_match_arrow = unexpected `>` after inclusive range
+    .label = this is parsed as an inclusive range `..=`
+    .suggestion = add a space between the pattern and `=>`
 
 parse_inclusive_range_no_end = inclusive range with no end
     .suggestion_open_range = use `..` instead
