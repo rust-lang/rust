@@ -10,7 +10,6 @@
       }
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/simplify_match.rs:+1:17: +1:18
           _2 = const false;                // scope 0 at $DIR/simplify_match.rs:+1:21: +1:26
 -         switchInt(_2) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_match.rs:+1:5: +1:31
 +         switchInt(const false) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_match.rs:+1:5: +1:31

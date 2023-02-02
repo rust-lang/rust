@@ -56,11 +56,8 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/const_debuginfo.rs:+1:9: +1:10
           _1 = const 1_u8;                 // scope 0 at $DIR/const_debuginfo.rs:+1:13: +1:16
-          StorageLive(_2);                 // scope 1 at $DIR/const_debuginfo.rs:+2:9: +2:10
           _2 = const 2_u8;                 // scope 1 at $DIR/const_debuginfo.rs:+2:13: +2:16
-          StorageLive(_3);                 // scope 2 at $DIR/const_debuginfo.rs:+3:9: +3:10
           _3 = const 3_u8;                 // scope 2 at $DIR/const_debuginfo.rs:+3:13: +3:16
           StorageLive(_4);                 // scope 3 at $DIR/const_debuginfo.rs:+4:9: +4:12
           StorageLive(_5);                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:20

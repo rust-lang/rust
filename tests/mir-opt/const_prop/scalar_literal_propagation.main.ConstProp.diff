@@ -11,7 +11,6 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/scalar_literal_propagation.rs:+1:9: +1:10
           _1 = const 1_u32;                // scope 0 at $DIR/scalar_literal_propagation.rs:+1:13: +1:14
           StorageLive(_2);                 // scope 1 at $DIR/scalar_literal_propagation.rs:+2:5: +2:15
 -         _2 = consume(_1) -> bb1;         // scope 1 at $DIR/scalar_literal_propagation.rs:+2:5: +2:15

@@ -85,16 +85,12 @@
       }
   
       bb0: {
-          StorageLive(_3);                 // scope 0 at $DIR/slice_filter.rs:+0:27: +0:28
           _25 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:27: +0:28
           _3 = &((*_25).0: usize);         // scope 0 at $DIR/slice_filter.rs:+0:27: +0:28
-          StorageLive(_4);                 // scope 0 at $DIR/slice_filter.rs:+0:30: +0:31
           _26 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:30: +0:31
           _4 = &((*_26).1: usize);         // scope 0 at $DIR/slice_filter.rs:+0:30: +0:31
-          StorageLive(_5);                 // scope 0 at $DIR/slice_filter.rs:+0:33: +0:34
           _27 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:33: +0:34
           _5 = &((*_27).2: usize);         // scope 0 at $DIR/slice_filter.rs:+0:33: +0:34
-          StorageLive(_6);                 // scope 0 at $DIR/slice_filter.rs:+0:36: +0:37
           _28 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:36: +0:37
           _6 = &((*_28).3: usize);         // scope 0 at $DIR/slice_filter.rs:+0:36: +0:37
 -         StorageLive(_7);                 // scope 1 at $DIR/slice_filter.rs:+0:40: +0:56
