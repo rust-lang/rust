@@ -535,8 +535,8 @@ parse_dot_dot_dot_range_to_pattern_not_allowed = range-to patterns with `...` ar
 
 parse_enum_pattern_instead_of_identifier = expected identifier, found enum pattern
 
-parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `...`
-    .suggestion = to omit remaining fields, use one fewer `.`
+parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `{$token_str}`
+    .suggestion = to omit remaining fields, use `..`
 
 parse_expected_comma_after_pattern_field = expected `,`
 
