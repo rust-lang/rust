@@ -814,8 +814,11 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	background-repeat: no-repeat;
 	background-size: 20px;
 	background-position: calc(100% - 2px) 56%;
-	/* image is black color */
-	background-image: url("down-arrow-927217e04c7463ac.svg");
+	/* down arrow (image is black color) */
+	background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+	width="128" height="128" viewBox="-30 -20 176 176"><path d="M111,40.5L64,87.499L17,40.5" \
+	fill="none" stroke="black" strike-linecap="square" stroke-miterlimit="10" stroke-width="12"/> \
+	</svg>');
 	/* changes the arrow image color */
 	filter: var(--crate-search-div-filter);
 }
@@ -1444,7 +1447,10 @@ details.toggle > summary.hideme > span {
 }
 
 details.toggle > summary::before {
-	background: url("toggle-plus-1092eb4930d581b0.svg") no-repeat top left;
+	/* toggle plus */
+	background: url('data:image/svg+xml,<svg width="17" height="17" \
+shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
+d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7M8.5 12V8.625v0V5"/></svg>') no-repeat top left;
 	content: "";
 	cursor: pointer;
 	width: 16px;
@@ -1522,7 +1528,10 @@ details.toggle[open] > summary.hideme > span {
 }
 
 details.toggle[open] > summary::before {
-	background: url("toggle-minus-31bbd6e4c77f5c96.svg") no-repeat top left;
+	/* toggle minus */
+	background: url('data:image/svg+xml,<svg width="17" height="17" \
+shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
+d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7"/></svg>') no-repeat top left;
 }
 
 details.toggle[open] > summary::after {
