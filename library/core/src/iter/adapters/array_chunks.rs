@@ -1,5 +1,4 @@
 use crate::array;
-use crate::const_closure::ConstFnMutClosure;
 use crate::iter::{ByRefSized, FusedIterator, Iterator, TrustedRandomAccessNoCoerce};
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
@@ -189,13 +188,12 @@ where
     I: Iterator,
 {
     #[inline]
-    default fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    default fn fold<B, F>(mut self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        let fold = ConstFnMutClosure::new(&mut f, NeverShortCircuit::wrap_mut_2_imp);
-        self.try_fold(init, fold).0
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
     }
 }
 
