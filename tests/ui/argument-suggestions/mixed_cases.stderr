@@ -2,10 +2,8 @@ error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/mixed_cases.rs:10:3
    |
 LL |   two_args(1, "", X {});
-   |   ^^^^^^^^    --------
-   |               | | |
-   |               | | unexpected argument of type `X`
-   |               | help: remove the extra argument
+   |   ^^^^^^^^    --  ---- unexpected argument of type `X`
+   |               |
    |               expected `f32`, found `&str`
    |
 note: function defined here
@@ -13,6 +11,11 @@ note: function defined here
    |
 LL | fn two_args(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
+help: remove the extra argument
+   |
+LL -   two_args(1, "", X {});
+LL +   two_args(1, /* f32 */);
+   |
 
 error[E0061]: this function takes 3 arguments but 4 arguments were supplied
   --> $DIR/mixed_cases.rs:11:3

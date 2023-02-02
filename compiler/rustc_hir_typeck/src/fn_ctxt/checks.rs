@@ -1135,20 +1135,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        // // Incorporate the argument changes in the removal suggestion.
-        // let mut prev = -1;
-        // for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
-        //     if let Some(provided_idx) = provided_idx {
-        //         prev = provided_idx.index() as i64;
-        //     }
-        //     let idx = ProvidedIdx::from_usize((prev + 1) as usize);
-        //     if let None = provided_idx
-        //         && let Some((_, arg_span)) = provided_arg_tys.get(idx)
-        //     {
-        //         let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
-        //         suggestions.push((*arg_span, ty_to_snippet(expected_ty, expected_idx)));
-        //     }
-        // }
+        // Incorporate the argument changes in the removal suggestion.
+        // When a type is *missing*, and the rest are additional, we want to suggest these with a
+        // multipart suggestion, but in order to do so we need to figure out *where* the arg that
+        // was provided but had the wrong type should go, because when looking at `expected_idx`
+        // that is the position in the argument list in the definition, while `provided_idx` will
+        // not be present. So we have to look at what the *last* provided position was, and point
+        // one after to suggest the replacement. FIXME(estebank): This is hacky, and there's
+        // probably a better more involved change we can make to make this work.
+        // For example, if we have
+        // ```
+        // fn foo(i32, &'static str) {}
+        // foo((), (), ());
+        // ```
+        // what should be suggested is
+        // ```
+        // foo(/* i32 */, /* &str */);
+        // ```
+        // which includes the replacement of the first two `()` for the correct type, and the
+        // removal of the last `()`.
+        let mut prev = -1;
+        for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
+            // We want to point not at the *current* argument expression index, but rather at the
+            // index position where it *should have been*, which is *after* the previous one.
+            if let Some(provided_idx) = provided_idx {
+                prev = provided_idx.index() as i64;
+            }
+            let idx = ProvidedIdx::from_usize((prev + 1) as usize);
+            if let None = provided_idx
+                && let Some((_, arg_span)) = provided_arg_tys.get(idx)
+            {
+                // There is a type that was *not* found anywhere, so it isn't a move, but a
+                // replacement and we look at what type it should have been. This will allow us
+                // To suggest a multipart suggestion when encountering `foo(1, "")` where the def
+                // was `fn foo(())`.
+                let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
+                suggestions.push((*arg_span, ty_to_snippet(expected_ty, expected_idx)));
+            }
+        }
 
         // If we have less than 5 things to say, it would be useful to call out exactly what's wrong
         if labels.len() <= 5 {
