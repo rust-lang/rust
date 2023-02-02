@@ -609,11 +609,10 @@ where
 {
     /// Coallocation-aware version of `new`.
     #[inline]
-    #[unstable(feature = "co_alloc_global", issue="none")]
+    #[unstable(feature = "co_alloc_global", issue = "none")]
     #[must_use]
     #[allow(unused_braces)]
-    pub const fn new_co() -> VecDeque<T, Global, CO_ALLOC_PREF>
-    {
+    pub const fn new_co() -> VecDeque<T, Global, CO_ALLOC_PREF> {
         // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
         VecDeque { head: 0, len: 0, buf: RawVec::NEW }
     }

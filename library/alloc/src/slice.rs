@@ -1004,15 +1004,19 @@ impl<T: Copy, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
 #[cfg(not(no_global_oom_handling))]
 #[allow(unused_braces)]
 pub(crate) trait SpecCloneIntoVecCo<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
-where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
- {
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     fn clone_into_co(&self, target: &mut Vec<T, A, CO_ALLOC_PREF>);
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[allow(unused_braces)]
-impl<T: Clone, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecCloneIntoVecCo<T, A, CO_ALLOC_PREF> for [T]
-where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:, {
+impl<T: Clone, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+    SpecCloneIntoVecCo<T, A, CO_ALLOC_PREF> for [T]
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     default fn clone_into_co(&self, target: &mut Vec<T, A, CO_ALLOC_PREF>) {
         // drop anything in target that will not be overwritten
         target.truncate(self.len());
@@ -1029,14 +1033,16 @@ where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:, {
 
 #[cfg(not(no_global_oom_handling))]
 #[allow(unused_braces)]
-impl<T: Copy, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecCloneIntoVecCo<T, A, CO_ALLOC_PREF> for [T]
-where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:, {
+impl<T: Copy, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+    SpecCloneIntoVecCo<T, A, CO_ALLOC_PREF> for [T]
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     fn clone_into_co(&self, target: &mut Vec<T, A, CO_ALLOC_PREF>) {
         target.clear();
         target.extend_from_slice(self);
     }
 }
-
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
