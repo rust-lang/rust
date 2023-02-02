@@ -3510,7 +3510,7 @@ where
     /// assert_eq!(Vec::from(b), vec![1, 2, 3]);
     /// ```
     fn from(s: Box<[T], A>) -> Self {
-        s.into_vec()
+        s.into_vec_co()
     }
 }
 

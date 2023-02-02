@@ -627,8 +627,17 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+        // N.B., see the `hack` module in this file for more details.
+        hack::into_vec(self)
+    }
+
+    /// Coallocation-aware version of [into_vec].
+    #[rustc_allow_incoherent_impl]
+    #[unstable(feature = "global_co_alloc", issue = "none")]
+    #[inline]
     #[allow(unused_braces)]
-    pub fn into_vec<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+    pub fn into_vec_co<A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
         self: Box<Self, A>,
     ) -> Vec<T, A, CO_ALLOC_PREF>
     where
