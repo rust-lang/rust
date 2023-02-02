@@ -290,7 +290,7 @@ impl FunctionBuilder {
         );
 
         let (generic_param_list, where_clause) =
-            fn_generic_params(ctx, necessary_generic_params, &target);
+            fn_generic_params(ctx, necessary_generic_params, &target)?;
 
         Some(Self {
             target,
@@ -336,7 +336,7 @@ impl FunctionBuilder {
         );
 
         let (generic_param_list, where_clause) =
-            fn_generic_params(ctx, necessary_generic_params, &target);
+            fn_generic_params(ctx, necessary_generic_params, &target)?;
 
         Some(Self {
             target,
@@ -551,7 +551,8 @@ fn fn_args(
     ))
 }
 
-/// Gets parameter bounds and where predicates in scope and filters out irrelevant ones.
+/// Gets parameter bounds and where predicates in scope and filters out irrelevant ones. Returns
+/// `None` when it fails to get scope information.
 ///
 /// See comment on `filter_unnecessary_bounds()` for what bounds we consider relevant.
 ///
@@ -562,10 +563,10 @@ fn fn_generic_params(
     ctx: &AssistContext<'_>,
     necessary_params: FxHashSet<hir::GenericParam>,
     target: &GeneratedFunctionTarget,
-) -> (Option<ast::GenericParamList>, Option<ast::WhereClause>) {
+) -> Option<(Option<ast::GenericParamList>, Option<ast::WhereClause>)> {
     if necessary_params.is_empty() {
         // Not really needed but fast path.
-        return (None, None);
+        return Some((None, None));
     }
 
     // 1. Get generic parameters (with bounds) and where predicates in scope.
@@ -592,8 +593,8 @@ fn fn_generic_params(
 
     // 4. Rewrite paths
     if let Some(param) = generic_params.first() {
-        let source_scope = ctx.sema.scope(param.syntax()).unwrap();
-        let target_scope = ctx.sema.scope(&target.parent()).unwrap();
+        let source_scope = ctx.sema.scope(param.syntax())?;
+        let target_scope = ctx.sema.scope(&target.parent())?;
         if source_scope.module() != target_scope.module() {
             let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
             let generic_params = generic_params.iter().map(|it| it.syntax());
@@ -606,7 +607,7 @@ fn fn_generic_params(
     let where_clause =
         if where_preds.is_empty() { None } else { Some(make::where_clause(where_preds)) };
 
-    (Some(generic_param_list), where_clause)
+    Some((Some(generic_param_list), where_clause))
 }
 
 fn params_and_where_preds_in_scope(
