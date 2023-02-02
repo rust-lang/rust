@@ -381,4 +381,8 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             ArrayLen::Body(..) => intravisit::walk_array_len(self, len),
         }
     }
+
+    fn visit_pattern_type_pattern(&mut self, p: &'hir hir::Pat<'hir>) {
+        self.visit_pat(p)
+    }
 }

@@ -90,6 +90,7 @@ macro_rules! arena_types {
             [decode] attribute: rustc_ast::Attribute,
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::symbol::Symbol>,
             [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::symbol::Symbol>,
+            [] pats: rustc_middle::ty::PatternKind<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena

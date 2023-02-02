@@ -1631,3 +1631,10 @@ pub struct OpaqueCapturesHigherRankedLifetime {
     pub decl_span: Span,
     pub bad_place: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_pattern_type_non_const_range)]
+pub struct NonConstRange {
+    #[primary_span]
+    pub span: Span,
+}

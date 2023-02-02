@@ -26,9 +26,10 @@ use crate::traits::solve::{
 };
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, ConstData,
-    GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
-    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity, Region,
-    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, TypeVisitable, Visibility,
+    GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern,
+    PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity,
+    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, TypeVisitable,
+    Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -95,6 +96,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type CanonicalVars = CanonicalVarInfos<'tcx>;
 
     type Ty = Ty<'tcx>;
+    type Pat = Pattern<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
     type AliasTy = ty::AliasTy<'tcx>;
     type ParamTy = ParamTy;
@@ -157,6 +159,7 @@ pub struct CtxtInterners<'tcx> {
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, WithCachedTypeInfo<ConstData<'tcx>>>,
+    pat: InternedSet<'tcx, PatternKind<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, LayoutS<FieldIdx, VariantIdx>>,
@@ -184,6 +187,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
+            pat: Default::default(),
             const_allocation: Default::default(),
             bound_variable_kinds: Default::default(),
             layout: Default::default(),
@@ -1578,6 +1582,7 @@ macro_rules! nop_list_lift {
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift! {region; Region<'a> => Region<'tcx>}
 nop_lift! {const_; Const<'a> => Const<'tcx>}
+nop_lift! {pat; Pattern<'a> => Pattern<'tcx>}
 nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 nop_lift! {predicate; Clause<'a> => Clause<'tcx>}
@@ -1715,6 +1720,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Param,
                     Infer,
                     Alias,
+                    Pat,
                     Foreign
                 )?;
 
@@ -1866,6 +1872,7 @@ macro_rules! direct_interners {
 // crate only, and have a corresponding `mk_` function.
 direct_interners! {
     region: pub(crate) intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
+    pat: pub mk_pat(PatternKind<'tcx>): Pattern -> Pattern<'tcx>,
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutS<FieldIdx, VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,

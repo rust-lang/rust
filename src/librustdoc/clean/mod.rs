@@ -2009,6 +2009,10 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Float(float_ty) => Primitive(float_ty.into()),
         ty::Str => Primitive(PrimitiveType::Str),
         ty::Slice(ty) => Slice(Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None))),
+        ty::Pat(ty, pat) => Type::Pat(
+            Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)),
+            format!("{pat:?}").into_boxed_str(),
+        ),
         ty::Array(ty, mut n) => {
             n = n.normalize(cx.tcx, ty::ParamEnv::reveal_all());
             let n = print_const(cx, n);

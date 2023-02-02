@@ -100,6 +100,13 @@ pub enum TyKind<I: Interner> {
     /// An array with the given length. Written as `[T; N]`.
     Array(I::Ty, I::Const),
 
+    /// A pattern newtype. Takes any type and restricts its valid values to its pattern.
+    /// This will also change the layout to take advantage of this restriction.
+    /// Only `Copy` and `Clone` will automatically get implemented for pattern types.
+    /// Auto-traits treat this as if it were an aggregate with a single nested type.
+    /// Only supports integer range patterns for now.
+    Pat(I::Ty, I::Pat),
+
     /// The pointee of an array slice. Written as `[T]`.
     Slice(I::Ty),
 
@@ -273,12 +280,13 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         CoroutineWitness(_, _) => 18,
         Never => 19,
         Tuple(_) => 20,
-        Alias(_, _) => 21,
-        Param(_) => 22,
-        Bound(_, _) => 23,
-        Placeholder(_) => 24,
-        Infer(_) => 25,
-        Error(_) => 26,
+        Pat(_, _) => 21,
+        Alias(_, _) => 22,
+        Param(_) => 23,
+        Bound(_, _) => 24,
+        Placeholder(_) => 25,
+        Infer(_) => 26,
+        Error(_) => 27,
     }
 }
 
@@ -299,6 +307,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
             (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
+            (Pat(a_t, a_c), Pat(b_t, b_c)) => a_t == b_t && a_c == b_c,
             (Slice(a_t), Slice(b_t)) => a_t == b_t,
             (RawPtr(a_t, a_m), RawPtr(b_t, b_m)) => a_t == b_t && a_m == b_m,
             (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => a_r == b_r && a_t == b_t && a_m == b_m,
@@ -322,7 +331,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             _ => {
                 debug_assert!(
                     tykind_discriminant(self) != tykind_discriminant(other),
-                    "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
+                    "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}"
                 );
                 false
             }
@@ -362,6 +371,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
+            Pat(t, p) => write!(f, "pattern_type!({:?} is {:?})", &this.wrap(t), &this.wrap(p)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
             RawPtr(ty, mutbl) => {
                 match mutbl {

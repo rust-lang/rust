@@ -566,7 +566,7 @@ pub enum Type {
     Pat {
         #[serde(rename = "type")]
         type_: Box<Type>,
-        pat: String,
+        __pat_unstable_do_not_use: String,
     },
     /// `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),

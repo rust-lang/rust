@@ -148,6 +148,12 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Const<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Pattern<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.0.0.encode(e);
+    }
+}
+
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ConstAllocation<'tcx> {
     fn encode(&self, e: &mut E) {
         self.inner().encode(e)
@@ -361,6 +367,12 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Const<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         let consts: ty::ConstData<'tcx> = Decodable::decode(decoder);
         decoder.interner().mk_ct_from_kind(consts.kind, consts.ty)
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Pattern<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        decoder.interner().mk_pat(Decodable::decode(decoder))
     }
 }
 

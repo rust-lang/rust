@@ -49,6 +49,7 @@ pub trait Interner: Sized + Copy {
     type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type AllocId: Copy + Debug + Hash + Eq;
+    type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self>;
 
     // Kinds of consts
     type Const: Copy

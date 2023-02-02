@@ -533,6 +533,16 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        ty::Pat(ty0, pat) => {
+            // u3patI<element-type><pattern>E as vendor extended type
+            let mut s = String::from("u3patI");
+            s.push_str(&encode_ty(tcx, *ty0, dict, options));
+            write!(s, "{:?}", **pat).unwrap();
+            s.push('E');
+            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            typeid.push_str(&s);
+        }
+
         ty::Slice(ty0) => {
             // u5sliceI<element-type>E as vendor extended type
             let mut s = String::from("u5sliceI");
@@ -782,6 +792,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             | ty::Foreign(..)
             | ty::Never
             | ty::Slice(..)
+            | ty::Pat(..)
             | ty::Str
             | ty::Tuple(..) => t.super_fold_with(self),
 

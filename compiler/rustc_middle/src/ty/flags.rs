@@ -218,6 +218,20 @@ impl FlagComputation {
                 self.add_const(len);
             }
 
+            &ty::Pat(ty, pat) => {
+                self.add_ty(ty);
+                match *pat {
+                    ty::PatternKind::Range { start, end, include_end: _ } => {
+                        if let Some(start) = start {
+                            self.add_const(start)
+                        }
+                        if let Some(end) = end {
+                            self.add_const(end)
+                        }
+                    }
+                }
+            }
+
             &ty::Slice(tt) => self.add_ty(tt),
 
             &ty::RawPtr(ty, _) => {
