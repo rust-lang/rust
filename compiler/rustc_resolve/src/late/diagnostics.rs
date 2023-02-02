@@ -1343,7 +1343,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     "!",
                     Applicability::MaybeIncorrect,
                 );
-                if path_str == "try" && span.rust_2015() {
+                if path_str == "try" && span.is_rust_2015() {
                     err.note("if you want the `try` keyword, you need Rust 2018 or later");
                 }
             }

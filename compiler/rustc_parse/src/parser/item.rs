@@ -2442,7 +2442,7 @@ impl<'a> Parser<'a> {
 
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
     fn ban_async_in_2015(&self, span: Span) {
-        if span.rust_2015() {
+        if span.is_rust_2015() {
             let diag = self.diagnostic();
             struct_span_err!(diag, span, E0670, "`async fn` is not permitted in Rust 2015")
                 .span_label(span, "to use `async fn`, switch to Rust 2018 or later")
