@@ -33,6 +33,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
         TypeFolder::tcx(&self.shallow_resolver)
     }
 
+    #[inline]
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !t.has_non_region_infer() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
