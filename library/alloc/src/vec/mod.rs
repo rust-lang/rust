@@ -1879,6 +1879,8 @@ where
         where
             [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
+            crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+            {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
@@ -3332,8 +3334,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 #[allow(unused_braces)]
-impl<T> const Default for Vec<T>
-{
+impl<T> const Default for Vec<T> {
     /// Creates an empty `Vec<T>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
