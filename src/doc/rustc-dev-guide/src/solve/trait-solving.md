@@ -29,7 +29,7 @@ have to prove and the `param_env` in which this predicate has to hold.
 We prove goals by checking whether each possible [`Candidate`] applies for the given goal by
 recursively proving its nested goals. For a list of possible candidates with examples, look at
 [`CandidateSource`]. The most important candidates are `Impl` candidates, i.e. trait implementations
-written by the user,  and `ParamEnv` candidates, i.e. assumptions in our current environment.
+written by the user, and `ParamEnv` candidates, i.e. assumptions in our current environment.
 
 Looking at the above example, to prove `Vec<T>: Clone` we first use
 `impl<T: Clone> Clone for Vec<T>`. To use this impl we have to prove the nested
@@ -64,7 +64,7 @@ We can however get overflow as in the following snippet:
 fn foo<T: Trait>(x: )
 ```
 
-### 3. Trait goals in empty environments are proven by a unique impl.
+### 3. Trait goals in empty environments are proven by a unique impl
 
 If a trait goal holds with an empty environment, there is a unique `impl`,
 either user-defined or builtin, which is used to prove that goal.
@@ -110,5 +110,5 @@ Two types being equal in the type system must mean that they have the same `Type
 [`Goal`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/struct.Goal.html
 [`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Predicate.html
 [`Candidate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/assembly/struct.Candidate.html
-[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/trait_goals/enum.CandidateSource.html
+[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/assembly/enum.CandidateSource.html
 [`CanonicalResponse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/type.CanonicalResponse.html
