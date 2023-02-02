@@ -2034,15 +2034,13 @@ pub(super) fn check_type_bounds<'tcx>(
         ObligationCause::new(impl_ty_span, impl_ty_def_id, code)
     };
 
-    let obligations: Vec<_> = tcx
+    let obligations = tcx
         .bound_explicit_item_bounds(trait_ty.def_id)
         .subst_iter_copied(tcx, rebased_substs)
         .map(|(concrete_ty_bound, span)| {
             debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
             traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
-        })
-        .collect();
-    debug!("check_type_bounds: item_bounds={:?}", obligations);
+        });
 
     for mut obligation in Elaborator::elaborate_many(tcx, obligations) {
         let normalized_predicate =
