@@ -1389,8 +1389,8 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        if !value.needs_infer() {
-            return value; // Avoid duplicated subst-folding.
+        if !value.has_non_region_infer() {
+            return value;
         }
         let mut r = resolve::OpportunisticVarResolver::new(self);
         value.fold_with(&mut r)
