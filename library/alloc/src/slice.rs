@@ -1000,6 +1000,44 @@ impl<T: Copy, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
     }
 }
 
+/// Coallocation-aware version of `SpecCloneIntoVec`.
+#[cfg(not(no_global_oom_handling))]
+#[allow(unused_braces)]
+pub(crate) trait SpecCloneIntoVecCo<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+ {
+    fn clone_into_co(&self, target: &mut Vec<T, A, CO_ALLOC_PREF>);
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[allow(unused_braces)]
+impl<T: Clone, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecCloneIntoVecCo<T, A, CO_ALLOC_PREF> for [T]
+where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:, {
+    default fn clone_into_co(&self, target: &mut Vec<T, A, CO_ALLOC_PREF>) {
+        // drop anything in target that will not be overwritten
+        target.truncate(self.len());
+
+        // target.len <= self.len due to the truncate above, so the
+        // slices here are always in-bounds.
+        let (init, tail) = self.split_at(target.len());
+
+        // reuse the contained values' allocations/resources.
+        target.clone_from_slice(init);
+        target.extend_from_slice(tail);
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[allow(unused_braces)]
+impl<T: Copy, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> SpecCloneIntoVecCo<T, A, CO_ALLOC_PREF> for [T]
+where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:, {
+    fn clone_into_co(&self, target: &mut Vec<T, A, CO_ALLOC_PREF>) {
+        target.clear();
+        target.extend_from_slice(self);
+    }
+}
+
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> ToOwned for [T] {

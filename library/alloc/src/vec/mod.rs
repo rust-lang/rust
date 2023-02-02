@@ -1879,8 +1879,6 @@ where
         where
             [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
-            crate::meta_num_slots!(A, CO_ALLOC_PREF)}]:,
-            {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
@@ -2869,7 +2867,7 @@ where
     }
 
     fn clone_from(&mut self, other: &Self) {
-        crate::slice::SpecCloneIntoVec::clone_into(other.as_slice(), self);
+        crate::slice::SpecCloneIntoVecCo::clone_into_co(other.as_slice(), self);
     }
 }
 
