@@ -751,7 +751,7 @@ pub trait PrettyPrinter<'tcx>:
                 match self.tcx().def_kind(parent) {
                     DefKind::TyAlias | DefKind::AssocTy => {
                         // NOTE: I know we should check for NO_QUERIES here, but it's alright.
-                        // `type_of` on a TAIT should never cause a cycle.
+                        // `type_of` on a type alias or assoc type should never cause a cycle.
                         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: d, .. }) =
                             *self.tcx().type_of(parent).kind()
                         {
