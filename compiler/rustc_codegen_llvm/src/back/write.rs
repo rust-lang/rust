@@ -716,7 +716,7 @@ pub(crate) unsafe fn differentiate(
     let typetrees = &module.module_llvm.typetrees;
 
     for item in diff_items {
-        let tt = typetrees.get(&item.target).unwrap();
+        let tt = typetrees.get(&item.source).unwrap();
 
         let res = enzyme_ad(llmod, llcx, item, tt);
         assert!(res.is_ok());

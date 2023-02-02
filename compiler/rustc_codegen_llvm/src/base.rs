@@ -132,7 +132,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
 
             // find autodiff items and build typetrees for them
             mono_items.iter()
-                .filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).apply_autodiff()).unwrap_or(false))
+                .filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_active()).unwrap_or(false))
                 .filter_map(|(mono_item, _)| {
                     let symbol = mono_item.symbol_name(cx.tcx).to_string();
                     match mono_item {
