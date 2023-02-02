@@ -586,7 +586,7 @@ impl ModuleLlvm {
             //        }
             //    })
             //.collect::<Vec<_>>();
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name), lldiff_items: out }
+            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name), lldiff_items: vec![] }
         }
     }
 
