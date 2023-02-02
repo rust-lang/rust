@@ -3324,7 +3324,20 @@ where
     /// Creates an empty `Vec<T>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
-    fn default() -> Vec<T, Global, CO_ALLOC_PREF> {
+    default fn default() -> Vec<T, Global, CO_ALLOC_PREF> {
+        Vec::new_co()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+#[allow(unused_braces)]
+impl<T> const Default for Vec<T>
+{
+    /// Creates an empty `Vec<T>`.
+    ///
+    /// The vector will not allocate until elements are pushed onto it.
+    fn default() -> Vec<T> {
         Vec::new_co()
     }
 }
