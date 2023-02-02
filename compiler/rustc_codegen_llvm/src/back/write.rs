@@ -716,8 +716,10 @@ pub(crate) unsafe fn differentiate(
 
     for diff_fnc in diff_fncs {
         let name = CString::new(diff_fnc.target.clone()).unwrap();
+        dbg!(&name);
         dbg!(&llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr()));
         let name = CString::new(diff_fnc.source.clone()).unwrap();
+        dbg!(&name);
         dbg!(&llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr()));
         dbg!(&diff_fnc.attrs);
     }
