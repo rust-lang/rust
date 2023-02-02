@@ -440,7 +440,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     metadata: EncodedMetadata,
     metadata_module: Option<CompiledModule>,
     total_cgus: usize,
-    autodiff: Vec<AutoDiffItem>,
     ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
     let sess = tcx.sess;
@@ -475,7 +474,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         Arc::new(metadata_config),
         Arc::new(allocator_config),
         coordinator_send.clone(),
-        autodiff,
         );
 
     OngoingCodegen {
@@ -952,6 +950,7 @@ pub enum Message<B: WriteBackendMethods> {
         module_data: SerializedModule<B::ModuleBuffer>,
         work_product: WorkProduct,
     },
+    AddAutoDiffItems(Vec<AutoDiffItem>),
     CodegenComplete,
     CodegenItem,
     CodegenAborted,
@@ -983,7 +982,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     metadata_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
     tx_to_llvm_workers: Sender<Box<dyn Any + Send>>,
-    autodiff: Vec<AutoDiffItem>,
     ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tx_to_llvm_workers;
     let sess = tcx.sess;
@@ -1234,6 +1232,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut needs_link = Vec::new();
         let mut needs_fat_lto = Vec::new();
         let mut needs_thin_lto = Vec::new();
+        let mut autodiff_items = Vec::new();
         let mut lto_import_only_modules = Vec::new();
         let mut started_lto = false;
         let mut codegen_aborted = false;
@@ -1329,7 +1328,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                                     for (work, cost) in
-                                        generate_lto_work(&cgcx, autodiff.clone(), needs_fat_lto, needs_thin_lto, import_only_modules)
+                                        generate_lto_work(&cgcx, autodiff_items.clone(), needs_fat_lto, needs_thin_lto, import_only_modules)
                                         {
                                             let insertion_index = work_items
                                                 .binary_search_by_key(&cost, |&(_, cost)| cost)
@@ -1515,6 +1514,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
                             lto_import_only_modules.push((module_data, work_product));
                             main_thread_worker_state = MainThreadWorkerState::Idle;
+                        }
+                        Message::AddAutoDiffItems(mut items) => {
+                            autodiff_items.append(&mut items);
                         }
                         // If the thread failed that means it panicked, so we abort immediately.
                         Message::Done { result: Err(None), worker_id: _ } => {
@@ -1889,6 +1891,13 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
         drop(self.coordinator_send.send(Box::new(Message::CodegenComplete::<B>)));
+    }
+
+    pub fn submit_autodiff_items(
+        &self,
+        items: Vec<AutoDiffItem>,
+        ) {
+        drop(self.coordinator_send.send(Box::new(Message::<B>::AddAutoDiffItems(items))));
     }
 
     /// Consumes this context indicating that codegen was entirely aborted, and
