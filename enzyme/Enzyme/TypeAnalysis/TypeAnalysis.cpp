@@ -171,6 +171,7 @@ const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"powi", Intrinsic::powi},
     {"cabs", Intrinsic::not_intrinsic},
     {"ldexp", Intrinsic::not_intrinsic},
+    {"fmod", Intrinsic::not_intrinsic},
 #if LLVM_VERSION_MAJOR >= 9
     {"lround", Intrinsic::lround},
     {"llround", Intrinsic::llround},

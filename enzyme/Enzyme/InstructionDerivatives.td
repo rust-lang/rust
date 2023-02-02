@@ -171,3 +171,11 @@ def : CallPattern<(Op $x),
                   [
                   (FMul (DiffeRet<"">), (FMul (ConstantFP<"2.0"> $x), (FSub (FMul $x, (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), (ConstantFP<"0.56418958354775628694807945156077258584405062932900"> $x) )))
                   ]>;
+
+def : CallPattern<(Op $x, $y),
+                  ["fmod", "fmodf", "fmodl"],
+                  [
+                  (DiffeRet<"">),
+                  (FMul (DiffeRet<"">), (FNeg (Intrinsic<"copysign", [(TypeOf<""> $x)]> (Intrinsic<"floor", [(TypeOf<""> $x)]> (Intrinsic<"fabs", [(TypeOf<""> $x)]> (FDiv $x, $y))), (FDiv $x, $y))))
+                  ]
+                  >;
