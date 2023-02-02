@@ -1319,10 +1319,7 @@ impl<'db> SemanticsImpl<'db> {
         let _p = profile::span("Semantics::analyze_impl");
         let node = self.find_file(node);
 
-        let container = match self.with_ctx(|ctx| ctx.find_container(node)) {
-            Some(it) => it,
-            None => return None,
-        };
+        let container = self.with_ctx(|ctx| ctx.find_container(node))?;
 
         let resolver = match container {
             ChildContainer::DefWithBodyId(def) => {
@@ -1582,7 +1579,7 @@ fn find_root(node: &SyntaxNode) -> SyntaxNode {
     node.ancestors().last().unwrap()
 }
 
-/// `SemanticScope` encapsulates the notion of a scope (the set of visible
+/// `SemanticsScope` encapsulates the notion of a scope (the set of visible
 /// names) at a particular program point.
 ///
 /// It is a bit tricky, as scopes do not really exist inside the compiler.

@@ -33,7 +33,7 @@ use syntax::{
 /// }
 /// ```
 pub struct PathTransform<'a> {
-    generic_def: hir::GenericDef,
+    generic_def: Option<hir::GenericDef>,
     substs: Vec<ast::Type>,
     target_scope: &'a SemanticsScope<'a>,
     source_scope: &'a SemanticsScope<'a>,
@@ -49,7 +49,7 @@ impl<'a> PathTransform<'a> {
         PathTransform {
             source_scope,
             target_scope,
-            generic_def: trait_.into(),
+            generic_def: Some(trait_.into()),
             substs: get_syntactic_substs(impl_).unwrap_or_default(),
         }
     }
@@ -63,13 +63,27 @@ impl<'a> PathTransform<'a> {
         PathTransform {
             source_scope,
             target_scope,
-            generic_def: function.into(),
+            generic_def: Some(function.into()),
             substs: get_type_args_from_arg_list(generic_arg_list).unwrap_or_default(),
         }
     }
 
+    pub fn generic_transformation(
+        target_scope: &'a SemanticsScope<'a>,
+        source_scope: &'a SemanticsScope<'a>,
+    ) -> PathTransform<'a> {
+        PathTransform { source_scope, target_scope, generic_def: None, substs: Vec::new() }
+    }
+
     pub fn apply(&self, syntax: &SyntaxNode) {
         self.build_ctx().apply(syntax)
+    }
+
+    pub fn apply_all<'b>(&self, nodes: impl IntoIterator<Item = &'b SyntaxNode>) {
+        let ctx = self.build_ctx();
+        for node in nodes {
+            ctx.apply(node);
+        }
     }
 
     fn build_ctx(&self) -> Ctx<'a> {
@@ -78,13 +92,13 @@ impl<'a> PathTransform<'a> {
         let source_module = self.source_scope.module();
         let skip = match self.generic_def {
             // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
-            hir::GenericDef::Trait(_) => 1,
+            Some(hir::GenericDef::Trait(_)) => 1,
             _ => 0,
         };
         let substs_by_param: FxHashMap<_, _> = self
             .generic_def
-            .type_params(db)
             .into_iter()
+            .flat_map(|it| it.type_params(db))
             .skip(skip)
             // The actual list of trait type parameters may be longer than the one
             // used in the `impl` block due to trailing default type parameters.

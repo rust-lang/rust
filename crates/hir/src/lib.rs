@@ -2165,6 +2165,16 @@ impl AsAssocItem for ModuleDef {
         }
     }
 }
+impl AsAssocItem for DefWithBody {
+    fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
+        match self {
+            DefWithBody::Function(it) => it.as_assoc_item(db),
+            DefWithBody::Const(it) => it.as_assoc_item(db),
+            DefWithBody::Static(_) | DefWithBody::Variant(_) => None,
+        }
+    }
+}
+
 fn as_assoc_item<ID, DEF, CTOR, AST>(db: &dyn HirDatabase, ctor: CTOR, id: ID) -> Option<AssocItem>
 where
     ID: Lookup<Data = AssocItemLoc<AST>>,
@@ -2563,6 +2573,14 @@ impl GenericParam {
             GenericParam::TypeParam(it) => it.name(db),
             GenericParam::ConstParam(it) => it.name(db),
             GenericParam::LifetimeParam(it) => it.name(db),
+        }
+    }
+
+    pub fn parent(self) -> GenericDef {
+        match self {
+            GenericParam::TypeParam(it) => it.id.parent().into(),
+            GenericParam::ConstParam(it) => it.id.parent().into(),
+            GenericParam::LifetimeParam(it) => it.id.parent.into(),
         }
     }
 }
@@ -3144,15 +3162,15 @@ impl Type {
     }
 
     pub fn is_closure(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::Closure { .. })
+        matches!(self.ty.kind(Interner), TyKind::Closure { .. })
     }
 
     pub fn is_fn(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::FnDef(..) | TyKind::Function { .. })
+        matches!(self.ty.kind(Interner), TyKind::FnDef(..) | TyKind::Function { .. })
     }
 
     pub fn is_array(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::Array(..))
+        matches!(self.ty.kind(Interner), TyKind::Array(..))
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
@@ -3169,7 +3187,7 @@ impl Type {
     }
 
     pub fn is_raw_ptr(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::Raw(..))
+        matches!(self.ty.kind(Interner), TyKind::Raw(..))
     }
 
     pub fn contains_unknown(&self) -> bool {
@@ -3603,6 +3621,14 @@ impl Type {
             }),
             _ => None,
         }
+    }
+
+    /// Returns unique `GenericParam`s contained in this type.
+    pub fn generic_params(&self, db: &dyn HirDatabase) -> FxHashSet<GenericParam> {
+        hir_ty::collect_placeholders(&self.ty, db)
+            .into_iter()
+            .map(|id| TypeOrConstParam { id }.split(db).either_into())
+            .collect()
     }
 }
 
