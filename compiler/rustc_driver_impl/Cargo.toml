@@ -1,10 +1,9 @@
 [package]
-name = "rustc_driver"
+name = "rustc_driver_impl"
 version = "0.0.0"
 edition = "2021"
 
 [lib]
-crate-type = ["dylib"]
 
 [dependencies]
 tracing = { version = "0.1.35" }
