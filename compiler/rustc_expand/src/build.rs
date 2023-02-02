@@ -272,6 +272,10 @@ impl<'a> ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, e))
     }
 
+    pub fn expr_paren(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::Paren(e))
+    }
+
     pub fn expr_call(
         &self,
         span: Span,

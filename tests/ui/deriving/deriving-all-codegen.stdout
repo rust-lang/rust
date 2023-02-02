@@ -209,7 +209,7 @@ impl ::core::marker::StructuralPartialEq for PackedPoint { }
 impl ::core::cmp::PartialEq for PackedPoint {
     #[inline]
     fn eq(&self, other: &PackedPoint) -> bool {
-        { self.x } == { other.x } && { self.y } == { other.y }
+        ({ self.x }) == ({ other.x }) && ({ self.y }) == ({ other.y })
     }
 }
 #[automatically_derived]
@@ -718,8 +718,8 @@ impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
     ::core::marker::Copy {
     #[inline]
     fn eq(&self, other: &PackedGeneric<T, U>) -> bool {
-        { self.0 } == { other.0 } && { self.1 } == { other.1 } &&
-            { self.2 } == { other.2 }
+        ({ self.0 }) == ({ other.0 }) && ({ self.1 }) == ({ other.1 }) &&
+            ({ self.2 }) == ({ other.2 })
     }
 }
 #[automatically_derived]
