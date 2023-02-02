@@ -627,6 +627,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query implied_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
+        desc { |tcx| "computing the implied predicates of `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
+    }
+
     /// The `Option<Ident>` is the name of an associated type. If it is `None`, then this query
     /// returns the full set of predicates. If `Some<Ident>`, then the query returns only the
     /// subset of super-predicates that reference traits that define the given associated type.

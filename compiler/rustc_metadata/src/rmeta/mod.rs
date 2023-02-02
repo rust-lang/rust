@@ -372,6 +372,9 @@ define_tables! {
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
     super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    // As an optimization, we only store this for trait aliases,
+    // since it's identical to super_predicates_of for traits.
+    implied_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<Ty<'static>>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
     fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::PolyFnSig<'static>>>>,
@@ -383,7 +386,6 @@ define_tables! {
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_generator_witnesses: Table<DefIndex, LazyValue<mir::GeneratorLayout<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
-    // FIXME(compiler-errors): Why isn't this a LazyArray?
     thir_abstract_const: Table<DefIndex, LazyValue<ty::Const<'static>>>,
     impl_parent: Table<DefIndex, RawDefId>,
     impl_polarity: Table<DefIndex, ty::ImplPolarity>,

@@ -1316,8 +1316,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let default = self.tcx.object_lifetime_default(def_id);
                 record!(self.tables.object_lifetime_default[def_id] <- default);
             }
-            if let DefKind::Trait | DefKind::TraitAlias = def_kind {
+            if let DefKind::Trait = def_kind {
                 record!(self.tables.super_predicates_of[def_id] <- self.tcx.super_predicates_of(def_id));
+            }
+            if let DefKind::TraitAlias = def_kind {
+                record!(self.tables.super_predicates_of[def_id] <- self.tcx.super_predicates_of(def_id));
+                record!(self.tables.implied_predicates_of[def_id] <- self.tcx.implied_predicates_of(def_id));
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(def_id);

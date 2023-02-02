@@ -192,7 +192,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
         match bound_predicate.skip_binder() {
             ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
                 // Get predicates declared on the trait.
-                let predicates = tcx.super_predicates_of(data.def_id());
+                let predicates = tcx.implied_predicates_of(data.def_id());
 
                 let obligations =
                     predicates.predicates.iter().enumerate().map(|(index, &(mut pred, span))| {

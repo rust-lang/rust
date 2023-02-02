@@ -125,7 +125,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // on a trait we need to add in the supertrait bounds and bounds found on
     // associated types.
     if let Some(_trait_ref) = is_trait {
-        predicates.extend(tcx.super_predicates_of(def_id).predicates.iter().cloned());
+        predicates.extend(tcx.implied_predicates_of(def_id).predicates.iter().cloned());
     }
 
     // In default impls, we can assume that the self type implements
@@ -534,6 +534,19 @@ pub(super) fn explicit_predicates_of<'tcx>(
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum PredicateFilter {
+    /// All predicates may be implied by the trait
+    All,
+
+    /// Only traits that reference `Self: ..` are implied by the trait
+    SelfOnly,
+
+    /// Only traits that reference `Self: ..` and define an associated type
+    /// with the given ident are implied by the trait
+    SelfThatDefines(Ident),
+}
+
 /// Ensures that the super-predicates of the trait with a `DefId`
 /// of `trait_def_id` are converted and stored. This also ensures that
 /// the transitive super-predicates are converted.
@@ -541,24 +554,42 @@ pub(super) fn super_predicates_of(
     tcx: TyCtxt<'_>,
     trait_def_id: LocalDefId,
 ) -> ty::GenericPredicates<'_> {
-    tcx.super_predicates_that_define_assoc_type((trait_def_id.to_def_id(), None))
+    implied_predicates_with_filter(tcx, trait_def_id.to_def_id(), PredicateFilter::SelfOnly)
+}
+
+pub(super) fn super_predicates_that_define_assoc_type(
+    tcx: TyCtxt<'_>,
+    (trait_def_id, assoc_name): (DefId, Ident),
+) -> ty::GenericPredicates<'_> {
+    implied_predicates_with_filter(tcx, trait_def_id, PredicateFilter::SelfThatDefines(assoc_name))
+}
+
+pub(super) fn implied_predicates_of(
+    tcx: TyCtxt<'_>,
+    trait_def_id: LocalDefId,
+) -> ty::GenericPredicates<'_> {
+    if tcx.is_trait_alias(trait_def_id.to_def_id()) {
+        implied_predicates_with_filter(tcx, trait_def_id.to_def_id(), PredicateFilter::All)
+    } else {
+        tcx.super_predicates_of(trait_def_id)
+    }
 }
 
 /// Ensures that the super-predicates of the trait with a `DefId`
 /// of `trait_def_id` are converted and stored. This also ensures that
 /// the transitive super-predicates are converted.
-pub(super) fn super_predicates_that_define_assoc_type(
+pub(super) fn implied_predicates_with_filter(
     tcx: TyCtxt<'_>,
-    (trait_def_id, assoc_name): (DefId, Option<Ident>),
+    trait_def_id: DefId,
+    filter: PredicateFilter,
 ) -> ty::GenericPredicates<'_> {
     let Some(trait_def_id) = trait_def_id.as_local() else {
         // if `assoc_name` is None, then the query should've been redirected to an
         // external provider
-        assert!(assoc_name.is_some());
+        assert!(matches!(filter, PredicateFilter::SelfThatDefines(_)));
         return tcx.super_predicates_of(trait_def_id);
     };
 
-    debug!("local trait");
     let trait_hir_id = tcx.hir().local_def_id_to_hir_id(trait_def_id);
 
     let Node::Item(item) = tcx.hir().get(trait_hir_id) else {
@@ -573,40 +604,58 @@ pub(super) fn super_predicates_that_define_assoc_type(
 
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
-    // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
     let self_param_ty = tcx.types.self_param;
-    let superbounds1 = if let Some(assoc_name) = assoc_name {
-        icx.astconv().compute_bounds_that_match_assoc_type(self_param_ty, bounds, assoc_name)
-    } else {
-        icx.astconv().compute_bounds(self_param_ty, bounds)
+    let (superbounds, where_bounds_that_match) = match filter {
+        PredicateFilter::All => (
+            // Convert the bounds that follow the colon (or equal in trait aliases)
+            icx.astconv().compute_bounds(self_param_ty, bounds),
+            // Also include all where clause bounds
+            icx.type_parameter_bounds_in_generics(
+                generics,
+                item.owner_id.def_id,
+                self_param_ty,
+                OnlySelfBounds(false),
+                None,
+            ),
+        ),
+        PredicateFilter::SelfOnly => (
+            // Convert the bounds that follow the colon (or equal in trait aliases)
+            icx.astconv().compute_bounds(self_param_ty, bounds),
+            // Include where clause bounds for `Self`
+            icx.type_parameter_bounds_in_generics(
+                generics,
+                item.owner_id.def_id,
+                self_param_ty,
+                OnlySelfBounds(true),
+                None,
+            ),
+        ),
+        PredicateFilter::SelfThatDefines(assoc_name) => (
+            // Convert the bounds that follow the colon (or equal) that reference the associated name
+            icx.astconv().compute_bounds_that_match_assoc_type(self_param_ty, bounds, assoc_name),
+            // Include where clause bounds for `Self` that reference the associated name
+            icx.type_parameter_bounds_in_generics(
+                generics,
+                item.owner_id.def_id,
+                self_param_ty,
+                OnlySelfBounds(true),
+                Some(assoc_name),
+            ),
+        ),
     };
 
-    let superbounds1 = superbounds1.predicates();
-
-    // Convert any explicit superbounds in the where-clause,
-    // e.g., `trait Foo where Self: Bar`.
-    // In the case of trait aliases, however, we include all bounds in the where-clause,
-    // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
-    // as one of its "superpredicates".
-    let is_trait_alias = tcx.is_trait_alias(trait_def_id.to_def_id());
-    let superbounds2 = icx.type_parameter_bounds_in_generics(
-        generics,
-        item.owner_id.def_id,
-        self_param_ty,
-        OnlySelfBounds(!is_trait_alias),
-        assoc_name,
-    );
-
     // Combine the two lists to form the complete set of superbounds:
-    let superbounds = &*tcx.arena.alloc_from_iter(superbounds1.into_iter().chain(superbounds2));
-    debug!(?superbounds);
+    let implied_bounds = &*tcx
+        .arena
+        .alloc_from_iter(superbounds.predicates().into_iter().chain(where_bounds_that_match));
+    debug!(?implied_bounds);
 
     // Now require that immediate supertraits are converted,
     // which will, in turn, reach indirect supertraits.
-    if assoc_name.is_none() {
+    if matches!(filter, PredicateFilter::SelfOnly) {
         // Now require that immediate supertraits are converted,
         // which will, in turn, reach indirect supertraits.
-        for &(pred, span) in superbounds {
+        for &(pred, span) in implied_bounds {
             debug!("superbound: {:?}", pred);
             if let ty::PredicateKind::Clause(ty::Clause::Trait(bound)) = pred.kind().skip_binder() {
                 tcx.at(span).super_predicates_of(bound.def_id());
@@ -614,7 +663,7 @@ pub(super) fn super_predicates_that_define_assoc_type(
         }
     }
 
-    ty::GenericPredicates { parent: None, predicates: superbounds }
+    ty::GenericPredicates { parent: None, predicates: implied_bounds }
 }
 
 /// Returns the predicates defined on `item_def_id` of the form
