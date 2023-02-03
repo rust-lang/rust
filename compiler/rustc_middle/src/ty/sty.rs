@@ -2043,6 +2043,28 @@ impl<'tcx> Ty<'tcx> {
         cf.is_break()
     }
 
+    /// Checks whether a type recursively contains any closure
+    ///
+    /// Example: `Option<[closure@file.rs:4:20]>` returns true
+    pub fn contains_closure(self) -> bool {
+        struct ContainsClosureVisitor;
+
+        impl<'tcx> TypeVisitor<'tcx> for ContainsClosureVisitor {
+            type BreakTy = ();
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                if let ty::Closure(_, _) = t.kind() {
+                    ControlFlow::Break(())
+                } else {
+                    t.super_visit_with(self)
+                }
+            }
+        }
+
+        let cf = self.visit_with(&mut ContainsClosureVisitor);
+        cf.is_break()
+    }
+
     /// Returns the type and mutability of `*ty`.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
