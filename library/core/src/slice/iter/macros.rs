@@ -384,6 +384,15 @@ macro_rules! iterator {
 
         #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl<T> TrustedLen for $name<'_, T> {}
+
+        impl<'a, T> UncheckedIterator for $name<'a, T> {
+            unsafe fn next_unchecked(&mut self) -> $elem {
+                // SAFETY: The caller promised there's at least one more item.
+                unsafe {
+                    next_unchecked!(self)
+                }
+            }
+        }
     }
 }
 

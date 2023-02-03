@@ -43,5 +43,7 @@ pub fn long_integer_map(x: [u32; 64]) -> [u32; 64] {
     // CHECK-NEXT: alloca [64 x i32]
     // CHECK-NEXT: alloca %"core::mem::manually_drop::ManuallyDrop<[u32; 64]>"
     // CHECK-NOT: alloca
-    x.map(|x| 2 * x + 1)
+    // CHECK: mul <{{[0-9]+}} x i32>
+    // CHECK: add <{{[0-9]+}} x i32>
+    x.map(|x| 13 * x + 7)
 }

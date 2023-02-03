@@ -1,6 +1,5 @@
 use crate::array;
 use crate::iter::{ByRefSized, FusedIterator, Iterator, TrustedRandomAccessNoCoerce};
-use crate::mem::{self, MaybeUninit};
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
 /// An iterator over `N` elements of the iterator at a time.
@@ -212,19 +211,14 @@ where
         let mut i = 0;
         // Use a while loop because (0..len).step_by(N) doesn't optimize well.
         while inner_len - i >= N {
-            let mut chunk = MaybeUninit::uninit_array();
-            let mut guard = array::Guard { array_mut: &mut chunk, initialized: 0 };
-            while guard.initialized < N {
+            let chunk = crate::array::from_fn(|local| {
                 // SAFETY: The method consumes the iterator and the loop condition ensures that
                 // all accesses are in bounds and only happen once.
                 unsafe {
-                    let idx = i + guard.initialized;
-                    guard.push_unchecked(self.iter.__iterator_get_unchecked(idx));
+                    let idx = i + local;
+                    self.iter.__iterator_get_unchecked(idx)
                 }
-            }
-            mem::forget(guard);
-            // SAFETY: The loop above initialized all elements
-            let chunk = unsafe { MaybeUninit::array_assume_init(chunk) };
+            });
             accum = f(accum, chunk);
             i += N;
         }

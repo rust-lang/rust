@@ -10,7 +10,7 @@ use crate::convert::{Infallible, TryFrom};
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
-use crate::iter::TrustedLen;
+use crate::iter::UncheckedIterator;
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
@@ -55,16 +55,11 @@ pub use iter::IntoIter;
 /// ```
 #[inline]
 #[stable(feature = "array_from_fn", since = "1.63.0")]
-pub fn from_fn<T, const N: usize, F>(mut cb: F) -> [T; N]
+pub fn from_fn<T, const N: usize, F>(cb: F) -> [T; N]
 where
     F: FnMut(usize) -> T,
 {
-    let mut idx = 0;
-    [(); N].map(|_| {
-        let res = cb(idx);
-        idx += 1;
-        res
-    })
+    try_from_fn(NeverShortCircuit::wrap_mut_1(cb)).0
 }
 
 /// Creates an array `[T; N]` where each fallible array element `T` is returned by the `cb` call.
@@ -104,9 +99,14 @@ where
     R: Try,
     R::Residual: Residual<[R::Output; N]>,
 {
-    // SAFETY: we know for certain that this iterator will yield exactly `N`
-    // items.
-    unsafe { try_collect_into_array_unchecked(&mut (0..N).map(cb)) }
+    let mut array = MaybeUninit::uninit_array::<N>();
+    match try_from_fn_erased(&mut array, cb) {
+        ControlFlow::Break(r) => FromResidual::from_residual(r),
+        ControlFlow::Continue(()) => {
+            // SAFETY: All elements of the array were populated.
+            try { unsafe { MaybeUninit::array_assume_init(array) } }
+        }
+    }
 }
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
@@ -430,9 +430,7 @@ trait SpecArrayClone: Clone {
 impl<T: Clone> SpecArrayClone for T {
     #[inline]
     default fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
-        // SAFETY: we know for certain that this iterator will yield exactly `N`
-        // items.
-        unsafe { collect_into_array_unchecked(&mut array.iter().cloned()) }
+        from_trusted_iterator(array.iter().cloned())
     }
 }
 
@@ -516,12 +514,7 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(T) -> U,
     {
-        drain_array_with(self, |iter| {
-            let mut iter = iter.map(f);
-            // SAFETY: we know for certain that this iterator will yield exactly `N`
-            // items.
-            unsafe { collect_into_array_unchecked(&mut iter) }
-        })
+        self.try_map(NeverShortCircuit::wrap_mut_1(f)).0
     }
 
     /// A fallible function `f` applied to each element on array `self` in order to
@@ -558,12 +551,7 @@ impl<T, const N: usize> [T; N] {
         R: Try,
         R::Residual: Residual<[R::Output; N]>,
     {
-        drain_array_with(self, |iter| {
-            let mut iter = iter.map(f);
-            // SAFETY: we know for certain that this iterator will yield exactly `N`
-            // items.
-            unsafe { try_collect_into_array_unchecked(&mut iter) }
-        })
+        drain_array_with(self, |iter| try_from_trusted_iterator(iter.map(f)))
     }
 
     /// 'Zips up' two arrays into a single array of pairs.
@@ -585,12 +573,7 @@ impl<T, const N: usize> [T; N] {
     #[unstable(feature = "array_zip", issue = "80094")]
     pub fn zip<U>(self, rhs: [U; N]) -> [(T, U); N] {
         drain_array_with(self, |lhs| {
-            drain_array_with(rhs, |rhs| {
-                let mut iter = crate::iter::zip(lhs, rhs);
-                // SAFETY: we know for certain that this iterator will yield exactly `N`
-                // items.
-                unsafe { collect_into_array_unchecked(&mut iter) }
-            })
+            drain_array_with(rhs, |rhs| from_trusted_iterator(crate::iter::zip(lhs, rhs)))
         })
     }
 
@@ -638,9 +621,7 @@ impl<T, const N: usize> [T; N] {
     /// ```
     #[unstable(feature = "array_methods", issue = "76118")]
     pub fn each_ref(&self) -> [&T; N] {
-        // SAFETY: we know for certain that this iterator will yield exactly `N`
-        // items.
-        unsafe { collect_into_array_unchecked(&mut self.iter()) }
+        from_trusted_iterator(self.iter())
     }
 
     /// Borrows each element mutably and returns an array of mutable references
@@ -660,9 +641,7 @@ impl<T, const N: usize> [T; N] {
     /// ```
     #[unstable(feature = "array_methods", issue = "76118")]
     pub fn each_mut(&mut self) -> [&mut T; N] {
-        // SAFETY: we know for certain that this iterator will yield exactly `N`
-        // items.
-        unsafe { collect_into_array_unchecked(&mut self.iter_mut()) }
+        from_trusted_iterator(self.iter_mut())
     }
 
     /// Divides one array reference into two at an index.
@@ -822,99 +801,71 @@ impl<T, const N: usize> [T; N] {
     }
 }
 
-/// Pulls `N` items from `iter` and returns them as an array. If the iterator
-/// yields fewer than `N` items, this function exhibits undefined behavior.
+/// Populate an array from the first `N` elements of `iter`
 ///
-/// # Safety
+/// # Panics
 ///
-/// It is up to the caller to guarantee that `iter` yields at least `N` items.
-/// Violating this condition causes undefined behavior.
-unsafe fn try_collect_into_array_unchecked<I, T, R, const N: usize>(
-    iter: &mut I,
-) -> ChangeOutputType<I::Item, [T; N]>
-where
-    // Note: `TrustedLen` here is somewhat of an experiment. This is just an
-    // internal function, so feel free to remove if this bound turns out to be a
-    // bad idea. In that case, remember to also remove the lower bound
-    // `debug_assert!` below!
-    I: Iterator + TrustedLen,
-    I::Item: Try<Output = T, Residual = R>,
-    R: Residual<[T; N]>,
-{
-    debug_assert!(N <= iter.size_hint().1.unwrap_or(usize::MAX));
-    debug_assert!(N <= iter.size_hint().0);
+/// If the iterator doesn't actually have enough items.
+///
+/// By depending on `TrustedLen`, however, we can do that check up-front (where
+/// it easily optimizes away) so it doesn't impact the loop that fills the array.
+#[inline]
+fn from_trusted_iterator<T, const N: usize>(iter: impl UncheckedIterator<Item = T>) -> [T; N] {
+    try_from_trusted_iterator(iter.map(NeverShortCircuit)).0
+}
 
-    let mut array = MaybeUninit::uninit_array::<N>();
-    let cf = try_collect_into_array_erased(iter, &mut array);
-    match cf {
-        ControlFlow::Break(r) => FromResidual::from_residual(r),
-        ControlFlow::Continue(initialized) => {
-            debug_assert_eq!(initialized, N);
-            // SAFETY: because of our function contract, all the elements
-            // must have been initialized.
-            let output = unsafe { MaybeUninit::array_assume_init(array) };
-            Try::from_output(output)
+#[inline]
+fn try_from_trusted_iterator<T, R, const N: usize>(
+    iter: impl UncheckedIterator<Item = R>,
+) -> ChangeOutputType<R, [T; N]>
+where
+    R: Try<Output = T>,
+    R::Residual: Residual<[T; N]>,
+{
+    assert!(iter.size_hint().0 >= N);
+    fn next<T>(mut iter: impl UncheckedIterator<Item = T>) -> impl FnMut(usize) -> T {
+        move |_| {
+            // SAFETY: We know that `from_fn` will call this at most N times,
+            // and we checked to ensure that we have at least that many items.
+            unsafe { iter.next_unchecked() }
         }
     }
+
+    try_from_fn(next(iter))
 }
 
-/// Infallible version of [`try_collect_into_array_unchecked`].
-unsafe fn collect_into_array_unchecked<I, const N: usize>(iter: &mut I) -> [I::Item; N]
-where
-    I: Iterator + TrustedLen,
-{
-    let mut map = iter.map(NeverShortCircuit);
-
-    // SAFETY: The same safety considerations w.r.t. the iterator length
-    // apply for `try_collect_into_array_unchecked` as for
-    // `collect_into_array_unchecked`
-    match unsafe { try_collect_into_array_unchecked(&mut map) } {
-        NeverShortCircuit(array) => array,
-    }
-}
-
-/// Rather than *returning* the array, this fills in a passed-in buffer.
-/// If any of the iterator elements short-circuit, it drops everything in the
-/// buffer and return the error.  Otherwise it returns the number of items
-/// which were initialized in the buffer.
+/// Version of [`try_from_fn`] using a passed-in slice in order to avoid
+/// needing to monomorphize for every array length.
 ///
-/// (The caller is responsible for dropping those items on success, but not
-/// doing that is just a leak, not UB, so this function is itself safe.)
+/// This takes a generator rather than an iterator so that *at the type level*
+/// it never needs to worry about running out of items.  When combined with
+/// an infallible `Try` type, that means the loop canonicalizes easily, allowing
+/// it to optimize well.
 ///
-/// This means less monomorphization, but more importantly it means that the
-/// returned array doesn't need to be copied into the `Result`, since returning
-/// the result seemed (2023-01) to cause in an extra `N + 1`-length `alloca`
-/// even if it's always `unwrap_unchecked` later.
+/// It would be *possible* to unify this and [`iter_next_chunk_erased`] into one
+/// function that does the union of both things, but last time it was that way
+/// it resulted in poor codegen from the "are there enough source items?" checks
+/// not optimizing away.  So if you give it a shot, make sure to watch what
+/// happens in the codegen tests.
 #[inline]
-fn try_collect_into_array_erased<I, T, R>(
-    iter: &mut I,
+fn try_from_fn_erased<T, R>(
     buffer: &mut [MaybeUninit<T>],
-) -> ControlFlow<R, usize>
+    mut generator: impl FnMut(usize) -> R,
+) -> ControlFlow<R::Residual>
 where
-    I: Iterator,
-    I::Item: Try<Output = T, Residual = R>,
+    R: Try<Output = T>,
 {
-    let n = buffer.len();
     let mut guard = Guard { array_mut: buffer, initialized: 0 };
 
-    for _ in 0..n {
-        match iter.next() {
-            Some(item_rslt) => {
-                let item = item_rslt.branch()?;
+    while guard.initialized < guard.array_mut.len() {
+        let item = generator(guard.initialized).branch()?;
 
-                // SAFETY: `guard.initialized` starts at 0, which means push can be called
-                // at most `n` times, which this loop does.
-                unsafe {
-                    guard.push_unchecked(item);
-                }
-            }
-            None => break,
-        }
+        // SAFETY: The loop condition ensures we have space to push the item
+        unsafe { guard.push_unchecked(item) };
     }
 
-    let initialized = guard.initialized;
     mem::forget(guard);
-    ControlFlow::Continue(initialized)
+    ControlFlow::Continue(())
 }
 
 /// Panic guard for incremental initialization of arrays.
@@ -928,7 +879,7 @@ where
 ///
 /// To minimize indirection fields are still pub but callers should at least use
 /// `push_unchecked` to signal that something unsafe is going on.
-pub(crate) struct Guard<'a, T> {
+struct Guard<'a, T> {
     /// The array to be initialized.
     pub array_mut: &'a mut [MaybeUninit<T>],
     /// The number of items that have been initialized so far.
@@ -960,7 +911,7 @@ impl<T> Drop for Guard<'_, T> {
         // SAFETY: this slice will contain only initialized objects.
         unsafe {
             crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
-                &mut self.array_mut.get_unchecked_mut(..self.initialized),
+                self.array_mut.get_unchecked_mut(..self.initialized),
             ));
         }
     }
@@ -982,17 +933,44 @@ impl<T> Drop for Guard<'_, T> {
 pub(crate) fn iter_next_chunk<T, const N: usize>(
     iter: &mut impl Iterator<Item = T>,
 ) -> Result<[T; N], IntoIter<T, N>> {
-    let mut map = iter.map(NeverShortCircuit);
     let mut array = MaybeUninit::uninit_array::<N>();
-    let ControlFlow::Continue(initialized) = try_collect_into_array_erased(&mut map, &mut array);
-    if initialized == N {
-        // SAFETY: All elements of the array were populated.
-        let output = unsafe { MaybeUninit::array_assume_init(array) };
-        Ok(output)
-    } else {
-        let alive = 0..initialized;
-        // SAFETY: `array` was initialized with exactly `initialized`
-        // number of elements.
-        return Err(unsafe { IntoIter::new_unchecked(array, alive) });
+    let r = iter_next_chunk_erased(&mut array, iter);
+    match r {
+        Ok(()) => {
+            // SAFETY: All elements of `array` were populated.
+            Ok(unsafe { MaybeUninit::array_assume_init(array) })
+        }
+        Err(initialized) => {
+            // SAFETY: Only the first `initialized` elements were populated
+            Err(unsafe { IntoIter::new_unchecked(array, 0..initialized) })
+        }
     }
+}
+
+/// Version of [`iter_next_chunk`] using a passed-in slice in order to avoid
+/// needing to monomorphize for every array length.
+///
+/// Unfortunately this loop has two exit conditions, the buffer filling up
+/// or the iterator running out of items, making it tend to optimize poorly.
+#[inline]
+fn iter_next_chunk_erased<T>(
+    buffer: &mut [MaybeUninit<T>],
+    iter: &mut impl Iterator<Item = T>,
+) -> Result<(), usize> {
+    let mut guard = Guard { array_mut: buffer, initialized: 0 };
+    while guard.initialized < guard.array_mut.len() {
+        let Some(item) = iter.next() else {
+            // Unlike `try_from_fn_erased`, we want to keep the partial results,
+            // so we need to defuse the guard instead of using `?`.
+            let initialized = guard.initialized;
+            mem::forget(guard);
+            return Err(initialized)
+        };
+
+        // SAFETY: The loop condition ensures we have space to push the item
+        unsafe { guard.push_unchecked(item) };
+    }
+
+    mem::forget(guard);
+    Ok(())
 }
