@@ -291,16 +291,14 @@ fn module_codegen(
             for (mono_item, _) in mono_items {
                 match mono_item {
                     MonoItem::Fn(inst) => {
-                        tcx.prof.generic_activity("codegen fn").run(|| {
-                            let codegened_function = crate::base::codegen_fn(
-                                tcx,
-                                &mut cx,
-                                Function::new(),
-                                &mut module,
-                                inst,
-                            );
-                            codegened_functions.push(codegened_function);
-                        });
+                        let codegened_function = crate::base::codegen_fn(
+                            tcx,
+                            &mut cx,
+                            Function::new(),
+                            &mut module,
+                            inst,
+                        );
+                        codegened_functions.push(codegened_function);
                     }
                     MonoItem::Static(def_id) => {
                         crate::constant::codegen_static(tcx, &mut module, def_id)

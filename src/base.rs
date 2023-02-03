@@ -30,6 +30,9 @@ pub(crate) fn codegen_fn<'tcx>(
 ) -> CodegenedFunction {
     debug_assert!(!instance.substs.needs_infer());
 
+    let symbol_name = tcx.symbol_name(instance).name.to_string();
+    let _timer = tcx.prof.generic_activity_with_arg("codegen fn", &*symbol_name);
+
     let mir = tcx.instance_mir(instance.def);
     let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
@@ -41,7 +44,6 @@ pub(crate) fn codegen_fn<'tcx>(
     });
 
     // Declare function
-    let symbol_name = tcx.symbol_name(instance).name.to_string();
     let sig = get_function_sig(tcx, module.target_config().default_call_conv, instance);
     let func_id = module.declare_function(&symbol_name, Linkage::Local, &sig).unwrap();
 
@@ -129,6 +131,9 @@ pub(crate) fn compile_fn(
     module: &mut dyn Module,
     codegened_func: CodegenedFunction,
 ) {
+    let _timer =
+        cx.profiler.generic_activity_with_arg("compile function", &*codegened_func.symbol_name);
+
     let clif_comments = codegened_func.clif_comments;
 
     // Store function in context
