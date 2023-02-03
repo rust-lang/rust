@@ -8,6 +8,7 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(deny(warnings)))
 )]
+#![feature(allocator_api)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(const_default_impls)]
