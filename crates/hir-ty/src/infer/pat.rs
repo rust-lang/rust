@@ -6,17 +6,15 @@ use chalk_ir::Mutability;
 use hir_def::{
     expr::{BindingAnnotation, Expr, Literal, Pat, PatId},
     path::Path,
-    type_ref::ConstScalar,
 };
 use hir_expand::name::Name;
 
 use crate::{
-    consteval::intern_const_scalar,
+    consteval::{try_const_usize, usize_const},
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
-    static_lifetime, ConcreteConst, ConstValue, Interner, Scalar, Substitution, Ty, TyBuilder,
-    TyExt, TyKind,
+    static_lifetime, Interner, Scalar, Substitution, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::PatLike;
@@ -264,18 +262,13 @@ impl<'a> InferenceContext<'a> {
                 if let &Some(slice_pat_id) = slice {
                     let rest_pat_ty = match expected.kind(Interner) {
                         TyKind::Array(_, length) => {
-                            let len = match length.data(Interner).value {
-                                ConstValue::Concrete(ConcreteConst {
-                                    interned: ConstScalar::UInt(len),
-                                }) => len.checked_sub((prefix.len() + suffix.len()) as u128),
-                                _ => None,
-                            };
+                            let len = try_const_usize(length);
+                            let len = len.and_then(|len| {
+                                len.checked_sub((prefix.len() + suffix.len()) as u128)
+                            });
                             TyKind::Array(
                                 elem_ty.clone(),
-                                intern_const_scalar(
-                                    len.map_or(ConstScalar::Unknown, |len| ConstScalar::UInt(len)),
-                                    TyBuilder::usize(),
-                                ),
+                                usize_const(self.db, len, self.resolver.krate()),
                             )
                         }
                         _ => TyKind::Slice(elem_ty.clone()),

@@ -82,8 +82,8 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
 #[track_caller]
 fn check_size_and_align(ra_fixture: &str, minicore: &str, size: u64, align: u64) {
     let l = eval_goal(ra_fixture, minicore).unwrap();
-    assert_eq!(l.size.bytes(), size);
-    assert_eq!(l.align.abi.bytes(), align);
+    assert_eq!(l.size.bytes(), size, "size mismatch");
+    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
 }
 
 #[track_caller]
@@ -298,6 +298,11 @@ fn enums_with_discriminants() {
             A = 254,
             B,
             C, // implicitly becomes 256, so we need two bytes
+        }
+    }
+    size_and_align! {
+        enum Goal {
+            A = 1, // This one is (perhaps surprisingly) zero sized.
         }
     }
 }

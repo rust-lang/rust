@@ -26,9 +26,7 @@ use hir_def::{
     lang_item::{lang_attr, LangItem},
     path::{GenericArg, ModPath, Path, PathKind, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{
-        ConstScalarOrPath, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef,
-    },
+    type_ref::{ConstRefOrPath, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
     AdtId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId,
     HasModule, ImplId, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, StaticId, StructId,
     TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId, VariantId,
@@ -44,7 +42,7 @@ use syntax::ast;
 
 use crate::{
     all_super_traits,
-    consteval::{intern_const_scalar, path_to_const, unknown_const, unknown_const_as_generic},
+    consteval::{intern_const_ref, path_to_const, unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     make_binders,
     mapping::{from_chalk_trait_id, ToChalk},
@@ -968,7 +966,7 @@ impl<'a> TyLoweringContext<'a> {
                         // - `Destruct` impls are built-in in 1.62 (current nightlies as of 08-04-2022), so until
                         //   the builtin impls are supported by Chalk, we ignore them here.
                         if let Some(lang) = lang_attr(self.db.upcast(), tr.hir_trait_id()) {
-                            if lang == "drop" || lang == "destruct" {
+                            if matches!(lang, LangItem::Drop | LangItem::Destruct) {
                                 return false;
                             }
                         }
@@ -1919,7 +1917,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
     arg: &'a GenericArg,
     this: &mut T,
     for_type: impl FnOnce(&mut T, &TypeRef) -> Ty + 'a,
-    for_const: impl FnOnce(&mut T, &ConstScalarOrPath, Ty) -> Const + 'a,
+    for_const: impl FnOnce(&mut T, &ConstRefOrPath, Ty) -> Const + 'a,
 ) -> Option<crate::GenericArg> {
     let kind = match kind_id {
         Either::Left(_) => ParamKind::Type,
@@ -1947,7 +1945,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
                 let p = p.mod_path();
                 if p.kind == PathKind::Plain {
                     if let [n] = p.segments() {
-                        let c = ConstScalarOrPath::Path(n.clone());
+                        let c = ConstRefOrPath::Path(n.clone());
                         return Some(
                             GenericArgData::Const(for_const(this, &c, c_ty)).intern(Interner),
                         );
@@ -1964,14 +1962,14 @@ pub(crate) fn const_or_path_to_chalk(
     db: &dyn HirDatabase,
     resolver: &Resolver,
     expected_ty: Ty,
-    value: &ConstScalarOrPath,
+    value: &ConstRefOrPath,
     mode: ParamLoweringMode,
     args: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
 ) -> Const {
     match value {
-        ConstScalarOrPath::Scalar(s) => intern_const_scalar(*s, expected_ty),
-        ConstScalarOrPath::Path(n) => {
+        ConstRefOrPath::Scalar(s) => intern_const_ref(db, s, expected_ty, resolver.krate()),
+        ConstRefOrPath::Path(n) => {
             let path = ModPath::from_segments(PathKind::Plain, Some(n.clone()));
             path_to_const(db, resolver, &path, mode, args, debruijn)
                 .unwrap_or_else(|| unknown_const(expected_ty))

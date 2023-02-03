@@ -512,7 +512,11 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    fn resolve_all(self) -> InferenceResult {
+    // FIXME: This function should be private in module. It is currently only used in the consteval, since we need
+    // `InferenceResult` in the middle of inference. See the fixme comment in `consteval::eval_to_const`. If you
+    // used this function for another workaround, mention it here. If you really need this function and believe that
+    // there is no problem in it being `pub(crate)`, remove this comment.
+    pub(crate) fn resolve_all(self) -> InferenceResult {
         let InferenceContext { mut table, mut result, .. } = self;
 
         table.fallback_if_possible();
@@ -681,11 +685,9 @@ impl<'a> InferenceContext<'a> {
     /// Replaces ConstScalar::Unknown by a new type var, so we can maybe still infer it.
     fn insert_const_vars_shallow(&mut self, c: Const) -> Const {
         let data = c.data(Interner);
-        match data.value {
+        match &data.value {
             ConstValue::Concrete(cc) => match cc.interned {
-                hir_def::type_ref::ConstScalar::Unknown => {
-                    self.table.new_const_var(data.ty.clone())
-                }
+                crate::ConstScalar::Unknown => self.table.new_const_var(data.ty.clone()),
                 _ => c,
             },
             _ => c,

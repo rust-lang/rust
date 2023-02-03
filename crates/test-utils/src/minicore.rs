@@ -510,6 +510,7 @@ pub mod fmt {
 pub mod slice {
     #[lang = "slice"]
     impl<T> [T] {
+        #[lang = "slice_len_fn"]
         pub fn len(&self) -> usize {
             loop {}
         }

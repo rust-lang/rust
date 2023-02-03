@@ -537,6 +537,11 @@ Only applies to closures with blocks, same as `#rust-analyzer.inlayHints.closure
 --
 Whether to hide inlay type hints for constructors.
 --
+[[rust-analyzer.interpret.tests]]rust-analyzer.interpret.tests (default: `false`)::
++
+--
+Enables the experimental support for interpreting tests.
+--
 [[rust-analyzer.joinLines.joinAssignments]]rust-analyzer.joinLines.joinAssignments (default: `true`)::
 +
 --

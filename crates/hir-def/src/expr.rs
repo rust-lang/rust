@@ -52,12 +52,20 @@ pub type LabelId = Idx<Label>;
 // We convert float values into bits and that's how we don't need to deal with f32 and f64.
 // For PartialEq, bits comparison should work, as ordering is not important
 // https://github.com/rust-lang/rust-analyzer/issues/12380#issuecomment-1137284360
-#[derive(Default, Debug, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq)]
 pub struct FloatTypeWrapper(u64);
 
 impl FloatTypeWrapper {
     pub fn new(value: f64) -> Self {
         Self(value.to_bits())
+    }
+
+    pub fn into_f64(self) -> f64 {
+        f64::from_bits(self.0)
+    }
+
+    pub fn into_f32(self) -> f32 {
+        f64::from_bits(self.0) as f32
     }
 }
 

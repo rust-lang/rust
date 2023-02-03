@@ -50,7 +50,6 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
-    type_ref::ConstScalar,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
     EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
@@ -59,16 +58,16 @@ use hir_def::{
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
     all_super_traits, autoderef,
-    consteval::{unknown_const_as_generic, ComputedExpr, ConstEvalError, ConstExt},
+    consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     layout::layout_of_ty,
     method_resolution::{self, TyFingerprint},
+    mir::interpret_mir,
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
-    ConcreteConst, ConstValue, GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar,
-    Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind,
-    WhereClause,
+    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -130,6 +129,7 @@ pub use {
     },
     hir_ty::{
         display::{HirDisplay, HirDisplayError, HirWrite},
+        mir::MirEvalError,
         PointerCast, Safety,
     },
 };
@@ -1092,8 +1092,8 @@ impl Variant {
         self.source(db)?.value.expr()
     }
 
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<ComputedExpr, ConstEvalError> {
-        db.const_eval_variant(self.into())
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<i128, ConstEvalError> {
+        db.const_eval_discriminant(self.into())
     }
 }
 
@@ -1639,6 +1639,14 @@ impl Function {
         let def_map = db.crate_def_map(loc.krate(db).into());
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
+
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<(), MirEvalError> {
+        let body = db
+            .mir_body(self.id.into())
+            .map_err(|e| MirEvalError::MirLowerError(self.id.into(), e))?;
+        interpret_mir(db, &body, false)?;
+        Ok(())
+    }
 }
 
 // Note: logically, this belongs to `hir_ty`, but we are not using it there yet.
@@ -1781,7 +1789,7 @@ impl Const {
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<ComputedExpr, ConstEvalError> {
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<hir_ty::Const, ConstEvalError> {
         db.const_eval(self.id)
     }
 }
@@ -3260,12 +3268,7 @@ impl Type {
 
     pub fn as_array(&self, _db: &dyn HirDatabase) -> Option<(Type, usize)> {
         if let TyKind::Array(ty, len) = &self.ty.kind(Interner) {
-            match len.data(Interner).value {
-                ConstValue::Concrete(ConcreteConst { interned: ConstScalar::UInt(len) }) => {
-                    Some((self.derived(ty.clone()), len as usize))
-                }
-                _ => None,
-            }
+            try_const_usize(len).map(|x| (self.derived(ty.clone()), x as usize))
         } else {
             None
         }

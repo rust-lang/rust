@@ -791,7 +791,7 @@ impl SourceAnalyzer {
             || Arc::new(hir_ty::TraitEnvironment::empty(krate)),
             |d| db.trait_environment(d),
         );
-        method_resolution::lookup_impl_method(db, env, func, substs)
+        method_resolution::lookup_impl_method(db, env, func, substs).0
     }
 
     fn resolve_impl_const_or_trait_def(
@@ -809,7 +809,7 @@ impl SourceAnalyzer {
             || Arc::new(hir_ty::TraitEnvironment::empty(krate)),
             |d| db.trait_environment(d),
         );
-        method_resolution::lookup_impl_const(db, env, const_id, subs)
+        method_resolution::lookup_impl_const(db, env, const_id, subs).0
     }
 
     fn lang_trait_fn(
