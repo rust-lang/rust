@@ -121,7 +121,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
 
-    super::time(tcx, backend_config.display_cg_time, "codegen mono items", || {
+    tcx.sess.time("codegen mono items", || {
         super::predefine_mono_items(tcx, &mut jit_module, &mono_items);
         for (mono_item, _) in mono_items {
             match mono_item {
@@ -224,7 +224,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) {
-    tcx.sess.time("codegen and compile fn", || {
+    tcx.prof.generic_activity("codegen and compile fn").run(|| {
         let _inst_guard =
             crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
 

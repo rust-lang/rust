@@ -95,7 +95,7 @@ pub(crate) fn codegen_fn<'tcx>(
         next_ssa_var: 0,
     };
 
-    tcx.sess.time("codegen clif ir", || codegen_fn_body(&mut fx, start_block));
+    tcx.prof.generic_activity("codegen clif ir").run(|| codegen_fn_body(&mut fx, start_block));
     fx.bcx.seal_all_blocks();
     fx.bcx.finalize();
 
@@ -174,7 +174,7 @@ pub(crate) fn compile_fn(
     };
 
     // Define function
-    cx.profiler.verbose_generic_activity("define function").run(|| {
+    cx.profiler.generic_activity("define function").run(|| {
         context.want_disasm = cx.should_write_ir;
         module.define_function(codegened_func.func_id, context).unwrap();
     });
@@ -203,7 +203,7 @@ pub(crate) fn compile_fn(
     let isa = module.isa();
     let debug_context = &mut cx.debug_context;
     let unwind_context = &mut cx.unwind_context;
-    cx.profiler.verbose_generic_activity("generate debug info").run(|| {
+    cx.profiler.generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
             codegened_func.func_debug_cx.unwrap().finalize(
                 debug_context,
@@ -220,7 +220,7 @@ pub(crate) fn verify_func(
     writer: &crate::pretty_clif::CommentWriter,
     func: &Function,
 ) {
-    tcx.sess.time("verify clif ir", || {
+    tcx.prof.generic_activity("verify clif ir").run(|| {
         let flags = cranelift_codegen::settings::Flags::new(cranelift_codegen::settings::builder());
         match cranelift_codegen::verify_function(&func, &flags) {
             Ok(_) => {}
@@ -256,7 +256,10 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
         return;
     }
-    fx.tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(fx, start_block));
+    fx.tcx
+        .prof
+        .generic_activity("codegen prelude")
+        .run(|| crate::abi::codegen_fn_prelude(fx, start_block));
 
     for (bb, bb_data) in fx.mir.basic_blocks.iter_enumerated() {
         let block = fx.get_block(bb);
@@ -417,7 +420,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 cleanup: _,
                 from_hir_call: _,
             } => {
-                fx.tcx.sess.time("codegen call", || {
+                fx.tcx.prof.generic_activity("codegen call").run(|| {
                     crate::abi::codegen_terminator_call(
                         fx,
                         mir::SourceInfo { span: *fn_span, ..source_info },
