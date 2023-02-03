@@ -9,10 +9,10 @@ use rustc_span::source_map::DUMMY_SP;
 use crate::config::{Options, RenderOptions};
 use crate::doctest::{Collector, GlobalTestOptions};
 use crate::html::escape::Escape;
-use crate::html::markdown;
 use crate::html::markdown::{
-    find_testable_code, ErrorCodes, HeadingOffset, IdMap, Markdown, MarkdownWithToc,
+    self, find_testable_code, ErrorCodes, HeadingOffset, IdMap, Markdown, MarkdownWithToc,
 };
+use crate::html::render::Context;
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
 fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
@@ -41,6 +41,7 @@ pub(crate) fn render<P: AsRef<Path>>(
     input: P,
     options: RenderOptions,
     edition: Edition,
+    cx: Option<&Context<'_>>,
 ) -> Result<(), String> {
     if let Err(e) = create_dir_all(&options.output) {
         return Err(format!("{}: {}", options.output.display(), e));
@@ -71,6 +72,10 @@ pub(crate) fn render<P: AsRef<Path>>(
 
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
+    let (local_resources, depth) = match cx {
+        Some(cx) => (Some(&cx.shared.cache.local_resources), cx.current.len()),
+        None => (None, 0),
+    };
     let text = if !options.markdown_no_toc {
         MarkdownWithToc {
             content: text,
@@ -78,6 +83,8 @@ pub(crate) fn render<P: AsRef<Path>>(
             error_codes,
             edition,
             playground: &playground,
+            local_resources,
+            depth,
         }
         .into_string()
     } else {
@@ -89,6 +96,8 @@ pub(crate) fn render<P: AsRef<Path>>(
             edition,
             playground: &playground,
             heading_offset: HeadingOffset::H1,
+            local_resources,
+            depth,
         }
         .into_string()
     };

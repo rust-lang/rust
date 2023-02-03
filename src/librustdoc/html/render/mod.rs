@@ -404,7 +404,9 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
             error_codes: shared.codes,
             edition: shared.edition(),
             playground: &shared.playground,
-            heading_offset: HeadingOffset::H1
+            heading_offset: HeadingOffset::H1,
+            depth: 0,
+            local_resources: None,
         }
         .into_string()
     )
@@ -447,6 +449,8 @@ fn render_markdown(
             edition: cx.shared.edition(),
             playground: &cx.shared.playground,
             heading_offset,
+            depth: cx.current.len(),
+            local_resources: Some(&cx.shared.cache.local_resources),
         }
         .into_string()
     )
@@ -1755,7 +1759,9 @@ fn render_impl(
                     error_codes: cx.shared.codes,
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
-                    heading_offset: HeadingOffset::H4
+                    heading_offset: HeadingOffset::H4,
+                    depth: cx.current.len(),
+                    local_resources: Some(&cx.shared.cache.local_resources),
                 }
                 .into_string()
             );

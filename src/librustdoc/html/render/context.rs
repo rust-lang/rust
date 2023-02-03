@@ -719,6 +719,22 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
 
+        {
+            // Copying the local resources to the destination folder.
+            let resources = &shared.cache.local_resources.resources_to_copy;
+            if !resources.is_empty() {
+                let dst = self
+                    .dst
+                    .join(crate::html::LOCAL_RESOURCES_FOLDER_NAME)
+                    .join(crate_name.as_str());
+                shared.ensure_dir(&dst)?;
+                for (original_path, dest_name) in resources.iter() {
+                    let dst = dst.join(dest_name);
+                    try_err!(std::fs::copy(original_path, &dst), &dst);
+                }
+            }
+        }
+
         // No need for it anymore.
         drop(shared);
 

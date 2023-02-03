@@ -47,6 +47,8 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
+                depth: 0,
+                local_resources: None,
             }
             .into_string()
         );
@@ -63,6 +65,8 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
+                depth: 0,
+                local_resources: None,
             }
             .into_string()
         );

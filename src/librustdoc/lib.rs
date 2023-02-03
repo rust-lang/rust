@@ -749,7 +749,7 @@ fn main_args(at_args: &[String]) -> MainResult {
             return wrap_return(
                 &diag,
                 interface::run_compiler(config, |_compiler| {
-                    markdown::render(&input, render_options, edition)
+                    markdown::render(&input, render_options, edition, None)
                 }),
             );
         }
