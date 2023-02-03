@@ -1093,3 +1093,62 @@ pub enum ConsiderAddingAwait {
         spans: Vec<Span>,
     },
 }
+
+#[derive(Diagnostic)]
+pub enum PlaceholderRelationLfNotSatisfied {
+    #[diag(infer_lf_bound_not_satisfied)]
+    HasBoth {
+        #[primary_span]
+        span: Span,
+        #[note(infer_prlf_defined_with_sub)]
+        sub_span: Span,
+        #[note(infer_prlf_must_oultive_with_sup)]
+        sup_span: Span,
+        sub_symbol: Symbol,
+        sup_symbol: Symbol,
+        #[note(infer_prlf_known_limitation)]
+        note: (),
+    },
+    #[diag(infer_lf_bound_not_satisfied)]
+    HasSub {
+        #[primary_span]
+        span: Span,
+        #[note(infer_prlf_defined_with_sub)]
+        sub_span: Span,
+        #[note(infer_prlf_must_oultive_without_sup)]
+        sup_span: Span,
+        sub_symbol: Symbol,
+        #[note(infer_prlf_known_limitation)]
+        note: (),
+    },
+    #[diag(infer_lf_bound_not_satisfied)]
+    HasSup {
+        #[primary_span]
+        span: Span,
+        #[note(infer_prlf_defined_without_sub)]
+        sub_span: Span,
+        #[note(infer_prlf_must_oultive_with_sup)]
+        sup_span: Span,
+        sup_symbol: Symbol,
+        #[note(infer_prlf_known_limitation)]
+        note: (),
+    },
+    #[diag(infer_lf_bound_not_satisfied)]
+    HasNone {
+        #[primary_span]
+        span: Span,
+        #[note(infer_prlf_defined_without_sub)]
+        sub_span: Span,
+        #[note(infer_prlf_must_oultive_without_sup)]
+        sup_span: Span,
+        #[note(infer_prlf_known_limitation)]
+        note: (),
+    },
+    #[diag(infer_lf_bound_not_satisfied)]
+    OnlyPrimarySpan {
+        #[primary_span]
+        span: Span,
+        #[note(infer_prlf_known_limitation)]
+        note: (),
+    },
+}

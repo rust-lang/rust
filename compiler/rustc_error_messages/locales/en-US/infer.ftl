@@ -339,3 +339,9 @@ infer_srs_add_one = consider returning one of these bindings
 infer_await_both_futures = consider `await`ing on both `Future`s
 infer_await_future = consider `await`ing on the `Future`
 infer_await_note = calling an async function returns a future
+
+infer_prlf_defined_with_sub = the lifetime `{$sub_symbol}` defined here...
+infer_prlf_defined_without_sub = the lifetime defined here...
+infer_prlf_must_oultive_with_sup = ...must outlive the lifetime `{$sup_symbol}` defined here
+infer_prlf_must_oultive_without_sup = ...must outlive the lifetime defined here
+infer_prlf_known_limitation = this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
