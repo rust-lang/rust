@@ -78,6 +78,7 @@ pub fn opts() -> TargetOptions {
         function_sections: false,
         linker: Some("gcc".into()),
         dynamic_linking: true,
+        dll_tls_export: false,
         dll_prefix: "".into(),
         dll_suffix: ".dll".into(),
         exe_suffix: ".exe".into(),

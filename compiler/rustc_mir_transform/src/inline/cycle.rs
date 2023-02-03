@@ -83,6 +83,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 | InstanceDef::ReifyShim(_)
                 | InstanceDef::FnPtrShim(..)
                 | InstanceDef::ClosureOnceShim { .. }
+                | InstanceDef::ThreadLocalShim { .. }
                 | InstanceDef::CloneShim(..) => {}
                 InstanceDef::DropGlue(..) => {
                     // FIXME: A not fully substituted drop shim can cause ICEs if one attempts to

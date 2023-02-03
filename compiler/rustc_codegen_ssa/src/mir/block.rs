@@ -12,7 +12,8 @@ use crate::MemFlags;
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
-use rustc_index::vec::Idx;
+use rustc_hir::Unsafety;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{self, AssertKind, SwitchTargets};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
@@ -743,25 +744,58 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let source_info = terminator.source_info;
         let span = source_info.span;
 
-        // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
-        let callee = self.codegen_operand(bx, func);
-
-        let (instance, mut llfn) = match *callee.layout.ty.kind() {
-            ty::FnDef(def_id, substs) => (
-                Some(
-                    ty::Instance::expect_resolve(
-                        bx.tcx(),
-                        ty::ParamEnv::reveal_all(),
-                        def_id,
-                        substs,
-                    )
-                    .polymorphize(bx.tcx()),
-                ),
-                None,
-            ),
-            ty::FnPtr(_) => (None, Some(callee.immediate())),
-            _ => bug!("{} is not callable", callee.layout.ty),
+        let thread_local_shim_call = if !self.call_thread_local_shims.is_empty() {
+            self.call_thread_local_shims.iter().find(|e| &e.0 == func).map(|e| e.1)
+        } else {
+            None
         };
+
+        let (sig, instance, mut llfn) = match thread_local_shim_call {
+            Some(thread_local) => {
+                // Replace thread local dummy calls with calls to the real shim
+                let instance = ty::Instance {
+                    def: ty::InstanceDef::ThreadLocalShim(thread_local),
+                    substs: ty::InternalSubsts::empty(),
+                };
+                let ty = mir::Rvalue::ThreadLocalRef(thread_local).ty(&IndexVec::new(), bx.tcx());
+                (
+                    ty::Binder::dummy(bx.tcx().mk_fn_sig(
+                        [].iter(),
+                        &ty,
+                        false,
+                        Unsafety::Normal,
+                        Abi::Unadjusted,
+                    )),
+                    Some(instance),
+                    None,
+                )
+            }
+            None => {
+                // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
+                let callee = self.codegen_operand(bx, func);
+
+                let sig = callee.layout.ty.fn_sig(bx.tcx());
+
+                match *callee.layout.ty.kind() {
+                    ty::FnDef(def_id, substs) => (
+                        sig,
+                        Some(
+                            ty::Instance::expect_resolve(
+                                bx.tcx(),
+                                ty::ParamEnv::reveal_all(),
+                                def_id,
+                                substs,
+                            )
+                            .polymorphize(bx.tcx()),
+                        ),
+                        None,
+                    ),
+                    ty::FnPtr(_) => (sig, None, Some(callee.immediate())),
+                    _ => bug!("{} is not callable", callee.layout.ty),
+                }
+            }
+        };
+
         let def = instance.map(|i| i.def);
 
         if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
@@ -773,7 +807,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // FIXME(eddyb) avoid computing this if possible, when `instance` is
         // available - right now `sig` is only needed for getting the `abi`
         // and figuring out how many extra args were passed to a C-variadic `fn`.
-        let sig = callee.layout.ty.fn_sig(bx.tcx());
         let abi = sig.abi();
 
         // Handle intrinsics old codegen wants Expr's for, ourselves.

@@ -1,9 +1,11 @@
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_index::vec::IndexVec;
+use rustc_middle::mir::Rvalue;
 use rustc_middle::ty::layout::{
     fn_can_unwind, FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
@@ -29,6 +31,18 @@ fn fn_sig_for_fn_abi<'tcx>(
     instance: ty::Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> ty::PolyFnSig<'tcx> {
+    if let InstanceDef::ThreadLocalShim(..) = instance.def {
+        let ret_ty = Rvalue::ThreadLocalRef(instance.def_id()).ty(&IndexVec::new(), tcx);
+
+        return ty::Binder::dummy(tcx.mk_fn_sig(
+            [].iter(),
+            &ret_ty,
+            false,
+            hir::Unsafety::Normal,
+            rustc_target::spec::abi::Abi::Unadjusted,
+        ));
+    }
+
     let ty = instance.ty(tcx, param_env);
     match *ty.kind() {
         ty::FnDef(..) => {

@@ -2346,6 +2346,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::Virtual(..)
             | ty::InstanceDef::ClosureOnceShim { .. }
             | ty::InstanceDef::DropGlue(..)
+            | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::CloneShim(..) => self.mir_shims(instance),
         }
     }

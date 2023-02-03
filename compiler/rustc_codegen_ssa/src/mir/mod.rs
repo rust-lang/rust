@@ -1,9 +1,15 @@
 use crate::base;
 use crate::traits::*;
+use rustc_hir::def_id::DefId;
+use rustc_index::vec::Idx;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::visit::MutVisitor;
+use rustc_middle::mir::visit::Visitor;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{FnAbi, PassMode};
 
 use std::iter;
@@ -42,6 +48,9 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     cx: &'a Bx::CodegenCx,
 
     fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+
+    // Used to replace call terminators with a call to a thread local shim.
+    call_thread_local_shims: Vec<(mir::Operand<'tcx>, DefId)>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
@@ -142,6 +151,112 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
     }
 }
 
+struct FindThreadLocal(bool);
+
+impl<'tcx> Visitor<'tcx> for FindThreadLocal {
+    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: mir::Location) {
+        if let mir::Rvalue::ThreadLocalRef(..) = rvalue {
+            self.0 = true;
+        }
+        self.super_rvalue(rvalue, location);
+    }
+}
+
+struct ReplaceThreadLocal<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    local_start: usize,
+    list: Vec<DefId>,
+}
+
+impl<'tcx> MutVisitor<'tcx> for ReplaceThreadLocal<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &mut mir::Rvalue<'tcx>, location: mir::Location) {
+        if let mir::Rvalue::ThreadLocalRef(def_id) = *rvalue {
+            if self.tcx.is_in_upstream_dylib(def_id.krate) {
+                *rvalue = mir::Rvalue::Use(mir::Operand::Copy(mir::Place {
+                    local: mir::Local::new(self.local_start + self.list.len()),
+                    projection: self.tcx.intern_place_elems(&[]),
+                }));
+                self.list.push(def_id);
+            }
+        }
+        self.super_rvalue(rvalue, location);
+    }
+}
+
+// Convert thread local references to thread local function shims if necessary
+fn convert_tls_rvalues<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir: &mut &'tcx mir::Body<'tcx>,
+) -> Vec<(mir::Operand<'tcx>, DefId)> {
+    if tcx.sess.target.dll_tls_export {
+        // The target supports DLL TLS exports. We don't need to do anything
+        return Vec::new();
+    }
+
+    // Fast path to look for any thread locals
+    let mut visitor = FindThreadLocal(false);
+    visitor.visit_body(&mir);
+    if !visitor.0 {
+        return Vec::new();
+    }
+
+    // Don't modify shims
+    if let ty::InstanceDef::ThreadLocalShim(..) = mir.source.instance {
+        return Vec::new();
+    }
+
+    let mut result = Vec::new();
+    let mut body = mir.clone();
+
+    let mut visitor =
+        ReplaceThreadLocal { tcx, local_start: mir.local_decls.len(), list: Vec::new() };
+    visitor.visit_body(&mut body);
+
+    for (i, &def_id) in visitor.list.iter().enumerate() {
+        let ty = mir::Rvalue::ThreadLocalRef(def_id).ty(&IndexVec::new(), tcx);
+        body.local_decls.push(mir::LocalDecl::new(ty, DUMMY_SP));
+        let local = mir::Local::new(visitor.local_start + i);
+        let place = mir::Place { local, projection: tcx.intern_place_elems(&[]) };
+        let func = mir::Operand::Copy(place);
+
+        result.push((func.clone(), def_id));
+
+        let blocks = body.basic_blocks.as_mut();
+
+        let new_entry = mir::BasicBlock::new(blocks.len());
+
+        let entry = std::mem::replace(
+            &mut blocks[mir::BasicBlock::new(0)],
+            mir::BasicBlockData {
+                statements: Vec::new(),
+                terminator: Some(mir::Terminator {
+                    source_info: mir::SourceInfo::outermost(DUMMY_SP),
+                    kind: mir::TerminatorKind::Call {
+                        func,
+                        args: Vec::new(),
+                        destination: place,
+                        target: Some(new_entry),
+                        cleanup: None,
+                        from_hir_call: false,
+                        fn_span: DUMMY_SP,
+                    },
+                }),
+                is_cleanup: false,
+            },
+        );
+
+        blocks.push(entry);
+    }
+
+    *mir = tcx.arena.alloc(body);
+
+    result
+}
+
 ///////////////////////////////////////////////////////////////////////////
 
 #[instrument(level = "debug", skip(cx))]
@@ -153,7 +268,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let llfn = cx.get_fn(instance);
 
-    let mir = cx.tcx().instance_mir(instance.def);
+    let mut mir = cx.tcx().instance_mir(instance.def);
+
+    let call_thread_local_shims = convert_tls_rvalues(cx.tcx(), &mut mir);
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
@@ -183,6 +300,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         llfn,
         fn_abi,
         cx,
+        call_thread_local_shims,
         personality_slot: None,
         cached_llbbs,
         unreachable_block: None,

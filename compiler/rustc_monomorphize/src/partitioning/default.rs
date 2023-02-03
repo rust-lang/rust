@@ -278,6 +278,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceDef::Intrinsic(..)
                 | ty::InstanceDef::DropGlue(..)
                 | ty::InstanceDef::Virtual(..)
+                | ty::InstanceDef::ThreadLocalShim(..)
                 | ty::InstanceDef::CloneShim(..) => return None,
             };
 
@@ -423,6 +424,15 @@ fn mono_item_visibility<'tcx>(
     let def_id = match instance.def {
         InstanceDef::Item(def) => def.did,
         InstanceDef::DropGlue(def_id, Some(_)) => def_id,
+
+        InstanceDef::ThreadLocalShim(def_id) => {
+            return if tcx.is_reachable_non_generic(def_id) {
+                *can_be_internalized = false;
+                default_visibility(tcx, def_id, false)
+            } else {
+                Visibility::Hidden
+            };
+        }
 
         // These are all compiler glue and such, never exported, always hidden.
         InstanceDef::VTableShim(..)
