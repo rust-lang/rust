@@ -128,15 +128,13 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                 MonoItem::Fn(inst) => match backend_config.codegen_mode {
                     CodegenMode::Aot => unreachable!(),
                     CodegenMode::Jit => {
-                        tcx.sess.time("codegen fn", || {
-                            crate::base::codegen_and_compile_fn(
-                                tcx,
-                                &mut cx,
-                                &mut cached_context,
-                                &mut jit_module,
-                                inst,
-                            )
-                        });
+                        codegen_and_compile_fn(
+                            tcx,
+                            &mut cx,
+                            &mut cached_context,
+                            &mut jit_module,
+                            inst,
+                        );
                     }
                     CodegenMode::JitLazy => {
                         codegen_shim(tcx, &mut cx, &mut cached_context, &mut jit_module, inst)
@@ -219,6 +217,24 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     }
 }
 
+pub(crate) fn codegen_and_compile_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cx: &mut crate::CodegenCx,
+    cached_context: &mut Context,
+    module: &mut dyn Module,
+    instance: Instance<'tcx>,
+) {
+    tcx.sess.time("codegen and compile fn", || {
+        let _inst_guard =
+            crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
+
+        let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
+        let codegened_func = crate::base::codegen_fn(tcx, cx, cached_func, module, instance);
+
+        crate::base::compile_fn(cx, cached_context, module, codegened_func);
+    });
+}
+
 extern "C" fn clif_jit_fn(
     instance_ptr: *const Instance<'static>,
     trampoline_ptr: *const u8,
@@ -271,15 +287,7 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
                 false,
                 Symbol::intern("dummy_cgu_name"),
             );
-            tcx.sess.time("codegen fn", || {
-                crate::base::codegen_and_compile_fn(
-                    tcx,
-                    &mut cx,
-                    &mut Context::new(),
-                    jit_module,
-                    instance,
-                )
-            });
+            codegen_and_compile_fn(tcx, &mut cx, &mut Context::new(), jit_module, instance);
 
             assert!(cx.global_asm.is_empty());
             jit_module.finalize_definitions().unwrap();

@@ -21,23 +21,6 @@ pub(crate) struct CodegenedFunction {
     func_debug_cx: Option<FunctionDebugContext>,
 }
 
-#[cfg_attr(not(feature = "jit"), allow(dead_code))]
-pub(crate) fn codegen_and_compile_fn<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    cx: &mut crate::CodegenCx,
-    cached_context: &mut Context,
-    module: &mut dyn Module,
-    instance: Instance<'tcx>,
-) {
-    let _inst_guard =
-        crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
-
-    let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
-    let codegened_func = codegen_fn(tcx, cx, cached_func, module, instance);
-
-    compile_fn(cx, cached_context, module, codegened_func);
-}
-
 pub(crate) fn codegen_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx,
