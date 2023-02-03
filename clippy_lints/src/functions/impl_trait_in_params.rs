@@ -29,9 +29,6 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body:
                                     rustc_errors::SuggestionStyle::ShowAlways,
                                 );
                             } else {
-                                // multispan.push_span_label(param.span, format!("Replace this with `{}`",
-                                // next_letter));
-
                                 diag.span_suggestion_with_style(
                                     Span::new(
                                         body.params[0].span.lo() - rustc_span::BytePos(1),
