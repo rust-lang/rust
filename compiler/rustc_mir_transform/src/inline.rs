@@ -81,7 +81,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         def_id.to_def_id(),
         param_env,
         ObligationCause::misc(body.span, hir_id),
-        );
+    );
 
     let mut this = Inliner {
         tcx,
@@ -144,13 +144,7 @@ impl<'tcx> Inliner<'tcx> {
         &self,
         caller_body: &mut Body<'tcx>,
         callsite: &CallSite<'tcx>,
-        ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
-        let caller_def_id = caller_body.source.def_id();
-        let autodiff_active = self.tcx.autodiff_attrs(caller_def_id).is_active();
-        dbg!("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
-        if autodiff_active {
-            dbg!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAASSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS");
-        }
+    ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
         self.check_codegen_attributes(callsite, callee_attrs)?;
         self.check_mir_is_available(caller_body, &callsite.callee)?;
@@ -167,7 +161,7 @@ impl<'tcx> Inliner<'tcx> {
             self.tcx,
             self.param_env,
             callee_body.clone(),
-            );
+        );
 
         let old_blocks = caller_body.basic_blocks().next_index();
         self.inline_call(caller_body, &callsite, callee_body);
@@ -180,15 +174,9 @@ impl<'tcx> Inliner<'tcx> {
         &self,
         caller_body: &Body<'tcx>,
         callee: &Instance<'tcx>,
-        ) -> Result<(), &'static str> {
+    ) -> Result<(), &'static str> {
         let caller_def_id = caller_body.source.def_id();
         let callee_def_id = callee.def_id();
-        let autodiff_active = self.tcx.autodiff_attrs(caller_def_id).is_active();
-        if autodiff_active {
-            dbg!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAASSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS");
-        }
-
-        // mark
         if callee_def_id == caller_def_id {
             return Err("self-recursion");
         }
@@ -211,11 +199,11 @@ impl<'tcx> Inliner<'tcx> {
             // do not need to catch this here, we can wait until the inliner decides to continue
             // inlining a second time.
             InstanceDef::VtableShim(_)
-                | InstanceDef::ReifyShim(_)
-                | InstanceDef::FnPtrShim(..)
-                | InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::ReifyShim(_)
+            | InstanceDef::FnPtrShim(..)
+            | InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)
-                | InstanceDef::CloneShim(..) => return Ok(()),
+            | InstanceDef::CloneShim(..) => return Ok(()),
         }
 
         if self.tcx.is_constructor(callee_def_id) {
@@ -231,9 +219,9 @@ impl<'tcx> Inliner<'tcx> {
             // since `DefPathHash` is stable.
             if self.tcx.def_path_hash(caller_def_id).local_hash()
                 < self.tcx.def_path_hash(callee_def_id).local_hash()
-                {
-                    return Ok(());
-                }
+            {
+                return Ok(());
+            }
 
             // If we know for sure that the function we're calling will itself try to
             // call us, then we avoid inlining that function.
@@ -257,7 +245,7 @@ impl<'tcx> Inliner<'tcx> {
         caller_body: &Body<'tcx>,
         bb: BasicBlock,
         bb_data: &BasicBlockData<'tcx>,
-        ) -> Option<CallSite<'tcx>> {
+    ) -> Option<CallSite<'tcx>> {
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { ref func, ref destination, .. } = terminator.kind {
@@ -293,9 +281,8 @@ impl<'tcx> Inliner<'tcx> {
         &self,
         callsite: &CallSite<'tcx>,
         callee_attrs: &CodegenFnAttrs,
-        ) -> Result<(), &'static str> {
+    ) -> Result<(), &'static str> {
         if let InlineAttr::Never = callee_attrs.inline {
-            dbg!("never inline");
             return Err("never inline hint");
         }
 
@@ -346,7 +333,7 @@ impl<'tcx> Inliner<'tcx> {
         callsite: &CallSite<'tcx>,
         callee_body: &Body<'tcx>,
         callee_attrs: &CodegenFnAttrs,
-        ) -> Result<(), &'static str> {
+    ) -> Result<(), &'static str> {
         let tcx = self.tcx;
 
         let mut threshold = if callee_attrs.requests_inline() {
@@ -381,9 +368,9 @@ impl<'tcx> Inliner<'tcx> {
                 // Don't count StorageLive/StorageDead in the inlining cost.
                 match stmt.kind {
                     StatementKind::StorageLive(_)
-                        | StatementKind::StorageDead(_)
-                        | StatementKind::Deinit(_)
-                        | StatementKind::Nop => {}
+                    | StatementKind::StorageDead(_)
+                    | StatementKind::Deinit(_)
+                    | StatementKind::Nop => {}
                     _ => cost += INSTR_COST,
                 }
             }
@@ -409,7 +396,7 @@ impl<'tcx> Inliner<'tcx> {
                 }
 
                 TerminatorKind::Unreachable | TerminatorKind::Call { destination: None, .. }
-                if first_block =>
+                    if first_block =>
                 {
                     // If the function always diverges, don't inline
                     // unless the cost is zero
@@ -419,27 +406,27 @@ impl<'tcx> Inliner<'tcx> {
                 TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
                     if let ty::FnDef(def_id, substs) =
                         *callsite.callee.subst_mir(self.tcx, &f.literal.ty()).kind()
+                    {
+                        let substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
+                        if let Ok(Some(instance)) =
+                            Instance::resolve(self.tcx, self.param_env, def_id, substs)
                         {
-                            let substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
-                            if let Ok(Some(instance)) =
-                                Instance::resolve(self.tcx, self.param_env, def_id, substs)
-                                {
-                                    if callsite.callee.def_id() == instance.def_id() {
-                                        return Err("self-recursion");
-                                    } else if self.history.contains(&instance) {
-                                        return Err("already inlined");
-                                    }
-                                }
-                            // Don't give intrinsics the extra penalty for calls
-                            let f = tcx.fn_sig(def_id);
-                            if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
-                                cost += INSTR_COST;
-                            } else {
-                                cost += CALL_PENALTY;
+                            if callsite.callee.def_id() == instance.def_id() {
+                                return Err("self-recursion");
+                            } else if self.history.contains(&instance) {
+                                return Err("already inlined");
                             }
+                        }
+                        // Don't give intrinsics the extra penalty for calls
+                        let f = tcx.fn_sig(def_id);
+                        if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
+                            cost += INSTR_COST;
                         } else {
                             cost += CALL_PENALTY;
                         }
+                    } else {
+                        cost += CALL_PENALTY;
+                    }
                     if cleanup.is_some() {
                         cost += LANDINGPAD_PENALTY;
                     }
@@ -506,7 +493,7 @@ impl<'tcx> Inliner<'tcx> {
         caller_body: &mut Body<'tcx>,
         callsite: &CallSite<'tcx>,
         mut callee_body: Body<'tcx>,
-        ) {
+    ) {
         let terminator = caller_body[callsite.block].terminator.take().unwrap();
         match terminator.kind {
             TerminatorKind::Call { args, destination, cleanup, .. } => {
@@ -533,7 +520,7 @@ impl<'tcx> Inliner<'tcx> {
                             self.tcx.lifetimes.re_erased,
                             BorrowKind::Mut { allow_two_phase_borrow: false },
                             destination_place,
-                            );
+                        );
                         let dest_ty = dest.ty(caller_body, self.tcx);
                         let temp = Place::from(self.new_call_temp(caller_body, &callsite, dest_ty));
                         caller_body[callsite.block].statements.push(Statement {
@@ -558,7 +545,7 @@ impl<'tcx> Inliner<'tcx> {
                     self.tcx.sess.edition(),
                     None,
                     None,
-                    );
+                );
                 expn_data.def_site = callee_body.span;
                 let expn_data =
                     LocalExpnId::fresh(expn_data, self.tcx.create_stable_hashing_context());
@@ -655,7 +642,7 @@ impl<'tcx> Inliner<'tcx> {
                             None => true,
                         }
                     }),
-                    );
+                );
             }
             kind => bug!("unexpected terminator kind {:?}", kind),
         }
@@ -667,7 +654,7 @@ impl<'tcx> Inliner<'tcx> {
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
         callee_body: &Body<'tcx>,
-        ) -> Vec<Local> {
+    ) -> Vec<Local> {
         let tcx = self.tcx;
 
         // There is a bit of a mismatch between the *caller* of a closure and the *callee*.
@@ -731,14 +718,14 @@ impl<'tcx> Inliner<'tcx> {
         arg: Operand<'tcx>,
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
-        ) -> Local {
+    ) -> Local {
         // Reuse the operand if it is a moved temporary.
         if let Operand::Move(place) = &arg
             && let Some(local) = place.as_local()
-                && caller_body.local_kind(local) == LocalKind::Temp
-                {
-                    return local;
-                }
+            && caller_body.local_kind(local) == LocalKind::Temp
+        {
+            return local;
+        }
 
         // Otherwise, create a temporary for the argument.
         trace!("creating temp for argument {:?}", arg);
@@ -757,7 +744,7 @@ impl<'tcx> Inliner<'tcx> {
         caller_body: &mut Body<'tcx>,
         callsite: &CallSite<'tcx>,
         ty: Ty<'tcx>,
-        ) -> Local {
+    ) -> Local {
         let local = caller_body.local_decls.push(LocalDecl::new(ty, callsite.source_info.span));
 
         caller_body[callsite.block].statements.push(Statement {
@@ -772,7 +759,7 @@ impl<'tcx> Inliner<'tcx> {
                     source_info: callsite.source_info,
                     kind: StatementKind::StorageDead(local),
                 },
-                );
+            );
         }
 
         local
@@ -783,7 +770,7 @@ fn type_size_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
-    ) -> Option<u64> {
+) -> Option<u64> {
     tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
@@ -793,7 +780,7 @@ fn type_size_of<'tcx>(
  * Integrates blocks from the callee function into the calling function.
  * Updates block indices, references to locals and other control flow
  * stuff.
- */
+*/
 struct Integrator<'a, 'tcx> {
     args: &'a [Local],
     new_locals: RangeFrom<Local>,
@@ -895,9 +882,9 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         if let StatementKind::StorageLive(local) | StatementKind::StorageDead(local) =
             statement.kind
-            {
-                self.always_live_locals.remove(local);
-            }
+        {
+            self.always_live_locals.remove(local);
+        }
         self.super_statement(statement, location);
     }
 
@@ -970,7 +957,7 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                 *imaginary_target = self.map_block(*imaginary_target);
             }
             TerminatorKind::FalseUnwind { real_target: _, unwind: _ } =>
-                // see the ordering of passes in the optimized_mir query.
+            // see the ordering of passes in the optimized_mir query.
             {
                 bug!("False unwinds should have been removed before inlining")
             }

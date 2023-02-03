@@ -26,7 +26,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         mono_items: &mut dyn Iterator<Item = MonoItem<'tcx>>,
-        ) -> PreInliningPartitioning<'tcx> {
+    ) -> PreInliningPartitioning<'tcx> {
         let mut roots = FxHashSet::default();
         let mut codegen_units = FxHashMap::default();
         let is_incremental_build = cx.tcx.sess.opts.incremental.is_some();
@@ -58,7 +58,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
                     def_id,
                     is_volatile,
                     cgu_name_cache,
-                    ),
+                ),
                 None => fallback_cgu_name(cgu_name_builder),
             };
 
@@ -66,22 +66,16 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
                 .entry(codegen_unit_name)
                 .or_insert_with(|| CodegenUnit::new(codegen_unit_name));
 
-            let mut can_be_internalized = true;
+            let mut can_be_internalized = true; 
 
             let (linkage, visibility) = mono_item_linkage_and_visibility(
                 cx.tcx,
                 &mono_item,
                 &mut can_be_internalized,
                 export_generics,
-                );
+            );
 
             let autodiff_active = characteristic_def_id.map(|x| cx.tcx.autodiff_attrs(x).is_active()).unwrap_or(false);
-            if autodiff_active {
-                dbg!("NOT INLINIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIING");
-                let name = mono_item.symbol_name(cx.tcx);
-                can_be_internalized = false;
-                dbg!(name);
-            }
 
             if !autodiff_active && visibility == Visibility::Hidden && can_be_internalized {
                 internalization_candidates.insert(mono_item);
@@ -103,8 +97,8 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
                 .into_iter()
                 .map(|(_, codegen_unit)| codegen_unit)
                 .collect(),
-                roots,
-                internalization_candidates,
+            roots,
+            internalization_candidates,
         }
     }
 
@@ -112,7 +106,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         initial_partitioning: &mut PreInliningPartitioning<'tcx>,
-        ) {
+    ) {
         merging::merge_codegen_units(cx, initial_partitioning);
     }
 
@@ -120,7 +114,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         initial_partitioning: PreInliningPartitioning<'tcx>,
-        ) -> PostInliningPartitioning<'tcx> {
+    ) -> PostInliningPartitioning<'tcx> {
         let mut new_partitioning = Vec::new();
         let mut mono_item_placements = FxHashMap::default();
 
@@ -151,8 +145,8 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
                         bug!(
                             "GloballyShared mono-item inlined into other CGU: \
                               {:?}",
-                              mono_item
-                            );
+                            mono_item
+                        );
                     }
 
                     // This is a CGU-private copy.
@@ -197,7 +191,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
             mono_item: MonoItem<'tcx>,
             inlining_map: &InliningMap<'tcx>,
             visited: &mut FxHashSet<MonoItem<'tcx>>,
-            ) {
+        ) {
             if !visited.insert(mono_item) {
                 return;
             }
@@ -212,24 +206,11 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         partitioning: &mut PostInliningPartitioning<'tcx>,
-        ) {
-        for _cgu in &mut partitioning.codegen_units {
-            for candidate in &partitioning.internalization_candidates {
-                let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, *candidate);
-                let autodiff_active = characteristic_def_id.map(|x| cx.tcx.autodiff_attrs(x).is_active()).unwrap_or(false);
-                if autodiff_active {
-                    dbg!("FAILED NOT INLINING AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-                    let name = (*candidate).symbol_name(cx.tcx);
-                    dbg!(name);
-                    panic!();
-                }
-            }
-        }
+    ) {
         if partitioning.codegen_units.len() == 1 {
             // Fast path for when there is only one codegen unit. In this case we
             // can internalize all candidates, since there is nowhere else they
             // could be accessed from.
-
             for cgu in &mut partitioning.codegen_units {
                 for candidate in &partitioning.internalization_candidates {
                     cgu.items_mut().insert(*candidate, (Linkage::Internal, Visibility::Default));
@@ -265,12 +246,12 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
                 if let Some(accessors) = accessor_map.get(accessee) {
                     if accessors
                         .iter()
-                            .filter_map(|accessor| {
-                                // Some accessors might not have been
-                                // instantiated. We can safely ignore those.
-                                mono_item_placements.get(accessor)
-                            })
-                    .any(|placement| *placement != home_cgu)
+                        .filter_map(|accessor| {
+                            // Some accessors might not have been
+                            // instantiated. We can safely ignore those.
+                            mono_item_placements.get(accessor)
+                        })
+                        .any(|placement| *placement != home_cgu)
                     {
                         // Found an accessor from another CGU, so skip to the next
                         // item without marking this one as internal.
@@ -289,19 +270,19 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
 fn characteristic_def_id_of_mono_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: MonoItem<'tcx>,
-    ) -> Option<DefId> {
+) -> Option<DefId> {
     match mono_item {
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceDef::Item(def) => def.did,
                 ty::InstanceDef::VtableShim(..)
-                    | ty::InstanceDef::ReifyShim(..)
-                    | ty::InstanceDef::FnPtrShim(..)
-                    | ty::InstanceDef::ClosureOnceShim { .. }
+                | ty::InstanceDef::ReifyShim(..)
+                | ty::InstanceDef::FnPtrShim(..)
+                | ty::InstanceDef::ClosureOnceShim { .. }
                 | ty::InstanceDef::Intrinsic(..)
-                    | ty::InstanceDef::DropGlue(..)
-                    | ty::InstanceDef::Virtual(..)
-                    | ty::InstanceDef::CloneShim(..) => return None,
+                | ty::InstanceDef::DropGlue(..)
+                | ty::InstanceDef::Virtual(..)
+                | ty::InstanceDef::CloneShim(..) => return None,
             };
 
             // If this is a method, we want to put it into the same module as
@@ -317,12 +298,12 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 if tcx.sess.opts.incremental.is_some()
                     && tcx.trait_id_of_impl(impl_def_id) == tcx.lang_items().drop_trait()
-                    {
-                        // Put `Drop::drop` into the same cgu as `drop_in_place`
-                        // since `drop_in_place` is the only thing that can
-                        // call it.
-                        return None;
-                    }
+                {
+                    // Put `Drop::drop` into the same cgu as `drop_in_place`
+                    // since `drop_in_place` is the only thing that can
+                    // call it.
+                    return None;
+                }
 
                 // When polymorphization is enabled, methods which do not depend on their generic
                 // parameters, but the self-type of their impl block do will fail to normalize.
@@ -332,7 +313,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                         instance.substs,
                         ty::ParamEnv::reveal_all(),
                         tcx.type_of(impl_def_id),
-                        );
+                    );
                     if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                         return Some(def_id);
                     }
@@ -352,7 +333,7 @@ fn compute_codegen_unit_name(
     def_id: DefId,
     volatile: bool,
     cache: &mut CguNameCache,
-    ) -> Symbol {
+) -> Symbol {
     // Find the innermost module that is not nested within a function.
     let mut current_def_id = def_id;
     let mut cgu_def_id = None;
@@ -404,22 +385,11 @@ fn mono_item_linkage_and_visibility<'tcx>(
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     export_generics: bool,
-    ) -> (Linkage, Visibility) {
-    let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, *mono_item);
-    let autodiff_active = characteristic_def_id.map(|x| tcx.autodiff_attrs(x).is_active()).unwrap_or(false);
+) -> (Linkage, Visibility) {
     if let Some(explicit_linkage) = mono_item.explicit_linkage(tcx) {
-        if autodiff_active {
-            dbg!("autodiff explicit_linkage visibility", Visibility::Default);
-            //External,
-        }
         return (explicit_linkage, Visibility::Default);
     }
     let vis = mono_item_visibility(tcx, mono_item, can_be_internalized, export_generics);
-    if autodiff_active {
-        *can_be_internalized = false;
-        dbg!(*can_be_internalized);
-        dbg!("autodiff item visibility", vis);
-    }
     (Linkage::External, vis)
 }
 
@@ -430,7 +400,7 @@ fn mono_item_visibility<'tcx>(
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     export_generics: bool,
-    ) -> Visibility {
+) -> Visibility {
     let instance = match mono_item {
         // This is pretty complicated; see below.
         MonoItem::Fn(instance) => instance,
@@ -460,13 +430,13 @@ fn mono_item_visibility<'tcx>(
 
         // These are all compiler glue and such, never exported, always hidden.
         InstanceDef::VtableShim(..)
-            | InstanceDef::ReifyShim(..)
-            | InstanceDef::FnPtrShim(..)
-            | InstanceDef::Virtual(..)
-            | InstanceDef::Intrinsic(..)
-            | InstanceDef::ClosureOnceShim { .. }
+        | InstanceDef::ReifyShim(..)
+        | InstanceDef::FnPtrShim(..)
+        | InstanceDef::Virtual(..)
+        | InstanceDef::Intrinsic(..)
+        | InstanceDef::ClosureOnceShim { .. }
         | InstanceDef::DropGlue(..)
-            | InstanceDef::CloneShim(..) => return Visibility::Hidden,
+        | InstanceDef::CloneShim(..) => return Visibility::Hidden,
     };
 
     // The `start_fn` lang item is actually a monomorphized instance of a
@@ -488,15 +458,6 @@ fn mono_item_visibility<'tcx>(
     }
 
     let is_generic = instance.substs.non_erasable_generics().next().is_some();
-
-    let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, *mono_item);
-    let autodiff_active = characteristic_def_id.map(|x| tcx.autodiff_attrs(x).is_active()).unwrap_or(false);
-    if autodiff_active {
-        // dbg!(*can_be_internalized); = true
-        *can_be_internalized = false;
-        dbg!(*can_be_internalized);
-        return Visibility::Default;
-    }
 
     // Upstream `DefId` instances get different handling than local ones.
     let Some(def_id) = def_id.as_local() else {

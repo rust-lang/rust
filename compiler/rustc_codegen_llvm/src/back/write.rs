@@ -12,7 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff, LLVMVoidTypeInContext, LLVMDumpModule, LLVMGetNamedFunction};
+use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff, LLVMVoidTypeInContext};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -480,24 +480,12 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         None
     };
 
-    dbg!(module.module_llvm.typetrees.len());
-    for source in &module.module_llvm.typetrees {
-        let rust_name = source.0;
-        let name = CString::new(rust_name.to_owned()).unwrap();
-        let fnc = LLVMGetNamedFunction(module.module_llvm.llmod(), name.as_c_str().as_ptr()).unwrap();
-        let _linkage = llvm::LLVMRustGetLinkage(fnc);
-        //println!("{}", linkage);
-        llvm::LLVMRustSetLinkage(fnc, llvm::Linkage::ExternalLinkage);
-    }
-
     let llvm_selfprofiler =
         llvm_profiler.as_mut().map(|s| s as *mut _ as *mut c_void).unwrap_or(std::ptr::null_mut());
 
     let extra_passes = config.passes.join(",");
-    dbg!(&extra_passes);
 
     let llvm_plugins = config.llvm_plugins.join(",");
-    dbg!(config.merge_functions);
 
     // FIXME: NewPM doesn't provide a facility to pass custom InlineParams.
     // We would have to add upstream support for this first, before we can support
@@ -510,8 +498,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         config.no_prepopulate_passes,
         config.verify_llvm_ir,
         using_thin_buffers,
-        false,
-        //config.merge_functions,
+        config.merge_functions,
         unroll_loops,
         vectorize_slp,
         vectorize_loop,
@@ -532,11 +519,6 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         llvm_plugins.as_ptr().cast(),
         llvm_plugins.len(),
         );
-    if module.module_llvm.typetrees.len() > 0 {
-        dbg!("after opt");
-        LLVMDumpModule(module.module_llvm.llmod());
-        dbg!("after opt2");
-    }
     result.into_result().map_err(|()| llvm_err(diag_handler, "failed to run LLVM passes"))
 }
 
@@ -669,8 +651,6 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
 
     let name = CString::new(rust_name.to_owned()).unwrap();
     let name2 = CString::new(rust_name2.clone()).unwrap();
-    dbg!(&name);
-    dbg!(&name2);
     let src_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
     let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr());
     assert!(src_fnc_tmp.is_some());
@@ -718,10 +698,8 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
         name2.as_ptr(),
         rust_name2.len(),
         );
-    let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr());
-    let target_fnc = target_fnc_tmp.unwrap();
-    dbg!("after-updating");
-    dbg!(&target_fnc);
+
+    dbg!("after-ad");
 
 
     Ok(())
@@ -743,7 +721,6 @@ pub(crate) unsafe fn differentiate(
         let res = enzyme_ad(llmod, llcx, item, tt);
         assert!(res.is_ok());
     }
-    //LLVMDumpModule(llmod);
 
     Ok(())
 }
@@ -762,11 +739,6 @@ pub(crate) unsafe fn optimize(
     let llcx = &*module.module_llvm.llcx;
     let tm = &*module.module_llvm.tm;
     let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
-    if module.module_llvm.typetrees.len() > 0 {
-        dbg!("before opt");
-        LLVMDumpModule(llmod);
-        dbg!("before opt2");
-    }
 
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);
@@ -777,7 +749,6 @@ pub(crate) unsafe fn optimize(
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
-    dbg!(&config.opt_level);
     if let Some(opt_level) = config.opt_level {
         if llvm_util::should_use_new_llvm_pass_manager(
             &config.new_llvm_pass_manager,
@@ -934,11 +905,6 @@ pub(crate) unsafe fn optimize(
         // Deallocate managers that we're now done with
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
-        if module.module_llvm.typetrees.len() > 0 {
-            dbg!("after opt");
-            LLVMDumpModule(llmod);
-            dbg!("after opt2");
-        }
     }
 
     Ok(())
