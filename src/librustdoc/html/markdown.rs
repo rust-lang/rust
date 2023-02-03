@@ -20,6 +20,8 @@
 //!     edition: Edition::Edition2015,
 //!     playground: &None,
 //!     heading_offset: HeadingOffset::H2,
+//!     depth: 0,
+//!     local_resources: None,
 //! };
 //! let html = md.into_string();
 //! // ... something using html
