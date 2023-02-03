@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{
-    self, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -86,7 +86,7 @@ fn do_orphan_check_impl<'tcx>(
     // struct B { }
     // impl Foo for A { }
     // impl Foo for B { }
-    // impl !Send for (A, B) { }
+    // impl !Foo for (A, B) { }
     // ```
     //
     // This final impl is legal according to the orphan
@@ -99,50 +99,193 @@ fn do_orphan_check_impl<'tcx>(
         tcx.trait_is_auto(trait_def_id)
     );
 
-    if tcx.trait_is_auto(trait_def_id) && !trait_def_id.is_local() {
+    if tcx.trait_is_auto(trait_def_id) {
         let self_ty = trait_ref.self_ty();
-        let opt_self_def_id = match *self_ty.kind() {
-            ty::Adt(self_def, _) => Some(self_def.did()),
-            ty::Foreign(did) => Some(did),
-            _ => None,
+
+        // If the impl is in the same crate as the auto-trait, almost anything
+        // goes.
+        //
+        //     impl MyAuto for Rc<Something> {}  // okay
+        //     impl<T> !MyAuto for *const T {}   // okay
+        //     impl<T> MyAuto for T {}           // okay
+        //
+        // But there is one important exception: implementing for a trait object
+        // is not allowed.
+        //
+        //     impl MyAuto for dyn Trait {}      // NOT OKAY
+        //     impl<T: ?Sized> MyAuto for T {}   // NOT OKAY
+        //
+        // With this restriction, it's guaranteed that an auto-trait is
+        // implemented for a trait object if and only if the auto-trait is one
+        // of the trait object's trait bounds (or a supertrait of a bound). In
+        // other words `dyn Trait + AutoTrait` always implements AutoTrait,
+        // while `dyn Trait` never implements AutoTrait.
+        //
+        // This is necessary in order for autotrait bounds on methods of trait
+        // objects to be sound.
+        //
+        //     auto trait AutoTrait {}
+        //
+        //     trait ObjectSafeTrait {
+        //         fn f(&self) where Self: AutoTrait;
+        //     }
+        //
+        // We can allow f to be called on `dyn ObjectSafeTrait + AutoTrait`.
+        //
+        // If we didn't deny `impl AutoTrait for dyn Trait`, it would be unsound
+        // for the ObjectSafeTrait shown above to be object safe because someone
+        // could take some type implementing ObjectSafeTrait but not AutoTrait,
+        // unsize it to `dyn ObjectSafeTrait`, and call .f() which has no
+        // concrete implementation (issue #50781).
+        enum LocalImpl {
+            Allow,
+            Disallow { problematic_kind: &'static str },
+        }
+
+        // If the auto-trait is from a dependency, it must only be getting
+        // implemented for a nominal type, and specifically one local to the
+        // current crate.
+        //
+        //     impl<T> Sync for MyStruct<T> {}   // okay
+        //
+        //     impl Sync for Rc<MyStruct> {}     // NOT OKAY
+        enum NonlocalImpl {
+            Allow,
+            DisallowBecauseNonlocal,
+            DisallowOther,
+        }
+
+        // Exhaustive match considering that this logic is essential for
+        // soundness.
+        let (local_impl, nonlocal_impl) = match self_ty.kind() {
+            // struct Struct<T>;
+            // impl AutoTrait for Struct<Foo> {}
+            ty::Adt(self_def, _) => (
+                LocalImpl::Allow,
+                if self_def.did().is_local() {
+                    NonlocalImpl::Allow
+                } else {
+                    NonlocalImpl::DisallowBecauseNonlocal
+                },
+            ),
+
+            // extern { type OpaqueType; }
+            // impl AutoTrait for OpaqueType {}
+            ty::Foreign(did) => (
+                LocalImpl::Allow,
+                if did.is_local() {
+                    NonlocalImpl::Allow
+                } else {
+                    NonlocalImpl::DisallowBecauseNonlocal
+                },
+            ),
+
+            // impl AutoTrait for dyn Trait {}
+            ty::Dynamic(..) => (
+                LocalImpl::Disallow { problematic_kind: "trait object" },
+                NonlocalImpl::DisallowOther,
+            ),
+
+            // impl<T> AutoTrait for T {}
+            // impl<T: ?Sized> AutoTrait for T {}
+            ty::Param(..) => (
+                if self_ty.is_sized(tcx, tcx.param_env(def_id)) {
+                    LocalImpl::Allow
+                } else {
+                    LocalImpl::Disallow { problematic_kind: "generic type" }
+                },
+                NonlocalImpl::DisallowOther,
+            ),
+
+            // trait Id { type This: ?Sized; }
+            // impl<T: ?Sized> Id for T {
+            //     type This = T;
+            // }
+            // impl<T: ?Sized> AutoTrait for <T as Id>::This {}
+            ty::Alias(AliasKind::Projection, _) => (
+                LocalImpl::Disallow { problematic_kind: "associated type" },
+                NonlocalImpl::DisallowOther,
+            ),
+
+            // type Opaque = impl Trait;
+            // impl AutoTrait for Opaque {}
+            ty::Alias(AliasKind::Opaque, _) => (
+                LocalImpl::Disallow { problematic_kind: "opaque type" },
+                NonlocalImpl::DisallowOther,
+            ),
+
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Never
+            | ty::Tuple(..) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
+
+            ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(..) => span_bug!(sp, "weird self type for autotrait impl"),
+
+            ty::Error(..) => (LocalImpl::Allow, NonlocalImpl::Allow),
         };
 
-        let msg = match opt_self_def_id {
-            // We only want to permit nominal types, but not *all* nominal types.
-            // They must be local to the current crate, so that people
-            // can't do `unsafe impl Send for Rc<SomethingLocal>` or
-            // `impl !Send for Box<SomethingLocalAndSend>`.
-            Some(self_def_id) => {
-                if self_def_id.is_local() {
-                    None
-                } else {
-                    Some((
-                        format!(
-                            "cross-crate traits with a default impl, like `{}`, \
-                                    can only be implemented for a struct/enum type \
-                                    defined in the current crate",
-                            tcx.def_path_str(trait_def_id)
-                        ),
-                        "can't implement cross-crate trait for type in another crate",
-                    ))
+        if trait_def_id.is_local() {
+            match local_impl {
+                LocalImpl::Allow => {}
+                LocalImpl::Disallow { problematic_kind } => {
+                    let msg = format!(
+                        "traits with a default impl, like `{trait}`, \
+                                cannot be implemented for {problematic_kind} `{self_ty}`",
+                        trait = tcx.def_path_str(trait_def_id),
+                    );
+                    let label = format!(
+                        "a trait object implements `{trait}` if and only if `{trait}` \
+                                is one of the trait object's trait bounds",
+                        trait = tcx.def_path_str(trait_def_id),
+                    );
+                    let reported =
+                        struct_span_err!(tcx.sess, sp, E0321, "{}", msg).note(label).emit();
+                    return Err(reported);
                 }
             }
-            _ => Some((
-                format!(
-                    "cross-crate traits with a default impl, like `{}`, can \
+        } else {
+            if let Some((msg, label)) = match nonlocal_impl {
+                NonlocalImpl::Allow => None,
+                NonlocalImpl::DisallowBecauseNonlocal => Some((
+                    format!(
+                        "cross-crate traits with a default impl, like `{}`, \
+                                can only be implemented for a struct/enum type \
+                                defined in the current crate",
+                        tcx.def_path_str(trait_def_id)
+                    ),
+                    "can't implement cross-crate trait for type in another crate",
+                )),
+                NonlocalImpl::DisallowOther => Some((
+                    format!(
+                        "cross-crate traits with a default impl, like `{}`, can \
                                 only be implemented for a struct/enum type, not `{}`",
-                    tcx.def_path_str(trait_def_id),
-                    self_ty
-                ),
-                "can't implement cross-crate trait with a default impl for \
-                        non-struct/enum type",
-            )),
-        };
-
-        if let Some((msg, label)) = msg {
-            let reported =
-                struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
-            return Err(reported);
+                        tcx.def_path_str(trait_def_id),
+                        self_ty
+                    ),
+                    "can't implement cross-crate trait with a default impl for \
+                            non-struct/enum type",
+                )),
+            } {
+                let reported =
+                    struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
+                return Err(reported);
+            }
         }
     }
 
