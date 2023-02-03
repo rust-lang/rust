@@ -144,7 +144,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                                 .apply(target, TrackElem::Field(Field::from_usize(field_index)))
                             {
                                 let result = self.handle_operand(operand, state);
-                                state.assign_idx(field, result, self.map());
+                                state.insert_idx(field, result, self.map());
                             }
                         }
                     }
@@ -153,12 +153,13 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     {
                         let enum_ty = target.ty(self.local_decls, self.tcx).ty;
                         if let Some(discr_val) = self.eval_disciminant(enum_ty, variant_index) {
-                            state.assign_idx(discr_idx, ValueOrPlace::Value(FlatSet::Elem(discr_val)), &self.map);
+                            state.insert_value_idx(discr_idx, FlatSet::Elem(discr_val), &self.map);
                         }
                     }
                 }
             }
             Rvalue::CheckedBinaryOp(op, box (left, right)) => {
+                // Flood everything now, so we can use `insert_value_idx` directly later.
                 state.flood(target.as_ref(), self.map());
 
                 let target = self.map().find(target.as_ref());
@@ -172,7 +173,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     let (val, overflow) = self.binary_op(state, *op, left, right);
 
                     if let Some(value_target) = value_target {
-                        state.assign_idx(value_target, ValueOrPlace::Value(val), self.map());
+                        // We have flooded `target` earlier.
+                        state.insert_value_idx(value_target, val, self.map());
                     }
                     if let Some(overflow_target) = overflow_target {
                         let overflow = match overflow {
@@ -187,11 +189,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                             }
                             FlatSet::Bottom => FlatSet::Bottom,
                         };
-                        state.assign_idx(
-                            overflow_target,
-                            ValueOrPlace::Value(overflow),
-                            self.map(),
-                        );
+                        // We have flooded `target` earlier.
+                        state.insert_value_idx(overflow_target, overflow, self.map());
                     }
                 }
             }

@@ -24,7 +24,7 @@
 //! - The bottom state denotes uninitialized memory. Because we are only doing a sound approximation
 //! of the actual execution, we can also use this state for places where access would be UB.
 //!
-//! - The assignment logic in `State::assign_place_idx` assumes that the places are non-overlapping,
+//! - The assignment logic in `State::insert_place_idx` assumes that the places are non-overlapping,
 //! or identical. Note that this refers to place expressions, not memory locations.
 //!
 //! - Currently, places that have their reference taken cannot be tracked. Although this would be
@@ -470,6 +470,28 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
         self.flood_discr_with(place, map, V::top())
     }
 
+    /// Low-level method that assigns to a place.
+    /// This does nothing if the place is not tracked.
+    ///
+    /// The target place must have been flooded before calling this method.
+    pub fn insert_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map) {
+        match result {
+            ValueOrPlace::Value(value) => self.insert_value_idx(target, value, map),
+            ValueOrPlace::Place(source) => self.insert_place_idx(target, source, map),
+        }
+    }
+
+    /// Low-level method that assigns a value to a place.
+    /// This does nothing if the place is not tracked.
+    ///
+    /// The target place must have been flooded before calling this method.
+    pub fn insert_value_idx(&mut self, target: PlaceIndex, value: V, map: &Map) {
+        let StateData::Reachable(values) = &mut self.0 else { return };
+        if let Some(value_index) = map.places[target].value_index {
+            values[value_index] = value;
+        }
+    }
+
     /// Copies `source` to `target`, including all tracked places beneath.
     ///
     /// If `target` contains a place that is not contained in `source`, it will be overwritten with
@@ -477,52 +499,39 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     /// places that are non-overlapping or identical.
     ///
     /// The target place must have been flooded before calling this method.
-    fn assign_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
+    fn insert_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
         let StateData::Reachable(values) = &mut self.0 else { return };
 
-        // If both places are tracked, we copy the value to the target. If the target is tracked,
-        // but the source is not, we have to invalidate the value in target. If the target is not
-        // tracked, then we don't have to do anything.
+        // If both places are tracked, we copy the value to the target.
+        // If the target is tracked, but the source is not, we do nothing, as invalidation has
+        // already been performed.
         if let Some(target_value) = map.places[target].value_index {
             if let Some(source_value) = map.places[source].value_index {
                 values[target_value] = values[source_value].clone();
-            } else {
-                values[target_value] = V::top();
             }
         }
         for target_child in map.children(target) {
             // Try to find corresponding child and recurse. Reasoning is similar as above.
             let projection = map.places[target_child].proj_elem.unwrap();
             if let Some(source_child) = map.projections.get(&(source, projection)) {
-                self.assign_place_idx(target_child, *source_child, map);
+                self.insert_place_idx(target_child, *source_child, map);
             }
         }
     }
 
+    /// Helper method to interpret `target = result`.
     pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map) {
         self.flood(target, map);
         if let Some(target) = map.find(target) {
-            self.assign_idx(target, result, map);
+            self.insert_idx(target, result, map);
         }
     }
 
+    /// Helper method for assignments to a discriminant.
     pub fn assign_discr(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map) {
         self.flood_discr(target, map);
         if let Some(target) = map.find_discr(target) {
-            self.assign_idx(target, result, map);
-        }
-    }
-
-    /// The target place must have been flooded before calling this method.
-    pub fn assign_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map) {
-        match result {
-            ValueOrPlace::Value(value) => {
-                let StateData::Reachable(values) = &mut self.0 else { return };
-                if let Some(value_index) = map.places[target].value_index {
-                    values[value_index] = value;
-                }
-            }
-            ValueOrPlace::Place(source) => self.assign_place_idx(target, source, map),
+            self.insert_idx(target, result, map);
         }
     }
 
