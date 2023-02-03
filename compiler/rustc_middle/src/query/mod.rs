@@ -729,9 +729,8 @@ rustc_queries! {
     }
 
     /// Maps from a trait item to the trait item "descriptor".
-    query associated_item(key: DefId) -> &'tcx ty::AssocItem {
+    query associated_item(key: DefId) -> ty::AssocItem {
         desc { |tcx| "computing associated item data for `{}`", tcx.def_path_str(key) }
-        arena_cache
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
