@@ -192,6 +192,10 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             }
             e_flags
         }
+        Architecture::LoongArch64 => {
+            // Source: https://loongson.github.io/LoongArch-Documentation/LoongArch-ELF-ABI-EN.html#_e_flags_identifies_abi_type_and_version
+            elf::EF_LARCH_OBJABI_V1 | elf::EF_LARCH_ABI_DOUBLE_FLOAT
+        }
         _ => 0,
     };
     // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
