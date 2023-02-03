@@ -17,8 +17,11 @@ use crate::ops::{
 };
 use crate::slice::{Iter, IterMut};
 
+mod drain;
 mod equality;
 mod iter;
+
+pub(crate) use drain::drain_array_with;
 
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
@@ -513,9 +516,12 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(T) -> U,
     {
-        // SAFETY: we know for certain that this iterator will yield exactly `N`
-        // items.
-        unsafe { collect_into_array_unchecked(&mut IntoIterator::into_iter(self).map(f)) }
+        drain_array_with(self, |iter| {
+            let mut iter = iter.map(f);
+            // SAFETY: we know for certain that this iterator will yield exactly `N`
+            // items.
+            unsafe { collect_into_array_unchecked(&mut iter) }
+        })
     }
 
     /// A fallible function `f` applied to each element on array `self` in order to
@@ -552,9 +558,12 @@ impl<T, const N: usize> [T; N] {
         R: Try,
         R::Residual: Residual<[R::Output; N]>,
     {
-        // SAFETY: we know for certain that this iterator will yield exactly `N`
-        // items.
-        unsafe { try_collect_into_array_unchecked(&mut IntoIterator::into_iter(self).map(f)) }
+        drain_array_with(self, |iter| {
+            let mut iter = iter.map(f);
+            // SAFETY: we know for certain that this iterator will yield exactly `N`
+            // items.
+            unsafe { try_collect_into_array_unchecked(&mut iter) }
+        })
     }
 
     /// 'Zips up' two arrays into a single array of pairs.
@@ -575,11 +584,14 @@ impl<T, const N: usize> [T; N] {
     /// ```
     #[unstable(feature = "array_zip", issue = "80094")]
     pub fn zip<U>(self, rhs: [U; N]) -> [(T, U); N] {
-        let mut iter = IntoIterator::into_iter(self).zip(rhs);
-
-        // SAFETY: we know for certain that this iterator will yield exactly `N`
-        // items.
-        unsafe { collect_into_array_unchecked(&mut iter) }
+        drain_array_with(self, |lhs| {
+            drain_array_with(rhs, |rhs| {
+                let mut iter = crate::iter::zip(lhs, rhs);
+                // SAFETY: we know for certain that this iterator will yield exactly `N`
+                // items.
+                unsafe { collect_into_array_unchecked(&mut iter) }
+            })
+        })
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
