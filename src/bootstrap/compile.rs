@@ -379,6 +379,9 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     if stage >= 1 {
         cargo.rustflag("-Cembed-bitcode=yes");
     }
+    if builder.config.rust_lto == RustcLto::Off {
+        cargo.rustflag("-Clto=off");
+    }
 
     // By default, rustc does not include unwind tables unless they are required
     // for a particular target. They are not required by RISC-V targets, but
@@ -722,6 +725,13 @@ impl Step for Rustc {
                     cargo.rustflag("-Cembed-bitcode=yes");
                 }
                 RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+                RustcLto::Off => {
+                    cargo.rustflag("-Clto=off");
+                }
+            }
+        } else {
+            if builder.config.rust_lto == RustcLto::Off {
+                cargo.rustflag("-Clto=off");
             }
         }
 
