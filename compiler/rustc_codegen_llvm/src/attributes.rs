@@ -297,7 +297,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_CONST) {
         to_add.push(AttributeKind::ReadNone.create_attr(cx.llcx));
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)  || autodiff_attrs.is_active(){
         to_add.push(AttributeKind::Naked.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
