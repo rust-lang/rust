@@ -149,7 +149,7 @@ entry:
 
 ; CHECK: calculate_loss.exit:                              ; preds = %for.body.i, %entry
 ; CHECK-NEXT:   %loss.0.lcssa.i = phi double [ 0.000000e+00, %entry ], [ %13, %for.body.i ]
-; CHECK-NEXT:   %mrv = insertvalue { double, i8* } undef, double %loss.0.lcssa.i, 0
+; CHECK-NEXT:   %mrv = insertvalue { double, i8* } {{(undef|poison)}}, double %loss.0.lcssa.i, 0
 ; CHECK-NEXT:   %mrv1 = insertvalue { double, i8* } %mrv, i8* %trace, 1
 ; CHECK-NEXT:   ret { double, i8* } %mrv1
 ; CHECK-NEXT: }

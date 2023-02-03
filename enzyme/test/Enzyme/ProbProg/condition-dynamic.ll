@@ -160,7 +160,7 @@ entry:
 ; CHECK-NEXT:   %call2 = extractvalue { double, i8* } %call24, 0
 ; CHECK-NEXT:   %newtrace.calculate_loss = extractvalue { double, i8* } %call24, 1
 ; CHECK-NEXT:   call void %insert_call(i8* %trace, i8* nocapture readonly getelementptr inbounds ([21 x i8], [21 x i8]* @0, i32 0, i32 0), i8* %newtrace.calculate_loss)
-; CHECK-NEXT:   %mrv = insertvalue { double, i8* } undef, double %call2, 0
+; CHECK-NEXT:   %mrv = insertvalue { double, i8* } {{(undef|poison)}}, double %call2, 0
 ; CHECK-NEXT:   %mrv1 = insertvalue { double, i8* } %mrv, i8* %trace, 1
 ; CHECK-NEXT:   ret { double, i8* } %mrv1
 ; CHECK-NEXT: }
@@ -192,7 +192,7 @@ entry:
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.body.cntd, %entry
 ; CHECK-NEXT:   %loss.0.lcssa = phi double [ 0.000000e+00, %entry ], [ %14, %for.body.cntd ]
-; CHECK-NEXT:   %mrv = insertvalue { double, i8* } undef, double %loss.0.lcssa, 0
+; CHECK-NEXT:   %mrv = insertvalue { double, i8* } {{(undef|poison)}}, double %loss.0.lcssa, 0
 ; CHECK-NEXT:   %mrv1 = insertvalue { double, i8* } %mrv, i8* %trace, 1
 ; CHECK-NEXT:   ret { double, i8* } %mrv1
 
