@@ -805,7 +805,6 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
                 gather_llvm_bolt_profiles(pipeline)
 
         print_free_disk_space(pipeline)
-        clear_llvm_files(pipeline)
         final_build_args += [
             "--llvm-bolt-profile-use",
             pipeline.llvm_bolt_profile_merged_file()

@@ -19,6 +19,7 @@ use std::process::Command;
 use object::read::archive::ArchiveFile;
 use object::BinaryFormat;
 
+use crate::bolt::{instrument_with_bolt, optimize_with_bolt};
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::channel;
@@ -1904,6 +1905,26 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
     }
 }
 
+fn install_llvm_file(builder: &Builder<'_>, source: &Path, destination: &Path) {
+    if source.as_os_str().is_empty() {
+        return;
+    }
+
+    // After LLVM is built, we modify (instrument or optimize) the libLLVM.so library file.
+    // This is not done in-place so that the built LLVM files are not "tainted" with BOLT.
+    // We perform the instrumentation/optimization here, on the fly, just before they are being
+    // packaged into some destination directory.
+    let postprocessed = if builder.config.llvm_bolt_profile_generate {
+        instrument_with_bolt(source)
+    } else if let Some(path) = &builder.config.llvm_bolt_profile_use {
+        optimize_with_bolt(source, &Path::new(&path))
+    } else {
+        source.to_path_buf()
+    };
+
+    builder.install(&postprocessed, destination, 0o644);
+}
+
 /// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.
 ///
 /// Returns whether the files were actually copied.
@@ -1955,7 +1976,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
             } else {
                 PathBuf::from(file)
             };
-            builder.install(&file, dst_libdir, 0o644);
+            install_llvm_file(builder, &file, dst_libdir);
         }
         !builder.config.dry_run()
     } else {

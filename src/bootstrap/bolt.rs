@@ -1,12 +1,13 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Uses the `llvm-bolt` binary to instrument the binary/library at the given `path` with BOLT.
 /// When the instrumented artifact is executed, it will generate BOLT profiles into
 /// `/tmp/prof.fdata.<pid>.fdata`.
-pub fn instrument_with_bolt_inplace(path: &Path) {
+/// Returns a path to the instrumented artifact, created in a temporary directory.
+pub fn instrument_with_bolt(path: &Path) -> PathBuf {
     let dir = std::env::temp_dir();
-    let instrumented_path = dir.join("instrumented.so");
+    let instrumented_path = dir.join(path.file_name().unwrap());
 
     let status = Command::new("llvm-bolt")
         .arg("-instrument")
@@ -21,9 +22,7 @@ pub fn instrument_with_bolt_inplace(path: &Path) {
     if !status.success() {
         panic!("Could not instrument {} with BOLT, exit code {:?}", path.display(), status.code());
     }
-
-    std::fs::copy(&instrumented_path, path).expect("Cannot copy instrumented artifact");
-    std::fs::remove_file(instrumented_path).expect("Cannot delete instrumented artifact");
+    instrumented_path
 }
 
 /// Uses the `llvm-bolt` binary to optimize the binary/library at the given `path` with BOLT,
@@ -31,9 +30,11 @@ pub fn instrument_with_bolt_inplace(path: &Path) {
 ///
 /// The recorded profiles have to be merged using the `merge-fdata` tool from LLVM and the merged
 /// profile path should be then passed to this function.
-pub fn optimize_library_with_bolt_inplace(path: &Path, profile_path: &Path) {
+///
+/// Returns a path to the optimized artifact, created in a temporary directory.
+pub fn optimize_with_bolt(path: &Path, profile_path: &Path) -> PathBuf {
     let dir = std::env::temp_dir();
-    let optimized_path = dir.join("optimized.so");
+    let optimized_path = dir.join(path.file_name().unwrap());
 
     let status = Command::new("llvm-bolt")
         .arg(&path)
@@ -65,7 +66,5 @@ pub fn optimize_library_with_bolt_inplace(path: &Path, profile_path: &Path) {
     if !status.success() {
         panic!("Could not optimize {} with BOLT, exit code {:?}", path.display(), status.code());
     }
-
-    std::fs::copy(&optimized_path, path).expect("Cannot copy optimized artifact");
-    std::fs::remove_file(optimized_path).expect("Cannot delete optimized artifact");
+    optimized_path
 }
