@@ -250,7 +250,8 @@ new_pr = true
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
-    "compiler/rustc_trait_selection/src/solve"
+    "compiler/rustc_trait_selection/src/solve",
+    "compiler/rustc_middle/src/traits/solve.rs"
 ]
 
 [notify-zulip."I-prioritize"]
@@ -458,6 +459,14 @@ These commits modify **compiler targets**.
 
 [mentions."src/doc/style-guide"]
 cc = ["@rust-lang/style"]
+
+[mentions."Cargo.lock"]
+message = """
+These commits modify the `Cargo.lock` file. Random changes to `Cargo.lock` can be introduced when switching branches and rebasing PRs. 
+This was probably unintentional and should be reverted before this PR is merged. 
+
+If this was intentional then you can ignore this comment.
+"""
 
 [assign]
 warn_non_default_branch = true

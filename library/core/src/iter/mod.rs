@@ -362,15 +362,13 @@ macro_rules! impl_fold_via_try_fold {
     };
     (@internal $fold:ident -> $try_fold:ident) => {
         #[inline]
-        fn $fold<AAA, FFF>(mut self, init: AAA, mut fold: FFF) -> AAA
+        fn $fold<AAA, FFF>(mut self, init: AAA, fold: FFF) -> AAA
         where
             FFF: FnMut(AAA, Self::Item) -> AAA,
         {
-            use crate::const_closure::ConstFnMutClosure;
             use crate::ops::NeverShortCircuit;
 
-            let fold = ConstFnMutClosure::new(&mut fold, NeverShortCircuit::wrap_mut_2_imp);
-            self.$try_fold(init, fold).0
+            self.$try_fold(init, NeverShortCircuit::wrap_mut_2(fold)).0
         }
     };
 }

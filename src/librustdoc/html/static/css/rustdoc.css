@@ -184,6 +184,7 @@ h4.code-header {
 	font-weight: 600;
 	margin: 0;
 	padding: 0;
+	white-space: pre-wrap;
 }
 
 #crate-search,
@@ -642,6 +643,7 @@ pre, .rustdoc.source .example-wrap {
 .fn .where,
 .where.fmt-newline {
 	display: block;
+	white-space: pre-wrap;
 	font-size: 0.875rem;
 }
 
