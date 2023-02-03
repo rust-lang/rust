@@ -19,7 +19,7 @@ pub fn target() -> Target {
             position_independent_executables: true,
             static_position_independent_executables: true,
             crt_static_default: true,
-            crt_static_respected: false,
+            crt_static_respected: true,
             dynamic_linking: false,
             link_self_contained: LinkSelfContainedDefault::Musl,
             relro_level: RelroLevel::Full,
