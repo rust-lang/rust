@@ -13,7 +13,7 @@ use crate::ProcMacroKind;
 pub use crate::msg::flat::FlatTree;
 
 pub const NO_VERSION_CHECK_VERSION: u32 = 0;
-pub const API_VERSION: u32 = 1;
+pub const CURRENT_API_VERSION: u32 = 1;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {

@@ -10,7 +10,7 @@ use paths::{AbsPath, AbsPathBuf};
 use stdx::JodChild;
 
 use crate::{
-    msg::{Message, Request, Response},
+    msg::{Message, Request, Response, CURRENT_API_VERSION},
     ProcMacroKind, ServerError,
 };
 
@@ -36,6 +36,13 @@ impl ProcMacroProcessSrv {
         let mut srv = create_srv()?;
         tracing::info!("sending version check");
         match srv.version_check() {
+            Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!(
+                    "proc-macro server's api version ({}) is newer than rust-analyzer's ({})",
+                    v, CURRENT_API_VERSION
+                ),
+            )),
             Ok(v) => {
                 tracing::info!("got version {v}");
                 srv.version = v;
