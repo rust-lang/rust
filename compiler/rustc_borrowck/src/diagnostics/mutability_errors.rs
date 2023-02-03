@@ -606,12 +606,60 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 }
                             }
                             Some((false, err_label_span, message)) => {
-                                err.span_label(
-                                    err_label_span,
-                                    &format!(
-                                        "consider changing this binding's type to be: `{message}`"
-                                    ),
-                                );
+                                struct V {
+                                    span: Span,
+                                    hir_id: Option<hir::HirId>,
+                                }
+
+                                impl<'tcx> Visitor<'tcx> for V {
+                                    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
+                                        if let hir::StmtKind::Local(local) = s.kind {
+                                            if local.pat.span == self.span {
+                                                self.hir_id = Some(local.hir_id);
+                                            }
+                                        }
+                                        hir::intravisit::walk_stmt(self, s);
+                                    }
+                                }
+                                let hir_map = self.infcx.tcx.hir();
+                                let pat = loop {
+                                    // Poor man's try block
+                                    let def_id = self.body.source.def_id();
+                                    let hir_id =
+                                        hir_map.local_def_id_to_hir_id(def_id.as_local().unwrap());
+                                    let node = hir_map.find(hir_id);
+                                    let Some(hir::Node::Item(item)) = node else { break None; };
+                                    let hir::ItemKind::Fn(.., body_id) = item.kind else { break None; };
+                                    let body = self.infcx.tcx.hir().body(body_id);
+                                    let mut v = V { span: err_label_span, hir_id: None };
+                                    v.visit_body(body);
+                                    break v.hir_id;
+                                };
+                                if let Some(hir_id) = pat
+                                    && let Some(hir::Node::Local(local)) = hir_map.find(hir_id)
+                                {
+                                    let (changing, span, sugg) = match local.ty {
+                                        Some(ty) => ("changing", ty.span, message),
+                                        None => (
+                                            "specifying",
+                                            local.pat.span.shrink_to_hi(),
+                                            format!(": {message}"),
+                                        ),
+                                    };
+                                    err.span_suggestion_verbose(
+                                        span,
+                                        &format!("consider {changing} this binding's type"),
+                                        sugg,
+                                        Applicability::HasPlaceholders,
+                                    );
+                                } else {
+                                    err.span_label(
+                                        err_label_span,
+                                        &format!(
+                                            "consider changing this binding's type to be: `{message}`"
+                                        ),
+                                    );
+                                }
                             }
                             None => {}
                         }
