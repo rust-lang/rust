@@ -1,0 +1,13 @@
+error: missing `struct` for struct definition
+  --> $DIR/pub-ident-struct-2.rs:4:8
+   |
+LL |     pub bar();
+   |        ^
+   |
+help: add `struct` here to parse `bar` as a public struct
+   |
+LL |     pub struct bar();
+   |         ++++++
+
+error: aborting due to previous error
+

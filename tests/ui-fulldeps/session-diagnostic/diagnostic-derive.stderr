@@ -589,6 +589,16 @@ error: `code = "..."`/`code(...)` must contain only string literals
 LL |     #[suggestion(code = 3)]
    |                  ^^^^^^^^
 
+error: `#[suggestion(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:806:5
+   |
+LL |     #[suggestion(suggestion, code = "")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[suggestion(...)]` applied to `Vec` field is ambiguous
+   = help: to show a suggestion consisting of multiple parts, use a `Subdiagnostic` annotated with `#[multipart_suggestion(...)]`
+   = help: to show a variable set of suggestions, use a `Vec` of `Subdiagnostic`s annotated with `#[suggestion(...)]`
+
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:55:3
    |
@@ -660,7 +670,7 @@ note: required by a bound in `DiagnosticBuilder::<'a, G>::set_arg`
   --> $COMPILER_DIR/rustc_errors/src/diagnostic_builder.rs:LL:CC
    = note: this error originates in the derive macro `Diagnostic` which comes from the expansion of the macro `forward` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 83 previous errors
+error: aborting due to 84 previous errors
 
 Some errors have detailed explanations: E0277, E0425.
 For more information about an error, try `rustc --explain E0277`.

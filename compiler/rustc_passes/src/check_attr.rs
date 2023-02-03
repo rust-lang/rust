@@ -174,6 +174,9 @@ impl CheckAttrVisitor<'_> {
                 sym::rustc_has_incoherent_inherent_impls => {
                     self.check_has_incoherent_inherent_impls(&attr, span, target)
                 }
+                sym::ffi_pure => self.check_ffi_pure(attr.span, attrs, target),
+                sym::ffi_const => self.check_ffi_const(attr.span, target),
+                sym::ffi_returns_twice => self.check_ffi_returns_twice(attr.span, target),
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
@@ -1210,6 +1213,38 @@ impl CheckAttrVisitor<'_> {
                     .emit_err(errors::HasIncoherentInherentImpl { attr_span: attr.span, span });
                 false
             }
+        }
+    }
+
+    fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute], target: Target) -> bool {
+        if target != Target::ForeignFn {
+            self.tcx.sess.emit_err(errors::FfiPureInvalidTarget { attr_span });
+            return false;
+        }
+        if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
+            // `#[ffi_const]` functions cannot be `#[ffi_pure]`
+            self.tcx.sess.emit_err(errors::BothFfiConstAndPure { attr_span });
+            false
+        } else {
+            true
+        }
+    }
+
+    fn check_ffi_const(&self, attr_span: Span, target: Target) -> bool {
+        if target == Target::ForeignFn {
+            true
+        } else {
+            self.tcx.sess.emit_err(errors::FfiConstInvalidTarget { attr_span });
+            false
+        }
+    }
+
+    fn check_ffi_returns_twice(&self, attr_span: Span, target: Target) -> bool {
+        if target == Target::ForeignFn {
+            true
+        } else {
+            self.tcx.sess.emit_err(errors::FfiReturnsTwiceInvalidTarget { attr_span });
+            false
         }
     }
 

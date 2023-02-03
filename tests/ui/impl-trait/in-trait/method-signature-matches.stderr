@@ -24,16 +24,6 @@ LL |     async fn owo(_: u8) {}
    |                     expected `()`, found `u8`
    |                     help: change the parameter type to match the trait: `()`
    |
-note: while checking the return type of the `async fn`
-  --> $DIR/method-signature-matches.rs:20:25
-   |
-LL |     async fn owo(_: u8) {}
-   |                         ^ checked the `Output` of this `async fn`, expected opaque type
-note: while checking the return type of the `async fn`
-  --> $DIR/method-signature-matches.rs:20:25
-   |
-LL |     async fn owo(_: u8) {}
-   |                         ^ checked the `Output` of this `async fn`, found opaque type
 note: type in trait
   --> $DIR/method-signature-matches.rs:16:21
    |
