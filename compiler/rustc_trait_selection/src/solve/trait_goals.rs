@@ -439,6 +439,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         responses
     }
+
+    fn consider_builtin_discriminant_kind_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        _goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        // `DiscriminantKind` is automatically implemented for every type.
+        ecx.make_canonical_response(Certainty::Yes)
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
