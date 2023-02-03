@@ -69,6 +69,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
         Some(dep_graph::hash_result),
         );
     let time_to_codegen = start_time.elapsed();
+    dbg!("compile_codegen_unit");
 
     // We assume that the cost to run LLVM on a CGU is proportional to
     // the time we needed for codegenning it.
@@ -140,9 +141,9 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
                             let ty = instance.ty(tcx, ParamEnv::empty());
 
                             Some((
-                                symbol,
-                                unsafe { parse_typetree(tcx, ty, &llvm_module) }
-                            ))
+                                    symbol,
+                                    unsafe { parse_typetree(tcx, ty, &llvm_module) }
+                                 ))
                         },
                         _ => None
                     }
@@ -163,14 +164,14 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
 
 unsafe fn parse_typetree<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, llvm_module: &ModuleLlvm) -> DiffTypeTree {
     let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
-    
+
     // TODO: verify.
     // I think we don't need lifetimes here, so skip_binder is valid?
     // let tmp = fnc_binder.no_bound_vars();
     // assert!(tmp.is_some());
     // let x: ty::FnSig<'_> = tmp.unwrap();
     let x: ty::FnSig<'_> = fnc_binder.skip_binder();
-    
+
     let output: Ty<'_> = x.output();
     let inputs: &[Ty<'_>] = x.inputs();
     let llvm_data_layout = llvm::LLVMGetDataLayoutStr(&*llvm_module.llmod_raw);
