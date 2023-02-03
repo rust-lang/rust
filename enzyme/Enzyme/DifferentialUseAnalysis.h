@@ -462,7 +462,7 @@ static inline bool is_value_needed_in_reverse(
   if (auto CI = dyn_cast<CallInst>(inst)) {
     StringRef funcName = getFuncNameFromCall(const_cast<CallInst *>(CI));
     if (funcName == "julia.get_pgcstack" || funcName == "julia.ptls_states")
-      return true;
+      return seen[idx] = true;
   }
 
   bool inst_cv = gutils->isConstantValue(const_cast<Value *>(inst));
