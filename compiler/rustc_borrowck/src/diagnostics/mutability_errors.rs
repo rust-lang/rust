@@ -606,12 +606,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 }
                             }
                             Some((false, err_label_span, message)) => {
-                                struct V {
+                                struct BindingFinder {
                                     span: Span,
                                     hir_id: Option<hir::HirId>,
                                 }
 
-                                impl<'tcx> Visitor<'tcx> for V {
+                                impl<'tcx> Visitor<'tcx> for BindingFinder {
                                     fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
                                         if let hir::StmtKind::Local(local) = s.kind {
                                             if local.pat.span == self.span {
@@ -622,20 +622,23 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     }
                                 }
                                 let hir_map = self.infcx.tcx.hir();
-                                let pat = loop {
-                                    // Poor man's try block
-                                    let def_id = self.body.source.def_id();
-                                    let hir_id =
-                                        hir_map.local_def_id_to_hir_id(def_id.as_local().unwrap());
-                                    let node = hir_map.find(hir_id);
-                                    let Some(hir::Node::Item(item)) = node else { break None; };
-                                    let hir::ItemKind::Fn(.., body_id) = item.kind else { break None; };
-                                    let body = self.infcx.tcx.hir().body(body_id);
-                                    let mut v = V { span: err_label_span, hir_id: None };
+                                let def_id = self.body.source.def_id();
+                                let hir_id = hir_map.local_def_id_to_hir_id(def_id.expect_local());
+                                let node = hir_map.find(hir_id);
+                                let hir_id = if let Some(hir::Node::Item(item)) = node
+                                    && let hir::ItemKind::Fn(.., body_id) = item.kind
+                                {
+                                    let body = hir_map.body(body_id);
+                                    let mut v = BindingFinder {
+                                        span: err_label_span,
+                                        hir_id: None,
+                                    };
                                     v.visit_body(body);
-                                    break v.hir_id;
+                                    v.hir_id
+                                } else {
+                                    None
                                 };
-                                if let Some(hir_id) = pat
+                                if let Some(hir_id) = hir_id
                                     && let Some(hir::Node::Local(local)) = hir_map.find(hir_id)
                                 {
                                     let (changing, span, sugg) = match local.ty {
