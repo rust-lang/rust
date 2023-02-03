@@ -1,5 +1,5 @@
 use rustc_ast::token::{self, Delimiter};
-use rustc_ast::tokenstream::{CursorRef, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenStream, TokenTree};
 use rustc_ast::{LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
@@ -72,7 +72,7 @@ impl MetaVarExpr {
 
 // Checks if there are any remaining tokens. For example, `${ignore(ident ... a b c ...)}`
 fn check_trailing_token<'sess>(
-    iter: &mut CursorRef<'_>,
+    iter: &mut RefTokenTreeCursor<'_>,
     sess: &'sess ParseSess,
 ) -> PResult<'sess, ()> {
     if let Some(tt) = iter.next() {
@@ -88,7 +88,7 @@ fn check_trailing_token<'sess>(
 
 /// Parse a meta-variable `count` expression: `count(ident[, depth])`
 fn parse_count<'sess>(
-    iter: &mut CursorRef<'_>,
+    iter: &mut RefTokenTreeCursor<'_>,
     sess: &'sess ParseSess,
     span: Span,
 ) -> PResult<'sess, MetaVarExpr> {
@@ -99,7 +99,7 @@ fn parse_count<'sess>(
 
 /// Parses the depth used by index(depth) and length(depth).
 fn parse_depth<'sess>(
-    iter: &mut CursorRef<'_>,
+    iter: &mut RefTokenTreeCursor<'_>,
     sess: &'sess ParseSess,
     span: Span,
 ) -> PResult<'sess, usize> {
@@ -126,7 +126,7 @@ fn parse_depth<'sess>(
 
 /// Parses an generic ident
 fn parse_ident<'sess>(
-    iter: &mut CursorRef<'_>,
+    iter: &mut RefTokenTreeCursor<'_>,
     sess: &'sess ParseSess,
     span: Span,
 ) -> PResult<'sess, Ident> {
@@ -152,7 +152,7 @@ fn parse_ident<'sess>(
 
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the
 /// iterator is not modified and the result is `false`.
-fn try_eat_comma(iter: &mut CursorRef<'_>) -> bool {
+fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
     if let Some(TokenTree::Token(token::Token { kind: token::Comma, .. }, _)) = iter.look_ahead(0) {
         let _ = iter.next();
         return true;
