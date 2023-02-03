@@ -1,6 +1,6 @@
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, ParamEnv, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
@@ -14,14 +14,14 @@ pub(crate) struct CostChecker<'b, 'tcx> {
     param_env: ParamEnv<'tcx>,
     cost: usize,
     callee_body: &'b Body<'tcx>,
-    instance: ty::Instance<'tcx>,
+    instance: Option<ty::Instance<'tcx>>,
 }
 
 impl<'b, 'tcx> CostChecker<'b, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-        instance: ty::Instance<'tcx>,
+        instance: Option<ty::Instance<'tcx>>,
         callee_body: &'b Body<'tcx>,
     ) -> CostChecker<'b, 'tcx> {
         CostChecker { tcx, param_env, callee_body, instance, cost: 0 }
@@ -29,6 +29,14 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
 
     pub fn cost(&self) -> usize {
         self.cost
+    }
+
+    fn instantiate_ty(&self, v: Ty<'tcx>) -> Ty<'tcx> {
+        if let Some(instance) = self.instance {
+            instance.instantiate_mir(self.tcx, ty::EarlyBinder::bind(&v))
+        } else {
+            v
+        }
     }
 }
 
@@ -49,10 +57,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
         match terminator.kind {
             TerminatorKind::Drop { ref place, unwind, .. } => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
-                let ty = self.instance.instantiate_mir(
-                    tcx,
-                    ty::EarlyBinder::bind(&place.ty(self.callee_body, tcx).ty),
-                );
+                let ty = self.instantiate_ty(place.ty(self.callee_body, tcx).ty);
                 if ty.needs_drop(tcx, self.param_env) {
                     self.cost += CALL_PENALTY;
                     if let UnwindAction::Cleanup(_) = unwind {
@@ -63,8 +68,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 }
             }
             TerminatorKind::Call { func: Operand::Constant(ref f), unwind, .. } => {
-                let fn_ty =
-                    self.instance.instantiate_mir(tcx, ty::EarlyBinder::bind(&f.const_.ty()));
+                let fn_ty = self.instantiate_ty(f.const_.ty());
                 self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind() && tcx.is_intrinsic(def_id) {
                     // Don't give intrinsics the extra penalty for calls
                     INSTR_COST
