@@ -102,7 +102,7 @@ impl TopEntryPoint {
                 match step {
                     Step::Enter { .. } => depth += 1,
                     Step::Exit => depth -= 1,
-                    Step::Token { .. } | Step::Error { .. } => (),
+                    Step::FloatSplit { .. } | Step::Token { .. } | Step::Error { .. } => (),
                 }
             }
             assert!(!first, "no tree at all");

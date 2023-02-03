@@ -72,9 +72,12 @@ pub(crate) enum Event {
     /// `n_raw_tokens = 2` is used to produced a single `>>`.
     Token {
         kind: SyntaxKind,
+        // Consider custom enum here?
         n_raw_tokens: u8,
     },
-
+    FloatSplitHack {
+        has_pseudo_dot: bool,
+    },
     Error {
         msg: String,
     },
@@ -124,6 +127,11 @@ pub(super) fn process(mut events: Vec<Event>) -> Output {
             Event::Finish => res.leave_node(),
             Event::Token { kind, n_raw_tokens } => {
                 res.token(kind, n_raw_tokens);
+            }
+            Event::FloatSplitHack { has_pseudo_dot } => {
+                res.float_split_hack(has_pseudo_dot);
+                let ev = mem::replace(&mut events[i + 1], Event::tombstone());
+                assert!(matches!(ev, Event::Finish), "{ev:?}");
             }
             Event::Error { msg } => res.error(msg),
         }

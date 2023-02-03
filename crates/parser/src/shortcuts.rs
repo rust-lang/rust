@@ -44,7 +44,17 @@ impl<'a> LexedStr<'a> {
                     }
                     res.push(kind);
                 }
-                was_joint = true;
+                if kind == SyntaxKind::FLOAT_NUMBER {
+                    // we set jointness for floating point numbers as a hack to inform the
+                    // parser about whether we have a `0.` or `0.1` style float
+                    if self.text(i).split_once('.').map_or(false, |(_, it)| it.is_empty()) {
+                        was_joint = false;
+                    } else {
+                        was_joint = true;
+                    }
+                } else {
+                    was_joint = true;
+                }
             }
         }
         res
@@ -63,6 +73,7 @@ impl<'a> LexedStr<'a> {
                 Step::Token { kind, n_input_tokens: n_raw_tokens } => {
                     builder.token(kind, n_raw_tokens)
                 }
+                Step::FloatSplit { has_pseudo_dot } => builder.float_split(has_pseudo_dot),
                 Step::Enter { kind } => builder.enter(kind),
                 Step::Exit => builder.exit(),
                 Step::Error { msg } => {
@@ -107,6 +118,16 @@ impl Builder<'_, '_> {
         }
         self.eat_trivias();
         self.do_token(kind, n_tokens as usize);
+    }
+
+    fn float_split(&mut self, has_pseudo_dot: bool) {
+        match mem::replace(&mut self.state, State::Normal) {
+            State::PendingEnter => unreachable!(),
+            State::PendingExit => (self.sink)(StrStep::Exit),
+            State::Normal => (),
+        }
+        self.eat_trivias();
+        self.do_float_split(has_pseudo_dot);
     }
 
     fn enter(&mut self, kind: SyntaxKind) {
@@ -163,6 +184,37 @@ impl Builder<'_, '_> {
         let text = &self.lexed.range_text(self.pos..self.pos + n_tokens);
         self.pos += n_tokens;
         (self.sink)(StrStep::Token { kind, text });
+    }
+
+    fn do_float_split(&mut self, has_pseudo_dot: bool) {
+        let text = &self.lexed.range_text(self.pos..self.pos + 1);
+        self.pos += 1;
+        match text.split_once('.') {
+            Some((left, right)) => {
+                assert!(!left.is_empty());
+                (self.sink)(StrStep::Enter { kind: SyntaxKind::NAME_REF });
+                (self.sink)(StrStep::Token { kind: SyntaxKind::INT_NUMBER, text: left });
+                (self.sink)(StrStep::Exit);
+
+                // here we move the exit up, the original exit has been deleted in process
+                (self.sink)(StrStep::Exit);
+
+                (self.sink)(StrStep::Token { kind: SyntaxKind::DOT, text: "." });
+
+                if has_pseudo_dot {
+                    assert!(right.is_empty());
+                    self.state = State::Normal;
+                } else {
+                    (self.sink)(StrStep::Enter { kind: SyntaxKind::NAME_REF });
+                    (self.sink)(StrStep::Token { kind: SyntaxKind::INT_NUMBER, text: right });
+                    (self.sink)(StrStep::Exit);
+
+                    // the parser creates an unbalanced start node, we are required to close it here
+                    self.state = State::PendingExit;
+                }
+            }
+            None => unreachable!(),
+        }
     }
 }
 

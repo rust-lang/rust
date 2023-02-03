@@ -25,6 +25,7 @@ pub struct Output {
 #[derive(Debug)]
 pub enum Step<'a> {
     Token { kind: SyntaxKind, n_input_tokens: u8 },
+    FloatSplit { has_pseudo_dot: bool },
     Enter { kind: SyntaxKind },
     Exit,
     Error { msg: &'a str },
@@ -44,6 +45,7 @@ impl Output {
     const TOKEN_EVENT: u8 = 0;
     const ENTER_EVENT: u8 = 1;
     const EXIT_EVENT: u8 = 2;
+    const SPLIT_EVENT: u8 = 3;
 
     pub fn iter(&self) -> impl Iterator<Item = Step<'_>> {
         self.event.iter().map(|&event| {
@@ -67,6 +69,9 @@ impl Output {
                     Step::Enter { kind }
                 }
                 Self::EXIT_EVENT => Step::Exit,
+                Self::SPLIT_EVENT => {
+                    Step::FloatSplit { has_pseudo_dot: event & Self::N_INPUT_TOKEN_MASK != 0 }
+                }
                 _ => unreachable!(),
             }
         })
@@ -77,6 +82,13 @@ impl Output {
             | ((n_tokens as u32) << Self::N_INPUT_TOKEN_SHIFT)
             | Self::EVENT_MASK;
         self.event.push(e)
+    }
+
+    pub(crate) fn float_split_hack(&mut self, has_pseudo_dot: bool) {
+        let e = (Self::SPLIT_EVENT as u32) << Self::TAG_SHIFT
+            | ((has_pseudo_dot as u32) << Self::N_INPUT_TOKEN_SHIFT)
+            | Self::EVENT_MASK;
+        self.event.push(e);
     }
 
     pub(crate) fn enter_node(&mut self, kind: SyntaxKind) {
