@@ -128,6 +128,9 @@ parse_missing_in_in_for_loop = missing `in` in `for` loop
     .use_in_not_of = try using `in` here instead
     .add_in = try adding `in` here
 
+parse_missing_expression_in_for_loop = missing expression to iterate on in `for` loop
+    .suggestion = try adding an expression to the `for` loop
+
 parse_missing_comma_after_match_arm = expected `,` following `match` arm
     .suggestion = missing a comma here to end this `match` arm
 

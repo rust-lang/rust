@@ -2471,6 +2471,21 @@ impl<'a> Parser<'a> {
 
         let pat = self.recover_parens_around_for_head(pat, begin_paren);
 
+        // Recover from missing expression in `for` loop
+        if matches!(expr.kind, ExprKind::Block(..))
+            && !matches!(self.token.kind, token::OpenDelim(token::Delimiter::Brace))
+            && self.may_recover()
+        {
+            self.sess
+                .emit_err(errors::MissingExpressionInForLoop { span: expr.span.shrink_to_lo() });
+            let err_expr = self.mk_expr(expr.span, ExprKind::Err);
+            let block = self.mk_block(vec![], BlockCheckMode::Default, self.prev_token.span);
+            return Ok(self.mk_expr(
+                lo.to(self.prev_token.span),
+                ExprKind::ForLoop(pat, err_expr, block, opt_label),
+            ));
+        }
+
         let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;
 
         let kind = ExprKind::ForLoop(pat, expr, loop_block, opt_label);
