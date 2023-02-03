@@ -1,4 +1,5 @@
 use std::mem;
+use std::path::PathBuf;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
@@ -121,6 +122,8 @@ pub(crate) struct Cache {
     pub(crate) intra_doc_links: FxHashMap<ItemId, Vec<clean::ItemLink>>,
     /// Cfg that have been hidden via #![doc(cfg_hide(...))]
     pub(crate) hidden_cfg: FxHashSet<clean::cfg::Cfg>,
+    /// Local resources that are copied into the rustdoc output directory.
+    pub(crate) local_resources: LocalResources,
 }
 
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
@@ -513,6 +516,33 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         }
         self.cache.stripped_mod = orig_stripped_mod;
         ret
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct LocalResources {
+    /// The key is the original location of the resource. The value is the new name.
+    pub(crate) resources_to_copy: FxHashMap<PathBuf, String>,
+    /// This will be used when generating the HTML, once everything is generated, we copy these
+    /// files into the static folder.
+    ///
+    /// The key is the depth and the value is hashmap where the key is the path of the resource in
+    /// the markdown and the value is the new path to the resources in the rustdoc output folder.
+    pub(crate) resources_correspondance: FxHashMap<usize, FxHashMap<String, String>>,
+    pub(crate) total_entries: usize,
+}
+
+impl LocalResources {
+    pub(crate) fn add_entry_at_depth(&mut self, depth: usize, key: String, value: String) {
+        if self
+            .resources_correspondance
+            .entry(depth)
+            .or_insert_with(FxHashMap::default)
+            .insert(key, value)
+            .is_none()
+        {
+            self.total_entries += 1;
+        }
     }
 }
 

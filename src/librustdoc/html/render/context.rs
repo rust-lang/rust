@@ -129,6 +129,10 @@ pub(crate) struct SharedContext<'tcx> {
     pub(crate) call_locations: AllCallLocations,
 }
 
+pub(crate) fn root_path(depth: usize) -> String {
+    "../".repeat(depth)
+}
+
 impl SharedContext<'_> {
     pub(crate) fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
         let mut dirs = self.created_dirs.borrow_mut();
@@ -165,7 +169,7 @@ impl<'tcx> Context<'tcx> {
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     pub(super) fn root_path(&self) -> String {
-        "../".repeat(self.current.len())
+        root_path(self.current.len())
     }
 
     fn render_item(&mut self, it: &clean::Item, is_module: bool) -> String {

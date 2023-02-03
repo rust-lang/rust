@@ -13,3 +13,5 @@ mod url_parts_builder;
 
 #[cfg(test)]
 mod tests;
+
+pub(crate) const LOCAL_RESOURCES_FOLDER_NAME: &str = "local_resources";
