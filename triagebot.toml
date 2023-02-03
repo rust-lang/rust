@@ -459,6 +459,14 @@ These commits modify **compiler targets**.
 [mentions."src/doc/style-guide"]
 cc = ["@rust-lang/style"]
 
+[mentions."Cargo.lock"]
+message = """
+These commits modify the `Cargo.lock` file. Random changes to `Cargo.lock` can be introduced when switching branches and rebasing PRs. 
+This was probably unintentional and should be reverted before this PR is merged. 
+
+If this was intentional then you can ignore this comment.
+"""
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
