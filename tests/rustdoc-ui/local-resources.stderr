@@ -1,0 +1,8 @@
+error: `../somewhere.whatever`: No such file
+  --> $DIR/local-resources.rs:1:1
+   |
+LL | /// ![yep](../somewhere.whatever)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
