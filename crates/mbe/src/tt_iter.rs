@@ -140,6 +140,7 @@ impl<'a> TtIter<'a> {
 
         let mut cursor = buffer.begin();
         let mut error = false;
+        let mut float_splits = vec![];
         for step in tree_traversal.iter() {
             match step {
                 parser::Step::Token { kind, mut n_input_tokens } => {
@@ -149,6 +150,10 @@ impl<'a> TtIter<'a> {
                     for _ in 0..n_input_tokens {
                         cursor = cursor.bump_subtree();
                     }
+                }
+                parser::Step::FloatSplit { .. } => {
+                    float_splits.push(cursor);
+                    cursor = cursor.bump_subtree();
                 }
                 parser::Step::Enter { .. } | parser::Step::Exit => (),
                 parser::Step::Error { .. } => error = true,
@@ -167,18 +172,17 @@ impl<'a> TtIter<'a> {
         if cursor.is_root() {
             while curr != cursor {
                 if let Some(token) = curr.token_tree() {
-                    res.push(token);
+                    res.push(token.cloned());
                 }
                 curr = curr.bump();
             }
         }
         self.inner = self.inner.as_slice()[res.len()..].iter();
         let res = match res.len() {
-            1 => Some(res[0].cloned()),
-            0 => None,
+            0 | 1 => res.pop(),
             _ => Some(tt::TokenTree::Subtree(tt::Subtree {
                 delimiter: tt::Delimiter::unspecified(),
-                token_trees: res.into_iter().map(|it| it.cloned()).collect(),
+                token_trees: res,
             })),
         };
         ExpandResult { value: res, err }

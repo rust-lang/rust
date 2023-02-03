@@ -95,6 +95,7 @@ pub fn token_tree_to_syntax_node(
             parser::Step::Token { kind, n_input_tokens: n_raw_tokens } => {
                 tree_sink.token(kind, n_raw_tokens)
             }
+            parser::Step::FloatSplit { .. } => tree_sink.token(SyntaxKind::FLOAT_NUMBER, 1),
             parser::Step::Enter { kind } => tree_sink.start_node(kind),
             parser::Step::Exit => tree_sink.finish_node(),
             parser::Step::Error { msg } => tree_sink.error(msg.to_string()),

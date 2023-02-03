@@ -16,8 +16,8 @@ enum Entry<'t, Span> {
     // Mimicking types from proc-macro.
     Subtree(Option<&'t TokenTree<Span>>, &'t Subtree<Span>, EntryId),
     Leaf(&'t TokenTree<Span>),
-    // End entries contain a pointer to the entry from the containing
-    // token tree, or None if this is the outermost level.
+    /// End entries contain a pointer to the entry from the containing
+    /// token tree, or [`None`] if this is the outermost level.
     End(Option<EntryPtr>),
 }
 
@@ -226,7 +226,9 @@ impl<'a, Span> Cursor<'a, Span> {
     /// a cursor into that subtree
     pub fn bump_subtree(self) -> Cursor<'a, Span> {
         match self.entry() {
-            Some(Entry::Subtree(_, _, _)) => self.subtree().unwrap(),
+            Some(&Entry::Subtree(_, _, entry_id)) => {
+                Cursor::create(self.buffer, EntryPtr(entry_id, 0))
+            }
             _ => self.bump(),
         }
     }
