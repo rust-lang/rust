@@ -10,7 +10,7 @@ use paths::{AbsPath, AbsPathBuf};
 use stdx::JodChild;
 
 use crate::{
-    msg::{Message, Request, Response},
+    msg::{Message, Request, Response, CURRENT_API_VERSION},
     ProcMacroKind, ServerError,
 };
 
@@ -19,19 +19,52 @@ pub(crate) struct ProcMacroProcessSrv {
     _process: Process,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
+    version: u32,
 }
 
 impl ProcMacroProcessSrv {
     pub(crate) fn run(
         process_path: AbsPathBuf,
-        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>> + Clone,
     ) -> io::Result<ProcMacroProcessSrv> {
-        let mut process = Process::run(process_path, args)?;
-        let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
+        let create_srv = || {
+            let mut process = Process::run(process_path.clone(), args.clone())?;
+            let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
-        let srv = ProcMacroProcessSrv { _process: process, stdin, stdout };
+            io::Result::Ok(ProcMacroProcessSrv { _process: process, stdin, stdout, version: 0 })
+        };
+        let mut srv = create_srv()?;
+        tracing::info!("sending version check");
+        match srv.version_check() {
+            Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!(
+                    "proc-macro server's api version ({}) is newer than rust-analyzer's ({})",
+                    v, CURRENT_API_VERSION
+                ),
+            )),
+            Ok(v) => {
+                tracing::info!("got version {v}");
+                srv.version = v;
+                Ok(srv)
+            }
+            Err(e) => {
+                tracing::info!(%e, "proc-macro version check failed, restarting and assuming version 0");
+                create_srv()
+            }
+        }
+    }
 
-        Ok(srv)
+    pub(crate) fn version_check(&mut self) -> Result<u32, ServerError> {
+        let request = Request::ApiVersionCheck {};
+        let response = self.send_task(request)?;
+
+        match response {
+            Response::ApiVersionCheck(version) => Ok(version),
+            Response::ExpandMacro { .. } | Response::ListMacros { .. } => {
+                Err(ServerError { message: "unexpected response".to_string(), io: None })
+            }
+        }
     }
 
     pub(crate) fn find_proc_macros(
@@ -44,7 +77,7 @@ impl ProcMacroProcessSrv {
 
         match response {
             Response::ListMacros(it) => Ok(it),
-            Response::ExpandMacro { .. } => {
+            Response::ExpandMacro { .. } | Response::ApiVersionCheck { .. } => {
                 Err(ServerError { message: "unexpected response".to_string(), io: None })
             }
         }

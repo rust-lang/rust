@@ -15,6 +15,9 @@ pub fn run() -> io::Result<()> {
                 msg::Response::ListMacros(srv.list_macros(&dylib_path))
             }
             msg::Request::ExpandMacro(task) => msg::Response::ExpandMacro(srv.expand(task)),
+            msg::Request::ApiVersionCheck {} => {
+                msg::Response::ApiVersionCheck(proc_macro_api::msg::CURRENT_API_VERSION)
+            }
         };
         write_response(res)?
     }
