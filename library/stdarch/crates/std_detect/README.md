@@ -30,6 +30,8 @@ run-time feature detection. When this feature is disabled, `std_detect` assumes
 that [`getauxval`] is linked to the binary. If that is not the case the behavior
 is undefined.
 
+  Note: This feature is ignored on `*-linux-gnu*` targets, since all `*-linux-gnu*` targets ([since Rust 1.64](https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html)) have glibc requirements higher than [glibc 2.16 that added `getauxval`](https://sourceware.org/legacy-ml/libc-announce/2012/msg00000.html), and we can safely assume [`getauxval`] is linked to the binary.
+
 * `std_detect_file_io` (enabled by default, requires `std`): Enable to perform run-time feature
 detection using file APIs (e.g. `/proc/cpuinfo`, etc.) if other more performant
 methods fail. This feature requires `libstd` as a dependency, preventing the

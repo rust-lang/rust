@@ -54,13 +54,21 @@ pub(crate) struct AuxVec {
 /// error, cpuinfo still can (and will) be used to try to perform run-time
 /// feature detecton on some platforms.
 ///
+/// Note: The `std_detect_dlsym_getauxval` cargo feature is ignored on `*-linux-gnu*` targets,
+/// since [all `*-linux-gnu*` targets ([since Rust 1.64](https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html))
+/// have glibc requirements higher than [glibc 2.16 that added `getauxval`](https://sourceware.org/legacy-ml/libc-announce/2012/msg00000.html),
+/// and we can safely assume [`getauxval`] is linked to the binary.
+///
 /// For more information about when `getauxval` is available check the great
 /// [`auxv` crate documentation][auxv_docs].
 ///
 /// [auxvec_h]: https://github.com/torvalds/linux/blob/master/include/uapi/linux/auxvec.h
 /// [auxv_docs]: https://docs.rs/auxv/0.3.3/auxv/
 pub(crate) fn auxv() -> Result<AuxVec, ()> {
-    #[cfg(feature = "std_detect_dlsym_getauxval")]
+    #[cfg(all(
+        feature = "std_detect_dlsym_getauxval",
+        not(all(target_os = "linux", target_env = "gnu"))
+    ))]
     {
         // Try to call a dynamically-linked getauxval function.
         if let Ok(hwcap) = getauxval(AT_HWCAP) {
@@ -101,7 +109,10 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
         }
     }
 
-    #[cfg(not(feature = "std_detect_dlsym_getauxval"))]
+    #[cfg(any(
+        not(feature = "std_detect_dlsym_getauxval"),
+        all(target_os = "linux", target_env = "gnu")
+    ))]
     {
         // Targets with only AT_HWCAP:
         #[cfg(any(
@@ -154,7 +165,10 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 /// Tries to read the `key` from the auxiliary vector by calling the
 /// dynamically-linked `getauxval` function. If the function is not linked,
 /// this function return `Err`.
-#[cfg(feature = "std_detect_dlsym_getauxval")]
+#[cfg(all(
+    feature = "std_detect_dlsym_getauxval",
+    not(all(target_os = "linux", target_env = "gnu"))
+))]
 fn getauxval(key: usize) -> Result<usize, ()> {
     use libc;
     pub type F = unsafe extern "C" fn(usize) -> usize;
