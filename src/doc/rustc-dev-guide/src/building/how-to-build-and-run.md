@@ -122,15 +122,9 @@ you will likely need to build at some point; for example, if you want
 to run the entire test suite).
 
 ```bash
-rustup toolchain link stage1 build/<host-triple>/stage1
-rustup toolchain link stage2 build/<host-triple>/stage2
+rustup toolchain link stage1 build/host/stage1
+rustup toolchain link stage2 build/host/stage2
 ```
-
-The `<host-triple>` would typically be one of the following:
-
-- Linux: `x86_64-unknown-linux-gnu`
-- Mac: `x86_64-apple-darwin` or `aarch64-apple-darwin`
-- Windows: `x86_64-pc-windows-msvc`
 
 Now you can run the `rustc` you built with. If you run with `-vV`, you
 should see a version number ending in `-dev`, indicating a build from
