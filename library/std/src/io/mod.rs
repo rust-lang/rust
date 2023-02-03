@@ -1392,10 +1392,10 @@ pub trait Write {
     /// written, and a write which would otherwise block can be indicated through
     /// an [`Err`] variant.
     ///
-    /// If the return value is [`Ok(n)`] then it must be guaranteed that `n <=
-    /// buf.len()`. Unless `input` is empty, this function shouldn’t return `0`
-    /// since caller may interpret that as an error (the default implementation
-    /// of [`Write::write_all`] does exactly that).  To indicate lack of space
+    /// If this method consumed `n > 0` bytes of `buf` it must return [`Ok(n)`].
+    /// If the return value is `Ok(n)` it must hold than `n <= buf.len()`.
+    /// Unless `input` is empty, this function shouldn’t return `Ok(0)` since
+    /// caller may interpret that as an error.  To indicate lack of space
     /// function should return [`ErrorKind::StorageFull`] error instead.
     ///
     /// # Errors
