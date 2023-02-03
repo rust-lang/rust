@@ -82,6 +82,11 @@ pub enum InstanceDef<'tcx> {
     /// The `DefId` is the ID of the `call_once` method in `FnOnce`.
     ClosureOnceShim { call_once: DefId, track_caller: bool },
 
+    /// Compiler-generated accessor for thread locals which returns a reference to the thread local
+    /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
+    /// native support.
+    ThreadLocalShim(DefId),
+
     /// `core::ptr::drop_in_place::<T>`.
     ///
     /// The `DefId` is for `core::ptr::drop_in_place`.
@@ -156,6 +161,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
+            | InstanceDef::ThreadLocalShim(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
@@ -167,7 +173,9 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn def_id_if_not_guaranteed_local_codegen(self) -> Option<DefId> {
         match self {
             ty::InstanceDef::Item(def) => Some(def.did),
-            ty::InstanceDef::DropGlue(def_id, Some(_)) => Some(def_id),
+            ty::InstanceDef::DropGlue(def_id, Some(_)) | InstanceDef::ThreadLocalShim(def_id) => {
+                Some(def_id)
+            }
             InstanceDef::VTableShim(..)
             | InstanceDef::ReifyShim(..)
             | InstanceDef::FnPtrShim(..)
@@ -192,6 +200,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
+            | InstanceDef::ThreadLocalShim(def_id)
             | InstanceDef::FnPtrAddrShim(def_id, _) => ty::WithOptConstParam::unknown(def_id),
         }
     }
@@ -215,6 +224,7 @@ impl<'tcx> InstanceDef<'tcx> {
         let def_id = match *self {
             ty::InstanceDef::Item(def) => def.did,
             ty::InstanceDef::DropGlue(_, Some(_)) => return false,
+            ty::InstanceDef::ThreadLocalShim(_) => return false,
             _ => return true,
         };
         matches!(
@@ -255,6 +265,9 @@ impl<'tcx> InstanceDef<'tcx> {
                 )
             });
         }
+        if let ty::InstanceDef::ThreadLocalShim(..) = *self {
+            return false;
+        }
         tcx.codegen_fn_attrs(self.def_id()).requests_inline()
     }
 
@@ -278,6 +291,7 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn has_polymorphic_mir_body(&self) -> bool {
         match *self {
             InstanceDef::CloneShim(..)
+            | InstanceDef::ThreadLocalShim(..)
             | InstanceDef::FnPtrAddrShim(..)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::DropGlue(_, Some(_)) => false,
@@ -310,6 +324,7 @@ fn fmt_instance(
         InstanceDef::Item(_) => Ok(()),
         InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
         InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
+        InstanceDef::ThreadLocalShim(_) => write!(f, " - shim(tls)"),
         InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
         InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
         InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),

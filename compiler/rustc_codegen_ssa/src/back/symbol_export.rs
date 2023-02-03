@@ -177,13 +177,28 @@ fn exported_symbols_provider_local(
 
     // FIXME: Sorting this is unnecessary since we are sorting later anyway.
     //        Can we skip the later sorting?
-    let mut symbols: Vec<_> = tcx.with_stable_hashing_context(|hcx| {
-        tcx.reachable_non_generics(LOCAL_CRATE)
-            .to_sorted(&hcx, true)
-            .into_iter()
-            .map(|(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info))
-            .collect()
+    let sorted = tcx.with_stable_hashing_context(|hcx| {
+        tcx.reachable_non_generics(LOCAL_CRATE).to_sorted(&hcx, true)
     });
+
+    let mut symbols: Vec<_> =
+        sorted.iter().map(|(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info)).collect();
+
+    // Export TLS shims
+    if !tcx.sess.target.dll_tls_export {
+        symbols.extend(sorted.iter().filter_map(|(&def_id, &info)| {
+            tcx.needs_thread_local_shim(def_id).then(|| {
+                (
+                    ExportedSymbol::ThreadLocalShim(def_id),
+                    SymbolExportInfo {
+                        level: info.level,
+                        kind: SymbolExportKind::Text,
+                        used: info.used,
+                    },
+                )
+            })
+        }))
+    }
 
     if tcx.entry_fn(()).is_some() {
         let exported_symbol =
@@ -380,7 +395,9 @@ fn upstream_monomorphizations_provider(
                         continue;
                     }
                 }
-                ExportedSymbol::NonGeneric(..) | ExportedSymbol::NoDefId(..) => {
+                ExportedSymbol::NonGeneric(..)
+                | ExportedSymbol::ThreadLocalShim(..)
+                | ExportedSymbol::NoDefId(..) => {
                     // These are no monomorphizations
                     continue;
                 }
@@ -500,6 +517,16 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
                 instantiating_crate,
             )
         }
+        ExportedSymbol::ThreadLocalShim(def_id) => {
+            rustc_symbol_mangling::symbol_name_for_instance_in_crate(
+                tcx,
+                ty::Instance {
+                    def: ty::InstanceDef::ThreadLocalShim(def_id),
+                    substs: ty::InternalSubsts::empty(),
+                },
+                instantiating_crate,
+            )
+        }
         ExportedSymbol::DropGlue(ty) => rustc_symbol_mangling::symbol_name_for_instance_in_crate(
             tcx,
             Instance::resolve_drop_in_place(tcx, ty),
@@ -548,6 +575,8 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
         ExportedSymbol::DropGlue(..) => None,
         // NoDefId always follow the target's default symbol decoration scheme.
         ExportedSymbol::NoDefId(..) => None,
+        // ThreadLocalShim always follow the target's default symbol decoration scheme.
+        ExportedSymbol::ThreadLocalShim(..) => None,
     };
 
     let (conv, args) = instance

@@ -597,6 +597,28 @@ impl<'tcx> TyCtxt<'tcx> {
         self.static_mutability(def_id) == Some(hir::Mutability::Mut)
     }
 
+    /// Returns `true` if the item pointed to by `def_id` is a thread local which needs a
+    /// thread local shim generated.
+    #[inline]
+    pub fn needs_thread_local_shim(self, def_id: DefId) -> bool {
+        !self.sess.target.dll_tls_export
+            && self.is_thread_local_static(def_id)
+            && !self.is_foreign_item(def_id)
+    }
+
+    /// Returns the type a reference to the thread local takes in MIR.
+    pub fn thread_local_ptr_ty(self, def_id: DefId) -> Ty<'tcx> {
+        let static_ty = self.type_of(def_id).subst_identity();
+        if self.is_mutable_static(def_id) {
+            self.mk_mut_ptr(static_ty)
+        } else if self.is_foreign_item(def_id) {
+            self.mk_imm_ptr(static_ty)
+        } else {
+            // FIXME: These things don't *really* have 'static lifetime.
+            self.mk_imm_ref(self.lifetimes.re_static, static_ty)
+        }
+    }
+
     /// Get the type of the pointer to the static that we use in MIR.
     pub fn static_ptr_ty(self, def_id: DefId) -> Ty<'tcx> {
         // Make sure that any constants in the static's type are evaluated.

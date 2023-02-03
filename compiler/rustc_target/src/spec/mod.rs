@@ -1468,6 +1468,8 @@ pub struct TargetOptions {
     pub features: StaticCow<str>,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
+    /// Whether dynamic linking can export TLS globals. Defaults to true.
+    pub dll_tls_export: bool,
     /// If dynamic linking is available, whether only cdylibs are supported.
     pub only_cdylib: bool,
     /// Whether executables are available on this target. Defaults to true.
@@ -1859,6 +1861,7 @@ impl Default for TargetOptions {
             cpu: "generic".into(),
             features: "".into(),
             dynamic_linking: false,
+            dll_tls_export: true,
             only_cdylib: false,
             executables: true,
             relocation_model: RelocModel::Pic,
@@ -2530,6 +2533,7 @@ impl Target {
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
+        key!(dll_tls_export, bool);
         key!(only_cdylib, bool);
         key!(executables, bool);
         key!(relocation_model, RelocModel)?;
@@ -2783,6 +2787,7 @@ impl ToJson for Target {
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
+        target_option_val!(dll_tls_export);
         target_option_val!(only_cdylib);
         target_option_val!(executables);
         target_option_val!(relocation_model);

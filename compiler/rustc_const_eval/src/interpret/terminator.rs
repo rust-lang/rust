@@ -383,6 +383,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::FnPtrAddrShim(..)
+            | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
                 let Some((body, instance)) =
