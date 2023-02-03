@@ -1199,28 +1199,22 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             visitor.visit_ty(ty);
             let mut diag = bad_placeholder(tcx, visitor.0, "return type");
             let ret_ty = fn_sig.output();
-            if ret_ty.is_suggestable(tcx, false) {
+            if let Some(ret_ty) = ret_ty.make_suggestable(tcx, false) {
                 diag.span_suggestion(
                     ty.span,
                     "replace with the correct return type",
                     ret_ty,
                     Applicability::MachineApplicable,
                 );
-            } else if matches!(ret_ty.kind(), ty::FnDef(..)) {
-                let fn_sig = ret_ty.fn_sig(tcx);
-                if fn_sig
-                    .skip_binder()
-                    .inputs_and_output
-                    .iter()
-                    .all(|t| t.is_suggestable(tcx, false))
-                {
-                    diag.span_suggestion(
-                        ty.span,
-                        "replace with the correct return type",
-                        fn_sig,
-                        Applicability::MachineApplicable,
-                    );
-                }
+            } else if matches!(ret_ty.kind(), ty::FnDef(..))
+                && let Some(fn_sig) = ret_ty.fn_sig(tcx).make_suggestable(tcx, false)
+            {
+                diag.span_suggestion(
+                    ty.span,
+                    "replace with the correct return type",
+                    fn_sig,
+                    Applicability::MachineApplicable,
+                );
             } else if let Some(sugg) = suggest_impl_trait(tcx, ret_ty, ty.span, hir_id, def_id) {
                 diag.span_suggestion(
                     ty.span,
@@ -1280,9 +1274,7 @@ fn suggest_impl_trait<'tcx>(
             let trait_name = tcx.item_name(trait_def_id);
             let args_tuple = substs.type_at(1);
             let ty::Tuple(types) = *args_tuple.kind() else { return None; };
-            if !types.is_suggestable(tcx, false) {
-                return None;
-            }
+            let types = types.make_suggestable(tcx, false)?;
             let maybe_ret =
                 if item_ty.is_unit() { String::new() } else { format!(" -> {item_ty}") };
             Some(format!(
@@ -1337,7 +1329,7 @@ fn suggest_impl_trait<'tcx>(
         // FIXME(compiler-errors): We may benefit from resolving regions here.
         if ocx.select_where_possible().is_empty()
             && let item_ty = infcx.resolve_vars_if_possible(item_ty)
-            && item_ty.is_suggestable(tcx, false)
+            && let Some(item_ty) = item_ty.make_suggestable(tcx, false)
             && let Some(sugg) = formatter(tcx, infcx.resolve_vars_if_possible(substs), trait_def_id, assoc_item_def_id, item_ty)
         {
             return Some(sugg);
