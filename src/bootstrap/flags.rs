@@ -80,6 +80,7 @@ pub struct Flags {
     pub llvm_profile_generate: bool,
     pub llvm_bolt_profile_generate: bool,
     pub llvm_bolt_profile_use: Option<String>,
+    pub llvm_targets: Option<String>
 }
 
 #[derive(Debug)]
@@ -261,6 +262,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optmulti("F", "", "forbid certain clippy lints", "OPT");
         opts.optflag("", "llvm-bolt-profile-generate", "generate BOLT profile for LLVM build");
         opts.optopt("", "llvm-bolt-profile-use", "use BOLT profile for LLVM build", "PROFILE");
+        opts.optopt("", "llvm-targets", "set LLVM targets", "TARGETS");
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
@@ -706,6 +708,7 @@ Arguments:
             llvm_profile_generate: matches.opt_present("llvm-profile-generate"),
             llvm_bolt_profile_generate: matches.opt_present("llvm-bolt-profile-generate"),
             llvm_bolt_profile_use: matches.opt_str("llvm-bolt-profile-use"),
+            llvm_targets: matches.opt_str("llvm-targets"),
         }
     }
 }

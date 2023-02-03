@@ -587,7 +587,8 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
     # Stage 1: Build rustc + PGO instrumented LLVM
     with timer.stage("Build rustc (LLVM PGO)"):
         build_rustc(pipeline, args=[
-            "--llvm-profile-generate"
+            "--llvm-profile-generate",
+            "--llvm-targets", "X86"
         ], env=dict(
             LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p")
         ))
@@ -605,7 +606,8 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
     with timer.stage("Build rustc (rustc PGO)"):
         build_rustc(pipeline, args=[
             "--rust-profile-generate",
-            pipeline.rustc_profile_dir_root()
+            pipeline.rustc_profile_dir_root(),
+            "--llvm-targets", "X86"
         ])
 
     with timer.stage("Gather profiles (rustc PGO)"):
@@ -624,6 +626,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
                 "--llvm-profile-use",
                 pipeline.llvm_profile_merged_file(),
                 "--llvm-bolt-profile-generate",
+                "--llvm-targets", "X86"
             ])
         with timer.stage("Gather profiles (LLVM BOLT)"):
             gather_llvm_bolt_profiles(pipeline)

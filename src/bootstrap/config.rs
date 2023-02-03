@@ -1329,6 +1329,9 @@ impl Config {
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(true);
+        if flags.llvm_targets.is_some() {
+            config.llvm_targets = flags.llvm_targets;
+        }
 
         let default = debug == Some(true);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
