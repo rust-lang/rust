@@ -22,7 +22,7 @@ pub(crate) struct CostChecker<'b, 'tcx> {
     param_env: ParamEnv<'tcx>,
     cost: usize,
     callee_body: &'b Body<'tcx>,
-    instance: ty::Instance<'tcx>,
+    instance: Option<ty::Instance<'tcx>>,
     validation: Result<(), &'static str>,
 }
 
@@ -30,7 +30,7 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-        instance: ty::Instance<'tcx>,
+        instance: Option<ty::Instance<'tcx>>,
         callee_body: &'b Body<'tcx>,
     ) -> CostChecker<'b, 'tcx> {
         CostChecker { tcx, param_env, callee_body, instance, cost: 0, validation: Ok(()) }
@@ -42,6 +42,10 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
 
     pub fn validation(&self) -> Result<(), &'static str> {
         self.validation
+    }
+
+    fn subst_ty(&self, v: Ty<'tcx>) -> Ty<'tcx> {
+        if let Some(instance) = self.instance { instance.subst_mir(self.tcx, &v) } else { v }
     }
 }
 
@@ -65,7 +69,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             TerminatorKind::Drop { ref place, unwind, .. }
             | TerminatorKind::DropAndReplace { ref place, unwind, .. } => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
-                let ty = self.instance.subst_mir(tcx, &place.ty(self.callee_body, tcx).ty);
+                let ty = self.subst_ty(place.ty(self.callee_body, tcx).ty);
                 if ty.needs_drop(tcx, self.param_env) {
                     self.cost += CALL_PENALTY;
                     if unwind.is_some() {
@@ -76,7 +80,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 }
             }
             TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
-                let fn_ty = self.instance.subst_mir(tcx, &f.literal.ty());
+                let fn_ty = self.subst_ty(f.literal.ty());
                 self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind() && tcx.is_intrinsic(def_id) {
                     // Don't give intrinsics the extra penalty for calls
                     INSTR_COST
@@ -112,7 +116,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
         let tcx = self.tcx;
         let ptr_size = tcx.data_layout.pointer_size.bytes();
 
-        let ty = self.instance.subst_mir(tcx, &local_decl.ty);
+        let ty = self.subst_ty(local_decl.ty);
         // Cost of the var is the size in machine-words, if we know
         // it.
         if let Some(size) = type_size_of(tcx, self.param_env, ty) {

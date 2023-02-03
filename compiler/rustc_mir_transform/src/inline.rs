@@ -425,7 +425,8 @@ impl<'tcx> Inliner<'tcx> {
             return Err("callee diverges unconditionally");
         }
 
-        let mut checker = CostChecker::new(self.tcx, self.param_env, callsite.callee, callee_body);
+        let mut checker =
+            CostChecker::new(self.tcx, self.param_env, Some(callsite.callee), callee_body);
 
         // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
         let mut work_list = vec![START_BLOCK];
