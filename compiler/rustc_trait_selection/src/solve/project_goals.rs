@@ -587,12 +587,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let discriminant = goal.predicate.self_ty().discriminant_ty(ecx.tcx());
-        let nested_goals = ecx.infcx.eq(
-            goal.param_env,
-            goal.predicate.term.ty().expect("expected ty goal"),
-            discriminant,
-        )?;
-        ecx.evaluate_all_and_make_canonical_response(nested_goals)
+        ecx.infcx
+            .probe(|_| ecx.eq_term_and_make_canonical_response(goal, Certainty::Yes, discriminant))
     }
 }
 
