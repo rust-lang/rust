@@ -162,6 +162,7 @@ mod tests {
         check(to_lower_snake_case, "a", expect![[""]]);
         check(to_lower_snake_case, "abc", expect![[""]]);
         check(to_lower_snake_case, "foo__bar", expect![["foo_bar"]]);
+        check(to_lower_snake_case, "Δ", expect!["δ"]);
     }
 
     #[test]
@@ -195,5 +196,6 @@ mod tests {
         check(to_upper_snake_case, "X86_64", expect![[""]]);
         check(to_upper_snake_case, "FOO_BAr", expect![["FOO_BAR"]]);
         check(to_upper_snake_case, "FOO__BAR", expect![["FOO_BAR"]]);
+        check(to_upper_snake_case, "ß", expect!["SS"]);
     }
 }
