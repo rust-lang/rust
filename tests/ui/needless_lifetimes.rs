@@ -5,6 +5,7 @@
 #![allow(
     unused,
     clippy::boxed_local,
+    clippy::extra_unused_type_parameters,
     clippy::needless_pass_by_value,
     clippy::unnecessary_wraps,
     dyn_drop,
