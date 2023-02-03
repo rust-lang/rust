@@ -732,9 +732,10 @@ impl<'a> Parser<'a> {
     fn check_const_closure(&self) -> bool {
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match &t.kind {
-                token::Ident(kw::Move | kw::Static | kw::Async, _)
-                | token::OrOr
-                | token::BinOp(token::Or) => true,
+                // async closures do not work with const closures, so we do not parse that here.
+                token::Ident(kw::Move | kw::Static, _) | token::OrOr | token::BinOp(token::Or) => {
+                    true
+                }
                 _ => false,
             })
     }
@@ -1198,8 +1199,18 @@ impl<'a> Parser<'a> {
 
     /// Parses constness: `const` or nothing.
     fn parse_constness(&mut self, case: Case) -> Const {
-        // Avoid const blocks to be parsed as const items
-        if self.look_ahead(1, |t| t != &token::OpenDelim(Delimiter::Brace))
+        self.parse_constness_(case, false)
+    }
+
+    /// Parses constness for closures
+    fn parse_closure_constness(&mut self, case: Case) -> Const {
+        self.parse_constness_(case, true)
+    }
+
+    fn parse_constness_(&mut self, case: Case, is_closure: bool) -> Const {
+        // Avoid const blocks and const closures to be parsed as const items
+        if (self.check_const_closure() == is_closure)
+            && self.look_ahead(1, |t| t != &token::OpenDelim(Delimiter::Brace))
             && self.eat_keyword_case(kw::Const, case)
         {
             Const::Yes(self.prev_token.uninterpolated_span())

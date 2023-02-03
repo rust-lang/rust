@@ -379,13 +379,18 @@ pub(crate) type ChangeOutputType<T, V> = <<T as Try>::Residual as Residual<V>>::
 pub(crate) struct NeverShortCircuit<T>(pub T);
 
 impl<T> NeverShortCircuit<T> {
-    /// Implementation for building `ConstFnMutClosure` for wrapping the output of a ~const FnMut in a `NeverShortCircuit`.
     #[inline]
-    pub const fn wrap_mut_2_imp<A, B, F: ~const FnMut(A, B) -> T>(
-        f: &mut F,
-        (a, b): (A, B),
-    ) -> NeverShortCircuit<T> {
-        NeverShortCircuit(f(a, b))
+    pub fn wrap_mut_2<A, B>(
+        mut f: impl ~const FnMut(A, B) -> T,
+    ) -> impl ~const FnMut(A, B) -> Self {
+        cfg_if! {
+            if #[cfg(bootstrap)] {
+                #[allow(unused_parens)]
+                (const move |a, b| NeverShortCircuit(f(a, b)))
+            } else {
+                const move |a, b| NeverShortCircuit(f(a, b))
+            }
+        }
     }
 }
 
