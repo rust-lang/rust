@@ -95,7 +95,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             concrete_type.span,
                             "opaque type with non-universal region substs",
                         );
-                        infcx.tcx.lifetimes.re_static
+                        infcx.tcx.lifetimes.re_error
                     }
                 }
             };

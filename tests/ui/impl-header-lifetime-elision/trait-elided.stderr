@@ -4,7 +4,6 @@ error[E0726]: implicit elided lifetime not allowed here
 LL | impl MyTrait for u32 {}
    |      ^^^^^^^ expected lifetime parameter
    |
-   = note: assuming a `'static` lifetime...
 help: indicate the anonymous lifetime
    |
 LL | impl MyTrait<'_> for u32 {}

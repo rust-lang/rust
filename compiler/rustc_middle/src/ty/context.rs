@@ -275,6 +275,9 @@ pub struct CommonLifetimes<'tcx> {
 
     /// Erased region, used outside of type inference.
     pub re_erased: Region<'tcx>,
+
+    /// Error region, used only for error reporting.
+    pub re_error: Region<'tcx>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -324,7 +327,11 @@ impl<'tcx> CommonLifetimes<'tcx> {
             ))
         };
 
-        CommonLifetimes { re_static: mk(ty::ReStatic), re_erased: mk(ty::ReErased) }
+        CommonLifetimes {
+            re_static: mk(ty::ReStatic),
+            re_erased: mk(ty::ReErased),
+            re_error: mk(ty::ReError),
+        }
     }
 }
 

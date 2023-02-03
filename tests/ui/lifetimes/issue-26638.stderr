@@ -40,9 +40,9 @@ error[E0308]: mismatched types
 LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.next() }
    |                                                              ----   ^^^^^^^^^^^ expected `&str`, found `Option<&str>`
    |                                                              |
-   |                                                              expected `&'static str` because of return type
+   |                                                              expected `&str` because of return type
    |
-   = note: expected reference `&'static str`
+   = note: expected reference `&str`
                    found enum `Option<&str>`
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied

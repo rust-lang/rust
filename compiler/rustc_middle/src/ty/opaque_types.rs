@@ -109,6 +109,8 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             // them.
             ty::ReErased => return r,
 
+            ty::ReError => return r,
+
             // The regions that we expect from borrow checking.
             ty::ReEarlyBound(_) | ty::ReFree(_) => {}
 
@@ -132,13 +134,13 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                         self.span,
                         format!(
                             "lifetime `{}` is part of concrete type but not used in \
-                                 parameter list of the `impl Trait` type alias",
+                             parameter list of the `impl Trait` type alias",
                             r
                         ),
                     )
                     .emit();
 
-                self.tcx().lifetimes.re_static
+                self.tcx().lifetimes.re_error
             }
         }
     }

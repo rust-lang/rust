@@ -1725,7 +1725,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             !segment.has_generic_args,
                             elided_lifetime_span,
                         );
-                        err.note("assuming a `'static` lifetime...");
                         err.emit();
                         should_lint = false;
 

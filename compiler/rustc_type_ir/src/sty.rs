@@ -960,6 +960,9 @@ pub enum RegionKind<I: Interner> {
 
     /// Erased region, used by trait selection, in MIR and during codegen.
     ReErased,
+
+    /// A region that resulted from some other error. Used exclusively for diagnostics.
+    ReError,
 }
 
 // This is manually implemented for `RegionKind` because `std::mem::discriminant`
@@ -974,6 +977,7 @@ const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
         ReVar(_) => 4,
         RePlaceholder(_) => 5,
         ReErased => 6,
+        ReError => 7,
     }
 }
 
@@ -999,6 +1003,7 @@ impl<I: Interner> Clone for RegionKind<I> {
             ReVar(r) => ReVar(r.clone()),
             RePlaceholder(r) => RePlaceholder(r.clone()),
             ReErased => ReErased,
+            ReError => ReError,
         }
     }
 }
@@ -1077,6 +1082,7 @@ impl<I: Interner> hash::Hash for RegionKind<I> {
             ReVar(r) => r.hash(state),
             RePlaceholder(r) => r.hash(state),
             ReErased => (),
+            ReError => (),
         }
     }
 }
@@ -1100,6 +1106,8 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
             RePlaceholder(placeholder) => write!(f, "RePlaceholder({placeholder:?})"),
 
             ReErased => f.write_str("ReErased"),
+
+            ReError => f.write_str("ReError"),
         }
     }
 }
@@ -1134,6 +1142,7 @@ where
                 a.encode(e);
             }),
             ReErased => e.emit_enum_variant(disc, |_| {}),
+            ReError => e.emit_enum_variant(disc, |_| {}),
         }
     }
 }
@@ -1156,6 +1165,7 @@ where
             4 => ReVar(Decodable::decode(d)),
             5 => RePlaceholder(Decodable::decode(d)),
             6 => ReErased,
+            7 => ReError,
             _ => panic!(
                 "{}",
                 format!(
@@ -1184,7 +1194,7 @@ where
     ) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            ReErased | ReStatic => {
+            ReErased | ReStatic | ReError => {
                 // No variant fields to hash for these ...
             }
             ReLateBound(d, r) => {

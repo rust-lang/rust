@@ -792,7 +792,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                                 return_span,
                                 "expected ReFree to map to ReEarlyBound"
                             );
-                        return tcx.lifetimes.re_static;
+                        return tcx.lifetimes.re_error;
                     };
                     tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                         def_id: e.def_id,

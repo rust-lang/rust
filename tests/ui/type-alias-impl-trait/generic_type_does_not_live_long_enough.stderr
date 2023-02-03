@@ -4,7 +4,7 @@ error: at least one trait must be specified
 LL | type WrongGeneric<T> = impl 'static;
    |                        ^^^^^^^^^^^^
 
-error[E0792]: expected generic type parameter, found `&'static i32`
+error[E0792]: expected generic type parameter, found `&i32`
   --> $DIR/generic_type_does_not_live_long_enough.rs:6:18
    |
 LL |     let z: i32 = x;

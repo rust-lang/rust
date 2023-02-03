@@ -16,9 +16,9 @@ LL |     fn next(&mut self) -> Option<IteratorChunk<T, S>> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'1, T, S>>`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
-   = note: expected `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'static, T, S>>`
+   = note: expected `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'2, T, S>>`
    |
-   = note: expected signature `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'static, T, S>>`
+   = note: expected signature `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'2, T, S>>`
               found signature `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'1, T, S>>`
    = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
    = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
