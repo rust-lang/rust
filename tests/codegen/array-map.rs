@@ -1,4 +1,4 @@
-// compile-flags: -C opt-level=3 -C target-cpu=x86-64-v3 -C llvm-args=-x86-asm-syntax=intel --emit=llvm-ir,asm
+// compile-flags: -C opt-level=3 -C target-cpu=x86-64-v3
 // no-system-llvm
 // only-x86_64
 // ignore-debug (the extra assertions get in the way)
@@ -40,8 +40,7 @@ pub fn short_integer_zip_map(x: [u32; 8], y: [u32; 8]) -> [u32; 8] {
 #[no_mangle]
 pub fn long_integer_map(x: [u32; 64]) -> [u32; 64] {
     // CHECK: start:
-    // CHECK-NEXT: alloca [{{64|65}} x i32]
-    // CHECK-NEXT: alloca [{{64|65}} x i32]
+    // CHECK-NEXT: alloca [64 x i32]
     // CHECK-NEXT: alloca %"core::mem::manually_drop::ManuallyDrop<[u32; 64]>"
     // CHECK-NOT: alloca
     x.map(|x| 2 * x + 1)
