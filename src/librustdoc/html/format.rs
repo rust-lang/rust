@@ -208,7 +208,7 @@ impl clean::GenericParamDef {
                     if f.alternate() {
                         write!(f, ": {:#}", print_generic_bounds(bounds, cx))?;
                     } else {
-                        write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx))?;
+                        write!(f, ": {}", print_generic_bounds(bounds, cx))?;
                     }
                 }
 
@@ -216,7 +216,7 @@ impl clean::GenericParamDef {
                     if f.alternate() {
                         write!(f, " = {:#}", ty.print(cx))?;
                     } else {
-                        write!(f, "&nbsp;=&nbsp;{}", ty.print(cx))?;
+                        write!(f, " = {}", ty.print(cx))?;
                     }
                 }
 
@@ -226,14 +226,14 @@ impl clean::GenericParamDef {
                 if f.alternate() {
                     write!(f, "const {}: {:#}", self.name, ty.print(cx))?;
                 } else {
-                    write!(f, "const {}:&nbsp;{}", self.name, ty.print(cx))?;
+                    write!(f, "const {}: {}", self.name, ty.print(cx))?;
                 }
 
                 if let Some(default) = default {
                     if f.alternate() {
                         write!(f, " = {:#}", default)?;
                     } else {
-                        write!(f, "&nbsp;=&nbsp;{}", default)?;
+                        write!(f, " = {}", default)?;
                     }
                 }
 
@@ -354,12 +354,12 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             let mut br_with_padding = String::with_capacity(6 * indent + 28);
             br_with_padding.push_str("<br>");
             for _ in 0..indent + 4 {
-                br_with_padding.push_str("&nbsp;");
+                br_with_padding.push_str(" ");
             }
             let where_preds = where_preds.to_string().replace("<br>", &br_with_padding);
 
             if ending == Ending::Newline {
-                let mut clause = "&nbsp;".repeat(indent.saturating_sub(1));
+                let mut clause = " ".repeat(indent.saturating_sub(1));
                 write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
                 clause
             } else {
@@ -368,7 +368,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                     format!("<br><span class=\"where\">where{where_preds}</span>")
                 } else {
                     let mut clause = br_with_padding;
-                    clause.truncate(clause.len() - 4 * "&nbsp;".len());
+                    clause.truncate(clause.len() - 4);
                     write!(clause, "<span class=\"where\">where{where_preds}</span>")?;
                     clause
                 }
@@ -1391,8 +1391,8 @@ impl clean::FnDecl {
 
         let declaration_len = header_len + args_plain.len() + arrow_plain.len();
         let output = if declaration_len > 80 {
-            let full_pad = format!("<br>{}", "&nbsp;".repeat(indent + 4));
-            let close_pad = format!("<br>{}", "&nbsp;".repeat(indent));
+            let full_pad = format!("<br>{}", " ".repeat(indent + 4));
+            let close_pad = format!("<br>{}", " ".repeat(indent));
             format!(
                 "({pad}{args}{close}){arrow}",
                 pad = if self.inputs.values.is_empty() { "" } else { &full_pad },
@@ -1611,7 +1611,7 @@ impl clean::TypeBinding {
                         if f.alternate() {
                             write!(f, ": {:#}", print_generic_bounds(bounds, cx))?;
                         } else {
-                            write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx))?;
+                            write!(f, ": {}", print_generic_bounds(bounds, cx))?;
                         }
                     }
                 }
