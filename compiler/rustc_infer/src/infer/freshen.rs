@@ -140,79 +140,21 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         }
     }
 
+    #[inline]
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !t.needs_infer() && !t.has_erasable_regions() {
-            return t;
-        }
+            t
+        } else {
+            match *t.kind() {
+                ty::Infer(v) => self.fold_infer_ty(v).unwrap_or(t),
 
-        let tcx = self.infcx.tcx;
+                // This code is hot enough that a non-debug assertion here makes a noticeable
+                // difference on benchmarks like `wg-grammar`.
+                #[cfg(debug_assertions)]
+                ty::Placeholder(..) | ty::Bound(..) => bug!("unexpected type {:?}", t),
 
-        match *t.kind() {
-            ty::Infer(ty::TyVar(v)) => {
-                let opt_ty = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
-                self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy)
+                _ => t.super_fold_with(self),
             }
-
-            ty::Infer(ty::IntVar(v)) => self.freshen_ty(
-                self.infcx
-                    .inner
-                    .borrow_mut()
-                    .int_unification_table()
-                    .probe_value(v)
-                    .map(|v| v.to_type(tcx)),
-                ty::IntVar(v),
-                ty::FreshIntTy,
-            ),
-
-            ty::Infer(ty::FloatVar(v)) => self.freshen_ty(
-                self.infcx
-                    .inner
-                    .borrow_mut()
-                    .float_unification_table()
-                    .probe_value(v)
-                    .map(|v| v.to_type(tcx)),
-                ty::FloatVar(v),
-                ty::FreshFloatTy,
-            ),
-
-            ty::Infer(ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct)) => {
-                if ct >= self.ty_freshen_count {
-                    bug!(
-                        "Encountered a freshend type with id {} \
-                          but our counter is only at {}",
-                        ct,
-                        self.ty_freshen_count
-                    );
-                }
-                t
-            }
-
-            ty::Generator(..)
-            | ty::Bool
-            | ty::Char
-            | ty::Int(..)
-            | ty::Uint(..)
-            | ty::Float(..)
-            | ty::Adt(..)
-            | ty::Str
-            | ty::Error(_)
-            | ty::Array(..)
-            | ty::Slice(..)
-            | ty::RawPtr(..)
-            | ty::Ref(..)
-            | ty::FnDef(..)
-            | ty::FnPtr(_)
-            | ty::Dynamic(..)
-            | ty::Never
-            | ty::Tuple(..)
-            | ty::Alias(..)
-            | ty::Foreign(..)
-            | ty::Param(..)
-            | ty::Closure(..)
-            | ty::GeneratorWitnessMIR(..)
-            | ty::GeneratorWitness(..) => t.super_fold_with(self),
-
-            ty::Placeholder(..) | ty::Bound(..) => bug!("unexpected type {:?}", t),
         }
     }
 
@@ -250,6 +192,57 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::ConstKind::Unevaluated(..)
             | ty::ConstKind::Expr(..)
             | ty::ConstKind::Error(_) => ct.super_fold_with(self),
+        }
+    }
+}
+
+impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
+    // This is separate from `fold_ty` to keep that method small and inlinable.
+    #[inline(never)]
+    fn fold_infer_ty(&mut self, v: ty::InferTy) -> Option<Ty<'tcx>> {
+        match v {
+            ty::TyVar(v) => {
+                let opt_ty = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
+                Some(self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy))
+            }
+
+            ty::IntVar(v) => Some(
+                self.freshen_ty(
+                    self.infcx
+                        .inner
+                        .borrow_mut()
+                        .int_unification_table()
+                        .probe_value(v)
+                        .map(|v| v.to_type(self.infcx.tcx)),
+                    ty::IntVar(v),
+                    ty::FreshIntTy,
+                ),
+            ),
+
+            ty::FloatVar(v) => Some(
+                self.freshen_ty(
+                    self.infcx
+                        .inner
+                        .borrow_mut()
+                        .float_unification_table()
+                        .probe_value(v)
+                        .map(|v| v.to_type(self.infcx.tcx)),
+                    ty::FloatVar(v),
+                    ty::FreshFloatTy,
+                ),
+            ),
+
+            ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct) => {
+                if ct >= self.ty_freshen_count {
+                    bug!(
+                        "Encountered a freshend type with id {} \
+                          but our counter is only at {}",
+                        ct,
+                        self.ty_freshen_count
+                    );
+                }
+                None
+            }
         }
     }
 }
