@@ -218,22 +218,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     let intrinsic = fx.tcx.item_name(instance.def_id());
     let substs = instance.substs;
 
-    let target = if let Some(target) = target {
-        target
-    } else {
-        // Insert non returning intrinsics here
-        match intrinsic {
-            sym::abort => {
-                fx.bcx.ins().trap(TrapCode::User(0));
-            }
-            sym::transmute => {
-                crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", source_info);
-            }
-            _ => unimplemented!("unsupported intrinsic {}", intrinsic),
-        }
-        return;
-    };
-
     if intrinsic.as_str().starts_with("simd_") {
         self::simd::codegen_simd_intrinsic_call(
             fx,
@@ -241,11 +225,11 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             substs,
             args,
             destination,
-            target,
+            target.expect("target for simd intrinsic"),
             source_info.span,
         );
     } else if codegen_float_intrinsic_call(fx, intrinsic, args, destination) {
-        let ret_block = fx.get_block(target);
+        let ret_block = fx.get_block(target.expect("target for float intrinsic"));
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
         codegen_regular_intrinsic_call(
@@ -255,7 +239,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             substs,
             args,
             destination,
-            Some(target),
+            target,
             source_info,
         );
     }
@@ -382,6 +366,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
     let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
     match intrinsic {
+        sym::abort => {
+            fx.bcx.ins().trap(TrapCode::User(0));
+            return;
+        }
         sym::likely | sym::unlikely => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
@@ -578,6 +566,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         sym::transmute => {
             intrinsic_args!(fx, args => (from); intrinsic);
+
+            if ret.layout().abi.is_uninhabited() {
+                crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", source_info);
+                return;
+            }
 
             ret.write_cvalue_transmute(fx, from);
         }
