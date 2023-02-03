@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a bug report for rust-analyzer.
 title: ''
-labels: ''
+labels: 'C-bug'
 assignees: ''
 
 ---
