@@ -943,7 +943,7 @@ impl<T> Option<T> {
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value (if `Some`) or return `None` (if `None`).
+    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value (if `Some`) or returns `None` (if `None`).
     ///
     /// # Examples
     ///
