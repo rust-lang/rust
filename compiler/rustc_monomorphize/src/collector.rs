@@ -481,6 +481,7 @@ fn record_accesses<'a, 'tcx: 'a>(
 ) {
     let is_inlining_candidate = |mono_item: &MonoItem<'tcx>| {
         mono_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
+
     };
 
     // We collect this into a `SmallVec` to avoid calling `is_inlining_candidate` in the lock.
