@@ -124,6 +124,7 @@
 #![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_intrinsic_forget)]
+#![feature(const_iter)]
 #![feature(const_likely)]
 #![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
