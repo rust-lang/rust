@@ -2175,30 +2175,69 @@ impl EmitterWriter {
         file_lines: &FileLines,
         is_multiline: bool,
     ) {
-        // Print the span column to avoid confusion
-        buffer.puts(*row_num, 0, &self.maybe_anonymized(line_start + line_pos), Style::LineNumber);
         if let DisplaySuggestion::Diff = show_code_change {
             // Add the line number for both addition and removal to drive the point home.
             //
             // N - fn foo<A: T>(bar: A) {
             // N + fn foo(bar: impl T) {
+            let number_of_lines = file_lines.lines.len();
+            for (index, line_to_remove) in
+                file_lines.lines.iter().take(number_of_lines - 1).enumerate()
+            {
+                buffer.puts(
+                    *row_num - 1,
+                    0,
+                    &self.maybe_anonymized(line_start + line_pos + index),
+                    Style::LineNumber,
+                );
+                buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
+                buffer.puts(
+                    *row_num - 1,
+                    max_line_num_len + 3,
+                    &normalize_whitespace(
+                        &file_lines.file.get_line(line_to_remove.line_index).unwrap(),
+                    ),
+                    Style::NoStyle,
+                );
+                *row_num += 1;
+            }
+            let last_line = &file_lines
+                .file
+                .get_line(file_lines.lines[number_of_lines - 1].line_index)
+                .unwrap();
+            if last_line != line {
+                buffer.puts(
+                    *row_num - 1,
+                    0,
+                    &self.maybe_anonymized(line_start + line_pos + number_of_lines - 1),
+                    Style::LineNumber,
+                );
+                buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
+                buffer.puts(
+                    *row_num - 1,
+                    max_line_num_len + 3,
+                    &normalize_whitespace(last_line),
+                    Style::NoStyle,
+                );
+                buffer.puts(
+                    *row_num,
+                    0,
+                    &self.maybe_anonymized(line_start + line_pos),
+                    Style::LineNumber,
+                );
+                buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
+                // print the suggestion
+                buffer.append(*row_num, &normalize_whitespace(line), Style::NoStyle);
+            } else {
+                *row_num -= 2;
+            }
+        } else if is_multiline {
             buffer.puts(
-                *row_num - 1,
+                *row_num,
                 0,
                 &self.maybe_anonymized(line_start + line_pos),
                 Style::LineNumber,
             );
-            buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
-            buffer.puts(
-                *row_num - 1,
-                max_line_num_len + 3,
-                &normalize_whitespace(
-                    &file_lines.file.get_line(file_lines.lines[line_pos].line_index).unwrap(),
-                ),
-                Style::NoStyle,
-            );
-            buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
-        } else if is_multiline {
             match &highlight_parts[..] {
                 [SubstitutionHighlight { start: 0, end }] if *end == line.len() => {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
@@ -2210,12 +2249,19 @@ impl EmitterWriter {
                     buffer.puts(*row_num, max_line_num_len + 1, "~ ", Style::Addition);
                 }
             }
+            // print the suggestion
+            buffer.append(*row_num, &normalize_whitespace(line), Style::NoStyle);
         } else {
+            buffer.puts(
+                *row_num,
+                0,
+                &self.maybe_anonymized(line_start + line_pos),
+                Style::LineNumber,
+            );
             draw_col_separator(buffer, *row_num, max_line_num_len + 1);
+            // print the suggestion
+            buffer.append(*row_num, &normalize_whitespace(line), Style::NoStyle);
         }
-
-        // print the suggestion
-        buffer.append(*row_num, &normalize_whitespace(line), Style::NoStyle);
 
         // Colorize addition/replacements with green.
         for &SubstitutionHighlight { start, end } in highlight_parts {
