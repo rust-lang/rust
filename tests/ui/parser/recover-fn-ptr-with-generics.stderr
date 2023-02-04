@@ -88,12 +88,6 @@ error: expected identifier, found `>`
 LL |     type QuiteBroken = fn<const>();
    |                                ^ expected identifier
 
-error: lifetime bounds cannot be used in this context
-  --> $DIR/recover-fn-ptr-with-generics.rs:22:26
-   |
-LL |     let _: extern fn<'a: 'static>();
-   |                          ^^^^^^^
-
 error[E0412]: cannot find type `T` in this scope
   --> $DIR/recover-fn-ptr-with-generics.rs:5:27
    |
@@ -105,6 +99,12 @@ error[E0412]: cannot find type `T` in this scope
    |
 LL |     type Identity = fn<T>(T) -> T;
    |                                 ^ not found in this scope
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/recover-fn-ptr-with-generics.rs:22:26
+   |
+LL |     let _: extern fn<'a: 'static>();
+   |                          ^^^^^^^
 
 error: aborting due to 12 previous errors
 

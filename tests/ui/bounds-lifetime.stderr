@@ -16,17 +16,24 @@ error: lifetime bounds cannot be used in this context
 LL | type C = for<'b, 'a: 'b +> fn();
    |                      ^^
 
-error: only lifetime parameters can be used in this context
+error[E0658]: only lifetime parameters can be used in this context
   --> $DIR/bounds-lifetime.rs:4:18
    |
 LL | type D = for<'a, T> fn();
    |                  ^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
 
-error: only lifetime parameters can be used in this context
+error[E0658]: only lifetime parameters can be used in this context
   --> $DIR/bounds-lifetime.rs:5:18
    |
 LL | type E = dyn for<T> Fn();
    |                  ^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0658`.
