@@ -11731,6 +11731,7 @@ public:
       }
 
       Value *newcalled = nullptr;
+      FunctionType *FT = nullptr;
 
       if (called) {
         newcalled = gutils->Logic.CreateForwardDiff(
@@ -11739,6 +11740,7 @@ public:
             ((DiffeGradientUtils *)gutils)->FreeMemory, gutils->getWidth(),
             tape ? tape->getType() : nullptr, nextTypeInfo, uncacheable_args,
             /*augmented*/ subdata);
+        FT = cast<Function>(newcalled)->getFunctionType();
       } else {
 #if LLVM_VERSION_MAJOR >= 11
         auto callval = orig->getCalledOperand();
@@ -11766,10 +11768,10 @@ public:
                 ? (retActive ? ReturnType::TwoReturns : ReturnType::Return)
                 : (retActive ? ReturnType::Return : ReturnType::Void);
 
-        FunctionType *FTy = getFunctionTypeForClone(
+        FT = getFunctionTypeForClone(
             ft, Mode, gutils->getWidth(), tape ? tape->getType() : nullptr,
             argsInverted, false, subretVal, subretType);
-        PointerType *fptype = PointerType::getUnqual(FTy);
+        PointerType *fptype = PointerType::getUnqual(FT);
         newcalled = BuilderZ.CreatePointerCast(newcalled,
                                                PointerType::getUnqual(fptype));
 #if LLVM_VERSION_MAJOR > 7
@@ -11780,8 +11782,7 @@ public:
       }
 
       assert(newcalled);
-      FunctionType *FT =
-          cast<FunctionType>(newcalled->getType()->getPointerElementType());
+      assert(FT);
 
       SmallVector<ValueType, 2> BundleTypes;
       for (auto A : argsInverted)
@@ -12055,6 +12056,7 @@ public:
     if (modifyPrimal) {
 
       Value *newcalled = nullptr;
+      FunctionType *FT = nullptr;
       const AugmentedReturn *fnandtapetype = nullptr;
 
       if (!called) {
@@ -12096,17 +12098,28 @@ public:
         FunctionType *ft = nullptr;
         if (auto F = dyn_cast<Function>(callval))
           ft = F->getFunctionType();
-        else
-          ft = cast<FunctionType>(callval->getType()->getPointerElementType());
+        else {
+#if LLVM_VERSION_MAJOR >= 15
+          if (orig->getContext().supportsTypedPointers()) {
+#endif
+            ft =
+                cast<FunctionType>(callval->getType()->getPointerElementType());
+#if LLVM_VERSION_MAJOR >= 15
+          } else {
+            ft = orig->getFunctionType();
+          }
+#endif
+        }
 
         std::set<llvm::Type *> seen;
         DIFFE_TYPE subretType = whatType(orig->getType(), Mode,
                                          /*intAreConstant*/ false, seen);
         auto res = getDefaultFunctionTypeForAugmentation(
             ft, /*returnUsed*/ true, /*subretType*/ subretType);
-        auto fptype = PointerType::getUnqual(FunctionType::get(
+        FT = FunctionType::get(
             StructType::get(newcalled->getContext(), res.second), res.first,
-            ft->isVarArg()));
+            ft->isVarArg());
+        auto fptype = PointerType::getUnqual(FT);
         newcalled = BuilderZ.CreatePointerCast(newcalled,
                                                PointerType::getUnqual(fptype));
 #if LLVM_VERSION_MAJOR > 7
@@ -12149,6 +12162,7 @@ public:
         assert(subdata);
         fnandtapetype = subdata;
         newcalled = subdata->fn;
+        FT = cast<Function>(newcalled)->getFunctionType();
 
         auto found = subdata->returns.find(AugmentedStruct::DifferentialReturn);
         if (found != subdata->returns.end()) {
@@ -12172,11 +12186,7 @@ public:
       // sub_index_map = fnandtapetype.tapeIndices;
 
       assert(newcalled);
-      FunctionType *FT = nullptr;
-      if (auto F = dyn_cast<Function>(newcalled))
-        FT = F->getFunctionType();
-      else
-        FT = cast<FunctionType>(newcalled->getType()->getPointerElementType());
+      assert(FT);
 
       // llvm::errs() << "seeing sub_index_map of " << sub_index_map->size()
       // << " in ap " << cast<Function>(called)->getName() << "\n";
@@ -12483,6 +12493,7 @@ public:
     getReverseBuilder(Builder2);
 
     Value *newcalled = nullptr;
+    FunctionType *FT = nullptr;
 
     DerivativeMode subMode = (replaceFunction || !modifyPrimal)
                                  ? DerivativeMode::ReverseModeCombined
@@ -12505,6 +12516,7 @@ public:
           TR.analyzer.interprocedural, subdata);
       if (!newcalled)
         return;
+      FT = cast<Function>(newcalled)->getFunctionType();
     } else {
 
       assert(subMode != DerivativeMode::ReverseModeCombined);
@@ -12522,15 +12534,17 @@ public:
       assert(!gutils->isConstantValue(callval));
       newcalled = lookup(gutils->invertPointerM(callval, Builder2), Builder2);
 
-      auto ft = cast<FunctionType>(callval->getType()->getPointerElementType());
+      auto ft = orig->getFunctionType();
+      // cast<FunctionType>(callval->getType()->getPointerElementType());
 
       auto res =
           getDefaultFunctionTypeForGradient(ft, /*subretType*/ subretType);
       // TODO Note there is empty tape added here, replace with generic
       res.first.push_back(Type::getInt8PtrTy(newcalled->getContext()));
-      auto fptype = PointerType::getUnqual(FunctionType::get(
+      FT = FunctionType::get(
           StructType::get(newcalled->getContext(), res.second), res.first,
-          ft->isVarArg()));
+          ft->isVarArg());
+      auto fptype = PointerType::getUnqual(FT);
       newcalled =
           Builder2.CreatePointerCast(newcalled, PointerType::getUnqual(fptype));
 #if LLVM_VERSION_MAJOR > 7
@@ -12554,13 +12568,7 @@ public:
     }
 
     assert(newcalled);
-    // if (auto NC = dyn_cast<Function>(newcalled)) {
-    FunctionType *FT = nullptr;
-    if (auto F = dyn_cast<Function>(newcalled))
-      FT = F->getFunctionType();
-    else {
-      FT = cast<FunctionType>(newcalled->getType()->getPointerElementType());
-    }
+    assert(FT);
 
     if (false) {
     badfn:;

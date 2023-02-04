@@ -1964,35 +1964,51 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       ret = (idx < 0) ? tape
                       : entryBuilder.CreateExtractValue(tape, {(unsigned)idx});
 
-      Type *innerType = ret->getType();
-      for (size_t i = 0,
-                  limit = getSubLimits(
-                              /*inForwardPass*/ true, nullptr,
-                              LimitContext(
-                                  /*ReverseLimit*/ reverseBlocks.size() > 0,
-                                  BuilderQ.GetInsertBlock()))
-                              .size();
-           i < limit; ++i) {
-        if (!isa<PointerType>(innerType)) {
-          llvm::errs() << "mod: "
-                       << *BuilderQ.GetInsertBlock()->getParent()->getParent()
-                       << "\n";
-          llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent()
-                       << "\n";
-          llvm::errs() << "bq insertblock: " << *BuilderQ.GetInsertBlock()
-                       << "\n";
-          llvm::errs() << "ret: " << *ret << " type: " << *ret->getType()
-                       << "\n";
-          llvm::errs() << "innerType: " << *innerType << "\n";
-          if (malloc)
-            llvm::errs() << " malloc: " << *malloc << " i=" << i
-                         << " / lim = " << limit << "\n";
-        }
-        assert(isa<PointerType>(innerType));
-        innerType = innerType->getPointerElementType();
-      }
-
       assert(malloc);
+
+      Type *innerType = nullptr;
+
+#if LLVM_VERSION_MAJOR >= 15
+      if (ret->getContext().supportsTypedPointers()) {
+#endif
+        innerType = ret->getType();
+        for (size_t i = 0,
+                    limit = getSubLimits(
+                                /*inForwardPass*/ true, nullptr,
+                                LimitContext(
+                                    /*ReverseLimit*/ reverseBlocks.size() > 0,
+                                    BuilderQ.GetInsertBlock()))
+                                .size();
+             i < limit; ++i) {
+          if (!isa<PointerType>(innerType)) {
+            llvm::errs() << "mod: "
+                         << *BuilderQ.GetInsertBlock()->getParent()->getParent()
+                         << "\n";
+            llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent()
+                         << "\n";
+            llvm::errs() << "bq insertblock: " << *BuilderQ.GetInsertBlock()
+                         << "\n";
+            llvm::errs() << "ret: " << *ret << " type: " << *ret->getType()
+                         << "\n";
+            llvm::errs() << "innerType: " << *innerType << "\n";
+            if (malloc)
+              llvm::errs() << " malloc: " << *malloc << " i=" << i
+                           << " / lim = " << limit << "\n";
+          }
+          assert(isa<PointerType>(innerType));
+          innerType = innerType->getPointerElementType();
+        }
+#if LLVM_VERSION_MAJOR >= 15
+      } else {
+        assert(!ignoreType);
+        if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
+            cast<IntegerType>(malloc->getType())->getBitWidth() == 1)
+          innerType = Type::getInt8Ty(malloc->getContext());
+        else
+          innerType = malloc->getType();
+      }
+#endif
+
       if (!ignoreType) {
         if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
             cast<IntegerType>(malloc->getType())->getBitWidth() == 1 &&
@@ -2021,7 +2037,13 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       bool isi1 = !ignoreType && malloc->getType()->isIntegerTy() &&
                   cast<IntegerType>(malloc->getType())->getBitWidth() == 1;
       assert(isa<PointerType>(cache->getType()));
-      assert(cache->getType()->getPointerElementType() == ret->getType());
+#if LLVM_VERSION_MAJOR >= 15
+      if (cache->getContext().supportsTypedPointers()) {
+#endif
+        assert(cache->getType()->getPointerElementType() == ret->getType());
+#if LLVM_VERSION_MAJOR >= 15
+      }
+#endif
       entryBuilder.CreateStore(ret, cache);
 
       auto v =
@@ -3849,7 +3871,7 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
     if (arg->isConstant() || arg->hasInternalLinkage() ||
         arg->hasPrivateLinkage() ||
         (arg->hasExternalLinkage() && arg->hasInitializer())) {
-      Type *type = arg->getType()->getPointerElementType();
+      Type *type = arg->getValueType();
       auto shadow = new GlobalVariable(
           *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
           Constant::getNullValue(type), arg->getName() + "_shadow", arg,
