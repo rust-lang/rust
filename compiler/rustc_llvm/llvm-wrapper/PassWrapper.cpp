@@ -21,6 +21,9 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
+#if LLVM_VERSION_GE(17, 0)
+#include "llvm/Support/VirtualFileSystem.h"
+#endif
 #include "llvm/Support/Host.h"
 #if LLVM_VERSION_LT(14, 0)
 #include "llvm/Support/TargetRegistry.h"
@@ -652,20 +655,39 @@ LLVMRustOptimize(
 #else
   std::optional<PGOOptions> PGOOpt;
 #endif
+#if LLVM_VERSION_GE(17, 0)
+  auto FS = vfs::getRealFileSystem();
+#endif
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
-    PGOOpt = PGOOptions(PGOGenPath, "", "", PGOOptions::IRInstr,
-                        PGOOptions::NoCSAction, DebugInfoForProfiling);
+    PGOOpt = PGOOptions(PGOGenPath, "", "",
+#if LLVM_VERSION_GE(17, 0)
+                        FS,
+#endif
+                        PGOOptions::IRInstr, PGOOptions::NoCSAction,
+                        DebugInfoForProfiling);
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
-    PGOOpt = PGOOptions(PGOUsePath, "", "", PGOOptions::IRUse,
-                        PGOOptions::NoCSAction, DebugInfoForProfiling);
+    PGOOpt = PGOOptions(PGOUsePath, "", "",
+#if LLVM_VERSION_GE(17, 0)
+                        FS,
+#endif
+                        PGOOptions::IRUse, PGOOptions::NoCSAction,
+                        DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
-    PGOOpt = PGOOptions(PGOSampleUsePath, "", "", PGOOptions::SampleUse,
-                        PGOOptions::NoCSAction, DebugInfoForProfiling);
+    PGOOpt = PGOOptions(PGOSampleUsePath, "", "",
+#if LLVM_VERSION_GE(17, 0)
+                        FS,
+#endif
+                        PGOOptions::SampleUse, PGOOptions::NoCSAction,
+                        DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
-    PGOOpt = PGOOptions("", "", "", PGOOptions::NoAction,
-                        PGOOptions::NoCSAction, DebugInfoForProfiling);
+    PGOOpt = PGOOptions("", "", "",
+#if LLVM_VERSION_GE(17, 0)
+                        FS,
+#endif
+                        PGOOptions::NoAction, PGOOptions::NoCSAction,
+                        DebugInfoForProfiling);
   }
 
   PassBuilder PB(TM, PTO, PGOOpt, &PIC);
