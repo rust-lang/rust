@@ -441,15 +441,15 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakar
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
@@ -475,7 +475,6 @@ contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
 [assign.adhoc_groups]
 compiler-team = [
     "@cjgillot",
-    "@estebank",
     "@petrochenkov",
     "@davidtwco",
     "@oli-obk",
@@ -532,13 +531,11 @@ incremental = [
 diagnostics = [
     "@compiler-errors",
     "@davidtwco",
-    "@estebank",
     "@oli-obk",
     "@TaKO8Ki",
 ]
 parser = [
     "@davidtwco",
-    "@estebank",
     "@nnethercote",
     "@petrochenkov",
 ]
