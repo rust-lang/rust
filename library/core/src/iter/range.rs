@@ -1,5 +1,6 @@
 use crate::char;
 use crate::convert::TryFrom;
+use crate::marker::Destruct;
 use crate::mem;
 use crate::ops::{self, Try};
 
@@ -523,6 +524,7 @@ macro_rules! range_incl_exact_iter_impl {
 }
 
 /// Specialization implementations for `Range`.
+#[const_trait]
 trait RangeIteratorImpl {
     type Item;
 
@@ -537,7 +539,7 @@ trait RangeIteratorImpl {
     fn spec_advance_back_by(&mut self, n: usize) -> Result<(), usize>;
 }
 
-impl<A: Step> RangeIteratorImpl for ops::Range<A> {
+impl<A: ~const Step + ~const Destruct> const RangeIteratorImpl for ops::Range<A> {
     type Item = A;
 
     #[inline]
@@ -623,7 +625,7 @@ impl<A: Step> RangeIteratorImpl for ops::Range<A> {
     }
 }
 
-impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
+impl<T: ~const TrustedStep + ~const Destruct> const RangeIteratorImpl for ops::Range<T> {
     #[inline]
     fn spec_next(&mut self) -> Option<T> {
         if self.start < self.end {
@@ -711,6 +713,70 @@ impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+#[cfg(not(bootstrap))]
+impl<A: ~const Step + ~const Destruct> const Iterator for ops::Range<A> {
+    type Item = A;
+
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        self.spec_next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.start < self.end {
+            let hint = Step::steps_between(&self.start, &self.end);
+            (hint.unwrap_or(usize::MAX), hint)
+        } else {
+            (0, Some(0))
+        }
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<A> {
+        self.spec_nth(n)
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn min(mut self) -> Option<A> {
+        self.next()
+    }
+
+    #[inline]
+    fn max(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn is_sorted(self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        self.spec_advance_by(n)
+    }
+
+    #[inline]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccessNoCoerce,
+    {
+        // SAFETY: The TrustedRandomAccess contract requires that callers only pass an index
+        // that is in bounds.
+        // Additionally Self: TrustedRandomAccess is only implemented for Copy types
+        // which means even repeated reads of the same index would be safe.
+        unsafe { Step::forward_unchecked(self.start.clone(), idx) }
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl<A: Step> Iterator for ops::Range<A> {
     type Item = A;
 
@@ -821,6 +887,27 @@ range_incl_exact_iter_impl! {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+#[cfg(not(bootstrap))]
+impl<A: ~const Step + ~const Destruct> const DoubleEndedIterator for ops::Range<A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        self.spec_next_back()
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<A> {
+        self.spec_nth_back(n)
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.spec_advance_back_by(n)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {

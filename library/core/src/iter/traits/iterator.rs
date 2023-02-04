@@ -1,5 +1,6 @@
 use crate::array;
 use crate::cmp::{self, Ordering};
+use crate::marker::Destruct;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
@@ -336,8 +337,10 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
-    #[rustc_do_not_const_check]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), usize>
+    where
+        Self::Item: ~const Destruct,
+    {
         for i in 0..n {
             self.next().ok_or(i)?;
         }
@@ -385,8 +388,10 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_do_not_const_check]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+    fn nth(&mut self, n: usize) -> Option<Self::Item>
+    where
+        Self::Item: ~const Destruct,
+    {
         self.advance_by(n).ok()?;
         self.next()
     }
