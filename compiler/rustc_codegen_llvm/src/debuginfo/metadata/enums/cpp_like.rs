@@ -679,7 +679,6 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
     let (generator_layout, state_specific_upvar_names) =
         cx.tcx.generator_layout_and_saved_local_names(generator_def_id);
 
-    let common_upvar_names = cx.tcx.closure_saved_names_of_captured_variables(generator_def_id);
     let variant_range = generator_substs.variant_range(generator_def_id, cx.tcx);
     let variant_count = (variant_range.start.as_u32()..variant_range.end.as_u32()).len();
 
@@ -715,7 +714,6 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
                 generator_type_di_node,
                 generator_layout,
                 &state_specific_upvar_names,
-                &common_upvar_names,
             );
 
             let span = generator_layout.variant_source_info[variant_index].span;

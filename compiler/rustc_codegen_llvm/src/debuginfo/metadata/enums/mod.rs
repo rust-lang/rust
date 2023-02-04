@@ -321,7 +321,6 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     generator_type_di_node: &'ll DIType,
     generator_layout: &GeneratorLayout<'tcx>,
     state_specific_upvar_names: &IndexVec<GeneratorSavedLocal, Option<Symbol>>,
-    common_upvar_names: &[String],
 ) -> &'ll DIType {
     let variant_name = GeneratorSubsts::variant_name(variant_index);
     let unique_type_id = UniqueTypeId::for_enum_variant_struct_type(
@@ -331,11 +330,6 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     );
 
     let variant_layout = generator_type_and_layout.for_variant(cx, variant_index);
-
-    let generator_substs = match generator_type_and_layout.ty.kind() {
-        ty::Generator(_, substs, _) => substs.as_generator(),
-        _ => unreachable!(),
-    };
 
     type_map::build_type_with_children(
         cx,
@@ -349,8 +343,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
             DIFlags::FlagZero,
         ),
         |cx, variant_struct_type_di_node| {
-            // Fields that just belong to this variant/state
-            let state_specific_fields: SmallVec<_> = (0..variant_layout.fields.count())
+            (0..variant_layout.fields.count())
                 .map(|field_index| {
                     let generator_saved_local = generator_layout.variant_fields[variant_index]
                         [Field::from_usize(field_index)];
@@ -372,26 +365,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
                         type_di_node(cx, field_type),
                     )
                 })
-                .collect();
-
-            // Fields that are common to all states
-            let common_fields: SmallVec<_> = generator_substs
-                .prefix_tys()
-                .enumerate()
-                .map(|(index, upvar_ty)| {
-                    build_field_di_node(
-                        cx,
-                        variant_struct_type_di_node,
-                        &common_upvar_names[index],
-                        cx.size_and_align_of(upvar_ty),
-                        generator_type_and_layout.fields.offset(index),
-                        DIFlags::FlagZero,
-                        type_di_node(cx, upvar_ty),
-                    )
-                })
-                .collect();
-
-            state_specific_fields.into_iter().chain(common_fields.into_iter()).collect()
+                .collect()
         },
         |cx| build_generic_type_param_di_nodes(cx, generator_type_and_layout.ty),
     )

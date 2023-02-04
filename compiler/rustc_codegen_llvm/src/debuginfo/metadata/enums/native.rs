@@ -165,9 +165,6 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
                 )
             };
 
-            let common_upvar_names =
-                cx.tcx.closure_saved_names_of_captured_variables(generator_def_id);
-
             // Build variant struct types
             let variant_struct_type_di_nodes: SmallVec<_> = variants
                 .indices()
@@ -196,7 +193,6 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
                                 generator_type_di_node,
                                 generator_layout,
                                 &state_specific_upvar_names,
-                                &common_upvar_names,
                             ),
                         source_info,
                     }
