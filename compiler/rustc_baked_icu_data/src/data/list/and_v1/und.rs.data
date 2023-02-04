@@ -1,0 +1,74 @@
+::icu_list::provider::ListFormatterPatternsV1([
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked(", ", 2u8)
+        },
+        special_case: None,
+    },
+])

@@ -4,12 +4,11 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-icu_list = "1.0.0"
-icu_locid = "1.0.0"
-icu_provider = "1.0.1"
-icu_provider_adapters = "1.0.0"
-litemap = "0.6.0"
-zerovec = "0.9.0"
+icu_list = "1.1.0"
+icu_locid = "1.1.0"
+icu_provider = "1.1.0"
+icu_provider_adapters = "1.1.0"
+zerovec = "0.9.2"
 
 [features]
 rustc_use_parallel_compiler = ['icu_provider/sync']
