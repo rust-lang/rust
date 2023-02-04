@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn a() -> Foo {
    |           --- expected `Foo` because of return type
 LL |     Some(Foo { bar: 1 })
-   |     ^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `Option`
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `Foo`, found `Option<Foo>`
    |
    = note: expected struct `Foo`
                 found enum `Option<Foo>`
@@ -15,7 +15,7 @@ error[E0308]: mismatched types
 LL | fn a2() -> Foo {
    |            --- expected `Foo` because of return type
 LL |     Ok(Foo { bar: 1})
-   |     ^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `Result`
+   |     ^^^^^^^^^^^^^^^^^ expected `Foo`, found `Result<Foo, _>`
    |
    = note: expected struct `Foo`
                 found enum `Result<Foo, _>`
@@ -26,7 +26,7 @@ error[E0308]: mismatched types
 LL | fn b() -> Option<Foo> {
    |           ----------- expected `Option<Foo>` because of return type
 LL |     Foo { bar: 1 }
-   |     ^^^^^^^^^^^^^^ expected enum `Option`, found struct `Foo`
+   |     ^^^^^^^^^^^^^^ expected `Option<Foo>`, found `Foo`
    |
    = note: expected enum `Option<Foo>`
             found struct `Foo`
@@ -41,7 +41,7 @@ error[E0308]: mismatched types
 LL | fn c() -> Result<Foo, Bar> {
    |           ---------------- expected `Result<Foo, Bar>` because of return type
 LL |     Foo { bar: 1 }
-   |     ^^^^^^^^^^^^^^ expected enum `Result`, found struct `Foo`
+   |     ^^^^^^^^^^^^^^ expected `Result<Foo, Bar>`, found `Foo`
    |
    = note: expected enum `Result<Foo, Bar>`
             found struct `Foo`
@@ -57,7 +57,7 @@ LL | fn d() -> X<X<String, String>, String> {
    |           ---------------------------- expected `X<X<String, String>, String>` because of return type
 ...
 LL |     x
-   |     ^ expected struct `String`, found integer
+   |     ^ expected `X<X<String, String>, String>`, found `X<X<String, {integer}>, {integer}>`
    |
    = note: expected struct `X<X<_, String>, String>`
               found struct `X<X<_, {integer}>, {integer}>`
@@ -69,7 +69,7 @@ LL | fn e() -> X<X<String, String>, String> {
    |           ---------------------------- expected `X<X<String, String>, String>` because of return type
 ...
 LL |     x
-   |     ^ expected struct `String`, found integer
+   |     ^ expected `X<X<String, String>, String>`, found `X<X<String, {integer}>, String>`
    |
    = note: expected struct `X<X<_, String>, _>`
               found struct `X<X<_, {integer}>, _>`
@@ -80,7 +80,7 @@ error[E0308]: mismatched types
 LL | fn f() -> String {
    |           ------ expected `String` because of return type
 LL |     1+2
-   |     ^^^ expected struct `String`, found integer
+   |     ^^^ expected `String`, found integer
    |
 help: try using a conversion method
    |
@@ -93,7 +93,7 @@ error[E0308]: mismatched types
 LL | fn g() -> String {
    |           ------ expected `String` because of return type
 LL |     -2
-   |     ^^ expected struct `String`, found integer
+   |     ^^ expected `String`, found integer
    |
 help: try using a conversion method
    |

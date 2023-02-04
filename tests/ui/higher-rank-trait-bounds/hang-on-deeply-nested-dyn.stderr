@@ -11,9 +11,9 @@ LL | |     ),
 LL | | ) {
    | |_- expected `&dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn Fn(u32) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a)) + 'a))` because of return type
 LL |       f
-   |       ^ expected reference, found `u32`
+   |       ^ expected `&dyn Fn(&dyn Fn(&dyn Fn(&...)))`, found `&dyn Fn(u32)`
    |
-   = note: expected reference `&dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a (dyn for<'a> Fn(&'a ...) + 'a)) + 'a)) + 'a))`
+   = note: expected reference `&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&dyn Fn(&...)))))))))))`
            the full type name has been written to '$TEST_BUILD_DIR/higher-rank-trait-bounds/hang-on-deeply-nested-dyn/hang-on-deeply-nested-dyn.long-type-hash.txt'
               found reference `&dyn Fn(u32)`
 

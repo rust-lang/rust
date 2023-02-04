@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:7:35
    |
 LL | fn fuz() -> (usize, Trait) { (42, Struct) }
-   |                                   ^^^^^^ expected trait object `dyn Trait`, found struct `Struct`
+   |                                   ^^^^^^ expected `dyn Trait`, found `Struct`
    |
    = note: expected trait object `(dyn Trait + 'static)`
                     found struct `Struct`
@@ -16,14 +16,14 @@ LL | fn fuz() -> (usize, Trait) { (42, Struct) }
    |             doesn't have a size known at compile-time
    |
    = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`
-   = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
+   = note: required because it appears within the type `(usize, dyn Trait)`
    = note: the return type of a function must have a statically known size
 
 error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:10:39
    |
 LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
-   |                                       ^^^^^^ expected trait object `dyn Trait`, found struct `Struct`
+   |                                       ^^^^^^ expected `dyn Trait`, found `Struct`
    |
    = note: expected trait object `(dyn Trait + 'static)`
                     found struct `Struct`
@@ -37,7 +37,7 @@ LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
    |             doesn't have a size known at compile-time
    |
    = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`
-   = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
+   = note: required because it appears within the type `(usize, dyn Trait)`
    = note: the return type of a function must have a statically known size
 
 error[E0746]: return type cannot have an unboxed trait object
@@ -110,7 +110,7 @@ LL | |         Struct
    | |         ------ expected because of this
 LL | |     } else {
 LL | |         42
-   | |         ^^ expected struct `Struct`, found integer
+   | |         ^^ expected `Struct`, found integer
 LL | |     }
    | |_____- `if` and `else` have incompatible types
 
@@ -144,7 +144,7 @@ LL | fn bam() -> Box<dyn Trait> {
    |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 LL |     if true {
 LL |         return Struct;
-   |                ^^^^^^ expected struct `Box`, found struct `Struct`
+   |                ^^^^^^ expected `Box<dyn Trait>`, found `Struct`
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
               found struct `Struct`
@@ -161,7 +161,7 @@ LL | fn bam() -> Box<dyn Trait> {
    |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 ...
 LL |     42
-   |     ^^ expected struct `Box`, found integer
+   |     ^^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
@@ -178,7 +178,7 @@ LL | fn baq() -> Box<dyn Trait> {
    |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 LL |     if true {
 LL |         return 0;
-   |                ^ expected struct `Box`, found integer
+   |                ^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
@@ -195,7 +195,7 @@ LL | fn baq() -> Box<dyn Trait> {
    |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 ...
 LL |     42
-   |     ^^ expected struct `Box`, found integer
+   |     ^^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
@@ -212,7 +212,7 @@ LL | fn baz() -> Box<dyn Trait> {
    |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 LL |     if true {
 LL |         Struct
-   |         ^^^^^^ expected struct `Box`, found struct `Struct`
+   |         ^^^^^^ expected `Box<dyn Trait>`, found `Struct`
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
               found struct `Struct`
@@ -229,7 +229,7 @@ LL | fn baz() -> Box<dyn Trait> {
    |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 ...
 LL |         42
-   |         ^^ expected struct `Box`, found integer
+   |         ^^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
@@ -246,7 +246,7 @@ LL | fn baw() -> Box<dyn Trait> {
    |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 LL |     if true {
 LL |         0
-   |         ^ expected struct `Box`, found integer
+   |         ^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
@@ -263,7 +263,7 @@ LL | fn baw() -> Box<dyn Trait> {
    |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 ...
 LL |         42
-   |         ^^ expected struct `Box`, found integer
+   |         ^^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`

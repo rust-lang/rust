@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |         Ok(x) if let Err(_) = x => {},
    |                      ^^^^^^   - this expression has type `Option<bool>`
    |                      |
-   |                      expected enum `Option`, found enum `Result`
+   |                      expected `Option<bool>`, found `Result<_, _>`
    |
    = note: expected enum `Option<bool>`
               found enum `Result<_, _>`
@@ -15,7 +15,7 @@ error[E0308]: mismatched types
 LL |         Ok(x) if let 0 = x => {},
    |                      ^   - this expression has type `Option<bool>`
    |                      |
-   |                      expected enum `Option`, found integer
+   |                      expected `Option<bool>`, found integer
    |
    = note: expected enum `Option<bool>`
               found type `{integer}`

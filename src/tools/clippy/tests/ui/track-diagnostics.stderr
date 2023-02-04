@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/track-diagnostics.rs:LL:CC
    |
 LL | const S: A = B;
-   |              ^ expected struct `A`, found struct `B`
+   |              ^ expected `A`, found `B`
 -Ztrack-diagnostics: created at compiler/rustc_infer/src/infer/error_reporting/mod.rs:LL:CC
 
 error: aborting due to previous error

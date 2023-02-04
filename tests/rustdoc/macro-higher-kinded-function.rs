@@ -11,8 +11,8 @@ macro_rules! gen {
 }
 
 // @has 'foo/struct.Providers.html'
-// @has - '//*[@class="item-decl"]//code' "pub a: for<'tcx> fn(_: TyCtxt<'tcx>, _: u8) -> i8,"
-// @has - '//*[@class="item-decl"]//code' "pub b: for<'tcx> fn(_: TyCtxt<'tcx>, _: u16) -> i16,"
+// @has - '//*[@class="rust item-decl"]//code' "pub a: for<'tcx> fn(_: TyCtxt<'tcx>, _: u8) -> i8,"
+// @has - '//*[@class="rust item-decl"]//code' "pub b: for<'tcx> fn(_: TyCtxt<'tcx>, _: u16) -> i16,"
 // @has - '//*[@id="structfield.a"]/code' "a: for<'tcx> fn(_: TyCtxt<'tcx>, _: u8) -> i8"
 // @has - '//*[@id="structfield.b"]/code' "b: for<'tcx> fn(_: TyCtxt<'tcx>, _: u16) -> i16"
 gen! {

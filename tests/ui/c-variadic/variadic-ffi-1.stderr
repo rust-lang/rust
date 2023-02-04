@@ -46,6 +46,7 @@ LL |         let x: unsafe extern "C" fn(f: isize, x: u8) = foo;
    |
    = note: expected fn pointer `unsafe extern "C" fn(_, _)`
                  found fn item `unsafe extern "C" fn(_, _, ...) {foo}`
+   = note: when the arguments and return types match, functions can be coerced to function pointers
 
 error[E0308]: mismatched types
   --> $DIR/variadic-ffi-1.rs:26:54
@@ -57,6 +58,7 @@ LL |         let y: extern "C" fn(f: isize, x: u8, ...) = bar;
    |
    = note: expected fn pointer `extern "C" fn(_, _, ...)`
                  found fn item `extern "C" fn(_, _) {bar}`
+   = note: when the arguments and return types match, functions can be coerced to function pointers
 
 error[E0617]: can't pass `f32` to variadic function
   --> $DIR/variadic-ffi-1.rs:28:19

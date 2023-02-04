@@ -6,17 +6,17 @@ macro_rules! make {
         pub struct S;
 
         // @has issue_33302/constant.CST.html \
-        //        '//div[@class="item-decl"]/pre[@class="rust"]' 'pub const CST: i32'
+        //        '//pre[@class="rust item-decl"]' 'pub const CST: i32'
         pub const CST: i32 = ($n * $n);
         // @has issue_33302/static.ST.html \
-        //        '//div[@class="item-decl"]/pre[@class="rust"]' 'pub static ST: i32'
+        //        '//pre[@class="rust item-decl"]' 'pub static ST: i32'
         pub static ST: i32 = ($n * $n);
 
         pub trait T<X> {
             fn ignore(_: &X) {}
             const C: X;
             // @has issue_33302/trait.T.html \
-            //        '//div[@class="item-decl"]/pre[@class="rust"]' 'const D: i32'
+            //        '//pre[@class="rust item-decl"]' 'const D: i32'
             // @has - '//*[@id="associatedconstant.D"]' 'const D: i32'
             const D: i32 = ($n * $n);
         }

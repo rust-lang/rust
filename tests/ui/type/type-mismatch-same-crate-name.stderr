@@ -2,17 +2,17 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch-same-crate-name.rs:16:20
    |
 LL |         a::try_foo(foo2);
-   |         ---------- ^^^^ expected struct `main::a::Foo`, found a different struct `main::a::Foo`
+   |         ---------- ^^^^ expected `main::a::Foo`, found a different `main::a::Foo`
    |         |
    |         arguments to this function are incorrect
    |
-   = note: struct `main::a::Foo` and struct `main::a::Foo` have similar names, but are actually distinct types
-note: struct `main::a::Foo` is defined in crate `crate_a2`
+   = note: `main::a::Foo` and `main::a::Foo` have similar names, but are actually distinct types
+note: `main::a::Foo` is defined in crate `crate_a2`
   --> $DIR/auxiliary/crate_a2.rs:1:1
    |
 LL | pub struct Foo;
    | ^^^^^^^^^^^^^^
-note: struct `main::a::Foo` is defined in crate `crate_a1`
+note: `main::a::Foo` is defined in crate `crate_a1`
   --> $DIR/auxiliary/crate_a1.rs:1:1
    |
 LL | pub struct Foo;

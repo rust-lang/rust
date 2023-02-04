@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:6:17
    |
 LL |     let _: () = Box::new(|_: isize| {}) as Box<dyn FnOnce(isize)>;
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Box`
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `Box<dyn FnOnce(isize)>`
    |            |
    |            expected due to this
    |
@@ -17,7 +17,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:10:17
    |
 LL |     let _: () = Box::new(|_: isize, isize| {}) as Box<dyn Fn(isize, isize)>;
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Box`
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `Box<dyn Fn(isize, isize)>`
    |            |
    |            expected due to this
    |
@@ -32,7 +32,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:14:17
    |
 LL |     let _: () = Box::new(|| -> isize { unimplemented!() }) as Box<dyn FnMut() -> isize>;
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Box`
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `Box<dyn FnMut() -> isize>`
    |            |
    |            expected due to this
    |

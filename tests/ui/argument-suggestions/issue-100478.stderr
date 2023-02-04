@@ -41,7 +41,7 @@ error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-100478.rs:36:5
    |
 LL |     four_shuffle(T3::default(), T2::default(), T1::default(), T3::default());
-   |     ^^^^^^^^^^^^ -------------                 -------------  ------------- expected struct `T4`, found struct `T3`
+   |     ^^^^^^^^^^^^ -------------                 -------------  ------------- expected `T4`, found `T3`
    |                  |                             |
    |                  |                             expected `T3`, found `T1`
    |                  expected `T1`, found `T3`

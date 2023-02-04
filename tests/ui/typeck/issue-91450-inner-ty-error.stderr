@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-91450-inner-ty-error.rs:4:13
    |
 LL | fn foo() -> Option<_> {}
-   |    ---      ^^^^^^^^^ expected enum `Option`, found `()`
+   |    ---      ^^^^^^^^^ expected `Option<_>`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |

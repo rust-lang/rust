@@ -13,6 +13,6 @@ impl Foo {
     pub fn bar(mut bar: ()) {}
 }
 
-// @count foo/fn.baz.html '//div[@class="item-decl"]/pre[@class="rust"]' 1
-// @!has - '//div[@class="item-decl"]/pre[@class="rust"]' 'mut'
+// @count foo/fn.baz.html '//pre[@class="rust item-decl"]' 1
+// @!has - '//pre[@class="rust item-decl"]' 'mut'
 pub fn baz(mut foo: Foo) {}

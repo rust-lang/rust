@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let _: &[i32] = [0];
    |            ------   ^^^
    |            |        |
-   |            |        expected `&[i32]`, found array `[{integer}; 1]`
+   |            |        expected `&[i32]`, found `[{integer}; 1]`
    |            |        help: consider borrowing here: `&[0]`
    |            expected due to this
 

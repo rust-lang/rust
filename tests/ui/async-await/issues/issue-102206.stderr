@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     std::mem::size_of_val(foo());
    |     --------------------- ^^^^^
    |     |                     |
-   |     |                     expected reference, found opaque type
+   |     |                     expected `&_`, found opaque type
    |     |                     help: consider borrowing here: `&foo()`
    |     arguments to this function are incorrect
    |

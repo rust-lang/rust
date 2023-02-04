@@ -3,7 +3,7 @@ fn f() -> isize {
 //~^ ERROR mismatched types
 //~| expected type `isize`
 //~| found tuple `(!, !)`
-//~| expected `isize`, found tuple
+//~| expected `isize`, found `(!, !)`
 }
 
 fn main() {}

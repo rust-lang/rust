@@ -2,7 +2,7 @@ error[E0308]: `if` and `else` have incompatible types
   --> $DIR/fn-pointer-mismatch.rs:11:43
    |
 LL |     let g = if n % 2 == 0 { &foo } else { &bar };
-   |                             ----          ^^^^ expected fn item, found a different fn item
+   |                             ----          ^^^^ expected `&fn(u32) -> u32 {foo}`, found `&fn(u32) -> u32 {bar}`
    |                             |
    |                             expected because of this
    |
@@ -43,41 +43,48 @@ error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:36:29
    |
 LL |     let c: fn(u32) -> u32 = &foo;
-   |            --------------   ^^^^
-   |            |                |
-   |            |                expected fn pointer, found reference
-   |            |                help: consider removing the reference: `foo`
+   |            --------------   ^^^^ expected fn pointer, found `&fn(u32) -> u32 {foo}`
+   |            |
    |            expected due to this
    |
    = note: expected fn pointer `fn(u32) -> u32`
                found reference `&fn(u32) -> u32 {foo}`
+help: consider removing the reference
+   |
+LL |     let c: fn(u32) -> u32 = foo;
+   |                             ~~~
 
 error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:42:30
    |
 LL |     let d: &fn(u32) -> u32 = foo;
-   |            ---------------   ^^^
-   |            |                 |
-   |            |                 expected `&fn(u32) -> u32`, found fn item
-   |            |                 help: consider using a reference: `&foo`
+   |            ---------------   ^^^ expected `&fn(u32) -> u32`, found fn item
+   |            |
    |            expected due to this
    |
    = note: expected reference `&fn(u32) -> u32`
                 found fn item `fn(u32) -> u32 {foo}`
+help: consider using a reference
+   |
+LL |     let d: &fn(u32) -> u32 = &foo;
+   |                              ~~~~
 
 error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:48:30
    |
 LL |     let e: &fn(u32) -> u32 = &foo;
-   |            ---------------   ^^^^
-   |            |                 |
-   |            |                 expected fn pointer, found fn item
-   |            |                 help: consider casting to a fn pointer: `&(foo as fn(u32) -> u32)`
+   |            ---------------   ^^^^ expected `&fn(u32) -> u32`, found `&fn(u32) -> u32 {foo}`
+   |            |
    |            expected due to this
    |
    = note: expected reference `&fn(u32) -> u32`
               found reference `&fn(u32) -> u32 {foo}`
    = note: fn items are distinct from fn pointers
+   = note: when the arguments and return types match, functions can be coerced to function pointers
+help: consider casting to a fn pointer
+   |
+LL |     let e: &fn(u32) -> u32 = &(foo as fn(u32) -> u32);
+   |                              ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors
 

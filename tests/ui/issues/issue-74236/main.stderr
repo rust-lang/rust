@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let () = dep::Renamed;
    |         ^^   ------------ this expression has type `Renamed`
    |         |
-   |         expected struct `Renamed`, found `()`
+   |         expected `Renamed`, found `()`
 
 error: aborting due to previous error
 

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     demo(tell(1)..tell(10));
    |     ---- ^^^^^^^^^^^^^^^^^
    |     |    |
-   |     |    expected `&Range<usize>`, found struct `Range`
+   |     |    expected `&Range<usize>`, found `Range<usize>`
    |     |    help: consider borrowing here: `&(tell(1)..tell(10))`
    |     arguments to this function are incorrect
    |
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 LL |     demo(1..10);
    |     ---- ^^^^^
    |     |    |
-   |     |    expected `&Range<usize>`, found struct `Range`
+   |     |    expected `&Range<usize>`, found `Range<{integer}>`
    |     |    help: consider borrowing here: `&(1..10)`
    |     arguments to this function are incorrect
    |

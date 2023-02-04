@@ -128,7 +128,7 @@ LL |     f(C, C, A, B, A, A);
    |     ^ -  -  -     -  - expected `C`, found `A`
    |       |  |  |     |
    |       |  |  |     expected `C`, found `A`
-   |       |  |  expected struct `B`, found struct `A`
+   |       |  |  expected `B`, found `A`
    |       |  expected `A`, found `C`
    |       expected `A`, found `C`
    |

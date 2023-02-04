@@ -100,7 +100,7 @@ help: a unit struct with a similar name exists
 LL |     let xe1 = XEmpty2();
    |               ~~~~~~~
 
-error[E0599]: no variant or associated item named `Empty3` found for enum `XE` in the current scope
+error[E0599]: no variant or associated item named `Empty3` found for enum `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:25:19
    |
 LL |     let xe3 = XE::Empty3;
@@ -109,7 +109,7 @@ LL |     let xe3 = XE::Empty3;
    |                   variant or associated item not found in `XE`
    |                   help: there is a variant with a similar name: `XEmpty3`
 
-error[E0599]: no variant or associated item named `Empty3` found for enum `XE` in the current scope
+error[E0599]: no variant or associated item named `Empty3` found for enum `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:26:19
    |
 LL |     let xe3 = XE::Empty3();

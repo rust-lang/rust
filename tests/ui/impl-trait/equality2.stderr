@@ -54,6 +54,7 @@ LL |     x = (x.1,
    |
    = note: expected opaque type `impl Foo` (`u32`)
               found opaque type `impl Foo` (`i32`)
+   = note: distinct uses of `impl Trait` result in different opaque types
 
 error[E0308]: mismatched types
   --> $DIR/equality2.rs:41:10
@@ -69,6 +70,7 @@ LL |          x.0);
    |
    = note: expected opaque type `impl Foo` (`i32`)
               found opaque type `impl Foo` (`u32`)
+   = note: distinct uses of `impl Trait` result in different opaque types
 
 error: aborting due to 4 previous errors; 1 warning emitted
 

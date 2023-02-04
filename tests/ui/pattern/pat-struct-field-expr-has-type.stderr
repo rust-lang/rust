@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match (S { f: 42 }) {
    |           ------------- this expression has type `S`
 LL |         S { f: Ok(_) } => {}
-   |                ^^^^^ expected `u8`, found enum `Result`
+   |                ^^^^^ expected `u8`, found `Result<_, _>`
    |
    = note: expected type `u8`
               found enum `Result<_, _>`

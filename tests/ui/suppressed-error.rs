@@ -3,6 +3,6 @@ fn main() {
 //~^ ERROR mismatched types
 //~| expected unit type `()`
 //~| found tuple `(_, _)`
-//~| expected `()`, found tuple
+//~| expected `()`, found
     return x;
 }

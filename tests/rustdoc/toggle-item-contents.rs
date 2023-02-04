@@ -55,7 +55,7 @@ pub union Union {
 
 // @has 'toggle_item_contents/struct.PrivStruct.html'
 // @count - '//details[@class="toggle type-contents-toggle"]' 0
-// @has - '//div[@class="item-decl"]' '/* private fields */'
+// @has - '//pre[@class="rust item-decl"]' '/* private fields */'
 pub struct PrivStruct {
     a: usize,
     b: usize,
@@ -81,8 +81,8 @@ pub enum EnumStructVariant {
 }
 
 // @has 'toggle_item_contents/enum.LargeEnum.html'
-// @count - '//div[@class="item-decl"]/pre//details[@class="toggle type-contents-toggle"]' 1
-// @has - '//div[@class="item-decl"]/pre//details[@class="toggle type-contents-toggle"]' 'Show 13 variants'
+// @count - '//pre[@class="rust item-decl"]//details[@class="toggle type-contents-toggle"]' 1
+// @has - '//pre[@class="rust item-decl"]//details[@class="toggle type-contents-toggle"]' 'Show 13 variants'
 pub enum LargeEnum {
     A, B, C, D, E, F(u8), G, H, I, J, K, L, M
 }

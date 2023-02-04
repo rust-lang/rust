@@ -9,7 +9,7 @@ LL | |         move || println!("{a}")
    | |         expected because of this
 LL | |     } else {
 LL | |         Box::new(move || println!("{}", b))
-   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected closure, found struct `Box`
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected closure, found `Box<[closure@box-instead-of-dyn-fn.rs:10:18]>`
 LL | |
 LL | |     }
    | |_____- `if` and `else` have incompatible types

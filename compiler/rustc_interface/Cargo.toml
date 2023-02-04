@@ -49,9 +49,6 @@ rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 
-[dev-dependencies]
-rustc_target = { path = "../rustc_target" }
-
 [features]
 llvm = ['rustc_codegen_llvm']
 rustc_use_parallel_compiler = ['rayon', 'rustc-rayon-core', 'rustc_query_impl/rustc_use_parallel_compiler', 'rustc_errors/rustc_use_parallel_compiler']

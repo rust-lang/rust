@@ -181,9 +181,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         user_ty: ty::UserType<'tcx>,
         span: Span,
     ) {
-        // FIXME: Ideally MIR types are normalized, but this is not always true.
-        let mir_ty = self.normalize(mir_ty, Locations::All(span));
-
         self.fully_perform_op(
             Locations::All(span),
             ConstraintCategory::Boring,
@@ -217,7 +214,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return;
         }
 
+        // FIXME: Ideally MIR types are normalized, but this is not always true.
         let mir_ty = self.normalize(mir_ty, Locations::All(span));
+
         let cause = ObligationCause::dummy_with_span(span);
         let param_env = self.param_env;
         let op = |infcx: &'_ _| {

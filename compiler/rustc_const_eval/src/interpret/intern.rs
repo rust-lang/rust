@@ -30,15 +30,15 @@ use super::{
 use crate::const_eval;
 
 pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
-    'mir,
-    'tcx,
-    MemoryKind = T,
-    Provenance = AllocId,
-    ExtraFnVal = !,
-    FrameExtra = (),
-    AllocExtra = (),
-    MemoryMap = FxIndexMap<AllocId, (MemoryKind<T>, Allocation)>,
->;
+        'mir,
+        'tcx,
+        MemoryKind = T,
+        Provenance = AllocId,
+        ExtraFnVal = !,
+        FrameExtra = (),
+        AllocExtra = (),
+        MemoryMap = FxIndexMap<AllocId, (MemoryKind<T>, Allocation)>,
+    >;
 
 struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>> {
     /// The ectx from which we intern.

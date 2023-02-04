@@ -2,14 +2,16 @@ error[E0308]: mismatched types
   --> $DIR/static-reference-to-fn-1.rs:17:15
    |
 LL |         func: &foo,
-   |               ^^^^
-   |               |
-   |               expected fn pointer, found fn item
-   |               help: consider casting to a fn pointer: `&(foo as fn() -> Option<isize>)`
+   |               ^^^^ expected `&fn() -> Option<isize>`, found `&fn() -> Option<isize> {foo}`
    |
    = note: expected reference `&fn() -> Option<isize>`
               found reference `&fn() -> Option<isize> {foo}`
    = note: fn items are distinct from fn pointers
+   = note: when the arguments and return types match, functions can be coerced to function pointers
+help: consider casting to a fn pointer
+   |
+LL |         func: &(foo as fn() -> Option<isize>),
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

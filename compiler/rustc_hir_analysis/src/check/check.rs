@@ -442,6 +442,7 @@ fn check_opaque_meets_bounds<'tcx>(
     match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
         Ok(()) => {}
         Err(ty_err) => {
+            let ty_err = ty_err.to_string(tcx);
             tcx.sess.delay_span_bug(
                 span,
                 &format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),

@@ -89,7 +89,7 @@ async fn match_() {
     match tuple() { //~ HELP consider `await`ing on the `Future`
         //~^ NOTE this expression has type `impl Future<Output = Tuple>`
         Tuple(_) => {} //~ ERROR mismatched types
-        //~^ NOTE expected opaque type, found struct `Tuple`
+        //~^ NOTE expected opaque type, found `Tuple`
         //~| NOTE expected opaque type `impl Future<Output = Tuple>`
     }
 }

@@ -117,7 +117,7 @@ pub const fn panic(expr: &'static str) -> ! {
 /// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize.
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cfg_attr(not(bootstrap), lang = "panic_nounwind")] // needed by codegen for non-unwinding panics
+#[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
 #[rustc_nounwind]
 pub fn panic_nounwind(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::new_v1(&[expr], &[]));
@@ -165,8 +165,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 /// any extra arguments (including those synthesized by track_caller).
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cfg_attr(bootstrap, lang = "panic_no_unwind")] // needed by codegen for panic in nounwind function
-#[cfg_attr(not(bootstrap), lang = "panic_cannot_unwind")] // needed by codegen for panic in nounwind function
+#[lang = "panic_cannot_unwind"] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
 fn panic_cannot_unwind() -> ! {
     panic_nounwind("panic in a function that cannot unwind")

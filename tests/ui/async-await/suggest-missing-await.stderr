@@ -127,7 +127,7 @@ LL |     match dummy_result() {
    |           -------------- this expression has type `impl Future<Output = Result<(), ()>>`
 ...
 LL |         Ok(_) => {}
-   |         ^^^^^ expected opaque type, found enum `Result`
+   |         ^^^^^ expected opaque type, found `Result<_, _>`
    |
 note: while checking the return type of the `async fn`
   --> $DIR/suggest-missing-await.rs:57:28
@@ -148,7 +148,7 @@ LL |     match dummy_result() {
    |           -------------- this expression has type `impl Future<Output = Result<(), ()>>`
 ...
 LL |         Err(_) => {}
-   |         ^^^^^^ expected opaque type, found enum `Result`
+   |         ^^^^^^ expected opaque type, found `Result<_, _>`
    |
 note: while checking the return type of the `async fn`
   --> $DIR/suggest-missing-await.rs:57:28

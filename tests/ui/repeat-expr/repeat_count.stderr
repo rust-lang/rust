@@ -34,7 +34,7 @@ error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:31:17
    |
 LL |     let g = [0; G { g: () }];
-   |                 ^^^^^^^^^^^ expected `usize`, found struct `G`
+   |                 ^^^^^^^^^^^ expected `usize`, found `G`
 
 error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:19:17

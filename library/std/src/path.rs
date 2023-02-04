@@ -271,7 +271,7 @@ pub const MAIN_SEPARATOR: char = crate::sys::path::MAIN_SEP;
 /// The primary separator of path components for the current platform.
 ///
 /// For example, `/` on Unix and `\` on Windows.
-#[stable(feature = "main_separator_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "main_separator_str", since = "1.68.0")]
 pub const MAIN_SEPARATOR_STR: &str = crate::sys::path::MAIN_SEP_STR;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1778,7 +1778,7 @@ impl ops::Deref for PathBuf {
     }
 }
 
-#[stable(feature = "path_buf_deref_mut", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "path_buf_deref_mut", since = "1.68.0")]
 impl ops::DerefMut for PathBuf {
     #[inline]
     fn deref_mut(&mut self) -> &mut Path {
@@ -2688,6 +2688,7 @@ impl Path {
     /// escapes the path please use [`Debug`] instead.
     ///
     /// [`Display`]: fmt::Display
+    /// [`Debug`]: fmt::Debug
     ///
     /// # Examples
     ///

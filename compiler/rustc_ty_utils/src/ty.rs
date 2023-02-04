@@ -426,10 +426,6 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
         },
     };
 
-    // FIXME(eddyb) cache this (including computing `unsizing_params`)
-    // by putting it in a query; it would only need the `DefId` as it
-    // looks at declared field types, not anything substituted.
-
     // The last field of the structure has to exist and contain type/const parameters.
     let Some((tail_field, prefix_fields)) =
         def.non_enum_variant().fields.split_last() else

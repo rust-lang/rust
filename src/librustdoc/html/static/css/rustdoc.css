@@ -335,7 +335,7 @@ pre {
 	padding: 14px;
 	line-height: 1.5; /* https://github.com/rust-lang/rust/issues/105906 */
 }
-.item-decl pre {
+pre.item-decl {
 	overflow-x: auto;
 }
 /* This rule allows to have scrolling on the X axis. */
@@ -1261,6 +1261,14 @@ a.test-arrow:hover {
 	flex: 1;
 	line-height: 1.5;
 	color: inherit;
+}
+#search-tabs button:not(.selected) {
+	background-color: var(--search-tab-button-not-selected-background);
+	border-top-color: var(--search-tab-button-not-selected-border-top-color);
+}
+#search-tabs button:hover, #search-tabs button.selected {
+	background-color: var(--search-tab-button-selected-background);
+	border-top-color: var(--search-tab-button-selected-border-top-color);
 }
 
 #search-tabs .count {

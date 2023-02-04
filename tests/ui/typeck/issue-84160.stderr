@@ -5,7 +5,7 @@ LL | fn mismatched_types_with_reference(x: &u32) -> &u32 {
    |                                                ---- expected `&u32` because of return type
 ...
 LL |     return "test";
-   |            ^^^^^^ expected `u32`, found `str`
+   |            ^^^^^^ expected `&u32`, found `&str`
    |
    = note: expected reference `&u32`
               found reference `&'static str`

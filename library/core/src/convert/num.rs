@@ -169,7 +169,7 @@ impl_from! { u32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 impl_from! { f32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
 
 // bool -> Float
-#[stable(feature = "float_from_bool", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "float_from_bool", since = "1.68.0")]
 #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
 impl const From<bool> for f32 {
     /// Converts `bool` to `f32` losslessly.
@@ -178,7 +178,7 @@ impl const From<bool> for f32 {
         small as u8 as Self
     }
 }
-#[stable(feature = "float_from_bool", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "float_from_bool", since = "1.68.0")]
 #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
 impl const From<bool> for f64 {
     /// Converts `bool` to `f64` losslessly.

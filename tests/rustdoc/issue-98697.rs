@@ -8,8 +8,8 @@
 
 extern crate issue_98697_reexport_with_anonymous_lifetime;
 
-// @has issue_98697/fn.repro.html '//div[@class="item-decl"]/pre[@class="rust"]/code' 'fn repro<F>()where F: Fn(&str)'
-// @!has issue_98697/fn.repro.html '//div[@class="item-decl"]/pre[@class="rust"]/code' 'for<'
+// @has issue_98697/fn.repro.html '//pre[@class="rust item-decl"]/code' 'fn repro<F>()where F: Fn(&str)'
+// @!has issue_98697/fn.repro.html '//pre[@class="rust item-decl"]/code' 'for<'
 pub use issue_98697_reexport_with_anonymous_lifetime::repro;
 
 // @has issue_98697/struct.Extra.html '//div[@id="trait-implementations-list"]//h3[@class="code-header"]' 'impl MyTrait<&Extra> for Extra'

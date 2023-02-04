@@ -4,7 +4,7 @@ error[E0061]: this method takes 1 argument but 2 arguments were supplied
 LL |         groups.push(new_group, vec![process]);
    |                ^^^^            ------------- argument of type `Vec<&Process>` unexpected
    |
-note: expected tuple, found struct `Vec`
+note: expected `(Vec<String>, Vec<Process>)`, found `Vec<String>`
   --> $DIR/wrong_argument_ice-3.rs:9:21
    |
 LL |         groups.push(new_group, vec![process]);
