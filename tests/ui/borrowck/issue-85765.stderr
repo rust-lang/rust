@@ -1,11 +1,13 @@
 error[E0596]: cannot borrow `*rofl` as mutable, as it is behind a `&` reference
   --> $DIR/issue-85765.rs:5:5
    |
-LL |     let rofl: &Vec<Vec<i32>> = &mut test;
-   |         ---- consider changing this binding's type to be: `&mut Vec<Vec<i32>>`
-LL |
 LL |     rofl.push(Vec::new());
    |     ^^^^^^^^^^^^^^^^^^^^^ `rofl` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this binding's type
+   |
+LL |     let rofl: &mut Vec<Vec<i32>> = &mut test;
+   |               ~~~~~~~~~~~~~~~~~~
 
 error[E0594]: cannot assign to `*r`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:12:5
@@ -21,20 +23,24 @@ LL |     let r = &mut mutvar;
 error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:19:5
    |
-LL |     let x: &usize = &mut{0};
-   |         - consider changing this binding's type to be: `&mut usize`
-LL |
 LL |     *x = 1;
    |     ^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this binding's type
+   |
+LL |     let x: &mut usize = &mut{0};
+   |            ~~~~~~~~~~
 
 error[E0594]: cannot assign to `*y`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:26:5
    |
-LL |     let y: &usize = &mut(0);
-   |         - consider changing this binding's type to be: `&mut usize`
-LL |
 LL |     *y = 1;
    |     ^^^^^^ `y` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this binding's type
+   |
+LL |     let y: &mut usize = &mut(0);
+   |            ~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 
