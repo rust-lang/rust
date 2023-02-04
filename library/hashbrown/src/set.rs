@@ -2907,4 +2907,11 @@ mod test_set {
             set.insert(i);
         }
     }
+
+    #[test]
+    fn collect() {
+        // At the time of writing, this hits the ZST case in from_base_index
+        // (and without the `map`, it does not).
+        let mut _set: HashSet<_> = (0..3).map(|_| ()).collect();
+    }
 }

@@ -9,4 +9,4 @@ rustup toolchain install nightly --component miri
 rustup override set nightly
 cargo miri setup
 
-MIRIFLAGS='-Zmiri-strict-provenance' cargo miri test
+MIRIFLAGS='-Zmiri-strict-provenance' cargo miri test --features nightly
