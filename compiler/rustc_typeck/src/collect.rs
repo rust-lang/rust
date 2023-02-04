@@ -50,7 +50,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{abi, PanicStrategy, SanitizerSet};
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
-use std::iter;
+use std::{iter, str::FromStr};
 
 mod item_bounds;
 mod type_of;
@@ -2775,6 +2775,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
 
     let list = attr.meta_item_list().unwrap_or_default();
 
+    // empty autodiff attribute macros (i.e. `#[autodiff]`) are used to mark source functions
     if list.len() == 0 {
         return AutoDiffAttrs {
             mode: DiffMode::Source,
@@ -2786,15 +2787,15 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
     let mode = match &list[0] {
         NestedMetaItem::MetaItem(MetaItem {
             path: ref p2,
-            kind: MetaItemKind::NameValue(Lit { kind: LitKind::Str(mode, _), .. }),
+            kind: MetaItemKind::Word,
             ..
-        }) if *p2 == sym::mode => mode,
+        }) => p2.segments.first().unwrap().ident,
         _ => {
             tcx
                 .sess
                 .struct_span_err(
                     attr.span,
-                    "autodiff attribute must contain the source function",
+                    "attribute must contain autodiff mode",
                     )
                 .span_label(attr.span, "empty argument list")
                 .emit();
@@ -2805,8 +2806,8 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
 
     // parse mode
     let mode = match mode.as_str() {//map(|x| x.as_str()) {
-        "forward" => DiffMode::Forward,
-        "reverse" => DiffMode::Reverse,
+        "Forward" => DiffMode::Forward,
+        "Reverse" => DiffMode::Reverse,
         _ => {
             tcx
                 .sess
@@ -2823,10 +2824,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
             path: ref p2,
             kind: MetaItemKind::Word,
             ..
-        }) => {
-            let id = p2.segments.first().unwrap().ident;
-            id
-        },
+        }) => p2.segments.first().unwrap().ident,
         _ => {
             tcx
                 .sess
@@ -2842,34 +2840,27 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
     };
 
 
-    let ret_activity = match ret_symbol.as_str() {
-        "None" => DiffActivity::None,
-        "Active" => DiffActivity::Active,
-        "Const" => DiffActivity::Const,
-        "Duplicated" => DiffActivity::Duplicated,
-        "DuplicatedNoNeed" => DiffActivity::DuplicatedNoNeed,
-        _ => {
+    let ret_activity = match DiffActivity::from_str(ret_symbol.as_str()) {
+        Ok(x) => x,
+        Err(_) => {
             tcx
                 .sess
                 .struct_span_err(attr.span, "unknown return activity")
                 .span_label(attr.span, "invalid return activity")
                 .emit();
+
             return AutoDiffAttrs::inactive();
-        }
+        },
     };
 
-    let mut input_activity: Vec<DiffActivity> = vec![];
-    for foo in &list[2..] {
-        let foo_symbol = match foo {
+    let mut arg_activities: Vec<DiffActivity> = vec![];
+    for arg in &list[2..] {
+        let arg_symbol = match arg {
             NestedMetaItem::MetaItem(MetaItem {
                 path: ref p2,
                 kind: MetaItemKind::Word,
                 ..
-            }) => {
-                let id = p2.segments.first().unwrap().ident;
-                dbg!(&id);
-                id
-            },
+            }) => p2.segments.first().unwrap().ident,
             _ => {
                 tcx
                     .sess
@@ -2883,22 +2874,19 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
                 return AutoDiffAttrs::inactive();
             },
         };
-        let act = match foo_symbol.as_str() {
-            "None" => DiffActivity::None,
-            "Active" => DiffActivity::Active,
-            "Const" => DiffActivity::Const,
-            "Duplicated" => DiffActivity::Duplicated,
-            "DuplicatedNoNeed" => DiffActivity::DuplicatedNoNeed,
-            _ => {
+
+        match DiffActivity::from_str(arg_symbol.as_str()) {
+            Ok(arg_activity) => arg_activities.push(arg_activity),
+            Err(_) => {
                 tcx
                     .sess
                     .struct_span_err(attr.span, "unknown return activity")
                     .span_label(attr.span, "invalid input activity")
                     .emit();
+
                 return AutoDiffAttrs::inactive();
-            }
-        };
-        input_activity.push(act);
+            },
+        }
     }
 
     if mode == DiffMode::Forward {
@@ -2910,7 +2898,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
                 .emit();
             return AutoDiffAttrs::inactive();
         }
-        if input_activity.iter().filter(|&x| *x == DiffActivity::Active).count() > 0 {
+        if arg_activities.iter().filter(|&x| *x == DiffActivity::Active).count() > 0 {
             tcx
                 .sess
                 .struct_span_err(attr.span, "Forward Mode is incompatible with Active args")
@@ -2934,7 +2922,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
     AutoDiffAttrs {
         mode,
         ret_activity,
-        input_activity,
+        input_activity: arg_activities
     }
 }
 

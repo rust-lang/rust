@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 #[allow(dead_code)]
 #[derive(Clone, Copy, Eq, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum DiffMode {
@@ -16,6 +18,22 @@ pub enum DiffActivity {
     Duplicated,
     DuplicatedNoNeed,
 }
+
+impl FromStr for DiffActivity {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<DiffActivity, ()> {
+        match s {
+            "None" => Ok(DiffActivity::None),
+            "Active" => Ok(DiffActivity::Active),
+            "Const" => Ok(DiffActivity::Const),
+            "Duplicated" => Ok(DiffActivity::Duplicated),
+            "DuplicatedNoNeed" => Ok(DiffActivity::DuplicatedNoNeed),
+            _ => Err(()),
+        }
+    }
+}
+
 
 #[allow(dead_code)]
 #[derive(Clone, Eq, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
