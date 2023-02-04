@@ -153,8 +153,8 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
         if let Operand::Move(place) = *operand
-            && let Some(local) = place.as_local()
-            && !self.fully_moved.contains(local)
+            && !place.has_deref()
+            && !self.fully_moved.contains(place.local)
         {
             *operand = Operand::Copy(place);
         }
