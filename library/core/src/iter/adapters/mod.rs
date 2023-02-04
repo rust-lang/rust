@@ -175,7 +175,16 @@ where
     type Item = <I::Item as Try>::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.try_for_each(ControlFlow::Break).break_value()
+        if let Some(value) = self.iter.next() {
+            match Try::branch(value) {
+                ControlFlow::Continue(output) => return Some(output),
+                ControlFlow::Break(residual) => {
+                    *self.residual = Some(residual);
+                    return None;
+                }
+            }
+        }
+        None
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
