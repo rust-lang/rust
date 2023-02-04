@@ -33,7 +33,7 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) -
                         expr.span,
                         "depending on intent, either make the Cow an Owned variant or clone the Cow itself",
                         [format!("{recv_snip}.into_owned()"), format!("{recv_snip}.clone()")],
-                        Applicability::Unspecified
+                        app
                     );
                 }
             );
