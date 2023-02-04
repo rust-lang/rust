@@ -21,7 +21,7 @@ pub trait QueryConfig<Qcx: QueryContext> {
 
     type Key: DepNodeParams<Qcx::DepContext> + Eq + Hash + Clone + Debug;
     type Value: Debug;
-    type Stored: Debug + Clone + std::borrow::Borrow<Self::Value>;
+    type Stored: Debug + Copy + std::borrow::Borrow<Self::Value>;
 
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
