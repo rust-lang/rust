@@ -69,6 +69,16 @@ fn unlikely(b: bool) -> bool {
     b
 }
 
+// Use strict provenance functions if available.
+#[cfg(feature = "nightly")]
+use core::ptr::invalid_mut;
+// Implement it with a cast otherwise.
+#[cfg(not(feature = "nightly"))]
+#[inline(always)]
+fn invalid_mut<T>(addr: usize) -> *mut T {
+    addr as *mut T
+}
+
 #[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
     to.offset_from(from) as usize
@@ -371,7 +381,7 @@ impl<T> Bucket<T> {
             // won't overflow because index must be less than length (bucket_mask)
             // and bucket_mask is guaranteed to be less than `isize::MAX`
             // (see TableLayout::calculate_layout_for method)
-            (index + 1) as *mut T
+            invalid_mut(index + 1)
         } else {
             base.as_ptr().sub(index)
         };
@@ -507,7 +517,8 @@ impl<T> Bucket<T> {
     pub fn as_ptr(&self) -> *mut T {
         if Self::IS_ZERO_SIZED_TYPE {
             // Just return an arbitrary ZST pointer which is properly aligned
-            mem::align_of::<T>() as *mut T
+            // invalid pointer is good enough for ZST
+            invalid_mut(mem::align_of::<T>())
         } else {
             unsafe { self.ptr.as_ptr().sub(1) }
         }
@@ -553,7 +564,8 @@ impl<T> Bucket<T> {
     #[inline]
     unsafe fn next_n(&self, offset: usize) -> Self {
         let ptr = if Self::IS_ZERO_SIZED_TYPE {
-            (self.ptr.as_ptr() as usize + offset) as *mut T
+            // invalid pointer is good enough for ZST
+            invalid_mut(self.ptr.as_ptr() as usize + offset)
         } else {
             self.ptr.as_ptr().sub(offset)
         };
