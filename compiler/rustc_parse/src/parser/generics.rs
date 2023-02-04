@@ -1,4 +1,7 @@
-use crate::errors::{WhereClauseBeforeTupleStructBody, WhereClauseBeforeTupleStructBodySugg};
+use crate::errors::{
+    MultipleWhereClauses, UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
+    WhereClauseBeforeTupleStructBodySugg,
+};
 
 use super::{ForceCollect, Parser, TrailingToken};
 
@@ -127,12 +130,9 @@ impl<'a> Parser<'a> {
                     if this.eat_keyword_noexpect(kw::SelfUpper) {
                         // `Self` as a generic param is invalid. Here we emit the diagnostic and continue parsing
                         // as if `Self` never existed.
-                        this.struct_span_err(
-                            this.prev_token.span,
-                            "unexpected keyword `Self` in generic parameters",
-                        )
-                        .note("you cannot use `Self` as a generic parameter because it is reserved for associated items")
-                        .emit();
+                        this.sess.emit_err(UnexpectedSelfInGenericParameters {
+                            span: this.prev_token.span,
+                        });
 
                         this.eat(&token::Comma);
                     }
@@ -329,16 +329,11 @@ impl<'a> Parser<'a> {
             let ate_comma = self.eat(&token::Comma);
 
             if self.eat_keyword_noexpect(kw::Where) {
-                let msg = "cannot define duplicate `where` clauses on an item";
-                let mut err = self.struct_span_err(self.token.span, msg);
-                err.span_label(pred_lo, "previous `where` clause starts here");
-                err.span_suggestion_verbose(
-                    prev_token.shrink_to_hi().to(self.prev_token.span),
-                    "consider joining the two `where` clauses into one",
-                    ",",
-                    Applicability::MaybeIncorrect,
-                );
-                err.emit();
+                self.sess.emit_err(MultipleWhereClauses {
+                    span: self.token.span,
+                    previous: pred_lo,
+                    between: prev_token.shrink_to_hi().to(self.prev_token.span),
+                });
             } else if !ate_comma {
                 break;
             }

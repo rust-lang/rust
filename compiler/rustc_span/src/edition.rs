@@ -49,8 +49,8 @@ impl fmt::Display for Edition {
 }
 
 impl Edition {
-    pub fn lint_name(&self) -> &'static str {
-        match *self {
+    pub fn lint_name(self) -> &'static str {
+        match self {
             Edition::Edition2015 => "rust_2015_compatibility",
             Edition::Edition2018 => "rust_2018_compatibility",
             Edition::Edition2021 => "rust_2021_compatibility",
@@ -58,8 +58,8 @@ impl Edition {
         }
     }
 
-    pub fn feature_name(&self) -> Symbol {
-        match *self {
+    pub fn feature_name(self) -> Symbol {
+        match self {
             Edition::Edition2015 => sym::rust_2015_preview,
             Edition::Edition2018 => sym::rust_2018_preview,
             Edition::Edition2021 => sym::rust_2021_preview,
@@ -67,8 +67,8 @@ impl Edition {
         }
     }
 
-    pub fn is_stable(&self) -> bool {
-        match *self {
+    pub fn is_stable(self) -> bool {
+        match self {
             Edition::Edition2015 => true,
             Edition::Edition2018 => true,
             Edition::Edition2021 => true,
@@ -76,23 +76,24 @@ impl Edition {
         }
     }
 
-    pub fn rust_2015(&self) -> bool {
-        *self == Edition::Edition2015
+    /// Is this edition 2015?
+    pub fn is_rust_2015(self) -> bool {
+        self == Edition::Edition2015
     }
 
     /// Are we allowed to use features from the Rust 2018 edition?
-    pub fn rust_2018(&self) -> bool {
-        *self >= Edition::Edition2018
+    pub fn rust_2018(self) -> bool {
+        self >= Edition::Edition2018
     }
 
     /// Are we allowed to use features from the Rust 2021 edition?
-    pub fn rust_2021(&self) -> bool {
-        *self >= Edition::Edition2021
+    pub fn rust_2021(self) -> bool {
+        self >= Edition::Edition2021
     }
 
     /// Are we allowed to use features from the Rust 2024 edition?
-    pub fn rust_2024(&self) -> bool {
-        *self >= Edition::Edition2024
+    pub fn rust_2024(self) -> bool {
+        self >= Edition::Edition2024
     }
 }
 

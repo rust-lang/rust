@@ -21,13 +21,11 @@ fn let_wild_gets_unsafe_field() {
     let u2 = U { a: I(1) };
     let p = P { a: &2, b: &3 };
     let _ = &p.b;  //~ ERROR    reference to packed field
-    //~^  WARN will become a hard error
     let _ = u1.a;  // #53114: should eventually signal error as well
     let _ = &u2.a; //~ ERROR  [E0133]
 
     // variation on above with `_` in substructure
     let (_,) = (&p.b,);  //~ ERROR     reference to packed field
-    //~^  WARN will become a hard error
     let (_,) = (u1.a,);  //~ ERROR   [E0133]
     let (_,) = (&u2.a,); //~ ERROR   [E0133]
 }
@@ -37,13 +35,11 @@ fn match_unsafe_field_to_wild() {
     let u2 = U { a: I(1) };
     let p = P { a: &2, b: &3 };
     match &p.b  { _ => { } } //~ ERROR     reference to packed field
-    //~^  WARN will become a hard error
     match u1.a  { _ => { } } //~ ERROR   [E0133]
     match &u2.a { _ => { } } //~ ERROR   [E0133]
 
     // variation on above with `_` in substructure
     match (&p.b,)  { (_,) => { } } //~ ERROR     reference to packed field
-    //~^  WARN will become a hard error
     match (u1.a,)  { (_,) => { } } //~ ERROR   [E0133]
     match (&u2.a,) { (_,) => { } } //~ ERROR   [E0133]
 }

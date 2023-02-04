@@ -495,6 +495,7 @@ enum UnusedDelimsCtx {
     ArrayLenExpr,
     AnonConst,
     MatchArmExpr,
+    IndexExpr,
 }
 
 impl From<UnusedDelimsCtx> for &'static str {
@@ -514,6 +515,7 @@ impl From<UnusedDelimsCtx> for &'static str {
             UnusedDelimsCtx::LetScrutineeExpr => "`let` scrutinee expression",
             UnusedDelimsCtx::ArrayLenExpr | UnusedDelimsCtx::AnonConst => "const expression",
             UnusedDelimsCtx::MatchArmExpr => "match arm expression",
+            UnusedDelimsCtx::IndexExpr => "index expression",
         }
     }
 }
@@ -732,6 +734,8 @@ trait UnusedDelimLint {
                 let left = e.span.lo() + rustc_span::BytePos(3);
                 (value, UnusedDelimsCtx::ReturnValue, false, Some(left), None)
             }
+
+            Index(_, ref value) => (value, UnusedDelimsCtx::IndexExpr, false, None, None),
 
             Assign(_, ref value, _) | AssignOp(.., ref value) => {
                 (value, UnusedDelimsCtx::AssignedValue, false, None, None)

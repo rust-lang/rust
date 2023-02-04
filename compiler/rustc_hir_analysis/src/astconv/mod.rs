@@ -2945,12 +2945,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     if r.is_erased() { tcx.lifetimes.re_static } else { r }
                 });
                 let span = ast_ty.span;
-                tcx.sess.emit_err(TypeofReservedKeywordUsed {
-                    span,
-                    ty,
-                    opt_sugg: Some((span, Applicability::MachineApplicable))
-                        .filter(|_| ty.is_suggestable(tcx, false)),
-                });
+                let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false) {
+                    (ty, Some((span, Applicability::MachineApplicable)))
+                } else {
+                    (ty, None)
+                };
+                tcx.sess.emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
 
                 ty
             }

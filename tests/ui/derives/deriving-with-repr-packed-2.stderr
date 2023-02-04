@@ -1,5 +1,5 @@
 error[E0599]: the method `clone` exists for struct `Foo<NonCopy>`, but its trait bounds were not satisfied
-  --> $DIR/deriving-with-repr-packed-2.rs:20:11
+  --> $DIR/deriving-with-repr-packed-2.rs:18:11
    |
 LL | pub struct Foo<T>(T, T, T);
    | -----------------
@@ -19,7 +19,7 @@ LL |     _ = x.clone();
 note: the following trait bounds were not satisfied:
       `NonCopy: Clone`
       `NonCopy: Copy`
-  --> $DIR/deriving-with-repr-packed-2.rs:7:16
+  --> $DIR/deriving-with-repr-packed-2.rs:5:16
    |
 LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
    |                ^^^^^ unsatisfied trait bound introduced in this `derive` macro

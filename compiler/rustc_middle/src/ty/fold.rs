@@ -105,7 +105,7 @@ pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
 /// the infallible methods of this trait to ensure that the two APIs
 /// are coherent.
 pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
+    fn tcx(&self) -> TyCtxt<'tcx>;
 
     fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T>
     where
@@ -610,7 +610,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let kind = entry
-                    .or_insert_with(|| ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon))
+                    .or_insert_with(|| {
+                        ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon(index as u32))
+                    })
                     .expect_ty();
                 self.tcx.mk_ty(ty::Bound(ty::INNERMOST, BoundTy { var, kind }))
             }

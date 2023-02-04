@@ -6,11 +6,6 @@ LL |     convert_result(foo())
    |     |
    |     arguments to this function are incorrect
    |
-note: while checking the return type of the `async fn`
-  --> $DIR/issue-102605.rs:3:19
-   |
-LL | async fn foo() -> Result<(), String> {
-   |                   ^^^^^^^^^^^^^^^^^^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected enum `Result<(), _>`
            found opaque type `impl Future<Output = Result<(), String>>`
 note: function defined here

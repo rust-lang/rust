@@ -98,7 +98,7 @@ impl ::core::marker::Copy for Point { }
 impl ::core::fmt::Debug for Point {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field2_finish(f, "Point", "x",
-            &&self.x, "y", &&self.y)
+            &self.x, "y", &&self.y)
     }
 }
 #[automatically_derived]
@@ -183,7 +183,7 @@ impl ::core::marker::Copy for PackedPoint { }
 impl ::core::fmt::Debug for PackedPoint {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field2_finish(f, "PackedPoint",
-            "x", &&{ self.x }, "y", &&{ self.y })
+            "x", &{ self.x }, "y", &&{ self.y })
     }
 }
 #[automatically_derived]
@@ -209,7 +209,7 @@ impl ::core::marker::StructuralPartialEq for PackedPoint { }
 impl ::core::cmp::PartialEq for PackedPoint {
     #[inline]
     fn eq(&self, other: &PackedPoint) -> bool {
-        { self.x } == { other.x } && { self.y } == { other.y }
+        ({ self.x }) == ({ other.x }) && ({ self.y }) == ({ other.y })
     }
 }
 #[automatically_derived]
@@ -277,8 +277,8 @@ impl ::core::fmt::Debug for Big {
         let names: &'static _ =
             &["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
         let values: &[&dyn ::core::fmt::Debug] =
-            &[&&self.b1, &&self.b2, &&self.b3, &&self.b4, &&self.b5,
-                        &&self.b6, &&self.b7, &&self.b8];
+            &[&self.b1, &self.b2, &self.b3, &self.b4, &self.b5, &self.b6,
+                        &self.b7, &&self.b8];
         ::core::fmt::Formatter::debug_struct_fields_finish(f, "Big", names,
             values)
     }
@@ -565,7 +565,7 @@ impl<T: ::core::fmt::Debug + Trait, U: ::core::fmt::Debug> ::core::fmt::Debug
     for Generic<T, U> where T::A: ::core::fmt::Debug {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field3_finish(f, "Generic", "t",
-            &&self.t, "ta", &&self.ta, "u", &&self.u)
+            &self.t, "ta", &self.ta, "u", &&self.u)
     }
 }
 #[automatically_derived]
@@ -682,7 +682,7 @@ impl<T: ::core::fmt::Debug + ::core::marker::Copy + Trait,
     {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field3_finish(f, "PackedGeneric",
-            &&{ self.0 }, &&{ self.1 }, &&{ self.2 })
+            &{ self.0 }, &{ self.1 }, &&{ self.2 })
     }
 }
 #[automatically_derived]
@@ -718,8 +718,8 @@ impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
     ::core::marker::Copy {
     #[inline]
     fn eq(&self, other: &PackedGeneric<T, U>) -> bool {
-        { self.0 } == { other.0 } && { self.1 } == { other.1 } &&
-            { self.2 } == { other.2 }
+        ({ self.0 }) == ({ other.0 }) && ({ self.1 }) == ({ other.1 }) &&
+            ({ self.2 }) == ({ other.2 })
     }
 }
 #[automatically_derived]
@@ -1084,7 +1084,7 @@ impl ::core::fmt::Debug for Mixed {
                     &__self_0),
             Mixed::S { d1: __self_0, d2: __self_1 } =>
                 ::core::fmt::Formatter::debug_struct_field2_finish(f, "S",
-                    "d1", &__self_0, "d2", &__self_1),
+                    "d1", __self_0, "d2", &__self_1),
         }
     }
 }

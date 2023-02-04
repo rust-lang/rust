@@ -1,8 +1,7 @@
-fn foo(x: bool | i32) -> i32 | f64 {
-//~^ ERROR anonymous enums are not supported
-//~| ERROR anonymous enums are not supported
+fn foo(x: bool) -> i32 {
     match x {
         x: i32 => x, //~ ERROR expected
+        //~^ ERROR mismatched types
         true => 42.,
         false => 0.333,
     }

@@ -203,8 +203,9 @@ parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
     .suggestion_remove_eq = use `..=` instead
     .note = inclusive ranges end with a single equals sign (`..=`)
 
-parse_inclusive_range_match_arrow = unexpected `=>` after open range
-    .suggestion_add_space = add a space between the pattern and `=>`
+parse_inclusive_range_match_arrow = unexpected `>` after inclusive range
+    .label = this is parsed as an inclusive range `..=`
+    .suggestion = add a space between the pattern and `=>`
 
 parse_inclusive_range_no_end = inclusive range with no end
     .suggestion_open_range = use `..` instead
@@ -390,3 +391,191 @@ parse_where_clause_before_tuple_struct_body = where clauses are not allowed befo
     .name_label = while parsing this tuple struct
     .body_label = the struct body
     .suggestion = move the body before the where clause
+
+parse_async_fn_in_2015 = `async fn` is not permitted in Rust 2015
+    .label = to use `async fn`, switch to Rust 2018 or later
+
+parse_async_block_in_2015 = `async` blocks are only allowed in Rust 2018 or later
+
+parse_self_argument_pointer = cannot pass `self` by raw pointer
+    .label = cannot pass `self` by raw pointer
+
+parse_visibility_not_followed_by_item = visibility `{$vis}` is not followed by an item
+    .label = the visibility
+    .help = you likely meant to define an item, e.g., `{$vis} fn foo() {"{}"}`
+
+parse_default_not_followed_by_item = `default` is not followed by an item
+    .label = the `default` qualifier
+    .note = only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
+
+parse_missing_struct_for_struct_definition = missing `struct` for struct definition
+    .suggestion = add `struct` here to parse `{$ident}` as a public struct
+
+parse_missing_fn_for_function_definition = missing `fn` for function definition
+    .suggestion = add `fn` here to parse `{$ident}` as a public function
+
+parse_missing_fn_for_method_definition = missing `fn` for method definition
+    .suggestion = add `fn` here to parse `{$ident}` as a public method
+
+parse_ambiguous_missing_keyword_for_item_definition = missing `fn` or `struct` for function or struct definition
+    .suggestion = if you meant to call a macro, try
+    .help = if you meant to call a macro, remove the `pub` and add a trailing `!` after the identifier
+
+parse_missing_trait_in_trait_impl = missing trait in a trait impl
+    .suggestion_add_trait = add a trait here
+    .suggestion_remove_for = for an inherent impl, drop this `for`
+
+parse_missing_for_in_trait_impl = missing `for` in a trait impl
+    .suggestion = add `for` here
+
+parse_expected_trait_in_trait_impl_found_type = expected a trait, found type
+
+parse_non_item_in_item_list = non-item in item list
+    .suggestion_use_const_not_let = consider using `const` instead of `let` for associated const
+    .label_list_start = item list starts here
+    .label_non_item = non-item starts here
+    .label_list_end = item list ends here
+    .suggestion_remove_semicolon = consider removing this semicolon
+
+parse_bounds_not_allowed_on_trait_aliases = bounds are not allowed on trait aliases
+
+parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
+parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
+
+parse_associated_static_item_not_allowed = associated `static` items are not allowed
+
+parse_extern_crate_name_with_dashes = crate name using dashes are not valid in `extern crate` statements
+    .label = dash-separated idents are not valid
+    .suggestion = if the original crate name uses dashes you need to use underscores in the code
+
+parse_extern_item_cannot_be_const = extern items cannot be `const`
+    .suggestion = try using a static value
+    .note = for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+parse_const_global_cannot_be_mutable = const globals cannot be mutable
+    .label = cannot be mutable
+    .suggestion = you might want to declare a static instead
+
+parse_missing_const_type = missing type for `{$kind}` item
+    .suggestion = provide a type for the item
+
+parse_enum_struct_mutually_exclusive = `enum` and `struct` are mutually exclusive
+    .suggestion = replace `enum struct` with
+
+parse_unexpected_token_after_struct_name = expected `where`, `{"{"}`, `(`, or `;` after struct name
+parse_unexpected_token_after_struct_name_found_reserved_identifier = expected `where`, `{"{"}`, `(`, or `;` after struct name, found reserved identifier `{$token}`
+parse_unexpected_token_after_struct_name_found_keyword = expected `where`, `{"{"}`, `(`, or `;` after struct name, found keyword `{$token}`
+parse_unexpected_token_after_struct_name_found_reserved_keyword = expected `where`, `{"{"}`, `(`, or `;` after struct name, found reserved keyword `{$token}`
+parse_unexpected_token_after_struct_name_found_doc_comment = expected `where`, `{"{"}`, `(`, or `;` after struct name, found doc comment `{$token}`
+parse_unexpected_token_after_struct_name_found_other = expected `where`, `{"{"}`, `(`, or `;` after struct name, found `{$token}`
+
+parse_unexpected_self_in_generic_parameters = unexpected keyword `Self` in generic parameters
+    .note = you cannot use `Self` as a generic parameter because it is reserved for associated items
+
+parse_multiple_where_clauses = cannot define duplicate `where` clauses on an item
+    .label = previous `where` clause starts here
+    .suggestion = consider joining the two `where` clauses into one
+
+parse_nonterminal_expected_item_keyword = expected an item keyword
+parse_nonterminal_expected_statement = expected a statement
+parse_nonterminal_expected_ident = expected ident, found `{$token}`
+parse_nonterminal_expected_lifetime = expected a lifetime, found `{$token}`
+
+parse_or_pattern_not_allowed_in_let_binding = top-level or-patterns are not allowed in `let` bindings
+parse_or_pattern_not_allowed_in_fn_parameters = top-level or-patterns are not allowed in function parameters
+parse_sugg_remove_leading_vert_in_pattern = remove the `|`
+parse_sugg_wrap_pattern_in_parens = wrap the pattern in parentheses
+
+parse_note_pattern_alternatives_use_single_vert = alternatives in or-patterns are separated with `|`, not `||`
+
+parse_unexpected_vert_vert_before_function_parameter = unexpected `||` before function parameter
+    .suggestion = remove the `||`
+
+parse_label_while_parsing_or_pattern_here = while parsing this or-pattern starting here
+
+parse_unexpected_vert_vert_in_pattern = unexpected token `||` in pattern
+    .suggestion = use a single `|` to separate multiple alternative patterns
+
+parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
+    .suggestion = remove the `{$token}`
+
+parse_dotdotdot_rest_pattern = unexpected `...`
+    .label = not a valid pattern
+    .suggestion = for a rest pattern, use `..` instead of `...`
+
+parse_pattern_on_wrong_side_of_at = pattern on wrong side of `@`
+    .label_pattern = pattern on the left, should be on the right
+    .label_binding = binding on the right, should be on the left
+    .suggestion = switch the order
+
+parse_expected_binding_left_of_at = left-hand side of `@` must be a binding
+    .label_lhs = interpreted as a pattern, not a binding
+    .label_rhs = also a pattern
+    .note = bindings are `x`, `mut x`, `ref x`, and `ref mut x`
+
+parse_ambiguous_range_pattern = the range pattern here has ambiguous interpretation
+    .suggestion = add parentheses to clarify the precedence
+
+parse_unexpected_lifetime_in_pattern = unexpected lifetime `{$symbol}` in pattern
+    .suggestion = remove the lifetime
+
+parse_ref_mut_order_incorrect = the order of `mut` and `ref` is incorrect
+    .suggestion = try switching the order
+
+parse_mut_on_nested_ident_pattern = `mut` must be attached to each individual binding
+    .suggestion = add `mut` to each binding
+parse_mut_on_non_ident_pattern = `mut` must be followed by a named binding
+    .suggestion = remove the `mut` prefix
+parse_note_mut_pattern_usage = `mut` may be followed by `variable` and `variable @ pattern`
+
+parse_repeated_mut_in_pattern = `mut` on a binding may not be repeated
+    .suggestion = remove the additional `mut`s
+
+parse_dot_dot_dot_range_to_pattern_not_allowed = range-to patterns with `...` are not allowed
+    .suggestion = use `..=` instead
+
+parse_enum_pattern_instead_of_identifier = expected identifier, found enum pattern
+
+parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `{$token_str}`
+    .suggestion = to omit remaining fields, use `..`
+
+parse_expected_comma_after_pattern_field = expected `,`
+
+parse_return_types_use_thin_arrow = return types are denoted using `->`
+    .suggestion = use `->` instead
+
+parse_need_plus_after_trait_object_lifetime = lifetime in trait object type must be followed by `+`
+
+parse_expected_mut_or_const_in_raw_pointer_type = expected `mut` or `const` keyword in raw pointer type
+    .suggestion = add `mut` or `const` here
+
+parse_lifetime_after_mut = lifetime must precede `mut`
+    .suggestion = place the lifetime before `mut`
+
+parse_dyn_after_mut = `mut` must precede `dyn`
+    .suggestion = place `mut` before `dyn`
+
+parse_fn_pointer_cannot_be_const = an `fn` pointer type cannot be `const`
+    .label = `const` because of this
+    .suggestion = remove the `const` qualifier
+
+parse_fn_pointer_cannot_be_async = an `fn` pointer type cannot be `async`
+    .label = `async` because of this
+    .suggestion = remove the `async` qualifier
+
+parse_nested_c_variadic_type = C-variadic type `...` may not be nested inside another type
+
+parse_invalid_dyn_keyword = invalid `dyn` keyword
+    .help = `dyn` is only needed at the start of a trait `+`-separated list
+    .suggestion = remove this keyword
+
+parse_negative_bounds_not_supported = negative bounds are not supported
+    .label = negative bounds are not supported
+    .suggestion = {$num_bounds ->
+            [one] remove the bound
+           *[other] remove the bounds
+        }
+
+parse_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
+parse_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
+parse_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide

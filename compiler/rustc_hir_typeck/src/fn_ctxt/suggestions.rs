@@ -3,7 +3,7 @@ use super::FnCtxt;
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
-use rustc_errors::{Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{fluent, Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
@@ -414,11 +414,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Adt(adt, _) = peeled.kind()
                     && Some(adt.did()) == self.tcx.lang_items().string()
                 {
+                    let sugg = if ref_cnt == 0 {
+                        ".as_deref()"
+                    } else {
+                        ".map(|x| x.as_str())"
+                    };
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
-                        "try converting the passed type into a `&str`",
-                        format!(".map(|x| &*{}x)", "*".repeat(ref_cnt)),
-                        Applicability::MaybeIncorrect,
+                        fluent::hir_typeck_convert_to_str,
+                        sugg,
+                        Applicability::MachineApplicable,
                     );
                     return true;
                 }
@@ -682,7 +687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return true;
             }
             &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() => {
-                if found.is_suggestable(self.tcx, false) {
+                if let Some(found) = found.make_suggestable(self.tcx, false) {
                     err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
                     return true;
                 } else if let ty::Closure(_, substs) = found.kind()

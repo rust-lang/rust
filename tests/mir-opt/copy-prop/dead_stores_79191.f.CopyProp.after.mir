@@ -11,7 +11,6 @@ fn f(_1: usize) -> usize {
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/dead_stores_79191.rs:+1:9: +1:10
         _2 = _1;                         // scope 0 at $DIR/dead_stores_79191.rs:+1:13: +1:14
         _1 = const 5_usize;              // scope 1 at $DIR/dead_stores_79191.rs:+2:5: +2:10
         _1 = _2;                         // scope 1 at $DIR/dead_stores_79191.rs:+3:5: +3:10

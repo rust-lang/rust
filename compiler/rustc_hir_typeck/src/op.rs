@@ -335,7 +335,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 format!("cannot divide `{lhs_ty}` by `{rhs_ty}`")
                             }
                             hir::BinOpKind::Rem => {
-                                format!("cannot mod `{lhs_ty}` by `{rhs_ty}`")
+                                format!(
+                                    "cannot calculate the remainder of `{lhs_ty}` divided by `{rhs_ty}`"
+                                )
                             }
                             hir::BinOpKind::BitAnd => {
                                 format!("no implementation for `{lhs_ty} & {rhs_ty}`")
@@ -488,9 +490,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             if let Some(output_def_id) = output_def_id
                                                 && let Some(trait_def_id) = trait_def_id
                                                 && self.tcx.parent(output_def_id) == trait_def_id
-                                                && output_ty.is_suggestable(self.tcx, false)
+                                                && let Some(output_ty) = output_ty.make_suggestable(self.tcx, false)
                                             {
-                                                Some(("Output", *output_ty))
+                                                Some(("Output", output_ty))
                                             } else {
                                                 None
                                             }

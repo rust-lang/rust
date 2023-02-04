@@ -174,6 +174,9 @@ impl CheckAttrVisitor<'_> {
                 sym::rustc_has_incoherent_inherent_impls => {
                     self.check_has_incoherent_inherent_impls(&attr, span, target)
                 }
+                sym::ffi_pure => self.check_ffi_pure(attr.span, attrs, target),
+                sym::ffi_const => self.check_ffi_const(attr.span, target),
+                sym::ffi_returns_twice => self.check_ffi_returns_twice(attr.span, target),
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
@@ -864,33 +867,39 @@ impl CheckAttrVisitor<'_> {
         target: Target,
         specified_inline: &mut Option<(bool, Span)>,
     ) -> bool {
-        if target == Target::Use || target == Target::ExternCrate {
-            let do_inline = meta.name_or_empty() == sym::inline;
-            if let Some((prev_inline, prev_span)) = *specified_inline {
-                if do_inline != prev_inline {
-                    let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
-                    spans.push_span_label(prev_span, fluent::passes_doc_inline_conflict_first);
-                    spans.push_span_label(meta.span(), fluent::passes_doc_inline_conflict_second);
-                    self.tcx.sess.emit_err(errors::DocKeywordConflict { spans });
-                    return false;
+        match target {
+            Target::Use | Target::ExternCrate => {
+                let do_inline = meta.name_or_empty() == sym::inline;
+                if let Some((prev_inline, prev_span)) = *specified_inline {
+                    if do_inline != prev_inline {
+                        let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
+                        spans.push_span_label(prev_span, fluent::passes_doc_inline_conflict_first);
+                        spans.push_span_label(
+                            meta.span(),
+                            fluent::passes_doc_inline_conflict_second,
+                        );
+                        self.tcx.sess.emit_err(errors::DocKeywordConflict { spans });
+                        return false;
+                    }
+                    true
+                } else {
+                    *specified_inline = Some((do_inline, meta.span()));
+                    true
                 }
-                true
-            } else {
-                *specified_inline = Some((do_inline, meta.span()));
-                true
             }
-        } else {
-            self.tcx.emit_spanned_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                errors::DocInlineOnlyUse {
-                    attr_span: meta.span(),
-                    item_span: (attr.style == AttrStyle::Outer)
-                        .then(|| self.tcx.hir().span(hir_id)),
-                },
-            );
-            false
+            _ => {
+                self.tcx.emit_spanned_lint(
+                    INVALID_DOC_ATTRIBUTES,
+                    hir_id,
+                    meta.span(),
+                    errors::DocInlineOnlyUse {
+                        attr_span: meta.span(),
+                        item_span: (attr.style == AttrStyle::Outer)
+                            .then(|| self.tcx.hir().span(hir_id)),
+                    },
+                );
+                false
+            }
         }
     }
 
@@ -1137,7 +1146,7 @@ impl CheckAttrVisitor<'_> {
                                     errors::DocTestUnknownInclude {
                                         path,
                                         value: value.to_string(),
-                                        inner: if attr.style == AttrStyle::Inner { "!" } else { "" },
+                                        inner: match attr.style { AttrStyle::Inner=>  "!" , AttrStyle::Outer => "" },
                                         sugg: (attr.meta().unwrap().span, applicability),
                                     }
                                 );
@@ -1204,6 +1213,38 @@ impl CheckAttrVisitor<'_> {
                     .emit_err(errors::HasIncoherentInherentImpl { attr_span: attr.span, span });
                 false
             }
+        }
+    }
+
+    fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute], target: Target) -> bool {
+        if target != Target::ForeignFn {
+            self.tcx.sess.emit_err(errors::FfiPureInvalidTarget { attr_span });
+            return false;
+        }
+        if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
+            // `#[ffi_const]` functions cannot be `#[ffi_pure]`
+            self.tcx.sess.emit_err(errors::BothFfiConstAndPure { attr_span });
+            false
+        } else {
+            true
+        }
+    }
+
+    fn check_ffi_const(&self, attr_span: Span, target: Target) -> bool {
+        if target == Target::ForeignFn {
+            true
+        } else {
+            self.tcx.sess.emit_err(errors::FfiConstInvalidTarget { attr_span });
+            false
+        }
+    }
+
+    fn check_ffi_returns_twice(&self, attr_span: Span, target: Target) -> bool {
+        if target == Target::ForeignFn {
+            true
+        } else {
+            self.tcx.sess.emit_err(errors::FfiReturnsTwiceInvalidTarget { attr_span });
+            false
         }
     }
 

@@ -62,7 +62,7 @@ LL | struct A;
 note: the trait `Div` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
-error[E0369]: cannot mod `A` by `A`
+error[E0369]: cannot calculate the remainder of `A` divided by `A`
   --> $DIR/issue-28837.rs:14:7
    |
 LL |     a % a;

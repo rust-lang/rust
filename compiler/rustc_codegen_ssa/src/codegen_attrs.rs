@@ -85,55 +85,11 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::rustc_allocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
         } else if attr.has_name(sym::ffi_returns_twice) {
-            if tcx.is_foreign_item(did) {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
-            } else {
-                // `#[ffi_returns_twice]` is only allowed `extern fn`s.
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0724,
-                    "`#[ffi_returns_twice]` may only be used on foreign functions"
-                )
-                .emit();
-            }
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
         } else if attr.has_name(sym::ffi_pure) {
-            if tcx.is_foreign_item(did) {
-                if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
-                    // `#[ffi_const]` functions cannot be `#[ffi_pure]`
-                    struct_span_err!(
-                        tcx.sess,
-                        attr.span,
-                        E0757,
-                        "`#[ffi_const]` function cannot be `#[ffi_pure]`"
-                    )
-                    .emit();
-                } else {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
-                }
-            } else {
-                // `#[ffi_pure]` is only allowed on foreign functions
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0755,
-                    "`#[ffi_pure]` may only be used on foreign functions"
-                )
-                .emit();
-            }
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
         } else if attr.has_name(sym::ffi_const) {
-            if tcx.is_foreign_item(did) {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
-            } else {
-                // `#[ffi_const]` is only allowed on foreign functions
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0756,
-                    "`#[ffi_const]` may only be used on foreign functions"
-                )
-                .emit();
-            }
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
         } else if attr.has_name(sym::rustc_nounwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
         } else if attr.has_name(sym::rustc_reallocator) {
@@ -363,74 +319,62 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 }
             }
         } else if attr.has_name(sym::instruction_set) {
-            codegen_fn_attrs.instruction_set = match attr.meta_kind() {
-                Some(MetaItemKind::List(ref items)) => match items.as_slice() {
-                    [NestedMetaItem::MetaItem(set)] => {
-                        let segments =
-                            set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
-                        match segments.as_slice() {
-                            [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
-                                if !tcx.sess.target.has_thumb_interworking {
-                                    struct_span_err!(
-                                        tcx.sess.diagnostic(),
-                                        attr.span,
-                                        E0779,
-                                        "target does not support `#[instruction_set]`"
-                                    )
-                                    .emit();
-                                    None
-                                } else if segments[1] == sym::a32 {
-                                    Some(InstructionSetAttr::ArmA32)
-                                } else if segments[1] == sym::t32 {
-                                    Some(InstructionSetAttr::ArmT32)
-                                } else {
-                                    unreachable!()
-                                }
-                            }
-                            _ => {
+            codegen_fn_attrs.instruction_set = attr.meta_item_list().and_then(|l| match &l[..] {
+                [NestedMetaItem::MetaItem(set)] => {
+                    let segments =
+                        set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
+                    match segments.as_slice() {
+                        [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
+                            if !tcx.sess.target.has_thumb_interworking {
                                 struct_span_err!(
                                     tcx.sess.diagnostic(),
                                     attr.span,
                                     E0779,
-                                    "invalid instruction set specified",
+                                    "target does not support `#[instruction_set]`"
                                 )
                                 .emit();
                                 None
+                            } else if segments[1] == sym::a32 {
+                                Some(InstructionSetAttr::ArmA32)
+                            } else if segments[1] == sym::t32 {
+                                Some(InstructionSetAttr::ArmT32)
+                            } else {
+                                unreachable!()
                             }
                         }
+                        _ => {
+                            struct_span_err!(
+                                tcx.sess.diagnostic(),
+                                attr.span,
+                                E0779,
+                                "invalid instruction set specified",
+                            )
+                            .emit();
+                            None
+                        }
                     }
-                    [] => {
-                        struct_span_err!(
-                            tcx.sess.diagnostic(),
-                            attr.span,
-                            E0778,
-                            "`#[instruction_set]` requires an argument"
-                        )
-                        .emit();
-                        None
-                    }
-                    _ => {
-                        struct_span_err!(
-                            tcx.sess.diagnostic(),
-                            attr.span,
-                            E0779,
-                            "cannot specify more than one instruction set"
-                        )
-                        .emit();
-                        None
-                    }
-                },
-                _ => {
+                }
+                [] => {
                     struct_span_err!(
                         tcx.sess.diagnostic(),
                         attr.span,
                         E0778,
-                        "must specify an instruction set"
+                        "`#[instruction_set]` requires an argument"
                     )
                     .emit();
                     None
                 }
-            };
+                _ => {
+                    struct_span_err!(
+                        tcx.sess.diagnostic(),
+                        attr.span,
+                        E0779,
+                        "cannot specify more than one instruction set"
+                    )
+                    .emit();
+                    None
+                }
+            })
         } else if attr.has_name(sym::repr) {
             codegen_fn_attrs.alignment = match attr.meta_item_list() {
                 Some(items) => match items.as_slice() {

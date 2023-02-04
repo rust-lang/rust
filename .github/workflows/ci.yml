@@ -37,6 +37,7 @@ jobs:
     name: PR
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
@@ -162,6 +163,7 @@ jobs:
     name: auto
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -325,7 +327,7 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-            os: macos-12-xl
+            os: macos-latest
           - name: dist-apple-various
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim"
@@ -336,7 +338,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
-            os: macos-12-xl
+            os: macos-latest
           - name: dist-x86_64-apple-alt
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths"
@@ -347,7 +349,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
-            os: macos-12-xl
+            os: macos-latest
           - name: x86_64-apple-1
             env:
               SCRIPT: "./x.py --stage 2 test --exclude tests/ui --exclude tests/rustdoc --exclude tests/run-make-fulldeps"
@@ -358,7 +360,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
-            os: macos-12-xl
+            os: macos-latest
           - name: x86_64-apple-2
             env:
               SCRIPT: "./x.py --stage 2 test tests/ui tests/rustdoc tests/run-make-fulldeps"
@@ -369,7 +371,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
-            os: macos-12-xl
+            os: macos-latest
           - name: dist-aarch64-apple
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --stage 2"
@@ -384,7 +386,7 @@ jobs:
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
               JEMALLOC_SYS_WITH_LG_PAGE: 14
-            os: macos-12-xl
+            os: macos-latest
           - name: x86_64-msvc-1
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
@@ -584,6 +586,7 @@ jobs:
     name: try
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"

@@ -462,7 +462,9 @@ impl<'a> Resolver<'a> {
 
         let first_name = match path.get(0) {
             // In the 2018 edition this lint is a hard error, so nothing to do
-            Some(seg) if seg.ident.span.rust_2015() && self.session.rust_2015() => seg.ident.name,
+            Some(seg) if seg.ident.span.is_rust_2015() && self.session.is_rust_2015() => {
+                seg.ident.name
+            }
             _ => return,
         };
 
@@ -1552,12 +1554,12 @@ impl<'a> Resolver<'a> {
             if b.is_extern_crate() && ident.span.rust_2018() {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
-            if misc == AmbiguityErrorMisc::SuggestCrate {
-                help_msgs
-                    .push(format!("use `crate::{ident}` to refer to this {thing} unambiguously"))
-            } else if misc == AmbiguityErrorMisc::SuggestSelf {
-                help_msgs
-                    .push(format!("use `self::{ident}` to refer to this {thing} unambiguously"))
+            match misc {
+                AmbiguityErrorMisc::SuggestCrate => help_msgs
+                    .push(format!("use `crate::{ident}` to refer to this {thing} unambiguously")),
+                AmbiguityErrorMisc::SuggestSelf => help_msgs
+                    .push(format!("use `self::{ident}` to refer to this {thing} unambiguously")),
+                AmbiguityErrorMisc::FromPrelude | AmbiguityErrorMisc::None => {}
             }
 
             err.span_note(b.span, &note_msg);
@@ -1717,7 +1719,7 @@ impl<'a> Resolver<'a> {
                         Applicability::MaybeIncorrect,
                     )),
                 )
-            } else if self.session.edition() == Edition::Edition2015 {
+            } else if self.session.is_rust_2015() {
                 (
                     format!("maybe a missing crate `{ident}`?"),
                     Some((
@@ -1996,7 +1998,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
-        if path[1].ident.span.rust_2015() {
+        if path[1].ident.span.is_rust_2015() {
             return None;
         }
 

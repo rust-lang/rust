@@ -273,7 +273,13 @@ impl<'a> Iterator for Parser<'a> {
                                 );
                             }
                         } else {
-                            self.suggest_positional_arg_instead_of_captured_arg(arg);
+                            if let Some(&(_, maybe)) = self.cur.peek() {
+                                if maybe == '?' {
+                                    self.suggest_format();
+                                } else {
+                                    self.suggest_positional_arg_instead_of_captured_arg(arg);
+                                }
+                            }
                         }
                         Some(NextArgument(Box::new(arg)))
                     }
@@ -830,6 +836,27 @@ impl<'a> Parser<'a> {
         }
 
         if found { Some(cur) } else { None }
+    }
+
+    fn suggest_format(&mut self) {
+        if let (Some(pos), Some(_)) = (self.consume_pos('?'), self.consume_pos(':')) {
+            let word = self.word();
+            let _end = self.current_pos();
+            let pos = self.to_span_index(pos);
+            self.errors.insert(
+                0,
+                ParseError {
+                    description: "expected format parameter to occur after `:`".to_owned(),
+                    note: Some(
+                        format!("`?` comes after `:`, try `{}:{}` instead", word, "?").to_owned(),
+                    ),
+                    label: "expected `?` to occur after `:`".to_owned(),
+                    span: pos.to(pos),
+                    secondary_label: None,
+                    should_be_replaced_with_positional_argument: false,
+                },
+            );
+        }
     }
 
     fn suggest_positional_arg_instead_of_captured_arg(&mut self, arg: Argument<'a>) {

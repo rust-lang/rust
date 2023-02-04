@@ -265,7 +265,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let ident = path.segments.get(0).expect("empty path in visibility").ident;
                 let crate_root = if ident.is_path_segment_keyword() {
                     None
-                } else if ident.span.rust_2015() {
+                } else if ident.span.is_rust_2015() {
                     Some(Segment::from_ident(Ident::new(
                         kw::PathRoot,
                         path.span.shrink_to_lo().with_ctxt(ident.span.ctxt()),
@@ -298,14 +298,15 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             self.r.record_partial_res(id, PartialRes::new(res));
                         }
                         if module.is_normal() {
-                            if res == Res::Err {
-                                Ok(ty::Visibility::Public)
-                            } else {
-                                let vis = ty::Visibility::Restricted(res.def_id());
-                                if self.r.is_accessible_from(vis, parent_scope.module) {
-                                    Ok(vis.expect_local())
-                                } else {
-                                    Err(VisResolutionError::AncestorOnly(path.span))
+                            match res {
+                                Res::Err => Ok(ty::Visibility::Public),
+                                _ => {
+                                    let vis = ty::Visibility::Restricted(res.def_id());
+                                    if self.r.is_accessible_from(vis, parent_scope.module) {
+                                        Ok(vis.expect_local())
+                                    } else {
+                                        Err(VisResolutionError::AncestorOnly(path.span))
+                                    }
                                 }
                             }
                         } else {
@@ -434,10 +435,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         // appears, so imports in braced groups can have roots prepended independently.
         let is_glob = matches!(use_tree.kind, ast::UseTreeKind::Glob);
         let crate_root = match prefix_iter.peek() {
-            Some(seg) if !seg.ident.is_path_segment_keyword() && seg.ident.span.rust_2015() => {
+            Some(seg) if !seg.ident.is_path_segment_keyword() && seg.ident.span.is_rust_2015() => {
                 Some(seg.ident.span.ctxt())
             }
-            None if is_glob && use_tree.span.rust_2015() => Some(use_tree.span.ctxt()),
+            None if is_glob && use_tree.span.is_rust_2015() => Some(use_tree.span.ctxt()),
             _ => None,
         }
         .map(|ctxt| {

@@ -22,7 +22,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::const_closure::ConstFnMutClosure;
 use crate::marker::Destruct;
 
 use self::Ordering::*;
@@ -1291,17 +1290,7 @@ where
     F: ~const Destruct,
     K: ~const Destruct,
 {
-    const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
-        f: &mut F,
-        (v1, v2): (&T, &T),
-    ) -> Ordering
-    where
-        T: ~const Destruct,
-        K: ~const Destruct,
-    {
-        f(v1).cmp(&f(v2))
-    }
-    max_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
+    max_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types

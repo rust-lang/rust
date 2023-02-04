@@ -355,7 +355,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             }
 
             clean::ImportItem(ref import) => {
-                let (stab, stab_tags) = if let Some(import_def_id) = import.source.did {
+                let stab_tags = if let Some(import_def_id) = import.source.did {
                     let ast_attrs = cx.tcx().get_attrs_unchecked(import_def_id);
                     let import_attrs = Box::new(clean::Attributes::from_ast(ast_attrs));
 
@@ -367,14 +367,11 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         ..myitem.clone()
                     };
 
-                    let stab = import_item.stability_class(cx.tcx());
                     let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()));
-                    (stab, stab_tags)
+                    stab_tags
                 } else {
-                    (None, None)
+                    None
                 };
-
-                let add = if stab.is_some() { " " } else { "" };
 
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 let id = match import.kind {
@@ -391,11 +388,10 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 };
                 write!(
                     w,
-                    "<div class=\"item-left{add}{stab}\"{id}>\
+                    "<div class=\"item-left\"{id}>\
                          <code>{vis}{imp}</code>\
                      </div>\
                      {stab_tags_before}{stab_tags}{stab_tags_after}",
-                    stab = stab.unwrap_or_default(),
                     vis = visibility_print_with_space(myitem.visibility(tcx), myitem.item_id, cx),
                     imp = import.print(cx),
                 );
@@ -417,9 +413,6 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     _ => "",
                 };
 
-                let stab = myitem.stability_class(cx.tcx());
-                let add = if stab.is_some() { " " } else { "" };
-
                 let visibility_emoji = match myitem.visibility(tcx) {
                     Some(ty::Visibility::Restricted(_)) => {
                         "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
@@ -437,7 +430,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 };
                 write!(
                     w,
-                    "<div class=\"item-left{add}{stab}\">\
+                    "<div class=\"item-left\">\
                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
                         {visibility_emoji}\
                         {unsafety_flag}\
@@ -448,8 +441,6 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     visibility_emoji = visibility_emoji,
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     class = myitem.type_(),
-                    add = add,
-                    stab = stab.unwrap_or_default(),
                     unsafety_flag = unsafety_flag,
                     href = item_path(myitem.type_(), myitem.name.unwrap().as_str()),
                     title = [myitem.type_().to_string(), full_path(cx, myitem)]
@@ -1166,7 +1157,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
 fn print_tuple_struct_fields(w: &mut Buffer, cx: &Context<'_>, s: &[clean::Item]) {
     for (i, ty) in s.iter().enumerate() {
         if i > 0 {
-            w.write_str(",&nbsp;");
+            w.write_str(", ");
         }
         match *ty.kind {
             clean::StrippedItem(box clean::StructFieldItem(_)) => w.write_str("_"),
@@ -1306,7 +1297,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                                 "<div class=\"sub-variant-field\">\
                                  <span id=\"{id}\" class=\"small-section-header\">\
                                      <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                                     <code>{f}:&nbsp;{t}</code>\
+                                     <code>{f}: {t}</code>\
                                  </span>",
                                 id = id,
                                 f = field.name.unwrap(),

@@ -74,37 +74,26 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
             .expect("owning item has no entry");
 
         if max != self.hir_ids_seen.len() - 1 {
-            // Collect the missing ItemLocalIds
-            let missing: Vec<_> = (0..=max as u32)
-                .filter(|&i| !self.hir_ids_seen.contains(ItemLocalId::from_u32(i)))
+            let hir = self.tcx.hir();
+            let pretty_owner = hir.def_path(owner.def_id).to_string_no_crate_verbose();
+
+            let missing_items: Vec<_> = (0..=max as u32)
+                .map(|i| ItemLocalId::from_u32(i))
+                .filter(|&local_id| !self.hir_ids_seen.contains(local_id))
+                .map(|local_id| hir.node_to_string(HirId { owner, local_id }))
                 .collect();
 
-            // Try to map those to something more useful
-            let mut missing_items = Vec::with_capacity(missing.len());
+            let seen_items: Vec<_> = self
+                .hir_ids_seen
+                .iter()
+                .map(|local_id| hir.node_to_string(HirId { owner, local_id }))
+                .collect();
 
-            for local_id in missing {
-                let hir_id = HirId { owner, local_id: ItemLocalId::from_u32(local_id) };
-
-                trace!("missing hir id {:#?}", hir_id);
-
-                missing_items.push(format!(
-                    "[local_id: {}, owner: {}]",
-                    local_id,
-                    self.tcx.hir().def_path(owner.def_id).to_string_no_crate_verbose()
-                ));
-            }
             self.error(|| {
                 format!(
                     "ItemLocalIds not assigned densely in {}. \
-                Max ItemLocalId = {}, missing IDs = {:#?}; seens IDs = {:#?}",
-                    self.tcx.hir().def_path(owner.def_id).to_string_no_crate_verbose(),
-                    max,
-                    missing_items,
-                    self.hir_ids_seen
-                        .iter()
-                        .map(|local_id| HirId { owner, local_id })
-                        .map(|h| format!("({:?} {})", h, self.tcx.hir().node_to_string(h)))
-                        .collect::<Vec<_>>()
+                Max ItemLocalId = {}, missing IDs = {:#?}; seen IDs = {:#?}",
+                    pretty_owner, max, missing_items, seen_items
                 )
             });
         }

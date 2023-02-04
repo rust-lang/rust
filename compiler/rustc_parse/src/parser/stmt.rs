@@ -1,7 +1,7 @@
 use super::attr::InnerAttrForbiddenReason;
 use super::diagnostics::AttemptLocalParseRecovery;
 use super::expr::LhsExpr;
-use super::pat::RecoverComma;
+use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
 use super::TrailingToken;
 use super::{
@@ -93,11 +93,12 @@ impl<'a> Parser<'a> {
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
             // Also, we avoid stealing syntax from `parse_item_`.
-            if force_collect == ForceCollect::Yes {
-                self.collect_tokens_no_attrs(|this| this.parse_stmt_path_start(lo, attrs))
-            } else {
-                self.parse_stmt_path_start(lo, attrs)
-            }?
+            match force_collect {
+                ForceCollect::Yes => {
+                    self.collect_tokens_no_attrs(|this| this.parse_stmt_path_start(lo, attrs))?
+                }
+                ForceCollect::No => self.parse_stmt_path_start(lo, attrs)?,
+            }
         } else if let Some(item) = self.parse_item_common(
             attrs.clone(),
             false,
@@ -113,13 +114,12 @@ impl<'a> Parser<'a> {
             self.mk_stmt(lo, StmtKind::Empty)
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
-            let e = if force_collect == ForceCollect::Yes {
-                self.collect_tokens_no_attrs(|this| {
+            let e = match force_collect {
+                ForceCollect::Yes => self.collect_tokens_no_attrs(|this| {
                     this.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))
-                })
-            } else {
-                self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))
-            }?;
+                })?,
+                ForceCollect::No => self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))?,
+            };
             if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(kw::Else) {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
@@ -275,7 +275,8 @@ impl<'a> Parser<'a> {
         }
 
         self.report_invalid_identifier_error()?;
-        let (pat, colon) = self.parse_pat_before_ty(None, RecoverComma::Yes, "`let` bindings")?;
+        let (pat, colon) =
+            self.parse_pat_before_ty(None, RecoverComma::Yes, PatternLocation::LetBinding)?;
 
         let (err, ty) = if colon {
             // Save the state of the parser before parsing type normally, in case there is a `:`

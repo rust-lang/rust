@@ -240,6 +240,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::AssocKind,
     crate::ty::AliasKind,
     crate::ty::Placeholder<crate::ty::BoundRegionKind>,
+    crate::ty::Placeholder<crate::ty::BoundTyKind>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
     crate::ty::InferTy,

@@ -20,7 +20,25 @@ pub enum SizeKind {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum FieldKind {
+    AdtField,
+    Upvar,
+    GeneratorLocal,
+}
+
+impl std::fmt::Display for FieldKind {
+    fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FieldKind::AdtField => write!(w, "field"),
+            FieldKind::Upvar => write!(w, "upvar"),
+            FieldKind::GeneratorLocal => write!(w, "local"),
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FieldInfo {
+    pub kind: FieldKind,
     pub name: Symbol,
     pub offset: u64,
     pub size: u64,
@@ -145,7 +163,7 @@ impl CodeStats {
                 fields.sort_by_key(|f| (f.offset, f.size));
 
                 for field in fields {
-                    let FieldInfo { ref name, offset, size, align } = field;
+                    let FieldInfo { kind, ref name, offset, size, align } = field;
 
                     if offset > min_offset {
                         let pad = offset - min_offset;
@@ -155,16 +173,16 @@ impl CodeStats {
                     if offset < min_offset {
                         // If this happens it's probably a union.
                         println!(
-                            "print-type-size {indent}field `.{name}`: {size} bytes, \
+                            "print-type-size {indent}{kind} `.{name}`: {size} bytes, \
                                   offset: {offset} bytes, \
                                   alignment: {align} bytes"
                         );
                     } else if info.packed || offset == min_offset {
-                        println!("print-type-size {indent}field `.{name}`: {size} bytes");
+                        println!("print-type-size {indent}{kind} `.{name}`: {size} bytes");
                     } else {
                         // Include field alignment in output only if it caused padding injection
                         println!(
-                            "print-type-size {indent}field `.{name}`: {size} bytes, \
+                            "print-type-size {indent}{kind} `.{name}`: {size} bytes, \
                                   alignment: {align} bytes"
                         );
                     }

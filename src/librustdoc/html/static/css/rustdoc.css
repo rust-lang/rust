@@ -1,3 +1,11 @@
+/* When static files are updated, their suffixes need to be updated.
+	1. In the top directory run:
+		./x.py doc --stage 1 library/core
+	2. Find the directory containing files named with updated suffixes:
+		find build -path '*'/stage1-std/'*'/static.files
+	3. Copy the filenames with updated suffixes from the directory.
+*/
+
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
 @font-face {
 	font-family: 'Fira Sans';
@@ -22,7 +30,7 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif 4'),
-		url("SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2") format("woff2");
+		url("SourceSerif4-Regular-46f98efaafac5295.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -30,7 +38,7 @@
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif 4 Italic'),
-		url("SourceSerif4-It-d034fe4ef9d0fa00.ttf.woff2") format("woff2");
+		url("SourceSerif4-It-acdfaf1a8af734b1.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -38,7 +46,7 @@
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif 4 Bold'),
-		url("SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2") format("woff2");
+		url("SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -176,6 +184,7 @@ h4.code-header {
 	font-weight: 600;
 	margin: 0;
 	padding: 0;
+	white-space: pre-wrap;
 }
 
 #crate-search,
@@ -634,6 +643,7 @@ pre, .rustdoc.source .example-wrap {
 .fn .where,
 .where.fmt-newline {
 	display: block;
+	white-space: pre-wrap;
 	font-size: 0.875rem;
 }
 
@@ -806,8 +816,11 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	background-repeat: no-repeat;
 	background-size: 20px;
 	background-position: calc(100% - 2px) 56%;
-	/* image is black color */
-	background-image: url("down-arrow-927217e04c7463ac.svg");
+	/* down arrow (image is black color) */
+	background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+	width="128" height="128" viewBox="-30 -20 176 176"><path d="M111,40.5L64,87.499L17,40.5" \
+	fill="none" stroke="black" strike-linecap="square" stroke-miterlimit="10" stroke-width="12"/> \
+	</svg>');
 	/* changes the arrow image color */
 	filter: var(--crate-search-div-filter);
 }
@@ -975,10 +988,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 		-1px 0 0 black,
 		0  1px 0 black,
 		0 -1px 0 black;
-}
-
-.item-left.unstable {
-	opacity: 0.65;
 }
 
 .since {
@@ -1440,7 +1449,10 @@ details.toggle > summary.hideme > span {
 }
 
 details.toggle > summary::before {
-	background: url("toggle-plus-1092eb4930d581b0.svg") no-repeat top left;
+	/* toggle plus */
+	background: url('data:image/svg+xml,<svg width="17" height="17" \
+shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
+d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7M8.5 12V8.625v0V5"/></svg>') no-repeat top left;
 	content: "";
 	cursor: pointer;
 	width: 16px;
@@ -1518,7 +1530,10 @@ details.toggle[open] > summary.hideme > span {
 }
 
 details.toggle[open] > summary::before {
-	background: url("toggle-minus-31bbd6e4c77f5c96.svg") no-repeat top left;
+	/* toggle minus */
+	background: url('data:image/svg+xml,<svg width="17" height="17" \
+shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
+d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7"/></svg>') no-repeat top left;
 }
 
 details.toggle[open] > summary::after {

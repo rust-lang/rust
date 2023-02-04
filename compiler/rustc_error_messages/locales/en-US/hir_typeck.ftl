@@ -57,3 +57,9 @@ hir_typeck_lang_start_incorrect_param = parameter {$param_num} of the `start` la
 
 hir_typeck_lang_start_incorrect_ret_ty = the return type of the `start` lang item is incorrect
     .suggestion = change the type from `{$found_ty}` to `{$expected_ty}`
+
+hir_typeck_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
+hir_typeck_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
+hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
+
+hir_typeck_convert_to_str = try converting the passed type into a `&str`

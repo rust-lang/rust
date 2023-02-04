@@ -332,8 +332,9 @@ impl SplitDebuginfo {
 }
 
 /// LTO mode used for compiling rustc itself.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub enum RustcLto {
+    Off,
     #[default]
     ThinLocal,
     Thin,
@@ -348,6 +349,7 @@ impl std::str::FromStr for RustcLto {
             "thin-local" => Ok(RustcLto::ThinLocal),
             "thin" => Ok(RustcLto::Thin),
             "fat" => Ok(RustcLto::Fat),
+            "off" => Ok(RustcLto::Off),
             _ => Err(format!("Invalid value for rustc LTO: {}", s)),
         }
     }

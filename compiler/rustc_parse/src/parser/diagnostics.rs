@@ -2030,7 +2030,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
-        let pat = self.parse_pat_no_top_alt(Some("argument name"))?;
+        let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName))?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
@@ -2394,10 +2394,10 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    pub(crate) fn maybe_recover_colon_colon_in_pat_typo_or_anon_enum(
+    pub(crate) fn maybe_recover_colon_colon_in_pat_typo(
         &mut self,
         mut first_pat: P<Pat>,
-        expected: Expected,
+        expected: Option<Expected>,
     ) -> P<Pat> {
         if token::Colon != self.token.kind {
             return first_pat;
@@ -2435,8 +2435,9 @@ impl<'a> Parser<'a> {
         // Create error for "unexpected `:`".
         match self.expected_one_of_not_found(&[], &[]) {
             Err(mut err) => {
-                snapshot_pat.bump(); // Skip the `:`.
-                snapshot_type.bump(); // Skip the `:`.
+                // Skip the `:`.
+                snapshot_pat.bump();
+                snapshot_type.bump();
                 match snapshot_pat.parse_pat_no_top_alt(expected) {
                     Err(inner_err) => {
                         inner_err.cancel();

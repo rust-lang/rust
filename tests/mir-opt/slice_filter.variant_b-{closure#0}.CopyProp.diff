@@ -33,16 +33,16 @@
       }
   
       bb0: {
-          StorageLive(_3);                 // scope 0 at $DIR/slice_filter.rs:+0:29: +0:30
+-         StorageLive(_3);                 // scope 0 at $DIR/slice_filter.rs:+0:29: +0:30
           _21 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:29: +0:30
           _3 = ((*_21).0: usize);          // scope 0 at $DIR/slice_filter.rs:+0:29: +0:30
-          StorageLive(_4);                 // scope 0 at $DIR/slice_filter.rs:+0:32: +0:33
+-         StorageLive(_4);                 // scope 0 at $DIR/slice_filter.rs:+0:32: +0:33
           _22 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:32: +0:33
           _4 = ((*_22).1: usize);          // scope 0 at $DIR/slice_filter.rs:+0:32: +0:33
-          StorageLive(_5);                 // scope 0 at $DIR/slice_filter.rs:+0:35: +0:36
+-         StorageLive(_5);                 // scope 0 at $DIR/slice_filter.rs:+0:35: +0:36
           _23 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:35: +0:36
           _5 = ((*_23).2: usize);          // scope 0 at $DIR/slice_filter.rs:+0:35: +0:36
-          StorageLive(_6);                 // scope 0 at $DIR/slice_filter.rs:+0:38: +0:39
+-         StorageLive(_6);                 // scope 0 at $DIR/slice_filter.rs:+0:38: +0:39
           _24 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:38: +0:39
           _6 = ((*_24).3: usize);          // scope 0 at $DIR/slice_filter.rs:+0:38: +0:39
           StorageLive(_7);                 // scope 1 at $DIR/slice_filter.rs:+0:42: +0:58
