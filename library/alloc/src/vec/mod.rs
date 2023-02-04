@@ -3491,14 +3491,28 @@ where
     }
 }
 
-// note: test pulls in std, which causes errors here
+// @FIXME unsure about test
 #[cfg(not(test))]
-#[stable(feature = "vec_from_box", since = "1.18.0")]
+#[allow(ineffective_unstable_trait_impl)] //@FIXME What/why is #[unstable(...)] ignored here?
+#[unstable(feature = "global_co_alloc", issue="none")]
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> From<Box<[T], A>>
     for Vec<T, A, CO_ALLOC_PREF>
 where
     [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+    default fn from(s: Box<[T], A>) -> Self {
+        s.into_vec_co()
+    }
+}
+
+#[cfg(not(test))]
+#[stable(feature = "vec_from_box", since = "1.18.0")]
+#[allow(unused_braces)]
+impl<T, A: Allocator> From<Box<[T], A>>
+    for Vec<T, A, {CO_ALLOC_PREF_DEFAULT!()}>
+where
+    [(); { crate::meta_num_slots_default!(A) }]:,
 {
     /// Convert a boxed slice into a vector by transferring ownership of
     /// the existing heap allocation.
@@ -3510,19 +3524,34 @@ where
     /// assert_eq!(Vec::from(b), vec![1, 2, 3]);
     /// ```
     fn from(s: Box<[T], A>) -> Self {
-        s.into_vec_co()
+        s.into_vec()
     }
 }
 
-// note: test pulls in std, which causes errors here
 #[cfg(not(no_global_oom_handling))]
+// @FIXME Can this apply to test?
 #[cfg(not(test))]
-#[stable(feature = "box_from_vec", since = "1.20.0")]
+#[allow(ineffective_unstable_trait_impl)] //@FIXME What/why is #[unstable(...)] ignored here?
+#[unstable(feature = "global_co_alloc", issue="none")]
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> From<Vec<T, A, CO_ALLOC_PREF>>
     for Box<[T], A>
 where
     [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+    default fn from(v: Vec<T, A, CO_ALLOC_PREF>) -> Self {
+        v.into_boxed_slice()
+    }
+}
+// note: test pulls in std, which causes errors here
+#[cfg(not(no_global_oom_handling))]
+#[cfg(not(test))]
+#[stable(feature = "box_from_vec", since = "1.20.0")]
+#[allow(unused_braces)]
+impl<T, A: Allocator> From<Vec<T, A>>
+    for Box<[T], A>
+where
+    [(); { crate::meta_num_slots_default!(A) }]:,
 {
     /// Convert a vector into a boxed slice.
     ///
@@ -3542,7 +3571,7 @@ where
     ///
     /// assert_eq!(Box::from(vec), vec![1, 2, 3].into_boxed_slice());
     /// ```
-    fn from(v: Vec<T, A, CO_ALLOC_PREF>) -> Self {
+    fn from(v: Vec<T, A>) -> Self {
         v.into_boxed_slice()
     }
 }
