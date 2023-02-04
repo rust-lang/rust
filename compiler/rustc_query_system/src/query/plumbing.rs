@@ -404,9 +404,9 @@ where
         }
         #[cfg(parallel_compiler)]
         TryGetJob::JobCompleted(query_blocked_prof_timer) => {
-            let (v, index) = cache
-                .lookup(&key, |value, index| (value.clone(), index))
-                .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
+            let Some((v, index)) = cache.lookup(&key) else {
+                panic!("value must be in cache after waiting")
+            };
 
             if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
                 qcx.dep_context().profiler().query_cache_hit(index.into());
