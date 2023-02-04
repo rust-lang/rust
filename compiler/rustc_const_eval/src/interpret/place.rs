@@ -774,15 +774,6 @@ where
         variant_index: VariantIdx,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        // This must be an enum or generator.
-        match dest.layout.ty.kind() {
-            ty::Adt(adt, _) => assert!(adt.is_enum()),
-            ty::Generator(..) => {}
-            _ => span_bug!(
-                self.cur_span(),
-                "write_discriminant called on non-variant-type (neither enum nor generator)"
-            ),
-        }
         // Layout computation excludes uninhabited variants from consideration
         // therefore there's no way to represent those variants in the given layout.
         // Essentially, uninhabited variants do not have a tag that corresponds to their
@@ -853,6 +844,34 @@ where
         }
 
         Ok(())
+    }
+
+    /// Writes the discriminant of the given variant.
+    #[instrument(skip(self), level = "debug")]
+    pub fn write_aggregate(
+        &mut self,
+        kind: &mir::AggregateKind<'tcx>,
+        operands: &[mir::Operand<'tcx>],
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.write_uninit(&dest)?;
+        let (variant_index, variant_dest, active_field_index) = match *kind {
+            mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
+                let variant_dest = self.place_downcast(&dest, variant_index)?;
+                (variant_index, variant_dest, active_field_index)
+            }
+            _ => (VariantIdx::from_u32(0), dest.clone(), None),
+        };
+        if active_field_index.is_some() {
+            assert_eq!(operands.len(), 1);
+        }
+        for (field_index, operand) in operands.iter().enumerate() {
+            let field_index = active_field_index.unwrap_or(field_index);
+            let field_dest = self.place_field(&variant_dest, field_index)?;
+            let op = self.eval_operand(operand, Some(field_dest.layout))?;
+            self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
+        }
+        self.write_discriminant(variant_index, &dest)
     }
 
     pub fn raw_const_to_mplace(

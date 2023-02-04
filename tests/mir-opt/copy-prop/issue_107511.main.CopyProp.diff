@@ -57,9 +57,7 @@
   
       bb1: {
           StorageDead(_6);                 // scope 2 at $DIR/issue_107511.rs:+6:23: +6:24
-          Deinit(_4);                      // scope 2 at $DIR/issue_107511.rs:+6:14: +6:24
-          (_4.0: usize) = const 0_usize;   // scope 2 at $DIR/issue_107511.rs:+6:14: +6:24
-          (_4.1: usize) = move _5;         // scope 2 at $DIR/issue_107511.rs:+6:14: +6:24
+          _4 = std::ops::Range::<usize> { start: const 0_usize, end: move _5 }; // scope 2 at $DIR/issue_107511.rs:+6:14: +6:24
           StorageDead(_5);                 // scope 2 at $DIR/issue_107511.rs:+6:23: +6:24
           _3 = <std::ops::Range<usize> as IntoIterator>::into_iter(move _4) -> bb2; // scope 2 at $DIR/issue_107511.rs:+6:14: +6:24
                                            // mir::Constant

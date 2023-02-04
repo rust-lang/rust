@@ -22,10 +22,7 @@
       }
   
       bb1: {
-          Deinit(_4);                      // scope 0 at $DIR/sroa.rs:+2:8: +2:39
-          (_4.0: u32) = const 1_u32;       // scope 0 at $DIR/sroa.rs:+2:8: +2:39
-          (_4.1: u32) = const 2_u32;       // scope 0 at $DIR/sroa.rs:+2:8: +2:39
-          (_4.2: u32) = move _5;           // scope 0 at $DIR/sroa.rs:+2:8: +2:39
+          _4 = Escaping { a: const 1_u32, b: const 2_u32, c: move _5 }; // scope 0 at $DIR/sroa.rs:+2:8: +2:39
           StorageDead(_5);                 // scope 0 at $DIR/sroa.rs:+2:38: +2:39
           _3 = &(_4.0: u32);               // scope 0 at $DIR/sroa.rs:+2:7: +2:41
           _2 = &raw const (*_3);           // scope 0 at $DIR/sroa.rs:+2:7: +2:41

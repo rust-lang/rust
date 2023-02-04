@@ -122,9 +122,7 @@ fn array_casts() -> () {
                                          // + literal: Const { ty: &usize, val: Unevaluated(array_casts, [], Some(promoted[0])) }
         Retag(_35);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _18 = &(*_35);                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        Deinit(_13);                     // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        (_13.0: &usize) = move _14;      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        (_13.1: &usize) = move _18;      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _13 = (move _14, move _18);      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_13);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_18);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_14);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -150,8 +148,7 @@ fn array_casts() -> () {
 
     bb3: {
         StorageLive(_27);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        Deinit(_27);                     // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        discriminant(_27) = 0;           // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _27 = core::panicking::AssertKind::Eq; // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_28);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_29);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _29 = move _27;                  // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -164,8 +161,7 @@ fn array_casts() -> () {
         _33 = &(*_21);                   // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _32 = &(*_33);                   // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_34);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        Deinit(_34);                     // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        discriminant(_34) = 0;           // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _34 = Option::<Arguments<'_>>::None; // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_34);                      // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _28 = core::panicking::assert_failed::<usize, usize>(move _29, move _30, move _32, move _34); // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant

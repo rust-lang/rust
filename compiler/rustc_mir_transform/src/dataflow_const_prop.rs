@@ -5,6 +5,7 @@
 use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_const_eval::interpret::{ConstValue, ImmTy, Immediate, InterpCx, Scalar};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -85,6 +86,30 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
         state: &mut State<Self::Value>,
     ) {
         match rvalue {
+            Rvalue::Aggregate(kind, operands) => {
+                let target = self.map().find(target.as_ref());
+                if let Some(target) = target {
+                    state.flood_idx_with(target, self.map(), FlatSet::Bottom);
+                    let field_based = match **kind {
+                        AggregateKind::Tuple | AggregateKind::Closure(..) => true,
+                        AggregateKind::Adt(def_id, ..) => {
+                            matches!(self.tcx.def_kind(def_id), DefKind::Struct)
+                        }
+                        _ => false,
+                    };
+                    if field_based {
+                        for (field_index, operand) in operands.iter().enumerate() {
+                            if let Some(field) = self
+                                .map()
+                                .apply(target, TrackElem::Field(Field::from_usize(field_index)))
+                            {
+                                let result = self.handle_operand(operand, state);
+                                state.assign_idx(field, result, self.map());
+                            }
+                        }
+                    }
+                }
+            }
             Rvalue::CheckedBinaryOp(op, box (left, right)) => {
                 let target = self.map().find(target.as_ref());
                 if let Some(target) = target {

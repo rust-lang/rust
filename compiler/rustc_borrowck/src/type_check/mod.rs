@@ -2536,7 +2536,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // clauses on the struct.
             AggregateKind::Closure(def_id, substs)
             | AggregateKind::Generator(def_id, substs, _) => {
-                (def_id.to_def_id(), self.prove_closure_bounds(tcx, def_id, substs, location))
+                (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), substs, location))
             }
 
             AggregateKind::Array(_) | AggregateKind::Tuple => {

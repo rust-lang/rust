@@ -10,8 +10,6 @@
       let mut _6: usize;                   // in scope 0 at $DIR/optimizes_into_variable.rs:+2:13: +2:34
       let mut _7: bool;                    // in scope 0 at $DIR/optimizes_into_variable.rs:+2:13: +2:34
       let mut _9: Point;                   // in scope 0 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
-+     let mut _10: u32;                    // in scope 0 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
-+     let mut _11: u32;                    // in scope 0 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
       scope 1 {
           debug x => _1;                   // in scope 1 at $DIR/optimizes_into_variable.rs:+1:9: +1:10
           let _3: i32;                     // in scope 1 at $DIR/optimizes_into_variable.rs:+2:9: +2:10
@@ -47,21 +45,10 @@
           StorageDead(_5);                 // scope 1 at $DIR/optimizes_into_variable.rs:+2:34: +2:35
           StorageDead(_4);                 // scope 1 at $DIR/optimizes_into_variable.rs:+2:34: +2:35
           StorageLive(_8);                 // scope 2 at $DIR/optimizes_into_variable.rs:+3:9: +3:10
--         StorageLive(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
--         Deinit(_9);                      // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
--         (_9.0: u32) = const 12_u32;      // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
--         (_9.1: u32) = const 42_u32;      // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
--         _8 = (_9.1: u32);                // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:38
--         StorageDead(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:+3:38: +3:39
-+         StorageLive(_10);                // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
-+         StorageLive(_11);                // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
-+         Deinit(_10);                     // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
-+         Deinit(_11);                     // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
-+         _10 = const 12_u32;              // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
-+         _11 = const 42_u32;              // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
-+         _8 = _11;                        // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:38
-+         StorageDead(_10);                // scope 2 at $DIR/optimizes_into_variable.rs:+3:38: +3:39
-+         StorageDead(_11);                // scope 2 at $DIR/optimizes_into_variable.rs:+3:38: +3:39
+          StorageLive(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
+          _9 = Point { x: const 12_u32, y: const 42_u32 }; // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
+          _8 = (_9.1: u32);                // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:38
+          StorageDead(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:+3:38: +3:39
           nop;                             // scope 0 at $DIR/optimizes_into_variable.rs:+0:11: +4:2
           StorageDead(_8);                 // scope 2 at $DIR/optimizes_into_variable.rs:+4:1: +4:2
           StorageDead(_3);                 // scope 1 at $DIR/optimizes_into_variable.rs:+4:1: +4:2

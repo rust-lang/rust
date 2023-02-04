@@ -199,13 +199,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Aggregate(box ref kind, ref operands) => {
-                assert!(matches!(kind, mir::AggregateKind::Array(..)));
-
-                for (field_index, operand) in operands.iter().enumerate() {
-                    let op = self.eval_operand(operand, None)?;
-                    let field_dest = self.place_field(&dest, field_index)?;
-                    self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
-                }
+                self.write_aggregate(kind, operands, &dest)?;
             }
 
             Repeat(ref operand, _) => {

@@ -31,9 +31,7 @@
           _1 = const 0_i32;                // scope 0 at $DIR/remove_storage_markers.rs:+1:19: +1:20
 -         StorageLive(_2);                 // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
 -         StorageLive(_3);                 // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
-          Deinit(_3);                      // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
-          (_3.0: i32) = const 0_i32;       // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
-          (_3.1: i32) = const 10_i32;      // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
+          _3 = std::ops::Range::<i32> { start: const 0_i32, end: const 10_i32 }; // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
           _2 = <std::ops::Range<i32> as IntoIterator>::into_iter(move _3) -> bb1; // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
                                            // mir::Constant
                                            // + span: $DIR/remove_storage_markers.rs:10:14: 10:19

@@ -453,7 +453,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Generator(def_id, ..) = kind.as_ref()
-                    && let Some(generator_kind @ hir::GeneratorKind::Async(..)) = self.tcx.generator_kind(def_id.to_def_id())
+                    && let Some(generator_kind @ hir::GeneratorKind::Async(..)) = self.tcx.generator_kind(def_id)
                 {
                     self.check_op(ops::Generator(generator_kind));
                 }
