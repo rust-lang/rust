@@ -1796,17 +1796,17 @@ impl EmitterWriter {
                 // telling users to make a change but not clarifying *where*.
                 let loc = sm.lookup_char_pos(parts[0].span.lo());
                 if loc.file.name != sm.span_to_filename(span) && loc.file.name.is_real() {
-                    buffer.puts(row_num - 1, 0, "--> ", Style::LineNumber);
-                    buffer.append(
-                        row_num - 1,
-                        &format!(
-                            "{}:{}:{}",
-                            sm.filename_for_diagnostics(&loc.file.name),
-                            sm.doctest_offset_line(&loc.file.name, loc.line),
-                            loc.col.0 + 1,
-                        ),
-                        Style::LineAndColumn,
-                    );
+                    let arrow = "--> ";
+                    buffer.puts(row_num - 1, 0, arrow, Style::LineNumber);
+                    let filename = sm.filename_for_diagnostics(&loc.file.name);
+                    let offset = sm.doctest_offset_line(&loc.file.name, loc.line);
+                    let message = format!("{}:{}:{}", filename, offset, loc.col.0 + 1);
+                    if row_num == 2 {
+                        let col = usize::max(max_line_num_len + 1, arrow.len());
+                        buffer.puts(1, col, &message, Style::LineAndColumn);
+                    } else {
+                        buffer.append(row_num - 1, &message, Style::LineAndColumn);
+                    }
                     for _ in 0..max_line_num_len {
                         buffer.prepend(row_num - 1, " ", Style::NoStyle);
                     }
