@@ -12,7 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff, LLVMVoidTypeInContext, LLVMDumpModule};
+use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff, LLVMVoidTypeInContext};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -23,6 +23,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::bug;
@@ -642,7 +643,6 @@ pub(crate) unsafe fn extract_return_type<'a>(
 #[allow(unused)]
 pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item: AutoDiffItem, tt: &DiffTypeTree) -> Result<(), FatalError> {
 
-    LLVMDumpModule(llmod);
 
     let autodiff_mode = item.attrs.mode;
     let rust_name = item.source;
@@ -703,7 +703,6 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
 
     dbg!("after-ad");
 
-
     Ok(())
 }
 
@@ -711,11 +710,14 @@ pub(crate) unsafe fn differentiate(
     module: &ModuleCodegen<ModuleLlvm>,
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
     diff_items: Vec<AutoDiffItem>,
+    typetrees: FxHashMap<String, DiffTypeTree>,
     ) -> Result<(), FatalError> {
 
     let llmod = module.module_llvm.llmod();
     let llcx = &module.module_llvm.llcx;
-    let typetrees = &module.module_llvm.typetrees;
+
+    dbg!(&diff_items);
+    dbg!(&typetrees.len());
 
     for item in diff_items {
         let tt = typetrees.get(&item.source).unwrap();
@@ -944,7 +946,6 @@ pub(crate) fn link(
     let (first, elements) =
         modules.split_first().expect("Bug! modules must contain at least one module.");
 
-
     let mut linker = Linker::new(first.module_llvm.llmod());
     for module in elements {
         let _timer =
@@ -956,6 +957,7 @@ pub(crate) fn link(
         })?;
     }
     drop(linker);
+
     Ok(modules.remove(0))
 }
 

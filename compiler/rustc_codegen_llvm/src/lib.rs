@@ -179,6 +179,8 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type TargetMachine = &'static mut llvm::TargetMachine;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
+    type TypeTree = DiffTypeTree;
+
     fn print_pass_timings(&self) {
         unsafe {
             llvm::LLVMRustPrintPassTimings();
@@ -247,10 +249,15 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         cgcx: &CodegenContext<Self>,
         module: &ModuleCodegen<Self::Module>,
         diff_fncs: Vec<AutoDiffItem>,
+        typetrees: FxHashMap<String, Self::TypeTree>,
         ) -> Result<(), FatalError> {
         unsafe {
-            back::write::differentiate(module, cgcx, diff_fncs)
+            back::write::differentiate(module, cgcx, diff_fncs, typetrees)
         }
+    }
+    
+    fn typetrees(module: &mut Self::Module) -> FxHashMap<String, Self::TypeTree> {
+        module.typetrees.drain().collect()
     }
 }
 
@@ -441,6 +448,11 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
         return llvm::TypeTree::from_type(scalar_type, llcx).only(-1);
     }
 
+    if let ty::Param(_) = id.kind() {
+        return TypeTree::new();
+    }
+
+    dbg!(&id.kind());
     let param_env_and = ParamEnvAnd {
         param_env: ty::ParamEnv::empty(),
         value: id,
@@ -455,8 +467,6 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
     // dbg!(fields);
     // dbg!(abi);
     // dbg!(max_size);
-
-    dbg!(id);
 
     if id.is_adt() {
         dbg!("an ADT");
@@ -517,7 +527,7 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
     return tt;
 }
 
-
+#[derive(Clone)]
 pub struct DiffTypeTree {
     pub ret_tt: TypeTree,
     pub input_tt: Vec<TypeTree>,

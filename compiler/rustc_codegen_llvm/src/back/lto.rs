@@ -209,24 +209,13 @@ pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBu
 fn fat_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
-    mut modules: Vec<FatLTOInput<LlvmCodegenBackend>>,
+    modules: Vec<FatLTOInput<LlvmCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     symbols_below_threshold: &[*const libc::c_char],
     ) -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError> {
     let _timer = cgcx.prof.generic_activity("LLVM_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
-
-    // merge all typetrees from different modules
-    let typetrees = modules.iter_mut()
-        .filter_map(|x| {
-            match x {
-                FatLTOInput::InMemory(module) => Some(module.module_llvm.typetrees.drain()),
-                _ => None
-            }
-        })
-        .flatten()
-        .collect();
 
     // Sort out all our lists of incoming modules into two lists.
     //
@@ -278,7 +267,7 @@ fn fat_lto(
     // all our inputs were incrementally reread from the cache and we're just
     // re-executing the LTO passes. If that's the case deserialize the first
     // module and create a linker with it.
-    let mut module: ModuleCodegen<ModuleLlvm> = match costliest_module {
+    let module: ModuleCodegen<ModuleLlvm> = match costliest_module {
         Some((_cost, i)) => in_memory.remove(i),
         None => {
             assert!(!serialized_modules.is_empty(), "must have at least one serialized module");
@@ -362,8 +351,6 @@ fn fat_lto(
             save_temp_bitcode(cgcx, &module, "lto.after-restriction");
         }
     }
-
-    module.module_llvm.typetrees = typetrees;
 
     Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: serialized_bitcode })
 }

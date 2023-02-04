@@ -430,7 +430,7 @@ fn collect_and_partition_mono_items<'tcx>(
                             MonoItem::Fn(ref instance_s) => {
                                 let source_id = instance_s.def_id();
 
-                                if tcx.autodiff_attrs(source_id).is_source() {
+                                if tcx.autodiff_attrs(source_id).is_active() {
                                     Some(symbol_name_for_instance_in_crate(tcx, instance_s.clone(), LOCAL_CRATE))
                                 } else {
                                     None

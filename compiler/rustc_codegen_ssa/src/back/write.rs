@@ -369,6 +369,7 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 fn generate_lto_work<'tcx, B: ExtraBackendMethods>(
     cgcx: &'tcx CodegenContext<B>,
     autodiff: Vec<AutoDiffItem>,
+    typetrees: FxHashMap<String, B::TypeTree>,
     needs_fat_lto: Vec<FatLTOInput<B>>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
@@ -382,7 +383,7 @@ fn generate_lto_work<'tcx, B: ExtraBackendMethods>(
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
 
         if cgcx.lto == Lto::Fat {
-            lto_module = unsafe { lto_module.autodiff(cgcx, autodiff).unwrap() };
+            lto_module = unsafe { lto_module.autodiff(cgcx, autodiff, typetrees).unwrap() };
         }
 
         (vec![lto_module], vec![])
@@ -1233,6 +1234,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut needs_fat_lto = Vec::new();
         let mut needs_thin_lto = Vec::new();
         let mut autodiff_items = Vec::new();
+        let mut typetrees = FxHashMap::<String, B::TypeTree>::default();
         let mut lto_import_only_modules = Vec::new();
         let mut started_lto = false;
         let mut codegen_aborted = false;
@@ -1328,7 +1330,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                                     for (work, cost) in
-                                        generate_lto_work(&cgcx, autodiff_items.clone(), needs_fat_lto, needs_thin_lto, import_only_modules)
+                                        generate_lto_work(&cgcx, autodiff_items.clone(), typetrees.clone(), needs_fat_lto, needs_thin_lto, import_only_modules)
                                         {
                                             let insertion_index = work_items
                                                 .binary_search_by_key(&cost, |&(_, cost)| cost)
@@ -1439,7 +1441,16 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             }
                         }
 
-                        Message::CodegenDone { llvm_work_item, cost } => {
+                        Message::CodegenDone { mut llvm_work_item, cost } => {
+                            // extract build typetrees
+                            match &mut llvm_work_item {
+                                WorkItem::Optimize(module) => {
+                                    let tt = B::typetrees(&mut module.module_llvm);
+                                    typetrees.extend(tt);
+                                }
+                                _ => {},
+                            }
+
                             // We keep the queue sorted by estimated processing cost,
                             // so that more expensive items are processed earlier. This
                             // is good for throughput as it gives the main thread more

@@ -5,6 +5,7 @@ use crate::{CompiledModule, ModuleCodegen};
 use rustc_errors::{FatalError, Handler};
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
+use rustc_data_structures::fx::FxHashMap;
 
 pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Module: Send + Sync;
@@ -13,6 +14,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Context: ?Sized;
     type ThinData: Send + Sync;
     type ThinBuffer: ThinBufferMethods;
+    type TypeTree: Clone;
 
     /// Merge all modules into main_module and returning it
     fn run_link(
@@ -65,7 +67,9 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         cgcx: &CodegenContext<Self>,
         module: &ModuleCodegen<Self::Module>,
         diff_fncs: Vec<AutoDiffItem>,
+        typetrees: FxHashMap<String, Self::TypeTree>,
     ) -> Result<(), FatalError>;
+    fn typetrees(module: &mut Self::Module) -> FxHashMap<String, Self::TypeTree>;
 }
 
 pub trait ThinBufferMethods: Send + Sync {

@@ -32,6 +32,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, ParamEnv};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;
+use rustc_data_structures::fx::FxHashMap;
 
 use std::time::Instant;
 use std::ffi::CStr;
@@ -146,7 +147,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
                         },
                         _ => None
                     }
-                }).collect()
+                }).collect::<FxHashMap<_, _>>()
         };
 
         llvm_module.typetrees = typetrees;
@@ -163,7 +164,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
 
 unsafe fn parse_typetree<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, llvm_module: &ModuleLlvm) -> DiffTypeTree {
     let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
-    
+    dbg!(&fnc_binder);
+
     // TODO: verify.
     // I think we don't need lifetimes here, so skip_binder is valid?
     // let tmp = fnc_binder.no_bound_vars();
