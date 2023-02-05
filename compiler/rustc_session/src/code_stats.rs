@@ -84,7 +84,11 @@ impl CodeStats {
         // Sort variants so the largest ones are shown first. A stable sort is
         // used here so that source code order is preserved for all variants
         // that have the same size.
-        variants.sort_by(|info1, info2| info2.size.cmp(&info1.size));
+        // Except for Generators, whose variants are already sorted according to
+        // their yield points in `variant_info_for_generator`.
+        if kind != DataTypeKind::Generator {
+            variants.sort_by(|info1, info2| info2.size.cmp(&info1.size));
+        }
         let info = TypeSizeInfo {
             kind,
             type_description: type_desc.to_string(),
