@@ -13,17 +13,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
-use crate::errors::{
-    AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, EmptyRenamingTarget,
-    FrameworkOnlyWindows, ImportNameTypeForm, ImportNameTypeRaw, ImportNameTypeX86,
-    IncompatibleWasmLink, InvalidLinkModifier, LibFrameworkApple, LinkCfgForm,
-    LinkCfgSinglePredicate, LinkFrameworkApple, LinkKindForm, LinkModifiersForm, LinkNameForm,
-    LinkOrdinalRawDylib, LinkRequiresName, MissingNativeLibrary, MultipleCfgs,
-    MultipleImportNameType, MultipleKindsInLink, MultipleLinkModifiers, MultipleModifiers,
-    MultipleNamesInLink, MultipleRenamings, MultipleWasmImport, NoLinkModOverride, RawDylibNoNul,
-    RenamingNoLink, UnexpectedLinkArg, UnknownImportNameType, UnknownLinkKind, UnknownLinkModifier,
-    UnsupportedAbi, UnsupportedAbiI686, WasmImportForm, WholeArchiveNeedsStatic,
-};
+use crate::errors;
 
 use std::path::PathBuf;
 
@@ -52,7 +42,7 @@ pub fn find_native_static_library(
         }
     }
 
-    sess.emit_fatal(MissingNativeLibrary::new(name, verbatim));
+    sess.emit_fatal(errors::MissingNativeLibrary::new(name, verbatim));
 }
 
 fn find_bundled_library(
@@ -129,26 +119,26 @@ impl<'tcx> Collector<'tcx> {
                 match item.name_or_empty() {
                     sym::name => {
                         if name.is_some() {
-                            sess.emit_err(MultipleNamesInLink { span: item.span() });
+                            sess.emit_err(errors::MultipleNamesInLink { span: item.span() });
                             continue;
                         }
                         let Some(link_name) = item.value_str() else {
-                            sess.emit_err(LinkNameForm { span: item.span() });
+                            sess.emit_err(errors::LinkNameForm { span: item.span() });
                             continue;
                         };
                         let span = item.name_value_literal_span().unwrap();
                         if link_name.is_empty() {
-                            sess.emit_err(EmptyLinkName { span });
+                            sess.emit_err(errors::EmptyLinkName { span });
                         }
                         name = Some((link_name, span));
                     }
                     sym::kind => {
                         if kind.is_some() {
-                            sess.emit_err(MultipleKindsInLink { span: item.span() });
+                            sess.emit_err(errors::MultipleKindsInLink { span: item.span() });
                             continue;
                         }
                         let Some(link_kind) = item.value_str() else {
-                            sess.emit_err(LinkKindForm { span: item.span() });
+                            sess.emit_err(errors::LinkKindForm { span: item.span() });
                             continue;
                         };
 
@@ -158,13 +148,13 @@ impl<'tcx> Collector<'tcx> {
                             "dylib" => NativeLibKind::Dylib { as_needed: None },
                             "framework" => {
                                 if !sess.target.is_like_osx {
-                                    sess.emit_err(LinkFrameworkApple { span });
+                                    sess.emit_err(errors::LinkFrameworkApple { span });
                                 }
                                 NativeLibKind::Framework { as_needed: None }
                             }
                             "raw-dylib" => {
                                 if !sess.target.is_like_windows {
-                                    sess.emit_err(FrameworkOnlyWindows { span });
+                                    sess.emit_err(errors::FrameworkOnlyWindows { span });
                                 } else if !features.raw_dylib && sess.target.arch == "x86" {
                                     feature_err(
                                         &sess.parse_sess,
@@ -177,7 +167,7 @@ impl<'tcx> Collector<'tcx> {
                                 NativeLibKind::RawDylib
                             }
                             kind => {
-                                sess.emit_err(UnknownLinkKind { span, kind });
+                                sess.emit_err(errors::UnknownLinkKind { span, kind });
                                 continue;
                             }
                         };
@@ -185,26 +175,26 @@ impl<'tcx> Collector<'tcx> {
                     }
                     sym::modifiers => {
                         if modifiers.is_some() {
-                            sess.emit_err(MultipleLinkModifiers { span: item.span() });
+                            sess.emit_err(errors::MultipleLinkModifiers { span: item.span() });
                             continue;
                         }
                         let Some(link_modifiers) = item.value_str() else {
-                            sess.emit_err(LinkModifiersForm { span: item.span() });
+                            sess.emit_err(errors::LinkModifiersForm { span: item.span() });
                             continue;
                         };
                         modifiers = Some((link_modifiers, item.name_value_literal_span().unwrap()));
                     }
                     sym::cfg => {
                         if cfg.is_some() {
-                            sess.emit_err(MultipleCfgs { span: item.span() });
+                            sess.emit_err(errors::MultipleCfgs { span: item.span() });
                             continue;
                         }
                         let Some(link_cfg) = item.meta_item_list() else {
-                            sess.emit_err(LinkCfgForm { span: item.span() });
+                            sess.emit_err(errors::LinkCfgForm { span: item.span() });
                             continue;
                         };
                         let [NestedMetaItem::MetaItem(link_cfg)] = link_cfg else {
-                            sess.emit_err(LinkCfgSinglePredicate { span: item.span() });
+                            sess.emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
                             continue;
                         };
                         if !features.link_cfg {
@@ -220,26 +210,26 @@ impl<'tcx> Collector<'tcx> {
                     }
                     sym::wasm_import_module => {
                         if wasm_import_module.is_some() {
-                            sess.emit_err(MultipleWasmImport { span: item.span() });
+                            sess.emit_err(errors::MultipleWasmImport { span: item.span() });
                             continue;
                         }
                         let Some(link_wasm_import_module) = item.value_str() else {
-                            sess.emit_err(WasmImportForm { span: item.span() });
+                            sess.emit_err(errors::WasmImportForm { span: item.span() });
                             continue;
                         };
                         wasm_import_module = Some((link_wasm_import_module, item.span()));
                     }
                     sym::import_name_type => {
                         if import_name_type.is_some() {
-                            sess.emit_err(MultipleImportNameType { span: item.span() });
+                            sess.emit_err(errors::MultipleImportNameType { span: item.span() });
                             continue;
                         }
                         let Some(link_import_name_type) = item.value_str() else {
-                            sess.emit_err(ImportNameTypeForm { span: item.span() });
+                            sess.emit_err(errors::ImportNameTypeForm { span: item.span() });
                             continue;
                         };
                         if self.tcx.sess.target.arch != "x86" {
-                            sess.emit_err(ImportNameTypeX86 { span: item.span() });
+                            sess.emit_err(errors::ImportNameTypeX86 { span: item.span() });
                             continue;
                         }
 
@@ -248,7 +238,7 @@ impl<'tcx> Collector<'tcx> {
                             "noprefix" => PeImportNameType::NoPrefix,
                             "undecorated" => PeImportNameType::Undecorated,
                             import_name_type => {
-                                sess.emit_err(UnknownImportNameType {
+                                sess.emit_err(errors::UnknownImportNameType {
                                     span: item.span(),
                                     import_name_type,
                                 });
@@ -268,7 +258,7 @@ impl<'tcx> Collector<'tcx> {
                         import_name_type = Some((link_import_name_type, item.span()));
                     }
                     _ => {
-                        sess.emit_err(UnexpectedLinkArg { span: item.span() });
+                        sess.emit_err(errors::UnexpectedLinkArg { span: item.span() });
                     }
                 }
             }
@@ -280,7 +270,7 @@ impl<'tcx> Collector<'tcx> {
                     let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
                         Some(m) => (m, modifier.starts_with('+')),
                         None => {
-                            sess.emit_err(InvalidLinkModifier { span });
+                            sess.emit_err(errors::InvalidLinkModifier { span });
                             continue;
                         }
                     };
@@ -298,7 +288,7 @@ impl<'tcx> Collector<'tcx> {
                     }
                     let assign_modifier = |dst: &mut Option<bool>| {
                         if dst.is_some() {
-                            sess.emit_err(MultipleModifiers { span, modifier });
+                            sess.emit_err(errors::MultipleModifiers { span, modifier });
                         } else {
                             *dst = Some(value);
                         }
@@ -308,7 +298,7 @@ impl<'tcx> Collector<'tcx> {
                             assign_modifier(bundle)
                         }
                         ("bundle", _) => {
-                            sess.emit_err(BundleNeedsStatic { span });
+                            sess.emit_err(errors::BundleNeedsStatic { span });
                         }
 
                         ("verbatim", _) => assign_modifier(&mut verbatim),
@@ -317,7 +307,7 @@ impl<'tcx> Collector<'tcx> {
                             assign_modifier(whole_archive)
                         }
                         ("whole-archive", _) => {
-                            sess.emit_err(WholeArchiveNeedsStatic { span });
+                            sess.emit_err(errors::WholeArchiveNeedsStatic { span });
                         }
 
                         ("as-needed", Some(NativeLibKind::Dylib { as_needed }))
@@ -326,11 +316,11 @@ impl<'tcx> Collector<'tcx> {
                             assign_modifier(as_needed)
                         }
                         ("as-needed", _) => {
-                            sess.emit_err(AsNeededCompatibility { span });
+                            sess.emit_err(errors::AsNeededCompatibility { span });
                         }
 
                         _ => {
-                            sess.emit_err(UnknownLinkModifier { span, modifier });
+                            sess.emit_err(errors::UnknownLinkModifier { span, modifier });
                         }
                     }
                 }
@@ -338,23 +328,23 @@ impl<'tcx> Collector<'tcx> {
 
             if let Some((_, span)) = wasm_import_module {
                 if name.is_some() || kind.is_some() || modifiers.is_some() || cfg.is_some() {
-                    sess.emit_err(IncompatibleWasmLink { span });
+                    sess.emit_err(errors::IncompatibleWasmLink { span });
                 }
             } else if name.is_none() {
-                sess.emit_err(LinkRequiresName { span: m.span });
+                sess.emit_err(errors::LinkRequiresName { span: m.span });
             }
 
             // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
             if let Some((_, span)) = import_name_type {
                 if kind != Some(NativeLibKind::RawDylib) {
-                    sess.emit_err(ImportNameTypeRaw { span });
+                    sess.emit_err(errors::ImportNameTypeRaw { span });
                 }
             }
 
             let dll_imports = match kind {
                 Some(NativeLibKind::RawDylib) => {
                     if let Some((name, span)) = name && name.as_str().contains('\0') {
-                        sess.emit_err(RawDylibNoNul { span });
+                        sess.emit_err(errors::RawDylibNoNul { span });
                     }
                     foreign_mod_items
                         .iter()
@@ -383,7 +373,9 @@ impl<'tcx> Collector<'tcx> {
                                 .iter()
                                 .find(|a| a.has_name(sym::link_ordinal))
                                 .unwrap();
-                            sess.emit_err(LinkOrdinalRawDylib { span: link_ordinal_attr.span });
+                            sess.emit_err(errors::LinkOrdinalRawDylib {
+                                span: link_ordinal_attr.span,
+                            });
                         }
                     }
 
@@ -414,7 +406,7 @@ impl<'tcx> Collector<'tcx> {
         for lib in &self.tcx.sess.opts.libs {
             if let NativeLibKind::Framework { .. } = lib.kind && !self.tcx.sess.target.is_like_osx {
                 // Cannot check this when parsing options because the target is not yet available.
-                self.tcx.sess.emit_err(LibFrameworkApple);
+                self.tcx.sess.emit_err(errors::LibFrameworkApple);
             }
             if let Some(ref new_name) = lib.new_name {
                 let any_duplicate = self
@@ -423,11 +415,11 @@ impl<'tcx> Collector<'tcx> {
                     .filter_map(|lib| lib.name.as_ref())
                     .any(|n| n.as_str() == lib.name);
                 if new_name.is_empty() {
-                    self.tcx.sess.emit_err(EmptyRenamingTarget { lib_name: &lib.name });
+                    self.tcx.sess.emit_err(errors::EmptyRenamingTarget { lib_name: &lib.name });
                 } else if !any_duplicate {
-                    self.tcx.sess.emit_err(RenamingNoLink { lib_name: &lib.name });
+                    self.tcx.sess.emit_err(errors::RenamingNoLink { lib_name: &lib.name });
                 } else if !renames.insert(&lib.name) {
-                    self.tcx.sess.emit_err(MultipleRenamings { lib_name: &lib.name });
+                    self.tcx.sess.emit_err(errors::MultipleRenamings { lib_name: &lib.name });
                 }
             }
         }
@@ -453,12 +445,15 @@ impl<'tcx> Collector<'tcx> {
                             // explicit `:rename` in particular.
                             if lib.has_modifiers() || passed_lib.has_modifiers() {
                                 match lib.foreign_module {
-                                    Some(def_id) => self.tcx.sess.emit_err(NoLinkModOverride {
-                                        span: Some(self.tcx.def_span(def_id)),
-                                    }),
-                                    None => {
-                                        self.tcx.sess.emit_err(NoLinkModOverride { span: None })
+                                    Some(def_id) => {
+                                        self.tcx.sess.emit_err(errors::NoLinkModOverride {
+                                            span: Some(self.tcx.def_span(def_id)),
+                                        })
                                     }
+                                    None => self
+                                        .tcx
+                                        .sess
+                                        .emit_err(errors::NoLinkModOverride { span: None }),
                                 };
                             }
                             if passed_lib.kind != NativeLibKind::Unspecified {
@@ -542,14 +537,14 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
                 }
                 _ => {
-                    self.tcx.sess.emit_fatal(UnsupportedAbiI686 { span: item.span });
+                    self.tcx.sess.emit_fatal(errors::UnsupportedAbiI686 { span: item.span });
                 }
             }
         } else {
             match abi {
                 Abi::C { .. } | Abi::Win64 { .. } | Abi::System { .. } => DllCallingConvention::C,
                 _ => {
-                    self.tcx.sess.emit_fatal(UnsupportedAbi { span: item.span });
+                    self.tcx.sess.emit_fatal(errors::UnsupportedAbi { span: item.span });
                 }
             }
         };
