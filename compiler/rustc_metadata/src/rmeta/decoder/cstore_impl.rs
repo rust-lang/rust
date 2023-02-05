@@ -1,6 +1,7 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
+use crate::rmeta::table::IsDefault;
 use crate::rmeta::AttrFlags;
 
 use rustc_ast as ast;
@@ -85,6 +86,14 @@ macro_rules! provide_one {
                     .get($cdata, $def_id.index)
                     .map(|lazy| lazy.decode(($cdata, $tcx)))
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
+            }
+        }
+    };
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_defaulted_array }) => {
+        provide_one! {
+            $tcx, $def_id, $other, $cdata, $name => {
+                let lazy = $cdata.root.tables.$name.get($cdata, $def_id.index);
+                if lazy.is_default() { &[] } else { $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx))) }
             }
         }
     };
@@ -187,10 +196,10 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
 }
 
 provide! { tcx, def_id, other, cdata,
-    explicit_item_bounds => { table }
+    explicit_item_bounds => { table_defaulted_array }
     explicit_predicates_of => { table }
     generics_of => { table }
-    inferred_outlives_of => { table }
+    inferred_outlives_of => { table_defaulted_array }
     super_predicates_of => { table }
     type_of => { table }
     variances_of => { table }

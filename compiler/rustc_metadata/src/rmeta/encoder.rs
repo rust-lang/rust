@@ -389,6 +389,16 @@ macro_rules! record_array {
     }};
 }
 
+macro_rules! record_defaulted_array {
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
+        {
+            let value = $value;
+            let lazy = $self.lazy_array(value);
+            $self.$tables.$table.set($def_id.index, lazy);
+        }
+    }};
+}
+
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn emit_lazy_distance(&mut self, position: NonZeroUsize) {
         let pos = position.get();
@@ -1190,9 +1200,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.generics_of[def_id] <- g);
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
-                if !inferred_outlives.is_empty() {
-                    record_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
-                }
+                record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
             }
             if should_encode_type(tcx, local_id, def_kind) {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
@@ -1213,15 +1221,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);
             }
         }
+
         let inherent_impls = tcx.with_stable_hashing_context(|hcx| {
             tcx.crate_inherent_impls(()).inherent_impls.to_sorted(&hcx, true)
         });
-
-        for (def_id, implementations) in inherent_impls {
-            if implementations.is_empty() {
-                continue;
-            }
-            record_array!(self.tables.inherent_impls[def_id.to_def_id()] <- implementations.iter().map(|&def_id| {
+        for (def_id, impls) in inherent_impls {
+            record_defaulted_array!(self.tables.inherent_impls[def_id.to_def_id()] <- impls.iter().map(|def_id| {
                 assert!(def_id.is_local());
                 def_id.index
             }));
@@ -1330,9 +1335,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
         let bounds = self.tcx.explicit_item_bounds(def_id);
-        if !bounds.is_empty() {
-            record_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
-        }
+        record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
     }
 
     fn encode_info_for_trait_item(&mut self, def_id: DefId) {

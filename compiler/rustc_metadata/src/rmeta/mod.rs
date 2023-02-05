@@ -350,6 +350,9 @@ define_tables! {
     is_macro_rules: Table<DefIndex, bool>,
     is_type_alias_impl_trait: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
+    explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
+    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
@@ -362,12 +365,8 @@ define_tables! {
     lookup_const_stability: Table<DefIndex, LazyValue<attr::ConstStability>>,
     lookup_default_body_stability: Table<DefIndex, LazyValue<attr::DefaultBodyStability>>,
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
-    // As an optimization, a missing entry indicates an empty `&[]`.
-    explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
-    // As an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<Ty<'static>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
@@ -395,7 +394,6 @@ define_tables! {
     generator_kind: Table<DefIndex, LazyValue<hir::GeneratorKind>>,
     trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,
     trait_item_def_id: Table<DefIndex, RawDefId>,
-    inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
     unused_generic_params: Table<DefIndex, LazyValue<UnusedGenericParams>>,
     params_in_repr: Table<DefIndex, LazyValue<BitSet<u32>>>,
