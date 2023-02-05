@@ -43,6 +43,8 @@ pub trait Interner {
         + Ord
         + BoundAtOrAboveBinder
         + Flags;
+    type Binder<T>;
+    type Predicate: OuterExclusiveBinder + Flags;
     type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Mutability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Movability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;

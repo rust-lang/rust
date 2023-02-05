@@ -103,6 +103,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Ty = Ty<'tcx>;
     type Const = ty::Const<'tcx>;
     type Region = Region<'tcx>;
+    type Binder<T> = Binder<'tcx, T>;
+    type Predicate = Predicate<'tcx>;
     type TypeAndMut = TypeAndMut<'tcx>;
     type Mutability = hir::Mutability;
     type Movability = hir::Movability;
