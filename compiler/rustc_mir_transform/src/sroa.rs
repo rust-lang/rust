@@ -6,7 +6,7 @@ use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::value_analysis::iter_fields;
+use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
 
 pub struct ScalarReplacementOfAggregates;
 
@@ -18,26 +18,38 @@ impl<'tcx> MirPass<'tcx> for ScalarReplacementOfAggregates {
     #[instrument(level = "debug", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
-        let escaping = escaping_locals(&*body);
-        debug!(?escaping);
-        let replacements = compute_flattening(tcx, body, escaping);
-        debug!(?replacements);
-        replace_flattened_locals(tcx, body, replacements);
+        let mut excluded = excluded_locals(body);
+        loop {
+            debug!(?excluded);
+            let escaping = escaping_locals(&excluded, body);
+            debug!(?escaping);
+            let replacements = compute_flattening(tcx, body, escaping);
+            debug!(?replacements);
+            let all_dead_locals = replace_flattened_locals(tcx, body, replacements);
+            if !all_dead_locals.is_empty() && tcx.sess.mir_opt_level() >= 4 {
+                for local in excluded.indices() {
+                    excluded[local] |= all_dead_locals.contains(local) ;
+                }
+                excluded.raw.resize(body.local_decls.len(), false);
+            } else {
+                break
+            }
+        }
     }
 }
 
 /// Identify all locals that are not eligible for SROA.
 ///
 /// There are 3 cases:
-/// - the aggegated local is used or passed to other code (function parameters and arguments);
+/// - the aggregated local is used or passed to other code (function parameters and arguments);
 /// - the locals is a union or an enum;
 /// - the local's address is taken, and thus the relative addresses of the fields are observable to
 ///   client code.
-fn escaping_locals(body: &Body<'_>) -> BitSet<Local> {
+fn escaping_locals(excluded: &IndexVec<Local, bool>, body: &Body<'_>) -> BitSet<Local> {
     let mut set = BitSet::new_empty(body.local_decls.len());
     set.insert_range(RETURN_PLACE..=Local::from_usize(body.arg_count));
     for (local, decl) in body.local_decls().iter_enumerated() {
-        if decl.ty.is_union() || decl.ty.is_enum() {
+        if decl.ty.is_union() || decl.ty.is_enum() || excluded[local] {
             set.insert(local);
         }
     }
@@ -60,17 +72,6 @@ fn escaping_locals(body: &Body<'_>) -> BitSet<Local> {
                 return;
             }
             self.super_place(place, context, location);
-        }
-
-        fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-            if let Rvalue::AddressOf(.., place) | Rvalue::Ref(.., place) = rvalue {
-                if !place.is_indirect() {
-                    // Raw pointers may be used to access anything inside the enclosing place.
-                    self.set.insert(place.local);
-                    return;
-                }
-            }
-            self.super_rvalue(rvalue, location)
         }
 
         fn visit_assign(
@@ -100,21 +101,6 @@ fn escaping_locals(body: &Body<'_>) -> BitSet<Local> {
                 | StatementKind::Deinit(..) => return,
                 _ => self.super_statement(statement, location),
             }
-        }
-
-        fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-            // Drop implicitly calls `drop_in_place`, which takes a `&mut`.
-            // This implies that `Drop` implicitly takes the address of the place.
-            if let TerminatorKind::Drop { place, .. }
-            | TerminatorKind::DropAndReplace { place, .. } = terminator.kind
-            {
-                if !place.is_indirect() {
-                    // Raw pointers may be used to access anything inside the enclosing place.
-                    self.set.insert(place.local);
-                    return;
-                }
-            }
-            self.super_terminator(terminator, location);
         }
 
         // We ignore anything that happens in debuginfo, since we expand it using
@@ -198,14 +184,14 @@ fn replace_flattened_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     replacements: ReplacementMap<'tcx>,
-) {
+) -> BitSet<Local> {
     let mut all_dead_locals = BitSet::new_empty(body.local_decls.len());
     for p in replacements.fields.keys() {
         all_dead_locals.insert(p.local);
     }
     debug!(?all_dead_locals);
     if all_dead_locals.is_empty() {
-        return;
+        return all_dead_locals;
     }
 
     let mut visitor = ReplacementVisitor {
@@ -227,7 +213,9 @@ fn replace_flattened_locals<'tcx>(
     for var_debug_info in &mut body.var_debug_info {
         visitor.visit_var_debug_info(var_debug_info);
     }
-    visitor.patch.apply(body);
+    let ReplacementVisitor { patch, all_dead_locals, .. } = visitor;
+    patch.apply(body);
+    all_dead_locals
 }
 
 struct ReplacementVisitor<'tcx, 'll> {
@@ -361,6 +349,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
         }
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn visit_var_debug_info(&mut self, var_debug_info: &mut VarDebugInfo<'tcx>) {
         match &mut var_debug_info.value {
             VarDebugInfoContents::Place(ref mut place) => {
@@ -375,11 +364,12 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             }
             VarDebugInfoContents::Composite { ty: _, ref mut fragments } => {
                 let mut new_fragments = Vec::new();
+                debug!(?fragments);
                 fragments
                     .drain_filter(|fragment| {
                         if let Some(repl) = self.replace_place(fragment.contents.as_ref()) {
                             fragment.contents = repl;
-                            true
+                            false
                         } else if let Some(frg) = self
                             .replacements
                             .gather_debug_info_fragments(fragment.contents.as_ref())
@@ -388,12 +378,14 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                                 f.projection.splice(0..0, fragment.projection.iter().copied());
                                 f
                             }));
-                            false
-                        } else {
                             true
+                        } else {
+                            false
                         }
                     })
                     .for_each(drop);
+                debug!(?fragments);
+                debug!(?new_fragments);
                 fragments.extend(new_fragments);
             }
             VarDebugInfoContents::Const(_) => {}
