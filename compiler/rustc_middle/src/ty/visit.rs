@@ -38,7 +38,10 @@
 //!     - ty.super_visit_with(visitor)
 //! - u.visit_with(visitor)
 //! ```
-use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
+use crate::ty::{
+    self, flags::FlagComputation, Binder, BoundAtOrAboveBinder, BoundIndex, OuterExclusiveBinder,
+    Ty, TyCtxt, TypeFlags,
+};
 use rustc_errors::ErrorGuaranteed;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -537,10 +540,8 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // otherwise we do want to remember to visit the rest of the
         // const, as it has types/regions embedded in a lot of other
         // places.
-        match ct.kind() {
-            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
-                ControlFlow::Break(FoundEscapingVars)
-            }
+        match ct.bound_index() {
+            Some(debruijn) if debruijn >= self.outer_index => ControlFlow::Break(FoundEscapingVars),
             _ => ct.super_visit_with(self),
         }
     }

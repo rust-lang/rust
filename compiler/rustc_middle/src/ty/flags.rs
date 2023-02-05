@@ -1,5 +1,5 @@
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, InferConst, Ty, TypeFlags};
+use crate::ty::{self, InferConst, OuterExclusiveBinder, Ty, TypeFlags};
 use std::slice;
 
 #[derive(Debug)]

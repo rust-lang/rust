@@ -32,9 +32,9 @@ pub trait Interner {
     type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type DefId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type Region: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + OuterExclusiveBinder;
+    type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + BoundIndex;
+    type Region: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + BoundAtOrAboveBinder;
     type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Mutability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Movability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
@@ -835,4 +835,16 @@ impl UniverseIndex {
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
         self.private < other.private
     }
+}
+
+pub trait OuterExclusiveBinder {
+    fn outer_exclusive_binder(self) -> DebruijnIndex;
+}
+
+pub trait BoundAtOrAboveBinder {
+    fn bound_at_or_above_binder(self, index: DebruijnIndex) -> bool;
+}
+
+pub trait BoundIndex {
+    fn bound_index(&self) -> Option<DebruijnIndex>;
 }

@@ -479,11 +479,6 @@ impl<'tcx> Predicate<'tcx> {
         self.0.flags
     }
 
-    #[inline(always)]
-    pub fn outer_exclusive_binder(self) -> DebruijnIndex {
-        self.0.outer_exclusive_binder
-    }
-
     /// Flips the polarity of a Predicate.
     ///
     /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
@@ -554,6 +549,13 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(_) => true,
         }
+    }
+}
+
+impl<'tcx> ty::OuterExclusiveBinder for Predicate<'tcx> {
+    #[inline(always)]
+    fn outer_exclusive_binder(self) -> DebruijnIndex {
+        self.0.outer_exclusive_binder
     }
 }
 

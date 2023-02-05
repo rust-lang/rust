@@ -239,6 +239,12 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
+impl<'tcx> ty::BoundIndex for Const<'tcx> {
+    fn bound_index(&self) -> Option<ty::DebruijnIndex> {
+        if let ty::ConstKind::Bound(debruijn, _) = self.kind() { Some(debruijn) } else { None }
+    }
+}
+
 pub fn const_param_default(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Const<'_>> {
     let default_def_id = match tcx.hir().get_by_def_id(def_id.expect_local()) {
         hir::Node::GenericParam(hir::GenericParam {

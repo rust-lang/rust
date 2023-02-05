@@ -1646,14 +1646,6 @@ impl<'tcx> Region<'tcx> {
         matches!(*self, ty::RePlaceholder(..))
     }
 
-    #[inline]
-    pub fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
-        match *self {
-            ty::ReLateBound(debruijn, _) => debruijn >= index,
-            _ => false,
-        }
-    }
-
     pub fn type_flags(self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
 
@@ -1735,6 +1727,16 @@ impl<'tcx> Region<'tcx> {
 
     pub fn is_var(self) -> bool {
         matches!(self.kind(), ty::ReVar(_))
+    }
+}
+
+impl<'tcx> ty::BoundAtOrAboveBinder for Region<'tcx> {
+    #[inline]
+    fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
+        match *self {
+            ty::ReLateBound(debruijn, _) => debruijn >= index,
+            _ => false,
+        }
     }
 }
 
