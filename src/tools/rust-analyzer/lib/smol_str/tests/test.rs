@@ -29,12 +29,12 @@ fn const_fn_ctor() {
     const EMPTY: SmolStr = SmolStr::new_inline("");
     const A: SmolStr = SmolStr::new_inline("A");
     const HELLO: SmolStr = SmolStr::new_inline("HELLO");
-    const LONG: SmolStr = SmolStr::new_inline("ABCDEFGHIZKLMNOPQRSTUV");
+    const LONG: SmolStr = SmolStr::new_inline("ABCDEFGHIZKLMNOPQRSTUVW");
 
     assert_eq!(EMPTY, SmolStr::from(""));
     assert_eq!(A, SmolStr::from("A"));
     assert_eq!(HELLO, SmolStr::from("HELLO"));
-    assert_eq!(LONG, SmolStr::from("ABCDEFGHIZKLMNOPQRSTUV"));
+    assert_eq!(LONG, SmolStr::from("ABCDEFGHIZKLMNOPQRSTUVW"));
 }
 
 #[allow(deprecated)]
@@ -43,19 +43,19 @@ fn old_const_fn_ctor() {
     const EMPTY: SmolStr = SmolStr::new_inline_from_ascii(0, b"");
     const A: SmolStr = SmolStr::new_inline_from_ascii(1, b"A");
     const HELLO: SmolStr = SmolStr::new_inline_from_ascii(5, b"HELLO");
-    const LONG: SmolStr = SmolStr::new_inline_from_ascii(22, b"ABCDEFGHIZKLMNOPQRSTUV");
+    const LONG: SmolStr = SmolStr::new_inline_from_ascii(23, b"ABCDEFGHIZKLMNOPQRSTUVW");
 
     assert_eq!(EMPTY, SmolStr::from(""));
     assert_eq!(A, SmolStr::from("A"));
     assert_eq!(HELLO, SmolStr::from("HELLO"));
-    assert_eq!(LONG, SmolStr::from("ABCDEFGHIZKLMNOPQRSTUV"));
+    assert_eq!(LONG, SmolStr::from("ABCDEFGHIZKLMNOPQRSTUVW"));
 }
 
 fn check_props(std_str: &str, smol: SmolStr) -> Result<(), proptest::test_runner::TestCaseError> {
     prop_assert_eq!(smol.as_str(), std_str);
     prop_assert_eq!(smol.len(), std_str.len());
     prop_assert_eq!(smol.is_empty(), std_str.is_empty());
-    if smol.len() <= 22 {
+    if smol.len() <= 23 {
         prop_assert!(!smol.is_heap_allocated());
     }
     Ok(())
@@ -218,7 +218,7 @@ fn test_from_char_iterator() {
     // String which has too many characters to even consider inlining: Chars::size_hint uses
     // (`len` + 3) / 4. With `len` = 89, this results in 23, so `from_iter` will immediately
     // heap allocate
-    let raw: String = std::iter::repeat('a').take(22 * 4 + 1).collect();
+    let raw: String = std::iter::repeat('a').take(23 * 4 + 1).collect();
     let s: SmolStr = raw.chars().collect();
     assert_eq!(s.as_str(), raw);
     assert!(s.is_heap_allocated());
