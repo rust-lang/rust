@@ -124,6 +124,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type FreeRegion = ty::FreeRegion;
     type RegionVid = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
+
+    #[track_caller]
+    fn expect_failure() -> ErrorGuaranteed {
+        if let Some(reported) = ty::tls::with(|tcx| tcx.sess.is_compilation_going_to_fail()) {
+            reported
+        } else {
+            bug!("expect tcx.sess.is_compilation_going_to_fail return `Some`");
+        }
+    }
 }
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;

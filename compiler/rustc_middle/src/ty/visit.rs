@@ -39,8 +39,8 @@
 //! - u.visit_with(visitor)
 //! ```
 use crate::ty::{
-    self, Binder, BoundAtOrAboveBinder, BoundIndex, Flags, OuterExclusiveBinder, Ty, TyCtxt,
-    TypeFlags,
+    self, Binder, BoundAtOrAboveBinder, BoundIndex, Flags, Interner, OuterExclusiveBinder, Ty,
+    TyCtxt, TypeFlags,
 };
 use rustc_errors::ErrorGuaranteed;
 
@@ -110,15 +110,7 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
     fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
-        if self.references_error() {
-            if let Some(reported) = ty::tls::with(|tcx| tcx.sess.is_compilation_going_to_fail()) {
-                Err(reported)
-            } else {
-                bug!("expect tcx.sess.is_compilation_going_to_fail return `Some`");
-            }
-        } else {
-            Ok(())
-        }
+        if self.references_error() { Err(TyCtxt::expect_failure()) } else { Ok(()) }
     }
     fn has_non_region_param(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST - TypeFlags::HAS_RE_PARAM)

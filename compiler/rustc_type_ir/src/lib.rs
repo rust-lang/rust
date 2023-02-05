@@ -64,6 +64,8 @@ pub trait Interner {
     type FreeRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type RegionVid: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PlaceholderRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+
+    fn expect_failure() -> Self::ErrorGuaranteed;
 }
 
 pub trait InternAs<T: ?Sized, R> {
