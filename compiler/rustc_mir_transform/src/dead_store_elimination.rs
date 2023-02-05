@@ -127,6 +127,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 pub enum DeadStoreElimination {
     Initial,
+    AfterJumpThreading,
     Final,
 }
 
@@ -134,6 +135,7 @@ impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
     fn name(&self) -> &'static str {
         match self {
             DeadStoreElimination::Initial => "DeadStoreElimination-initial",
+            DeadStoreElimination::AfterJumpThreading => "DeadStoreElimination-after-jump-threading",
             DeadStoreElimination::Final => "DeadStoreElimination-final",
         }
     }

@@ -56,8 +56,8 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
     }
 
     bb0: {
-        StorageLive(_4);
         StorageLive(_9);
+        StorageLive(_4);
         StorageLive(_3);
         _3 = Gt(_2, const 4294967295_usize);
         switchInt(move _3) -> [0: bb1, otherwise: bb5];
@@ -86,6 +86,7 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
         StorageDead(_8);
         StorageDead(_7);
         StorageDead(_6);
+        StorageDead(_4);
         StorageDead(_9);
         goto -> bb7;
     }
@@ -95,12 +96,14 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
         StorageDead(_8);
         StorageDead(_7);
         StorageDead(_6);
+        StorageDead(_4);
         goto -> bb6;
     }
 
     bb5: {
         StorageDead(_3);
         _9 = const Option::<u32>::None;
+        StorageDead(_4);
         goto -> bb6;
     }
 
@@ -114,7 +117,6 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
         _10 = _2 as u32 (IntToInt);
         _0 = Add(_1, _10);
         StorageDead(_10);
-        StorageDead(_4);
         return;
     }
 }

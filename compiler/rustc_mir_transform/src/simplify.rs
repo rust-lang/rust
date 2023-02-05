@@ -42,6 +42,7 @@ pub enum SimplifyCfg {
     Final,
     MakeShim,
     AfterUninhabitedEnumBranching,
+    BeforeConstProp,
 }
 
 impl SimplifyCfg {
@@ -57,6 +58,7 @@ impl SimplifyCfg {
             SimplifyCfg::AfterUninhabitedEnumBranching => {
                 "SimplifyCfg-after-uninhabited-enum-branching"
             }
+            SimplifyCfg::BeforeConstProp => "SimplifyCfg-before-const-prop",
         }
     }
 }
@@ -346,6 +348,7 @@ pub(crate) fn remove_dead_blocks(body: &mut Body<'_>) {
 }
 
 pub enum SimplifyLocals {
+    BeforeSROA,
     BeforeConstProp,
     AfterGVN,
     Final,
@@ -354,6 +357,7 @@ pub enum SimplifyLocals {
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     fn name(&self) -> &'static str {
         match &self {
+            SimplifyLocals::BeforeSROA => "SimplifyLocals-before-sroa",
             SimplifyLocals::BeforeConstProp => "SimplifyLocals-before-const-prop",
             SimplifyLocals::AfterGVN => "SimplifyLocals-after-value-numbering",
             SimplifyLocals::Final => "SimplifyLocals-final",

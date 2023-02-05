@@ -1,0 +1,37 @@
+- // MIR for `main` before SimplifyConstCondition-after-gvn
++ // MIR for `main` after SimplifyConstCondition-after-gvn
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: bool;
+      let _2: ();
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const false;
+-         switchInt(const false) -> [0: bb3, otherwise: bb1];
++         goto -> bb3;
+      }
+  
+      bb1: {
+          StorageLive(_2);
+          _2 = noop() -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          StorageDead(_2);
+          _0 = const ();
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = const ();
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_1);
+          return;
+      }
+  }
+  

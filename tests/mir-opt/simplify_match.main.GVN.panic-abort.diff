@@ -16,17 +16,22 @@
           _2 = const false;
 -         _1 = _2;
 -         StorageDead(_2);
--         switchInt(_1) -> [0: bb2, otherwise: bb1];
+-         switchInt(_1) -> [0: bb1, otherwise: bb2];
 +         _1 = const false;
 +         nop;
-+         switchInt(const false) -> [0: bb2, otherwise: bb1];
++         switchInt(const false) -> [0: bb1, otherwise: bb2];
       }
   
       bb1: {
-          _0 = noop() -> [return: bb2, unwind unreachable];
+          _0 = const ();
+          goto -> bb3;
       }
   
       bb2: {
+          _0 = noop() -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
           StorageDead(_1);
           return;
       }

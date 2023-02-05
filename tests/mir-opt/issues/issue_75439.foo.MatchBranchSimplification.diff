@@ -24,7 +24,7 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = _1;
-          _2 = move _3 as [u32; 4] (Transmute);
+          _2 = _1 as [u32; 4] (Transmute);
           StorageDead(_3);
           switchInt(_2[0 of 4]) -> [0: bb1, otherwise: bb6];
       }

@@ -18,7 +18,6 @@
       let mut _13: bool;
       scope 1 (inlined imm8) {
           debug x => _5;
-          let mut _14: u32;
           scope 2 {
               debug out => _4;
           }
@@ -35,14 +34,8 @@
           StorageLive(_5);
           _5 = _1;
           _4 = const 0_u32;
--         StorageLive(_14);
--         _14 = BitAnd(_5, const 255_u32);
--         _4 = BitOr(const 0_u32, move _14);
--         StorageDead(_14);
-+         nop;
-+         _14 = BitAnd(_1, const 255_u32);
-+         _4 = _14;
-+         nop;
+-         _4 = BitAnd(_5, const 255_u32);
++         _4 = BitAnd(_1, const 255_u32);
           StorageDead(_5);
           StorageLive(_6);
           StorageLive(_7);

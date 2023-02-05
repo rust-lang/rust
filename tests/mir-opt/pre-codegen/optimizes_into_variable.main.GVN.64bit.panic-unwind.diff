@@ -9,7 +9,7 @@
       let _5: usize;
       let mut _6: usize;
       let mut _7: bool;
-      let mut _9: u32;
+      let mut _9: Point;
       scope 1 {
           debug x => _1;
           let _3: i32;
@@ -38,9 +38,10 @@
           _4 = [const 0_i32, const 1_i32, const 2_i32, const 3_i32, const 4_i32, const 5_i32];
           StorageLive(_5);
           _5 = const 3_usize;
-          _6 = const 6_usize;
+-         _6 = Len(_4);
 -         _7 = Lt(_5, _6);
 -         assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, _5) -> [success: bb2, unwind continue];
++         _6 = const 6_usize;
 +         _7 = const true;
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 6_usize, const 3_usize) -> [success: bb2, unwind continue];
       }
@@ -52,8 +53,9 @@
           StorageDead(_4);
           StorageLive(_8);
           StorageLive(_9);
-          _9 = const 42_u32;
--         _8 = _9;
+-         _9 = Point { x: const 12_u32, y: const 42_u32 };
+-         _8 = (_9.1: u32);
++         _9 = const Point {{ x: 12_u32, y: 42_u32 }};
 +         _8 = const 42_u32;
           StorageDead(_9);
           StorageDead(_8);
@@ -65,5 +67,9 @@
 + 
 + ALLOC0 (size: 8, align: 4) {
 +     04 00 00 00 00 __ __ __                         │ .....░░░
++ }
++ 
++ ALLOC1 (size: 8, align: 4) {
++     0c 00 00 00 2a 00 00 00                         │ ....*...
   }
   

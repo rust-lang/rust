@@ -5,41 +5,43 @@
       let mut _0: ();
       let _1: std::alloc::Layout;
       let mut _2: std::option::Option<std::alloc::Layout>;
-      let mut _3: *mut u8;
-      let mut _4: *mut [u8];
-      let mut _5: std::ptr::NonNull<[u8]>;
-      let mut _6: std::result::Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError>;
-      let mut _7: &std::alloc::Global;
-      let mut _8: std::alloc::Layout;
+      let mut _4: *mut u8;
+      let mut _5: *mut [u8];
+      let mut _6: std::ptr::NonNull<[u8]>;
+      let mut _7: std::result::Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError>;
+      let mut _8: &std::alloc::Global;
+      let _9: std::alloc::Global;
+      let mut _10: std::alloc::Layout;
       scope 1 {
           debug layout => _1;
-          let mut _9: &std::alloc::Global;
+          let _3: *mut u8;
+          let mut _11: &std::alloc::Global;
           scope 2 {
-              debug ptr => _3;
+              debug ptr => _4;
           }
           scope 5 (inlined <std::alloc::Global as Allocator>::allocate) {
-              debug self => _9;
-              debug layout => _8;
+              debug self => _11;
+              debug layout => _10;
           }
           scope 6 (inlined NonNull::<[u8]>::as_ptr) {
-              debug self => _5;
-              let mut _12: bool;
-              let mut _13: bool;
-              let mut _14: *const [u8];
+              debug self => _6;
+              let mut _14: bool;
+              let mut _15: bool;
+              let mut _16: *const [u8];
               scope 7 {
                   scope 8 (inlined std::ptr::const_ptr::<impl *const [u8]>::is_null) {
-                      debug self => _14;
-                      let mut _15: *const u8;
+                      debug self => _16;
+                      let mut _17: *const u8;
                       scope 9 {
                           scope 10 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
-                              debug ptr => _15;
-                              let mut _16: usize;
+                              debug ptr => _17;
+                              let mut _18: usize;
                               scope 11 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
-                                  debug self => _15;
-                                  let mut _17: *const ();
+                                  debug self => _17;
+                                  let mut _19: *const ();
                                   scope 12 {
                                       scope 13 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                                          debug self => _15;
+                                          debug self => _17;
                                       }
                                   }
                               }
@@ -51,8 +53,8 @@
       }
       scope 3 (inlined #[track_caller] Option::<Layout>::unwrap) {
           debug self => _2;
-          let mut _10: isize;
-          let mut _11: !;
+          let mut _12: isize;
+          let mut _13: !;
           scope 4 {
               debug val => _1;
           }
@@ -64,85 +66,82 @@
           StorageLive(_2);
 -         _2 = Option::<Layout>::None;
 +         _2 = const Option::<Layout>::None;
-          StorageLive(_10);
--         _10 = discriminant(_2);
--         switchInt(move _10) -> [0: bb2, 1: bb3, otherwise: bb5];
-+         _10 = const 0_isize;
+          StorageLive(_12);
+-         _12 = discriminant(_2);
+-         switchInt(move _12) -> [0: bb2, 1: bb3, otherwise: bb5];
++         _12 = const 0_isize;
 +         switchInt(const 0_isize) -> [0: bb2, 1: bb3, otherwise: bb5];
       }
   
       bb1: {
-          StorageDead(_6);
--         StorageLive(_14);
+          StorageDead(_7);
+-         StorageLive(_16);
 +         nop;
-          StorageLive(_12);
-          StorageLive(_13);
-          _14 = (_5.0: *const [u8]);
+          StorageLive(_14);
           StorageLive(_15);
-          _15 = _14 as *const u8 (PtrToPtr);
-          StorageLive(_16);
+          _16 = (_6.0: *const [u8]);
           StorageLive(_17);
-          _17 = _14 as *const () (PtrToPtr);
-          _16 = move _17 as usize (Transmute);
+          _17 = _16 as *const u8 (PtrToPtr);
+          StorageLive(_18);
+          StorageLive(_19);
+          _19 = _16 as *const () (PtrToPtr);
+          _18 = move _19 as usize (Transmute);
+          StorageDead(_19);
+          _15 = Eq(move _18, const 0_usize);
+          StorageDead(_18);
           StorageDead(_17);
-          _13 = Eq(move _16, const 0_usize);
-          StorageDead(_16);
+          _14 = Not(move _15);
           StorageDead(_15);
-          _12 = Not(move _13);
-          StorageDead(_13);
-          assume(move _12);
-          StorageDead(_12);
-          _4 = _14 as *mut [u8] (PtrToPtr);
--         StorageDead(_14);
+          assume(move _14);
+          StorageDead(_14);
+          _5 = _16 as *mut [u8] (PtrToPtr);
+-         StorageDead(_16);
 +         nop;
+          StorageDead(_6);
+-         _4 = move _5 as *mut u8 (PtrToPtr);
++         _4 = _16 as *mut u8 (PtrToPtr);
           StorageDead(_5);
--         _3 = move _4 as *mut u8 (PtrToPtr);
-+         _3 = _14 as *mut u8 (PtrToPtr);
           StorageDead(_4);
-          StorageDead(_3);
 -         StorageDead(_1);
 +         nop;
           return;
       }
   
       bb2: {
-          _11 = option::unwrap_failed() -> unwind continue;
+          _13 = option::unwrap_failed() -> unwind continue;
       }
   
       bb3: {
 -         _1 = move ((_2 as Some).0: std::alloc::Layout);
 +         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }};
-          StorageDead(_10);
+          StorageDead(_12);
           StorageDead(_2);
-          StorageLive(_3);
           StorageLive(_4);
           StorageLive(_5);
           StorageLive(_6);
           StorageLive(_7);
-          _9 = const _;
--         _7 = _9;
-+         _7 = const {ALLOC1<imm>: &std::alloc::Global};
           StorageLive(_8);
--         _8 = _1;
--         _6 = std::alloc::Global::alloc_impl(move _7, move _8, const false) -> [return: bb4, unwind continue];
-+         _8 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }};
-+         _6 = std::alloc::Global::alloc_impl(const {ALLOC1<imm>: &std::alloc::Global}, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }}, const false) -> [return: bb4, unwind continue];
+          _11 = const _;
+          _8 = &(*_11);
+          StorageLive(_10);
+-         _10 = _1;
+-         _7 = std::alloc::Global::alloc_impl(move _8, move _10, const false) -> [return: bb4, unwind continue];
++         _10 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }};
++         _7 = std::alloc::Global::alloc_impl(move _8, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }}, const false) -> [return: bb4, unwind continue];
       }
   
       bb4: {
+          StorageDead(_10);
           StorageDead(_8);
-          StorageDead(_7);
-          _5 = Result::<NonNull<[u8]>, std::alloc::AllocError>::unwrap(move _6) -> [return: bb1, unwind continue];
+          _6 = Result::<NonNull<[u8]>, std::alloc::AllocError>::unwrap(move _7) -> [return: bb1, unwind continue];
       }
   
       bb5: {
           unreachable;
       }
-  }
++ }
 + 
 + ALLOC0 (size: 16, align: 8) {
 +     00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
-+ }
-+ 
-+ ALLOC1 (size: 0, align: 1) {}
+  }
   

@@ -7,17 +7,13 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     let mut _11: std::slice::Iter<'_, T>;
     let mut _12: std::iter::Enumerate<std::slice::Iter<'_, T>>;
     let mut _13: std::iter::Enumerate<std::slice::Iter<'_, T>>;
-    let mut _62: std::option::Option<(usize, &T)>;
-    let mut _65: &impl Fn(usize, &T);
-    let mut _66: (usize, &T);
-    let _67: ();
+    let mut _62: &impl Fn(usize, &T);
+    let _63: ();
     scope 1 {
         debug iter => _13;
-        let _63: usize;
-        let _64: &T;
         scope 2 {
-            debug i => _63;
-            debug x => _64;
+            debug i => _59;
+            debug x => _58;
         }
         scope 25 (inlined <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next) {
             debug (*(self: &mut Enumerate<std::slice::Iter<'_, T>>)) => _13;
@@ -254,21 +250,21 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                         debug end_or_len => _7;
                         scope 13 (inlined NonNull::<T>::new_unchecked) {
                             debug ptr => _9;
-                            let mut _68: *mut T;
+                            let mut _64: *mut T;
                             scope 14 {
                                 scope 15 (inlined NonNull::<T>::new_unchecked::runtime::<T>) {
-                                    debug ptr => _68;
+                                    debug ptr => _64;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
-                                        debug self => _68;
-                                        let mut _69: *mut u8;
+                                        debug self => _64;
+                                        let mut _65: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _69;
+                                                debug ptr => _65;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _69;
+                                                    debug self => _65;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _69;
+                                                            debug self => _65;
                                                         }
                                                     }
                                                 }
@@ -341,11 +337,11 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_10);
         StorageLive(_9);
         _9 = _3 as *mut T (PtrToPtr);
-        StorageLive(_68);
-        StorageLive(_69);
+        StorageLive(_64);
+        StorageLive(_65);
         _10 = NonNull::<T> { pointer: _4 };
-        StorageDead(_69);
-        StorageDead(_68);
+        StorageDead(_65);
+        StorageDead(_64);
         StorageDead(_9);
         _11 = std::slice::Iter::<'_, T> { ptr: move _10, end_or_len: move _7, _marker: const ZeroSized: PhantomData<&T> };
         StorageDead(_10);
@@ -360,8 +356,6 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb4: {
-        StorageLive(_62);
-        StorageLive(_59);
         StorageLive(_60);
         StorageLive(_57);
         StorageLive(_36);
@@ -537,24 +531,14 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb12: {
         (_13.1: usize) = move (_60.0: usize);
-        StorageLive(_61);
         _61 = (_59, _58);
-        _62 = Option::<(usize, &T)>::Some(move _61);
-        StorageDead(_61);
         StorageDead(_60);
-        StorageDead(_59);
-        _63 = (((_62 as Some).0: (usize, &T)).0: usize);
-        _64 = (((_62 as Some).0: (usize, &T)).1: &T);
-        StorageLive(_65);
-        _65 = &_2;
-        StorageLive(_66);
-        _66 = (_63, _64);
-        _67 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _65, move _66) -> [return: bb13, unwind unreachable];
+        StorageLive(_62);
+        _62 = &_2;
+        _63 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _62, move _61) -> [return: bb13, unwind unreachable];
     }
 
     bb13: {
-        StorageDead(_66);
-        StorageDead(_65);
         StorageDead(_62);
         goto -> bb4;
     }
@@ -568,8 +552,6 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_36);
         StorageDead(_57);
         StorageDead(_60);
-        StorageDead(_59);
-        StorageDead(_62);
         StorageDead(_13);
         drop(_2) -> [return: bb15, unwind unreachable];
     }

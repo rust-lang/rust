@@ -4,14 +4,12 @@ fn int_range(_1: usize, _2: usize) -> () {
     debug start => _1;
     debug end => _2;
     let mut _0: ();
-    let mut _5: std::option::Option<usize>;
-    let _7: ();
+    let _5: ();
     scope 1 {
         debug ((iter: std::ops::Range<usize>).0: usize) => _1;
         debug ((iter: std::ops::Range<usize>).1: usize) => _2;
-        let _6: usize;
         scope 2 {
-            debug i => _6;
+            debug i => _4;
         }
         scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
             debug ((*(self: &mut std::ops::Range<usize>)).0: usize) => _1;
@@ -43,8 +41,6 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb1: {
-        StorageLive(_5);
-        StorageLive(_4);
         StorageLive(_3);
         _3 = Lt(_1, _2);
         switchInt(move _3) -> [0: bb2, otherwise: bb3];
@@ -52,8 +48,6 @@ fn int_range(_1: usize, _2: usize) -> () {
 
     bb2: {
         StorageDead(_3);
-        StorageDead(_4);
-        StorageDead(_5);
         return;
     }
 
@@ -63,15 +57,11 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb4: {
-        _5 = Option::<usize>::Some(_4);
         StorageDead(_3);
-        StorageDead(_4);
-        _6 = ((_5 as Some).0: usize);
-        _7 = opaque::<usize>(move _6) -> [return: bb5, unwind continue];
+        _5 = opaque::<usize>(move _4) -> [return: bb5, unwind continue];
     }
 
     bb5: {
-        StorageDead(_5);
         goto -> bb1;
     }
 }

@@ -26,9 +26,11 @@
           _3 = &_4;
           _2 = move _3 as &[T] (PointerCoercion(Unsize));
           StorageDead(_3);
-          _5 = const 3_usize;
-          _6 = const true;
-          goto -> bb2;
+          _5 = Len((*_2));
+-         _6 = Eq(move _5, const 3_usize);
+-         switchInt(move _6) -> [0: bb1, otherwise: bb2];
++         nop;
++         switchInt(move _5) -> [3: bb2, otherwise: bb1];
       }
   
       bb1: {

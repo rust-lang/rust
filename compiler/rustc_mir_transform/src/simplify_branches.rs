@@ -2,15 +2,22 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
 pub enum SimplifyConstCondition {
-    AfterConstProp,
+    AfterGVN,
     Final,
 }
 /// A pass that replaces a branch with a goto when its condition is known.
 impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
     fn name(&self) -> &'static str {
         match self {
-            SimplifyConstCondition::AfterConstProp => "SimplifyConstCondition-after-const-prop",
+            SimplifyConstCondition::AfterGVN => "SimplifyConstCondition-after-gvn",
             SimplifyConstCondition::Final => "SimplifyConstCondition-final",
+        }
+    }
+
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        match self {
+            SimplifyConstCondition::Final => sess.mir_opt_level() >= 1,
+            SimplifyConstCondition::AfterGVN => sess.mir_opt_level() >= 2,
         }
     }
 

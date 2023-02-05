@@ -1,5 +1,5 @@
-- // MIR for `main` before SimplifyConstCondition-after-const-prop
-+ // MIR for `main` after SimplifyConstCondition-after-const-prop
+- // MIR for `main` before SimplifyConstCondition-after-gvn
++ // MIR for `main` after SimplifyConstCondition-after-gvn
   
   fn main() -> () {
       let mut _0: ();

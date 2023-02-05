@@ -77,8 +77,8 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
     }
 
     bb0: {
-        _3 = move (_2.0: usize);
-        _4 = move (_2.1: usize);
+        _3 = (_2.0: usize);
+        _4 = (_2.1: usize);
         StorageLive(_5);
         _5 = Gt(_3, _4);
         switchInt(move _5) -> [0: bb1, otherwise: bb4];

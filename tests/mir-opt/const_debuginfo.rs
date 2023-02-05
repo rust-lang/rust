@@ -1,5 +1,5 @@
 // unit-test: ConstDebugInfo
-// compile-flags: -C overflow-checks=no -Zmir-enable-passes=+GVN
+// compile-flags: -C overflow-checks=no -Zmir-enable-passes=+GVN -g
 
 struct Point {
     x: u32,
