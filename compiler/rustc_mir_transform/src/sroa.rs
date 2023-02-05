@@ -211,7 +211,7 @@ fn replace_flattened_locals<'tcx>(
         local_decls: &body.local_decls,
         replacements,
         all_dead_locals,
-        fragments,
+        fragments: &fragments,
         patch: MirPatch::new(body),
     };
     for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
@@ -239,7 +239,7 @@ struct ReplacementVisitor<'tcx, 'll> {
     all_dead_locals: BitSet<Local>,
     /// Pre-computed list of all "new" locals for each "old" local. This is used to expand storage
     /// and deinit statement and debuginfo.
-    fragments: IndexVec<Local, Option<Vec<(&'tcx [PlaceElem<'tcx>], Local)>>>,
+    fragments: &'ll IndexVec<Local, Option<Vec<(&'tcx [PlaceElem<'tcx>], Local)>>>,
     patch: MirPatch<'tcx>,
 }
 
@@ -270,6 +270,14 @@ impl<'tcx, 'll> ReplacementVisitor<'tcx, 'll> {
             None
         }
     }
+
+    fn place_fragments(
+        &self,
+        place: Place<'tcx>,
+    ) -> Option<&'ll Vec<(&'tcx [PlaceElem<'tcx>], Local)>> {
+        let local = place.as_local()?;
+        self.fragments[local].as_ref()
+    }
 }
 
 impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
@@ -297,25 +305,19 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                 }
                 return;
             }
-            StatementKind::Deinit(box ref place) => {
-                if let Some(local) = place.as_local()
-                    && let Some(final_locals) = &self.fragments[local]
-                {
+            StatementKind::Deinit(box place) => {
+                if let Some(final_locals) = self.place_fragments(place) {
                     for &(_, fl) in final_locals {
-                        self.patch.add_statement(
-                            location,
-                            StatementKind::Deinit(Box::new(fl.into())),
-                        );
+                        self.patch
+                            .add_statement(location, StatementKind::Deinit(Box::new(fl.into())));
                     }
                     statement.make_nop();
                     return;
                 }
             }
 
-            StatementKind::Assign(box (ref place, Rvalue::Aggregate(_, ref operands))) => {
-                if let Some(local) = place.as_local()
-                    && let Some(final_locals) = &self.fragments[local]
-                {
+            StatementKind::Assign(box (place, Rvalue::Aggregate(_, ref operands))) => {
+                if let Some(final_locals) = self.place_fragments(place) {
                     for &(projection, fl) in final_locals {
                         let &[PlaceElem::Field(index, _)] = projection else { bug!() };
                         let index = index.as_usize();
@@ -330,31 +332,28 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                 }
             }
 
-            StatementKind::Assign(box (ref place, Rvalue::Use(Operand::Constant(_)))) => {
-                if let Some(local) = place.as_local()
-                    && let Some(final_locals) = &self.fragments[local]
-                {
+            StatementKind::Assign(box (place, Rvalue::Use(Operand::Constant(_)))) => {
+                if let Some(final_locals) = self.place_fragments(place) {
                     for &(projection, fl) in final_locals {
-                        let rvalue = Rvalue::Use(Operand::Move(place.project_deeper(projection, self.tcx)));
+                        let rvalue =
+                            Rvalue::Use(Operand::Move(place.project_deeper(projection, self.tcx)));
                         self.patch.add_statement(
                             location,
                             StatementKind::Assign(Box::new((fl.into(), rvalue))),
                         );
                     }
-                    self.all_dead_locals.remove(local);
+                    self.all_dead_locals.remove(place.local);
                     return;
                 }
             }
 
-            StatementKind::Assign(box (ref lhs, Rvalue::Use(ref op))) => {
+            StatementKind::Assign(box (lhs, Rvalue::Use(ref op))) => {
                 let (rplace, copy) = match op {
                     Operand::Copy(rplace) => (rplace, true),
                     Operand::Move(rplace) => (rplace, false),
                     Operand::Constant(_) => bug!(),
                 };
-                if let Some(local) = lhs.as_local()
-                    && let Some(final_locals) = &self.fragments[local]
-                {
+                if let Some(final_locals) = self.place_fragments(lhs) {
                     for &(projection, fl) in final_locals {
                         let rplace = rplace.project_deeper(projection, self.tcx);
                         let rvalue = if copy {
