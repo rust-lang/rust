@@ -204,7 +204,7 @@ impl<'tcx> SymbolMangler<'tcx> {
         print_value: impl FnOnce(&'a mut Self, &T) -> Result<&'a mut Self, !>,
     ) -> Result<&'a mut Self, !>
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         // FIXME(non-lifetime-binders): What to do here?
         let regions = if value.has_late_bound_regions() {

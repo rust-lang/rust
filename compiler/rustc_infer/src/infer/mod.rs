@@ -1413,7 +1413,7 @@ impl<'tcx> InferCtxt<'tcx> {
         value: &T,
     ) -> Option<(ty::Term<'tcx>, Option<Span>)>
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         value.visit_with(&mut resolve::UnresolvedTypeOrConstFinder::new(self)).break_value()
     }

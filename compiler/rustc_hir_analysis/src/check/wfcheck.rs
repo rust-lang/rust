@@ -773,7 +773,7 @@ impl<'tcx> GATSubstCollector<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATSubstCollector<'tcx> {
     type BreakTy = !;
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1436,7 +1436,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             struct CountParams {
                 params: FxHashSet<u32>,
             }
-            impl<'tcx> ty::visit::TypeVisitor<'tcx> for CountParams {
+            impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for CountParams {
                 type BreakTy = ();
 
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

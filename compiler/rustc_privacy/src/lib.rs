@@ -81,7 +81,10 @@ trait DefIdVisitor<'tcx> {
             dummy: Default::default(),
         }
     }
-    fn visit(&mut self, ty_fragment: impl TypeVisitable<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit(
+        &mut self,
+        ty_fragment: impl TypeVisitable<TyCtxt<'tcx>>,
+    ) -> ControlFlow<Self::BreakTy> {
         ty_fragment.visit_with(&mut self.skeleton())
     }
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -174,7 +177,7 @@ where
     }
 }
 
-impl<'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'tcx, V>
+impl<'tcx, V> TypeVisitor<TyCtxt<'tcx>> for DefIdVisitorSkeleton<'_, 'tcx, V>
 where
     V: DefIdVisitor<'tcx> + ?Sized,
 {

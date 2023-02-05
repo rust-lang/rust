@@ -561,7 +561,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             struct RecursionChecker {
                 def_id: LocalDefId,
             }
-            impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
+            impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for RecursionChecker {
                 type BreakTy = ();
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                     if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *t.kind() {

@@ -1,8 +1,8 @@
 use crate::traits;
 use crate::traits::project::Normalized;
-use rustc_middle::ty;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt};
 
 use std::fmt;
 use std::ops::ControlFlow;
@@ -72,8 +72,10 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
     }
 }
 
-impl<'tcx, O: TypeVisitable<'tcx>> TypeVisitable<'tcx> for traits::Obligation<'tcx, O> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+impl<'tcx, O: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>>
+    for traits::Obligation<'tcx, O>
+{
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.predicate.visit_with(visitor)?;
         self.param_env.visit_with(visitor)
     }

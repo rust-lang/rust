@@ -2,7 +2,9 @@ use std::ops::ControlFlow;
 
 use rustc_data_structures::intern::Interned;
 
-use crate::ty::{FallibleTypeFolder, Ty, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor};
+use crate::ty::{
+    FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
+};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub struct ExternalConstraints<'tcx>(pub(crate) Interned<'tcx, ExternalConstraintsData<'tcx>>);
@@ -43,8 +45,8 @@ impl<'tcx> TypeFoldable<'tcx> for ExternalConstraints<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for ExternalConstraints<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
         &self,
         visitor: &mut V,
     ) -> std::ops::ControlFlow<V::BreakTy> {

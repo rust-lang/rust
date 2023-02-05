@@ -539,7 +539,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 /// Collect all the trait objects in a type that could have received an implicit `'static` lifetime.
 pub struct TraitObjectVisitor(pub FxIndexSet<DefId>);
 
-impl<'tcx> TypeVisitor<'tcx> for TraitObjectVisitor {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Dynamic(preds, re, _) if re.is_static() => {

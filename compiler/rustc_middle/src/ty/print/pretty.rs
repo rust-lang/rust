@@ -2477,7 +2477,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
     fn prepare_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         struct RegionNameCollector<'tcx> {
             used_region_names: FxHashSet<Symbol>,
@@ -2493,7 +2493,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::TypeVisitor<'tcx> for RegionNameCollector<'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for RegionNameCollector<'tcx> {
             type BreakTy = ();
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {

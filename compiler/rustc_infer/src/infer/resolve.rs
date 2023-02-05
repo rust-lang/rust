@@ -121,7 +121,7 @@ impl<'a, 'tcx> UnresolvedTypeOrConstFinder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeOrConstFinder<'a, 'tcx> {
+impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for UnresolvedTypeOrConstFinder<'a, 'tcx> {
     type BreakTy = (ty::Term<'tcx>, Option<Span>);
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         let t = self.infcx.shallow_resolve(t);

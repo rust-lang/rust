@@ -98,7 +98,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         struct ContainsTerm<'tcx> {
             term: ty::Term<'tcx>,
         }
-        impl<'tcx> TypeVisitor<'tcx> for ContainsTerm<'tcx> {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTerm<'tcx> {
             type BreakTy = ();
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if t.needs_infer() {

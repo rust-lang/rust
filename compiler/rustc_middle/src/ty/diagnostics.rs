@@ -94,7 +94,7 @@ pub trait IsSuggestable<'tcx>: Sized {
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
 where
-    T: TypeVisitable<'tcx> + TypeFoldable<'tcx>,
+    T: TypeVisitable<TyCtxt<'tcx>> + TypeFoldable<'tcx>,
 {
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
@@ -447,7 +447,7 @@ pub struct IsSuggestableVisitor<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
     type BreakTy = ();
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

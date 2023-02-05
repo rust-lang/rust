@@ -784,7 +784,7 @@ fn receiver_is_dispatchable<'tcx>(
     infcx.predicate_must_hold_modulo_regions(&obligation)
 }
 
-fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
+fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     value: T,
@@ -834,7 +834,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
         supertraits: Option<Vec<DefId>>,
     }
 
-    impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
         type BreakTy = ();
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

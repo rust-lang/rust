@@ -977,7 +977,7 @@ pub struct Binder<'tcx, T>(T, &'tcx List<BoundVariableKind>);
 
 impl<'tcx, T> Binder<'tcx, T>
 where
-    T: TypeVisitable<'tcx>,
+    T: TypeVisitable<TyCtxt<'tcx>>,
 {
     /// Wraps `value` in a binder, asserting that `value` does not
     /// contain any bound vars that would be bound by the
@@ -1045,14 +1045,14 @@ impl<'tcx, T> Binder<'tcx, T> {
         Binder(value, self.1)
     }
 
-    pub fn map_bound_ref<F, U: TypeVisitable<'tcx>>(&self, f: F) -> Binder<'tcx, U>
+    pub fn map_bound_ref<F, U: TypeVisitable<TyCtxt<'tcx>>>(&self, f: F) -> Binder<'tcx, U>
     where
         F: FnOnce(&T) -> U,
     {
         self.as_ref().map_bound(f)
     }
 
-    pub fn map_bound<F, U: TypeVisitable<'tcx>>(self, f: F) -> Binder<'tcx, U>
+    pub fn map_bound<F, U: TypeVisitable<TyCtxt<'tcx>>>(self, f: F) -> Binder<'tcx, U>
     where
         F: FnOnce(T) -> U,
     {
@@ -1064,7 +1064,10 @@ impl<'tcx, T> Binder<'tcx, T> {
         Binder(value, self.1)
     }
 
-    pub fn try_map_bound<F, U: TypeVisitable<'tcx>, E>(self, f: F) -> Result<Binder<'tcx, U>, E>
+    pub fn try_map_bound<F, U: TypeVisitable<TyCtxt<'tcx>>, E>(
+        self,
+        f: F,
+    ) -> Result<Binder<'tcx, U>, E>
     where
         F: FnOnce(T) -> Result<U, E>,
     {
@@ -1087,7 +1090,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// in `bind`. This may be (debug) asserted in the future.
     pub fn rebind<U>(&self, value: U) -> Binder<'tcx, U>
     where
-        U: TypeVisitable<'tcx>,
+        U: TypeVisitable<TyCtxt<'tcx>>,
     {
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(self.bound_vars());
@@ -1108,7 +1111,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// would not be that useful.)
     pub fn no_bound_vars(self) -> Option<T>
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         if self.0.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
@@ -2030,7 +2033,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn contains(self, other: Ty<'tcx>) -> bool {
         struct ContainsTyVisitor<'tcx>(Ty<'tcx>);
 
-        impl<'tcx> TypeVisitor<'tcx> for ContainsTyVisitor<'tcx> {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTyVisitor<'tcx> {
             type BreakTy = ();
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -2048,7 +2051,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn contains_closure(self) -> bool {
         struct ContainsClosureVisitor;
 
-        impl<'tcx> TypeVisitor<'tcx> for ContainsClosureVisitor {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsClosureVisitor {
             type BreakTy = ();
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

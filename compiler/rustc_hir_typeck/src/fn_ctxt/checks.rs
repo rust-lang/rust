@@ -26,7 +26,9 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{
+    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
+};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, sym, Span};
@@ -2078,13 +2080,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
-    fn find_ambiguous_parameter_in<T: TypeVisitable<'tcx>>(
+    fn find_ambiguous_parameter_in<T: TypeVisitable<TyCtxt<'tcx>>>(
         &self,
         item_def_id: DefId,
         t: T,
     ) -> Option<ty::GenericArg<'tcx>> {
         struct FindAmbiguousParameter<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, DefId);
-        impl<'tcx> TypeVisitor<'tcx> for FindAmbiguousParameter<'_, 'tcx> {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindAmbiguousParameter<'_, 'tcx> {
             type BreakTy = ty::GenericArg<'tcx>;
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
                 if let Some(origin) = self.0.type_var_origin(ty)

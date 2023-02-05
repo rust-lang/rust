@@ -918,8 +918,8 @@ impl<'tcx> BoundVarsCollector<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
-    fn visit_binder<T: TypeVisitable<'tcx>>(
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for BoundVarsCollector<'tcx> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -1167,7 +1167,7 @@ impl PlaceholdersCollector {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlaceholdersCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Placeholder(p) if p.universe == self.universe_index => {

@@ -237,8 +237,8 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for GenericArg<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
@@ -535,9 +535,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &'tcx ty::List<T> {
+impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx ty::List<T> {
     #[inline]
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
@@ -554,7 +554,7 @@ pub struct EarlyBinder<T>(pub T);
 
 /// For early binders, you should first call `subst` before using any visitors.
 impl<'tcx, T> !TypeFoldable<'tcx> for ty::EarlyBinder<T> {}
-impl<'tcx, T> !TypeVisitable<'tcx> for ty::EarlyBinder<T> {}
+impl<'tcx, T> !TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 
 impl<T> EarlyBinder<T> {
     pub fn as_ref(&self) -> EarlyBinder<&T> {

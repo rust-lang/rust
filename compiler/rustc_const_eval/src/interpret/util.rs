@@ -9,7 +9,7 @@ use std::ops::ControlFlow;
 /// case these parameters are unused.
 pub(crate) fn ensure_monomorphic_enough<'tcx, T>(tcx: TyCtxt<'tcx>, ty: T) -> InterpResult<'tcx>
 where
-    T: TypeVisitable<'tcx>,
+    T: TypeVisitable<TyCtxt<'tcx>>,
 {
     debug!("ensure_monomorphic_enough: ty={:?}", ty);
     if !ty.needs_subst() {
@@ -21,7 +21,7 @@ where
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> TypeVisitor<'tcx> for UsedParamsNeedSubstVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedSubstVisitor<'tcx> {
         type BreakTy = FoundParam;
 
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

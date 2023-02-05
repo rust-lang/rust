@@ -141,7 +141,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
 fn pred_known_to_hold_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    pred: impl ToPredicate<'tcx> + TypeVisitable<'tcx>,
+    pred: impl ToPredicate<'tcx> + TypeVisitable<TyCtxt<'tcx>>,
     span: Span,
 ) -> bool {
     let has_non_region_infer = pred.has_non_region_infer();
@@ -481,7 +481,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
         generics: &'tcx ty::Generics,
         trait_item_def_id: DefId,
     }
-    impl<'tcx> ty::TypeVisitor<'tcx> for ReferencesOnlyParentGenerics<'tcx> {
+    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for ReferencesOnlyParentGenerics<'tcx> {
         type BreakTy = ();
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             // If this is a parameter from the trait item's own generics, then bail

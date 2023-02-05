@@ -838,7 +838,7 @@ pub fn for_each_top_level_late_bound_region<B>(
         index: u32,
         f: F,
     }
-    impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<'tcx> for V<F> {
+    impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
         type BreakTy = B;
         fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let RegionKind::ReLateBound(idx, bound) = r.kind() && idx.as_u32() == self.index {
@@ -847,7 +847,7 @@ pub fn for_each_top_level_late_bound_region<B>(
                 ControlFlow::Continue(())
             }
         }
-        fn visit_binder<T: TypeVisitable<'tcx>>(&mut self, t: &Binder<'tcx, T>) -> ControlFlow<Self::BreakTy> {
+        fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &Binder<'tcx, T>) -> ControlFlow<Self::BreakTy> {
             self.index += 1;
             let res = t.super_visit_with(self);
             self.index -= 1;

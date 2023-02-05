@@ -2751,8 +2751,11 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for UserTypeProjection {
-    fn visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<Vs::BreakTy> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
+    fn visit_with<Vs: TypeVisitor<TyCtxt<'tcx>>>(
+        &self,
+        visitor: &mut Vs,
+    ) -> ControlFlow<Vs::BreakTy> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.
     }

@@ -296,7 +296,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
+impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !c.has_non_region_param() {

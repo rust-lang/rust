@@ -115,8 +115,8 @@ struct MaxEscapingBoundVarVisitor {
     escaping: usize,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
-    fn visit_binder<T: TypeVisitable<'tcx>>(
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {

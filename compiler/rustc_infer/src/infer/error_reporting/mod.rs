@@ -1435,8 +1435,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         impl<'tcx> OpaqueTypesVisitor<'tcx> {
             fn visit_expected_found(
                 tcx: TyCtxt<'tcx>,
-                expected: impl TypeVisitable<'tcx>,
-                found: impl TypeVisitable<'tcx>,
+                expected: impl TypeVisitable<TyCtxt<'tcx>>,
+                found: impl TypeVisitable<TyCtxt<'tcx>>,
                 ignore_span: Span,
             ) -> Self {
                 let mut types_visitor = OpaqueTypesVisitor {
@@ -1486,7 +1486,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);

@@ -171,7 +171,7 @@ fn satisfied_from_param_env<'tcx>(
         single_match: Option<Result<ty::Const<'tcx>, ()>>,
     }
 
-    impl<'a, 'tcx> TypeVisitor<'tcx> for Visitor<'a, 'tcx> {
+    impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for Visitor<'a, 'tcx> {
         type BreakTy = ();
         fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!("is_const_evaluatable: candidate={:?}", c);
