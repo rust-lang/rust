@@ -1,11 +1,6 @@
 #![deny(rustc::untranslatable_diagnostic)]
 
-use crate::errors::{
-    ArgumentNotAttributes, AttrNoArguments, AttributeMetaItem, AttributeSingleWord,
-    AttributesWrongForm, CannotBeNameOfMacro, ExpectedCommaInList, HelperAttributeNameInvalid,
-    MacroBodyStability, MacroConstStability, NotAMetaItem, OnlyOneArgument, OnlyOneWord,
-    ResolveRelativePath, TakesNoArguments, TraceMacro,
-};
+use crate::errors;
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
 
@@ -796,13 +791,13 @@ impl SyntaxExtension {
             .unwrap_or_else(|| (None, helper_attrs));
         let (stability, const_stability, body_stability) = attr::find_stability(&sess, attrs, span);
         if let Some((_, sp)) = const_stability {
-            sess.emit_err(MacroConstStability {
+            sess.emit_err(errors::MacroConstStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });
         }
         if let Some((_, sp)) = body_stability {
-            sess.emit_err(MacroBodyStability {
+            sess.emit_err(errors::MacroBodyStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });
@@ -1143,7 +1138,7 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn trace_macros_diag(&mut self) {
         for (span, notes) in self.expansions.iter() {
-            let mut db = self.sess.parse_sess.create_note(TraceMacro { span: *span });
+            let mut db = self.sess.parse_sess.create_note(errors::TraceMacro { span: *span });
             for note in notes {
                 db.note(note);
             }
@@ -1197,7 +1192,7 @@ pub fn resolve_path(
                 .expect("attempting to resolve a file path in an external file"),
             FileName::DocTest(path, _) => path,
             other => {
-                return Err(ResolveRelativePath {
+                return Err(errors::ResolveRelativePath {
                     span,
                     path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
                 }
@@ -1279,7 +1274,7 @@ pub fn expr_to_string(
 /// done as rarely as possible).
 pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str) {
     if !tts.is_empty() {
-        cx.emit_err(TakesNoArguments { span, name });
+        cx.emit_err(errors::TakesNoArguments { span, name });
     }
 }
 
@@ -1307,14 +1302,14 @@ pub fn get_single_str_from_tts(
 ) -> Option<Symbol> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
-        cx.emit_err(OnlyOneArgument { span, name });
+        cx.emit_err(errors::OnlyOneArgument { span, name });
         return None;
     }
     let ret = parse_expr(&mut p)?;
     let _ = p.eat(&token::Comma);
 
     if p.token != token::Eof {
-        cx.emit_err(OnlyOneArgument { span, name });
+        cx.emit_err(errors::OnlyOneArgument { span, name });
     }
     expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s)
 }
@@ -1336,7 +1331,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>, tts: TokenStream) -> Option<Vec<
             continue;
         }
         if p.token != token::Eof {
-            cx.emit_err(ExpectedCommaInList { span: p.token.span });
+            cx.emit_err(errors::ExpectedCommaInList { span: p.token.span });
             return None;
         }
     }
@@ -1353,51 +1348,58 @@ pub fn parse_macro_name_and_helper_attrs(
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
     let list = attr.meta_item_list()?;
     if list.len() != 1 && list.len() != 2 {
-        diag.emit_err(AttrNoArguments { span: attr.span });
+        diag.emit_err(errors::AttrNoArguments { span: attr.span });
         return None;
     }
     let Some(trait_attr) = list[0].meta_item() else {
-        diag.emit_err(NotAMetaItem {span: list[0].span()});
+        diag.emit_err(errors::NotAMetaItem {span: list[0].span()});
         return None;
     };
     let trait_ident = match trait_attr.ident() {
         Some(trait_ident) if trait_attr.is_word() => trait_ident,
         _ => {
-            diag.emit_err(OnlyOneWord { span: trait_attr.span });
+            diag.emit_err(errors::OnlyOneWord { span: trait_attr.span });
             return None;
         }
     };
 
     if !trait_ident.name.can_be_raw() {
-        diag.emit_err(CannotBeNameOfMacro { span: trait_attr.span, trait_ident, macro_type });
+        diag.emit_err(errors::CannotBeNameOfMacro {
+            span: trait_attr.span,
+            trait_ident,
+            macro_type,
+        });
     }
 
     let attributes_attr = list.get(1);
     let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
         if !attr.has_name(sym::attributes) {
-            diag.emit_err(ArgumentNotAttributes { span: attr.span() });
+            diag.emit_err(errors::ArgumentNotAttributes { span: attr.span() });
         }
         attr.meta_item_list()
             .unwrap_or_else(|| {
-                diag.emit_err(AttributesWrongForm { span: attr.span() });
+                diag.emit_err(errors::AttributesWrongForm { span: attr.span() });
                 &[]
             })
             .iter()
             .filter_map(|attr| {
                 let Some(attr) = attr.meta_item() else {
-                    diag.emit_err(AttributeMetaItem { span: attr.span() });
+                    diag.emit_err(errors::AttributeMetaItem { span: attr.span() });
                     return None;
                 };
 
                 let ident = match attr.ident() {
                     Some(ident) if attr.is_word() => ident,
                     _ => {
-                        diag.emit_err(AttributeSingleWord { span: attr.span });
+                        diag.emit_err(errors::AttributeSingleWord { span: attr.span });
                         return None;
                     }
                 };
                 if !ident.name.can_be_raw() {
-                    diag.emit_err(HelperAttributeNameInvalid { span: attr.span, name: ident });
+                    diag.emit_err(errors::HelperAttributeNameInvalid {
+                        span: attr.span,
+                        name: ident,
+                    });
                 }
 
                 Some(ident.name)
