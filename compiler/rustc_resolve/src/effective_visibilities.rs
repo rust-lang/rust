@@ -29,7 +29,7 @@ impl ParentId<'_> {
     }
 }
 
-pub struct EffectiveVisibilitiesVisitor<'r, 'a> {
+pub(crate) struct EffectiveVisibilitiesVisitor<'r, 'a> {
     r: &'r mut Resolver<'a>,
     def_effective_visibilities: EffectiveVisibilities,
     /// While walking import chains we need to track effective visibilities per-binding, and def id
@@ -78,7 +78,7 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
     /// Fills the `Resolver::effective_visibilities` table with public & exported items
     /// For now, this doesn't resolve macros (FIXME) and cannot resolve Impl, as we
     /// need access to a TyCtxt for that.
-    pub fn compute_effective_visibilities<'c>(r: &'r mut Resolver<'a>, krate: &'c Crate) {
+    pub(crate) fn compute_effective_visibilities<'c>(r: &'r mut Resolver<'a>, krate: &'c Crate) {
         let mut visitor = EffectiveVisibilitiesVisitor {
             r,
             def_effective_visibilities: Default::default(),

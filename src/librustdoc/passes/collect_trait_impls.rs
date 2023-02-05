@@ -45,18 +45,20 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     let mut new_items_local = Vec::new();
 
     // External trait impls.
-    cx.with_all_trait_impls(|cx, all_trait_impls| {
+    {
         let _prof_timer = cx.tcx.sess.prof.generic_activity("build_extern_trait_impls");
-        for &impl_def_id in all_trait_impls.iter().skip_while(|def_id| def_id.is_local()) {
-            inline::build_impl(cx, None, impl_def_id, None, &mut new_items_external);
+        for &cnum in cx.tcx.crates(()) {
+            for &impl_def_id in cx.tcx.trait_impls_in_crate(cnum) {
+                inline::build_impl(cx, None, impl_def_id, None, &mut new_items_external);
+            }
         }
-    });
+    }
 
     // Local trait impls.
-    cx.with_all_trait_impls(|cx, all_trait_impls| {
+    {
         let _prof_timer = cx.tcx.sess.prof.generic_activity("build_local_trait_impls");
         let mut attr_buf = Vec::new();
-        for &impl_def_id in all_trait_impls.iter().take_while(|def_id| def_id.is_local()) {
+        for &impl_def_id in cx.tcx.trait_impls_in_crate(LOCAL_CRATE) {
             let mut parent = Some(cx.tcx.parent(impl_def_id));
             while let Some(did) = parent {
                 attr_buf.extend(
@@ -76,7 +78,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             inline::build_impl(cx, None, impl_def_id, Some(&attr_buf), &mut new_items_local);
             attr_buf.clear();
         }
-    });
+    }
 
     cx.tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
         for def_id in PrimitiveType::all_impls(cx.tcx) {

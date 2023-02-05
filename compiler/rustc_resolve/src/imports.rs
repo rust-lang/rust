@@ -33,7 +33,7 @@ type Res = def::Res<NodeId>;
 
 /// Contains data for specific kinds of imports.
 #[derive(Clone)]
-pub enum ImportKind<'a> {
+pub(crate) enum ImportKind<'a> {
     Single {
         /// `source` in `use prefix::source as target`.
         source: Ident,
@@ -157,11 +157,11 @@ pub(crate) struct Import<'a> {
 }
 
 impl<'a> Import<'a> {
-    pub fn is_glob(&self) -> bool {
+    pub(crate) fn is_glob(&self) -> bool {
         matches!(self.kind, ImportKind::Glob { .. })
     }
 
-    pub fn is_nested(&self) -> bool {
+    pub(crate) fn is_nested(&self) -> bool {
         match self.kind {
             ImportKind::Single { nested, .. } => nested,
             _ => false,
@@ -405,7 +405,7 @@ struct UnresolvedImportError {
     candidates: Option<Vec<ImportSuggestion>>,
 }
 
-pub struct ImportResolver<'a, 'b> {
+pub(crate) struct ImportResolver<'a, 'b> {
     pub r: &'a mut Resolver<'b>,
 }
 
@@ -420,7 +420,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
-    pub fn resolve_imports(&mut self) {
+    pub(crate) fn resolve_imports(&mut self) {
         let mut prev_num_indeterminates = self.r.indeterminate_imports.len() + 1;
         while self.r.indeterminate_imports.len() < prev_num_indeterminates {
             prev_num_indeterminates = self.r.indeterminate_imports.len();
@@ -433,7 +433,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
     }
 
-    pub fn finalize_imports(&mut self) {
+    pub(crate) fn finalize_imports(&mut self) {
         for module in self.r.arenas.local_modules().iter() {
             self.finalize_resolutions_in(module);
         }

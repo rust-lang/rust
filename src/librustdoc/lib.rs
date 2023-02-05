@@ -82,7 +82,6 @@ use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
-use crate::passes::collect_intra_doc_links;
 
 /// A macro to create a FxHashMap.
 ///
@@ -793,30 +792,14 @@ fn main_args(at_args: &[String]) -> MainResult {
         }
 
         compiler.enter(|queries| {
-            let resolver_caches = {
-                let expansion = abort_on_err(queries.expansion(), sess);
-                let (krate, resolver, _) = &*expansion.borrow();
-                let resolver_caches = resolver.borrow_mut().access(|resolver| {
-                    collect_intra_doc_links::early_resolve_intra_doc_links(resolver, krate)
-                });
-                resolver_caches
-            };
-
+            let mut gcx = abort_on_err(queries.global_ctxt(), sess);
             if sess.diagnostic().has_errors_or_lint_errors().is_some() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let mut gcx = abort_on_err(queries.global_ctxt(), sess);
-
             gcx.enter(|tcx| {
                 let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
-                    core::run_global_ctxt(
-                        tcx,
-                        resolver_caches,
-                        show_coverage,
-                        render_options,
-                        output_format,
-                    )
+                    core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
                 });
                 info!("finished with rustc");
 

@@ -2256,6 +2256,22 @@ pub fn provide(providers: &mut Providers) {
             traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
             tcx.arena.alloc_slice(&traits)
         },
+        trait_impls_in_crate: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+
+            let mut trait_impls = Vec::new();
+            for id in tcx.hir().items() {
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Impl)
+                    && tcx.impl_trait_ref(id.owner_id).is_some()
+                {
+                    trait_impls.push(id.owner_id.to_def_id())
+                }
+            }
+
+            // Bring everything into deterministic order.
+            trait_impls.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
+            tcx.arena.alloc_slice(&trait_impls)
+        },
 
         ..*providers
     }
