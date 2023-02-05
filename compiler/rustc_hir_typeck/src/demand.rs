@@ -60,6 +60,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_clone_for_ref(err, expr, expr_ty, expected)
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected)
+            || self.suggest_null_ptr_for_literal_zero_given_to_ptr_arg(err, expr, expected)
             || self.note_result_coercion(err, expr, expected, expr_ty);
         if !suggested {
             self.point_at_expr_source_of_inferred_type(err, expr, expr_ty, expected, expr.span);

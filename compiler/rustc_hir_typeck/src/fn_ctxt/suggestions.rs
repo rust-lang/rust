@@ -13,6 +13,7 @@ use rustc_hir::{
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
     TypeVisitable,
@@ -1242,6 +1243,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         }
+    }
+
+    /// Suggest providing `std::ptr::null()` or `std::ptr::null_mut()` if they
+    /// pass in a literal 0 to an raw pointer.
+    #[instrument(skip(self, err))]
+    pub(crate) fn suggest_null_ptr_for_literal_zero_given_to_ptr_arg(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        // Expected type needs to be a raw pointer.
+        let ty::RawPtr(ty::TypeAndMut { mutbl, .. }) = expected_ty.kind() else {
+            return false;
+        };
+
+        // Provided expression needs to be a literal `0`.
+        let ExprKind::Lit(Spanned {
+            node: rustc_ast::LitKind::Int(0, _),
+            span,
+        }) = expr.kind else {
+            return false;
+        };
+
+        // We need to find a null pointer symbol to suggest
+        let null_sym = match mutbl {
+            hir::Mutability::Not => sym::ptr_null,
+            hir::Mutability::Mut => sym::ptr_null_mut,
+        };
+        let Some(null_did) = self.tcx.get_diagnostic_item(null_sym) else {
+            return false;
+        };
+        let null_path_str = with_no_trimmed_paths!(self.tcx.def_path_str(null_did));
+
+        // We have satisfied all requirements to provide a suggestion. Emit it.
+        err.span_suggestion(
+            span,
+            format!("if you meant to create a null pointer, use `{null_path_str}()`"),
+            null_path_str + "()",
+            Applicability::MachineApplicable,
+        );
+
+        true
     }
 
     pub(crate) fn suggest_associated_const(
