@@ -131,3 +131,33 @@ fn main() {}
         "#]],
     )
 }
+
+#[test]
+fn issue_13836_str() {
+    check(
+        r#"
+//- proc_macros: shorten
+fn main() {
+    let s = proc_macros::shorten!("text.$0");
+}
+"#,
+        expect![[r#""#]],
+    )
+}
+
+#[test]
+fn issue_13836_ident() {
+    check(
+        r#"
+//- proc_macros: shorten
+struct S;
+impl S {
+    fn foo(&self) {}
+}
+fn main() {
+    let s = proc_macros::shorten!(S.fo$0);
+}
+"#,
+        expect![[r#""#]],
+    )
+}
