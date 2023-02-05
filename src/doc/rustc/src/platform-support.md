@@ -257,6 +257,7 @@ target | std | host | notes
 `bpfel-unknown-none` | * |  | BPF (little endian)
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
+[`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS |
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 `i686-pc-windows-msvc` | * |  | 32-bit Windows XP support
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
