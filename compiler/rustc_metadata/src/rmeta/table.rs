@@ -44,6 +44,12 @@ impl<T> IsDefault for LazyArray<T> {
     }
 }
 
+impl IsDefault for DefPathHash {
+    fn is_default(&self) -> bool {
+        self.0 == Fingerprint::ZERO
+    }
+}
+
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.
 /// Unchecked invariant: `Self::default()` should encode as `[0; BYTE_LEN]`,
@@ -191,21 +197,18 @@ fixed_size_enum! {
 }
 
 // We directly encode `DefPathHash` because a `LazyValue` would incur a 25% cost.
-impl FixedSizeEncoding for Option<DefPathHash> {
+impl FixedSizeEncoding for DefPathHash {
     type ByteArray = [u8; 16];
 
     #[inline]
     fn from_bytes(b: &[u8; 16]) -> Self {
-        // NOTE: There's a collision between `None` and `Some(0)`.
-        Some(DefPathHash(Fingerprint::from_le_bytes(*b)))
+        DefPathHash(Fingerprint::from_le_bytes(*b))
     }
 
     #[inline]
     fn write_to_bytes(self, b: &mut [u8; 16]) {
-        match self {
-            None => unreachable!(),
-            Some(DefPathHash(fingerprint)) => *b = fingerprint.to_le_bytes(),
-        }
+        debug_assert!(!self.is_default());
+        *b = self.0.to_le_bytes();
     }
 }
 

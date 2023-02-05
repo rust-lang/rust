@@ -350,6 +350,7 @@ define_tables! {
     is_macro_rules: Table<DefIndex, bool>,
     is_type_alias_impl_trait: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
+    def_path_hashes: Table<DefIndex, DefPathHash>,
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
@@ -403,7 +404,6 @@ define_tables! {
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     def_keys: Table<DefIndex, LazyValue<DefKey>>,
-    def_path_hashes: Table<DefIndex, DefPathHash>,
     proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
     generator_diagnostic_data: Table<DefIndex, LazyValue<GeneratorDiagnosticData<'static>>>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,

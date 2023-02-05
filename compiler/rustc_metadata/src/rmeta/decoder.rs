@@ -1319,7 +1319,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     ) -> DefPathHash {
         *def_path_hashes
             .entry(index)
-            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index).unwrap())
+            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index))
     }
 
     #[inline]
