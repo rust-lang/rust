@@ -6,7 +6,6 @@ use std::fmt::Write;
 
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir::InlineAsmOperand;
-use rustc_middle::ty::SymbolName;
 use rustc_span::sym;
 use rustc_target::asm::*;
 
@@ -30,7 +29,7 @@ enum CInlineAsmOperand<'tcx> {
         value: String,
     },
     Symbol {
-        symbol: SymbolName<'tcx>,
+        symbol: String,
     },
 }
 
@@ -263,7 +262,29 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                         substs,
                     )
                     .unwrap();
-                    CInlineAsmOperand::Symbol { symbol: fx.tcx.symbol_name(instance) }
+                    let symbol = fx.tcx.symbol_name(instance);
+
+                    // Pass a wrapper rather than the function itself as the function itself may not
+                    // be exported from the main codegen unit and may thus be unreachable from the
+                    // object file created by an external assembler.
+                    let inline_asm_index = fx.cx.inline_asm_index.get();
+                    fx.cx.inline_asm_index.set(inline_asm_index + 1);
+                    let wrapper_name = format!(
+                        "__inline_asm_{}_wrapper_n{}",
+                        fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
+                        inline_asm_index
+                    );
+                    let sig =
+                        get_function_sig(fx.tcx, fx.target_config.default_call_conv, instance);
+                    create_wrapper_function(
+                        fx.module,
+                        &mut fx.cx.unwind_context,
+                        sig,
+                        &wrapper_name,
+                        symbol.name,
+                    );
+
+                    CInlineAsmOperand::Symbol { symbol: wrapper_name }
                 } else {
                     span_bug!(span, "invalid type for asm sym (fn)");
                 }
@@ -271,7 +292,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             InlineAsmOperand::SymStatic { def_id } => {
                 assert!(fx.tcx.is_static(def_id));
                 let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
-                CInlineAsmOperand::Symbol { symbol: fx.tcx.symbol_name(instance) }
+                CInlineAsmOperand::Symbol { symbol: fx.tcx.symbol_name(instance).name.to_owned() }
             }
         })
         .collect::<Vec<_>>();
@@ -630,7 +651,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                         CInlineAsmOperand::Const { ref value } => {
                             generated_asm.push_str(value);
                         }
-                        CInlineAsmOperand::Symbol { symbol } => generated_asm.push_str(symbol.name),
+                        CInlineAsmOperand::Symbol { ref symbol } => generated_asm.push_str(symbol),
                     }
                 }
             }

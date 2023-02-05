@@ -255,7 +255,7 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
 }
 
 pub(crate) fn create_wrapper_function(
-    module: &mut impl Module,
+    module: &mut dyn Module,
     unwind_context: &mut UnwindContext,
     sig: Signature,
     wrapper_name: &str,
