@@ -1646,45 +1646,6 @@ impl<'tcx> Region<'tcx> {
         matches!(*self, ty::RePlaceholder(..))
     }
 
-    pub fn type_flags(self) -> TypeFlags {
-        let mut flags = TypeFlags::empty();
-
-        match *self {
-            ty::ReVar(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_INFER;
-            }
-            ty::RePlaceholder(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
-            }
-            ty::ReEarlyBound(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_PARAM;
-            }
-            ty::ReFree { .. } => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
-            }
-            ty::ReStatic => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-            }
-            ty::ReLateBound(..) => {
-                flags = flags | TypeFlags::HAS_RE_LATE_BOUND;
-            }
-            ty::ReErased => {
-                flags = flags | TypeFlags::HAS_RE_ERASED;
-            }
-        }
-
-        debug!("type_flags({:?}) = {:?}", self, flags);
-
-        flags
-    }
-
     /// Given an early-bound or free region, returns the `DefId` where it was bound.
     /// For example, consider the regions in this snippet of code:
     ///
@@ -1740,16 +1701,52 @@ impl<'tcx> ty::BoundAtOrAboveBinder for Region<'tcx> {
     }
 }
 
+impl<'tcx> ty::Flags for Region<'tcx> {
+    fn flags(self) -> TypeFlags {
+        let mut flags = TypeFlags::empty();
+
+        match *self {
+            ty::ReVar(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+                flags = flags | TypeFlags::HAS_RE_INFER;
+            }
+            ty::RePlaceholder(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+                flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
+            }
+            ty::ReEarlyBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+                flags = flags | TypeFlags::HAS_RE_PARAM;
+            }
+            ty::ReFree { .. } => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+            }
+            ty::ReStatic => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+            }
+            ty::ReLateBound(..) => {
+                flags = flags | TypeFlags::HAS_RE_LATE_BOUND;
+            }
+            ty::ReErased => {
+                flags = flags | TypeFlags::HAS_RE_ERASED;
+            }
+        }
+
+        debug!("type_flags({:?}) = {:?}", self, flags);
+
+        flags
+    }
+}
+
 /// Type utilities
 impl<'tcx> Ty<'tcx> {
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
         &self.0.0
-    }
-
-    #[inline(always)]
-    pub fn flags(self) -> TypeFlags {
-        self.0.0.flags
     }
 
     #[inline]
@@ -2439,6 +2436,13 @@ impl<'tcx> Ty<'tcx> {
             },
             _ => None,
         }
+    }
+}
+
+impl<'tcx> ty::Flags for Ty<'tcx> {
+    #[inline(always)]
+    fn flags(self) -> TypeFlags {
+        self.0.0.flags
     }
 }
 

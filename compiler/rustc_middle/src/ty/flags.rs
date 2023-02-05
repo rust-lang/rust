@@ -1,5 +1,5 @@
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, InferConst, OuterExclusiveBinder, Ty, TypeFlags};
+use crate::ty::{self, Flags, InferConst, OuterExclusiveBinder, Ty, TypeFlags};
 use std::slice;
 
 #[derive(Debug)]
@@ -302,7 +302,7 @@ impl FlagComputation {
     }
 
     fn add_region(&mut self, r: ty::Region<'_>) {
-        self.add_flags(r.type_flags());
+        self.add_flags(r.flags());
         if let ty::ReLateBound(debruijn, _) = *r {
             self.add_bound_var(debruijn);
         }

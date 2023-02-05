@@ -239,6 +239,12 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
+impl<'tcx> ty::Flags for Const<'tcx> {
+    fn flags(self) -> ty::TypeFlags {
+        ty::flags::FlagComputation::for_const(self)
+    }
+}
+
 impl<'tcx> ty::BoundIndex for Const<'tcx> {
     fn bound_index(&self) -> Option<ty::DebruijnIndex> {
         if let ty::ConstKind::Bound(debruijn, _) = self.kind() { Some(debruijn) } else { None }

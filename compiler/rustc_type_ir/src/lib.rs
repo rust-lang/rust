@@ -32,9 +32,17 @@ pub trait Interner {
     type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type DefId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + OuterExclusiveBinder;
-    type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + BoundIndex;
-    type Region: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + BoundAtOrAboveBinder;
+    type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + OuterExclusiveBinder + Flags;
+    type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + BoundIndex + Flags;
+    type Region: Clone
+        + Debug
+        + Hash
+        + PartialEq
+        + Eq
+        + PartialOrd
+        + Ord
+        + BoundAtOrAboveBinder
+        + Flags;
     type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Mutability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Movability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
@@ -847,4 +855,8 @@ pub trait BoundAtOrAboveBinder {
 
 pub trait BoundIndex {
     fn bound_index(&self) -> Option<DebruijnIndex>;
+}
+
+pub trait Flags {
+    fn flags(self) -> TypeFlags;
 }

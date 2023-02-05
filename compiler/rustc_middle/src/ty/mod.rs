@@ -474,11 +474,6 @@ impl<'tcx> Predicate<'tcx> {
         self.0.internee
     }
 
-    #[inline(always)]
-    pub fn flags(self) -> TypeFlags {
-        self.0.flags
-    }
-
     /// Flips the polarity of a Predicate.
     ///
     /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
@@ -549,6 +544,13 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(_) => true,
         }
+    }
+}
+
+impl<'tcx> ty::Flags for Predicate<'tcx> {
+    #[inline(always)]
+    fn flags(self) -> TypeFlags {
+        self.0.flags
     }
 }
 

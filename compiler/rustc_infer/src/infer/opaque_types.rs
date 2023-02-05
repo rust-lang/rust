@@ -12,7 +12,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    self, Flags, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitor,
 };
 use rustc_span::Span;

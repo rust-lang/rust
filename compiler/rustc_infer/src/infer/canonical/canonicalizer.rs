@@ -12,7 +12,7 @@ use crate::infer::InferCtxt;
 use rustc_middle::ty::flags::FlagComputation;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
+use rustc_middle::ty::{self, BoundVar, Flags, InferConst, List, Ty, TyCtxt, TypeFlags};
 use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::FxHashMap;

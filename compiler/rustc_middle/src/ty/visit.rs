@@ -39,8 +39,8 @@
 //! - u.visit_with(visitor)
 //! ```
 use crate::ty::{
-    self, flags::FlagComputation, Binder, BoundAtOrAboveBinder, BoundIndex, OuterExclusiveBinder,
-    Ty, TyCtxt, TypeFlags,
+    self, Binder, BoundAtOrAboveBinder, BoundIndex, Flags, OuterExclusiveBinder, Ty, TyCtxt,
+    TypeFlags,
 };
 use rustc_errors::ErrorGuaranteed;
 
@@ -585,7 +585,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
 
     #[inline]
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        let flags = r.type_flags();
+        let flags = r.flags();
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
@@ -595,7 +595,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
 
     #[inline]
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        let flags = FlagComputation::for_const(c);
+        let flags = c.flags();
         trace!(r.flags=?flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
