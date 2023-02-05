@@ -1,11 +1,12 @@
 use crate::MirPass;
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::value_analysis::iter_fields;
 
 pub struct ScalarReplacementOfAggregates;
 
@@ -125,6 +126,36 @@ fn escaping_locals(body: &Body<'_>) -> BitSet<Local> {
 #[derive(Default, Debug)]
 struct ReplacementMap<'tcx> {
     fields: FxIndexMap<PlaceRef<'tcx>, Local>,
+    /// Pre-computed list of all "new" locals for each "old" local. This is used to expand storage
+    /// and deinit statement and debuginfo.
+    fragments: IndexVec<Local, Option<Vec<(&'tcx [PlaceElem<'tcx>], Local)>>>,
+}
+
+impl<'tcx> ReplacementMap<'tcx> {
+    fn gather_debug_info_fragments(
+        &self,
+        place: PlaceRef<'tcx>,
+    ) -> Option<Vec<VarDebugInfoFragment<'tcx>>> {
+        let mut fragments = Vec::new();
+        let Some(parts) = &self.fragments[place.local] else { return None };
+        for (proj, replacement_local) in parts {
+            if proj.starts_with(place.projection) {
+                fragments.push(VarDebugInfoFragment {
+                    projection: proj[place.projection.len()..].to_vec(),
+                    contents: Place::from(*replacement_local),
+                });
+            }
+        }
+        Some(fragments)
+    }
+
+    fn place_fragments(
+        &self,
+        place: Place<'tcx>,
+    ) -> Option<&Vec<(&'tcx [PlaceElem<'tcx>], Local)>> {
+        let local = place.as_local()?;
+        self.fragments[local].as_ref()
+    }
 }
 
 /// Compute the replacement of flattened places into locals.
@@ -136,53 +167,30 @@ fn compute_flattening<'tcx>(
     body: &mut Body<'tcx>,
     escaping: BitSet<Local>,
 ) -> ReplacementMap<'tcx> {
-    let mut visitor = PreFlattenVisitor {
-        tcx,
-        escaping,
-        local_decls: &mut body.local_decls,
-        map: Default::default(),
-    };
-    for (block, bbdata) in body.basic_blocks.iter_enumerated() {
-        visitor.visit_basic_block_data(block, bbdata);
-    }
-    return visitor.map;
+    let mut fields = FxIndexMap::default();
+    let mut fragments = IndexVec::from_elem(None::<Vec<_>>, &body.local_decls);
 
-    struct PreFlattenVisitor<'tcx, 'll> {
-        tcx: TyCtxt<'tcx>,
-        local_decls: &'ll mut LocalDecls<'tcx>,
-        escaping: BitSet<Local>,
-        map: ReplacementMap<'tcx>,
-    }
-
-    impl<'tcx, 'll> PreFlattenVisitor<'tcx, 'll> {
-        fn create_place(&mut self, place: PlaceRef<'tcx>) {
-            if self.escaping.contains(place.local) {
+    for local in body.local_decls.indices() {
+        if escaping.contains(local) {
+            continue;
+        }
+        let decl = body.local_decls[local].clone();
+        let ty = decl.ty;
+        iter_fields(ty, tcx, |variant, field, field_ty| {
+            if variant.is_some() {
+                // Downcasts are currently not supported.
                 return;
-            }
-
-            match self.map.fields.entry(place) {
-                IndexEntry::Occupied(_) => {}
-                IndexEntry::Vacant(v) => {
-                    let ty = place.ty(&*self.local_decls, self.tcx).ty;
-                    let local = self.local_decls.push(LocalDecl {
-                        ty,
-                        user_ty: None,
-                        ..self.local_decls[place.local].clone()
-                    });
-                    v.insert(local);
-                }
-            }
-        }
+            };
+            let new_local =
+                body.local_decls.push(LocalDecl { ty: field_ty, user_ty: None, ..decl.clone() });
+            let place = Place::from(local)
+                .project_deeper(&[PlaceElem::Field(field, field_ty)], tcx)
+                .as_ref();
+            fields.insert(place, new_local);
+            fragments[local].get_or_insert_default().push((place.projection, new_local));
+        });
     }
-
-    impl<'tcx, 'll> Visitor<'tcx> for PreFlattenVisitor<'tcx, 'll> {
-        fn visit_place(&mut self, place: &Place<'tcx>, _: PlaceContext, _: Location) {
-            if let &[PlaceElem::Field(..), ..] = &place.projection[..] {
-                let pr = PlaceRef { local: place.local, projection: &place.projection[..1] };
-                self.create_place(pr)
-            }
-        }
-    }
+    ReplacementMap { fields, fragments }
 }
 
 /// Perform the replacement computed by `compute_flattening`.
@@ -200,18 +208,11 @@ fn replace_flattened_locals<'tcx>(
         return;
     }
 
-    let mut fragments = IndexVec::<_, Option<Vec<_>>>::from_elem(None, &body.local_decls);
-    for (k, v) in &replacements.fields {
-        fragments[k.local].get_or_insert_default().push((k.projection, *v));
-    }
-    debug!(?fragments);
-
     let mut visitor = ReplacementVisitor {
         tcx,
         local_decls: &body.local_decls,
         replacements,
         all_dead_locals,
-        fragments: &fragments,
         patch: MirPatch::new(body),
     };
     for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
@@ -237,30 +238,10 @@ struct ReplacementVisitor<'tcx, 'll> {
     replacements: ReplacementMap<'tcx>,
     /// This is used to check that we are not leaving references to replaced locals behind.
     all_dead_locals: BitSet<Local>,
-    /// Pre-computed list of all "new" locals for each "old" local. This is used to expand storage
-    /// and deinit statement and debuginfo.
-    fragments: &'ll IndexVec<Local, Option<Vec<(&'tcx [PlaceElem<'tcx>], Local)>>>,
     patch: MirPatch<'tcx>,
 }
 
 impl<'tcx, 'll> ReplacementVisitor<'tcx, 'll> {
-    fn gather_debug_info_fragments(
-        &self,
-        place: PlaceRef<'tcx>,
-    ) -> Option<Vec<VarDebugInfoFragment<'tcx>>> {
-        let mut fragments = Vec::new();
-        let Some(parts) = &self.fragments[place.local] else { return None };
-        for (proj, replacement_local) in parts {
-            if proj.starts_with(place.projection) {
-                fragments.push(VarDebugInfoFragment {
-                    projection: proj[place.projection.len()..].to_vec(),
-                    contents: Place::from(*replacement_local),
-                });
-            }
-        }
-        Some(fragments)
-    }
-
     fn replace_place(&self, place: PlaceRef<'tcx>) -> Option<Place<'tcx>> {
         if let &[PlaceElem::Field(..), ref rest @ ..] = place.projection {
             let pr = PlaceRef { local: place.local, projection: &place.projection[..1] };
@@ -270,14 +251,6 @@ impl<'tcx, 'll> ReplacementVisitor<'tcx, 'll> {
             None
         }
     }
-
-    fn place_fragments(
-        &self,
-        place: Place<'tcx>,
-    ) -> Option<&'ll Vec<(&'tcx [PlaceElem<'tcx>], Local)>> {
-        let local = place.as_local()?;
-        self.fragments[local].as_ref()
-    }
 }
 
 impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
@@ -285,10 +258,11 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
         self.tcx
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::StorageLive(l) => {
-                if let Some(final_locals) = &self.fragments[l] {
+                if let Some(final_locals) = &self.replacements.fragments[l] {
                     for &(_, fl) in final_locals {
                         self.patch.add_statement(location, StatementKind::StorageLive(fl));
                     }
@@ -297,7 +271,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                 return;
             }
             StatementKind::StorageDead(l) => {
-                if let Some(final_locals) = &self.fragments[l] {
+                if let Some(final_locals) = &self.replacements.fragments[l] {
                     for &(_, fl) in final_locals {
                         self.patch.add_statement(location, StatementKind::StorageDead(fl));
                     }
@@ -306,7 +280,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                 return;
             }
             StatementKind::Deinit(box place) => {
-                if let Some(final_locals) = self.place_fragments(place) {
+                if let Some(final_locals) = self.replacements.place_fragments(place) {
                     for &(_, fl) in final_locals {
                         self.patch
                             .add_statement(location, StatementKind::Deinit(Box::new(fl.into())));
@@ -317,7 +291,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             }
 
             StatementKind::Assign(box (place, Rvalue::Aggregate(_, ref operands))) => {
-                if let Some(final_locals) = self.place_fragments(place) {
+                if let Some(final_locals) = self.replacements.place_fragments(place) {
                     for &(projection, fl) in final_locals {
                         let &[PlaceElem::Field(index, _)] = projection else { bug!() };
                         let index = index.as_usize();
@@ -333,7 +307,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             }
 
             StatementKind::Assign(box (place, Rvalue::Use(Operand::Constant(_)))) => {
-                if let Some(final_locals) = self.place_fragments(place) {
+                if let Some(final_locals) = self.replacements.place_fragments(place) {
                     for &(projection, fl) in final_locals {
                         let rvalue =
                             Rvalue::Use(Operand::Move(place.project_deeper(projection, self.tcx)));
@@ -353,9 +327,12 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                     Operand::Move(rplace) => (rplace, false),
                     Operand::Constant(_) => bug!(),
                 };
-                if let Some(final_locals) = self.place_fragments(lhs) {
+                if let Some(final_locals) = self.replacements.place_fragments(lhs) {
                     for &(projection, fl) in final_locals {
                         let rplace = rplace.project_deeper(projection, self.tcx);
+                        debug!(?rplace);
+                        let rplace = self.replace_place(rplace.as_ref()).unwrap_or(rplace);
+                        debug!(?rplace);
                         let rvalue = if copy {
                             Rvalue::Use(Operand::Copy(rplace))
                         } else {
@@ -389,7 +366,9 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             VarDebugInfoContents::Place(ref mut place) => {
                 if let Some(repl) = self.replace_place(place.as_ref()) {
                     *place = repl;
-                } else if let Some(fragments) = self.gather_debug_info_fragments(place.as_ref()) {
+                } else if let Some(fragments) =
+                    self.replacements.gather_debug_info_fragments(place.as_ref())
+                {
                     let ty = place.ty(self.local_decls, self.tcx).ty;
                     var_debug_info.value = VarDebugInfoContents::Composite { ty, fragments };
                 }
@@ -401,8 +380,9 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                         if let Some(repl) = self.replace_place(fragment.contents.as_ref()) {
                             fragment.contents = repl;
                             true
-                        } else if let Some(frg) =
-                            self.gather_debug_info_fragments(fragment.contents.as_ref())
+                        } else if let Some(frg) = self
+                            .replacements
+                            .gather_debug_info_fragments(fragment.contents.as_ref())
                         {
                             new_fragments.extend(frg.into_iter().map(|mut f| {
                                 f.projection.splice(0..0, fragment.projection.iter().copied());

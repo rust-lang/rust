@@ -77,6 +77,8 @@ fn copies(x: Foo) {
     let y = x;
     let t = y.a;
     let u = y.c;
+    let z = y;
+    let a = z.b;
 }
 
 fn ref_copies(x: &Foo) {

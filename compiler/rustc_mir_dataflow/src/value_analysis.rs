@@ -790,7 +790,7 @@ impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
 }
 
 /// Invokes `f` on all direct fields of `ty`.
-fn iter_fields<'tcx>(
+pub fn iter_fields<'tcx>(
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut f: impl FnMut(Option<VariantIdx>, Field, Ty<'tcx>),
