@@ -78,10 +78,15 @@ fn escaping_locals(body: &Body<'_>) -> BitSet<Local> {
             rvalue: &Rvalue<'tcx>,
             location: Location,
         ) {
-            if lvalue.as_local().is_some() && let Rvalue::Aggregate(..) = rvalue {
-                // Aggregate assignments are expanded in run_pass.
-                self.visit_rvalue(rvalue, location);
-                return;
+            if lvalue.as_local().is_some() {
+                match rvalue {
+                    // Aggregate assignments are expanded in run_pass.
+                    Rvalue::Aggregate(..) | Rvalue::Use(..) => {
+                        self.visit_rvalue(rvalue, location);
+                        return;
+                    }
+                    _ => {}
+                }
             }
             self.super_assign(lvalue, rvalue, location)
         }
@@ -195,10 +200,9 @@ fn replace_flattened_locals<'tcx>(
         return;
     }
 
-    let mut fragments = IndexVec::new();
+    let mut fragments = IndexVec::<_, Option<Vec<_>>>::from_elem(None, &body.local_decls);
     for (k, v) in &replacements.fields {
-        fragments.ensure_contains_elem(k.local, || Vec::new());
-        fragments[k.local].push((k.projection, *v));
+        fragments[k.local].get_or_insert_default().push((k.projection, *v));
     }
     debug!(?fragments);
 
@@ -235,7 +239,7 @@ struct ReplacementVisitor<'tcx, 'll> {
     all_dead_locals: BitSet<Local>,
     /// Pre-computed list of all "new" locals for each "old" local. This is used to expand storage
     /// and deinit statement and debuginfo.
-    fragments: IndexVec<Local, Vec<(&'tcx [PlaceElem<'tcx>], Local)>>,
+    fragments: IndexVec<Local, Option<Vec<(&'tcx [PlaceElem<'tcx>], Local)>>>,
     patch: MirPatch<'tcx>,
 }
 
@@ -243,9 +247,9 @@ impl<'tcx, 'll> ReplacementVisitor<'tcx, 'll> {
     fn gather_debug_info_fragments(
         &self,
         place: PlaceRef<'tcx>,
-    ) -> Vec<VarDebugInfoFragment<'tcx>> {
+    ) -> Option<Vec<VarDebugInfoFragment<'tcx>>> {
         let mut fragments = Vec::new();
-        let parts = &self.fragments[place.local];
+        let Some(parts) = &self.fragments[place.local] else { return None };
         for (proj, replacement_local) in parts {
             if proj.starts_with(place.projection) {
                 fragments.push(VarDebugInfoFragment {
@@ -254,7 +258,7 @@ impl<'tcx, 'll> ReplacementVisitor<'tcx, 'll> {
                 });
             }
         }
-        fragments
+        Some(fragments)
     }
 
     fn replace_place(&self, place: PlaceRef<'tcx>) -> Option<Place<'tcx>> {
@@ -276,8 +280,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::StorageLive(l) => {
-                if self.all_dead_locals.contains(l) {
-                    let final_locals = &self.fragments[l];
+                if let Some(final_locals) = &self.fragments[l] {
                     for &(_, fl) in final_locals {
                         self.patch.add_statement(location, StatementKind::StorageLive(fl));
                     }
@@ -286,8 +289,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                 return;
             }
             StatementKind::StorageDead(l) => {
-                if self.all_dead_locals.contains(l) {
-                    let final_locals = &self.fragments[l];
+                if let Some(final_locals) = &self.fragments[l] {
                     for &(_, fl) in final_locals {
                         self.patch.add_statement(location, StatementKind::StorageDead(fl));
                     }
@@ -297,9 +299,8 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             }
             StatementKind::Deinit(box ref place) => {
                 if let Some(local) = place.as_local()
-                    && self.all_dead_locals.contains(local)
+                    && let Some(final_locals) = &self.fragments[local]
                 {
-                    let final_locals = &self.fragments[local];
                     for &(_, fl) in final_locals {
                         self.patch.add_statement(
                             location,
@@ -313,13 +314,54 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
 
             StatementKind::Assign(box (ref place, Rvalue::Aggregate(_, ref operands))) => {
                 if let Some(local) = place.as_local()
-                    && self.all_dead_locals.contains(local)
+                    && let Some(final_locals) = &self.fragments[local]
                 {
-                    let final_locals = &self.fragments[local];
                     for &(projection, fl) in final_locals {
                         let &[PlaceElem::Field(index, _)] = projection else { bug!() };
                         let index = index.as_usize();
                         let rvalue = Rvalue::Use(operands[index].clone());
+                        self.patch.add_statement(
+                            location,
+                            StatementKind::Assign(Box::new((fl.into(), rvalue))),
+                        );
+                    }
+                    statement.make_nop();
+                    return;
+                }
+            }
+
+            StatementKind::Assign(box (ref place, Rvalue::Use(Operand::Constant(_)))) => {
+                if let Some(local) = place.as_local()
+                    && let Some(final_locals) = &self.fragments[local]
+                {
+                    for &(projection, fl) in final_locals {
+                        let rvalue = Rvalue::Use(Operand::Move(place.project_deeper(projection, self.tcx)));
+                        self.patch.add_statement(
+                            location,
+                            StatementKind::Assign(Box::new((fl.into(), rvalue))),
+                        );
+                    }
+                    self.all_dead_locals.remove(local);
+                    return;
+                }
+            }
+
+            StatementKind::Assign(box (ref lhs, Rvalue::Use(ref op))) => {
+                let (rplace, copy) = match op {
+                    Operand::Copy(rplace) => (rplace, true),
+                    Operand::Move(rplace) => (rplace, false),
+                    Operand::Constant(_) => bug!(),
+                };
+                if let Some(local) = lhs.as_local()
+                    && let Some(final_locals) = &self.fragments[local]
+                {
+                    for &(projection, fl) in final_locals {
+                        let rplace = rplace.project_deeper(projection, self.tcx);
+                        let rvalue = if copy {
+                            Rvalue::Use(Operand::Copy(rplace))
+                        } else {
+                            Rvalue::Use(Operand::Move(rplace))
+                        };
                         self.patch.add_statement(
                             location,
                             StatementKind::Assign(Box::new((fl.into(), rvalue))),
@@ -348,9 +390,8 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             VarDebugInfoContents::Place(ref mut place) => {
                 if let Some(repl) = self.replace_place(place.as_ref()) {
                     *place = repl;
-                } else if self.all_dead_locals.contains(place.local) {
+                } else if let Some(fragments) = self.gather_debug_info_fragments(place.as_ref()) {
                     let ty = place.ty(self.local_decls, self.tcx).ty;
-                    let fragments = self.gather_debug_info_fragments(place.as_ref());
                     var_debug_info.value = VarDebugInfoContents::Composite { ty, fragments };
                 }
             }
@@ -361,8 +402,9 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                         if let Some(repl) = self.replace_place(fragment.contents.as_ref()) {
                             fragment.contents = repl;
                             true
-                        } else if self.all_dead_locals.contains(fragment.contents.local) {
-                            let frg = self.gather_debug_info_fragments(fragment.contents.as_ref());
+                        } else if let Some(frg) =
+                            self.gather_debug_info_fragments(fragment.contents.as_ref())
+                        {
                             new_fragments.extend(frg.into_iter().map(|mut f| {
                                 f.projection.splice(0..0, fragment.projection.iter().copied());
                                 f
