@@ -1226,6 +1226,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// the given range. The `len` parameter should usually just be `self.len`;
     /// the reason it's passed explicitly is that if the deque is wrapped in
     /// a `Drain`, then `self.len` is not actually the length of the deque.
+    ///
+    /// # Safety
+    ///
+    /// This function is always safe to call. For the resulting ranges to be valid
+    /// ranges into the physical buffer, the caller must ensure that for all possible
+    /// values of `range` and `len`, the result of calling `slice::range(range, ..len)`
+    /// represents a valid range into the logical buffer, and that all elements
+    /// in that range are initialized.
     fn slice_ranges<R>(&self, range: R, len: usize) -> (Range<usize>, Range<usize>)
     where
         R: RangeBounds<usize>,

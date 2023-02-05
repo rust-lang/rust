@@ -62,11 +62,10 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
             // We know that `self.idx + self.remaining <= deque.len <= usize::MAX`, so this won't overflow.
             let end = start + self.remaining;
 
-            // SAFETY: the range `start..end` lies strictly inside
-            // the range `0..deque.original_len`. Because of this, and because
-            // we haven't touched the elements inside this range yet,
-            // it's guaranteed that `a_range` and `b_range` represent valid ranges into
-            // the deques buffer.
+            // SAFETY: `start..end` represents the range of elements that
+            // haven't been drained yet, so they're all initialized,
+            // and `slice::range(start..end, end) == start..end`,
+            // so the preconditions for `slice_ranges` are met.
             let (a_range, b_range) = deque.slice_ranges(start..end, end);
             (deque.buffer_range(a_range), deque.buffer_range(b_range))
         }
