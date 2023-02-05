@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Const, ParamEnv, Ty, TyCtxt};
+use rustc_session::Session;
 use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};
 
 /// A pass that seeks to optimize unnecessary moves of large enum types, if there is a large
@@ -28,14 +29,12 @@ pub struct EnumSizeOpt {
 }
 
 impl<'tcx> MirPass<'tcx> for EnumSizeOpt {
+    fn is_enabled(&self, sess: &Session) -> bool {
+        sess.opts.unstable_opts.unsound_mir_opts || sess.mir_opt_level() >= 3
+    }
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let sess = tcx.sess;
-        // FIXME(julianknodt): one thing noticed while testing this mir-opt is that there is a
-        // different layout of large enums on wasm. It's not clear what is causing this layout
-        // difference, as it should be identical to i686 (32 bit).
-        if (!sess.opts.unstable_opts.unsound_mir_opts) || sess.mir_opt_level() < 3 {
-            return;
-        }
+        // NOTE: This pass may produce different MIR based on the alignment of the target
+        // platform, but it will still be valid.
         self.optim(tcx, body);
     }
 }
@@ -254,6 +253,9 @@ impl EnumSizeOpt {
                         )),
                     };
 
+                    let deinit_old =
+                        Statement { source_info, kind: StatementKind::Deinit(box dst) };
+
                     let copy_bytes = Statement {
                         source_info,
                         kind: StatementKind::Intrinsic(
@@ -279,6 +281,7 @@ impl EnumSizeOpt {
                         dst_cast,
                         src_ptr,
                         src_cast,
+                        deinit_old,
                         copy_bytes,
                         store_dead,
                     ]
