@@ -16,8 +16,8 @@ LL |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
    |                                                                ^^^^^^^^^^ required by this bound in `UnsafeCopy`
 help: consider further restricting this bound
    |
-LL | impl<T: Copy + std::ops::Deref + Deref<Target = T>> UnsafeCopy<'_, T> for T {
-   |                                +++++++++++++++++++
+LL | impl<T: Copy + std::ops::Deref<Target = T>> UnsafeCopy<'_, T> for T {
+   |                               ++++++++++++
 
 error: aborting due to previous error
 

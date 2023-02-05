@@ -803,6 +803,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 predicates
                     .iter()
                     .map(|(param, constraint)| (param.name.as_str(), &**constraint, None)),
+                None,
             );
         }
     }
