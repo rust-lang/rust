@@ -3,15 +3,7 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::Input;
 use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, SwitchWithOptPath};
-use crate::errors::{
-    BranchProtectionRequiresAArch64, CannotEnableCrtStaticLinux, CannotMixAndMatchSanitizers,
-    LinkerPluginToWindowsNotSupported, NotCircumventFeature, OptimisationFuelExhausted,
-    ProfileSampleUseFileDoesNotExist, ProfileUseFileDoesNotExist, SanitizerCfiEnabled,
-    SanitizerNotSupported, SanitizersNotSupported, SkippingConstChecks,
-    SplitDebugInfoUnstablePlatform, StackProtectorNotSupportedForTarget,
-    TargetRequiresUnwindTables, UnleashedFeatureHelp, UnstableVirtualFunctionElimination,
-    UnsupportedDwarfVersion,
-};
+use crate::errors;
 use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
 use crate::{filesearch, lint};
@@ -246,15 +238,15 @@ impl Session {
         if !unleashed_features.is_empty() {
             let mut must_err = false;
             // Create a diagnostic pointing at where things got unleashed.
-            self.emit_warning(SkippingConstChecks {
+            self.emit_warning(errors::SkippingConstChecks {
                 unleashed_features: unleashed_features
                     .iter()
                     .map(|(span, gate)| {
                         gate.map(|gate| {
                             must_err = true;
-                            UnleashedFeatureHelp::Named { span: *span, gate }
+                            errors::UnleashedFeatureHelp::Named { span: *span, gate }
                         })
-                        .unwrap_or(UnleashedFeatureHelp::Unnamed { span: *span })
+                        .unwrap_or(errors::UnleashedFeatureHelp::Unnamed { span: *span })
                     })
                     .collect(),
             });
@@ -262,7 +254,7 @@ impl Session {
             // If we should err, make sure we did.
             if must_err && self.has_errors().is_none() {
                 // We have skipped a feature gate, and not run into other errors... reject.
-                self.emit_err(NotCircumventFeature);
+                self.emit_err(errors::NotCircumventFeature);
             }
         }
     }
@@ -901,7 +893,7 @@ impl Session {
                         // We only call `msg` in case we can actually emit warnings.
                         // Otherwise, this could cause a `delay_good_path_bug` to
                         // trigger (issue #79546).
-                        self.emit_warning(OptimisationFuelExhausted { msg: msg() });
+                        self.emit_warning(errors::OptimisationFuelExhausted { msg: msg() });
                     }
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {
@@ -1502,28 +1494,28 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && sess.opts.cg.prefer_dynamic
         && sess.target.is_like_windows
     {
-        sess.emit_err(LinkerPluginToWindowsNotSupported);
+        sess.emit_err(errors::LinkerPluginToWindowsNotSupported);
     }
 
     // Make sure that any given profiling data actually exists so LLVM can't
     // decide to silently skip PGO.
     if let Some(ref path) = sess.opts.cg.profile_use {
         if !path.exists() {
-            sess.emit_err(ProfileUseFileDoesNotExist { path });
+            sess.emit_err(errors::ProfileUseFileDoesNotExist { path });
         }
     }
 
     // Do the same for sample profile data.
     if let Some(ref path) = sess.opts.unstable_opts.profile_sample_use {
         if !path.exists() {
-            sess.emit_err(ProfileSampleUseFileDoesNotExist { path });
+            sess.emit_err(errors::ProfileSampleUseFileDoesNotExist { path });
         }
     }
 
     // Unwind tables cannot be disabled if the target requires them.
     if let Some(include_uwtables) = sess.opts.cg.force_unwind_tables {
         if sess.target.requires_uwtable && !include_uwtables {
-            sess.emit_err(TargetRequiresUnwindTables);
+            sess.emit_err(errors::TargetRequiresUnwindTables);
         }
     }
 
@@ -1533,16 +1525,18 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     match unsupported_sanitizers.into_iter().count() {
         0 => {}
         1 => {
-            sess.emit_err(SanitizerNotSupported { us: unsupported_sanitizers.to_string() });
+            sess.emit_err(errors::SanitizerNotSupported { us: unsupported_sanitizers.to_string() });
         }
         _ => {
-            sess.emit_err(SanitizersNotSupported { us: unsupported_sanitizers.to_string() });
+            sess.emit_err(errors::SanitizersNotSupported {
+                us: unsupported_sanitizers.to_string(),
+            });
         }
     }
     // Cannot mix and match sanitizers.
     let mut sanitizer_iter = sess.opts.unstable_opts.sanitizer.into_iter();
     if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
-        sess.emit_err(CannotMixAndMatchSanitizers {
+        sess.emit_err(errors::CannotMixAndMatchSanitizers {
             first: first.to_string(),
             second: second.to_string(),
         });
@@ -1550,22 +1544,22 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Cannot enable crt-static with sanitizers on Linux
     if sess.crt_static(None) && !sess.opts.unstable_opts.sanitizer.is_empty() {
-        sess.emit_err(CannotEnableCrtStaticLinux);
+        sess.emit_err(errors::CannotEnableCrtStaticLinux);
     }
 
     // LLVM CFI and VFE both require LTO.
     if sess.lto() != config::Lto::Fat {
         if sess.is_sanitizer_cfi_enabled() {
-            sess.emit_err(SanitizerCfiEnabled);
+            sess.emit_err(errors::SanitizerCfiEnabled);
         }
         if sess.opts.unstable_opts.virtual_function_elimination {
-            sess.emit_err(UnstableVirtualFunctionElimination);
+            sess.emit_err(errors::UnstableVirtualFunctionElimination);
         }
     }
 
     // LLVM CFI and KCFI are mutually exclusive
     if sess.is_sanitizer_cfi_enabled() && sess.is_sanitizer_kcfi_enabled() {
-        sess.emit_err(CannotMixAndMatchSanitizers {
+        sess.emit_err(errors::CannotMixAndMatchSanitizers {
             first: "cfi".to_string(),
             second: "kcfi".to_string(),
         });
@@ -1573,7 +1567,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     if sess.opts.unstable_opts.stack_protector != StackProtector::None {
         if !sess.target.options.supports_stack_protector {
-            sess.emit_warning(StackProtectorNotSupportedForTarget {
+            sess.emit_warning(errors::StackProtectorNotSupportedForTarget {
                 stack_protector: sess.opts.unstable_opts.stack_protector,
                 target_triple: &sess.opts.target_triple,
             });
@@ -1581,19 +1575,19 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch != "aarch64" {
-        sess.emit_err(BranchProtectionRequiresAArch64);
+        sess.emit_err(errors::BranchProtectionRequiresAArch64);
     }
 
     if let Some(dwarf_version) = sess.opts.unstable_opts.dwarf_version {
         if dwarf_version > 5 {
-            sess.emit_err(UnsupportedDwarfVersion { dwarf_version });
+            sess.emit_err(errors::UnsupportedDwarfVersion { dwarf_version });
         }
     }
 
     if !sess.target.options.supported_split_debuginfo.contains(&sess.split_debuginfo())
         && !sess.opts.unstable_opts.unstable_options
     {
-        sess.emit_err(SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
+        sess.emit_err(errors::SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
     }
 }
 
