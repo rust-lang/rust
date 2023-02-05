@@ -842,7 +842,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -1328,8 +1328,8 @@ pub fn fold_list<'tcx, F, T>(
     intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
 ) -> Result<&'tcx ty::List<T>, F::Error>
 where
-    F: FallibleTypeFolder<'tcx>,
-    T: TypeFoldable<'tcx> + PartialEq + Copy,
+    F: FallibleTypeFolder<TyCtxt<'tcx>>,
+    T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
 {
     let mut iter = list.iter();
     // Look for the first element that changed

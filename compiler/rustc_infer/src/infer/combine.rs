@@ -811,7 +811,7 @@ struct ConstInferUnifier<'cx, 'tcx> {
     target_vid: ty::ConstVid<'tcx>,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for ConstInferUnifier<'_, 'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
     type Error = TypeError<'tcx>;
 
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {

@@ -179,7 +179,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     ///
     /// FIXME: This should get removed once higher ranked region obligations
     /// are dealt with during trait solving.
-    fn replace_placeholders_with_nll<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
+    fn replace_placeholders_with_nll<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, value: T) -> T {
         if value.has_placeholders() {
             self.tcx.fold_regions(value, |r, _| match *r {
                 ty::RePlaceholder(placeholder) => {

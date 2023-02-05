@@ -1150,7 +1150,7 @@ struct SkipBindersAt<'tcx> {
     index: ty::DebruijnIndex,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
     type Error = ();
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -1159,7 +1159,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
 
     fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
     where
-        T: ty::TypeFoldable<'tcx>,
+        T: ty::TypeFoldable<TyCtxt<'tcx>>,
     {
         self.index.shift_in(1);
         let value = t.try_map_bound(|t| t.try_fold_with(self));

@@ -69,8 +69,8 @@ macro_rules! CloneLiftImpls {
 macro_rules! TrivialTypeTraversalImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
-            impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
-                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
+            impl<$tcx> $crate::ty::fold::TypeFoldable<$crate::ty::TyCtxt<$tcx>> for $ty {
+                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$crate::ty::TyCtxt<$tcx>>>(
                     self,
                     _: &mut F,
                 ) -> ::std::result::Result<Self, F::Error> {
@@ -78,7 +78,7 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
 
                 #[inline]
-                fn fold_with<F: $crate::ty::fold::TypeFolder<$tcx>>(
+                fn fold_with<F: $crate::ty::fold::TypeFolder<$crate::ty::TyCtxt<$tcx>>>(
                     self,
                     _: &mut F,
                 ) -> Self {
@@ -118,7 +118,7 @@ macro_rules! TrivialTypeTraversalAndLiftImpls {
 
 #[macro_export]
 macro_rules! EnumTypeTraversalImpl {
-    (impl<$($p:tt),*> TypeFoldable<$tcx:tt> for $s:path {
+    (impl<$($p:tt),*> TypeFoldable<$tcx:ty> for $s:path {
         $($variants:tt)*
     } $(where $($wc:tt)*)*) => {
         impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s

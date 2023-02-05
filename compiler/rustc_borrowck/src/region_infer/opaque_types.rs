@@ -179,7 +179,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// region names in error messages.
     pub(crate) fn name_regions<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         tcx.fold_regions(ty, |region, _| match *region {
             ty::ReVar(vid) => {

@@ -908,8 +908,11 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Term<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(self.unpack().try_fold_with(folder)?.pack())
     }
 }
@@ -1580,8 +1583,8 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
-    fn try_fold_with<F: ty::fold::FallibleTypeFolder<'tcx>>(
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
+    fn try_fold_with<F: ty::fold::FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {

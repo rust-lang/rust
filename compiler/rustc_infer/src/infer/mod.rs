@@ -616,7 +616,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         canonical: &Canonical<'tcx, T>,
     ) -> (InferCtxt<'tcx>, T, CanonicalVarValues<'tcx>)
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let infcx = self.build();
         let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
@@ -696,7 +696,7 @@ impl<'tcx> InferCtxt<'tcx> {
         self.in_snapshot.get()
     }
 
-    pub fn freshen<T: TypeFoldable<'tcx>>(&self, t: T) -> T {
+    pub fn freshen<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
         t.fold_with(&mut self.freshener())
     }
 
@@ -1370,7 +1370,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// will be resolving them as well, e.g. in a loop).
     pub fn shallow_resolve<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         value.fold_with(&mut ShallowResolver { infcx: self })
     }
@@ -1387,7 +1387,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// at will.
     pub fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if !value.needs_infer() {
             return value; // Avoid duplicated subst-folding.
@@ -1398,7 +1398,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn resolve_numeric_literals_with_default<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if !value.needs_infer() {
             return value; // Avoid duplicated subst-folding.
@@ -1428,7 +1428,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: T) -> FixupResult<'tcx, T> {
+    pub fn fully_resolve<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> FixupResult<'tcx, T> {
         /*!
          * Attempts to resolve all type/region/const variables in
          * `value`. Region inference must have been run already (e.g.,
@@ -1454,7 +1454,7 @@ impl<'tcx> InferCtxt<'tcx> {
         value: ty::Binder<'tcx, T>,
     ) -> T
     where
-        T: TypeFoldable<'tcx> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         if let Some(inner) = value.no_bound_vars() {
             return inner;
@@ -1844,7 +1844,7 @@ struct InferenceLiteralEraser<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceLiteralEraser<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -1862,7 +1862,7 @@ struct ShallowResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -2047,7 +2047,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
         idx: u32,
     }
 
-    impl<'tcx> TypeFolder<'tcx> for ReplaceParamAndInferWithPlaceholder<'tcx> {
+    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
         fn tcx(&self) -> TyCtxt<'tcx> {
             self.tcx
         }

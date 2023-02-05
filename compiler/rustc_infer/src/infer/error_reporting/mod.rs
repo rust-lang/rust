@@ -2116,7 +2116,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`".
-    fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
+    fn expected_found_str<T: fmt::Display + TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         exp_found: ty::error::ExpectedFound<T>,
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>, Option<PathBuf>)>

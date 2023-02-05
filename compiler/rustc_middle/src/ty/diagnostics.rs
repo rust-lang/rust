@@ -94,7 +94,7 @@ pub trait IsSuggestable<'tcx>: Sized {
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
 where
-    T: TypeVisitable<TyCtxt<'tcx>> + TypeFoldable<'tcx>,
+    T: TypeVisitable<TyCtxt<'tcx>> + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
@@ -522,7 +522,7 @@ pub struct MakeSuggestableFolder<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for MakeSuggestableFolder<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
     type Error = ();
 
     fn tcx(&self) -> TyCtxt<'tcx> {

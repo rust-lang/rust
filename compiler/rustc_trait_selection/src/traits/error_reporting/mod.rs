@@ -109,7 +109,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
@@ -122,7 +122,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> !
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
@@ -492,7 +492,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> !
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
@@ -512,7 +512,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
@@ -2670,7 +2670,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
         }
 
-        impl<'a, 'tcx> TypeFolder<'tcx> for ParamToVarFolder<'a, 'tcx> {
+        impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ParamToVarFolder<'a, 'tcx> {
             fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
                 self.infcx.tcx
             }

@@ -61,8 +61,13 @@ impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
 
-impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx, O: TypeFoldable<TyCtxt<'tcx>>> TypeFoldable<TyCtxt<'tcx>>
+    for traits::Obligation<'tcx, O>
+{
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(traits::Obligation {
             cause: self.cause,
             recursion_depth: self.recursion_depth,

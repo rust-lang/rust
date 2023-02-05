@@ -32,7 +32,7 @@ pub trait QueryNormalizeExt<'tcx> {
     /// use [`TyCtxt::normalize_erasing_regions`], which wraps this procedure.
     fn query_normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
-        T: TypeFoldable<'tcx>;
+        T: TypeFoldable<TyCtxt<'tcx>>;
 }
 
 impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
@@ -51,7 +51,7 @@ impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
     /// and other details are still "under development".
     fn query_normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
             "normalize::<{}>(value={:?}, param_env={:?}, cause={:?})",
@@ -170,14 +170,14 @@ struct QueryNormalizer<'cx, 'tcx> {
     universes: Vec<Option<ty::UniverseIndex>>,
 }
 
-impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
+impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> {
     type Error = NoSolution;
 
     fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
-    fn try_fold_binder<T: TypeFoldable<'tcx>>(
+    fn try_fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> Result<ty::Binder<'tcx, T>, Self::Error> {

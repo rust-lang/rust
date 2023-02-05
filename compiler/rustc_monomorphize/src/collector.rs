@@ -660,7 +660,7 @@ struct MirNeighborCollector<'a, 'tcx> {
 impl<'a, 'tcx> MirNeighborCollector<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!("monomorphize: self.instance={:?}", self.instance);
         self.instance.subst_mir_and_normalize_erasing_regions(

@@ -7,7 +7,7 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
 use rustc_middle::traits::query::Fallible;
 use rustc_middle::ty::{self, Ty, TypeFoldable, TypeVisitable};
-use rustc_middle::ty::{GenericArg, ToPredicate};
+use rustc_middle::ty::{GenericArg, ToPredicate, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt::Debug;
@@ -104,8 +104,8 @@ pub trait InferCtxtBuilderExt<'tcx> {
         operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalQueryResponse<'tcx, R>>
     where
-        K: TypeFoldable<'tcx>,
-        R: Debug + TypeFoldable<'tcx>,
+        K: TypeFoldable<TyCtxt<'tcx>>,
+        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>;
 }
 
@@ -125,15 +125,15 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
     /// In part because we would need a `for<'tcx>` sort of
     /// bound for the closure and in part because it is convenient to
     /// have `'tcx` be free on this function so that we can talk about
-    /// `K: TypeFoldable<'tcx>`.)
+    /// `K: TypeFoldable<TyCtxt<'tcx>>`.)
     fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
         operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalQueryResponse<'tcx, R>>
     where
-        K: TypeFoldable<'tcx>,
-        R: Debug + TypeFoldable<'tcx>,
+        K: TypeFoldable<TyCtxt<'tcx>>,
+        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
         let (infcx, key, canonical_inference_vars) =

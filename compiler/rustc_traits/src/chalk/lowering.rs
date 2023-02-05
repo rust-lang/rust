@@ -868,7 +868,7 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
 /// It's important to note that because of prior substitution, we may have
 /// late-bound regions, even outside of fn contexts, since this is the best way
 /// to prep types for chalk lowering.
-pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
+pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     interner: RustInterner<'tcx>,
     tcx: TyCtxt<'tcx>,
     ty: Binder<'tcx, T>,
@@ -999,12 +999,15 @@ impl<'a, 'tcx> NamedBoundVarSubstitutor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for NamedBoundVarSubstitutor<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T> {
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &mut self,
+        t: Binder<'tcx, T>,
+    ) -> Binder<'tcx, T> {
         self.binder_index.shift_in(1);
         let result = t.super_fold_with(self);
         self.binder_index.shift_out(1);
@@ -1055,12 +1058,15 @@ impl<'tcx> ParamsSubstitutor<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T> {
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &mut self,
+        t: Binder<'tcx, T>,
+    ) -> Binder<'tcx, T> {
         self.binder_index.shift_in(1);
         let result = t.super_fold_with(self);
         self.binder_index.shift_out(1);
@@ -1131,7 +1137,7 @@ impl<'tcx> ReverseParamsSubstitutor<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for ReverseParamsSubstitutor<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseParamsSubstitutor<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }

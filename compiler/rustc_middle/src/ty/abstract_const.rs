@@ -48,12 +48,12 @@ impl<'tcx> TyCtxt<'tcx> {
         Ok(ac?.map(|ac| EarlyBinder(ac)))
     }
 
-    pub fn expand_abstract_consts<T: TypeFoldable<'tcx>>(self, ac: T) -> T {
+    pub fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, ac: T) -> T {
         struct Expander<'tcx> {
             tcx: TyCtxt<'tcx>,
         }
 
-        impl<'tcx> TypeFolder<'tcx> for Expander<'tcx> {
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Expander<'tcx> {
             fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }

@@ -32,7 +32,7 @@ pub fn renumber_mir<'tcx>(
 #[instrument(skip(infcx), level = "debug")]
 pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'tcx>, value: T) -> T
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
 {
     infcx.tcx.fold_regions(value, |_region, _depth| {
         let origin = NllRegionVariableOrigin::Existential { from_forall: false };
@@ -47,7 +47,7 @@ struct NllVisitor<'a, 'tcx> {
 impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
     fn renumber_regions<T>(&mut self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         renumber_regions(self.infcx, value)
     }

@@ -16,7 +16,7 @@ pub(super) trait CanonicalExt<'tcx, V> {
     /// with the value given in `var_values`.
     fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
-        V: TypeFoldable<'tcx>;
+        V: TypeFoldable<TyCtxt<'tcx>>;
 
     /// Allows one to apply a substitute to some subset of
     /// `self.value`. Invoke `projection_fn` with `self.value` to get
@@ -31,13 +31,13 @@ pub(super) trait CanonicalExt<'tcx, V> {
         projection_fn: impl FnOnce(&V) -> T,
     ) -> T
     where
-        T: TypeFoldable<'tcx>;
+        T: TypeFoldable<TyCtxt<'tcx>>;
 }
 
 impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
     fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
-        V: TypeFoldable<'tcx>,
+        V: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.substitute_projected(tcx, var_values, |value| value.clone())
     }
@@ -49,7 +49,7 @@ impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
         projection_fn: impl FnOnce(&V) -> T,
     ) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         assert_eq!(self.variables.len(), var_values.len());
         let value = projection_fn(&self.value);
@@ -66,7 +66,7 @@ pub(super) fn substitute_value<'tcx, T>(
     value: T,
 ) -> T
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
 {
     if var_values.var_values.is_empty() {
         value

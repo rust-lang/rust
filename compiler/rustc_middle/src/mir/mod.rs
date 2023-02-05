@@ -2742,8 +2742,11 @@ impl UserTypeProjection {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(UserTypeProjection {
             base: self.base.try_fold_with(folder)?,
             projs: self.projs.try_fold_with(folder)?,

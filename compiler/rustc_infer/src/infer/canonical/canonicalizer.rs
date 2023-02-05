@@ -41,7 +41,7 @@ impl<'tcx> InferCtxt<'tcx> {
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonical<'tcx, V>
     where
-        V: TypeFoldable<'tcx>,
+        V: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
 
@@ -60,7 +60,7 @@ impl<'tcx> InferCtxt<'tcx> {
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonical<'tcx, V>
     where
-        V: TypeFoldable<'tcx>,
+        V: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
 
@@ -100,7 +100,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(&self, value: V) -> Canonical<'tcx, V>
     where
-        V: TypeFoldable<'tcx>,
+        V: TypeFoldable<TyCtxt<'tcx>>,
     {
         let mut query_state = OriginalQueryValues::default();
         Canonicalizer::canonicalize(
@@ -114,7 +114,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn canonicalize_user_type_annotation<V>(&self, value: V) -> Canonical<'tcx, V>
     where
-        V: TypeFoldable<'tcx>,
+        V: TypeFoldable<TyCtxt<'tcx>>,
     {
         let mut query_state = OriginalQueryValues::default();
         Canonicalizer::canonicalize(
@@ -136,7 +136,7 @@ impl<'tcx> InferCtxt<'tcx> {
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonical<'tcx, V>
     where
-        V: TypeFoldable<'tcx>,
+        V: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
 
@@ -328,14 +328,14 @@ struct Canonicalizer<'cx, 'tcx> {
     binder_index: ty::DebruijnIndex,
 }
 
-impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
+impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.binder_index.shift_in(1);
         let t = t.super_fold_with(self);
@@ -526,7 +526,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonical<'tcx, V>
     where
-        V: TypeFoldable<'tcx>,
+        V: TypeFoldable<TyCtxt<'tcx>>,
     {
         let needs_canonical_flags = if canonicalize_region_mode.any() {
             TypeFlags::NEEDS_INFER |

@@ -127,7 +127,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.infcx.resolve_vars_if_possible(value)
     }

@@ -589,7 +589,7 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn subst_mir<T>(&self, tcx: TyCtxt<'tcx>, v: &T) -> T
     where
-        T: TypeFoldable<'tcx> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         if let Some(substs) = self.substs_for_mir_body() {
             EarlyBinder(*v).subst(tcx, substs)
@@ -606,7 +606,7 @@ impl<'tcx> Instance<'tcx> {
         v: T,
     ) -> T
     where
-        T: TypeFoldable<'tcx> + Clone,
+        T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(substs) = self.substs_for_mir_body() {
             tcx.subst_and_normalize_erasing_regions(substs, param_env, v)
@@ -623,7 +623,7 @@ impl<'tcx> Instance<'tcx> {
         v: T,
     ) -> Result<T, NormalizationError<'tcx>>
     where
-        T: TypeFoldable<'tcx> + Clone,
+        T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(substs) = self.substs_for_mir_body() {
             tcx.try_subst_and_normalize_erasing_regions(substs, param_env, v)
@@ -674,7 +674,7 @@ fn polymorphize<'tcx>(
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> ty::TypeFolder<'tcx> for PolymorphizationFolder<'tcx> {
+    impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for PolymorphizationFolder<'tcx> {
         fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
             self.tcx
         }

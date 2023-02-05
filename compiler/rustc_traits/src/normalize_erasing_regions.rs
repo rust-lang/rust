@@ -22,7 +22,7 @@ pub(crate) fn provide(p: &mut Providers) {
     };
 }
 
-fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq + Copy>(
+fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy>(
     tcx: TyCtxt<'tcx>,
     goal: ParamEnvAnd<'tcx, T>,
 ) -> Result<T, NoSolution> {

@@ -315,7 +315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn normalize<T>(&self, span: Span, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.register_infer_ok_obligations(
             self.at(&self.misc(span), self.param_env).normalize(value),

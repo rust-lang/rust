@@ -227,8 +227,11 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
             GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
@@ -475,8 +478,11 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
         // The match arms are in order of frequency. The 1, 2, and 0 cases are
@@ -503,8 +509,11 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         // This code is fairly hot, though not as hot as `SubstsRef`.
         //
         // When compiling stage 2, I get the following results:
@@ -553,7 +562,7 @@ impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx
 pub struct EarlyBinder<T>(pub T);
 
 /// For early binders, you should first call `subst` before using any visitors.
-impl<'tcx, T> !TypeFoldable<'tcx> for ty::EarlyBinder<T> {}
+impl<'tcx, T> !TypeFoldable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 impl<'tcx, T> !TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 
 impl<T> EarlyBinder<T> {
@@ -615,7 +624,7 @@ impl<T, U> EarlyBinder<(T, U)> {
 
 impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
 where
-    I::Item: TypeFoldable<'tcx>,
+    I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
     pub fn subst_iter(
         self,
@@ -634,7 +643,7 @@ pub struct SubstIter<'s, 'tcx, I: IntoIterator> {
 
 impl<'tcx, I: IntoIterator> Iterator for SubstIter<'_, 'tcx, I>
 where
-    I::Item: TypeFoldable<'tcx>,
+    I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
     type Item = I::Item;
 
@@ -650,7 +659,7 @@ where
 impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIter<'_, 'tcx, I>
 where
     I::IntoIter: DoubleEndedIterator,
-    I::Item: TypeFoldable<'tcx>,
+    I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         Some(EarlyBinder(self.it.next_back()?).subst(self.tcx, self.substs))
@@ -660,14 +669,14 @@ where
 impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIter<'_, 'tcx, I>
 where
     I::IntoIter: ExactSizeIterator,
-    I::Item: TypeFoldable<'tcx>,
+    I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
 }
 
 impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
 where
     I::Item: Deref,
-    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
     pub fn subst_iter_copied(
         self,
@@ -687,7 +696,7 @@ pub struct SubstIterCopied<'a, 'tcx, I: IntoIterator> {
 impl<'tcx, I: IntoIterator> Iterator for SubstIterCopied<'_, 'tcx, I>
 where
     I::Item: Deref,
-    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
     type Item = <I::Item as Deref>::Target;
 
@@ -704,7 +713,7 @@ impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIterCopied<'_, 'tcx, I>
 where
     I::IntoIter: DoubleEndedIterator,
     I::Item: Deref,
-    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         Some(EarlyBinder(*self.it.next_back()?).subst(self.tcx, self.substs))
@@ -715,7 +724,7 @@ impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIterCopied<'_, 'tcx, I>
 where
     I::IntoIter: ExactSizeIterator,
     I::Item: Deref,
-    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
 }
 
@@ -741,7 +750,7 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
+impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
     pub fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
         self.0.fold_with(&mut folder)
@@ -776,13 +785,13 @@ struct SubstFolder<'a, 'tcx> {
     binders_passed: u32,
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for SubstFolder<'a, 'tcx> {
     #[inline]
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {
@@ -975,7 +984,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
     /// As indicated in the diagram, here the same type `&'a i32` is substituted once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
-    fn shift_vars_through_binders<T: TypeFoldable<'tcx>>(&self, val: T) -> T {
+    fn shift_vars_through_binders<T: TypeFoldable<TyCtxt<'tcx>>>(&self, val: T) -> T {
         debug!(
             "shift_vars(val={:?}, binders_passed={:?}, has_escaping_bound_vars={:?})",
             val,

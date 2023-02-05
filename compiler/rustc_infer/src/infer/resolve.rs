@@ -26,7 +26,7 @@ impl<'a, 'tcx> OpportunisticVarResolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -67,7 +67,7 @@ impl<'a, 'tcx> OpportunisticRegionResolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -194,7 +194,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for UnresolvedTypeOrConstFinder<'a, 'tc
 /// then an `Err` result is returned.
 pub fn fully_resolve<'tcx, T>(infcx: &InferCtxt<'tcx>, value: T) -> FixupResult<'tcx, T>
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
 {
     value.try_fold_with(&mut FullTypeResolver { infcx })
 }
@@ -205,7 +205,7 @@ struct FullTypeResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
+impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
     type Error = FixupError<'tcx>;
 
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {

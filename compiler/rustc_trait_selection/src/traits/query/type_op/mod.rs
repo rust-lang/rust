@@ -54,8 +54,8 @@ pub struct TypeOpOutput<'tcx, Op: TypeOp<'tcx>> {
 /// which produces the resulting query region constraints.
 ///
 /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
-pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<'tcx> + 'tcx {
-    type QueryResponse: TypeFoldable<'tcx>;
+pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 'tcx {
+    type QueryResponse: TypeFoldable<TyCtxt<'tcx>>;
 
     /// Give query the option for a simple fast path that never
     /// actually hits the tcx cache lookup etc. Return `Some(r)` with

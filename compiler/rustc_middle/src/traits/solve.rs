@@ -25,8 +25,11 @@ pub struct ExternalConstraintsData<'tcx> {
     pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ExternalConstraints<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(FallibleTypeFolder::tcx(folder).intern_external_constraints(ExternalConstraintsData {
             regions: (),
             opaque_types: self
@@ -37,7 +40,7 @@ impl<'tcx> TypeFoldable<'tcx> for ExternalConstraints<'tcx> {
         }))
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         TypeFolder::tcx(folder).intern_external_constraints(ExternalConstraintsData {
             regions: (),
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),

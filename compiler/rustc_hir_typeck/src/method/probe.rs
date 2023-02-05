@@ -1968,7 +1968,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///    so forth.
     fn erase_late_bound_regions<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.tcx.erase_late_bound_regions(value)
     }

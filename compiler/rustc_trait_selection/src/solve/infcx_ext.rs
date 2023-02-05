@@ -4,7 +4,7 @@ use rustc_infer::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::ty::{self, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::DUMMY_SP;
 
 use super::Goal;
@@ -26,7 +26,7 @@ pub(super) trait InferCtxtExt<'tcx> {
         rhs: T,
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>;
 
-    fn instantiate_bound_vars_with_infer<T: TypeFoldable<'tcx> + Copy>(
+    fn instantiate_bound_vars_with_infer<T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
         &self,
         value: ty::Binder<'tcx, T>,
     ) -> T;
@@ -65,7 +65,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             })
     }
 
-    fn instantiate_bound_vars_with_infer<T: TypeFoldable<'tcx> + Copy>(
+    fn instantiate_bound_vars_with_infer<T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
         &self,
         value: ty::Binder<'tcx, T>,
     ) -> T {

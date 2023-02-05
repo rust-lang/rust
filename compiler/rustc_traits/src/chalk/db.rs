@@ -772,12 +772,12 @@ struct ReplaceOpaqueTyFolder<'tcx> {
     binder_index: ty::DebruijnIndex,
 }
 
-impl<'tcx> ty::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
+impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for ReplaceOpaqueTyFolder<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {

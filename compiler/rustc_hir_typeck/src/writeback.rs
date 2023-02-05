@@ -685,7 +685,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn resolve<T>(&mut self, x: T, span: &dyn Locatable) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let mut resolver = Resolver::new(self.fcx, span, self.body);
         let x = x.fold_with(&mut resolver);
@@ -763,7 +763,7 @@ struct EraseEarlyRegions<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for EraseEarlyRegions<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEarlyRegions<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -779,7 +779,7 @@ impl<'tcx> TypeFolder<'tcx> for EraseEarlyRegions<'tcx> {
     }
 }
 
-impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
+impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }

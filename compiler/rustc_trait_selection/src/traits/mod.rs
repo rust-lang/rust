@@ -371,7 +371,7 @@ pub fn fully_normalize<'tcx, T>(
     value: T,
 ) -> Result<T, Vec<FulfillmentError<'tcx>>>
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
 {
     let ocx = ObligationCtxt::new(infcx);
     debug!(?value);

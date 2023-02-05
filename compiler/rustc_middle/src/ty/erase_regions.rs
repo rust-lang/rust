@@ -18,7 +18,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// subtyping, but they are anonymized and normalized as well)..
     pub fn erase_regions<T>(self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         // If there's nothing to erase avoid performing the query at all
         if !value.has_type_flags(TypeFlags::HAS_LATE_BOUND | TypeFlags::HAS_FREE_REGIONS) {
@@ -35,7 +35,7 @@ struct RegionEraserVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -46,7 +46,7 @@ impl<'tcx> TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
 
     fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let u = self.tcx.anonymize_bound_vars(t);
         u.super_fold_with(self)
