@@ -211,10 +211,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 );
             }
 
-            ReStatic | ReError => {
+            ReStatic => {
                 // nothing lives longer than `'static`
                 Ok(self.tcx().lifetimes.re_static)
             }
+
+            ReError => Ok(self.tcx().lifetimes.re_error),
 
             ReEarlyBound(_) | ReFree(_) => {
                 // All empty regions are less than early-bound, free,
