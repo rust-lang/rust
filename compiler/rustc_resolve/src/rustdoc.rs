@@ -326,6 +326,14 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<String, MalformedGener
     if !stripped_path.is_empty() { Ok(stripped_path) } else { Err(MalformedGenerics::MissingType) }
 }
 
+/// Returns whether the first doc-comment is an inner attribute.
+///
+//// If there are no doc-comments, return true.
+/// FIXME(#78591): Support both inner and outer attributes on the same item.
+pub fn inner_docs(attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == ast::AttrStyle::Inner)
+}
+
 /// Simplified version of the corresponding function in rustdoc.
 /// If the rustdoc version returns a successful result, this function must return the same result.
 /// Otherwise this function may return anything.

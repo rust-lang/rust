@@ -2199,7 +2199,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn resolve_item(&mut self, item: &'ast Item) {
-        self.resolve_doc_links(&item.attrs);
+        let mod_inner_docs =
+            matches!(item.kind, ItemKind::Mod(..)) && rustdoc::inner_docs(&item.attrs);
+        if !mod_inner_docs {
+            self.resolve_doc_links(&item.attrs);
+        }
 
         let name = item.ident.name;
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
@@ -2292,7 +2296,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             ItemKind::Mod(..) => {
                 self.with_scope(item.id, |this| {
-                    this.resolve_doc_links(&item.attrs);
+                    if mod_inner_docs {
+                        this.resolve_doc_links(&item.attrs);
+                    }
                     let old_macro_rules = this.parent_scope.macro_rules;
                     visit::walk_item(this, item);
                     // Maintain macro_rules scopes in the same way as during early resolution

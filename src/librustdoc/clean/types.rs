@@ -10,7 +10,7 @@ use std::{fmt, iter};
 use arrayvec::ArrayVec;
 use thin_vec::ThinVec;
 
-use rustc_ast::{self as ast, AttrStyle};
+use rustc_ast as ast;
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -23,7 +23,7 @@ use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt, Visibility};
-use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, DocFragment};
+use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, inner_docs, DocFragment};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -405,7 +405,7 @@ impl Item {
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
         self.item_id
             .as_def_id()
-            .map(|did| tcx.get_attrs_unchecked(did).inner_docs())
+            .map(|did| inner_docs(tcx.get_attrs_unchecked(did)))
             .unwrap_or(false)
     }
 
@@ -874,8 +874,6 @@ pub(crate) trait AttributesExt {
 
     fn span(&self) -> Option<rustc_span::Span>;
 
-    fn inner_docs(&self) -> bool;
-
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
 }
 
@@ -892,14 +890,6 @@ impl AttributesExt for [ast::Attribute] {
     /// Return the span of the first doc-comment, if it exists.
     fn span(&self) -> Option<rustc_span::Span> {
         self.iter().find(|attr| attr.doc_str().is_some()).map(|attr| attr.span)
-    }
-
-    /// Returns whether the first doc-comment is an inner attribute.
-    ///
-    //// If there are no doc-comments, return true.
-    /// FIXME(#78591): Support both inner and outer attributes on the same item.
-    fn inner_docs(&self) -> bool {
-        self.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == AttrStyle::Inner)
     }
 
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
