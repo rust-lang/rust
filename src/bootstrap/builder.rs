@@ -1926,6 +1926,37 @@ impl<'a> Builder<'a> {
             }
         }
 
+        // Enable frame pointers on all targets except x86. While omitting frame pointers improves
+        // performance, on most targets there are enough general purpose registers that dedicating
+        // one to the frame pointer barely has any effect. 32-bit x86 is one of the few exceptions
+        // where there are so little general purpose registers that using the register meant for the
+        // frame pointer as general purpose register has a significant performance benefit.
+        // Keeping the frame pointer makes it significantly easier to profile rustc, hopefully
+        // resulting in more perf improvements than keeping frame pointers costs.
+        //
+        // While DWARF unwind tables allow getting stack traces during profiling, there are
+        // significant limitations that make this not very useful for rustc:
+        // * DWARF unwind table based unwinding is slow. This means it can't be done in real time
+        //   and slows down offline analysis.
+        // * As a concequence of not being able to do DWARF based unwinding it becomes necessary to
+        //   capture the stack on every sample. This significantly increases profile sizes.
+        // * Perf doesn't allow capturing more than 50k of the stack on every sample. Given that in
+        //   rustc the stack is generally more than 50k, this results in partial stack traces which
+        //   frequently splits a stack frame in two parts in flamegraphs where one part is at the
+        //   root of the flamegraph, while the other is somewhere in the middle. This makes it
+        //   really hard to determine how much time is spent in which function.
+        // * Capturing large parts of the stack causes cpu overload on slower systems, resulting in
+        //   samples getting dropped.
+        //
+        // Another option is to use a tool like valgrind's callgrind. This is however significantly
+        // slower than a sampling profiler like perf which barely has a performance impact at all.
+        //
+        // All of this means that using frame pointer based unwinding is significantly better than
+        // any of the alternatives.
+        if !target.starts_with("x86") || target.starts_with("x86_64") {
+            rustflags.arg("-Cforce-frame-pointers=yes");
+        }
+
         Cargo { command: cargo, rustflags, rustdocflags, allow_features }
     }
 
