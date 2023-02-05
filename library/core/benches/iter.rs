@@ -356,6 +356,12 @@ bench_sums! {
       .take(1000000)
 }
 
+bench_sums! {
+    bench_slice_chain_sum,
+    bench_slice_chain_ref_sum,
+    (&[0; 512]).iter().chain((&[1; 512]).iter())
+}
+
 // Checks whether Skip<Zip<A,B>> is as fast as Zip<Skip<A>, Skip<B>>, from
 // https://users.rust-lang.org/t/performance-difference-between-iterator-zip-and-skip-order/15743
 #[bench]
