@@ -19,6 +19,7 @@ use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 
 use super::RustString;
+use crate::DiffTypeTree;
 
 pub type Bool = c_uint;
 
@@ -1008,7 +1009,8 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     fnc: &Value,
     input_diffactivity: Vec<DiffActivity>,
     ret_diffactivity: DiffActivity,
-    mut ret_primary_ret: bool
+    mut ret_primary_ret: bool,
+    typetree: DiffTypeTree,
     ) -> &Value{
 
     let ret_activity = cdiffe_from(ret_diffactivity);
@@ -1032,12 +1034,14 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
         ret_primary_ret = false;
     }
 
-    let tree_tmp =  TypeTree::new();
-    let mut args_tree = vec![tree_tmp.inner; input_activity.len()];
+    let mut args_tree = typetree.input_tt.into_iter()
+        .map(|x| x.inner).collect::<Vec<_>>();
+
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
     let args_uncacheable = vec![0; input_activity.len()];
-    let ret = TypeTree::new();
+    let ret = typetree.ret_tt;
+
     let kv_tmp = IntList {
         data: std::ptr::null_mut(),
         size: 0,
@@ -1077,9 +1081,11 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     input_activity: Vec<DiffActivity>,
     ret_activity: DiffActivity,
     mut ret_primary_ret: bool,
-    diff_primary_ret: bool
+    diff_primary_ret: bool,
+    typetree: DiffTypeTree,
     ) -> &Value{
 
+    dbg!(&typetree);
     let ret_activity = cdiffe_from(ret_activity);
     assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
@@ -1096,12 +1102,13 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         ret_primary_ret = false;
     }
 
-    let tree_tmp =  TypeTree::new();
-    let mut args_tree = vec![tree_tmp.inner; input_activity.len()];
+    let mut args_tree = typetree.input_tt.into_iter()
+        .map(|x| x.inner).collect::<Vec<_>>();
+
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
     let args_uncacheable = vec![0; input_activity.len()];
-    let ret = TypeTree::new();
+    let ret = typetree.ret_tt;
     let kv_tmp = IntList {
         data: std::ptr::null_mut(),
         size: 0,
@@ -2964,7 +2971,11 @@ impl fmt::Display for TypeTree {
     }
 }
 
-
+impl fmt::Debug for TypeTree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Self as fmt::Display>::fmt(self, f)
+    }
+}
 
 impl Drop for TypeTree {
     fn drop(&mut self) {

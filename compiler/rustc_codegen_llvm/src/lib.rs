@@ -21,7 +21,7 @@ extern crate rustc_macros;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 
-use llvm_::TypeTree;
+use llvm::TypeTree;
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -36,7 +36,7 @@ use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{TyCtxt, self, Ty, ParamEnvAnd};
+use rustc_middle::ty::{TyCtxt, Ty, ParamEnvAnd, ParamEnv, Param, Adt};
 use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
@@ -448,17 +448,18 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
         return llvm::TypeTree::from_type(scalar_type, llcx).only(-1);
     }
 
-    if let ty::Param(_) = id.kind() {
+    if let Param(_) = id.kind() {
         return TypeTree::new();
     }
 
-    dbg!(&id.kind());
     let param_env_and = ParamEnvAnd {
-        param_env: ty::ParamEnv::empty(),
+        param_env: ParamEnv::empty(),
         value: id,
     };
+
     let layout = tcx.layout_of(param_env_and);
     assert!(layout.is_ok());
+
     let layout = layout.unwrap().layout;
     let fields = layout.fields();
     let _abi = layout.abi();
@@ -471,6 +472,11 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
     if id.is_adt() {
         dbg!("an ADT");
         let adt_def = id.ty_adt_def().unwrap();
+        let substs = match id.kind() {
+            Adt(_, subst_ref) => subst_ref,
+            _ => unreachable!(),
+        };
+
         if adt_def.is_struct() {
             dbg!("a struct");
             let (offsets, memory_index) = match fields {
@@ -480,7 +486,7 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
             let fields = adt_def.all_fields();
             let mut field_tt = vec![];
             for field in fields {
-                let field_ty: Ty<'_> = tcx.type_of(field.did);
+                let field_ty: Ty<'_> = field.ty(tcx, substs);
                 let inner_tt = get_enzyme_typtree(field_ty, llvm_data_layout, tcx, llcx, depth+1).data0();
                 dbg!(field_ty);
                 println!("inner tt: {}", inner_tt);
@@ -527,7 +533,7 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
     return tt;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DiffTypeTree {
     pub ret_tt: TypeTree,
     pub input_tt: Vec<TypeTree>,

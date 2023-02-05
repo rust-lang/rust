@@ -641,7 +641,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
 // As unsafe as it can be.
 #[allow(unused_variables)]
 #[allow(unused)]
-pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item: AutoDiffItem, tt: &DiffTypeTree) -> Result<(), FatalError> {
+pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item: AutoDiffItem, typetree: DiffTypeTree) -> Result<(), FatalError> {
 
 
     let autodiff_mode = item.attrs.mode;
@@ -671,8 +671,8 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
     let mut res: &Value = match item.attrs.mode {
-        DiffMode::Forward => enzyme_rust_forward_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret),
-        DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, diff_primary_ret),
+        DiffMode::Forward => enzyme_rust_forward_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, typetree),
+        DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, diff_primary_ret, typetree),
         _ => unreachable!(),
     };
     dbg!(res);
@@ -720,7 +720,7 @@ pub(crate) unsafe fn differentiate(
     dbg!(&typetrees.len());
 
     for item in diff_items {
-        let tt = typetrees.get(&item.source).unwrap();
+        let tt = typetrees.get(&item.source).unwrap().clone();
 
         let res = enzyme_ad(llmod, llcx, item, tt);
         assert!(res.is_ok());
