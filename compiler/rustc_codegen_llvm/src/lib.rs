@@ -255,7 +255,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
             back::write::differentiate(module, cgcx, diff_fncs, typetrees)
         }
     }
-    
+
     fn typetrees(module: &mut Self::Module) -> FxHashMap<String, Self::TypeTree> {
         module.typetrees.drain().collect()
     }
@@ -404,8 +404,8 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 }
 
-pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
-                                tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, depth: u8) -> TypeTree {
+pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
+                                 tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, depth: u8) -> TypeTree {
     let mut tt = TypeTree::new();
     if depth > 6 {
         panic!("depth > 6! Abort");
@@ -426,9 +426,9 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
 
         tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx).only(-1);
         let inner_id = id.builtin_deref(true).unwrap().ty;
-        let inner_tt = get_enzyme_typtree(inner_id, llvm_data_layout, tcx, llcx, depth+1);
+        let inner_tt = get_enzyme_typetree(inner_id, llvm_data_layout, tcx, llcx, depth+1);
         tt.merge(inner_tt.only(-1));
-        println!("returning tt with indirection: {}", tt);
+        //println!("returning tt with indirection: {}", tt);
         return tt;
     }
 
@@ -487,7 +487,7 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
             let mut field_tt = vec![];
             for field in fields {
                 let field_ty: Ty<'_> = field.ty(tcx, substs);
-                let inner_tt = get_enzyme_typtree(field_ty, llvm_data_layout, tcx, llcx, depth+1).data0();
+                let inner_tt = get_enzyme_typetree(field_ty, llvm_data_layout, tcx, llcx, depth+1).data0();
                 dbg!(field_ty);
                 println!("inner tt: {}", inner_tt);
                 field_tt.push(inner_tt);
@@ -501,7 +501,7 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
                 let offset = offsets[i];
                 ret_tt.merge(tt.clone().only(offset.bytes_usize() as isize));
             }
-            println!("ret_tt: {}", ret_tt);
+            //println!("struct tt: {}", ret_tt);
             return ret_tt;
         } else {
             unimplemented!("adt that isn't a struct");
@@ -522,14 +522,13 @@ pub fn get_enzyme_typtree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
         assert!(byte_stride * *count as usize == byte_max_size);
         assert!(*count > 0); // return empty TT for empty?
         let sub_id = id.builtin_index().unwrap();
-        let sub_tt = get_enzyme_typtree(sub_id, llvm_data_layout, tcx, llcx, depth+1).data0();
+        let sub_tt = get_enzyme_typetree(sub_id, llvm_data_layout, tcx, llcx, depth+1).data0();
         for i in 0isize..isize_count {
-            println!("tt: {}", tt);
-            println!("sub_tt: {}", sub_tt);
             tt.merge(sub_tt.clone().only(i * (byte_stride as isize)));
         }
+        println!("array tt: {}", tt);
     }
-    println!("returning tt: {}", tt);
+    //println!("returning tt: {}", tt);
     return tt;
 }
 

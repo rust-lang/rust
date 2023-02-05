@@ -18,7 +18,7 @@ use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
-use crate::{get_enzyme_typtree, DiffTypeTree};
+use crate::{get_enzyme_typetree, DiffTypeTree};
 
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
@@ -133,7 +133,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
 
             // find autodiff items and build typetrees for them
             mono_items.iter()
-                .filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_active()).unwrap_or(false))
+                //.filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_active()).unwrap_or(false))
+                .filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_source()).unwrap_or(false))
                 .filter_map(|(mono_item, _)| {
                     let symbol = mono_item.symbol_name(cx.tcx).to_string();
                     match mono_item {
@@ -141,9 +142,9 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
                             let ty = instance.ty(tcx, ParamEnv::empty());
 
                             Some((
-                                symbol,
-                                unsafe { parse_typetree(tcx, ty, &llvm_module) }
-                            ))
+                                    symbol,
+                                    parse_typetree(tcx, ty, &llvm_module)
+                                 ))
                         },
                         _ => None
                     }
@@ -162,7 +163,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
     (module, cost)
 }
 
-unsafe fn parse_typetree<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, llvm_module: &ModuleLlvm) -> DiffTypeTree {
+fn parse_typetree<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, llvm_module: &ModuleLlvm) -> DiffTypeTree {
     let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
     dbg!(&fnc_binder);
 
@@ -172,18 +173,20 @@ unsafe fn parse_typetree<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, llvm_module: 
     // assert!(tmp.is_some());
     // let x: ty::FnSig<'_> = tmp.unwrap();
     let x: ty::FnSig<'_> = fnc_binder.skip_binder();
-    
+
     let output: Ty<'_> = x.output();
     let inputs: &[Ty<'_>] = x.inputs();
-    let llvm_data_layout = llvm::LLVMGetDataLayoutStr(&*llvm_module.llmod_raw);
-    let llvm_data_layout = std::str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
+    let llvm_data_layout = unsafe{ llvm::LLVMGetDataLayoutStr(&*llvm_module.llmod_raw) };
+    let llvm_data_layout = std::str::from_utf8(unsafe {CStr::from_ptr(llvm_data_layout)}.to_bytes())
         .expect("got a non-UTF8 data-layout from LLVM");
     let mut input_tt = vec![];
     for input in inputs {
-        input_tt.push(get_enzyme_typtree(*input, llvm_data_layout, tcx, llvm_module.llcx, 0));
+        let new_input_tt = get_enzyme_typetree(*input, llvm_data_layout, tcx, llvm_module.llcx, 0);
+        println!("input final tt: {}", new_input_tt);
+        input_tt.push(new_input_tt);
     }
-    let ret_tt = get_enzyme_typtree(output, llvm_data_layout, tcx, llvm_module.llcx, 0);
-    println!("ret_tt: {}", ret_tt);
+    let ret_tt = get_enzyme_typetree(output, llvm_data_layout, tcx, llvm_module.llcx, 0);
+    println!("output final tt: {}", ret_tt);
     DiffTypeTree {
         ret_tt,
         input_tt,
