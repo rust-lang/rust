@@ -663,6 +663,10 @@ trait UnusedDelimLint {
         keep_space: (bool, bool),
     ) {
         let primary_span = if let Some((lo, hi)) = spans {
+            if hi.is_empty() {
+                // do not point at delims that do not exist
+                return;
+            }
             MultiSpan::from(vec![lo, hi])
         } else {
             MultiSpan::from(value_span)
