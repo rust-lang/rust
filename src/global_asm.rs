@@ -39,8 +39,22 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                             );
                             global_asm.push_str(&string);
                         }
-                        InlineAsmOperand::SymFn { anon_const: _ } => todo!(),
-                        InlineAsmOperand::SymStatic { path: _, def_id: _ } => todo!(),
+                        InlineAsmOperand::SymFn { anon_const } => {
+                            let ty = tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                            let instance = match ty.kind() {
+                                &ty::FnDef(def_id, substs) => Instance::new(def_id, substs),
+                                _ => span_bug!(op_sp, "asm sym is not a function"),
+                            };
+                            let symbol = tcx.symbol_name(instance);
+                            // FIXME handle the case where the function was made private to the
+                            // current codegen unit
+                            global_asm.push_str(symbol.name);
+                        }
+                        InlineAsmOperand::SymStatic { path: _, def_id } => {
+                            let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
+                            let symbol = tcx.symbol_name(instance);
+                            global_asm.push_str(symbol.name);
+                        }
                         InlineAsmOperand::In { .. }
                         | InlineAsmOperand::Out { .. }
                         | InlineAsmOperand::InOut { .. }
