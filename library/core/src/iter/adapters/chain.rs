@@ -1,5 +1,6 @@
 use crate::iter::{DoubleEndedIterator, FusedIterator, Iterator, TrustedLen};
 use crate::num::NonZeroUsize;
+use crate::mem;
 use crate::ops::Try;
 
 /// An iterator that links two iterators together, in a chain.
@@ -48,7 +49,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<A::Item> {
-        and_then_or_clear(&mut self.a, Iterator::next).or_else(|| self.b.as_mut()?.next())
+        SpecChain::next(self)
     }
 
     #[inline]
@@ -302,4 +303,42 @@ fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option
         *opt = None;
     }
     x
+}
+
+#[rustc_unsafe_specialization_marker]
+trait SymmetricalArms {}
+
+impl<A> SymmetricalArms for Chain<A, A> {}
+
+trait SpecChain: Iterator {
+    fn next(&mut self) -> Option<Self::Item>;
+}
+
+impl<A, B> SpecChain for Chain<A, B>
+where
+    A: Iterator,
+    B: Iterator<Item = A::Item>,
+{
+    #[inline]
+    default fn next(&mut self) -> Option<A::Item> {
+        and_then_or_clear(&mut self.a, Iterator::next).or_else(|| self.b.as_mut()?.next())
+    }
+}
+
+impl<A, B> SpecChain for Chain<A, B>
+where
+    A: Iterator,
+    B: Iterator<Item = A::Item>,
+    Self: SymmetricalArms,
+{
+    #[inline]
+    fn next(&mut self) -> Option<A::Item> {
+        let mut result = and_then_or_clear(&mut self.a, Iterator::next);
+        if result.is_none() {
+            // SAFETY: SymmetricalArms guarantees that A and B are the same type.
+            unsafe { mem::swap(&mut self.a, &mut *(&mut self.b as *mut _ as *mut Option<A>)) };
+            result = and_then_or_clear(&mut self.a, Iterator::next);
+        }
+        result
+    }
 }
