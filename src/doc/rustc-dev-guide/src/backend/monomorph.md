@@ -133,7 +133,7 @@ the substitutions with the identity parameter before being added to the set
 of collected items - thereby reducing the copies from two (`[u16, u32]` and
 `[u64, u32]`) to one (`[A, u32]`).
 
-`unused_generic_params` will also invoked during code generation when the
+`unused_generic_params` will also be invoked during code generation when the
 symbol name for `foo` is being computed for use in the callsites of `foo`
 (which have the regular substitutions present, otherwise there would be a
 symbol mismatch between the caller and the function).
