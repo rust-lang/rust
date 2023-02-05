@@ -866,7 +866,7 @@ where
 ///
 /// A data provider provides values by calling this type's provide methods.
 #[unstable(feature = "provide_any", issue = "96024")]
-#[repr(transparent)]
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
 pub struct Demand<'a>(dyn Erased<'a> + 'a);
 
 impl<'a> Demand<'a> {
