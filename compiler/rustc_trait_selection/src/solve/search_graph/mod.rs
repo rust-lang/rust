@@ -3,6 +3,7 @@ pub(crate) mod overflow;
 
 use self::cache::ProvisionalEntry;
 use super::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
+use crate::solve::search_graph::overflow::OverflowHandler;
 use cache::ProvisionalCache;
 use overflow::OverflowData;
 use rustc_index::vec::IndexVec;
@@ -13,7 +14,7 @@ rustc_index::newtype_index! {
     pub struct StackDepth {}
 }
 
-struct StackElem<'tcx> {
+pub(crate) struct StackElem<'tcx> {
     goal: CanonicalGoal<'tcx>,
     has_been_used: bool,
 }
@@ -127,7 +128,8 @@ impl<'tcx> SearchGraph<'tcx> {
         actual_goal: CanonicalGoal<'tcx>,
         response: QueryResult<'tcx>,
     ) -> bool {
-        let StackElem { goal, has_been_used } = self.stack.pop().unwrap();
+        let stack_elem = self.stack.pop().unwrap();
+        let StackElem { goal, has_been_used } = stack_elem;
         assert_eq!(goal, actual_goal);
 
         let cache = &mut self.provisional_cache;
@@ -156,7 +158,7 @@ impl<'tcx> SearchGraph<'tcx> {
             self.stack.push(StackElem { goal, has_been_used: false });
             false
         } else {
-            self.try_move_finished_goal_to_global_cache(tcx, &goal);
+            self.try_move_finished_goal_to_global_cache(tcx, stack_elem);
             true
         }
     }
@@ -164,10 +166,11 @@ impl<'tcx> SearchGraph<'tcx> {
     pub(super) fn try_move_finished_goal_to_global_cache(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        goal: &CanonicalGoal<'tcx>,
+        stack_elem: StackElem<'tcx>,
     ) {
+        let StackElem { goal, .. } = stack_elem;
         let cache = &mut self.provisional_cache;
-        let provisional_entry_index = *cache.lookup_table.get(goal).unwrap();
+        let provisional_entry_index = *cache.lookup_table.get(&goal).unwrap();
         let provisional_entry = &mut cache.entries[provisional_entry_index];
         let depth = provisional_entry.depth;
 
@@ -192,5 +195,35 @@ impl<'tcx> SearchGraph<'tcx> {
                 );
             }
         }
+    }
+
+    pub(super) fn with_new_goal(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        canonical_goal: CanonicalGoal<'tcx>,
+        mut loop_body: impl FnMut(&mut Self) -> QueryResult<'tcx>,
+    ) -> QueryResult<'tcx> {
+        match self.try_push_stack(tcx, canonical_goal) {
+            Ok(()) => {}
+            // Our goal is already on the stack, eager return.
+            Err(response) => return response,
+        }
+
+        self.repeat_while_none(
+            |this| {
+                let result = this.deal_with_overflow(tcx, canonical_goal);
+                let stack_elem = this.stack.pop().unwrap();
+                this.try_move_finished_goal_to_global_cache(tcx, stack_elem);
+                result
+            },
+            |this| {
+                let result = loop_body(this);
+                if this.try_finalize_goal(tcx, canonical_goal, result) {
+                    Some(result)
+                } else {
+                    None
+                }
+            },
+        )
     }
 }

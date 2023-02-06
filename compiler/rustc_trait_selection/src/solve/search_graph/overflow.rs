@@ -55,7 +55,7 @@ pub(crate) trait OverflowHandler<'tcx> {
 
     fn repeat_while_none<T>(
         &mut self,
-        on_overflow: impl FnOnce(&mut Self) -> T,
+        on_overflow: impl FnOnce(&mut Self) -> Result<T, NoSolution>,
         mut loop_body: impl FnMut(&mut Self) -> Option<Result<T, NoSolution>>,
     ) -> Result<T, NoSolution> {
         let start_depth = self.search_graph().overflow_data.additional_depth;
@@ -70,7 +70,7 @@ pub(crate) trait OverflowHandler<'tcx> {
         }
         self.search_graph().overflow_data.additional_depth = start_depth;
         self.search_graph().overflow_data.deal_with_overflow();
-        Ok(on_overflow(self))
+        on_overflow(self)
     }
 }
 
