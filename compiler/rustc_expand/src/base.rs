@@ -5,6 +5,7 @@ use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
 
 use rustc_ast::attr::MarkedAttrs;
+use rustc_ast::mut_visit::DummyAstNode;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::TokenStream;
@@ -639,6 +640,10 @@ impl MacResult for DummyResult {
 
     fn make_variants(self: Box<DummyResult>) -> Option<SmallVec<[ast::Variant; 1]>> {
         Some(SmallVec::new())
+    }
+
+    fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {
+        Some(DummyAstNode::dummy())
     }
 }
 
