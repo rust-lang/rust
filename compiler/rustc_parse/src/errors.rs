@@ -1602,6 +1602,14 @@ pub(crate) struct UnexpectedSelfInGenericParameters {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_unexpected_default_value_for_lifetime_in_generic_parameters)]
+pub(crate) struct UnexpectedDefaultValueForLifetimeInGenericParameters {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_multiple_where_clauses)]
 pub(crate) struct MultipleWhereClauses {
     #[primary_span]
