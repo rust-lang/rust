@@ -297,11 +297,27 @@ button {
 
 button#toggle-all-docs {
 	padding: 0;
-	background: none;
+	margin-bottom: 2px;
 	border: none;
+	outline: none;
 	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
 	-webkit-appearance: none;
+	opacity: 0.5;
+	cursor: pointer;
+	width: 17px;
+	height: 17px;
+	vertical-align: middle;
+
+	background: url('data:image/svg+xml,<svg width="17" height="17" viewBox="0 0 17 17" \
+fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.32143 8L8.5 12.5L12.6786 8H15L8.5 15L2 8H4.32143Z" \
+fill="gray"/><path d="M8.5 11L2 4L15 4L8.5 11Z" fill="gray"/></svg>') no-repeat top left;
+}
+button#toggle-all-docs:hover,
+button#toggle-all-docs:focus {
 	opacity: 1;
+}
+button#toggle-all-docs.will-expand {
+	transform: rotate(180deg);
 }
 
 .rustdoc {
@@ -1451,9 +1467,8 @@ details.toggle > summary.hideme > span {
 
 details.toggle > summary::before {
 	/* toggle plus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" fill="gray" \
-	stroke="gray"	xmlns="http://www.w3.org/2000/svg"><path d="M13 8.5L4 14L4 3L13 8.5Z"/> \
-	</svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="17" height="17" fill="gray" stroke="gray" \
+xmlns="http://www.w3.org/2000/svg"><path d="M13 8.5L4 14L4 3L13 8.5Z"/></svg>') no-repeat top left;
 	content: "";
 	cursor: pointer;
 	width: 16px;
@@ -1532,9 +1547,8 @@ details.toggle[open] > summary.hideme > span {
 
 details.toggle[open] > summary::before {
 	/* toggle minus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" fill="gray" \
-	stroke="gray"	xmlns="http://www.w3.org/2000/svg"><path d="M8.5 13L3 4L14 4L8.5 13Z"/> \
-	</svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="17" height="17" fill="gray" stroke="gray" \
+xmlns="http://www.w3.org/2000/svg"><path d="M8.5 13L3 4L14 4L8.5 13Z"/></svg>') no-repeat top left;
 }
 
 details.toggle[open] > summary::after {
