@@ -1,5 +1,8 @@
 #![feature(fmt_helpers_for_derive)]
+#![feature(associated_type_defaults)]
+#![feature(control_flow_enum)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(rustc_attrs)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -20,6 +23,13 @@ use std::mem::discriminant;
 pub mod codec;
 pub mod sty;
 pub mod ty_info;
+pub mod visit;
+
+#[macro_use]
+mod macros;
+mod structural_impls;
+
+use visit::TypeSuperVisitable;
 
 pub use codec::*;
 pub use sty::*;
@@ -28,12 +38,30 @@ pub use ty_info::*;
 /// Needed so we can use #[derive(HashStable_Generic)]
 pub trait HashStableContext {}
 
-pub trait Interner {
+pub trait Interner: Sized {
     type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type DefId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + OuterExclusiveBinder + Flags;
-    type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord + BoundIndex + Flags;
+    type Ty: Clone
+        + Debug
+        + Hash
+        + PartialEq
+        + Eq
+        + PartialOrd
+        + Ord
+        + OuterExclusiveBinder
+        + Flags
+        + TypeSuperVisitable<Self>;
+    type Const: Clone
+        + Debug
+        + Hash
+        + PartialEq
+        + Eq
+        + PartialOrd
+        + Ord
+        + BoundIndex
+        + Flags
+        + TypeSuperVisitable<Self>;
     type Region: Clone
         + Debug
         + Hash
@@ -42,9 +70,10 @@ pub trait Interner {
         + PartialOrd
         + Ord
         + BoundAtOrAboveBinder
-        + Flags;
+        + Flags
+        + TypeSuperVisitable<Self>;
     type Binder<T>;
-    type Predicate: OuterExclusiveBinder + Flags;
+    type Predicate: OuterExclusiveBinder + Flags + TypeSuperVisitable<Self>;
     type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Mutability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Movability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;

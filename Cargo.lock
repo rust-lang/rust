@@ -4868,6 +4868,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "smallvec",
+ "tracing",
 ]
 
 [[package]]

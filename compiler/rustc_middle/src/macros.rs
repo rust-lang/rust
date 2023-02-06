@@ -66,7 +66,7 @@ macro_rules! CloneLiftImpls {
 /// Used for types that are `Copy` and which **do not care arena
 /// allocated data** (i.e., don't need to be folded).
 #[macro_export]
-macro_rules! TrivialTypeTraversalImpls {
+macro_rules! TrivialTypeFoldableImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
             impl<$tcx> $crate::ty::fold::TypeFoldable<$crate::ty::TyCtxt<$tcx>> for $ty {
@@ -85,18 +85,25 @@ macro_rules! TrivialTypeTraversalImpls {
                     self
                 }
             }
-
-            impl<$tcx> $crate::ty::visit::TypeVisitable<$crate::ty::TyCtxt<$tcx>> for $ty {
-                #[inline]
-                fn visit_with<F: $crate::ty::visit::TypeVisitor<$crate::ty::TyCtxt<$tcx>>>(
-                    &self,
-                    _: &mut F)
-                    -> ::std::ops::ControlFlow<F::BreakTy>
-                {
-                    ::std::ops::ControlFlow::Continue(())
-                }
-            }
         )+
+    };
+
+    ($($ty:ty,)+) => {
+        TrivialTypeFoldableImpls! {
+            for <'tcx> {
+                $($ty,)+
+            }
+        }
+    };
+}
+
+/// Used for types that are `Copy` and which **do not care arena
+/// allocated data** (i.e., don't need to be folded).
+#[macro_export]
+macro_rules! TrivialTypeTraversalImpls {
+    (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
+        TrivialTypeFoldableImpls!(for <$tcx> { $($ty,)+ });
+        rustc_type_ir::TrivialTypeVisitableImpls!($(<$tcx> $crate::ty::TyCtxt<$tcx> { $ty })+);
     };
 
     ($($ty:ty,)+) => {
@@ -106,6 +113,14 @@ macro_rules! TrivialTypeTraversalImpls {
             }
         }
     };
+}
+
+#[macro_export]
+macro_rules! TrivialTypeFoldableAndLiftImpls {
+    ($($t:tt)*) => {
+        TrivialTypeFoldableImpls! { $($t)* }
+        CloneLiftImpls! { $($t)* }
+    }
 }
 
 #[macro_export]
@@ -136,15 +151,10 @@ macro_rules! EnumTypeTraversalImpl {
     (impl<$($p:tt),*> TypeVisitable<$tcx:ty> for $s:path {
         $($variants:tt)*
     } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::visit::TypeVisitable<$tcx> for $s
-            $(where $($wc)*)*
-        {
-            fn visit_with<V: $crate::ty::visit::TypeVisitor<$tcx>>(
-                &self,
-                visitor: &mut V,
-            ) -> ::std::ops::ControlFlow<V::BreakTy> {
-                EnumTypeTraversalImpl!(@VisitVariants(self, visitor) input($($variants)*) output())
-            }
+        rustc_type_ir::EnumTypeVisitableImpl! {
+            impl<$($p),*> TypeVisitable<$tcx> for $s {
+                $($variants)*
+            } $(where $($wc)*)*
         }
     };
 
@@ -197,61 +207,6 @@ macro_rules! EnumTypeTraversalImpl {
                 input($($input)*)
                 output(
                     $variant => { $variant }
-                    $($output)*
-                )
-        )
-    };
-
-    (@VisitVariants($this:expr, $visitor:expr) input() output($($output:tt)*)) => {
-        match $this {
-            $($output)*
-        }
-    };
-
-    (@VisitVariants($this:expr, $visitor:expr)
-     input( ($variant:path) ( $($variant_arg:ident),* ) , $($input:tt)*)
-     output( $($output:tt)*) ) => {
-        EnumTypeTraversalImpl!(
-            @VisitVariants($this, $visitor)
-                input($($input)*)
-                output(
-                    $variant ( $($variant_arg),* ) => {
-                        $($crate::ty::visit::TypeVisitable::visit_with(
-                            $variant_arg, $visitor
-                        )?;)*
-                        ::std::ops::ControlFlow::Continue(())
-                    }
-                    $($output)*
-                )
-        )
-    };
-
-    (@VisitVariants($this:expr, $visitor:expr)
-     input( ($variant:path) { $($variant_arg:ident),* $(,)? } , $($input:tt)*)
-     output( $($output:tt)*) ) => {
-        EnumTypeTraversalImpl!(
-            @VisitVariants($this, $visitor)
-                input($($input)*)
-                output(
-                    $variant { $($variant_arg),* } => {
-                        $($crate::ty::visit::TypeVisitable::visit_with(
-                            $variant_arg, $visitor
-                        )?;)*
-                        ::std::ops::ControlFlow::Continue(())
-                    }
-                    $($output)*
-                )
-        )
-    };
-
-    (@VisitVariants($this:expr, $visitor:expr)
-     input( ($variant:path), $($input:tt)*)
-     output( $($output:tt)*) ) => {
-        EnumTypeTraversalImpl!(
-            @VisitVariants($this, $visitor)
-                input($($input)*)
-                output(
-                    $variant => { ::std::ops::ControlFlow::Continue(()) }
                     $($output)*
                 )
         )
