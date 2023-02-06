@@ -48,6 +48,7 @@ tracing-subscriber = { version = "0.3.16", default-features = false, features = 
     "registry",
 ] }
 tracing-tree = "0.2.1"
+project-model = { path = "../project-model" }
 
 # local deps
 test-utils.workspace = true

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use base_db::fixture::WithFixture;
 use chalk_ir::{AdtId, TyKind};
 use hir_def::{
@@ -9,16 +11,12 @@ use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
 
 use super::layout_of_ty;
 
-fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
-    // using unstable cargo features failed, fall back to using plain rustc
-    let mut cmd = std::process::Command::new("rustc");
-    cmd.args(["-Z", "unstable-options", "--print", "target-spec-json"]).env("RUSTC_BOOTSTRAP", "1");
-    let output = cmd.output().unwrap();
-    assert!(output.status.success(), "{}", output.status);
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let target_data_layout =
-        stdout.split_once(r#""data-layout": ""#).unwrap().1.split_once('"').unwrap().0.to_owned();
+fn current_machine_data_layout() -> String {
+    project_model::target_data_layout::get(None, None, &HashMap::default()).unwrap()
+}
 
+fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
+    let target_data_layout = current_machine_data_layout();
     let ra_fixture = format!(
         "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\n{ra_fixture}",
     );
@@ -47,15 +45,7 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
 
 /// A version of `eval_goal` for types that can not be expressed in ADTs, like closures and `impl Trait`
 fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
-    // using unstable cargo features failed, fall back to using plain rustc
-    let mut cmd = std::process::Command::new("rustc");
-    cmd.args(["-Z", "unstable-options", "--print", "target-spec-json"]).env("RUSTC_BOOTSTRAP", "1");
-    let output = cmd.output().unwrap();
-    assert!(output.status.success(), "{}", output.status);
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let target_data_layout =
-        stdout.split_once(r#""data-layout": ""#).unwrap().1.split_once('"').unwrap().0.to_owned();
-
+    let target_data_layout = current_machine_data_layout();
     let ra_fixture = format!(
         "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\nfn main(){{let goal = {{{ra_fixture}}};}}",
     );
