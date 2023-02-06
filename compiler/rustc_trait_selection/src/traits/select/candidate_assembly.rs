@@ -396,7 +396,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // still be provided by a manual implementation for
                     // this trait and type.
                 }
-                ty::Param(..) | ty::Alias(ty::Projection, ..) => {
+                ty::Param(..)
+                | ty::Alias(ty::Projection, ..)
+                | ty::Placeholder(..)
+                | ty::Bound(..) => {
                     // In these cases, we don't know what the actual
                     // type is. Therefore, we cannot break it down
                     // into its constituent types. So we don't
@@ -448,6 +451,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         self.infcx.probe(|_snapshot| {
+            if obligation.has_non_region_late_bound() {
+                return;
+            }
+
             // The code below doesn't care about regions, and the
             // self-ty here doesn't escape this probe, so just erase
             // any LBR.
