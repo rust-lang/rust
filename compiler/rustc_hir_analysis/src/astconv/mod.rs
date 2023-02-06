@@ -2883,14 +2883,22 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::BareFn(bf) => {
                 require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, ast_ty.span);
 
-                tcx.mk_fn_ptr(self.ty_of_fn(
+                let fn_ptr_ty = tcx.mk_fn_ptr(self.ty_of_fn(
                     ast_ty.hir_id,
                     bf.unsafety,
                     bf.abi,
                     bf.decl,
                     None,
                     Some(ast_ty),
-                ))
+                ));
+
+                if let Some(guar) =
+                    deny_non_region_late_bound(tcx, bf.generic_params, "function pointer")
+                {
+                    tcx.ty_error_with_guaranteed(guar)
+                } else {
+                    fn_ptr_ty
+                }
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
                 self.maybe_lint_bare_trait(ast_ty, in_path);
@@ -2898,7 +2906,22 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
                     TraitObjectSyntax::DynStar => ty::DynStar,
                 };
-                self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed, repr)
+
+                let object_ty = self.conv_object_ty_poly_trait_ref(
+                    ast_ty.span,
+                    bounds,
+                    lifetime,
+                    borrowed,
+                    repr,
+                );
+
+                if let Some(guar) = bounds.iter().find_map(|trait_ref| {
+                    deny_non_region_late_bound(tcx, trait_ref.bound_generic_params, "trait object")
+                }) {
+                    tcx.ty_error_with_guaranteed(guar)
+                } else {
+                    object_ty
+                }
             }
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
@@ -3358,4 +3381,25 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
     }
+}
+
+fn deny_non_region_late_bound(
+    tcx: TyCtxt<'_>,
+    params: &[hir::GenericParam<'_>],
+    where_: &str,
+) -> Option<ErrorGuaranteed> {
+    params.iter().find_map(|bad_param| {
+        let what = match bad_param.kind {
+            hir::GenericParamKind::Type { .. } => "type",
+            hir::GenericParamKind::Const { .. } => "const",
+            hir::GenericParamKind::Lifetime { .. } => return None,
+        };
+
+        let mut diag = tcx.sess.struct_span_err(
+            bad_param.span,
+            format!("late-bound {what} parameter not allowed on {where_} types"),
+        );
+
+        Some(if tcx.features().non_lifetime_binders { diag.emit() } else { diag.delay_as_bug() })
+    })
 }
