@@ -45,6 +45,7 @@ use chalk_ir::{
 use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
 use hir_expand::name;
 use itertools::Either;
+use la_arena::{Arena, Idx};
 use rustc_hash::FxHashSet;
 use traits::FnTrait;
 use utils::Generics;
@@ -290,21 +291,23 @@ impl TypeFoldable<Interner> for CallableSig {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
-    ReturnTypeImplTrait(hir_def::FunctionId, u16),
+    ReturnTypeImplTrait(hir_def::FunctionId, RpitId),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ReturnTypeImplTraits {
-    pub(crate) impl_traits: Vec<ReturnTypeImplTrait>,
+    pub(crate) impl_traits: Arena<ReturnTypeImplTrait>,
 }
 
 has_interner!(ReturnTypeImplTraits);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) struct ReturnTypeImplTrait {
+pub struct ReturnTypeImplTrait {
     pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
 }
+
+pub type RpitId = Idx<ReturnTypeImplTrait>;
 
 pub fn static_lifetime() -> Lifetime {
     LifetimeData::Static.intern(Interner)

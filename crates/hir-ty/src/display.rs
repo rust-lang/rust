@@ -458,9 +458,8 @@ impl HirDisplay for Ty {
                             let datas = db
                                 .return_type_impl_traits(func)
                                 .expect("impl trait id without data");
-                            let data = (*datas)
-                                .as_ref()
-                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                            let data =
+                                (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                             let bounds = data.substitute(Interner, parameters);
                             let mut len = bounds.skip_binders().len();
 
@@ -718,9 +717,8 @@ impl HirDisplay for Ty {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             db.return_type_impl_traits(func).expect("impl trait id without data");
-                        let data = (*datas)
-                            .as_ref()
-                            .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                        let data =
+                            (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                         let bounds = data.substitute(Interner, &parameters);
                         let krate = func.lookup(db.upcast()).module(db.upcast()).krate();
                         write_bounds_like_dyn_trait_with_prefix(
@@ -828,9 +826,8 @@ impl HirDisplay for Ty {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             db.return_type_impl_traits(func).expect("impl trait id without data");
-                        let data = (*datas)
-                            .as_ref()
-                            .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                        let data =
+                            (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                         let bounds = data.substitute(Interner, &opaque_ty.substitution);
                         let krate = func.lookup(db.upcast()).module(db.upcast()).krate();
                         write_bounds_like_dyn_trait_with_prefix(

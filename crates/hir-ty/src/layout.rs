@@ -225,10 +225,21 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
             ptr.valid_range_mut().start = 1;
             Layout::scalar(dl, ptr)
         }
-        TyKind::Closure(_, _)
-        | TyKind::OpaqueType(_, _)
-        | TyKind::Generator(_, _)
-        | TyKind::GeneratorWitness(_, _) => return Err(LayoutError::NotImplemented),
+        TyKind::OpaqueType(opaque_ty_id, _) => {
+            let impl_trait_id = db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
+            match impl_trait_id {
+                crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
+                    let infer = db.infer(func.into());
+                    layout_of_ty(db, &infer.type_of_rpit[idx], krate)?
+                }
+                crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
+                    return Err(LayoutError::NotImplemented)
+                }
+            }
+        }
+        TyKind::Closure(_, _) | TyKind::Generator(_, _) | TyKind::GeneratorWitness(_, _) => {
+            return Err(LayoutError::NotImplemented)
+        }
         TyKind::AssociatedType(_, _)
         | TyKind::Error
         | TyKind::Alias(_)
