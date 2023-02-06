@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
@@ -201,44 +201,16 @@ fn align_of_uncached<'tcx>(
 
             let count = count.try_eval_usize(tcx, param_env).ok_or(LayoutError::Unknown(ty))?;
             let element = cx.layout_of(element)?;
-            let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
+            element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
 
-            let abi = if count != 0 && ty.is_privately_uninhabited(tcx, param_env) {
-                Abi::Uninhabited
-            } else {
-                Abi::Aggregate { sized: true }
-            };
-
-            let largest_niche = if count != 0 { element.largest_niche } else { None };
-
-            tcx.intern_layout(LayoutS {
-                variants: Variants::Single { index: VariantIdx::new(0) },
-                fields: FieldsShape::Array { stride: element.size, count },
-                abi,
-                largest_niche,
-                align: element.align,
-                size,
-            }).align()
+            element.align
         }
         ty::Slice(element) => {
             let element = cx.layout_of(element)?;
-            tcx.intern_layout(LayoutS {
-                variants: Variants::Single { index: VariantIdx::new(0) },
-                fields: FieldsShape::Array { stride: element.size, count: 0 },
-                abi: Abi::Aggregate { sized: false },
-                largest_niche: None,
-                align: element.align,
-                size: Size::ZERO,
-            }).align()
-        }
-        ty::Str => tcx.intern_layout(LayoutS {
-            variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
-            abi: Abi::Aggregate { sized: false },
-            largest_niche: None,
-            align: dl.i8_align,
-            size: Size::ZERO,
-        }).align(),
+            element.align
+        },
+
+        ty::Str => dl.i8_align,
 
         // Odd unit types.
         ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?.align(),
@@ -322,7 +294,7 @@ fn align_of_uncached<'tcx>(
             // the first field is of array type, or
             //
             // * the homogeneous field type and the number of fields.
-            let (e_ty, e_len, is_array) = if let ty::Array(e_ty, _) = f0_ty.kind() {
+            let (e_ty, e_len) = if let ty::Array(e_ty, _) = f0_ty.kind() {
                 // First ADT field is an array:
 
                 // SIMD vectors with multiple array fields are not supported:
@@ -339,10 +311,10 @@ fn align_of_uncached<'tcx>(
                     return Err(LayoutError::Unknown(ty));
                 };
 
-                (*e_ty, *count, true)
+                (*e_ty, *count)
             } else {
                 // First ADT field is not an array:
-                (f0_ty, def.non_enum_variant().fields.len() as _, false)
+                (f0_ty, def.non_enum_variant().fields.len() as _)
             };
 
             // SIMD vectors of zero length are not supported.
@@ -361,7 +333,7 @@ fn align_of_uncached<'tcx>(
 
             // Compute the ABI of the element type:
             let e_ly = cx.layout_of(e_ty)?;
-            let Abi::Scalar(e_abi) = e_ly.abi else {
+            let Abi::Scalar(_) = e_ly.abi else {
                 // This error isn't caught in typeck, e.g., if
                 // the element type of the vector is generic.
                 tcx.sess.fatal(&format!(
@@ -373,24 +345,7 @@ fn align_of_uncached<'tcx>(
 
             // Compute the size and alignment of the vector:
             let size = e_ly.size.checked_mul(e_len, dl).ok_or(LayoutError::SizeOverflow(ty))?;
-            let align = dl.vector_align(size);
-            let size = size.align_to(align.abi);
-
-            // Compute the placement of the vector fields:
-            let fields = if is_array {
-                FieldsShape::Arbitrary { offsets: vec![Size::ZERO], memory_index: vec![0] }
-            } else {
-                FieldsShape::Array { stride: e_ly.size, count: e_len }
-            };
-
-            tcx.intern_layout(LayoutS {
-                variants: Variants::Single { index: VariantIdx::new(0) },
-                fields,
-                abi: Abi::Vector { element: e_abi, count: e_len },
-                largest_niche: e_ly.largest_niche,
-                size,
-                align,
-            }).align()
+            dl.vector_align(size)
         }
 
         // ADTs.
