@@ -308,9 +308,9 @@ button#toggle-all-docs {
 	height: 17px;
 	vertical-align: middle;
 
-	background: url('data:image/svg+xml,<svg width="17" height="17" viewBox="0 0 17 17" \
-fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.32143 8L8.5 12.5L12.6786 8H15L8.5 15L2 8H4.32143Z" \
-fill="gray"/><path d="M8.5 11L2 4L15 4L8.5 11Z" fill="gray"/></svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="17" height="17" viewBox="0 0 17 17" fill="none" \
+xmlns="http://www.w3.org/2000/svg"><path d="M4.32143 7L8.5 11.5L12.6786 7H15L8.5 14L2 7H4.32143Z" \
+fill="gray"/><path d="M8.5 10L2 3L15 3L8.5 10Z" fill="gray"/></svg>') no-repeat top left;
 }
 button#toggle-all-docs:hover,
 button#toggle-all-docs:focus {
@@ -1467,8 +1467,9 @@ details.toggle > summary.hideme > span {
 
 details.toggle > summary::before {
 	/* toggle plus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" fill="gray" stroke="gray" \
-xmlns="http://www.w3.org/2000/svg"><path d="M13 8.5L4 14L4 3L13 8.5Z"/></svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="17" height="17" fill="gray" \
+xmlns="http://www.w3.org/2000/svg"><path d="M13.75 9.5L5.25 14.5L5.25 4.5L13.75 9.5Z"/> \
+</svg>') no-repeat top left;
 	content: "";
 	cursor: pointer;
 	width: 16px;
@@ -1524,7 +1525,7 @@ details.toggle > summary.hideme::before {
 details.toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -24px;
-	top: 4px;
+	top: 3px;
 }
 
 .impl-items > details.toggle > summary:not(.hideme)::before {
@@ -1547,12 +1548,18 @@ details.toggle[open] > summary.hideme > span {
 
 details.toggle[open] > summary::before {
 	/* toggle minus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" fill="gray" stroke="gray" \
-xmlns="http://www.w3.org/2000/svg"><path d="M8.5 13L3 4L14 4L8.5 13Z"/></svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="17" height="17" fill="gray" \
+xmlns="http://www.w3.org/2000/svg"><path d="M9.5 13.75L4.5 5.25L14.5 5.25L9.5 13.75Z"/> \
+</svg>') no-repeat top left;
 }
 
 details.toggle[open] > summary::after {
 	content: "Collapse";
+}
+
+details.toggle.type-contents-toggle > summary::before,
+details.toggle.top-doc > summary::before {
+	margin-bottom: 5px;
 }
 
 /* This is needed in docblocks to have the "▶" element to be on the same line. */
