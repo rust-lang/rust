@@ -99,6 +99,14 @@ Unsetting this disables sysroot loading.
 
 This option does not take effect until rust-analyzer is restarted.
 --
+[[rust-analyzer.cargo.sysrootSrc]]rust-analyzer.cargo.sysrootSrc (default: `null`)::
++
+--
+Relative path to the sysroot library sources. If left unset, this will default to
+`{cargo.sysroot}/lib/rustlib/src/rust/library`.
+
+This option does not take effect until rust-analyzer is restarted.
+--
 [[rust-analyzer.cargo.target]]rust-analyzer.cargo.target (default: `null`)::
 +
 --

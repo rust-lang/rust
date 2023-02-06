@@ -76,6 +76,7 @@ impl Sysroot {
     }
 }
 
+// FIXME: Expose a builder api as loading the sysroot got way too modular and complicated.
 impl Sysroot {
     /// Attempts to discover the toolchain's sysroot from the given `dir`.
     pub fn discover(dir: &AbsPath, extra_env: &FxHashMap<String, String>) -> Result<Sysroot> {
@@ -84,6 +85,16 @@ impl Sysroot {
         let sysroot_src_dir =
             discover_sysroot_src_dir_or_add_component(&sysroot_dir, dir, extra_env)?;
         Ok(Sysroot::load(sysroot_dir, sysroot_src_dir))
+    }
+
+    pub fn discover_with_src_override(
+        dir: &AbsPath,
+        extra_env: &FxHashMap<String, String>,
+        src: AbsPathBuf,
+    ) -> Result<Sysroot> {
+        tracing::debug!("discovering sysroot for {}", dir.display());
+        let sysroot_dir = discover_sysroot_dir(dir, extra_env)?;
+        Ok(Sysroot::load(sysroot_dir, src))
     }
 
     pub fn discover_rustc(
