@@ -154,6 +154,8 @@ fn test_header() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            depth: 0,
+            local_resources: None,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -193,6 +195,8 @@ fn test_header_ids_multiple_blocks() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            depth: 0,
+            local_resources: None,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -322,6 +326,8 @@ fn test_ascii_with_prepending_hashtag() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            depth: 0,
+            local_resources: None,
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);

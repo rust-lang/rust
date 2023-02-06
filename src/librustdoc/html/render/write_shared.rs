@@ -329,7 +329,7 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(&index_page, md_opts, cx.shared.edition())
+            crate::markdown::render(&index_page, md_opts, cx.shared.edition(), Some(&cx))
                 .map_err(|e| Error::new(e, &index_page))?;
         } else {
             let shared = Rc::clone(&cx.shared);

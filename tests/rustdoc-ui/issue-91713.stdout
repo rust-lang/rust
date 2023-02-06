@@ -6,6 +6,7 @@ check_doc_test_visibility - run various visibility-related lints on doctests
    propagate-doc-cfg - propagates `#[doc(cfg(...))]` to child items
 collect-intra-doc-links - resolves intra-doc links
  collect-trait-impls - retrieves trait impls for items in the crate
+collect-local-resources - resolves intra-doc links
 calculate-doc-coverage - counts the number of items with and without documentation
            run-lints - runs some of rustdoc's lints
 
@@ -16,6 +17,7 @@ check_doc_test_visibility
        strip-private  (when not --document-private-items)
   strip-priv-imports  (when --document-private-items)
 collect-intra-doc-links
+collect-local-resources
    propagate-doc-cfg
            run-lints
 

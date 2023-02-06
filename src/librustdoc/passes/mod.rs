@@ -27,6 +27,9 @@ pub(crate) use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 pub(crate) mod collect_intra_doc_links;
 pub(crate) use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
+pub(crate) mod collect_local_resources;
+pub(crate) use self::collect_local_resources::COLLECT_LOCAL_RESOURCES;
+
 mod check_doc_test_visibility;
 pub(crate) use self::check_doc_test_visibility::CHECK_DOC_TEST_VISIBILITY;
 
@@ -77,6 +80,7 @@ pub(crate) const PASSES: &[Pass] = &[
     PROPAGATE_DOC_CFG,
     COLLECT_INTRA_DOC_LINKS,
     COLLECT_TRAIT_IMPLS,
+    COLLECT_LOCAL_RESOURCES,
     CALCULATE_DOC_COVERAGE,
     RUN_LINTS,
 ];
@@ -89,6 +93,7 @@ pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
     ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
+    ConditionalPass::always(COLLECT_LOCAL_RESOURCES),
     ConditionalPass::always(PROPAGATE_DOC_CFG),
     ConditionalPass::always(RUN_LINTS),
 ];

@@ -20,6 +20,8 @@
 //!     edition: Edition::Edition2015,
 //!     playground: &None,
 //!     heading_offset: HeadingOffset::H2,
+//!     depth: 0,
+//!     local_resources: None,
 //! };
 //! let html = md.into_string();
 //! // ... something using html
@@ -42,6 +44,7 @@ use std::str;
 
 use crate::clean::RenderedLink;
 use crate::doctest;
+use crate::formats::cache::LocalResources;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::highlight;
@@ -101,20 +104,59 @@ pub struct Markdown<'a> {
     /// Offset at which we render headings.
     /// E.g. if `heading_offset: HeadingOffset::H2`, then `# something` renders an `<h2>`.
     pub heading_offset: HeadingOffset,
+    pub depth: usize,
+    pub local_resources: Option<&'a LocalResources>,
 }
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
-pub(crate) struct MarkdownWithToc<'a>(
-    pub(crate) &'a str,
-    pub(crate) &'a mut IdMap,
-    pub(crate) ErrorCodes,
-    pub(crate) Edition,
-    pub(crate) &'a Option<Playground>,
-);
+pub(crate) struct MarkdownWithToc<'a> {
+    pub(crate) content: &'a str,
+    pub(crate) ids: &'a mut IdMap,
+    pub(crate) error_codes: ErrorCodes,
+    pub(crate) edition: Edition,
+    pub(crate) playground: &'a Option<Playground>,
+    pub(crate) depth: usize,
+    pub(crate) local_resources: Option<&'a LocalResources>,
+}
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
 pub(crate) struct MarkdownItemInfo<'a>(pub(crate) &'a str, pub(crate) &'a mut IdMap);
 /// A tuple struct like `Markdown` that renders only the first paragraph.
 pub(crate) struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
+
+struct LocalResourcesReplacer<'b, I> {
+    inner: I,
+    local_resources: Option<&'b LocalResources>,
+    depth: usize,
+}
+
+impl<'b, I> LocalResourcesReplacer<'b, I> {
+    fn new(iter: I, local_resources: Option<&'b LocalResources>, depth: usize) -> Self {
+        Self { inner: iter, local_resources, depth }
+    }
+}
+
+impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LocalResourcesReplacer<'b, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let event = self.inner.next()?;
+        // We only modify
+        if let Event::Start(Tag::Image(type_, ref path, ref title)) = event &&
+            !path.starts_with("http://") &&
+            !path.starts_with("https://") &&
+            let Some(local_resources) = &self.local_resources &&
+            let Some(correspondance) = local_resources.get_at_depth(self.depth, &*path)
+        {
+            Some(Event::Start(Tag::Image(
+                type_,
+                CowStr::Boxed(correspondance.clone().into_boxed_str()),
+                title.clone(),
+            )))
+        } else {
+            Some(event)
+        }
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ErrorCodes {
@@ -1017,6 +1059,8 @@ impl Markdown<'_> {
             edition,
             playground,
             heading_offset,
+            depth,
+            local_resources,
         } = self;
 
         // This is actually common enough to special-case
@@ -1038,6 +1082,7 @@ impl Markdown<'_> {
         let p = HeadingLinks::new(p, None, ids, heading_offset);
         let p = Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
+        let p = LocalResourcesReplacer::new(p, local_resources, depth);
         let p = TableWrapper::new(p);
         let p = CodeBlocks::new(p, codes, edition, playground);
         html::push_html(&mut s, p);
@@ -1048,7 +1093,15 @@ impl Markdown<'_> {
 
 impl MarkdownWithToc<'_> {
     pub(crate) fn into_string(self) -> String {
-        let MarkdownWithToc(md, ids, codes, edition, playground) = self;
+        let MarkdownWithToc {
+            content: md,
+            ids,
+            error_codes: codes,
+            edition,
+            playground,
+            depth,
+            local_resources,
+        } = self;
 
         let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 
@@ -1059,7 +1112,8 @@ impl MarkdownWithToc<'_> {
         {
             let p = HeadingLinks::new(p, Some(&mut toc), ids, HeadingOffset::H1);
             let p = Footnotes::new(p);
-            let p = TableWrapper::new(p.map(|(ev, _)| ev));
+            let p = LocalResourcesReplacer::new(p.map(|(ev, _)| ev), local_resources, depth);
+            let p = TableWrapper::new(p);
             let p = CodeBlocks::new(p, codes, edition, playground);
             html::push_html(&mut s, p);
         }

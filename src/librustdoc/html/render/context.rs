@@ -129,6 +129,10 @@ pub(crate) struct SharedContext<'tcx> {
     pub(crate) call_locations: AllCallLocations,
 }
 
+pub(crate) fn root_path(depth: usize) -> String {
+    "../".repeat(depth)
+}
+
 impl SharedContext<'_> {
     pub(crate) fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
         let mut dirs = self.created_dirs.borrow_mut();
@@ -165,7 +169,7 @@ impl<'tcx> Context<'tcx> {
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     pub(super) fn root_path(&self) -> String {
-        "../".repeat(self.current.len())
+        root_path(self.current.len())
     }
 
     fn render_item(&mut self, it: &clean::Item, is_module: bool) -> String {
@@ -712,6 +716,22 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
                 shared.ensure_dir(&self.dst.join(crate_name.as_str()))?;
                 shared.fs.write(redirect_map_path, paths)?;
+            }
+        }
+
+        {
+            // Copying the local resources to the destination folder.
+            let resources = &shared.cache.local_resources.resources_to_copy;
+            if !resources.is_empty() {
+                let dst = self
+                    .dst
+                    .join(crate::html::LOCAL_RESOURCES_FOLDER_NAME)
+                    .join(crate_name.as_str());
+                shared.ensure_dir(&dst)?;
+                for (original_path, dest_name) in resources.iter() {
+                    let dst = dst.join(dest_name);
+                    try_err!(std::fs::copy(original_path, &dst), &dst);
+                }
             }
         }
 
