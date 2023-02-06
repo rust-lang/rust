@@ -234,9 +234,8 @@ impl TyExt for Ty {
                     }
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         db.return_type_impl_traits(func).map(|it| {
-                            let data = (*it)
-                                .as_ref()
-                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                            let data =
+                                (*it).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                             data.substitute(Interner, &subst).into_value_and_skipped_binders().0
                         })
                     }
@@ -247,9 +246,8 @@ impl TyExt for Ty {
                 {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         db.return_type_impl_traits(func).map(|it| {
-                            let data = (*it)
-                                .as_ref()
-                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                            let data =
+                                (*it).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                             data.substitute(Interner, &opaque_ty.substitution)
                         })
                     }

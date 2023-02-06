@@ -39,7 +39,7 @@ use stdx::always;
 use crate::{
     db::HirDatabase, fold_tys, fold_tys_and_consts, infer::coerce::CoerceMany,
     lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Const, DomainGoal,
-    GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, Substitution,
+    GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, RpitId, Substitution,
     TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
@@ -352,6 +352,7 @@ pub struct InferenceResult {
     /// **Note**: When a pattern type is resolved it may still contain
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub type_of_pat: ArenaMap<PatId, Ty>,
+    pub type_of_rpit: ArenaMap<RpitId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Interned common types to return references to.
     standard_types: InternedStandardTypes,
@@ -525,6 +526,9 @@ impl<'a> InferenceContext<'a> {
         for ty in result.type_of_pat.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
+        for ty in result.type_of_rpit.iter_mut().map(|x| x.1) {
+            *ty = table.resolve_completely(ty.clone());
+        }
         for mismatch in result.type_mismatches.values_mut() {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
@@ -603,7 +607,7 @@ impl<'a> InferenceContext<'a> {
                         _ => unreachable!(),
                     };
                     let bounds = (*rpits).map_ref(|rpits| {
-                        rpits.impl_traits[idx as usize].bounds.map_ref(|it| it.into_iter())
+                        rpits.impl_traits[idx].bounds.map_ref(|it| it.into_iter())
                     });
                     let var = self.table.new_type_var();
                     let var_subst = Substitution::from1(Interner, var.clone());
@@ -616,6 +620,7 @@ impl<'a> InferenceContext<'a> {
                         always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
                         self.push_obligation(var_predicate.cast(Interner));
                     }
+                    self.result.type_of_rpit.insert(idx, var.clone());
                     var
                 },
                 DebruijnIndex::INNERMOST,
