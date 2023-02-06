@@ -1373,6 +1373,16 @@ rustc_queries! {
         remap_env_constness
     }
 
+    /// Computes the alignment of a type. Note that this implicitly
+    /// executes in "reveal all" mode, and will normalize the input type.
+    query align_of(
+        key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
+    ) -> Result<ty::alignment::AbiAndPrefAlign, ty::layout::LayoutError<'tcx>> {
+        depth_limit
+        desc { "computing alignment of `{}`", key.value }
+        remap_env_constness
+    }
+
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
     /// NB: this doesn't handle virtual calls - those should use `fn_abi_of_instance`

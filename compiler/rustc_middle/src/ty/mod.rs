@@ -108,6 +108,7 @@ pub use self::typeck_results::{
 pub mod _match;
 pub mod abstract_const;
 pub mod adjustment;
+pub mod alignment;
 pub mod binding;
 pub mod cast;
 pub mod codec;

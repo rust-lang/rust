@@ -18,6 +18,7 @@ extern crate tracing;
 use rustc_middle::ty::query::Providers;
 
 mod abi;
+mod alignment;
 mod assoc;
 mod common_traits;
 mod consts;
@@ -33,6 +34,7 @@ mod ty;
 
 pub fn provide(providers: &mut Providers) {
     abi::provide(providers);
+    alignment::provide(providers);
     assoc::provide(providers);
     common_traits::provide(providers);
     consts::provide(providers);
