@@ -1,3 +1,7 @@
+# 1.4.1
+
+* Use foreground colors instead of background colors to highlight diffs ([#36])
+
 # 1.4.0
 
 * Prefer `CARGO_WORKSPACE_DIR` if set, use heuristic as fallback to find cargo workspace ([#34])
@@ -17,6 +21,7 @@
 
 * No changelog until this point :-(
 
+[#36]: https://github.com/rust-analyzer/expect-test/pull/36
 [#34]: https://github.com/rust-analyzer/expect-test/pull/34
 [#31]: https://github.com/rust-analyzer/expect-test/pull/31
 [#27]: https://github.com/rust-analyzer/expect-test/pull/27
