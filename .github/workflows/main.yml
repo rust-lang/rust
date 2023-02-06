@@ -34,7 +34,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-20.04 # FIXME switch to ubuntu-22.04 once #1303 is fixed
+          - os: ubuntu-latest
             env:
               TARGET_TRIPLE: x86_64-unknown-linux-gnu
           - os: macos-latest
@@ -226,7 +226,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-20.04 # FIXME switch to ubuntu-22.04 once #1303 is fixed
+          # FIXME update at some point in the future once most distros use a newer glibc
+          - os: ubuntu-20.04
             env:
               TARGET_TRIPLE: x86_64-unknown-linux-gnu
           - os: macos-latest
