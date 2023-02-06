@@ -39,7 +39,21 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t = self.shallow_resolver.fold_ty(t);
-            t.super_fold_with(self)
+            let nested_resolved_t = t.super_fold_with(self);
+            if let ty::Infer(ty::TyVar(v)) = *t.kind() {
+                if t != nested_resolved_t {
+                    // There were inference vars inside `t`.
+                    // Make sure other code resolving `v` does not have to re-fold
+                    // the known type by overwriting the type inside the `type_variables` cache.
+                    self.shallow_resolver
+                        .infcx
+                        .inner
+                        .borrow_mut()
+                        .type_variables()
+                        .update_resolved_type(v, nested_resolved_t);
+                }
+            }
+            nested_resolved_t
         }
     }
 

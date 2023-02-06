@@ -313,6 +313,14 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         self.eq_relations().inlined_probe_value(vid)
     }
 
+    /// Update an already instantiated type variable's resolution with a version that
+    /// has some of its nested type variables resolved.
+    pub fn update_resolved_type(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
+        debug_assert!(self.probe(vid).known().is_some());
+        self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
+        // We don't actually need to handle any rollback here, as that is already handled by `eq_relations`.
+    }
+
     /// If `t` is a type-inference variable, and it has been
     /// instantiated, then return the with which it was
     /// instantiated. Otherwise, returns `t`.
@@ -432,11 +440,12 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, ut::NoError> {
         match (value1, value2) {
-            // We never equate two type variables, both of which
-            // have known types. Instead, we recursively equate
-            // those types.
-            (&TypeVariableValue::Known { .. }, &TypeVariableValue::Known { .. }) => {
-                bug!("equating two type variables, both of which have known types")
+            // We update the entries in the type variable table to "more resolved" versions with
+            // `update_resolved_type`. The second value must always be more constrained than the first value.
+            (&TypeVariableValue::Known { value: _a }, &TypeVariableValue::Known { value: b }) => {
+                debug_assert_ne!(_a, b);
+                trace!(?_a, ?b, "updating resolution due to inner resolution changes");
+                Ok(*value2)
             }
 
             // If one side is known, prefer that one.
