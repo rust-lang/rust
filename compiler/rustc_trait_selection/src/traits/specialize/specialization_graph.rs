@@ -399,7 +399,7 @@ pub(crate) fn assoc_def(
     // If there is no such item in that impl, this function will fail with a
     // cycle error if the specialization graph is currently being built.
     if let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(&assoc_def_id) {
-        let &item = tcx.associated_item(impl_item_id);
+        let item = tcx.associated_item(impl_item_id);
         let impl_node = Node::Impl(impl_def_id);
         return Ok(LeafDef {
             item,

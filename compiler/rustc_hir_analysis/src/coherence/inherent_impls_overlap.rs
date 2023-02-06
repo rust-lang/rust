@@ -27,8 +27,8 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
     /// namespace.
     fn impls_have_common_items(
         &self,
-        impl_items1: &ty::AssocItems<'_>,
-        impl_items2: &ty::AssocItems<'_>,
+        impl_items1: &ty::AssocItems,
+        impl_items2: &ty::AssocItems,
     ) -> bool {
         let mut impl_items1 = &impl_items1;
         let mut impl_items2 = &impl_items2;
@@ -38,10 +38,10 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             std::mem::swap(&mut impl_items1, &mut impl_items2);
         }
 
-        for item1 in impl_items1.in_definition_order() {
+        for &item1 in impl_items1.in_definition_order() {
             let collision = impl_items2
                 .filter_by_name_unhygienic(item1.name)
-                .any(|item2| self.compare_hygienically(item1, item2));
+                .any(|&item2| self.compare_hygienically(item1, item2));
 
             if collision {
                 return true;
@@ -51,7 +51,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         false
     }
 
-    fn compare_hygienically(&self, item1: &ty::AssocItem, item2: &ty::AssocItem) -> bool {
+    fn compare_hygienically(&self, item1: ty::AssocItem, item2: ty::AssocItem) -> bool {
         // Symbols and namespace match, compare hygienically.
         item1.kind.namespace() == item2.kind.namespace()
             && item1.ident(self.tcx).normalize_to_macros_2_0()
@@ -98,10 +98,10 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         let impl_items1 = self.tcx.associated_items(impl1);
         let impl_items2 = self.tcx.associated_items(impl2);
 
-        for item1 in impl_items1.in_definition_order() {
+        for &item1 in impl_items1.in_definition_order() {
             let collision = impl_items2
                 .filter_by_name_unhygienic(item1.name)
-                .find(|item2| self.compare_hygienically(item1, item2));
+                .find(|&&item2| self.compare_hygienically(item1, item2));
 
             if let Some(item2) = collision {
                 let name = item1.ident(self.tcx).normalize_to_macros_2_0();
