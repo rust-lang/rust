@@ -665,12 +665,13 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     let doc_valid_idents = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();
+    let only_check_missing_docs_in_crate_items = conf.only_check_missing_docs_in_crate_items;
     store.register_late_pass(move |_| Box::new(doc::DocMarkdown::new(doc_valid_idents.clone())));
     store.register_late_pass(|_| Box::new(neg_multiply::NegMultiply));
     store.register_late_pass(|_| Box::new(mem_forget::MemForget));
     store.register_late_pass(|_| Box::new(let_if_seq::LetIfSeq));
     store.register_late_pass(|_| Box::new(mixed_read_write_in_expression::EvalOrderDependence));
-    store.register_late_pass(|_| Box::new(missing_doc::MissingDoc::new()));
+    store.register_late_pass(move |_| Box::new(missing_doc::MissingDoc::new(only_check_missing_docs_in_crate_items)));
     store.register_late_pass(|_| Box::new(missing_inline::MissingInline));
     store.register_late_pass(move |_| Box::new(exhaustive_items::ExhaustiveItems));
     store.register_late_pass(|_| Box::new(match_result_ok::MatchResultOk));

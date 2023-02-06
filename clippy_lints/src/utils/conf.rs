@@ -454,6 +454,10 @@ define_Conf! {
     /// configuration will cause restriction lints to trigger even
     /// if no suggestion can be made.
     (suppress_restriction_lint_in_const: bool = false),
+    /// Lint: MISSING_DOCS_IN_PRIVATE_ITEMS.
+    ///
+    /// FIXME: docs
+    (only_check_missing_docs_in_crate_items: bool = false),
 }
 
 /// Search for the configuration file.

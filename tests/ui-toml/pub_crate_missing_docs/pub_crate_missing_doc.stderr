@@ -1,0 +1,22 @@
+error: missing documentation for a function
+  --> $DIR/pub_crate_missing_doc.rs:11:5
+   |
+LL |     pub(crate) fn crate_no_docs() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a function
+  --> $DIR/pub_crate_missing_doc.rs:14:5
+   |
+LL |     pub(super) fn super_no_docs() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/pub_crate_missing_doc.rs:22:9
+   |
+LL |         pub(crate) fn sub_crate_no_docs() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

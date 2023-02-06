@@ -12,7 +12,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::DefIdTree;
+use rustc_middle::ty::{DefIdTree, Visibility};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Span;
@@ -35,6 +35,8 @@ declare_clippy_lint! {
 }
 
 pub struct MissingDoc {
+    /// FIXME: docs
+    crate_items_only: bool,
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
@@ -43,14 +45,15 @@ pub struct MissingDoc {
 impl Default for MissingDoc {
     #[must_use]
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
 impl MissingDoc {
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(crate_items_only: bool) -> Self {
         Self {
+            crate_items_only,
             doc_hidden_stack: vec![false],
         }
     }
@@ -128,6 +131,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
+        if self.crate_items_only {
+            let vis = cx.tcx.visibility(it.owner_id.to_def_id());
+            if vis != Visibility::Public && vis != Visibility::Restricted(CRATE_DEF_ID.into()) {
+                return;
+            }
+        }
+
         match it.kind {
             hir::ItemKind::Fn(..) => {
                 // ignore main()
