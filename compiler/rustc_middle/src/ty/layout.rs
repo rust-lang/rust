@@ -770,7 +770,7 @@ where
 
                 ty::Dynamic(_, _, ty::DynStar) => {
                     if i == 0 {
-                        TyMaybeWithLayout::Ty(tcx.types.usize)
+                        TyMaybeWithLayout::Ty(tcx.mk_mut_ptr(tcx.types.unit))
                     } else if i == 1 {
                         // FIXME(dyn-star) same FIXME as above applies here too
                         TyMaybeWithLayout::Ty(

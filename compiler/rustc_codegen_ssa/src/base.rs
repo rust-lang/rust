@@ -39,7 +39,7 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
-use rustc_target::abi::{Align, Size, VariantIdx};
+use rustc_target::abi::{Align, VariantIdx};
 
 use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
@@ -273,13 +273,6 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
         "destination type must be a dyn*"
     );
-    // FIXME(dyn-star): this is probably not the best way to check if this is
-    // a pointer, and really we should ensure that the value is a suitable
-    // pointer earlier in the compilation process.
-    let src = match src_ty_and_layout.pointee_info_at(bx.cx(), Size::ZERO) {
-        Some(_) => bx.ptrtoint(src, bx.cx().type_isize()),
-        None => bx.bitcast(src, bx.type_isize()),
-    };
     (src, unsized_info(bx, src_ty_and_layout.ty, dst_ty, old_info))
 }
 
