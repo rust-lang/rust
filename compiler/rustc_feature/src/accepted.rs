@@ -90,7 +90,7 @@ declare_features! (
     (accepted, clone_closures, "1.26.0", Some(44490), None),
     /// Allows coercing non capturing closures to function pointers.
     (accepted, closure_to_fn_coercion, "1.19.0", Some(39817), None),
-    /// Allows using `cmpxchg16b` from `core::arch::x86_64`.
+    /// Allows using the CMPXCHG16B target feature.
     (accepted, cmpxchg16b_target_feature, "CURRENT_RUSTC_VERSION", Some(44839), None),
     /// Allows usage of the `compile_error!` macro.
     (accepted, compile_error, "1.20.0", Some(40872), None),
@@ -238,6 +238,8 @@ declare_features! (
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
     /// Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544), None),
+    /// Allows using the MOVBE target feature.
+    (accepted, movbe_target_feature, "CURRENT_RUSTC_VERSION", Some(44839), None),
     /// Allows patterns with concurrent by-move and by-ref bindings.
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.49.0", Some(68354), None),
