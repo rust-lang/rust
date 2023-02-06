@@ -1,6 +1,7 @@
 //! An interpreter for MIR used in CTFE and by miri
 
 mod cast;
+mod discriminant;
 mod eval_context;
 mod intern;
 mod intrinsics;

@@ -7,7 +7,6 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -16,7 +15,6 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_macros = { path = "../rustc_macros" }
-rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
