@@ -1,8 +1,8 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling reference (address 0x10 is unallocated)
+error: Undefined Behavior: constructing invalid value: encountered a dangling reference (0x10[noalloc] has no provenance)
   --> $DIR/dangling_ref1.rs:LL:CC
    |
 LL |     let _x: &i32 = unsafe { mem::transmute(16usize) };
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (address 0x10 is unallocated)
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (0x10[noalloc] has no provenance)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
