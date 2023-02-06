@@ -153,6 +153,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
         if let Operand::Move(place) = *operand
+            // A move out of a projection of a copy is equivalent to a copy of the original projection.
             && !place.has_deref()
             && !self.fully_moved.contains(place.local)
         {
