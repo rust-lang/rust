@@ -719,8 +719,8 @@ fn format_chunks(chunks: Vec<dissimilar::Chunk>) -> String {
     for chunk in chunks {
         let formatted = match chunk {
             dissimilar::Chunk::Equal(text) => text.into(),
-            dissimilar::Chunk::Delete(text) => format!("\x1b[41m{}\x1b[0m", text),
-            dissimilar::Chunk::Insert(text) => format!("\x1b[42m{}\x1b[0m", text),
+            dissimilar::Chunk::Delete(text) => format!("\x1b[31m{}\x1b[0m", text),
+            dissimilar::Chunk::Insert(text) => format!("\x1b[32m{}\x1b[0m", text),
         };
         buf.push_str(&formatted);
     }
