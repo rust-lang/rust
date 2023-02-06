@@ -1,16 +1,17 @@
+// run-rustfix
 fn main() {}
-fn foo() -> bool {
-    &  //~ ERROR 3:5: 5:36: mismatched types [E0308]
+fn _foo() -> bool {
+    &  //~ ERROR 4:5: 6:36: mismatched types [E0308]
     mut
     if true { true } else { false }
 }
 
-fn bar() -> bool {
-    &  //~ ERROR 9:5: 10:40: mismatched types [E0308]
+fn _bar() -> bool {
+    &  //~ ERROR 10:5: 11:40: mismatched types [E0308]
     mut if true { true } else { false }
 }
 
-fn baz() -> bool {
-    & mut //~ ERROR 14:5: 15:36: mismatched types [E0308]
+fn _baz() -> bool {
+    & mut //~ ERROR 15:5: 16:36: mismatched types [E0308]
     if true { true } else { false }
 }

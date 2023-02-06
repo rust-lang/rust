@@ -1,8 +1,8 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-92741.rs:3:5
+  --> $DIR/issue-92741.rs:4:5
    |
-LL |   fn foo() -> bool {
-   |               ---- expected `bool` because of return type
+LL |   fn _foo() -> bool {
+   |                ---- expected `bool` because of return type
 LL | /     &
 LL | |     mut
 LL | |     if true { true } else { false }
@@ -15,10 +15,10 @@ LL -     mut
    |
 
 error[E0308]: mismatched types
-  --> $DIR/issue-92741.rs:9:5
+  --> $DIR/issue-92741.rs:10:5
    |
-LL |   fn bar() -> bool {
-   |               ---- expected `bool` because of return type
+LL |   fn _bar() -> bool {
+   |                ---- expected `bool` because of return type
 LL | /     &
 LL | |     mut if true { true } else { false }
    | |_______________________________________^ expected `bool`, found `&mut bool`
@@ -31,10 +31,10 @@ LL +     if true { true } else { false }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/issue-92741.rs:14:5
+  --> $DIR/issue-92741.rs:15:5
    |
-LL |   fn baz() -> bool {
-   |               ---- expected `bool` because of return type
+LL |   fn _baz() -> bool {
+   |                ---- expected `bool` because of return type
 LL | /     & mut
 LL | |     if true { true } else { false }
    | |___________________________________^ expected `bool`, found `&mut bool`
