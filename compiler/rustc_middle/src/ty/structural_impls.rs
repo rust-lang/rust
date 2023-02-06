@@ -8,16 +8,13 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{
-    self, AliasTy, Flags, InferConst, Interner, Lift, OuterExclusiveBinder, Term, TermKind, Ty,
-    TyCtxt,
+    self, AliasTy, Flags, InferConst, Lift, OuterExclusiveBinder, Term, TermKind, Ty, TyCtxt,
 };
-use rustc_data_structures::functor::IdFunctor;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::abi::TyAndLayout;
 
 use std::fmt;
-use std::mem::ManuallyDrop;
 use std::ops::ControlFlow;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -199,7 +196,7 @@ impl<'tcx> fmt::Debug for AliasTy<'tcx> {
 // For things that don't carry any arena-allocated data (and are
 // copy...), just add them to this list.
 
-TrivialTypeFoldableAndLiftImpls! {
+CloneLiftImpls! {
     (),
     bool,
     usize,
@@ -383,133 +380,6 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
         _visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
         ControlFlow::Continue(())
-    }
-}
-
-impl<I: Interner, T: TypeFoldable<I>, U: TypeFoldable<I>> TypeFoldable<I> for (T, U) {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<(T, U), F::Error> {
-        Ok((self.0.try_fold_with(folder)?, self.1.try_fold_with(folder)?))
-    }
-}
-
-impl<I: Interner, A: TypeFoldable<I>, B: TypeFoldable<I>, C: TypeFoldable<I>> TypeFoldable<I>
-    for (A, B, C)
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(
-        self,
-        folder: &mut F,
-    ) -> Result<(A, B, C), F::Error> {
-        Ok((
-            self.0.try_fold_with(folder)?,
-            self.1.try_fold_with(folder)?,
-            self.2.try_fold_with(folder)?,
-        ))
-    }
-}
-
-EnumTypeTraversalImpl! {
-    impl<I, T> TypeFoldable<I> for Option<T> {
-        (Some)(a),
-        (None),
-    } where I: Interner, T: TypeFoldable<I>
-}
-
-EnumTypeTraversalImpl! {
-    impl<I, T, E> TypeFoldable<I> for Result<T, E> {
-        (Ok)(a),
-        (Err)(a),
-    } where I: Interner, T: TypeFoldable<I>, E: TypeFoldable<I>,
-}
-
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Rc<T> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(mut self, folder: &mut F) -> Result<Self, F::Error> {
-        // We merely want to replace the contained `T`, if at all possible,
-        // so that we don't needlessly allocate a new `Rc` or indeed clone
-        // the contained type.
-        unsafe {
-            // First step is to ensure that we have a unique reference to
-            // the contained type, which `Rc::make_mut` will accomplish (by
-            // allocating a new `Rc` and cloning the `T` only if required).
-            // This is done *before* casting to `Rc<ManuallyDrop<T>>` so that
-            // panicking during `make_mut` does not leak the `T`.
-            Rc::make_mut(&mut self);
-
-            // Casting to `Rc<ManuallyDrop<T>>` is safe because `ManuallyDrop`
-            // is `repr(transparent)`.
-            let ptr = Rc::into_raw(self).cast::<ManuallyDrop<T>>();
-            let mut unique = Rc::from_raw(ptr);
-
-            // Call to `Rc::make_mut` above guarantees that `unique` is the
-            // sole reference to the contained value, so we can avoid doing
-            // a checked `get_mut` here.
-            let slot = Rc::get_mut_unchecked(&mut unique);
-
-            // Semantically move the contained type out from `unique`, fold
-            // it, then move the folded value back into `unique`. Should
-            // folding fail, `ManuallyDrop` ensures that the "moved-out"
-            // value is not re-dropped.
-            let owned = ManuallyDrop::take(slot);
-            let folded = owned.try_fold_with(folder)?;
-            *slot = ManuallyDrop::new(folded);
-
-            // Cast back to `Rc<T>`.
-            Ok(Rc::from_raw(Rc::into_raw(unique).cast()))
-        }
-    }
-}
-
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Arc<T> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(mut self, folder: &mut F) -> Result<Self, F::Error> {
-        // We merely want to replace the contained `T`, if at all possible,
-        // so that we don't needlessly allocate a new `Arc` or indeed clone
-        // the contained type.
-        unsafe {
-            // First step is to ensure that we have a unique reference to
-            // the contained type, which `Arc::make_mut` will accomplish (by
-            // allocating a new `Arc` and cloning the `T` only if required).
-            // This is done *before* casting to `Arc<ManuallyDrop<T>>` so that
-            // panicking during `make_mut` does not leak the `T`.
-            Arc::make_mut(&mut self);
-
-            // Casting to `Arc<ManuallyDrop<T>>` is safe because `ManuallyDrop`
-            // is `repr(transparent)`.
-            let ptr = Arc::into_raw(self).cast::<ManuallyDrop<T>>();
-            let mut unique = Arc::from_raw(ptr);
-
-            // Call to `Arc::make_mut` above guarantees that `unique` is the
-            // sole reference to the contained value, so we can avoid doing
-            // a checked `get_mut` here.
-            let slot = Arc::get_mut_unchecked(&mut unique);
-
-            // Semantically move the contained type out from `unique`, fold
-            // it, then move the folded value back into `unique`. Should
-            // folding fail, `ManuallyDrop` ensures that the "moved-out"
-            // value is not re-dropped.
-            let owned = ManuallyDrop::take(slot);
-            let folded = owned.try_fold_with(folder)?;
-            *slot = ManuallyDrop::new(folded);
-
-            // Cast back to `Arc<T>`.
-            Ok(Arc::from_raw(Arc::into_raw(unique).cast()))
-        }
-    }
-}
-
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<T> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|value| value.try_fold_with(folder))
-    }
-}
-
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Vec<T> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|t| t.try_fold_with(folder))
-    }
-}
-
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<[T]> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|t| t.try_fold_with(folder))
     }
 }
 
@@ -770,12 +640,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Predicate<'tcx>> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_predicates(v))
-    }
-}
-
-impl<I: Interner, T: TypeFoldable<I>, Ix: Idx> TypeFoldable<I> for IndexVec<Ix, T> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|x| x.try_fold_with(folder))
     }
 }
 

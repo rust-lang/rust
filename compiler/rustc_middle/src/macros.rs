@@ -66,44 +66,9 @@ macro_rules! CloneLiftImpls {
 /// Used for types that are `Copy` and which **do not care arena
 /// allocated data** (i.e., don't need to be folded).
 #[macro_export]
-macro_rules! TrivialTypeFoldableImpls {
-    (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
-        $(
-            impl<$tcx> $crate::ty::fold::TypeFoldable<$crate::ty::TyCtxt<$tcx>> for $ty {
-                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$crate::ty::TyCtxt<$tcx>>>(
-                    self,
-                    _: &mut F,
-                ) -> ::std::result::Result<Self, F::Error> {
-                    Ok(self)
-                }
-
-                #[inline]
-                fn fold_with<F: $crate::ty::fold::TypeFolder<$crate::ty::TyCtxt<$tcx>>>(
-                    self,
-                    _: &mut F,
-                ) -> Self {
-                    self
-                }
-            }
-        )+
-    };
-
-    ($($ty:ty,)+) => {
-        TrivialTypeFoldableImpls! {
-            for <'tcx> {
-                $($ty,)+
-            }
-        }
-    };
-}
-
-/// Used for types that are `Copy` and which **do not care arena
-/// allocated data** (i.e., don't need to be folded).
-#[macro_export]
 macro_rules! TrivialTypeTraversalImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
-        TrivialTypeFoldableImpls!(for <$tcx> { $($ty,)+ });
-        rustc_type_ir::TrivialTypeVisitableImpls!($(<$tcx> $crate::ty::TyCtxt<$tcx> { $ty })+);
+        rustc_type_ir::TrivialTypeTraversalImpls!($(<$tcx> $crate::ty::TyCtxt<$tcx> { $ty })+);
     };
 
     ($($ty:ty,)+) => {
@@ -116,99 +81,9 @@ macro_rules! TrivialTypeTraversalImpls {
 }
 
 #[macro_export]
-macro_rules! TrivialTypeFoldableAndLiftImpls {
-    ($($t:tt)*) => {
-        TrivialTypeFoldableImpls! { $($t)* }
-        CloneLiftImpls! { $($t)* }
-    }
-}
-
-#[macro_export]
 macro_rules! TrivialTypeTraversalAndLiftImpls {
     ($($t:tt)*) => {
         TrivialTypeTraversalImpls! { $($t)* }
         CloneLiftImpls! { $($t)* }
     }
-}
-
-#[macro_export]
-macro_rules! EnumTypeTraversalImpl {
-    (impl<$($p:tt),*> TypeFoldable<$tcx:ty> for $s:path {
-        $($variants:tt)*
-    } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
-            $(where $($wc)*)*
-        {
-            fn try_fold_with<V: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
-                self,
-                folder: &mut V,
-            ) -> ::std::result::Result<Self, V::Error> {
-                EnumTypeTraversalImpl!(@FoldVariants(self, folder) input($($variants)*) output())
-            }
-        }
-    };
-
-    (impl<$($p:tt),*> TypeVisitable<$tcx:ty> for $s:path {
-        $($variants:tt)*
-    } $(where $($wc:tt)*)*) => {
-        rustc_type_ir::EnumTypeVisitableImpl! {
-            impl<$($p),*> TypeVisitable<$tcx> for $s {
-                $($variants)*
-            } $(where $($wc)*)*
-        }
-    };
-
-    (@FoldVariants($this:expr, $folder:expr) input() output($($output:tt)*)) => {
-        Ok(match $this {
-            $($output)*
-        })
-    };
-
-    (@FoldVariants($this:expr, $folder:expr)
-     input( ($variant:path) ( $($variant_arg:ident),* ) , $($input:tt)*)
-     output( $($output:tt)*) ) => {
-        EnumTypeTraversalImpl!(
-            @FoldVariants($this, $folder)
-                input($($input)*)
-                output(
-                    $variant ( $($variant_arg),* ) => {
-                        $variant (
-                            $($crate::ty::fold::TypeFoldable::try_fold_with($variant_arg, $folder)?),*
-                        )
-                    }
-                    $($output)*
-                )
-        )
-    };
-
-    (@FoldVariants($this:expr, $folder:expr)
-     input( ($variant:path) { $($variant_arg:ident),* $(,)? } , $($input:tt)*)
-     output( $($output:tt)*) ) => {
-        EnumTypeTraversalImpl!(
-            @FoldVariants($this, $folder)
-                input($($input)*)
-                output(
-                    $variant { $($variant_arg),* } => {
-                        $variant {
-                            $($variant_arg: $crate::ty::fold::TypeFoldable::fold_with(
-                                $variant_arg, $folder
-                            )?),* }
-                    }
-                    $($output)*
-                )
-        )
-    };
-
-    (@FoldVariants($this:expr, $folder:expr)
-     input( ($variant:path), $($input:tt)*)
-     output( $($output:tt)*) ) => {
-        EnumTypeTraversalImpl!(
-            @FoldVariants($this, $folder)
-                input($($input)*)
-                output(
-                    $variant => { $variant }
-                    $($output)*
-                )
-        )
-    };
 }

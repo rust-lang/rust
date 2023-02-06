@@ -1,9 +1,11 @@
 #![feature(fmt_helpers_for_derive)]
 #![feature(associated_type_defaults)]
 #![feature(control_flow_enum)]
+#![feature(get_mut_unchecked)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
+#![feature(unwrap_infallible)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
@@ -21,6 +23,7 @@ use std::hash::Hash;
 use std::mem::discriminant;
 
 pub mod codec;
+pub mod fold;
 pub mod sty;
 pub mod ty_info;
 pub mod visit;
@@ -29,6 +32,7 @@ pub mod visit;
 mod macros;
 mod structural_impls;
 
+use fold::TypeSuperFoldable;
 use visit::TypeSuperVisitable;
 
 pub use codec::*;
@@ -51,7 +55,8 @@ pub trait Interner: Sized {
         + Ord
         + OuterExclusiveBinder
         + Flags
-        + TypeSuperVisitable<Self>;
+        + TypeSuperVisitable<Self>
+        + TypeSuperFoldable<Self>;
     type Const: Clone
         + Debug
         + Hash
@@ -61,7 +66,8 @@ pub trait Interner: Sized {
         + Ord
         + BoundIndex
         + Flags
-        + TypeSuperVisitable<Self>;
+        + TypeSuperVisitable<Self>
+        + TypeSuperFoldable<Self>;
     type Region: Clone
         + Debug
         + Hash
@@ -71,9 +77,13 @@ pub trait Interner: Sized {
         + Ord
         + BoundAtOrAboveBinder
         + Flags
-        + TypeSuperVisitable<Self>;
+        + TypeSuperVisitable<Self>
+        + TypeSuperFoldable<Self>;
     type Binder<T>;
-    type Predicate: OuterExclusiveBinder + Flags + TypeSuperVisitable<Self>;
+    type Predicate: OuterExclusiveBinder
+        + Flags
+        + TypeSuperVisitable<Self>
+        + TypeSuperFoldable<Self>;
     type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Mutability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Movability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
