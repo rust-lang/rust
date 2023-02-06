@@ -59,6 +59,9 @@ fn layout_of<'tcx>(
 
     sanity_check_layout(&cx, &layout);
 
+    // FIXME: move this into the sanity check.
+    debug_assert_eq!(tcx.align_of(query).unwrap(), layout.align);
+
     Ok(layout)
 }
 
