@@ -29,10 +29,16 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) -
                     "this `to_owned` call clones the {input_type} itself and does not cause the {input_type} contents to become owned"
                 )),
                 |diag| {
-                    diag.span_suggestions(
+                    diag.span_suggestion(
                         expr.span,
-                        "depending on intent, either make the Cow an Owned variant or clone the Cow itself",
-                        [format!("{recv_snip}.into_owned()"), format!("{recv_snip}.clone()")],
+                        "depending on intent, either make the Cow an Owned variant",
+                        format!("{recv_snip}.into_owned()"),
+                        app
+                    );
+                    diag.span_suggestion(
+                        expr.span,
+                        "or clone the Cow itself",
+                        format!("{recv_snip}.clone()"),
                         app
                     );
                 }
