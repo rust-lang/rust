@@ -475,6 +475,9 @@ parse_unexpected_token_after_struct_name_found_other = expected `where`, `{"{"}`
 parse_unexpected_self_in_generic_parameters = unexpected keyword `Self` in generic parameters
     .note = you cannot use `Self` as a generic parameter because it is reserved for associated items
 
+parse_unexpected_default_value_for_lifetime_in_generic_parameters = unexpected default lifetime parameter
+    .label = lifetime parameters cannot have default values
+
 parse_multiple_where_clauses = cannot define duplicate `where` clauses on an item
     .label = previous `where` clause starts here
     .suggestion = consider joining the two `where` clauses into one

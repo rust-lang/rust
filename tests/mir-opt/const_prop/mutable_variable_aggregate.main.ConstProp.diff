@@ -3,25 +3,27 @@
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/mutable_variable_aggregate.rs:+0:11: +0:11
-      let mut _1: (i32, i32);              // in scope 0 at $DIR/mutable_variable_aggregate.rs:+1:9: +1:14
+      let mut _3: i32;                     // in scope 0 at $DIR/mutable_variable_aggregate.rs:+1:9: +1:14
+      let mut _4: i32;                     // in scope 0 at $DIR/mutable_variable_aggregate.rs:+1:9: +1:14
       scope 1 {
-          debug x => _1;                   // in scope 1 at $DIR/mutable_variable_aggregate.rs:+1:9: +1:14
-          let _2: (i32, i32);              // in scope 1 at $DIR/mutable_variable_aggregate.rs:+3:9: +3:10
+          debug x => (i32, i32){ .0 => _3, .1 => _4, }; // in scope 1 at $DIR/mutable_variable_aggregate.rs:+1:9: +1:14
+          let _1: i32;                     // in scope 1 at $DIR/mutable_variable_aggregate.rs:+3:9: +3:10
+          let _2: i32;                     // in scope 1 at $DIR/mutable_variable_aggregate.rs:+3:9: +3:10
           scope 2 {
-              debug y => _2;               // in scope 2 at $DIR/mutable_variable_aggregate.rs:+3:9: +3:10
+              debug y => (i32, i32){ .0 => _3, .1 => _2, }; // in scope 2 at $DIR/mutable_variable_aggregate.rs:+3:9: +3:10
           }
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_aggregate.rs:+1:9: +1:14
--         _1 = (const 42_i32, const 43_i32); // scope 0 at $DIR/mutable_variable_aggregate.rs:+1:17: +1:25
-+         _1 = const (42_i32, 43_i32);     // scope 0 at $DIR/mutable_variable_aggregate.rs:+1:17: +1:25
-          (_1.1: i32) = const 99_i32;      // scope 1 at $DIR/mutable_variable_aggregate.rs:+2:5: +2:13
+          StorageLive(_4);                 // scope 0 at $DIR/mutable_variable_aggregate.rs:+1:9: +1:14
+          _3 = const 42_i32;               // scope 0 at $DIR/mutable_variable_aggregate.rs:+1:17: +1:25
+          _4 = const 43_i32;               // scope 0 at $DIR/mutable_variable_aggregate.rs:+1:17: +1:25
+          _4 = const 99_i32;               // scope 1 at $DIR/mutable_variable_aggregate.rs:+2:5: +2:13
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate.rs:+3:9: +3:10
--         _2 = _1;                         // scope 1 at $DIR/mutable_variable_aggregate.rs:+3:13: +3:14
-+         _2 = const (42_i32, 99_i32);     // scope 1 at $DIR/mutable_variable_aggregate.rs:+3:13: +3:14
+-         _2 = _4;                         // scope 1 at $DIR/mutable_variable_aggregate.rs:+3:13: +3:14
++         _2 = const 99_i32;               // scope 1 at $DIR/mutable_variable_aggregate.rs:+3:13: +3:14
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_aggregate.rs:+4:1: +4:2
-          StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_aggregate.rs:+4:1: +4:2
+          StorageDead(_4);                 // scope 0 at $DIR/mutable_variable_aggregate.rs:+4:1: +4:2
           return;                          // scope 0 at $DIR/mutable_variable_aggregate.rs:+4:2: +4:2
       }
   }

@@ -13,6 +13,7 @@ use rustc_hir::{
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
     TypeVisitable,
@@ -704,10 +705,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::FnRetTy::Return(ty) => {
+                let span = ty.span;
+
+                if let hir::TyKind::OpaqueDef(item_id, ..) = ty.kind
+                && let hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::OpaqueTy(op_ty),
+                    ..
+                }) = self.tcx.hir().get(item_id.hir_id())
+                && let hir::OpaqueTy {
+                    bounds: [bound], ..
+                } = op_ty
+                && let hir::GenericBound::LangItemTrait(
+                    hir::LangItem::Future, _, _, generic_args) = bound
+                && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
+                && let hir::TypeBinding { kind, .. } = ty_binding
+                && let hir::TypeBindingKind::Equality { term } = kind
+                && let hir::Term::Ty(term_ty) = term {
+                    // Check if async function's return type was omitted.
+                    // Don't emit suggestions if the found type is `impl Future<...>`.
+                    debug!("suggest_missing_return_type: found = {:?}", found);
+                    if found.is_suggestable(self.tcx, false) {
+                        if term_ty.span.is_empty() {
+                            err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
+                            return true;
+                        } else {
+                            err.subdiagnostic(ExpectedReturnTypeLabel::Other { span, expected });
+                        }
+                    }
+                }
+
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
-                let span = ty.span;
                 let ty = self.astconv().ast_ty_to_ty(ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
@@ -1242,6 +1271,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         }
+    }
+
+    /// Suggest providing `std::ptr::null()` or `std::ptr::null_mut()` if they
+    /// pass in a literal 0 to an raw pointer.
+    #[instrument(skip(self, err))]
+    pub(crate) fn suggest_null_ptr_for_literal_zero_given_to_ptr_arg(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        // Expected type needs to be a raw pointer.
+        let ty::RawPtr(ty::TypeAndMut { mutbl, .. }) = expected_ty.kind() else {
+            return false;
+        };
+
+        // Provided expression needs to be a literal `0`.
+        let ExprKind::Lit(Spanned {
+            node: rustc_ast::LitKind::Int(0, _),
+            span,
+        }) = expr.kind else {
+            return false;
+        };
+
+        // We need to find a null pointer symbol to suggest
+        let null_sym = match mutbl {
+            hir::Mutability::Not => sym::ptr_null,
+            hir::Mutability::Mut => sym::ptr_null_mut,
+        };
+        let Some(null_did) = self.tcx.get_diagnostic_item(null_sym) else {
+            return false;
+        };
+        let null_path_str = with_no_trimmed_paths!(self.tcx.def_path_str(null_did));
+
+        // We have satisfied all requirements to provide a suggestion. Emit it.
+        err.span_suggestion(
+            span,
+            format!("if you meant to create a null pointer, use `{null_path_str}()`"),
+            null_path_str + "()",
+            Applicability::MachineApplicable,
+        );
+
+        true
     }
 
     pub(crate) fn suggest_associated_const(
