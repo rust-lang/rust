@@ -18,7 +18,7 @@ use rustc_hir::{
 };
 use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
+use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
