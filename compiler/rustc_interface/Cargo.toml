@@ -20,7 +20,6 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
-rustc_serialize = { path = "../rustc_serialize" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }

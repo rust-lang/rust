@@ -13,6 +13,5 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
-rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
 tracing = "0.1"
