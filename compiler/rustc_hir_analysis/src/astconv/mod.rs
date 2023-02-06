@@ -14,7 +14,7 @@ use crate::errors::{
     AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
     TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified,
 };
-use crate::middle::resolve_lifetime as rl;
+use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -225,10 +225,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
         let lifetime_name = |def_id| tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id));
 
-        match tcx.named_region(lifetime.hir_id) {
-            Some(rl::Region::Static) => tcx.lifetimes.re_static,
+        match tcx.named_bound_var(lifetime.hir_id) {
+            Some(rbv::ResolvedArg::StaticLifetime) => tcx.lifetimes.re_static,
 
-            Some(rl::Region::LateBound(debruijn, index, def_id)) => {
+            Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
                 let name = lifetime_name(def_id.expect_local());
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(index),
@@ -237,7 +237,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            Some(rl::Region::EarlyBound(def_id)) => {
+            Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
                 let name = tcx.hir().ty_param_name(def_id.expect_local());
                 let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
                 let generics = tcx.generics_of(item_def_id);
@@ -245,7 +245,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }))
             }
 
-            Some(rl::Region::Free(scope, id)) => {
+            Some(rbv::ResolvedArg::Free(scope, id)) => {
                 let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
                     scope,
@@ -1604,7 +1604,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                if tcx.named_region(lifetime.hir_id).is_some() {
+                if tcx.named_bound_var(lifetime.hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
