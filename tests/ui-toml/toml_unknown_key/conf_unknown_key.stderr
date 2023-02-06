@@ -34,6 +34,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            max-suggested-slice-pattern-length
            max-trait-bounds
            msrv
+           only-check-missing-docs-in-crate-items
            pass-by-value-size-limit
            single-char-binding-names-threshold
            standard-macro-braces
