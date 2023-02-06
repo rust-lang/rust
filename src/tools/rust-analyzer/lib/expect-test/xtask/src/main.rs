@@ -2,7 +2,7 @@ use std::env;
 
 use xaction::{cargo_toml, cmd, git, push_rustup_toolchain, section, Result};
 
-const MSRV: &str = "1.45.0";
+const MSRV: &str = "1.56.0";
 
 fn main() {
     if let Err(err) = try_main() {
