@@ -103,26 +103,31 @@ fn align_of_uncached<'tcx>(
 
     Ok(match *ty.kind() {
         // Basic scalars.
-        ty::Bool => tcx.intern_layout(LayoutS::scalar(
-            cx,
-            Scalar::Initialized {
-                value: Int(I8, false),
-                valid_range: WrappingRange { start: 0, end: 1 },
-            },
-        )).align(),
-        ty::Char => tcx.intern_layout(LayoutS::scalar(
-            cx,
-            Scalar::Initialized {
-                value: Int(I32, false),
-                valid_range: WrappingRange { start: 0, end: 0x10FFFF },
-            },
-        )).align(),
+        ty::Bool => tcx
+            .intern_layout(LayoutS::scalar(
+                cx,
+                Scalar::Initialized {
+                    value: Int(I8, false),
+                    valid_range: WrappingRange { start: 0, end: 1 },
+                },
+            ))
+            .align(),
+        ty::Char => tcx
+            .intern_layout(LayoutS::scalar(
+                cx,
+                Scalar::Initialized {
+                    value: Int(I32, false),
+                    valid_range: WrappingRange { start: 0, end: 0x10FFFF },
+                },
+            ))
+            .align(),
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)).align(),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)).align(),
         ty::Float(fty) => scalar(match fty {
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,
-        }).align(),
+        })
+        .align(),
         ty::FnPtr(_) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
@@ -198,35 +203,21 @@ fn align_of_uncached<'tcx>(
                     return Err(LayoutError::Unknown(ty));
                 }
             }
-
-            let count = count.try_eval_usize(tcx, param_env).ok_or(LayoutError::Unknown(ty))?;
             let element = cx.layout_of(element)?;
-            element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
-
             element.align
         }
         ty::Slice(element) => {
             let element = cx.layout_of(element)?;
             element.align
-        },
+        }
 
         ty::Str => dl.i8_align,
 
         // Odd unit types.
         ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?.align(),
         ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
-            let mut unit = univariant_uninterned(
-                cx,
-                ty,
-                &[],
-                &ReprOptions::default(),
-                StructKind::AlwaysSized,
-            )?;
-            match unit.abi {
-                Abi::Aggregate { ref mut sized } => *sized = false,
-                _ => bug!(),
-            }
-            tcx.intern_layout(unit).align()
+            univariant_uninterned(cx, ty, &[], &ReprOptions::default(), StructKind::AlwaysSized)?
+                .align
         }
 
         ty::Generator(def_id, substs, _) => generator_layout(cx, ty, def_id, substs)?.align(),
@@ -237,7 +228,8 @@ fn align_of_uncached<'tcx>(
                 &tys.map(|ty| cx.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
                 &ReprOptions::default(),
                 StructKind::AlwaysSized,
-            )?.align()
+            )?
+            .align()
         }
 
         ty::Tuple(tys) => {
@@ -248,7 +240,8 @@ fn align_of_uncached<'tcx>(
                 &tys.iter().map(|k| cx.layout_of(k)).collect::<Result<Vec<_>, _>>()?,
                 &ReprOptions::default(),
                 kind,
-            )?.align()
+            )?
+            .align()
         }
 
         // SIMD vector types.
@@ -371,9 +364,12 @@ fn align_of_uncached<'tcx>(
                     return Err(LayoutError::Unknown(ty));
                 }
 
-                return Ok(tcx.intern_layout(
-                    cx.layout_of_union(&def.repr(), &variants).ok_or(LayoutError::Unknown(ty))?,
-                ).align());
+                return Ok(tcx
+                    .intern_layout(
+                        cx.layout_of_union(&def.repr(), &variants)
+                            .ok_or(LayoutError::Unknown(ty))?,
+                    )
+                    .align());
             }
 
             tcx.intern_layout(
@@ -405,7 +401,8 @@ fn align_of_uncached<'tcx>(
                     },
                 )
                 .ok_or(LayoutError::SizeOverflow(ty))?,
-            ).align()
+            )
+            .align()
         }
 
         // Types with no meaningful known layout.
