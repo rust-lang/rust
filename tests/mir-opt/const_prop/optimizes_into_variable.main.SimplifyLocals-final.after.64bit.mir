@@ -3,12 +3,12 @@
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/optimizes_into_variable.rs:+0:11: +0:11
     let _1: i32;                         // in scope 0 at $DIR/optimizes_into_variable.rs:+1:9: +1:10
+    let mut _3: u32;                     // in scope 0 at $DIR/optimizes_into_variable.rs:+3:13: +3:36
     scope 1 {
         debug x => _1;                   // in scope 1 at $DIR/optimizes_into_variable.rs:+1:9: +1:10
         let _2: i32;                     // in scope 1 at $DIR/optimizes_into_variable.rs:+2:9: +2:10
         scope 2 {
             debug y => _2;               // in scope 2 at $DIR/optimizes_into_variable.rs:+2:9: +2:10
-            let _3: u32;                 // in scope 2 at $DIR/optimizes_into_variable.rs:+3:9: +3:10
             scope 3 {
                 debug z => _3;           // in scope 3 at $DIR/optimizes_into_variable.rs:+3:9: +3:10
             }
@@ -18,8 +18,6 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:+1:9: +1:10
         StorageLive(_2);                 // scope 1 at $DIR/optimizes_into_variable.rs:+2:9: +2:10
-        StorageLive(_3);                 // scope 2 at $DIR/optimizes_into_variable.rs:+3:9: +3:10
-        StorageDead(_3);                 // scope 2 at $DIR/optimizes_into_variable.rs:+4:1: +4:2
         StorageDead(_2);                 // scope 1 at $DIR/optimizes_into_variable.rs:+4:1: +4:2
         StorageDead(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:+4:1: +4:2
         return;                          // scope 0 at $DIR/optimizes_into_variable.rs:+4:2: +4:2

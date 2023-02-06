@@ -17,7 +17,7 @@
           StorageLive(_5);                 // scope 0 at $DIR/sroa.rs:+2:34: +2:37
           _5 = g() -> bb1;                 // scope 0 at $DIR/sroa.rs:+2:34: +2:37
                                            // mir::Constant
-                                           // + span: $DIR/sroa.rs:78:34: 78:35
+                                           // + span: $DIR/sroa.rs:73:34: 73:35
                                            // + literal: Const { ty: fn() -> u32 {g}, val: Value(<ZST>) }
       }
   
@@ -28,7 +28,7 @@
           _2 = &raw const (*_3);           // scope 0 at $DIR/sroa.rs:+2:7: +2:41
           _1 = f(move _2) -> bb2;          // scope 0 at $DIR/sroa.rs:+2:5: +2:42
                                            // mir::Constant
-                                           // + span: $DIR/sroa.rs:78:5: 78:6
+                                           // + span: $DIR/sroa.rs:73:5: 73:6
                                            // + literal: Const { ty: fn(*const u32) {f}, val: Value(<ZST>) }
       }
   
