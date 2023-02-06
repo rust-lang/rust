@@ -21,6 +21,7 @@ rustc-hash = "1.1.0"
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
+serde_json = "1.0.59"
 smallvec = { version = "1.8.1", features = [
     "const_generics",
     "union",
