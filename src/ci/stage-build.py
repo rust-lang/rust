@@ -15,10 +15,9 @@ import sys
 import time
 import traceback
 import urllib.request
-from collections import OrderedDict
 from io import StringIO
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Optional, Union
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 PGO_HOST = os.environ["PGO_HOST"]
 
@@ -204,48 +203,105 @@ class WindowsPipeline(Pipeline):
         return False
 
 
+def get_timestamp() -> float:
+    return time.time()
+
+
+Duration = float
+TimerSection = Union[Duration, "Timer"]
+
+
+def iterate_sections(section: TimerSection, name: str, level: int = 0) -> Iterator[Tuple[int, str, Duration]]:
+    """
+    Hierarchically iterate the sections of a timer, in a depth-first order.
+    """
+    if isinstance(section, Duration):
+        yield (level, name, section)
+    elif isinstance(section, Timer):
+        yield (level, name, section.total_duration())
+        for (child_name, child_section) in section.sections:
+            yield from iterate_sections(child_section, child_name, level=level + 1)
+    else:
+        assert False
+
+
 class Timer:
-    def __init__(self):
-        # We want this dictionary to be ordered by insertion.
-        # We use `OrderedDict` for compatibility with older Python versions.
-        self.stages = OrderedDict()
+    def __init__(self, parent_names: Tuple[str, ...] = ()):
+        self.sections: List[Tuple[str, TimerSection]] = []
+        self.section_active = False
+        self.parent_names = parent_names
 
     @contextlib.contextmanager
-    def stage(self, name: str):
-        assert name not in self.stages
+    def section(self, name: str) -> "Timer":
+        assert not self.section_active
+        self.section_active = True
 
-        start = time.time()
+        start = get_timestamp()
         exc = None
+
+        child_timer = Timer(parent_names=self.parent_names + (name, ))
+        full_name = " > ".join(child_timer.parent_names)
         try:
-            LOGGER.info(f"Stage `{name}` starts")
-            yield
+            LOGGER.info(f"Section `{full_name}` starts")
+            yield child_timer
         except BaseException as exception:
             exc = exception
             raise
         finally:
-            end = time.time()
+            end = get_timestamp()
             duration = end - start
-            self.stages[name] = duration
-            if exc is None:
-                LOGGER.info(f"Stage `{name}` ended: OK ({duration:.2f}s)")
+
+            if child_timer.has_children():
+                self.sections.append((name, child_timer))
             else:
-                LOGGER.info(f"Stage `{name}` ended: FAIL ({duration:.2f}s)")
+                self.sections.append((name, duration))
+            if exc is None:
+                LOGGER.info(f"Section `{full_name}` ended: OK ({duration:.2f}s)")
+            else:
+                LOGGER.info(f"Section `{full_name}` ended: FAIL ({duration:.2f}s)")
+            self.section_active = False
+
+    def total_duration(self) -> Duration:
+        duration = 0
+        for (_, section) in self.sections:
+            if isinstance(section, Duration):
+                duration += section
+            else:
+                duration += section.total_duration()
+        return duration
+
+    def has_children(self) -> bool:
+        return len(self.sections) > 0
 
     def print_stats(self):
-        total_duration = sum(self.stages.values())
+        rows = []
+        for (child_name, child_section) in self.sections:
+            for (level, name, duration) in iterate_sections(child_section, child_name, level=0):
+                label = f"{' ' * level}{name}:"
+                rows.append((label, duration))
 
-        # 57 is the width of the whole table
-        divider = "-" * 57
+        # Empty row
+        rows.append(("", ""))
+
+        total_duration_label = "Total duration:"
+        total_duration = self.total_duration()
+        rows.append((total_duration_label, humantime(total_duration)))
+
+        space_after_label = 2
+        max_label_length = max(16, max(len(label) for (label, _) in rows)) + space_after_label
+
+        table_width = max_label_length + 23
+        divider = "-" * table_width
 
         with StringIO() as output:
             print(divider, file=output)
-            for (name, duration) in self.stages.items():
-                pct = (duration / total_duration) * 100
-                name_str = f"{name}:"
-                print(f"{name_str:<34} {duration:>12.2f}s ({pct:>5.2f}%)", file=output)
-
-            total_duration_label = "Total duration:"
-            print(f"{total_duration_label:<34} {total_duration:>12.2f}s", file=output)
+            for (label, duration) in rows:
+                if isinstance(duration, Duration):
+                    pct = (duration / total_duration) * 100
+                    value = f"{duration:>12.2f}s ({pct:>5.2f}%)"
+                else:
+                    value = f"{duration:>{len(total_duration_label) + 7}}"
+                print(f"{label:<{max_label_length}} {value}", file=output)
             print(divider, file=output, end="")
             LOGGER.info(f"Timer results\n{output.getvalue()}")
 
@@ -263,6 +319,21 @@ def change_cwd(dir: Path):
     finally:
         LOGGER.debug(f"Reverting working dir to `{cwd}`")
         os.chdir(cwd)
+
+
+def humantime(time_s: float) -> str:
+    hours = time_s // 3600
+    time_s = time_s % 3600
+    minutes = time_s // 60
+    seconds = time_s % 60
+
+    result = ""
+    if hours > 0:
+        result += f"{int(hours)}h "
+    if minutes > 0:
+        result += f"{int(minutes)}m "
+    result += f"{round(seconds)}s"
+    return result
 
 
 def move_path(src: Path, dst: Path):
@@ -585,15 +656,16 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
     pipeline.build_rustc_perf()
 
     # Stage 1: Build rustc + PGO instrumented LLVM
-    with timer.stage("Build rustc (LLVM PGO)"):
-        build_rustc(pipeline, args=[
-            "--llvm-profile-generate"
-        ], env=dict(
-            LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p")
-        ))
+    with timer.section("Stage 1 (LLVM PGO)") as stage1:
+        with stage1.section("Build rustc and LLVM"):
+            build_rustc(pipeline, args=[
+                "--llvm-profile-generate"
+            ], env=dict(
+                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p")
+            ))
 
-    with timer.stage("Gather profiles (LLVM PGO)"):
-        gather_llvm_profiles(pipeline)
+        with stage1.section("Gather profiles"):
+            gather_llvm_profiles(pipeline)
 
     clear_llvm_files(pipeline)
     final_build_args += [
@@ -602,14 +674,15 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
     ]
 
     # Stage 2: Build PGO instrumented rustc + LLVM
-    with timer.stage("Build rustc (rustc PGO)"):
-        build_rustc(pipeline, args=[
-            "--rust-profile-generate",
-            pipeline.rustc_profile_dir_root()
-        ])
+    with timer.section("Stage 2 (rustc PGO)") as stage2:
+        with stage2.section("Build rustc and LLVM"):
+            build_rustc(pipeline, args=[
+                "--rust-profile-generate",
+                pipeline.rustc_profile_dir_root()
+            ])
 
-    with timer.stage("Gather profiles (rustc PGO)"):
-        gather_rustc_profiles(pipeline)
+        with stage2.section("Gather profiles"):
+            gather_rustc_profiles(pipeline)
 
     clear_llvm_files(pipeline)
     final_build_args += [
@@ -619,14 +692,15 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
 
     # Stage 3: Build rustc + BOLT instrumented LLVM
     if pipeline.supports_bolt():
-        with timer.stage("Build rustc (LLVM BOLT)"):
-            build_rustc(pipeline, args=[
-                "--llvm-profile-use",
-                pipeline.llvm_profile_merged_file(),
-                "--llvm-bolt-profile-generate",
-            ])
-        with timer.stage("Gather profiles (LLVM BOLT)"):
-            gather_llvm_bolt_profiles(pipeline)
+        with timer.section("Stage 3 (LLVM BOLT)") as stage3:
+            with stage3.section("Build rustc and LLVM"):
+                build_rustc(pipeline, args=[
+                    "--llvm-profile-use",
+                    pipeline.llvm_profile_merged_file(),
+                    "--llvm-bolt-profile-generate",
+                ])
+            with stage3.section("Gather profiles"):
+                gather_llvm_bolt_profiles(pipeline)
 
         clear_llvm_files(pipeline)
         final_build_args += [
@@ -635,7 +709,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
         ]
 
     # Stage 4: Build PGO optimized rustc + PGO/BOLT optimized LLVM
-    with timer.stage("Final build"):
+    with timer.section("Stage 4 (final build)"):
         cmd(final_build_args)
 
 
