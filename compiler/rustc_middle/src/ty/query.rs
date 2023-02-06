@@ -106,6 +106,55 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+#[inline(always)]
+fn query_get_at<'tcx, Cache, K>(
+    tcx: TyCtxt<'tcx>,
+    execute_query: fn(
+        &'tcx dyn QueryEngine<'tcx>,
+        TyCtxt<'tcx>,
+        Span,
+        Cache::Key,
+        QueryMode,
+    ) -> Option<Cache::Stored>,
+    query_cache: &Cache,
+    span: Span,
+    key: K,
+) -> Cache::Stored
+where
+    K: IntoQueryParam<Cache::Key>,
+    Cache::Stored: Copy,
+    Cache: QueryCache,
+{
+    let key = key.into_query_param();
+    match try_get_cached(tcx, query_cache, &key) {
+        Some(value) => value,
+        None => execute_query(tcx.queries, tcx, span, key, QueryMode::Get).unwrap(),
+    }
+}
+
+#[inline(always)]
+fn query_ensure<'tcx, Cache, K>(
+    tcx: TyCtxt<'tcx>,
+    execute_query: fn(
+        &'tcx dyn QueryEngine<'tcx>,
+        TyCtxt<'tcx>,
+        Span,
+        Cache::Key,
+        QueryMode,
+    ) -> Option<Cache::Stored>,
+    query_cache: &Cache,
+    key: K,
+) where
+    K: IntoQueryParam<Cache::Key>,
+    Cache::Stored: Copy,
+    Cache: QueryCache,
+{
+    let key = key.into_query_param();
+    if try_get_cached(tcx, query_cache, &key).is_none() {
+        execute_query(tcx.queries, tcx, DUMMY_SP, key, QueryMode::Ensure);
+    }
+}
+
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
     (LocalDefId) => { impl IntoQueryParam<LocalDefId> };
@@ -158,9 +207,9 @@ macro_rules! separate_provide_extern_default {
 }
 
 macro_rules! opt_remap_env_constness {
-    ([][$name:ident]) => {};
+    ([][$name:ident]) => { $name };
     ([(remap_env_constness) $($rest:tt)*][$name:ident]) => {
-        let $name = $name.without_const();
+        $name.without_const()
     };
     ([$other:tt $($modifiers:tt)*][$name:ident]) => {
         opt_remap_env_constness!([$($modifiers)*][$name])
@@ -219,13 +268,12 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
-
-                match try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key) {
-                    Some(_) => return,
-                    None => self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure),
-                };
+                query_ensure(
+                    self.tcx,
+                    QueryEngine::$name,
+                    &self.tcx.query_caches.$name,
+                    opt_remap_env_constness!([$($modifiers)*][key]),
+                );
             })*
         }
 
@@ -235,7 +283,13 @@ macro_rules! define_callbacks {
             #[must_use]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                self.at(DUMMY_SP).$name(key)
+                query_get_at(
+                    self,
+                    QueryEngine::$name,
+                    &self.query_caches.$name,
+                    DUMMY_SP,
+                    opt_remap_env_constness!([$($modifiers)*][key]),
+                )
             })*
         }
 
@@ -244,13 +298,13 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
-
-                match try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key) {
-                    Some(value) => value,
-                    None => self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap(),
-                }
+                query_get_at(
+                    self.tcx,
+                    QueryEngine::$name,
+                    &self.tcx.query_caches.$name,
+                    self.span,
+                    opt_remap_env_constness!([$($modifiers)*][key]),
+                )
             })*
         }
 
@@ -337,7 +391,7 @@ macro_rules! define_feedable {
             #[inline(always)]
             pub fn $name(self, value: query_values::$name<'tcx>) -> $V {
                 let key = self.key().into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
+                let key = opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;
                 let cache = &tcx.query_caches.$name;
