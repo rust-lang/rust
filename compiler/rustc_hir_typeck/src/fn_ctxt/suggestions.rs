@@ -705,10 +705,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::FnRetTy::Return(ty) => {
+                let span = ty.span;
+
+                if let hir::TyKind::OpaqueDef(item_id, ..) = ty.kind
+                && let hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::OpaqueTy(op_ty),
+                    ..
+                }) = self.tcx.hir().get(item_id.hir_id())
+                && let hir::OpaqueTy {
+                    bounds: [bound], ..
+                } = op_ty
+                && let hir::GenericBound::LangItemTrait(
+                    hir::LangItem::Future, _, _, generic_args) = bound
+                && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
+                && let hir::TypeBinding { kind, .. } = ty_binding
+                && let hir::TypeBindingKind::Equality { term } = kind
+                && let hir::Term::Ty(term_ty) = term {
+                    // Check if async function's return type was omitted.
+                    // Don't emit suggestions if the found type is `impl Future<...>`.
+                    debug!("suggest_missing_return_type: found = {:?}", found);
+                    if found.is_suggestable(self.tcx, false) {
+                        if term_ty.span.is_empty() {
+                            err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
+                            return true;
+                        } else {
+                            err.subdiagnostic(ExpectedReturnTypeLabel::Other { span, expected });
+                        }
+                    }
+                }
+
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
-                let span = ty.span;
                 let ty = self.astconv().ast_ty_to_ty(ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
