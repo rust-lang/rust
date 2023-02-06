@@ -1364,11 +1364,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             return;
         }
 
-        span_bug!(
-            self.tcx.hir().span(hir_id),
-            "could not resolve {param_def_id:?}, scopes: {:#?}",
-            self.scope
-        );
+        span_bug!(self.tcx.hir().span(hir_id), "could not resolve {param_def_id:?}",);
     }
 
     #[instrument(level = "debug", skip(self))]
