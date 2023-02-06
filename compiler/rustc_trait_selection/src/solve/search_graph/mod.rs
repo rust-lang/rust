@@ -1,5 +1,5 @@
 mod cache;
-mod overflow;
+pub(crate) mod overflow;
 
 use self::cache::ProvisionalEntry;
 use super::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
@@ -18,7 +18,7 @@ struct StackElem<'tcx> {
     has_been_used: bool,
 }
 
-pub(super) struct SearchGraph<'tcx> {
+pub(crate) struct SearchGraph<'tcx> {
     /// The stack of goals currently being computed.
     ///
     /// An element is *deeper* in the stack if its index is *lower*.

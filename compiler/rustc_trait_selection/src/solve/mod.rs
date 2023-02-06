@@ -31,6 +31,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::DUMMY_SP;
 
+use crate::solve::search_graph::overflow::OverflowHandler;
 use crate::traits::ObligationCause;
 
 mod assembly;
