@@ -790,17 +790,30 @@ fn codegen_stmt<'tcx>(
                     let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::Aggregate(ref kind, ref operands) => match kind.as_ref() {
-                    AggregateKind::Array(_ty) => {
-                        for (i, operand) in operands.iter().enumerate() {
-                            let operand = codegen_operand(fx, operand);
-                            let index = fx.bcx.ins().iconst(fx.pointer_type, i as i64);
-                            let to = lval.place_index(fx, index);
-                            to.write_cvalue(fx, operand);
+                Rvalue::Aggregate(ref kind, ref operands) => {
+                    let (variant_index, variant_dest, active_field_index) = match **kind {
+                        mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
+                            let variant_dest = lval.downcast_variant(fx, variant_index);
+                            (variant_index, variant_dest, active_field_index)
                         }
+                        _ => (VariantIdx::from_u32(0), lval, None),
+                    };
+                    if active_field_index.is_some() {
+                        assert_eq!(operands.len(), 1);
                     }
-                    _ => unreachable!("shouldn't exist at codegen {:?}", to_place_and_rval.1),
-                },
+                    for (i, operand) in operands.iter().enumerate() {
+                        let operand = codegen_operand(fx, operand);
+                        let field_index = active_field_index.unwrap_or(i);
+                        let to = if let mir::AggregateKind::Array(_) = **kind {
+                            let index = fx.bcx.ins().iconst(fx.pointer_type, field_index as i64);
+                            variant_dest.place_index(fx, index)
+                        } else {
+                            variant_dest.place_field(fx, mir::Field::new(field_index))
+                        };
+                        to.write_cvalue(fx, operand);
+                    }
+                    crate::discriminant::codegen_set_discriminant(fx, lval, variant_index);
+                }
             }
         }
         StatementKind::StorageLive(_)
