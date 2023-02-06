@@ -6,6 +6,7 @@
 use hir::{Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, PointerCast, Safety, Semantics};
 use ide_db::RootDatabase;
 
+use stdx::never;
 use syntax::{
     ast::{self, make, AstNode},
     ted,
@@ -210,16 +211,21 @@ fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, 
     ted::replace(expr.syntax(), dummy_expr.syntax());
 
     let parent = dummy_expr.syntax().parent();
-    let expr = if postfix {
-        let ast::Expr::TryExpr(e) = &dummy_expr else { unreachable!() };
-        let Some(ast::Expr::ParenExpr(e)) = e.expr() else { unreachable!() };
+    let Some(expr) = (|| {
+        if postfix {
+            let ast::Expr::TryExpr(e) = &dummy_expr else { return None };
+            let Some(ast::Expr::ParenExpr(e)) = e.expr() else { return None };
 
-        e.expr().unwrap()
-    } else {
-        let ast::Expr::RefExpr(e) = &dummy_expr else { unreachable!() };
-        let Some(ast::Expr::ParenExpr(e)) = e.expr() else { unreachable!() };
+            e.expr()
+        } else {
+            let ast::Expr::RefExpr(e) = &dummy_expr else { return None };
+            let Some(ast::Expr::ParenExpr(e)) = e.expr() else { return None };
 
-        e.expr().unwrap()
+            e.expr()
+        }
+    })() else {
+        never!("broken syntax tree?\n{:?}\n{:?}", expr, dummy_expr);
+        return (true, true)
     };
 
     // At this point
