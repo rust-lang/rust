@@ -25,7 +25,7 @@ mod sysroot;
 mod workspace;
 mod rustc_cfg;
 mod build_scripts;
-mod target_data_layout;
+pub mod target_data_layout;
 
 #[cfg(test)]
 mod tests;

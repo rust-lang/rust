@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{utf8_stdout, ManifestPath};
 
-pub(super) fn get(
+pub fn get(
     cargo_toml: Option<&ManifestPath>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
