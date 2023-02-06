@@ -145,30 +145,32 @@ impl<'tcx> Elaborator<'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.iter().map(|&(mut pred, span)| {
-                    // when parent predicate is non-const, elaborate it to non-const predicates.
-                    if data.constness == ty::BoundConstness::NotConst {
-                        pred = pred.without_const(tcx);
-                    }
+                let obligations =
+                    predicates.predicates.iter().enumerate().map(|(index, &(mut pred, span))| {
+                        // when parent predicate is non-const, elaborate it to non-const predicates.
+                        if data.constness == ty::BoundConstness::NotConst {
+                            pred = pred.without_const(tcx);
+                        }
 
-                    let cause = obligation.cause.clone().derived_cause(
-                        bound_predicate.rebind(data),
-                        |derived| {
-                            traits::ImplDerivedObligation(Box::new(
-                                traits::ImplDerivedObligationCause {
-                                    derived,
-                                    impl_def_id: data.def_id(),
-                                    span,
-                                },
-                            ))
-                        },
-                    );
-                    predicate_obligation(
-                        pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
-                        obligation.param_env,
-                        cause,
-                    )
-                });
+                        let cause = obligation.cause.clone().derived_cause(
+                            bound_predicate.rebind(data),
+                            |derived| {
+                                traits::ImplDerivedObligation(Box::new(
+                                    traits::ImplDerivedObligationCause {
+                                        derived,
+                                        impl_def_id: data.def_id(),
+                                        impl_def_predicate_index: Some(index),
+                                        span,
+                                    },
+                                ))
+                            },
+                        );
+                        predicate_obligation(
+                            pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
+                            obligation.param_env,
+                            cause,
+                        )
+                    });
                 debug!(?data, ?obligations, "super_predicates");
 
                 // Only keep those bounds that we haven't already seen.
