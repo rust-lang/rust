@@ -12,7 +12,7 @@ use rustc_hir::{HirId, Path};
 use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
-use rustc_session::config::{self, CrateType, ErrorOutputType};
+use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -200,6 +200,7 @@ pub(crate) fn create_config(
         scrape_examples_options,
         ..
     }: RustdocOptions,
+    RenderOptions { document_private, .. }: &RenderOptions,
 ) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
@@ -227,6 +228,13 @@ pub(crate) fn create_config(
 
     let crate_types =
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
+    let resolve_doc_links = if *document_private {
+        ResolveDocLinks::All
+    } else {
+        // Should be `ResolveDocLinks::Exported` in theory, but for some reason rustdoc
+        // still tries to request resolutions for links on private items.
+        ResolveDocLinks::All
+    };
     let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {
@@ -240,6 +248,7 @@ pub(crate) fn create_config(
         target_triple: target,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         actually_rustdoc: true,
+        resolve_doc_links,
         unstable_opts,
         error_format,
         diagnostic_width,

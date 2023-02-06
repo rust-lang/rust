@@ -742,7 +742,7 @@ fn main_args(at_args: &[String]) -> MainResult {
         (false, true) => {
             let input = options.input.clone();
             let edition = options.edition;
-            let config = core::create_config(options);
+            let config = core::create_config(options, &render_options);
 
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
@@ -775,7 +775,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
-    let config = core::create_config(options);
+    let config = core::create_config(options, &render_options);
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
