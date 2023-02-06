@@ -77,49 +77,86 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (ty::Param(p), ty::Alias(ty::Projection, proj)) | (ty::Alias(ty::Projection, proj), ty::Param(p))
                         if tcx.def_kind(proj.def_id) != DefKind::ImplTraitPlaceholder =>
                     {
-                        let generics = tcx.generics_of(body_owner_def_id);
-                        let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                        let p_def_id = tcx
+                            .generics_of(body_owner_def_id)
+                            .type_param(p, tcx)
+                            .def_id;
+                        let p_span = tcx.def_span(p_def_id);
                         if !sp.contains(p_span) {
                             diag.span_label(p_span, "this type parameter");
                         }
                         let hir = tcx.hir();
                         let mut note = true;
-                        if let Some(generics) = generics
-                            .type_param(p, tcx)
-                            .def_id
+                        let parent = p_def_id
                             .as_local()
-                            .map(|id| hir.local_def_id_to_hir_id(id))
-                            .and_then(|id| tcx.hir().find_parent(id))
-                            .as_ref()
-                            .and_then(|node| node.generics())
+                            .and_then(|id| {
+                                let local_id = hir.local_def_id_to_hir_id(id);
+                                let generics = tcx.hir().find_parent(local_id)?.generics()?;
+                                Some((id, generics))
+                            });
+                        if let Some((local_id, generics)) = parent
                         {
                             // Synthesize the associated type restriction `Add<Output = Expected>`.
                             // FIXME: extract this logic for use in other diagnostics.
                             let (trait_ref, assoc_substs) = proj.trait_ref_and_own_substs(tcx);
-                            let path =
-                                tcx.def_path_str_with_substs(trait_ref.def_id, trait_ref.substs);
                             let item_name = tcx.item_name(proj.def_id);
                             let item_args = self.format_generic_args(assoc_substs);
 
-                            let path = if path.ends_with('>') {
-                                format!(
-                                    "{}, {}{} = {}>",
-                                    &path[..path.len() - 1],
-                                    item_name,
-                                    item_args,
-                                    p
-                                )
+                            // Here, we try to see if there's an existing
+                            // trait implementation that matches the one that
+                            // we're suggesting to restrict. If so, find the
+                            // "end", whether it be at the end of the trait
+                            // or the end of the generic arguments.
+                            let mut matching_span = None;
+                            let mut matched_end_of_args = false;
+                            for bound in generics.bounds_for_param(local_id) {
+                                let potential_spans = bound
+                                    .bounds
+                                    .iter()
+                                    .find_map(|bound| {
+                                        let bound_trait_path = bound.trait_ref()?.path;
+                                        let def_id = bound_trait_path.res.opt_def_id()?;
+                                        let generic_args = bound_trait_path.segments.iter().last().map(|path| path.args());
+                                        (def_id == trait_ref.def_id).then_some((bound_trait_path.span, generic_args))
+                                    });
+
+                                if let Some((end_of_trait, end_of_args)) = potential_spans {
+                                    let args_span = end_of_args.and_then(|args| args.span());
+                                    matched_end_of_args = args_span.is_some();
+                                    matching_span = args_span
+                                        .or_else(|| Some(end_of_trait))
+                                        .map(|span| span.shrink_to_hi());
+                                    break;
+                                }
+                            }
+
+                            if matched_end_of_args {
+                                // Append suggestion to the end of our args
+                                let path = format!(", {}{} = {}",item_name, item_args, p);
+                                note = !suggest_constraining_type_param(
+                                    tcx,
+                                    generics,
+                                    diag,
+                                    &format!("{}", proj.self_ty()),
+                                    &path,
+                                    None,
+                                    matching_span,
+                                );
                             } else {
-                                format!("{}<{}{} = {}>", path, item_name, item_args, p)
-                            };
-                            note = !suggest_constraining_type_param(
-                                tcx,
-                                generics,
-                                diag,
-                                &format!("{}", proj.self_ty()),
-                                &path,
-                                None,
-                            );
+                                // Suggest adding a bound to an existing trait
+                                // or if the trait doesn't exist, add the trait
+                                // and the suggested bounds.
+                                let path = format!("<{}{} = {}>", item_name, item_args, p);
+                                note = !suggest_constraining_type_param(
+                                    tcx,
+                                    generics,
+                                    diag,
+                                    &format!("{}", proj.self_ty()),
+                                    &path,
+                                    None,
+                                    matching_span,
+                                );
+                            }
                         }
                         if note {
                             diag.note("you might be missing a type parameter or trait bound");

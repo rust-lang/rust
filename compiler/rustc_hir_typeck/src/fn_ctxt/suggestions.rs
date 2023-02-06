@@ -1457,6 +1457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     generics,
                     diag,
                     vec![(param.name.as_str(), "Clone", Some(clone_trait_did))].into_iter(),
+                    None,
                 );
             } else {
                 self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);
