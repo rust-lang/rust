@@ -117,6 +117,11 @@ config_data! {
         ///
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysroot: Option<String>    = "\"discover\"",
+        /// Relative path to the sysroot library sources. If left unset, this will default to
+        /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        cargo_sysrootSrc: Option<String>    = "null",
         /// Compilation target override (target triple).
         // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
         // than `checkOnSave_target`
@@ -1103,6 +1108,8 @@ impl Config {
                 RustcSource::Path(self.root_path.join(sysroot))
             }
         });
+        let sysroot_src =
+            self.data.cargo_sysrootSrc.as_ref().map(|sysroot| self.root_path.join(sysroot));
 
         CargoConfig {
             features: match &self.data.cargo_features {
@@ -1114,6 +1121,7 @@ impl Config {
             },
             target: self.data.cargo_target.clone(),
             sysroot,
+            sysroot_src,
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,

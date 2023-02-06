@@ -190,8 +190,8 @@ impl ProjectWorkspace {
                 })?;
                 let cargo = CargoWorkspace::new(meta);
 
-                let sysroot = match &config.sysroot {
-                    Some(RustcSource::Path(path)) => {
+                let sysroot = match (&config.sysroot, &config.sysroot_src) {
+                    (Some(RustcSource::Path(path)), None) => {
                         match Sysroot::with_sysroot_dir(path.clone()) {
                             Ok(it) => Some(it),
                             Err(e) => {
@@ -200,7 +200,7 @@ impl ProjectWorkspace {
                             }
                         }
                     }
-                    Some(RustcSource::Discover) => {
+                    (Some(RustcSource::Discover), None) => {
                         match Sysroot::discover(cargo_toml.parent(), &config.extra_env) {
                             Ok(it) => Some(it),
                             Err(e) => {
@@ -213,8 +213,29 @@ impl ProjectWorkspace {
                             }
                         }
                     }
-                    None => None,
+                    (Some(RustcSource::Path(sysroot)), Some(sysroot_src)) => {
+                        Some(Sysroot::load(sysroot.clone(), sysroot_src.clone()))
+                    }
+                    (Some(RustcSource::Discover), Some(sysroot_src)) => {
+                        match Sysroot::discover_with_src_override(
+                            cargo_toml.parent(),
+                            &config.extra_env,
+                            sysroot_src.clone(),
+                        ) {
+                            Ok(it) => Some(it),
+                            Err(e) => {
+                                tracing::error!(
+                                    %e,
+                                    "Failed to find sysroot for Cargo.toml file {}. Is rust-src installed?",
+                                    cargo_toml.display()
+                                );
+                                None
+                            }
+                        }
+                    }
+                    (None, _) => None,
                 };
+
                 if let Some(sysroot) = &sysroot {
                     tracing::info!(src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
                 }
@@ -440,9 +461,11 @@ impl ProjectWorkspace {
     /// The return type contains the path and whether or not
     /// the root is a member of the current workspace
     pub fn to_roots(&self) -> Vec<PackageRoot> {
-        let mk_sysroot = |sysroot: Option<&Sysroot>| {
+        let mk_sysroot = |sysroot: Option<&Sysroot>, project_root: Option<&AbsPath>| {
             sysroot.map(|sysroot| PackageRoot {
-                is_local: false,
+                // mark the sysroot as mutable if it is located inside of the project
+                is_local: project_root
+                    .map_or(false, |project_root| sysroot.src_root().starts_with(project_root)),
                 include: vec![sysroot.src_root().to_path_buf()],
                 exclude: Vec::new(),
             })
@@ -457,7 +480,7 @@ impl ProjectWorkspace {
                 })
                 .collect::<FxHashSet<_>>()
                 .into_iter()
-                .chain(mk_sysroot(sysroot.as_ref()))
+                .chain(mk_sysroot(sysroot.as_ref(), Some(project.path())))
                 .collect::<Vec<_>>(),
             ProjectWorkspace::Cargo {
                 cargo,
@@ -507,7 +530,7 @@ impl ProjectWorkspace {
                         }
                         PackageRoot { is_local, include, exclude }
                     })
-                    .chain(mk_sysroot(sysroot.as_ref()))
+                    .chain(mk_sysroot(sysroot.as_ref(), Some(cargo.workspace_root())))
                     .chain(rustc.iter().flat_map(|rustc| {
                         rustc.packages().map(move |krate| PackageRoot {
                             is_local: false,
@@ -524,7 +547,7 @@ impl ProjectWorkspace {
                     include: vec![detached_file.clone()],
                     exclude: Vec::new(),
                 })
-                .chain(mk_sysroot(sysroot.as_ref()))
+                .chain(mk_sysroot(sysroot.as_ref(), None))
                 .collect(),
         }
     }
