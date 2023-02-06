@@ -270,10 +270,11 @@ where
             | ty::Ref(..)
             | ty::FnPtr(..)
             | ty::Param(..)
+            | ty::Bound(..)
             | ty::Error(_)
             | ty::GeneratorWitness(..)
             | ty::GeneratorWitnessMIR(..) => {}
-            ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
+            ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
         }
