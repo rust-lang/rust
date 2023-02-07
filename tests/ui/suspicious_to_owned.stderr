@@ -5,12 +5,14 @@ LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::suspicious-to-owned` implied by `-D warnings`
-help: depending on intent, either make the Cow an Owned variant or clone the Cow itself
+help: depending on intent, either make the Cow an Owned variant
+   |
+LL |     let _ = cow.into_owned();
+   |             ~~~~~~~~~~~~~~~~
+help: or clone the Cow itself
    |
 LL |     let _ = cow.clone();
    |             ~~~~~~~~~~~
-LL |     let _ = cow.into_owned();
-   |             ~~~~~~~~~~~~~~~~
 
 error: this `to_owned` call clones the Cow<'_, [char; 3]> itself and does not cause the Cow<'_, [char; 3]> contents to become owned
   --> $DIR/suspicious_to_owned.rs:26:13
@@ -18,12 +20,14 @@ error: this `to_owned` call clones the Cow<'_, [char; 3]> itself and does not ca
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
    |
-help: depending on intent, either make the Cow an Owned variant or clone the Cow itself
+help: depending on intent, either make the Cow an Owned variant
+   |
+LL |     let _ = cow.into_owned();
+   |             ~~~~~~~~~~~~~~~~
+help: or clone the Cow itself
    |
 LL |     let _ = cow.clone();
    |             ~~~~~~~~~~~
-LL |     let _ = cow.into_owned();
-   |             ~~~~~~~~~~~~~~~~
 
 error: this `to_owned` call clones the Cow<'_, Vec<char>> itself and does not cause the Cow<'_, Vec<char>> contents to become owned
   --> $DIR/suspicious_to_owned.rs:36:13
@@ -31,12 +35,14 @@ error: this `to_owned` call clones the Cow<'_, Vec<char>> itself and does not ca
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
    |
-help: depending on intent, either make the Cow an Owned variant or clone the Cow itself
+help: depending on intent, either make the Cow an Owned variant
+   |
+LL |     let _ = cow.into_owned();
+   |             ~~~~~~~~~~~~~~~~
+help: or clone the Cow itself
    |
 LL |     let _ = cow.clone();
    |             ~~~~~~~~~~~
-LL |     let _ = cow.into_owned();
-   |             ~~~~~~~~~~~~~~~~
 
 error: this `to_owned` call clones the Cow<'_, str> itself and does not cause the Cow<'_, str> contents to become owned
   --> $DIR/suspicious_to_owned.rs:46:13
@@ -44,12 +50,14 @@ error: this `to_owned` call clones the Cow<'_, str> itself and does not cause th
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
    |
-help: depending on intent, either make the Cow an Owned variant or clone the Cow itself
+help: depending on intent, either make the Cow an Owned variant
+   |
+LL |     let _ = cow.into_owned();
+   |             ~~~~~~~~~~~~~~~~
+help: or clone the Cow itself
    |
 LL |     let _ = cow.clone();
    |             ~~~~~~~~~~~
-LL |     let _ = cow.into_owned();
-   |             ~~~~~~~~~~~~~~~~
 
 error: implicitly cloning a `String` by calling `to_owned` on its dereferenced type
   --> $DIR/suspicious_to_owned.rs:60:13
