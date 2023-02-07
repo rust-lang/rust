@@ -1,4 +1,4 @@
-name: Internal Compiler Error (Structured form)
+name: Internal Compiler Error (for use by automated tooling)
 description: For now, you'll want to use the other ICE template, as GitHub forms have strict limits on the size of fields so backtraces cannot be pasted directly.
 labels: ["C-bug", "I-ICE", "T-compiler"]
 title: "[ICE]: "
