@@ -562,7 +562,7 @@ Supported values for this option are:
 * `v0` — The "v0" mangling scheme. The specific format is not specified at
   this time.
 
-The default if not specified will use a compiler-chosen default which may
+The default, if not specified, will use a compiler-chosen default which may
 change in the future.
 
 [name mangling]: https://en.wikipedia.org/wiki/Name_mangling

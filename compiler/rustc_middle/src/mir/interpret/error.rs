@@ -430,8 +430,10 @@ pub enum ResourceExhaustionInfo {
     ///
     /// The exact limit is set by the `const_eval_limit` attribute.
     StepLimitReached,
-    /// There is not enough memory to perform an allocation.
+    /// There is not enough memory (on the host) to perform an allocation.
     MemoryExhausted,
+    /// The address space (of the target) is full.
+    AddressSpaceFull,
 }
 
 impl fmt::Display for ResourceExhaustionInfo {
@@ -446,6 +448,9 @@ impl fmt::Display for ResourceExhaustionInfo {
             }
             MemoryExhausted => {
                 write!(f, "tried to allocate more memory than available to compiler")
+            }
+            AddressSpaceFull => {
+                write!(f, "there are no more free addresses in the address space")
             }
         }
     }

@@ -190,9 +190,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             0 => {
                 // These are "mutable" allocations as we consider them to be owned by the callee.
                 let name_alloc =
-                    this.allocate_str(&name, MiriMemoryKind::Rust.into(), Mutability::Mut);
+                    this.allocate_str(&name, MiriMemoryKind::Rust.into(), Mutability::Mut)?;
                 let filename_alloc =
-                    this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut);
+                    this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut)?;
 
                 this.write_immediate(
                     name_alloc.to_ref(this),
