@@ -654,7 +654,7 @@ impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyValue<T> {
 impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyArray<T> {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
         let len = decoder.read_usize();
-        if len == 0 { LazyArray::empty() } else { decoder.read_lazy_array(len) }
+        if len == 0 { LazyArray::default() } else { decoder.read_lazy_array(len) }
     }
 }
 
@@ -864,7 +864,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, index)
-                .unwrap_or_else(LazyArray::empty)
+                .expect("fields are not encoded for a variant")
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
@@ -896,7 +896,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, item_id)
-                .unwrap_or_else(LazyArray::empty)
+                .expect("variants are not encoded for an enum")
                 .decode(self)
                 .filter_map(|index| {
                     let kind = self.def_kind(index);
@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .fn_arg_names
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .expect("argument names not encoded for a function")
             .decode((self, sess))
             .nth(0)
             .map_or(false, |ident| ident.name == kw::SelfLower)
@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .expect("associated items not encoded for an item")
             .decode((self, sess))
             .map(move |child_index| self.local_def_id(child_index))
     }
@@ -1068,13 +1068,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn get_associated_item(self, id: DefIndex, sess: &'a Session) -> ty::AssocItem {
         let name = self.item_name(id);
 
-        let kind = match self.def_kind(id) {
-            DefKind::AssocConst => ty::AssocKind::Const,
-            DefKind::AssocFn => ty::AssocKind::Fn,
-            DefKind::AssocTy => ty::AssocKind::Type,
+        let (kind, has_self) = match self.def_kind(id) {
+            DefKind::AssocConst => (ty::AssocKind::Const, false),
+            DefKind::AssocFn => (ty::AssocKind::Fn, self.get_fn_has_self_parameter(id, sess)),
+            DefKind::AssocTy => (ty::AssocKind::Type, false),
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
-        let has_self = self.get_fn_has_self_parameter(id, sess);
         let container = self.root.tables.assoc_container.get(self, id).unwrap();
 
         ty::AssocItem {
@@ -1131,7 +1130,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .expect("fields not encoded for a struct")
             .decode(self)
             .map(move |index| respan(self.get_span(index, sess), self.item_name(index)))
     }
@@ -1144,7 +1143,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .expect("fields not encoded for a struct")
             .decode(self)
             .map(move |field_index| self.get_visibility(field_index))
     }
@@ -1159,7 +1158,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .inherent_impls
                 .get(self, id)
-                .unwrap_or_else(LazyArray::empty)
                 .decode(self)
                 .map(|index| self.local_def_id(index)),
         )
@@ -1174,7 +1172,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .inherent_impls
                 .get(self, ty_index)
-                .unwrap_or_else(LazyArray::empty)
                 .decode(self)
                 .map(move |impl_index| (ty_def_id, self.local_def_id(impl_index)))
         })
@@ -1322,7 +1319,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     ) -> DefPathHash {
         *def_path_hashes
             .entry(index)
-            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index).unwrap())
+            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index))
     }
 
     #[inline]

@@ -119,6 +119,12 @@ impl DefPathHash {
     }
 }
 
+impl Default for DefPathHash {
+    fn default() -> Self {
+        DefPathHash(Fingerprint::ZERO)
+    }
+}
+
 impl Borrow<Fingerprint> for DefPathHash {
     #[inline]
     fn borrow(&self) -> &Fingerprint {
