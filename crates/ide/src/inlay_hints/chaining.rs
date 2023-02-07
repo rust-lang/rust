@@ -440,7 +440,20 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "<Item = ()>",
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Item",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2643..2647,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            " = ()>",
                         ],
                     },
                     InlayHint {
@@ -460,7 +473,20 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "<Item = ()>",
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Item",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2643..2647,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            " = ()>",
                         ],
                     },
                     InlayHint {
@@ -480,7 +506,20 @@ fn main() {
                                 ),
                                 tooltip: "",
                             },
-                            "<Item = ()>",
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Item",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2643..2647,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            " = ()>",
                         ],
                     },
                     InlayHint {

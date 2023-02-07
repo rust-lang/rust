@@ -330,7 +330,20 @@ fn main(a: SliceIter<'_, Container>) {
                                 ),
                                 tooltip: "",
                             },
-                            "<Item = impl ",
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Item",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2643..2647,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            " = impl ",
                             InlayHintLabelPart {
                                 text: "Iterator",
                                 linked_location: Some(
@@ -343,7 +356,20 @@ fn main(a: SliceIter<'_, Container>) {
                                 ),
                                 tooltip: "",
                             },
-                            "<Item = &&str>>",
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Item",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2643..2647,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            " = &&str>>",
                         ],
                     },
                     InlayHint {
