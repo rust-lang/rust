@@ -679,6 +679,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         &param_name,
                         &constraint,
                         Some(trait_pred.def_id()),
+                        None,
                     ) {
                         return;
                     }
@@ -1087,6 +1088,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     param.name.as_str(),
                     "Clone",
                     Some(clone_trait),
+                    None,
                 );
             }
             err.span_suggestion_verbose(

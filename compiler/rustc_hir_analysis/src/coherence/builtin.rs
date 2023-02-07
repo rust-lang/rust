@@ -176,6 +176,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 bounds.iter().map(|(param, constraint, def_id)| {
                     (param.as_str(), constraint.as_str(), *def_id)
                 }),
+                None,
             );
             err.emit();
         }
