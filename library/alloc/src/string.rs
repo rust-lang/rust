@@ -928,12 +928,12 @@ impl String {
 
     /// Copies elements from `src` range to the end of the string.
     ///
-    /// ## Panics
+    /// # Panics
     ///
     /// Panics if the starting point or end point do not lie on a [`char`]
     /// boundary, or if they're out of bounds.
     ///
-    /// ## Examples
+    /// # Examples
     ///
     /// ```
     /// #![feature(string_extend_from_within)]
