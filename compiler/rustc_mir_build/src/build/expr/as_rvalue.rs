@@ -439,10 +439,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        Box::new(AggregateKind::Generator(closure_id, substs, movability))
+                        Box::new(AggregateKind::Generator(
+                            closure_id.to_def_id(),
+                            substs,
+                            movability,
+                        ))
                     }
                     UpvarSubsts::Closure(substs) => {
-                        Box::new(AggregateKind::Closure(closure_id, substs))
+                        Box::new(AggregateKind::Closure(closure_id.to_def_id(), substs))
                     }
                 };
                 block.and(Rvalue::Aggregate(result, operands))

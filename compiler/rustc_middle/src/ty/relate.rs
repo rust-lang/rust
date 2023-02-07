@@ -629,6 +629,8 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         b = tcx.expand_abstract_consts(b);
     }
 
+    debug!("{}.super_relate_consts(normed_a = {:?}, normed_b = {:?})", relation.tag(), a, b);
+
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
     // to structural-match types.
@@ -665,30 +667,28 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
 
             // FIXME(generic_const_exprs): is it possible to relate two consts which are not identical
             // exprs? Should we care about that?
+            // FIXME(generic_const_exprs): relating the `ty()`s is a little weird since it is supposed to
+            // ICE If they mismatch. Unfortunately `ConstKind::Expr` is a little special and can be thought
+            // of as being generic over the argument types, however this is implicit so these types don't get
+            // related when we relate the substs of the item this const arg is for.
             let expr = match (ae, be) {
-                (Expr::Binop(a_op, al, ar), Expr::Binop(b_op, bl, br))
-                    if a_op == b_op && al.ty() == bl.ty() && ar.ty() == br.ty() =>
-                {
+                (Expr::Binop(a_op, al, ar), Expr::Binop(b_op, bl, br)) if a_op == b_op => {
+                    r.relate(al.ty(), bl.ty())?;
+                    r.relate(ar.ty(), br.ty())?;
                     Expr::Binop(a_op, r.consts(al, bl)?, r.consts(ar, br)?)
                 }
-                (Expr::UnOp(a_op, av), Expr::UnOp(b_op, bv))
-                    if a_op == b_op && av.ty() == bv.ty() =>
-                {
+                (Expr::UnOp(a_op, av), Expr::UnOp(b_op, bv)) if a_op == b_op => {
+                    r.relate(av.ty(), bv.ty())?;
                     Expr::UnOp(a_op, r.consts(av, bv)?)
                 }
-                (Expr::Cast(ak, av, at), Expr::Cast(bk, bv, bt))
-                    if ak == bk && av.ty() == bv.ty() =>
-                {
+                (Expr::Cast(ak, av, at), Expr::Cast(bk, bv, bt)) if ak == bk => {
+                    r.relate(av.ty(), bv.ty())?;
                     Expr::Cast(ak, r.consts(av, bv)?, r.tys(at, bt)?)
                 }
                 (Expr::FunctionCall(af, aa), Expr::FunctionCall(bf, ba))
-                    if aa.len() == ba.len()
-                        && af.ty() == bf.ty()
-                        && aa
-                            .iter()
-                            .zip(ba.iter())
-                            .all(|(a_arg, b_arg)| a_arg.ty() == b_arg.ty()) =>
+                    if aa.len() == ba.len() =>
                 {
+                    r.relate(af.ty(), bf.ty())?;
                     let func = r.consts(af, bf)?;
                     let mut related_args = Vec::with_capacity(aa.len());
                     for (a_arg, b_arg) in aa.iter().zip(ba.iter()) {

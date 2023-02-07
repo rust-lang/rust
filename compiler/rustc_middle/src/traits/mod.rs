@@ -5,6 +5,7 @@
 mod chalk;
 pub mod query;
 pub mod select;
+pub mod solve;
 pub mod specialization_graph;
 mod structural_impls;
 pub mod util;
@@ -474,6 +475,8 @@ pub enum WellFormedLoc {
 pub struct ImplDerivedObligationCause<'tcx> {
     pub derived: DerivedObligationCause<'tcx>,
     pub impl_def_id: DefId,
+    /// The index of the derived predicate in the parent impl's predicates.
+    pub impl_def_predicate_index: Option<usize>,
     pub span: Span,
 }
 

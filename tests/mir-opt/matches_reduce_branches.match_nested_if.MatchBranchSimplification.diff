@@ -20,7 +20,7 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/matches_reduce_branches.rs:+1:9: +1:12
           StorageLive(_2);                 // scope 0 at $DIR/matches_reduce_branches.rs:+1:21: +1:23
-          Deinit(_2);                      // scope 0 at $DIR/matches_reduce_branches.rs:+1:21: +1:23
+          _2 = ();                         // scope 0 at $DIR/matches_reduce_branches.rs:+1:21: +1:23
           StorageLive(_3);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:15: +6:10
           StorageLive(_4);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:18: +2:76
           StorageLive(_5);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:21: +2:52

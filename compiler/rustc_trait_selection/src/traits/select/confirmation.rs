@@ -1190,6 +1190,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
                     derived,
                     impl_def_id,
+                    impl_def_predicate_index: None,
                     span: obligation.cause.span,
                 }))
             });

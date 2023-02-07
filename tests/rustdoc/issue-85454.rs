@@ -5,7 +5,7 @@
 extern crate issue_85454;
 
 // @has foo/trait.FromResidual.html
-// @has - '//pre[@class="rust item-decl"]' 'pub trait FromResidual<R = <Self as Try>::Residual> { fn from_residual(residual: R) -> Self; }'
+// @has - '//pre[@class="rust item-decl"]' 'pub trait FromResidual<R = <Self as Try>::Residual> { // Required method fn from_residual(residual: R) -> Self; }'
 pub trait FromResidual<R = <Self as Try>::Residual> {
     fn from_residual(residual: R) -> Self;
 }
@@ -24,6 +24,6 @@ pub enum ControlFlow<B, C = ()> {
 
 pub mod reexport {
     // @has foo/reexport/trait.FromResidual.html
-    // @has - '//pre[@class="rust item-decl"]' 'pub trait FromResidual<R = <Self as Try>::Residual> { fn from_residual(residual: R) -> Self; }'
+    // @has - '//pre[@class="rust item-decl"]' 'pub trait FromResidual<R = <Self as Try>::Residual> { // Required method fn from_residual(residual: R) -> Self; }'
     pub use issue_85454::*;
 }

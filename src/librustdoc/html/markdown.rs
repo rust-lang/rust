@@ -102,14 +102,14 @@ pub struct Markdown<'a> {
     /// E.g. if `heading_offset: HeadingOffset::H2`, then `# something` renders an `<h2>`.
     pub heading_offset: HeadingOffset,
 }
-/// A tuple struct like `Markdown` that renders the markdown with a table of contents.
-pub(crate) struct MarkdownWithToc<'a>(
-    pub(crate) &'a str,
-    pub(crate) &'a mut IdMap,
-    pub(crate) ErrorCodes,
-    pub(crate) Edition,
-    pub(crate) &'a Option<Playground>,
-);
+/// A struct like `Markdown` that renders the markdown with a table of contents.
+pub(crate) struct MarkdownWithToc<'a> {
+    pub(crate) content: &'a str,
+    pub(crate) ids: &'a mut IdMap,
+    pub(crate) error_codes: ErrorCodes,
+    pub(crate) edition: Edition,
+    pub(crate) playground: &'a Option<Playground>,
+}
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
 pub(crate) struct MarkdownItemInfo<'a>(pub(crate) &'a str, pub(crate) &'a mut IdMap);
@@ -1048,7 +1048,7 @@ impl Markdown<'_> {
 
 impl MarkdownWithToc<'_> {
     pub(crate) fn into_string(self) -> String {
-        let MarkdownWithToc(md, ids, codes, edition, playground) = self;
+        let MarkdownWithToc { content: md, ids, error_codes: codes, edition, playground } = self;
 
         let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 

@@ -1,0 +1,12 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-fn-ptr-for-fn-item-in-fn-ret.rs:7:13
+   |
+LL | fn bar() -> _ { Wrapper(foo) }
+   |             ^
+   |             |
+   |             not allowed in type signatures
+   |             help: replace with the correct return type: `Wrapper<fn()>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0121`.

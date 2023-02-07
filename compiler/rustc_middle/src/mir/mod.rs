@@ -2098,10 +2098,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
                         let name = if tcx.sess.opts.unstable_opts.span_free_formats {
                             let substs = tcx.lift(substs).unwrap();
-                            format!(
-                                "[closure@{}]",
-                                tcx.def_path_str_with_substs(def_id.to_def_id(), substs),
-                            )
+                            format!("[closure@{}]", tcx.def_path_str_with_substs(def_id, substs),)
                         } else {
                             let span = tcx.def_span(def_id);
                             format!(
@@ -2112,10 +2109,16 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         let mut struct_fmt = fmt.debug_struct(&name);
 
                         // FIXME(project-rfc-2229#48): This should be a list of capture names/places
-                        if let Some(upvars) = tcx.upvars_mentioned(def_id) {
+                        if let Some(def_id) = def_id.as_local()
+                            && let Some(upvars) = tcx.upvars_mentioned(def_id)
+                        {
                             for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                 let var_name = tcx.hir().name(var_id);
                                 struct_fmt.field(var_name.as_str(), place);
+                            }
+                        } else {
+                            for (index, place) in places.iter().enumerate() {
+                                struct_fmt.field(&format!("{index}"), place);
                             }
                         }
 
@@ -2127,10 +2130,16 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         let mut struct_fmt = fmt.debug_struct(&name);
 
                         // FIXME(project-rfc-2229#48): This should be a list of capture names/places
-                        if let Some(upvars) = tcx.upvars_mentioned(def_id) {
+                        if let Some(def_id) = def_id.as_local()
+                            && let Some(upvars) = tcx.upvars_mentioned(def_id)
+                        {
                             for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                 let var_name = tcx.hir().name(var_id);
                                 struct_fmt.field(var_name.as_str(), place);
+                            }
+                        } else {
+                            for (index, place) in places.iter().enumerate() {
+                                struct_fmt.field(&format!("{index}"), place);
                             }
                         }
 

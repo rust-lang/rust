@@ -2213,21 +2213,17 @@ fn clean_maybe_renamed_item<'tcx>(
             get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs);
         }
 
-        if !extra_attrs.is_empty() {
+        let mut item = if !extra_attrs.is_empty() {
             extra_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
             let attrs = Attributes::from_ast(&extra_attrs);
             let cfg = extra_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
 
-            vec![Item::from_def_id_and_attrs_and_parts(
-                def_id,
-                Some(name),
-                kind,
-                Box::new(attrs),
-                cfg,
-            )]
+            Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg)
         } else {
-            vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
-        }
+            Item::from_def_id_and_parts(def_id, Some(name), kind, cx)
+        };
+        item.inline_stmt_id = import_id.map(|def_id| def_id.to_def_id());
+        vec![item]
     })
 }
 

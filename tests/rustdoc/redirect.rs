@@ -9,9 +9,10 @@ pub trait Foo {}
 // @has redirect/index.html
 // @has - '//code' 'pub use reexp_stripped::Bar'
 // @has - '//code/a' 'Bar'
+// @has - '//a[@href="../reexp_stripped/hidden/struct.Bar.html"]' 'Bar'
 // @has reexp_stripped/hidden/struct.Bar.html
-// @has - '//p/a' '../../reexp_stripped/struct.Bar.html'
 // @has 'reexp_stripped/struct.Bar.html'
+// @has - '//a[@href="struct.Bar.html"]' 'Bar'
 #[doc(no_inline)]
 pub use reexp_stripped::Bar;
 impl Foo for Bar {}

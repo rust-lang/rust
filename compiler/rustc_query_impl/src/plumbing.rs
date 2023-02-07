@@ -314,11 +314,14 @@ pub(crate) fn create_query_frame<
     kind: DepKind,
     name: &'static str,
 ) -> QueryStackFrame<DepKind> {
-    // Disable visible paths printing for performance reasons.
-    // Showing visible path instead of any path is not that important in production.
-    let description = ty::print::with_no_visible_paths!(
-        // Force filename-line mode to avoid invoking `type_of` query.
-        ty::print::with_forced_impl_filename_line!(do_describe(tcx.tcx, key))
+    // Avoid calling queries while formatting the description
+    let description = ty::print::with_no_queries!(
+        // Disable visible paths printing for performance reasons.
+        // Showing visible path instead of any path is not that important in production.
+        ty::print::with_no_visible_paths!(
+            // Force filename-line mode to avoid invoking `type_of` query.
+            ty::print::with_forced_impl_filename_line!(do_describe(tcx.tcx, key))
+        )
     );
     let description =
         if tcx.sess.verbose() { format!("{description} [{name:?}]") } else { description };

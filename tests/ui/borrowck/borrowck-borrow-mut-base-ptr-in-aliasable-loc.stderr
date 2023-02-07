@@ -1,11 +1,13 @@
 error[E0594]: cannot assign to `**t1`, which is behind a `&` reference
   --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:9:5
    |
-LL |     let t1 = t0;
-   |         -- consider changing this binding's type to be: `&mut &mut isize`
-LL |     let p: &isize = &**t0;
 LL |     **t1 = 22;
    |     ^^^^^^^^^ `t1` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider specifying this binding's type
+   |
+LL |     let t1: &mut &mut isize = t0;
+   |           +++++++++++++++++
 
 error[E0502]: cannot borrow `**t0` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:14:21

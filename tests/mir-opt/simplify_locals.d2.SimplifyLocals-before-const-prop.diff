@@ -9,15 +9,11 @@
   
       bb0: {
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify_locals.rs:+2:22: +2:26
--         Deinit(_1);                      // scope 0 at $DIR/simplify_locals.rs:+2:22: +2:26
--         discriminant(_1) = 1;            // scope 0 at $DIR/simplify_locals.rs:+2:22: +2:26
+-         _1 = E::B;                       // scope 0 at $DIR/simplify_locals.rs:+2:22: +2:26
 -         StorageLive(_2);                 // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:17
 -         StorageLive(_3);                 // scope 0 at $DIR/simplify_locals.rs:+2:11: +2:15
--         Deinit(_3);                      // scope 0 at $DIR/simplify_locals.rs:+2:11: +2:15
--         discriminant(_3) = 0;            // scope 0 at $DIR/simplify_locals.rs:+2:11: +2:15
--         Deinit(_2);                      // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
--         (_2.0: i32) = const 10_i32;      // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
--         (_2.1: E) = move _3;             // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
+-         _3 = E::A;                       // scope 0 at $DIR/simplify_locals.rs:+2:11: +2:15
+-         _2 = (const 10_i32, move _3);    // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify_locals.rs:+2:15: +2:16
 -         (_2.1: E) = move _1;             // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:26
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify_locals.rs:+2:25: +2:26

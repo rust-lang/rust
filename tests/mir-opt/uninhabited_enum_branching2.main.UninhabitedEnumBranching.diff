@@ -23,11 +23,8 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:9: +1:13
           StorageLive(_2);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:38: +1:46
-          Deinit(_2);                      // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:38: +1:46
-          discriminant(_2) = 2;            // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:38: +1:46
-          Deinit(_1);                      // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:16: +1:48
-          (_1.0: u32) = const 51_u32;      // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:16: +1:48
-          (_1.1: Test1) = move _2;         // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:16: +1:48
+          _2 = Test1::C;                   // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:38: +1:46
+          _1 = Plop { xx: const 51_u32, test1: move _2 }; // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:16: +1:48
           StorageDead(_2);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:47: +1:48
           StorageLive(_3);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+3:5: +8:6
           StorageLive(_4);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+3:11: +3:22

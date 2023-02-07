@@ -62,8 +62,7 @@ fn main() -> () {
         StorageLive(_3);                 // scope 1 at $DIR/retag.rs:+3:13: +3:14
         StorageLive(_4);                 // scope 1 at $DIR/retag.rs:+3:17: +3:36
         StorageLive(_5);                 // scope 1 at $DIR/retag.rs:+3:17: +3:24
-        Deinit(_5);                      // scope 1 at $DIR/retag.rs:+3:17: +3:24
-        (_5.0: i32) = const 0_i32;       // scope 1 at $DIR/retag.rs:+3:17: +3:24
+        _5 = Test(const 0_i32);          // scope 1 at $DIR/retag.rs:+3:17: +3:24
         _4 = &_5;                        // scope 1 at $DIR/retag.rs:+3:17: +3:36
         StorageLive(_6);                 // scope 1 at $DIR/retag.rs:+3:29: +3:35
         StorageLive(_7);                 // scope 1 at $DIR/retag.rs:+3:29: +3:35
@@ -107,7 +106,14 @@ fn main() -> () {
         StorageDead(_2);                 // scope 1 at $DIR/retag.rs:+8:5: +8:6
         StorageLive(_13);                // scope 1 at $DIR/retag.rs:+11:9: +11:10
         StorageLive(_14);                // scope 1 at $DIR/retag.rs:+11:31: +14:6
-        Deinit(_14);                     // scope 1 at $DIR/retag.rs:+11:31: +14:6
+        _14 = [closure@main::{closure#0}]; // scope 1 at $DIR/retag.rs:+11:31: +14:6
+                                         // closure
+                                         // + def_id: DefId(0:14 ~ retag[4622]::main::{closure#0})
+                                         // + substs: [
+                                         //     i8,
+                                         //     for<'a> extern "rust-call" fn((&'a i32,)) -> &'a i32,
+                                         //     (),
+                                         // ]
         Retag(_14);                      // scope 1 at $DIR/retag.rs:+11:31: +14:6
         _13 = move _14 as for<'a> fn(&'a i32) -> &'a i32 (Pointer(ClosureFnPointer(Normal))); // scope 1 at $DIR/retag.rs:+11:31: +14:6
         StorageDead(_14);                // scope 1 at $DIR/retag.rs:+11:47: +11:48
@@ -129,8 +135,7 @@ fn main() -> () {
         StorageLive(_19);                // scope 7 at $DIR/retag.rs:+18:5: +18:24
         StorageLive(_20);                // scope 7 at $DIR/retag.rs:+18:5: +18:24
         StorageLive(_21);                // scope 7 at $DIR/retag.rs:+18:5: +18:12
-        Deinit(_21);                     // scope 7 at $DIR/retag.rs:+18:5: +18:12
-        (_21.0: i32) = const 0_i32;      // scope 7 at $DIR/retag.rs:+18:5: +18:12
+        _21 = Test(const 0_i32);         // scope 7 at $DIR/retag.rs:+18:5: +18:12
         _20 = &_21;                      // scope 7 at $DIR/retag.rs:+18:5: +18:24
         StorageLive(_22);                // scope 7 at $DIR/retag.rs:+18:21: +18:23
         StorageLive(_23);                // scope 7 at $DIR/retag.rs:+18:21: +18:23

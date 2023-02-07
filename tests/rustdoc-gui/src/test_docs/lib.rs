@@ -340,7 +340,7 @@ pub mod details {
 pub mod doc_block_table {
 
     pub trait DocBlockTableTrait {
-        fn func();
+        fn foo();
     }
 
     /// Struct doc.
@@ -359,7 +359,7 @@ pub mod doc_block_table {
         /// | header1                  | header2                  |
         /// |--------------------------|--------------------------|
         /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
-        fn func() {
+        fn foo() {
             println!();
         }
     }
@@ -474,3 +474,15 @@ impl TypeWithImplDoc {
 ///
 /// </sub>
 pub mod codeblock_sub {}
+pub mod search_results {
+
+    pub struct SearchResults {
+        pub foo: i32,
+    }
+
+    #[macro_export]
+    macro_rules! foo {
+        () => {};
+    }
+
+}

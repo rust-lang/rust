@@ -105,7 +105,7 @@ pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
 /// the infallible methods of this trait to ensure that the two APIs
 /// are coherent.
 pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
+    fn tcx(&self) -> TyCtxt<'tcx>;
 
     fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T>
     where

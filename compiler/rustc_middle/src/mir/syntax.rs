@@ -1203,10 +1203,8 @@ pub enum AggregateKind<'tcx> {
     /// active field index would identity the field `c`
     Adt(DefId, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
-    // Note: We can use LocalDefId since closures and generators a deaggregated
-    // before codegen.
-    Closure(LocalDefId, SubstsRef<'tcx>),
-    Generator(LocalDefId, SubstsRef<'tcx>, hir::Movability),
+    Closure(DefId, SubstsRef<'tcx>),
+    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

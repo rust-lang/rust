@@ -140,17 +140,14 @@ impl Attribute {
 
     pub fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta_kind().and_then(|kind| kind.value_str()),
+            AttrKind::Normal(normal) => normal.item.value_str(),
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
         match &self.kind {
-            AttrKind::Normal(normal) => match normal.item.meta_kind() {
-                Some(MetaItemKind::List(list)) => Some(list),
-                _ => None,
-            },
+            AttrKind::Normal(normal) => normal.item.meta_item_list(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -216,6 +213,20 @@ impl MetaItem {
     }
 }
 
+impl AttrArgsEq {
+    fn value_str(&self) -> Option<Symbol> {
+        match self {
+            AttrArgsEq::Ast(expr) => match expr.kind {
+                ExprKind::Lit(token_lit) => {
+                    LitKind::from_token_lit(token_lit).ok().and_then(|lit| lit.str())
+                }
+                _ => None,
+            },
+            AttrArgsEq::Hir(lit) => lit.kind.str(),
+        }
+    }
+}
+
 impl AttrItem {
     pub fn span(&self) -> Span {
         self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
@@ -227,6 +238,22 @@ impl AttrItem {
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         MetaItemKind::from_attr_args(&self.args)
+    }
+
+    fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
+        match &self.args {
+            AttrArgs::Delimited(args) if args.delim == MacDelimiter::Parenthesis => {
+                MetaItemKind::list_from_tokens(args.tokens.clone())
+            }
+            AttrArgs::Delimited(_) | AttrArgs::Eq(..) | AttrArgs::Empty => None,
+        }
+    }
+
+    fn value_str(&self) -> Option<Symbol> {
+        match &self.args {
+            AttrArgs::Eq(_, args) => args.value_str(),
+            AttrArgs::Delimited(_) | AttrArgs::Empty => None,
+        }
     }
 }
 
@@ -247,13 +274,11 @@ impl Attribute {
     /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
     /// * `#[doc(...)]` returns `None`.
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
-        match self.kind {
-            AttrKind::DocComment(kind, data) => Some((data, kind)),
-            AttrKind::Normal(ref normal) if normal.item.path == sym::doc => normal
-                .item
-                .meta_kind()
-                .and_then(|kind| kind.value_str())
-                .map(|data| (data, CommentKind::Line)),
+        match &self.kind {
+            AttrKind::DocComment(kind, data) => Some((*data, *kind)),
+            AttrKind::Normal(normal) if normal.item.path == sym::doc => {
+                normal.item.value_str().map(|s| (s, CommentKind::Line))
+            }
             _ => None,
         }
     }
@@ -265,9 +290,7 @@ impl Attribute {
     pub fn doc_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::DocComment(.., data) => Some(*data),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => {
-                normal.item.meta_kind().and_then(|kind| kind.value_str())
-            }
+            AttrKind::Normal(normal) if normal.item.path == sym::doc => normal.item.value_str(),
             _ => None,
         }
     }
@@ -508,15 +531,12 @@ impl MetaItem {
 impl MetaItemKind {
     pub fn value_str(&self) -> Option<Symbol> {
         match self {
-            MetaItemKind::NameValue(v) => match v.kind {
-                LitKind::Str(s, _) => Some(s),
-                _ => None,
-            },
+            MetaItemKind::NameValue(v) => v.kind.str(),
             _ => None,
         }
     }
 
-    fn list_from_tokens(tokens: TokenStream) -> Option<MetaItemKind> {
+    fn list_from_tokens(tokens: TokenStream) -> Option<Vec<NestedMetaItem>> {
         let mut tokens = tokens.into_trees().peekable();
         let mut result = Vec::new();
         while tokens.peek().is_some() {
@@ -527,7 +547,7 @@ impl MetaItemKind {
                 _ => return None,
             }
         }
-        Some(MetaItemKind::List(result))
+        Some(result)
     }
 
     fn name_value_from_tokens(
@@ -551,7 +571,7 @@ impl MetaItemKind {
                 dspan: _,
                 delim: MacDelimiter::Parenthesis,
                 tokens,
-            }) => MetaItemKind::list_from_tokens(tokens.clone()),
+            }) => MetaItemKind::list_from_tokens(tokens.clone()).map(MetaItemKind::List),
             AttrArgs::Delimited(..) => None,
             AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => match expr.kind {
                 ExprKind::Lit(token_lit) => {
@@ -573,7 +593,7 @@ impl MetaItemKind {
             Some(TokenTree::Delimited(_, Delimiter::Parenthesis, inner_tokens)) => {
                 let inner_tokens = inner_tokens.clone();
                 tokens.next();
-                MetaItemKind::list_from_tokens(inner_tokens)
+                MetaItemKind::list_from_tokens(inner_tokens).map(MetaItemKind::List)
             }
             Some(TokenTree::Delimited(..)) => None,
             Some(TokenTree::Token(Token { kind: token::Eq, .. }, _)) => {

@@ -817,6 +817,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             && let AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) = **kind
         {
             debug!("move_spans: def_id={:?} places={:?}", def_id, places);
+            let def_id = def_id.expect_local();
             if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
                 self.closure_span(def_id, moved_place, places)
             {
@@ -945,6 +946,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     box AggregateKind::Generator(def_id, _, _) => (def_id, true),
                     _ => continue,
                 };
+                let def_id = def_id.expect_local();
 
                 debug!(
                     "borrow_spans: def_id={:?} is_generator={:?} places={:?}",

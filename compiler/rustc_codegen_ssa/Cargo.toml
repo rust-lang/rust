@@ -41,7 +41,6 @@ rustc_metadata = { path = "../rustc_metadata" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_target = { path = "../rustc_target" }
 rustc_session = { path = "../rustc_session" }
-rustc_const_eval = { path = "../rustc_const_eval" }
 
 [dependencies.object]
 version = "0.30.1"

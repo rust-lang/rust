@@ -581,6 +581,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     ) -> Vec<super::CanonicalResponse<'tcx>> {
         bug!("`Unsize` does not have an associated type: {:?}", goal);
     }
+
+    fn consider_builtin_discriminant_kind_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let discriminant = goal.predicate.self_ty().discriminant_ty(ecx.tcx());
+        ecx.infcx
+            .probe(|_| ecx.eq_term_and_make_canonical_response(goal, Certainty::Yes, discriminant))
+    }
 }
 
 /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.

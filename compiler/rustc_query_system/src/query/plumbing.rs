@@ -130,7 +130,7 @@ fn mk_cycle<Qcx, V, R, D: DepKind>(
 where
     Qcx: QueryContext + crate::query::HasDepContext<DepKind = D>,
     V: std::fmt::Debug + Value<Qcx::DepContext, Qcx::DepKind>,
-    R: Clone,
+    R: Copy,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
     let value = handle_cycle_error(*qcx.dep_context(), &cycle_error, error, handler);
@@ -339,25 +339,21 @@ where
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
 #[inline]
-pub fn try_get_cached<Tcx, C, R, OnHit>(
-    tcx: Tcx,
-    cache: &C,
-    key: &C::Key,
-    // `on_hit` can be called while holding a lock to the query cache
-    on_hit: OnHit,
-) -> Result<R, ()>
+pub fn try_get_cached<Tcx, C>(tcx: Tcx, cache: &C, key: &C::Key) -> Option<C::Stored>
 where
     C: QueryCache,
     Tcx: DepContext,
-    OnHit: FnOnce(&C::Stored) -> R,
 {
-    cache.lookup(&key, |value, index| {
-        if std::intrinsics::unlikely(tcx.profiler().enabled()) {
-            tcx.profiler().query_cache_hit(index.into());
+    match cache.lookup(&key) {
+        Some((value, index)) => {
+            if std::intrinsics::unlikely(tcx.profiler().enabled()) {
+                tcx.profiler().query_cache_hit(index.into());
+            }
+            tcx.dep_graph().read_index(index);
+            Some(value)
         }
-        tcx.dep_graph().read_index(index);
-        on_hit(value)
-    })
+        None => None,
+    }
 }
 
 fn try_execute_query<Q, Qcx>(
@@ -379,17 +375,25 @@ where
             if Q::FEEDABLE {
                 // We may have put a value inside the cache from inside the execution.
                 // Verify that it has the same hash as what we have now, to ensure consistency.
-                let _ = cache.lookup(&key, |cached_result, _| {
+                if let Some((cached_result, _)) = cache.lookup(&key) {
                     let hasher = Q::HASH_RESULT.expect("feedable forbids no_hash");
 
-                    let old_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| hasher(&mut hcx, cached_result.borrow()));
-                    let new_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| hasher(&mut hcx, &result));
+                    let old_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| {
+                        hasher(&mut hcx, cached_result.borrow())
+                    });
+                    let new_hash = qcx
+                        .dep_context()
+                        .with_stable_hashing_context(|mut hcx| hasher(&mut hcx, &result));
                     debug_assert_eq!(
-                        old_hash, new_hash,
+                        old_hash,
+                        new_hash,
                         "Computed query value for {:?}({:?}) is inconsistent with fed value,\ncomputed={:#?}\nfed={:#?}",
-                        Q::DEP_KIND, key, result, cached_result,
+                        Q::DEP_KIND,
+                        key,
+                        result,
+                        cached_result,
                     );
-                });
+                }
             }
             let result = job.complete(cache, result, dep_node_index);
             (result, Some(dep_node_index))
@@ -400,9 +404,9 @@ where
         }
         #[cfg(parallel_compiler)]
         TryGetJob::JobCompleted(query_blocked_prof_timer) => {
-            let (v, index) = cache
-                .lookup(&key, |value, index| (value.clone(), index))
-                .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
+            let Some((v, index)) = cache.lookup(&key) else {
+                panic!("value must be in cache after waiting")
+            };
 
             if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
                 qcx.dep_context().profiler().query_cache_hit(index.into());
@@ -771,15 +775,11 @@ where
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
     let cache = Q::query_cache(qcx);
-    let cached = cache.lookup(&key, |_, index| {
+    if let Some((_, index)) = cache.lookup(&key) {
         if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
             qcx.dep_context().profiler().query_cache_hit(index.into());
         }
-    });
-
-    match cached {
-        Ok(()) => return,
-        Err(()) => {}
+        return;
     }
 
     let state = Q::query_state(qcx);

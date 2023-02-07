@@ -970,7 +970,7 @@ fn variant_info_for_generator<'tcx>(
         })
         .collect();
 
-    let variant_infos: Vec<_> = generator
+    let mut variant_infos: Vec<_> = generator
         .variant_fields
         .iter_enumerated()
         .map(|(variant_idx, variant_def)| {
@@ -1033,6 +1033,15 @@ fn variant_info_for_generator<'tcx>(
             }
         })
         .collect();
+
+    // The first three variants are hardcoded to be `UNRESUMED`, `RETURNED` and `POISONED`.
+    // We will move the `RETURNED` and `POISONED` elements to the end so we
+    // are left with a sorting order according to the generators yield points:
+    // First `Unresumed`, then the `SuspendN` followed by `Returned` and `Panicked` (POISONED).
+    let end_states = variant_infos.drain(1..=2);
+    let end_states: Vec<_> = end_states.collect();
+    variant_infos.extend(end_states);
+
     (
         variant_infos,
         match tag_encoding {

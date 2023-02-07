@@ -25,9 +25,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/tuple.rs:+1:9: +1:14
-          Deinit(_1);                      // scope 0 at $DIR/tuple.rs:+1:17: +1:23
-          (_1.0: i32) = const 1_i32;       // scope 0 at $DIR/tuple.rs:+1:17: +1:23
-          (_1.1: i32) = const 2_i32;       // scope 0 at $DIR/tuple.rs:+1:17: +1:23
+          _1 = (const 1_i32, const 2_i32); // scope 0 at $DIR/tuple.rs:+1:17: +1:23
           StorageLive(_2);                 // scope 1 at $DIR/tuple.rs:+2:9: +2:10
           StorageLive(_3);                 // scope 1 at $DIR/tuple.rs:+2:13: +2:22
           StorageLive(_4);                 // scope 1 at $DIR/tuple.rs:+2:13: +2:16
@@ -43,9 +41,7 @@
 -         _2 = Add(move _3, const 3_i32);  // scope 1 at $DIR/tuple.rs:+2:13: +2:26
 +         _2 = const 6_i32;                // scope 1 at $DIR/tuple.rs:+2:13: +2:26
           StorageDead(_3);                 // scope 1 at $DIR/tuple.rs:+2:25: +2:26
-          Deinit(_1);                      // scope 2 at $DIR/tuple.rs:+3:5: +3:15
-          (_1.0: i32) = const 2_i32;       // scope 2 at $DIR/tuple.rs:+3:5: +3:15
-          (_1.1: i32) = const 3_i32;       // scope 2 at $DIR/tuple.rs:+3:5: +3:15
+          _1 = (const 2_i32, const 3_i32); // scope 2 at $DIR/tuple.rs:+3:5: +3:15
           StorageLive(_6);                 // scope 2 at $DIR/tuple.rs:+4:9: +4:10
           StorageLive(_7);                 // scope 2 at $DIR/tuple.rs:+4:13: +4:22
           StorageLive(_8);                 // scope 2 at $DIR/tuple.rs:+4:13: +4:16

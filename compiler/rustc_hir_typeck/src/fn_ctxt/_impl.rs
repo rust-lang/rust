@@ -921,6 +921,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: hir::ImplItemKind::Fn(ref sig, ..),
                 ..
             }) => Some((&sig.decl, ident, false)),
+            Node::Expr(&hir::Expr {
+                hir_id,
+                kind: hir::ExprKind::Closure(..),
+                ..
+            }) if let Some(Node::Expr(&hir::Expr {
+                hir_id,
+                kind: hir::ExprKind::Call(..),
+                ..
+            })) = self.tcx.hir().find_parent(hir_id) &&
+            let Some(Node::Item(&hir::Item {
+                ident,
+                kind: hir::ItemKind::Fn(ref sig, ..),
+                ..
+            })) = self.tcx.hir().find_parent(hir_id) => {
+                Some((&sig.decl, ident, ident.name != sym::main))
+            },
             _ => None,
         }
     }

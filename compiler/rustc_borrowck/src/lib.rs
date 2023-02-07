@@ -1278,6 +1278,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // in order to populate our used_mut set.
                 match **aggregate_kind {
                     AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) => {
+                        let def_id = def_id.expect_local();
                         let BorrowCheckResult { used_mut_upvars, .. } =
                             self.infcx.tcx.mir_borrowck(def_id);
                         debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);

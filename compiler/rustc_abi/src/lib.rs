@@ -1439,21 +1439,12 @@ impl<V: Idx> fmt::Debug for LayoutS<V> {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PointerKind {
-    /// Most general case, we know no restrictions to tell LLVM.
-    SharedMutable,
-
-    /// `&T` where `T` contains no `UnsafeCell`, is `dereferenceable`, `noalias` and `readonly`.
-    Frozen,
-
-    /// `&mut T` which is `dereferenceable` and `noalias` but not `readonly`.
-    UniqueBorrowed,
-
-    /// `&mut !Unpin`, which is `dereferenceable` but neither `noalias` nor `readonly`.
-    UniqueBorrowedPinned,
-
-    /// `Box<T>`, which is `noalias` (even on return types, unlike the above) but neither `readonly`
-    /// nor `dereferenceable`.
-    UniqueOwned,
+    /// Shared reference. `frozen` indicates the absence of any `UnsafeCell`.
+    SharedRef { frozen: bool },
+    /// Mutable reference. `unpin` indicates the absence of any pinned data.
+    MutableRef { unpin: bool },
+    /// Box. `unpin` indicates the absence of any pinned data.
+    Box { unpin: bool },
 }
 
 /// Note that this information is advisory only, and backends are free to ignore it.

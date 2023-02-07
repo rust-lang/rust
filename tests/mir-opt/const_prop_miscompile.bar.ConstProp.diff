@@ -19,8 +19,8 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/const_prop_miscompile.rs:+1:9: +1:14
-          Deinit(_1);                      // scope 0 at $DIR/const_prop_miscompile.rs:+1:17: +1:21
-          (_1.0: i32) = const 1_i32;       // scope 0 at $DIR/const_prop_miscompile.rs:+1:17: +1:21
+-         _1 = (const 1_i32,);             // scope 0 at $DIR/const_prop_miscompile.rs:+1:17: +1:21
++         _1 = const (1_i32,);             // scope 0 at $DIR/const_prop_miscompile.rs:+1:17: +1:21
           StorageLive(_2);                 // scope 1 at $DIR/const_prop_miscompile.rs:+2:5: +4:6
           StorageLive(_3);                 // scope 2 at $DIR/const_prop_miscompile.rs:+3:10: +3:22
           _3 = &raw mut (_1.0: i32);       // scope 2 at $DIR/const_prop_miscompile.rs:+3:10: +3:22

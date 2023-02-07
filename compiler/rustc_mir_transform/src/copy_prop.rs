@@ -162,17 +162,20 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     }
 
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, loc: Location) {
-        if let StatementKind::StorageDead(l) = stmt.kind
-            && self.storage_to_remove.contains(l)
-        {
-            stmt.make_nop();
-        } else if let StatementKind::Assign(box (ref place, ref mut rvalue)) = stmt.kind
-            && place.as_local().is_some()
-        {
-            // Do not replace assignments.
-            self.visit_rvalue(rvalue, loc)
-        } else {
-            self.super_statement(stmt, loc);
+        match stmt.kind {
+            // When removing storage statements, we need to remove both (#107511).
+            StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
+                if self.storage_to_remove.contains(l) =>
+            {
+                stmt.make_nop()
+            }
+            StatementKind::Assign(box (ref place, ref mut rvalue))
+                if place.as_local().is_some() =>
+            {
+                // Do not replace assignments.
+                self.visit_rvalue(rvalue, loc)
+            }
+            _ => self.super_statement(stmt, loc),
         }
     }
 }

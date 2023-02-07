@@ -23,9 +23,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/sibling_ptr.rs:+1:9: +1:14
-          Deinit(_1);                      // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
-          (_1.0: u8) = const 0_u8;         // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
-          (_1.1: u8) = const 0_u8;         // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
+          _1 = (const 0_u8, const 0_u8);   // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
           StorageLive(_2);                 // scope 1 at $DIR/sibling_ptr.rs:+2:5: +5:6
           StorageLive(_3);                 // scope 2 at $DIR/sibling_ptr.rs:+3:13: +3:14
           _3 = &raw mut (_1.0: u8);        // scope 2 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL

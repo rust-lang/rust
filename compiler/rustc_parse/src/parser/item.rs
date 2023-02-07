@@ -2247,7 +2247,7 @@ impl<'a> Parser<'a> {
         let ext = self.parse_extern(case);
 
         if let Async::Yes { span, .. } = asyncness {
-            if span.rust_2015() {
+            if span.is_rust_2015() {
                 self.sess.emit_err(AsyncFnIn2015 { span, help: HelpUseLatestEdition::new() });
             }
         }

@@ -21,7 +21,15 @@ fn foo(_1: T, _2: i32) -> i32 {
 
     bb0: {
         StorageLive(_3);                 // scope 0 at $DIR/inline_closure.rs:+1:9: +1:10
-        Deinit(_3);                      // scope 0 at $DIR/inline_closure.rs:+1:13: +1:24
+        _3 = [closure@foo::<T>::{closure#0}]; // scope 0 at $DIR/inline_closure.rs:+1:13: +1:24
+                                         // closure
+                                         // + def_id: DefId(0:6 ~ inline_closure[92ba]::foo::{closure#0})
+                                         // + substs: [
+                                         //     T,
+                                         //     i8,
+                                         //     extern "rust-call" fn((i32, i32)) -> i32,
+                                         //     (),
+                                         // ]
         StorageLive(_4);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:6
         _4 = &_3;                        // scope 1 at $DIR/inline_closure.rs:+2:5: +2:6
         StorageLive(_5);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
@@ -29,9 +37,7 @@ fn foo(_1: T, _2: i32) -> i32 {
         _6 = _2;                         // scope 1 at $DIR/inline_closure.rs:+2:7: +2:8
         StorageLive(_7);                 // scope 1 at $DIR/inline_closure.rs:+2:10: +2:11
         _7 = _2;                         // scope 1 at $DIR/inline_closure.rs:+2:10: +2:11
-        Deinit(_5);                      // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        (_5.0: i32) = move _6;           // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        (_5.1: i32) = move _7;           // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
+        _5 = (move _6, move _7);         // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
         StorageLive(_8);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
         _8 = move (_5.0: i32);           // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
         StorageLive(_9);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12

@@ -32,16 +32,14 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/invalid_constant.rs:+6:9: +6:22
           StorageLive(_2);                 // scope 2 at $DIR/invalid_constant.rs:+6:34: +6:63
-          Deinit(_2);                      // scope 2 at $DIR/invalid_constant.rs:+6:34: +6:63
-          (_2.0: u32) = const 1114113_u32; // scope 2 at $DIR/invalid_constant.rs:+6:34: +6:63
+          _2 = InvalidChar { int: const 1114113_u32 }; // scope 2 at $DIR/invalid_constant.rs:+6:34: +6:63
 -         _1 = (_2.1: char);               // scope 2 at $DIR/invalid_constant.rs:+6:34: +6:67
 +         _1 = const {transmute(0x00110001): char}; // scope 2 at $DIR/invalid_constant.rs:+6:34: +6:67
           StorageDead(_2);                 // scope 0 at $DIR/invalid_constant.rs:+6:69: +6:70
           StorageLive(_3);                 // scope 1 at $DIR/invalid_constant.rs:+13:9: +13:21
           StorageLive(_4);                 // scope 1 at $DIR/invalid_constant.rs:+13:25: +13:59
           StorageLive(_5);                 // scope 4 at $DIR/invalid_constant.rs:+13:34: +13:55
-          Deinit(_5);                      // scope 4 at $DIR/invalid_constant.rs:+13:34: +13:55
-          (_5.0: u32) = const 4_u32;       // scope 4 at $DIR/invalid_constant.rs:+13:34: +13:55
+          _5 = InvalidTag { int: const 4_u32 }; // scope 4 at $DIR/invalid_constant.rs:+13:34: +13:55
 -         _4 = (_5.1: E);                  // scope 4 at $DIR/invalid_constant.rs:+13:34: +13:57
 -         _3 = [move _4];                  // scope 1 at $DIR/invalid_constant.rs:+13:24: +13:60
 +         _4 = const Scalar(0x00000004): E; // scope 4 at $DIR/invalid_constant.rs:+13:34: +13:57
