@@ -7,7 +7,12 @@ use crate::{Leaf, Subtree, TokenTree};
 struct EntryId(usize);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-struct EntryPtr(EntryId, usize);
+struct EntryPtr(
+    /// The index of the buffer containing the entry.
+    EntryId,
+    /// The index of the entry within the buffer.
+    usize,
+);
 
 /// Internal type which is used instead of `TokenTree` to represent a token tree
 /// within a `TokenBuffer`.
@@ -16,8 +21,8 @@ enum Entry<'t, Span> {
     // Mimicking types from proc-macro.
     Subtree(Option<&'t TokenTree<Span>>, &'t Subtree<Span>, EntryId),
     Leaf(&'t TokenTree<Span>),
-    // End entries contain a pointer to the entry from the containing
-    // token tree, or None if this is the outermost level.
+    /// End entries contain a pointer to the entry from the containing
+    /// token tree, or [`None`] if this is the outermost level.
     End(Option<EntryPtr>),
 }
 
@@ -226,8 +231,14 @@ impl<'a, Span> Cursor<'a, Span> {
     /// a cursor into that subtree
     pub fn bump_subtree(self) -> Cursor<'a, Span> {
         match self.entry() {
-            Some(Entry::Subtree(_, _, _)) => self.subtree().unwrap(),
-            _ => self.bump(),
+            Some(&Entry::Subtree(_, _, entry_id)) => {
+                Cursor::create(self.buffer, EntryPtr(entry_id, 0))
+            }
+            Some(Entry::End(exit)) => match exit {
+                Some(exit) => Cursor::create(self.buffer, *exit),
+                None => self,
+            },
+            _ => Cursor::create(self.buffer, EntryPtr(self.ptr.0, self.ptr.1 + 1)),
         }
     }
 

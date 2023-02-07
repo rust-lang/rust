@@ -111,7 +111,8 @@ impl ItemTree {
             Some(node) => node,
             None => return Default::default(),
         };
-        if never!(syntax.kind() == SyntaxKind::ERROR) {
+        if never!(syntax.kind() == SyntaxKind::ERROR, "{:?} from {:?} {}", file_id, syntax, syntax)
+        {
             // FIXME: not 100% sure why these crop up, but return an empty tree to avoid a panic
             return Default::default();
         }
@@ -133,7 +134,7 @@ impl ItemTree {
                     ctx.lower_macro_stmts(stmts)
                 },
                 _ => {
-                    panic!("cannot create item tree from {syntax:?} {syntax}");
+                    panic!("cannot create item tree for file {file_id:?} from {syntax:?} {syntax}");
                 },
             }
         };

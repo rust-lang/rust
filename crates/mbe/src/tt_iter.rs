@@ -150,6 +150,11 @@ impl<'a> TtIter<'a> {
                         cursor = cursor.bump_subtree();
                     }
                 }
+                parser::Step::FloatSplit { .. } => {
+                    // FIXME: We need to split the tree properly here, but mutating the token trees
+                    // in the buffer is somewhat tricky to pull off.
+                    cursor = cursor.bump_subtree();
+                }
                 parser::Step::Enter { .. } | parser::Step::Exit => (),
                 parser::Step::Error { .. } => error = true,
             }
@@ -166,19 +171,18 @@ impl<'a> TtIter<'a> {
 
         if cursor.is_root() {
             while curr != cursor {
-                if let Some(token) = curr.token_tree() {
-                    res.push(token);
-                }
+                let Some(token) = curr.token_tree() else { break };
+                res.push(token.cloned());
                 curr = curr.bump();
             }
         }
+
         self.inner = self.inner.as_slice()[res.len()..].iter();
         let res = match res.len() {
-            1 => Some(res[0].cloned()),
-            0 => None,
+            0 | 1 => res.pop(),
             _ => Some(tt::TokenTree::Subtree(tt::Subtree {
                 delimiter: tt::Delimiter::unspecified(),
-                token_trees: res.into_iter().map(|it| it.cloned()).collect(),
+                token_trees: res,
             })),
         };
         ExpandResult { value: res, err }
