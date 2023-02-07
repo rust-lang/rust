@@ -45,6 +45,10 @@ pub(crate) fn to_parser_input(buffer: &TokenBuffer<'_>) -> parser::Input {
                             .unwrap_or_else(|| panic!("Fail to convert given literal {:#?}", &lit));
 
                         res.push(kind);
+
+                        if kind == FLOAT_NUMBER && !inner_text.ends_with('.') {
+                            res.was_joint();
+                        }
                     }
                     tt::Leaf::Ident(ident) => match ident.text.as_ref() {
                         "_" => res.push(T![_]),

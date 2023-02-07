@@ -817,7 +817,7 @@ impl<'a> TtTreeSink<'a> {
                 self.inner.token(SyntaxKind::DOT, ".");
 
                 if has_pseudo_dot {
-                    assert!(right.is_empty());
+                    assert!(right.is_empty(), "{left}.{right}");
                 } else {
                     self.inner.start_node(SyntaxKind::NAME_REF);
                     self.inner.token(SyntaxKind::INT_NUMBER, right);

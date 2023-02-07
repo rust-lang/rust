@@ -140,7 +140,6 @@ impl<'a> TtIter<'a> {
 
         let mut cursor = buffer.begin();
         let mut error = false;
-        let mut float_splits = vec![];
         for step in tree_traversal.iter() {
             match step {
                 parser::Step::Token { kind, mut n_input_tokens } => {
@@ -152,7 +151,8 @@ impl<'a> TtIter<'a> {
                     }
                 }
                 parser::Step::FloatSplit { .. } => {
-                    float_splits.push(cursor);
+                    // FIXME: We need to split the tree properly here, but mutating the token trees
+                    // in the buffer is somewhat tricky to pull off.
                     cursor = cursor.bump_subtree();
                 }
                 parser::Step::Enter { .. } | parser::Step::Exit => (),
@@ -170,40 +170,13 @@ impl<'a> TtIter<'a> {
         let mut res = vec![];
 
         if cursor.is_root() {
-            if float_splits.is_empty() {
-                while curr != cursor {
-                    if let Some(token) = curr.token_tree() {
-                        res.push(token.cloned());
-                    }
-                    curr = curr.bump();
-                }
-            } else {
-                // let mut float_splits = float_splits.into_iter().peekable();
-                // while let Some(tt) = curr.token_tree() {
-                //     let mut tt = tt.cloned();
-                //     let mut tt_mut_ref = &mut tt;
-                //     if let Some(fs) = float_splits.peek() {
-                //         loop {
-                //             curr = curr.bump_subtree();
-                //             if curr == *fs {
-                //                 float_splits.next();
-                //             }
-                //             if curr.is_root() {
-                //                 break;
-                //             }
-                //         }
-                //     }
-                //     res.push(tt);
-                // }
-
-                while curr != cursor {
-                    if let Some(token) = curr.token_tree() {
-                        res.push(token.cloned());
-                    }
-                    curr = curr.bump();
-                }
+            while curr != cursor {
+                let Some(token) = curr.token_tree() else { break };
+                res.push(token.cloned());
+                curr = curr.bump();
             }
         }
+
         self.inner = self.inner.as_slice()[res.len()..].iter();
         let res = match res.len() {
             0 | 1 => res.pop(),

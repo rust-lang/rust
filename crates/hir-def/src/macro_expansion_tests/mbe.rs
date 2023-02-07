@@ -97,6 +97,41 @@ fn#19 main#20(#21)#21 {#22
 "##]],
     );
 }
+#[test]
+fn float_field_acces_macro_input() {
+    check(
+        r#"
+macro_rules! foo {
+    ($expr:expr) => {
+        fn foo() {
+            $expr;
+        }
+    };
+}
+foo!(x .0.1);
+foo!(x .2. 3);
+foo!(x .4 .5);
+"#,
+        expect![[r#"
+macro_rules! foo {
+    ($expr:expr) => {
+        fn foo() {
+            $expr;
+        }
+    };
+}
+fn foo() {
+    (x.0.1);
+}
+fn foo() {
+    (x.2.3);
+}
+fn foo() {
+    (x.4.5);
+}
+"#]],
+    );
+}
 
 #[test]
 fn mbe_smoke_test() {
