@@ -378,7 +378,7 @@ impl ModuleOrUniformRoot<'_> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 enum PathResult<'a> {
     Module(ModuleOrUniformRoot<'a>),
     NonModule(PartialRes),
@@ -1468,53 +1468,6 @@ impl<'a> Resolver<'a> {
             trait_map: self.trait_map,
             builtin_macro_kinds: self.builtin_macro_kinds,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
-        };
-        ResolverOutputs { global_ctxt, ast_lowering, untracked }
-    }
-
-    pub fn clone_outputs(&self) -> ResolverOutputs {
-        let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
-        let definitions = self.untracked.definitions.clone();
-        let cstore = Box::new(self.cstore().clone());
-        let untracked =
-            Untracked { cstore, source_span: self.untracked.source_span.clone(), definitions };
-        let global_ctxt = ResolverGlobalCtxt {
-            expn_that_defined: self.expn_that_defined.clone(),
-            visibilities: self.visibilities.clone(),
-            has_pub_restricted: self.has_pub_restricted,
-            extern_crate_map: self.extern_crate_map.clone(),
-            reexport_map: self.reexport_map.clone(),
-            glob_map: self.glob_map.clone(),
-            maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
-            maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
-            extern_prelude: self
-                .extern_prelude
-                .iter()
-                .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
-                .collect(),
-            main_def: self.main_def,
-            trait_impls: self.trait_impls.clone(),
-            proc_macros,
-            confused_type_with_std_module: self.confused_type_with_std_module.clone(),
-            registered_tools: self.registered_tools.clone(),
-            effective_visibilities: self.effective_visibilities.clone(),
-            doc_link_resolutions: self.doc_link_resolutions.clone(),
-            doc_link_traits_in_scope: self.doc_link_traits_in_scope.clone(),
-            all_macro_rules: self.all_macro_rules.clone(),
-        };
-        let ast_lowering = ty::ResolverAstLowering {
-            legacy_const_generic_args: self.legacy_const_generic_args.clone(),
-            partial_res_map: self.partial_res_map.clone(),
-            import_res_map: self.import_res_map.clone(),
-            label_res_map: self.label_res_map.clone(),
-            lifetimes_res_map: self.lifetimes_res_map.clone(),
-            extra_lifetime_params_map: self.extra_lifetime_params_map.clone(),
-            next_node_id: self.next_node_id,
-            node_id_to_def_id: self.node_id_to_def_id.clone(),
-            def_id_to_node_id: self.def_id_to_node_id.clone(),
-            trait_map: self.trait_map.clone(),
-            builtin_macro_kinds: self.builtin_macro_kinds.clone(),
-            lifetime_elision_allowed: self.lifetime_elision_allowed.clone(),
         };
         ResolverOutputs { global_ctxt, ast_lowering, untracked }
     }

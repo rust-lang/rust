@@ -8,7 +8,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{Lrc, ReadGuard};
+use rustc_data_structures::sync::ReadGuard;
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
@@ -30,11 +30,10 @@ use proc_macro::bridge::client::ProcMacro;
 use std::ops::Fn;
 use std::path::Path;
 use std::time::Duration;
-use std::{cmp, env};
+use std::{cmp, env, iter};
 
-#[derive(Clone)]
 pub struct CStore {
-    metas: IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>,
+    metas: IndexVec<CrateNum, Option<Box<CrateMetadata>>>,
     injected_panic_runtime: Option<CrateNum>,
     /// This crate needs an allocator and either provides it itself, or finds it in a dependency.
     /// If the above is true, then this field denotes the kind of the found allocator.
@@ -153,7 +152,7 @@ impl CStore {
 
     fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
         assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
-        self.metas[cnum] = Some(Lrc::new(data));
+        self.metas[cnum] = Some(Box::new(data));
     }
 
     pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
@@ -245,7 +244,7 @@ impl CStore {
             // order to make array indices in `metas` match with the
             // corresponding `CrateNum`. This first entry will always remain
             // `None`.
-            metas: IndexVec::from_elem_n(None, 1),
+            metas: IndexVec::from_iter(iter::once(None)),
             injected_panic_runtime: None,
             allocator_kind: None,
             alloc_error_handler_kind: None,
