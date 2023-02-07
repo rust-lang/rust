@@ -1196,8 +1196,7 @@ impl<'v> RootCollector<'_, 'v> {
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
 
-                    let ty =
-                        self.tcx.bound_type_of(id.owner_id.to_def_id()).no_bound_vars().unwrap();
+                    let ty = self.tcx.type_of(id.owner_id.to_def_id()).no_bound_vars().unwrap();
                     visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                 }
             }

@@ -68,7 +68,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(vec![tcx.bound_type_of(def_id).subst(tcx, substs)])
+            Ok(vec![tcx.type_of(def_id).subst(tcx, substs)])
         }
     }
 }

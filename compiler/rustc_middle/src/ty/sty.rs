@@ -2268,7 +2268,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Str | ty::Slice(_) => (tcx.types.usize, false),
             ty::Dynamic(..) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
-                (tcx.bound_type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
+                (tcx.type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
             },
 
             // type parameters only have unit metadata if they're sized, so return true

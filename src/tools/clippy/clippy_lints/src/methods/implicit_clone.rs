@@ -53,7 +53,7 @@ pub fn is_clone_like(cx: &LateContext<'_>, method_name: &str, method_def_id: hir
         "to_vec" => cx
             .tcx
             .impl_of_method(method_def_id)
-            .filter(|&impl_did| cx.tcx.bound_type_of(impl_did).subst_identity().is_slice() && cx.tcx.impl_trait_ref(impl_did).is_none())
+            .filter(|&impl_did| cx.tcx.type_of(impl_did).subst_identity().is_slice() && cx.tcx.impl_trait_ref(impl_did).is_none())
             .is_some(),
         _ => false,
     }

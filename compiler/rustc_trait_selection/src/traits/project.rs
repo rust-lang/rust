@@ -514,7 +514,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         }
 
                         let substs = substs.fold_with(self);
-                        let generic_ty = self.interner().bound_type_of(def_id);
+                        let generic_ty = self.interner().type_of(def_id);
                         let concrete_ty = generic_ty.subst(self.interner(), substs);
                         self.depth += 1;
                         let folded_ty = self.fold_ty(concrete_ty);
@@ -2138,7 +2138,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let substs = obligation.predicate.substs.rebase_onto(tcx, trait_def_id, substs);
     let substs =
         translate_substs(selcx.infcx, param_env, impl_def_id, substs, assoc_ty.defining_node);
-    let ty = tcx.bound_type_of(assoc_ty.item.def_id);
+    let ty = tcx.type_of(assoc_ty.item.def_id);
     let is_const = matches!(tcx.def_kind(assoc_ty.item.def_id), DefKind::AssocConst);
     let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
         let identity_substs =

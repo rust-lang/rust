@@ -459,7 +459,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
         w,
         " {} for {}",
         trait_ref.print_only_trait_path(),
-        tcx.bound_type_of(impl_def_id).subst_identity()
+        tcx.type_of(impl_def_id).subst_identity()
     )
     .unwrap();
 

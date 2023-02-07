@@ -900,7 +900,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
 
             let kind = match parent_ty.ty.kind() {
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                    self.tcx.bound_type_of(def_id).subst(self.tcx, substs).kind()
+                    self.tcx.type_of(def_id).subst(self.tcx, substs).kind()
                 }
                 kind => kind,
             };

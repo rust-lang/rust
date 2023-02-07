@@ -557,7 +557,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                         ty::INNERMOST,
                                         ty::BoundVar::from_usize(bound_vars.len() - 1),
                                     ),
-                                    tcx.bound_type_of(param.def_id).subst_identity(),
+                                    tcx.type_of(param.def_id).subst_identity(),
                                 )
                                 .into()
                             }
@@ -1073,7 +1073,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .fields
                     .last()
                     .expect("expected unsized ADT to have a tail field");
-                let tail_field_ty = tcx.bound_type_of(tail_field.did);
+                let tail_field_ty = tcx.type_of(tail_field.did);
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`,
                 // normalizing in the process, since `type_of` returns something directly from

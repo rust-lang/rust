@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'tcx>, recv: &'
         if let ty::Ref(_, _, Mutability::Mut) = cx.typeck_results().expr_ty(recv).kind();
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(ex.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
-        if is_type_diagnostic_item(cx, cx.tcx.bound_type_of(impl_id).subst_identity(), sym::Mutex);
+        if is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).subst_identity(), sym::Mutex);
         then {
             span_lint_and_sugg(
                 cx,

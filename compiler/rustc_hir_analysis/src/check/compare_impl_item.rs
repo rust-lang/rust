@@ -1580,8 +1580,7 @@ fn compare_generic_param_kinds<'tcx>(
         use GenericParamDefKind::*;
         if match (&param_impl.kind, &param_trait.kind) {
             (Const { .. }, Const { .. })
-                if tcx.bound_type_of(param_impl.def_id)
-                    != tcx.bound_type_of(param_trait.def_id) =>
+                if tcx.type_of(param_impl.def_id) != tcx.type_of(param_trait.def_id) =>
             {
                 true
             }
@@ -1609,7 +1608,7 @@ fn compare_generic_param_kinds<'tcx>(
                     format!(
                         "{} const parameter of type `{}`",
                         prefix,
-                        tcx.bound_type_of(param.def_id).subst_identity()
+                        tcx.type_of(param.def_id).subst_identity()
                     )
                 }
                 Type { .. } => format!("{} type parameter", prefix),
@@ -1659,8 +1658,8 @@ pub(super) fn compare_impl_const_raw(
     // Create a parameter environment that represents the implementation's
     // method.
     // Compute placeholder form of impl and trait const tys.
-    let impl_ty = tcx.bound_type_of(impl_const_item_def.to_def_id()).subst_identity();
-    let trait_ty = tcx.bound_type_of(trait_const_item_def).subst(tcx, trait_to_impl_substs);
+    let impl_ty = tcx.type_of(impl_const_item_def.to_def_id()).subst_identity();
+    let trait_ty = tcx.type_of(trait_const_item_def).subst(tcx, trait_to_impl_substs);
     let mut cause = ObligationCause::new(
         impl_c_span,
         impl_const_item_def,
@@ -1932,7 +1931,7 @@ pub(super) fn check_type_bounds<'tcx>(
             bound_vars.push(bound_var);
             tcx.mk_const(
                 ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(bound_vars.len() - 1)),
-                tcx.bound_type_of(param.def_id).subst_identity(),
+                tcx.type_of(param.def_id).subst_identity(),
             )
             .into()
         }
@@ -1942,7 +1941,7 @@ pub(super) fn check_type_bounds<'tcx>(
     let container_id = impl_ty.container_id(tcx);
 
     let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
-    let impl_ty_value = tcx.bound_type_of(impl_ty.def_id).subst_identity();
+    let impl_ty_value = tcx.type_of(impl_ty.def_id).subst_identity();
 
     let param_env = tcx.param_env(impl_ty.def_id);
 

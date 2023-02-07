@@ -50,7 +50,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
     let name = name.as_str();
 
     let ty = match cx.tcx.impl_of_method(fn_id) {
-        Some(id) => cx.tcx.bound_type_of(id).subst_identity(),
+        Some(id) => cx.tcx.type_of(id).subst_identity(),
         None => return Lazy,
     };
 
@@ -71,7 +71,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
             .variants()
             .iter()
             .flat_map(|v| v.fields.iter())
-            .any(|x| matches!(cx.tcx.bound_type_of(x.did).subst_identity().peel_refs().kind(), ty::Param(_)))
+            .any(|x| matches!(cx.tcx.type_of(x.did).subst_identity().peel_refs().kind(), ty::Param(_)))
             && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
                 PredicateKind::Clause(ty::Clause::Trait(pred)) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
                 _ => true,

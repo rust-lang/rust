@@ -454,7 +454,7 @@ fn layout_of_uncached<'tcx>(
                         def.is_struct()
                             && match def.variants().iter().next().and_then(|x| x.fields.last()) {
                                 Some(last_field) => tcx
-                                    .bound_type_of(last_field.did)
+                                    .type_of(last_field.did)
                                     .subst_identity()
                                     .is_sized(tcx, param_env),
                                 None => false,

@@ -228,7 +228,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                             return ty.try_super_fold_with(self);
                         }
 
-                        let generic_ty = self.interner().bound_type_of(def_id);
+                        let generic_ty = self.interner().type_of(def_id);
                         let concrete_ty = generic_ty.subst(self.interner(), substs);
                         self.anon_depth += 1;
                         if concrete_ty == ty {

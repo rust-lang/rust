@@ -15,7 +15,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
     pub(crate) fn get_blanket_impls(&mut self, item_def_id: DefId) -> Vec<Item> {
         let cx = &mut self.cx;
         let param_env = cx.tcx.param_env(item_def_id);
-        let ty = cx.tcx.bound_type_of(item_def_id);
+        let ty = cx.tcx.type_of(item_def_id);
 
         trace!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();

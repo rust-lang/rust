@@ -83,11 +83,7 @@ impl AssocItem {
             }
             ty::AssocKind::Type => format!("type {};", self.name),
             ty::AssocKind::Const => {
-                format!(
-                    "const {}: {:?};",
-                    self.name,
-                    tcx.bound_type_of(self.def_id).subst_identity()
-                )
+                format!("const {}: {:?};", self.name, tcx.type_of(self.def_id).subst_identity())
             }
         }
     }

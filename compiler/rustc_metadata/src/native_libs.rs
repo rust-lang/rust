@@ -498,7 +498,7 @@ impl<'tcx> Collector<'tcx> {
     fn i686_arg_list_size(&self, item: &hir::ForeignItemRef) -> usize {
         let argument_types: &List<Ty<'_>> = self.tcx.erase_late_bound_regions(
             self.tcx
-                .bound_type_of(item.id.owner_id)
+                .type_of(item.id.owner_id)
                 .subst_identity()
                 .fn_sig(self.tcx)
                 .inputs()

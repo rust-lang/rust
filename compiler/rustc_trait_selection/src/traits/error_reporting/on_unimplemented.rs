@@ -202,7 +202,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // signature with no type arguments resolved
                 flags.push((
                     sym::_Self,
-                    Some(self.tcx.bound_type_of(def.did()).subst_identity().to_string()),
+                    Some(self.tcx.type_of(def.did()).subst_identity().to_string()),
                 ));
             }
 
@@ -223,7 +223,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // original signature with no type arguments resolved
                         flags.push((
                             name,
-                            Some(self.tcx.bound_type_of(def.did()).subst_identity().to_string()),
+                            Some(self.tcx.type_of(def.did()).subst_identity().to_string()),
                         ));
                     }
                 }
@@ -259,7 +259,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // signature with no type arguments resolved
                     flags.push((
                         sym::_Self,
-                        Some(format!("[{}]", self.tcx.bound_type_of(def.did()).subst_identity())),
+                        Some(format!("[{}]", self.tcx.type_of(def.did()).subst_identity())),
                     ));
                 }
                 if aty.is_integral() {
@@ -278,7 +278,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
-                    let def_ty = self.tcx.bound_type_of(def.did()).subst_identity();
+                    let def_ty = self.tcx.type_of(def.did()).subst_identity();
                     flags.push((sym::_Self, Some(format!("[{def_ty}; _]"))));
                     if let Some(n) = len {
                         flags.push((sym::_Self, Some(format!("[{def_ty}; {n}]"))));

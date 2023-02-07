@@ -386,7 +386,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         let tcx = self.cfcx.tcx();
                         self.cfcx
                             .ct_infer(
-                                tcx.bound_type_of(param.def_id).subst_identity(),
+                                tcx.type_of(param.def_id).subst_identity(),
                                 Some(param),
                                 inf.span,
                             )

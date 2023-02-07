@@ -101,7 +101,7 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
         return;
     };
 
-    if cx.tcx.bound_type_of(used_field.did) == cx.tcx.bound_type_of(correct_field.did) {
+    if cx.tcx.type_of(used_field.did) == cx.tcx.type_of(correct_field.did) {
         let left_span = block_expr.span.until(used_ident.span);
         let snippet = snippet(cx, left_span, "..");
         let sugg = format!("{snippet}{name}");

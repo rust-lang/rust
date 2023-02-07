@@ -303,11 +303,8 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
 
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::Typedef> {
     let predicates = cx.tcx.explicit_predicates_of(did);
-    let type_ = clean_middle_ty(
-        ty::Binder::dummy(cx.tcx.bound_type_of(did).subst_identity()),
-        cx,
-        Some(did),
-    );
+    let type_ =
+        clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(did).subst_identity()), cx, Some(did));
 
     Box::new(clean::Typedef {
         type_,
@@ -418,11 +415,9 @@ pub(crate) fn build_impl(
 
     let for_ = match &impl_item {
         Some(impl_) => clean_ty(impl_.self_ty, cx),
-        None => clean_middle_ty(
-            ty::Binder::dummy(tcx.bound_type_of(did).subst_identity()),
-            cx,
-            Some(did),
-        ),
+        None => {
+            clean_middle_ty(ty::Binder::dummy(tcx.type_of(did).subst_identity()), cx, Some(did))
+        }
     };
 
     // Only inline impl if the implementing type is
@@ -661,7 +656,7 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::Constant {
         type_: clean_middle_ty(
-            ty::Binder::dummy(cx.tcx.bound_type_of(def_id).subst_identity()),
+            ty::Binder::dummy(cx.tcx.type_of(def_id).subst_identity()),
             cx,
             Some(def_id),
         ),
@@ -672,7 +667,7 @@ fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
         type_: clean_middle_ty(
-            ty::Binder::dummy(cx.tcx.bound_type_of(did).subst_identity()),
+            ty::Binder::dummy(cx.tcx.type_of(did).subst_identity()),
             cx,
             Some(did),
         ),
