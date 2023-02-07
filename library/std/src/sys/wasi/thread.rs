@@ -48,7 +48,7 @@ impl Thread {
             let res = wasi::poll_oneoff(&in_, &mut event, 1);
             match (res, event) {
                 (
-                    Ok(1),
+                    Ok(0),
                     wasi::Event {
                         userdata: USERDATA,
                         error: wasi::ERRNO_SUCCESS,
