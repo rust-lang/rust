@@ -571,6 +571,13 @@ fn main() {
             r#"fn main() { let x = if true {1} else {2}.$0 }"#,
             r#"fn main() { let x = unsafe { if true {1} else {2} } }"#,
         );
+
+        // completion will not be triggered
+        check_edit(
+            "unsafe",
+            r#"fn main() { let x = true else {panic!()}.$0}"#,
+            r#"fn main() { let x = true else {panic!()}.unsafe}"#,
+        );
     }
 
     #[test]
