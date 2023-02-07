@@ -123,6 +123,12 @@ pub(crate) fn complete_postfix(
     postfix_snippet("ref", "&expr", &format!("&{receiver_text}")).add_to(acc);
     postfix_snippet("refm", "&mut expr", &format!("&mut {receiver_text}")).add_to(acc);
 
+    let unsafe_completion_string = match dot_receiver {
+        ast::Expr::BlockExpr(_) => format!("unsafe {receiver_text}"),
+        _ => format!("unsafe {{ {receiver_text} }}"),
+    };
+    postfix_snippet("unsafe", "unsafe {}", &unsafe_completion_string).add_to(acc);
+
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
 
@@ -329,18 +335,19 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
-                sn if    if expr {}
-                sn let   let
-                sn letm  let mut
-                sn match match expr {}
-                sn not   !expr
-                sn ref   &expr
-                sn refm  &mut expr
-                sn while while expr {}
+                sn box    Box::new(expr)
+                sn call   function(expr)
+                sn dbg    dbg!(expr)
+                sn dbgr   dbg!(&expr)
+                sn if     if expr {}
+                sn let    let
+                sn letm   let mut
+                sn match  match expr {}
+                sn not    !expr
+                sn ref    &expr
+                sn refm   &mut expr
+                sn unsafe unsafe {}
+                sn while  while expr {}
             "#]],
         );
     }
@@ -359,16 +366,17 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
-                sn if    if expr {}
-                sn match match expr {}
-                sn not   !expr
-                sn ref   &expr
-                sn refm  &mut expr
-                sn while while expr {}
+                sn box    Box::new(expr)
+                sn call   function(expr)
+                sn dbg    dbg!(expr)
+                sn dbgr   dbg!(&expr)
+                sn if     if expr {}
+                sn match  match expr {}
+                sn not    !expr
+                sn ref    &expr
+                sn refm   &mut expr
+                sn unsafe unsafe {}
+                sn while  while expr {}
             "#]],
         );
     }
@@ -383,15 +391,16 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
-                sn let   let
-                sn letm  let mut
-                sn match match expr {}
-                sn ref   &expr
-                sn refm  &mut expr
+                sn box    Box::new(expr)
+                sn call   function(expr)
+                sn dbg    dbg!(expr)
+                sn dbgr   dbg!(&expr)
+                sn let    let
+                sn letm   let mut
+                sn match  match expr {}
+                sn ref    &expr
+                sn refm   &mut expr
+                sn unsafe unsafe {}
             "#]],
         )
     }
@@ -406,18 +415,19 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
-                sn if    if expr {}
-                sn let   let
-                sn letm  let mut
-                sn match match expr {}
-                sn not   !expr
-                sn ref   &expr
-                sn refm  &mut expr
-                sn while while expr {}
+                sn box    Box::new(expr)
+                sn call   function(expr)
+                sn dbg    dbg!(expr)
+                sn dbgr   dbg!(&expr)
+                sn if     if expr {}
+                sn let    let
+                sn letm   let mut
+                sn match  match expr {}
+                sn not    !expr
+                sn ref    &expr
+                sn refm   &mut expr
+                sn unsafe unsafe {}
+                sn while  while expr {}
             "#]],
         );
     }
@@ -515,6 +525,22 @@ fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn postfix_completion_for_unsafe() {
+        check_edit("unsafe", r#"fn main() { foo.$0 }"#, r#"fn main() { unsafe { foo } }"#);
+        check_edit("unsafe", r#"fn main() { { foo }.$0 }"#, r#"fn main() { unsafe { foo } }"#);
+        check_edit(
+            "unsafe",
+            r#"fn main() { if x { foo }.$0 }"#,
+            r#"fn main() { unsafe { if x { foo } } }"#,
+        );
+        check_edit(
+            "unsafe",
+            r#"fn main() { loop { foo }.$0 }"#,
+            r#"fn main() { unsafe { loop { foo } } }"#,
+        );
     }
 
     #[test]
