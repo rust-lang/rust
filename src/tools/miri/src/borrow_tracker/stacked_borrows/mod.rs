@@ -148,8 +148,7 @@ impl NewPermission {
             NewPermission::Uniform {
                 perm: Permission::Unique,
                 access: Some(AccessKind::Write),
-                protector: (kind == RetagKind::FnEntry)
-                    .then_some(ProtectorKind::WeakProtector),
+                protector: (kind == RetagKind::FnEntry).then_some(ProtectorKind::WeakProtector),
             }
         } else {
             // `!Unpin` boxes do not get `noalias` nor `dereferenceable`.
