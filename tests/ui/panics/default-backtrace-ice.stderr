@@ -4,9 +4,7 @@ LL | fn main() { missing_ident; }
 
 stack backtrace:
 
-error: internal compiler error: unexpected panic
-
-
+error: the compiler unexpectedly panicked. this is a bug.
 
 
 

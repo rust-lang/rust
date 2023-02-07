@@ -4,7 +4,7 @@ error: internal compiler error: delayed span bug triggered by #[rustc_error(dela
 LL | fn main() {}
    | ^^^^^^^^^
 
-error: internal compiler error: unexpected panic
+error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
 #0 [trigger_delay_span_bug] triggering a delay span bug
