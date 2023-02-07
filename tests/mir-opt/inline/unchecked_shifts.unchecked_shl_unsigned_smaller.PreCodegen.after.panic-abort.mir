@@ -7,25 +7,21 @@ fn unchecked_shl_unsigned_smaller(_1: u16, _2: u32) -> u16 {
     scope 1 (inlined core::num::<impl u16>::unchecked_shl) {
         debug self => _1;
         debug rhs => _2;
-        let mut _3: u32;
-        let mut _4: bool;
-        let mut _5: u16;
+        let mut _3: bool;
+        let mut _4: u16;
         scope 2 {
         }
     }
 
     bb0: {
-        StorageLive(_5);
         StorageLive(_4);
         StorageLive(_3);
-        _3 = const 65535_u32;
-        _4 = Le(_2, move _3);
+        _3 = Le(_2, const 65535_u32);
+        assume(move _3);
         StorageDead(_3);
-        assume(move _4);
+        _4 = _2 as u16 (IntToInt);
+        _0 = ShlUnchecked(_1, move _4);
         StorageDead(_4);
-        _5 = _2 as u16 (IntToInt);
-        _0 = ShlUnchecked(_1, move _5);
-        StorageDead(_5);
         return;
     }
 }

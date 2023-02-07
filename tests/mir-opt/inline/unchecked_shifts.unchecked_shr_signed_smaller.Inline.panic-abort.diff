@@ -12,7 +12,6 @@
 +         debug rhs => _4;
 +         let mut _5: i16;
 +         let mut _6: bool;
-+         let mut _7: u32;
 +         scope 2 {
 +         }
 +     }
@@ -28,10 +27,7 @@
 -     bb1: {
 +         StorageLive(_5);
 +         StorageLive(_6);
-+         StorageLive(_7);
-+         _7 = const 32767_u32;
-+         _6 = Le(_4, move _7);
-+         StorageDead(_7);
++         _6 = Le(_4, const 32767_u32);
 +         assume(move _6);
 +         StorageDead(_6);
 +         _5 = _4 as i16 (IntToInt);
