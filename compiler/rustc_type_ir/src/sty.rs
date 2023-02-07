@@ -1022,10 +1022,11 @@ impl<I: Interner> PartialEq for RegionKind<I> {
                 (ReVar(a_r), ReVar(b_r)) => a_r == b_r,
                 (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r == b_r,
                 (ReErased, ReErased) => true,
+                (ReError(_), ReError(_)) => true,
                 _ => {
                     debug_assert!(
                         false,
-                        "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
+                        "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}"
                     );
                     true
                 }
