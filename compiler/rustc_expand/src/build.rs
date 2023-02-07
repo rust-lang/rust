@@ -131,10 +131,14 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn trait_bound(&self, path: ast::Path) -> ast::GenericBound {
+    pub fn trait_bound(&self, path: ast::Path, is_const: bool) -> ast::GenericBound {
         ast::GenericBound::Trait(
             self.poly_trait_ref(path.span, path),
-            ast::TraitBoundModifier::None,
+            if is_const {
+                ast::TraitBoundModifier::MaybeConst
+            } else {
+                ast::TraitBoundModifier::None
+            },
         )
     }
 
