@@ -3567,6 +3567,7 @@ dependencies = [
  "jemalloc-sys",
  "rustc_codegen_ssa",
  "rustc_driver",
+ "rustc_driver_impl",
  "rustc_smir",
 ]
 
@@ -3688,7 +3689,6 @@ dependencies = [
 name = "rustc_ast_lowering"
 version = "0.0.0"
 dependencies = [
- "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -3697,7 +3697,6 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
- "rustc_query_system",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -3730,7 +3729,6 @@ name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
  "rustc_ast",
- "rustc_parse_format",
  "rustc_span",
 ]
 
@@ -3837,7 +3835,6 @@ dependencies = [
  "rustc_metadata",
  "rustc_middle",
  "rustc_query_system",
- "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_symbol_mangling",
@@ -3863,7 +3860,6 @@ dependencies = [
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
- "rustc_const_eval",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fs_util",
@@ -3904,7 +3900,6 @@ dependencies = [
  "rustc_macros",
  "rustc_middle",
  "rustc_mir_dataflow",
- "rustc_query_system",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -3945,6 +3940,13 @@ dependencies = [
 
 [[package]]
 name = "rustc_driver"
+version = "0.0.0"
+dependencies = [
+ "rustc_driver_impl",
+]
+
+[[package]]
+name = "rustc_driver_impl"
 version = "0.0.0"
 dependencies = [
  "libc",
@@ -4092,15 +4094,12 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
- "rustc_graphviz",
  "rustc_hir",
- "rustc_hir_pretty",
  "rustc_index",
  "rustc_infer",
  "rustc_lint",
  "rustc_macros",
  "rustc_middle",
- "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -4187,7 +4186,6 @@ dependencies = [
  "rustc_macros",
  "rustc_middle",
  "rustc_serialize",
- "rustc_session",
  "rustc_span",
  "rustc_target",
  "smallvec",
@@ -4230,7 +4228,6 @@ dependencies = [
  "rustc_privacy",
  "rustc_query_impl",
  "rustc_resolve",
- "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_symbol_mangling",
@@ -4396,7 +4393,6 @@ dependencies = [
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
- "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4428,7 +4424,6 @@ dependencies = [
  "rustc_macros",
  "rustc_middle",
  "rustc_serialize",
- "rustc_session",
  "rustc_span",
  "rustc_target",
  "smallvec",
@@ -4559,7 +4554,6 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
- "rustc_trait_selection",
  "tracing",
 ]
 
@@ -4580,7 +4574,6 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "thin-vec",
  "tracing",
 ]
@@ -4781,7 +4774,6 @@ dependencies = [
  "rustc_hir",
  "rustc_index",
  "rustc_infer",
- "rustc_lint_defs",
  "rustc_macros",
  "rustc_middle",
  "rustc_parse_format",
@@ -4803,7 +4795,6 @@ dependencies = [
  "chalk-ir",
  "chalk-solve",
  "rustc_ast",
- "rustc_attr",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_index",

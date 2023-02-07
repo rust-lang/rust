@@ -112,6 +112,7 @@ macro_rules! arena_types {
 
             [decode] trait_impl_trait_tys: rustc_data_structures::fx::FxHashMap<rustc_hir::def_id::DefId, rustc_middle::ty::Ty<'tcx>>,
             [] bit_set_u32: rustc_index::bit_set::BitSet<u32>,
+            [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
         ]);
     )
 }

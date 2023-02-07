@@ -71,7 +71,7 @@ fn test_const() {
 
 #[test]
 fn test_os_packing() {
-    for code in -20i32..20i32 {
+    for code in -20..20 {
         let e = Error::from_raw_os_error(code);
         assert_eq!(e.raw_os_error(), Some(code));
         assert_matches!(

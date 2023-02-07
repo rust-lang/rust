@@ -18,14 +18,10 @@
       bb0: {
           StorageLive(_1);                 // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:30: +1:69
           StorageLive(_2);                 // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:31: +1:49
-          Deinit(_2);                      // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:31: +1:49
-          discriminant(_2) = 0;            // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:31: +1:49
+          _2 = Option::<u8>::None;         // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:31: +1:49
           StorageLive(_3);                 // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:51: +1:68
-          Deinit(_3);                      // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:51: +1:68
-          discriminant(_3) = 0;            // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:51: +1:68
-          Deinit(_1);                      // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:30: +1:69
-          (_1.0: std::option::Option<u8>) = move _2; // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:30: +1:69
-          (_1.1: std::option::Option<T>) = move _3; // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:30: +1:69
+          _3 = Option::<T>::None;          // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:51: +1:68
+          _1 = (move _2, move _3);         // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:30: +1:69
           StorageDead(_3);                 // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:68: +1:69
           StorageDead(_2);                 // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:68: +1:69
           _5 = discriminant((_1.0: std::option::Option<u8>)); // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:12: +1:27

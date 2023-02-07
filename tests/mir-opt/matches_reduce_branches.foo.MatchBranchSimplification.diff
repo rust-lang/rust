@@ -34,7 +34,7 @@
 -     }
 - 
 -     bb4: {
-          Deinit(_0);                      // scope 0 at $DIR/matches_reduce_branches.rs:+2:9: +2:11
+          _0 = ();                         // scope 0 at $DIR/matches_reduce_branches.rs:+2:9: +2:11
 -         goto -> bb6;                     // scope 0 at $DIR/matches_reduce_branches.rs:+1:5: +3:6
 +         goto -> bb3;                     // scope 0 at $DIR/matches_reduce_branches.rs:+1:5: +3:6
       }

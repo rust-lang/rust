@@ -790,7 +790,7 @@ impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
 }
 
 /// Invokes `f` on all direct fields of `ty`.
-fn iter_fields<'tcx>(
+pub fn iter_fields<'tcx>(
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut f: impl FnMut(Option<VariantIdx>, Field, Ty<'tcx>),
@@ -824,7 +824,7 @@ fn iter_fields<'tcx>(
 }
 
 /// Returns all locals with projections that have their reference or address taken.
-fn excluded_locals(body: &Body<'_>) -> IndexVec<Local, bool> {
+pub fn excluded_locals(body: &Body<'_>) -> IndexVec<Local, bool> {
     struct Collector {
         result: IndexVec<Local, bool>,
     }

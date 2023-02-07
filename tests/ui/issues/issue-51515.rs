@@ -5,6 +5,7 @@ fn main() {
     *foo = 32;
     //~^ ERROR cannot assign to `*foo`, which is behind a `&` reference
     let bar = foo;
+    //~^ HELP consider specifying this binding's type
     *bar = 64;
     //~^ ERROR cannot assign to `*bar`, which is behind a `&` reference
 }

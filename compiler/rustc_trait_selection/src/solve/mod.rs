@@ -24,7 +24,8 @@ use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::Obligation;
 use rustc_middle::infer::canonical::Certainty as OldCertainty;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::traits::solve::{ExternalConstraints, ExternalConstraintsData};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::ty::{
     CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TypeOutlivesPredicate,
 };
@@ -72,8 +73,7 @@ impl<'tcx, P> From<Obligation<'tcx, P>> for Goal<'tcx, P> {
         Goal { param_env: obligation.param_env, predicate: obligation.predicate }
     }
 }
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
 pub struct Response<'tcx> {
     pub var_values: CanonicalVarValues<'tcx>,
     /// Additional constraints returned by this query.
@@ -119,14 +119,6 @@ pub enum MaybeCause {
     Ambiguity,
     /// We gave up due to an overflow, most often by hitting the recursion limit.
     Overflow,
-}
-
-/// Additional constraints returned on success.
-#[derive(Debug, PartialEq, Eq, Clone, Hash, TypeFoldable, TypeVisitable, Default)]
-pub struct ExternalConstraints<'tcx> {
-    // FIXME: implement this.
-    regions: (),
-    opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
 }
 
 type CanonicalGoal<'tcx, T = ty::Predicate<'tcx>> = Canonical<'tcx, Goal<'tcx, T>>;
@@ -218,15 +210,14 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 EvalCtxt { infcx, var_values, search_graph, in_projection_eq_hack: false };
             let result = ecx.compute_goal(goal);
 
-            // FIXME: `Response` should be `Copy`
-            if search_graph.try_finalize_goal(tcx, canonical_goal, result.clone()) {
+            if search_graph.try_finalize_goal(tcx, canonical_goal, result) {
                 return result;
             }
         }
     }
 
     fn make_canonical_response(&self, certainty: Certainty) -> QueryResult<'tcx> {
-        let external_constraints = take_external_constraints(self.infcx)?;
+        let external_constraints = compute_external_query_constraints(self.infcx)?;
 
         Ok(self.infcx.canonicalize_response(Response {
             var_values: self.var_values,
@@ -461,18 +452,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 }
 
 #[instrument(level = "debug", skip(infcx), ret)]
-fn take_external_constraints<'tcx>(
+fn compute_external_query_constraints<'tcx>(
     infcx: &InferCtxt<'tcx>,
 ) -> Result<ExternalConstraints<'tcx>, NoSolution> {
     let region_obligations = infcx.take_registered_region_obligations();
     let opaque_types = infcx.take_opaque_types_for_query_response();
-    Ok(ExternalConstraints {
+    Ok(infcx.tcx.intern_external_constraints(ExternalConstraintsData {
         // FIXME: Now that's definitely wrong :)
         //
         // Should also do the leak check here I think
         regions: drop(region_obligations),
         opaque_types,
-    })
+    }))
 }
 
 fn instantiate_canonical_query_response<'tcx>(
@@ -492,7 +483,10 @@ fn instantiate_canonical_query_response<'tcx>(
                     Certainty::Yes => OldCertainty::Proven,
                     Certainty::Maybe(_) => OldCertainty::Ambiguous,
                 },
-                opaque_types: resp.external_constraints.opaque_types,
+                // FIXME: This to_owned makes me sad, but we should eventually impl
+                // `instantiate_query_response_and_region_obligations` separately
+                // instead of piggybacking off of the old implementation.
+                opaque_types: resp.external_constraints.opaque_types.to_owned(),
                 value: resp.certainty,
             }),
         ) else { bug!(); };
@@ -510,7 +504,10 @@ pub(super) fn response_no_constraints<'tcx>(
         variables: goal.variables,
         value: Response {
             var_values: CanonicalVarValues::make_identity(tcx, goal.variables),
-            external_constraints: Default::default(),
+            // FIXME: maybe we should store the "no response" version in tcx, like
+            // we do for tcx.types and stuff.
+            external_constraints: tcx
+                .intern_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
     })

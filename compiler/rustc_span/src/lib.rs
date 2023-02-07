@@ -705,8 +705,8 @@ impl Span {
     }
 
     #[inline]
-    pub fn rust_2015(self) -> bool {
-        self.edition().rust_2015()
+    pub fn is_rust_2015(self) -> bool {
+        self.edition().is_rust_2015()
     }
 
     #[inline]

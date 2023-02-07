@@ -1,5 +1,6 @@
 use crate::errors::{
-    MultipleWhereClauses, UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
+    MultipleWhereClauses, UnexpectedDefaultValueForLifetimeInGenericParameters,
+    UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
     WhereClauseBeforeTupleStructBodySugg,
 };
 
@@ -145,6 +146,20 @@ impl<'a> Parser<'a> {
                         } else {
                             (None, Vec::new())
                         };
+
+                        if this.check_noexpect(&token::Eq)
+                            && this.look_ahead(1, |t| t.is_lifetime())
+                        {
+                            let lo = this.token.span;
+                            // Parse `= 'lifetime`.
+                            this.bump(); // `=`
+                            this.bump(); // `'lifetime`
+                            let span = lo.to(this.prev_token.span);
+                            this.sess.emit_err(
+                                UnexpectedDefaultValueForLifetimeInGenericParameters { span },
+                            );
+                        }
+
                         Some(ast::GenericParam {
                             ident: lifetime.ident,
                             id: lifetime.id,

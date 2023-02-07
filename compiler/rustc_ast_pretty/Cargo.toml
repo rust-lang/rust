@@ -7,5 +7,4 @@ edition = "2021"
 
 [dependencies]
 rustc_ast = { path = "../rustc_ast" }
-rustc_parse_format = { path = "../rustc_parse_format" }
 rustc_span = { path = "../rustc_span" }

@@ -675,8 +675,12 @@ pub trait PrettyPrinter<'tcx>:
                 p!(")")
             }
             ty::FnDef(def_id, substs) => {
-                let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
-                p!(print(sig), " {{", print_value_path(def_id, substs), "}}");
+                if NO_QUERIES.with(|q| q.get()) {
+                    p!(print_def_path(def_id, substs));
+                } else {
+                    let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
+                    p!(print(sig), " {{", print_value_path(def_id, substs), "}}");
+                }
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
             ty::Infer(infer_ty) => {
@@ -734,13 +738,13 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                // FIXME(eddyb) print this with `print_def_path`.
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
                 // only affect certain debug messages (e.g. messages printed
                 // from `rustc_middle::ty` during the computation of `tcx.predicates_of`),
                 // and should have no effect on any compiler output.
-                if self.should_print_verbose() || NO_QUERIES.with(|q| q.get()) {
+                if self.should_print_verbose() {
+                    // FIXME(eddyb) print this with `print_def_path`.
                     p!(write("Opaque({:?}, {:?})", def_id, substs));
                     return Ok(self);
                 }
@@ -748,6 +752,8 @@ pub trait PrettyPrinter<'tcx>:
                 let parent = self.tcx().parent(def_id);
                 match self.tcx().def_kind(parent) {
                     DefKind::TyAlias | DefKind::AssocTy => {
+                        // NOTE: I know we should check for NO_QUERIES here, but it's alright.
+                        // `type_of` on a type alias or assoc type should never cause a cycle.
                         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: d, .. }) =
                             *self.tcx().type_of(parent).kind()
                         {
@@ -762,7 +768,14 @@ pub trait PrettyPrinter<'tcx>:
                         p!(print_def_path(def_id, substs));
                         return Ok(self);
                     }
-                    _ => return self.pretty_print_opaque_impl_type(def_id, substs),
+                    _ => {
+                        if NO_QUERIES.with(|q| q.get()) {
+                            p!(print_def_path(def_id, &[]));
+                            return Ok(self);
+                        } else {
+                            return self.pretty_print_opaque_impl_type(def_id, substs);
+                        }
+                    }
                 }
             }
             ty::Str => p!("str"),

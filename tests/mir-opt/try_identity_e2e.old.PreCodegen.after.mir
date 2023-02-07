@@ -19,11 +19,8 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
     }
 
     bb1: {
-        StorageLive(_4);                 // scope 0 at $DIR/try_identity_e2e.rs:+4:17: +4:18
         _4 = move ((_1 as Err).0: E);    // scope 0 at $DIR/try_identity_e2e.rs:+4:17: +4:18
-        Deinit(_0);                      // scope 2 at $DIR/try_identity_e2e.rs:+4:30: +4:36
-        ((_0 as Err).0: E) = move _4;    // scope 2 at $DIR/try_identity_e2e.rs:+4:30: +4:36
-        discriminant(_0) = 1;            // scope 2 at $DIR/try_identity_e2e.rs:+4:30: +4:36
+        _0 = Result::<T, E>::Err(move _4); // scope 2 at $DIR/try_identity_e2e.rs:+4:30: +4:36
         return;                          // scope 0 at $DIR/try_identity_e2e.rs:+7:1: +7:2
     }
 
@@ -32,11 +29,8 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
     }
 
     bb3: {
-        StorageLive(_3);                 // scope 0 at $DIR/try_identity_e2e.rs:+3:16: +3:17
         _3 = move ((_1 as Ok).0: T);     // scope 0 at $DIR/try_identity_e2e.rs:+3:16: +3:17
-        Deinit(_0);                      // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +6:6
-        ((_0 as Ok).0: T) = move _3;     // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +6:6
-        discriminant(_0) = 0;            // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +6:6
+        _0 = Result::<T, E>::Ok(move _3); // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +6:6
         return;                          // scope 0 at $DIR/try_identity_e2e.rs:+7:1: +7:2
     }
 }

@@ -29,7 +29,7 @@
       }
   
       bb1: {
-          StorageLive(_2);                 // scope 1 at $DIR/cycle.rs:+2:9: +2:10
+-         StorageLive(_2);                 // scope 1 at $DIR/cycle.rs:+2:9: +2:10
           _2 = _1;                         // scope 1 at $DIR/cycle.rs:+2:13: +2:14
 -         StorageLive(_3);                 // scope 2 at $DIR/cycle.rs:+3:9: +3:10
 -         _3 = _2;                         // scope 2 at $DIR/cycle.rs:+3:13: +3:14

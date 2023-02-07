@@ -60,7 +60,6 @@ mod coverage;
 mod ctfe_limit;
 mod dataflow_const_prop;
 mod dead_store_elimination;
-mod deaggregator;
 mod deduce_param_attrs;
 mod deduplicate_blocks;
 mod deref_separator;
@@ -523,9 +522,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &generator::StateTransform,
         &add_retag::AddRetag,
-        // Deaggregator is necessary for const prop. We may want to consider implementing
-        // CTFE support for aggregates.
-        &deaggregator::Deaggregator,
         &Lint(const_prop_lint::ConstProp),
     ];
     pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));

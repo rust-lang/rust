@@ -105,10 +105,9 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
 }
 
-h1, h2, h3, h4 {
-	color: white;
-}
-h1 a {
+h1, h2, h3, h4,
+h1 a, .sidebar h2 a, .sidebar h3 a,
+#source-sidebar > .title {
 	color: #fff;
 }
 h4 {
@@ -118,24 +117,22 @@ h4 {
 .docblock code {
 	color: #ffb454;
 }
-.code-header {
-	color: #e6e1cf;
-}
-.docblock pre > code, pre > code {
-	color: #e6e1cf;
-}
-.item-info code {
-	color: #e6e1cf;
-}
 .docblock a > code {
 	color: #39AFD7 !important;
 }
-pre, .rustdoc.source .example-wrap {
+.code-header,
+.docblock pre > code,
+pre, pre > code,
+.item-info code,
+.rustdoc.source .example-wrap {
 	color: #e6e1cf;
 }
 
 .sidebar .current,
-.sidebar a:hover {
+.sidebar a:hover,
+#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus,
+#source-sidebar div.files > a.selected {
 	color: #ffb44c;
 }
 
@@ -149,25 +146,17 @@ pre, .rustdoc.source .example-wrap {
 	border-right: 1px solid #ffb44c;
 }
 
-.search-results a:hover {
-	color: #fff !important;
-	background-color: #3c3c3c;
-}
-
+.search-results a:hover,
 .search-results a:focus {
 	color: #fff !important;
 	background-color: #3c3c3c;
 }
+
 .search-results a {
 	color: #0096cf;
 }
 .search-results a div.desc {
 	color: #c5c5c5;
-}
-
-.sidebar h2 a,
-.sidebar h3 a {
-	color: white;
 }
 
 .result-name .primitive > i, .result-name .keyword > i {
@@ -188,13 +177,4 @@ pre, .rustdoc.source .example-wrap {
 
 #settings-menu > a img {
 	filter: invert(100);
-}
-
-#source-sidebar > .title {
-	color: #fff;
-}
-#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus,
-#source-sidebar div.files > a.selected {
-	color: #ffb44c;
 }

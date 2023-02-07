@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
@@ -432,6 +434,18 @@ pub(crate) enum MissingInInForLoopSub {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_missing_expression_in_for_loop)]
+pub(crate) struct MissingExpressionInForLoop {
+    #[primary_span]
+    #[suggestion(
+        code = "/* expression */ ",
+        applicability = "has-placeholders",
+        style = "verbose"
+    )]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_missing_comma_after_match_arm)]
 pub(crate) struct MissingCommaAfterMatchArm {
     #[primary_span]
@@ -668,13 +682,10 @@ pub(crate) struct InclusiveRangeExtraEquals {
 #[diag(parse_inclusive_range_match_arrow)]
 pub(crate) struct InclusiveRangeMatchArrow {
     #[primary_span]
+    pub arrow: Span,
+    #[label]
     pub span: Span,
-    #[suggestion(
-        suggestion_add_space,
-        style = "verbose",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
+    #[suggestion(style = "verbose", code = " ", applicability = "machine-applicable")]
     pub after_pat: Span,
 }
 
@@ -1591,6 +1602,14 @@ pub(crate) struct UnexpectedSelfInGenericParameters {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_unexpected_default_value_for_lifetime_in_generic_parameters)]
+pub(crate) struct UnexpectedDefaultValueForLifetimeInGenericParameters {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_multiple_where_clauses)]
 pub(crate) struct MultipleWhereClauses {
     #[primary_span]
@@ -1802,8 +1821,9 @@ pub(crate) struct EnumPatternInsteadOfIdentifier {
 #[diag(parse_dot_dot_dot_for_remaining_fields)]
 pub(crate) struct DotDotDotForRemainingFields {
     #[primary_span]
-    #[suggestion(code = "..", applicability = "machine-applicable")]
+    #[suggestion(code = "..", style = "verbose", applicability = "machine-applicable")]
     pub span: Span,
+    pub token_str: Cow<'static, str>,
 }
 
 #[derive(Diagnostic)]

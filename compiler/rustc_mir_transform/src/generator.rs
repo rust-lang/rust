@@ -52,7 +52,6 @@
 
 use crate::deref_separator::deref_finder;
 use crate::simplify;
-use crate::util::expand_aggregate;
 use crate::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::pluralize;
@@ -272,31 +271,26 @@ impl<'tcx> TransformVisitor<'tcx> {
             assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 0);
 
             // FIXME(swatinem): assert that `val` is indeed unit?
-            statements.extend(expand_aggregate(
-                Place::return_place(),
-                std::iter::empty(),
-                kind,
+            statements.push(Statement {
+                kind: StatementKind::Assign(Box::new((
+                    Place::return_place(),
+                    Rvalue::Aggregate(Box::new(kind), vec![]),
+                ))),
                 source_info,
-                self.tcx,
-            ));
+            });
             return;
         }
 
         // else: `Poll::Ready(x)`, `GeneratorState::Yielded(x)` or `GeneratorState::Complete(x)`
         assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 1);
 
-        let ty = self
-            .tcx
-            .bound_type_of(self.state_adt_ref.variant(idx).fields[0].did)
-            .subst(self.tcx, self.state_substs);
-
-        statements.extend(expand_aggregate(
-            Place::return_place(),
-            std::iter::once((val, ty)),
-            kind,
+        statements.push(Statement {
+            kind: StatementKind::Assign(Box::new((
+                Place::return_place(),
+                Rvalue::Aggregate(Box::new(kind), vec![val]),
+            ))),
             source_info,
-            self.tcx,
-        ));
+        });
     }
 
     // Create a Place referencing a generator struct field

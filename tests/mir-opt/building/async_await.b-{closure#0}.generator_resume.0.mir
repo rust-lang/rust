@@ -167,8 +167,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageLive(_19);                // scope 1 at $DIR/async_await.rs:+1:8: +1:14
         StorageLive(_20);                // scope 1 at $DIR/async_await.rs:+1:8: +1:14
         _20 = ();                        // scope 1 at $DIR/async_await.rs:+1:8: +1:14
-        Deinit(_0);                      // scope 1 at $DIR/async_await.rs:+1:8: +1:14
-        discriminant(_0) = 1;            // scope 1 at $DIR/async_await.rs:+1:8: +1:14
+        _0 = Poll::<()>::Pending;        // scope 1 at $DIR/async_await.rs:+1:8: +1:14
         discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 3; // scope 1 at $DIR/async_await.rs:+1:8: +1:14
         return;                          // scope 1 at $DIR/async_await.rs:+1:8: +1:14
     }
@@ -276,8 +275,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageLive(_35);                // scope 4 at $DIR/async_await.rs:+2:8: +2:14
         StorageLive(_36);                // scope 4 at $DIR/async_await.rs:+2:8: +2:14
         _36 = ();                        // scope 4 at $DIR/async_await.rs:+2:8: +2:14
-        Deinit(_0);                      // scope 4 at $DIR/async_await.rs:+2:8: +2:14
-        discriminant(_0) = 1;            // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        _0 = Poll::<()>::Pending;        // scope 4 at $DIR/async_await.rs:+2:8: +2:14
         discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 4; // scope 4 at $DIR/async_await.rs:+2:8: +2:14
         return;                          // scope 4 at $DIR/async_await.rs:+2:8: +2:14
     }
@@ -317,9 +315,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
     }
 
     bb26: {
-        Deinit(_0);                      // scope 0 at $DIR/async_await.rs:+3:2: +3:2
-        ((_0 as Ready).0: ()) = move _37; // scope 0 at $DIR/async_await.rs:+3:2: +3:2
-        discriminant(_0) = 0;            // scope 0 at $DIR/async_await.rs:+3:2: +3:2
+        _0 = Poll::<()>::Ready(move _37); // scope 0 at $DIR/async_await.rs:+3:2: +3:2
         discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 1; // scope 0 at $DIR/async_await.rs:+3:2: +3:2
         return;                          // scope 0 at $DIR/async_await.rs:+3:2: +3:2
     }

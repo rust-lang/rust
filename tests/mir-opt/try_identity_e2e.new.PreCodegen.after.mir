@@ -26,49 +26,40 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
         _3 = discriminant(_1);           // scope 0 at $DIR/try_identity_e2e.rs:+3:19: +3:20
-        switchInt(move _3) -> [0: bb2, 1: bb1, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+3:13: +3:20
+        switchInt(move _3) -> [0: bb2, 1: bb1, otherwise: bb5]; // scope 0 at $DIR/try_identity_e2e.rs:+3:13: +3:20
     }
 
     bb1: {
-        StorageLive(_5);                 // scope 0 at $DIR/try_identity_e2e.rs:+5:21: +5:22
         _5 = move ((_1 as Err).0: E);    // scope 0 at $DIR/try_identity_e2e.rs:+5:21: +5:22
-        Deinit(_2);                      // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
-        ((_2 as Break).0: E) = move _5;  // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
-        discriminant(_2) = 1;            // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
-        _6 = discriminant(_2);           // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
-        switchInt(move _6) -> [0: bb5, 1: bb3, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +7:10
+        _2 = ControlFlow::<E, T>::Break(move _5); // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
+        goto -> bb3;                     // scope 0 at $DIR/try_identity_e2e.rs:+5:47: +5:48
     }
 
     bb2: {
-        StorageLive(_4);                 // scope 0 at $DIR/try_identity_e2e.rs:+4:20: +4:21
         _4 = move ((_1 as Ok).0: T);     // scope 0 at $DIR/try_identity_e2e.rs:+4:20: +4:21
-        Deinit(_2);                      // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
-        ((_2 as Continue).0: T) = move _4; // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
-        discriminant(_2) = 0;            // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
-        _6 = discriminant(_2);           // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
-        switchInt(move _6) -> [0: bb5, 1: bb3, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +7:10
+        _2 = ControlFlow::<E, T>::Continue(move _4); // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
+        goto -> bb3;                     // scope 0 at $DIR/try_identity_e2e.rs:+4:49: +4:50
     }
 
     bb3: {
-        StorageLive(_8);                 // scope 0 at $DIR/try_identity_e2e.rs:+9:32: +9:33
+        _6 = discriminant(_2);           // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
+        switchInt(move _6) -> [0: bb6, 1: bb4, otherwise: bb5]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +7:10
+    }
+
+    bb4: {
         _8 = move ((_2 as Break).0: E);  // scope 0 at $DIR/try_identity_e2e.rs:+9:32: +9:33
-        Deinit(_0);                      // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
-        ((_0 as Err).0: E) = move _8;    // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
-        discriminant(_0) = 1;            // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
+        _0 = Result::<T, E>::Err(move _8); // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
         StorageDead(_2);                 // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
         return;                          // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
     }
 
-    bb4: {
+    bb5: {
         unreachable;                     // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
     }
 
-    bb5: {
-        StorageLive(_7);                 // scope 0 at $DIR/try_identity_e2e.rs:+8:35: +8:36
+    bb6: {
         _7 = move ((_2 as Continue).0: T); // scope 0 at $DIR/try_identity_e2e.rs:+8:35: +8:36
-        Deinit(_0);                      // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
-        ((_0 as Ok).0: T) = move _7;     // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
-        discriminant(_0) = 0;            // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
+        _0 = Result::<T, E>::Ok(move _7); // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
         StorageDead(_2);                 // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
         return;                          // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
     }

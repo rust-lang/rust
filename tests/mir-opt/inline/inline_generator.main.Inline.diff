@@ -44,8 +44,17 @@
 -     }
 - 
 -     bb1: {
-+         Deinit(_4);                      // scope 2 at $DIR/inline_generator.rs:15:5: 15:41
-+         discriminant(_4) = 0;            // scope 2 at $DIR/inline_generator.rs:15:5: 15:41
++         _4 = [generator@$DIR/inline_generator.rs:15:5: 15:8 (#0)]; // scope 2 at $DIR/inline_generator.rs:15:5: 15:41
++                                          // generator
++                                          // + def_id: DefId(0:7 ~ inline_generator[ea31]::g::{closure#0})
++                                          // + substs: [
++                                          //     bool,
++                                          //     i32,
++                                          //     bool,
++                                          //     {bool, i32},
++                                          //     (),
++                                          // ]
++                                          // + movability: Movable
           _3 = &mut _4;                    // scope 0 at $DIR/inline_generator.rs:+1:23: +1:31
 -         _2 = Pin::<&mut [generator@$DIR/inline_generator.rs:15:5: 15:8]>::new(move _3) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/inline_generator.rs:+1:14: +1:32
 -                                          // mir::Constant
@@ -59,8 +68,7 @@
 +         _5 = move _3;                    // scope 4 at $SRC_DIR/core/src/pin.rs:LL:COL
 +         StorageLive(_6);                 // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
 +         _6 = move _5;                    // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
-+         Deinit(_2);                      // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
-+         (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]) = move _6; // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
++         _2 = Pin::<&mut [generator@$DIR/inline_generator.rs:15:5: 15:8]> { pointer: move _6 }; // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
 +         StorageDead(_6);                 // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
 +         StorageDead(_5);                 // scope 4 at $SRC_DIR/core/src/pin.rs:LL:COL
           StorageDead(_3);                 // scope 0 at $DIR/inline_generator.rs:+1:31: +1:32
@@ -106,9 +114,7 @@
 +     }
 + 
 +     bb6: {
-+         Deinit(_1);                      // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
-+         ((_1 as Yielded).0: i32) = move _8; // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
-+         discriminant(_1) = 0;            // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
++         _1 = GeneratorState::<i32, bool>::Yielded(move _8); // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
 +         _11 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
 +         discriminant((*_11)) = 3;        // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
 +         goto -> bb1;                     // scope 0 at $DIR/inline_generator.rs:15:11: 15:39
@@ -117,9 +123,7 @@
 +     bb7: {
 +         StorageLive(_8);                 // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
 +         StorageDead(_8);                 // scope 6 at $DIR/inline_generator.rs:15:38: 15:39
-+         Deinit(_1);                      // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
-+         ((_1 as Complete).0: bool) = _7; // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
-+         discriminant(_1) = 1;            // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
++         _1 = GeneratorState::<i32, bool>::Complete(_7); // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         _12 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         discriminant((*_12)) = 1;        // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         goto -> bb1;                     // scope 0 at $DIR/inline_generator.rs:15:41: 15:41

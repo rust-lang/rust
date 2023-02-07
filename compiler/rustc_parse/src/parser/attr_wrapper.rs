@@ -469,6 +469,6 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(AttrWrapper, 16);
-    static_assert_size!(LazyAttrTokenStreamImpl, 144);
+    static_assert_size!(LazyAttrTokenStreamImpl, 120);
     // tidy-alphabetical-end
 }

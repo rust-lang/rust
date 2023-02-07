@@ -37,6 +37,7 @@ jobs:
     name: PR
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
@@ -162,6 +163,7 @@ jobs:
     name: auto
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -584,6 +586,7 @@ jobs:
     name: try
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"

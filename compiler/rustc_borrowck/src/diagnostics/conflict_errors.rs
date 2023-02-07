@@ -2645,6 +2645,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             operands,
                         ) = rvalue
                         {
+                            let def_id = def_id.expect_local();
                             for operand in operands {
                                 let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand else {
                                     continue;
@@ -2667,7 +2668,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 // into a place then we should annotate the closure in
                                 // case it ends up being assigned into the return place.
                                 annotated_closure =
-                                    self.annotate_fn_sig(*def_id, substs.as_closure().sig());
+                                    self.annotate_fn_sig(def_id, substs.as_closure().sig());
                                 debug!(
                                     "annotate_argument_and_return_for_borrow: \
                                      annotated_closure={:?} assigned_from_local={:?} \

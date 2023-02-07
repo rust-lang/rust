@@ -51,9 +51,7 @@
 +                                          // + span: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +                                          // + user_ty: UserType(0)
 +                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Unevaluated(alloc::raw_vec::RawVec::<T>::NEW, [u32], None) }
-+         Deinit(_9);                      // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         (_9.0: alloc::raw_vec::RawVec<u32>) = move _10; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         (_9.1: usize) = const 0_usize;   // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         _9 = Vec::<u32> { buf: move _10, len: const 0_usize }; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +         StorageDead(_10);                // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +         (*_8) = move _9;                 // scope 0 at $DIR/inline_into_box_place.rs:+1:33: +1:43
 +         StorageDead(_9);                 // scope 0 at $DIR/inline_into_box_place.rs:+1:33: +1:43

@@ -1,8 +1,11 @@
-// compile-flags: -Zunstable-options --crate-type rlib
+// gate-test-packed_bundled_libs
+
+// ignore-wasm32-bare
+// compile-flags: --crate-type rlib
+// error-pattern: link modifiers combination `+bundle,+whole-archive` is unstable when generating rlibs
 // build-fail
-// error-pattern: the linking modifiers `+bundle` and `+whole-archive` are not compatible with each other when generating rlibs
 
-#[link(name = "mylib", kind = "static", modifiers = "+bundle,+whole-archive")]
-extern "C" { }
+#[link(name = "rust_test_helpers", kind = "static", modifiers = "+bundle,+whole-archive")]
+extern "C" {}
 
-fn main() { }
+fn main() {}

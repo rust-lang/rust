@@ -33,6 +33,7 @@ x--expand-yaml-anchors--remove:
 
   - &shared-ci-variables
     CI_JOB_NAME: ${{ matrix.name }}
+    CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
 
   - &public-variables
     SCCACHE_BUCKET: rust-lang-ci-sccache2

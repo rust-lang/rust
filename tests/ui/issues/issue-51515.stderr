@@ -10,12 +10,15 @@ LL |     let foo = &mut 16;
    |               ~~~~~~~
 
 error[E0594]: cannot assign to `*bar`, which is behind a `&` reference
-  --> $DIR/issue-51515.rs:8:5
+  --> $DIR/issue-51515.rs:9:5
    |
-LL |     let bar = foo;
-   |         --- consider changing this binding's type to be: `&mut i32`
 LL |     *bar = 64;
    |     ^^^^^^^^^ `bar` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider specifying this binding's type
+   |
+LL |     let bar: &mut i32 = foo;
+   |            ++++++++++
 
 error: aborting due to 2 previous errors
 

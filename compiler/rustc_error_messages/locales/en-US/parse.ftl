@@ -128,6 +128,9 @@ parse_missing_in_in_for_loop = missing `in` in `for` loop
     .use_in_not_of = try using `in` here instead
     .add_in = try adding `in` here
 
+parse_missing_expression_in_for_loop = missing expression to iterate on in `for` loop
+    .suggestion = try adding an expression to the `for` loop
+
 parse_missing_comma_after_match_arm = expected `,` following `match` arm
     .suggestion = missing a comma here to end this `match` arm
 
@@ -203,8 +206,9 @@ parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
     .suggestion_remove_eq = use `..=` instead
     .note = inclusive ranges end with a single equals sign (`..=`)
 
-parse_inclusive_range_match_arrow = unexpected `=>` after open range
-    .suggestion_add_space = add a space between the pattern and `=>`
+parse_inclusive_range_match_arrow = unexpected `>` after inclusive range
+    .label = this is parsed as an inclusive range `..=`
+    .suggestion = add a space between the pattern and `=>`
 
 parse_inclusive_range_no_end = inclusive range with no end
     .suggestion_open_range = use `..` instead
@@ -471,6 +475,9 @@ parse_unexpected_token_after_struct_name_found_other = expected `where`, `{"{"}`
 parse_unexpected_self_in_generic_parameters = unexpected keyword `Self` in generic parameters
     .note = you cannot use `Self` as a generic parameter because it is reserved for associated items
 
+parse_unexpected_default_value_for_lifetime_in_generic_parameters = unexpected default lifetime parameter
+    .label = lifetime parameters cannot have default values
+
 parse_multiple_where_clauses = cannot define duplicate `where` clauses on an item
     .label = previous `where` clause starts here
     .suggestion = consider joining the two `where` clauses into one
@@ -535,8 +542,8 @@ parse_dot_dot_dot_range_to_pattern_not_allowed = range-to patterns with `...` ar
 
 parse_enum_pattern_instead_of_identifier = expected identifier, found enum pattern
 
-parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `...`
-    .suggestion = to omit remaining fields, use one fewer `.`
+parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `{$token_str}`
+    .suggestion = to omit remaining fields, use `..`
 
 parse_expected_comma_after_pattern_field = expected `,`
 

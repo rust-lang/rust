@@ -662,7 +662,8 @@ changelog-seen = 2
 
 # Select LTO mode that will be used for compiling rustc. By default, thin local LTO
 # (LTO within a single crate) is used (like for any Rust crate). You can also select
-# "thin" or "fat" to apply Thin/Fat LTO to the `rustc_driver` dylib.
+# "thin" or "fat" to apply Thin/Fat LTO to the `rustc_driver` dylib, or "off" to disable
+# LTO entirely.
 #lto = "thin-local"
 
 # =============================================================================

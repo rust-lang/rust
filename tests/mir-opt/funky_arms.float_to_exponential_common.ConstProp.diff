@@ -51,14 +51,20 @@
       }
   
       bb2: {
-          Deinit(_6);                      // scope 1 at $DIR/funky_arms.rs:+10:17: +10:41
-          discriminant(_6) = 1;            // scope 1 at $DIR/funky_arms.rs:+10:17: +10:41
+-         _6 = MinusPlus;                  // scope 1 at $DIR/funky_arms.rs:+10:17: +10:41
++         _6 = const MinusPlus;            // scope 1 at $DIR/funky_arms.rs:+10:17: +10:41
++                                          // mir::Constant
++                                          // + span: $DIR/funky_arms.rs:21:17: 21:41
++                                          // + literal: Const { ty: Sign, val: Value(Scalar(0x01)) }
           goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:+10:17: +10:41
       }
   
       bb3: {
-          Deinit(_6);                      // scope 1 at $DIR/funky_arms.rs:+9:18: +9:38
-          discriminant(_6) = 0;            // scope 1 at $DIR/funky_arms.rs:+9:18: +9:38
+-         _6 = Minus;                      // scope 1 at $DIR/funky_arms.rs:+9:18: +9:38
++         _6 = const Minus;                // scope 1 at $DIR/funky_arms.rs:+9:18: +9:38
++                                          // mir::Constant
++                                          // + span: $DIR/funky_arms.rs:20:18: 20:38
++                                          // + literal: Const { ty: Sign, val: Value(Scalar(0x00)) }
           goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:+9:18: +9:38
       }
   
@@ -79,7 +85,6 @@
       }
   
       bb6: {
-          StorageLive(_10);                // scope 3 at $DIR/funky_arms.rs:+13:17: +13:26
           _10 = ((_7 as Some).0: usize);   // scope 3 at $DIR/funky_arms.rs:+13:17: +13:26
           StorageLive(_11);                // scope 3 at $DIR/funky_arms.rs:+15:43: +15:46
           _11 = &mut (*_1);                // scope 3 at $DIR/funky_arms.rs:+15:43: +15:46

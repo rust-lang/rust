@@ -34,8 +34,9 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext}
 
 use std::iter;
 use std::mem;
-use std::ops::ControlFlow;
 use std::slice;
+
+use std::ops::ControlFlow;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
@@ -1843,7 +1844,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .into_iter()
                         .flatten()
                     {
-                        if self.point_at_arg_if_possible(
+                        if self.blame_specific_arg_if_possible(
                                 error,
                                 def_id,
                                 param,
@@ -1873,7 +1874,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .into_iter()
                     .flatten()
                 {
-                    if self.point_at_arg_if_possible(
+                    if self.blame_specific_arg_if_possible(
                         error,
                         def_id,
                         param,
@@ -1898,16 +1899,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     for param in
                         [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     {
-                        if let Some(param) = param
-                            && self.point_at_field_if_possible(
-                                error,
+                        if let Some(param) = param {
+                            let refined_expr = self.point_at_field_if_possible(
                                 def_id,
                                 param,
                                 variant_def_id,
                                 fields,
-                            )
-                        {
-                            return true;
+                            );
+
+                            match refined_expr {
+                                None => {}
+                                Some((refined_expr, _)) => {
+                                    error.obligation.cause.span = refined_expr
+                                        .span
+                                        .find_ancestor_in_same_ctxt(error.obligation.cause.span)
+                                        .unwrap_or(refined_expr.span);
+                                    return true;
+                                }
+                            }
                         }
                     }
                 }
@@ -1940,7 +1949,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn point_at_arg_if_possible(
+    /// - `blame_specific_*` means that the function will recursively traverse the expression,
+    /// looking for the most-specific-possible span to blame.
+    ///
+    /// - `point_at_*` means that the function will only go "one level", pointing at the specific
+    /// expression mentioned.
+    ///
+    /// `blame_specific_arg_if_possible` will find the most-specific expression anywhere inside
+    /// the provided function call expression, and mark it as responsible for the fullfillment
+    /// error.
+    fn blame_specific_arg_if_possible(
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
         def_id: DefId,
@@ -1959,13 +1977,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .inputs()
             .iter()
             .enumerate()
-            .filter(|(_, ty)| find_param_in_ty(**ty, param_to_point_at))
+            .filter(|(_, ty)| Self::find_param_in_ty((**ty).into(), param_to_point_at))
             .collect();
         // If there's one field that references the given generic, great!
         if let [(idx, _)] = args_referencing_param.as_slice()
             && let Some(arg) = receiver
                 .map_or(args.get(*idx), |rcvr| if *idx == 0 { Some(rcvr) } else { args.get(*idx - 1) }) {
+
             error.obligation.cause.span = arg.span.find_ancestor_in_same_ctxt(error.obligation.cause.span).unwrap_or(arg.span);
+
+            if let hir::Node::Expr(arg_expr) = self.tcx.hir().get(arg.hir_id) {
+                // This is more specific than pointing at the entire argument.
+                self.blame_specific_expr_if_possible(error, arg_expr)
+            }
+
             error.obligation.cause.map_code(|parent_code| {
                 ObligationCauseCode::FunctionArgumentObligation {
                     arg_hir_id: arg.hir_id,
@@ -1983,14 +2008,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn point_at_field_if_possible(
+    // FIXME: Make this private and move to mod adjust_fulfillment_errors
+    pub fn point_at_field_if_possible(
         &self,
-        error: &mut traits::FulfillmentError<'tcx>,
         def_id: DefId,
         param_to_point_at: ty::GenericArg<'tcx>,
         variant_def_id: DefId,
         expr_fields: &[hir::ExprField<'tcx>],
-    ) -> bool {
+    ) -> Option<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)> {
         let def = self.tcx.adt_def(def_id);
 
         let identity_substs = ty::InternalSubsts::identity_for_item(self.tcx, def_id);
@@ -2000,7 +2025,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .filter(|field| {
                 let field_ty = field.ty(self.tcx, identity_substs);
-                find_param_in_ty(field_ty, param_to_point_at)
+                Self::find_param_in_ty(field_ty.into(), param_to_point_at)
             })
             .collect();
 
@@ -2010,17 +2035,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // same rules that check_expr_struct uses for macro hygiene.
                 if self.tcx.adjust_ident(expr_field.ident, variant_def_id) == field.ident(self.tcx)
                 {
-                    error.obligation.cause.span = expr_field
-                        .expr
-                        .span
-                        .find_ancestor_in_same_ctxt(error.obligation.cause.span)
-                        .unwrap_or(expr_field.span);
-                    return true;
+                    return Some((expr_field.expr, self.tcx.type_of(field.did)));
                 }
             }
         }
 
-        false
+        None
     }
 
     fn point_at_path_if_possible(
@@ -2239,24 +2259,4 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
     }
-}
-
-fn find_param_in_ty<'tcx>(ty: Ty<'tcx>, param_to_point_at: ty::GenericArg<'tcx>) -> bool {
-    let mut walk = ty.walk();
-    while let Some(arg) = walk.next() {
-        if arg == param_to_point_at {
-            return true;
-        } else if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Alias(ty::Projection, ..) = ty.kind()
-        {
-            // This logic may seem a bit strange, but typically when
-            // we have a projection type in a function signature, the
-            // argument that's being passed into that signature is
-            // not actually constraining that projection's substs in
-            // a meaningful way. So we skip it, and see improvements
-            // in some UI tests.
-            walk.skip_current_subtree();
-        }
-    }
-    false
 }

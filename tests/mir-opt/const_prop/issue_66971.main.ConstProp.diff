@@ -5,13 +5,14 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/issue_66971.rs:+0:11: +0:11
       let _1: ();                          // in scope 0 at $DIR/issue_66971.rs:+1:5: +1:23
       let mut _2: ((), u8, u8);            // in scope 0 at $DIR/issue_66971.rs:+1:12: +1:22
+      let mut _3: ();                      // in scope 0 at $DIR/issue_66971.rs:+1:13: +1:15
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/issue_66971.rs:+1:5: +1:23
           StorageLive(_2);                 // scope 0 at $DIR/issue_66971.rs:+1:12: +1:22
-          Deinit(_2);                      // scope 0 at $DIR/issue_66971.rs:+1:12: +1:22
-          (_2.1: u8) = const 0_u8;         // scope 0 at $DIR/issue_66971.rs:+1:12: +1:22
-          (_2.2: u8) = const 0_u8;         // scope 0 at $DIR/issue_66971.rs:+1:12: +1:22
+          StorageLive(_3);                 // scope 0 at $DIR/issue_66971.rs:+1:13: +1:15
+          _2 = (move _3, const 0_u8, const 0_u8); // scope 0 at $DIR/issue_66971.rs:+1:12: +1:22
+          StorageDead(_3);                 // scope 0 at $DIR/issue_66971.rs:+1:21: +1:22
           _1 = encode(move _2) -> bb1;     // scope 0 at $DIR/issue_66971.rs:+1:5: +1:23
                                            // mir::Constant
                                            // + span: $DIR/issue_66971.rs:17:5: 17:11
