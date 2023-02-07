@@ -928,8 +928,8 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[unstable(feature = "atomic_mut_ptr", reason = "recently added", issue = "66893")]
-    pub fn as_mut_ptr(&self) -> *mut bool {
-        self.v.get() as *mut bool
+    pub const fn as_mut_ptr(&self) -> *mut bool {
+        self.v.get().cast()
     }
 
     /// Fetches the value, and applies a function to it that returns an optional
@@ -1803,7 +1803,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```ignore (extern-declaration)
     /// #![feature(atomic_mut_ptr)]
-    //// use std::sync::atomic::AtomicPtr;
+    /// use std::sync::atomic::AtomicPtr;
     ///
     /// extern "C" {
     ///     fn my_atomic_op(arg: *mut *mut u32);
@@ -1819,7 +1819,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[unstable(feature = "atomic_mut_ptr", reason = "recently added", issue = "66893")]
-    pub fn as_mut_ptr(&self) -> *mut *mut T {
+    pub const fn as_mut_ptr(&self) -> *mut *mut T {
         self.p.get()
     }
 }
@@ -2727,7 +2727,7 @@ macro_rules! atomic_int {
             #[unstable(feature = "atomic_mut_ptr",
                    reason = "recently added",
                    issue = "66893")]
-            pub fn as_mut_ptr(&self) -> *mut $int_type {
+            pub const fn as_mut_ptr(&self) -> *mut $int_type {
                 self.v.get()
             }
         }
