@@ -289,7 +289,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                 if f.alternate() {
                     f.write_str(" ")?;
                 } else {
-                    f.write_str("<br>")?;
+                    f.write_str("\n")?;
                 }
 
                 match pred {
@@ -352,7 +352,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             }
         } else {
             let mut br_with_padding = String::with_capacity(6 * indent + 28);
-            br_with_padding.push_str("<br>");
+            br_with_padding.push_str("\n");
 
             let padding_amout =
                 if ending == Ending::Newline { indent + 4 } else { indent + "fn where ".len() };
@@ -360,16 +360,16 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             for _ in 0..padding_amout {
                 br_with_padding.push_str(" ");
             }
-            let where_preds = where_preds.to_string().replace("<br>", &br_with_padding);
+            let where_preds = where_preds.to_string().replace("\n", &br_with_padding);
 
             if ending == Ending::Newline {
                 let mut clause = " ".repeat(indent.saturating_sub(1));
                 write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
                 clause
             } else {
-                // insert a <br> tag after a single space but before multiple spaces at the start
+                // insert a newline after a single space but before multiple spaces at the start
                 if indent == 0 {
-                    format!("<br><span class=\"where\">where{where_preds}</span>")
+                    format!("\n<span class=\"where\">where{where_preds}</span>")
                 } else {
                     // put the first one on the same line as the 'where' keyword
                     let where_preds = where_preds.replacen(&br_with_padding, " ", 1);
@@ -1315,7 +1315,8 @@ impl clean::FnDecl {
 
     /// * `header_len`: The length of the function header and name. In other words, the number of
     ///   characters in the function declaration up to but not including the parentheses.
-    ///   <br>Used to determine line-wrapping.
+    ///   This is expected to go into a `<pre>`/`code-header` block, so indentation and newlines
+    ///   are preserved.
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
     pub(crate) fn full_print<'a, 'tcx: 'a>(
@@ -1363,7 +1364,7 @@ impl clean::FnDecl {
                 }
             } else {
                 if i > 0 {
-                    args.push_str("<br>");
+                    args.push_str("\n");
                 }
                 if input.is_const {
                     args.push_str("const ");
@@ -1389,7 +1390,7 @@ impl clean::FnDecl {
         let mut args = args.into_inner();
 
         if self.c_variadic {
-            args.push_str(",<br> ...");
+            args.push_str(",\n ...");
             args_plain.push_str(", ...");
         }
 
@@ -1399,24 +1400,20 @@ impl clean::FnDecl {
 
         let declaration_len = header_len + args_plain.len() + arrow_plain.len();
         let output = if declaration_len > 80 {
-            let full_pad = format!("<br>{}", " ".repeat(indent + 4));
-            let close_pad = format!("<br>{}", " ".repeat(indent));
+            let full_pad = format!("\n{}", " ".repeat(indent + 4));
+            let close_pad = format!("\n{}", " ".repeat(indent));
             format!(
                 "({pad}{args}{close}){arrow}",
                 pad = if self.inputs.values.is_empty() { "" } else { &full_pad },
-                args = args.replace("<br>", &full_pad),
+                args = args.replace("\n", &full_pad),
                 close = close_pad,
                 arrow = arrow
             )
         } else {
-            format!("({args}){arrow}", args = args.replace("<br>", " "), arrow = arrow)
+            format!("({args}){arrow}", args = args.replace("\n", " "), arrow = arrow)
         };
 
-        if f.alternate() {
-            write!(f, "{}", output.replace("<br>", "\n"))
-        } else {
-            write!(f, "{}", output)
-        }
+        write!(f, "{}", output)
     }
 }
 
