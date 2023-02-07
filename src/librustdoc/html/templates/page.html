@@ -23,11 +23,13 @@
     {%- for theme in themes -%}
         <link rel="stylesheet" disabled href="{{page.root_path|safe}}{{theme}}{{page.resource_suffix}}.css"> {#- -#}
     {%- endfor -%}
+    {%- if !layout.default_settings.is_empty() -%}
     <script id="default-settings" {# -#}
       {% for (k, v) in layout.default_settings %}
         data-{{k}}="{{v}}"
       {%- endfor -%}
     ></script> {#- -#}
+    {%- endif -%}
     <script src="{{static_root_path|safe}}{{files.storage_js}}"></script> {#- -#}
     {%- if page.css_class.contains("crate") -%}
     <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {#- -#}

@@ -1,0 +1,72 @@
+print-type-size type: `[async fn body@$DIR/async-awaiting-fut.rs:21:21: 24:2]`: 3078 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 0 bytes
+print-type-size     variant `Suspend0`: 3077 bytes
+print-type-size         local `.__awaitee`: 3077 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size     variant `Returned`: 0 bytes
+print-type-size     variant `Panicked`: 0 bytes
+print-type-size type: `[async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2]`: 3077 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 2051 bytes
+print-type-size         padding: 1026 bytes
+print-type-size         upvar `.fut`: 1025 bytes, alignment: 1 bytes
+print-type-size     variant `Suspend0`: 2052 bytes
+print-type-size         local `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         local `..generator_field4`: 1 bytes
+print-type-size         padding: 1 bytes
+print-type-size         upvar `.fut`: 1025 bytes, alignment: 1 bytes
+print-type-size         local `.__awaitee`: 1 bytes
+print-type-size     variant `Suspend1`: 3076 bytes
+print-type-size         padding: 1024 bytes
+print-type-size         local `..generator_field4`: 1 bytes, alignment: 1 bytes
+print-type-size         padding: 1 bytes
+print-type-size         upvar `.fut`: 1025 bytes, alignment: 1 bytes
+print-type-size         local `.__awaitee`: 1025 bytes
+print-type-size     variant `Suspend2`: 2052 bytes
+print-type-size         local `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         local `..generator_field4`: 1 bytes
+print-type-size         padding: 1 bytes
+print-type-size         upvar `.fut`: 1025 bytes, alignment: 1 bytes
+print-type-size         local `.__awaitee`: 1 bytes
+print-type-size     variant `Returned`: 2051 bytes
+print-type-size         padding: 1026 bytes
+print-type-size         upvar `.fut`: 1025 bytes, alignment: 1 bytes
+print-type-size     variant `Panicked`: 2051 bytes
+print-type-size         padding: 1026 bytes
+print-type-size         upvar `.fut`: 1025 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2]>`: 3077 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 3077 bytes
+print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2]>`: 3077 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 3077 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 3077 bytes
+print-type-size type: `[async fn body@$DIR/async-awaiting-fut.rs:8:35: 8:37]`: 1025 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 1024 bytes
+print-type-size         upvar `.arg`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size     variant `Returned`: 1024 bytes
+print-type-size         upvar `.arg`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size     variant `Panicked`: 1024 bytes
+print-type-size         upvar `.arg`: 1024 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/async-awaiting-fut.rs:8:35: 8:37]>`: 1025 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 1025 bytes
+print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/async-awaiting-fut.rs:8:35: 8:37]>`: 1025 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 1025 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 1025 bytes
+print-type-size type: `[async fn body@$DIR/async-awaiting-fut.rs:6:17: 6:19]`: 1 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 0 bytes
+print-type-size     variant `Returned`: 0 bytes
+print-type-size     variant `Panicked`: 0 bytes
+print-type-size type: `std::mem::ManuallyDrop<bool>`: 1 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 1 bytes
+print-type-size type: `std::mem::MaybeUninit<bool>`: 1 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 1 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 1 bytes
+print-type-size type: `std::task::Poll<()>`: 1 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Ready`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Pending`: 0 bytes

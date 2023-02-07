@@ -4,7 +4,7 @@ use std::ops::Add;
 
 struct A<B>(B);
 
-impl<B> Add for A<B> where B: Add + Add<Output = B> {
+impl<B> Add for A<B> where B: Add<Output = B> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -14,7 +14,7 @@ impl<B> Add for A<B> where B: Add + Add<Output = B> {
 
 struct C<B>(B);
 
-impl<B: Add + Add<Output = B>> Add for C<B> {
+impl<B: Add<Output = B>> Add for C<B> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -34,7 +34,7 @@ impl<B: std::ops::Add<Output = B>> Add for D<B> {
 
 struct E<B>(B);
 
-impl<B: Add + Add<Output = B>> Add for E<B> where B: Add<Output = B> {
+impl<B: Add<Output = B>> Add for E<B> where B: Add<Output = B> {
     //~^ ERROR equality constraints are not yet supported in `where` clauses
     type Output = Self;
 
