@@ -115,13 +115,15 @@ impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyArray<T> {
     type Value<'tcx> = LazyArray<T::Value<'tcx>>;
 }
 
+impl<T> Default for LazyArray<T> {
+    fn default() -> LazyArray<T> {
+        LazyArray::from_position_and_num_elems(NonZeroUsize::new(1).unwrap(), 0)
+    }
+}
+
 impl<T> LazyArray<T> {
     fn from_position_and_num_elems(position: NonZeroUsize, num_elems: usize) -> LazyArray<T> {
         LazyArray { position, num_elems, _marker: PhantomData }
-    }
-
-    fn empty() -> LazyArray<T> {
-        LazyArray::from_position_and_num_elems(NonZeroUsize::new(1).unwrap(), 0)
     }
 }
 
@@ -316,7 +318,7 @@ pub(crate) struct IncoherentImpls {
 /// Define `LazyTables` and `TableBuilders` at the same time.
 macro_rules! define_tables {
     (
-        - nullable: $($name1:ident: Table<$IDX1:ty, $T1:ty>,)+
+        - defaulted: $($name1:ident: Table<$IDX1:ty, $T1:ty>,)+
         - optional: $($name2:ident: Table<$IDX2:ty, $T2:ty>,)+
     ) => {
         #[derive(MetadataEncodable, MetadataDecodable)]
@@ -343,11 +345,15 @@ macro_rules! define_tables {
 }
 
 define_tables! {
-- nullable:
+- defaulted:
     is_intrinsic: Table<DefIndex, bool>,
     is_macro_rules: Table<DefIndex, bool>,
     is_type_alias_impl_trait: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
+    def_path_hashes: Table<DefIndex, DefPathHash>,
+    explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
+    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
@@ -360,12 +366,8 @@ define_tables! {
     lookup_const_stability: Table<DefIndex, LazyValue<attr::ConstStability>>,
     lookup_default_body_stability: Table<DefIndex, LazyValue<attr::DefaultBodyStability>>,
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
-    // As an optimization, a missing entry indicates an empty `&[]`.
-    explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
-    // As an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<Ty<'static>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
@@ -393,7 +395,6 @@ define_tables! {
     generator_kind: Table<DefIndex, LazyValue<hir::GeneratorKind>>,
     trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,
     trait_item_def_id: Table<DefIndex, RawDefId>,
-    inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
     unused_generic_params: Table<DefIndex, LazyValue<UnusedGenericParams>>,
     params_in_repr: Table<DefIndex, LazyValue<BitSet<u32>>>,
@@ -403,7 +404,6 @@ define_tables! {
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     def_keys: Table<DefIndex, LazyValue<DefKey>>,
-    def_path_hashes: Table<DefIndex, DefPathHash>,
     proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
     generator_diagnostic_data: Table<DefIndex, LazyValue<GeneratorDiagnosticData<'static>>>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,

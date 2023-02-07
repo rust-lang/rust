@@ -22,14 +22,17 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
         hir::ItemKind::Impl(ref impl_) => tcx.arena.alloc_from_iter(
             impl_.items.iter().map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id()),
         ),
-        hir::ItemKind::TraitAlias(..) => &[],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
     }
 }
 
 fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItems<'_> {
-    let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
-    ty::AssocItems::new(items)
+    if tcx.is_trait_alias(def_id) {
+        ty::AssocItems::new(Vec::new())
+    } else {
+        let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
+        ty::AssocItems::new(items)
+    }
 }
 
 fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> FxHashMap<DefId, DefId> {

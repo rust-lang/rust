@@ -818,125 +818,114 @@ where
         let tcx = cx.tcx();
         let param_env = cx.param_env();
 
-        let pointee_info =
-            match *this.ty.kind() {
-                ty::RawPtr(mt) if offset.bytes() == 0 => {
-                    tcx.layout_of(param_env.and(mt.ty)).ok().map(|layout| PointeeInfo {
-                        size: layout.size,
-                        align: layout.align.abi,
-                        safe: None,
-                    })
+        let pointee_info = match *this.ty.kind() {
+            ty::RawPtr(mt) if offset.bytes() == 0 => {
+                tcx.layout_of(param_env.and(mt.ty)).ok().map(|layout| PointeeInfo {
+                    size: layout.size,
+                    align: layout.align.abi,
+                    safe: None,
+                })
+            }
+            ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
+                tcx.layout_of(param_env.and(tcx.mk_fn_ptr(fn_sig))).ok().map(|layout| PointeeInfo {
+                    size: layout.size,
+                    align: layout.align.abi,
+                    safe: None,
+                })
+            }
+            ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
+                // Use conservative pointer kind if not optimizing. This saves us the
+                // Freeze/Unpin queries, and can save time in the codegen backend (noalias
+                // attributes in LLVM have compile-time cost even in unoptimized builds).
+                let optimize = tcx.sess.opts.optimize != OptLevel::No;
+                let kind = match mt {
+                    hir::Mutability::Not => PointerKind::SharedRef {
+                        frozen: optimize && ty.is_freeze(tcx, cx.param_env()),
+                    },
+                    hir::Mutability::Mut => PointerKind::MutableRef {
+                        unpin: optimize && ty.is_unpin(tcx, cx.param_env()),
+                    },
+                };
+
+                tcx.layout_of(param_env.and(ty)).ok().map(|layout| PointeeInfo {
+                    size: layout.size,
+                    align: layout.align.abi,
+                    safe: Some(kind),
+                })
+            }
+
+            _ => {
+                let mut data_variant = match this.variants {
+                    // Within the discriminant field, only the niche itself is
+                    // always initialized, so we only check for a pointer at its
+                    // offset.
+                    //
+                    // If the niche is a pointer, it's either valid (according
+                    // to its type), or null (which the niche field's scalar
+                    // validity range encodes). This allows using
+                    // `dereferenceable_or_null` for e.g., `Option<&T>`, and
+                    // this will continue to work as long as we don't start
+                    // using more niches than just null (e.g., the first page of
+                    // the address space, or unaligned pointers).
+                    Variants::Multiple {
+                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
+                        tag_field,
+                        ..
+                    } if this.fields.offset(tag_field) == offset => {
+                        Some(this.for_variant(cx, untagged_variant))
+                    }
+                    _ => Some(this),
+                };
+
+                if let Some(variant) = data_variant {
+                    // We're not interested in any unions.
+                    if let FieldsShape::Union(_) = variant.fields {
+                        data_variant = None;
+                    }
                 }
-                ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
-                    tcx.layout_of(param_env.and(tcx.mk_fn_ptr(fn_sig))).ok().map(|layout| {
-                        PointeeInfo { size: layout.size, align: layout.align.abi, safe: None }
-                    })
-                }
-                ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
-                    let kind = if tcx.sess.opts.optimize == OptLevel::No {
-                        // Use conservative pointer kind if not optimizing. This saves us the
-                        // Freeze/Unpin queries, and can save time in the codegen backend (noalias
-                        // attributes in LLVM have compile-time cost even in unoptimized builds).
-                        PointerKind::SharedMutable
-                    } else {
-                        match mt {
-                            hir::Mutability::Not => {
-                                if ty.is_freeze(tcx, cx.param_env()) {
-                                    PointerKind::Frozen
+
+                let mut result = None;
+
+                if let Some(variant) = data_variant {
+                    // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+                    // (requires passing in the expected address space from the caller)
+                    let ptr_end = offset + Pointer(AddressSpace::DATA).size(cx);
+                    for i in 0..variant.fields.count() {
+                        let field_start = variant.fields.offset(i);
+                        if field_start <= offset {
+                            let field = variant.field(cx, i);
+                            result = field.to_result().ok().and_then(|field| {
+                                if ptr_end <= field_start + field.size {
+                                    // We found the right field, look inside it.
+                                    let field_info =
+                                        field.pointee_info_at(cx, offset - field_start);
+                                    field_info
                                 } else {
-                                    PointerKind::SharedMutable
+                                    None
                                 }
-                            }
-                            hir::Mutability::Mut => {
-                                // References to self-referential structures should not be considered
-                                // noalias, as another pointer to the structure can be obtained, that
-                                // is not based-on the original reference. We consider all !Unpin
-                                // types to be potentially self-referential here.
-                                if ty.is_unpin(tcx, cx.param_env()) {
-                                    PointerKind::UniqueBorrowed
-                                } else {
-                                    PointerKind::UniqueBorrowedPinned
-                                }
+                            });
+                            if result.is_some() {
+                                break;
                             }
                         }
-                    };
-
-                    tcx.layout_of(param_env.and(ty)).ok().map(|layout| PointeeInfo {
-                        size: layout.size,
-                        align: layout.align.abi,
-                        safe: Some(kind),
-                    })
+                    }
                 }
 
-                _ => {
-                    let mut data_variant = match this.variants {
-                        // Within the discriminant field, only the niche itself is
-                        // always initialized, so we only check for a pointer at its
-                        // offset.
-                        //
-                        // If the niche is a pointer, it's either valid (according
-                        // to its type), or null (which the niche field's scalar
-                        // validity range encodes). This allows using
-                        // `dereferenceable_or_null` for e.g., `Option<&T>`, and
-                        // this will continue to work as long as we don't start
-                        // using more niches than just null (e.g., the first page of
-                        // the address space, or unaligned pointers).
-                        Variants::Multiple {
-                            tag_encoding: TagEncoding::Niche { untagged_variant, .. },
-                            tag_field,
-                            ..
-                        } if this.fields.offset(tag_field) == offset => {
-                            Some(this.for_variant(cx, untagged_variant))
-                        }
-                        _ => Some(this),
-                    };
-
-                    if let Some(variant) = data_variant {
-                        // We're not interested in any unions.
-                        if let FieldsShape::Union(_) = variant.fields {
-                            data_variant = None;
+                // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
+                if let Some(ref mut pointee) = result {
+                    if let ty::Adt(def, _) = this.ty.kind() {
+                        if def.is_box() && offset.bytes() == 0 {
+                            let optimize = tcx.sess.opts.optimize != OptLevel::No;
+                            pointee.safe = Some(PointerKind::Box {
+                                unpin: optimize && this.ty.boxed_ty().is_unpin(tcx, cx.param_env()),
+                            });
                         }
                     }
-
-                    let mut result = None;
-
-                    if let Some(variant) = data_variant {
-                        // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
-                        // (requires passing in the expected address space from the caller)
-                        let ptr_end = offset + Pointer(AddressSpace::DATA).size(cx);
-                        for i in 0..variant.fields.count() {
-                            let field_start = variant.fields.offset(i);
-                            if field_start <= offset {
-                                let field = variant.field(cx, i);
-                                result = field.to_result().ok().and_then(|field| {
-                                    if ptr_end <= field_start + field.size {
-                                        // We found the right field, look inside it.
-                                        let field_info =
-                                            field.pointee_info_at(cx, offset - field_start);
-                                        field_info
-                                    } else {
-                                        None
-                                    }
-                                });
-                                if result.is_some() {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
-                    if let Some(ref mut pointee) = result {
-                        if let ty::Adt(def, _) = this.ty.kind() {
-                            if def.is_box() && offset.bytes() == 0 {
-                                pointee.safe = Some(PointerKind::UniqueOwned);
-                            }
-                        }
-                    }
-
-                    result
                 }
-            };
+
+                result
+            }
+        };
 
         debug!(
             "pointee_info_at (offset={:?}, type kind: {:?}) => {:?}",
