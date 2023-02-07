@@ -1114,9 +1114,6 @@ impl Step for Tidy {
             cmd.arg("--bless");
         }
 
-        builder.info("tidy check");
-        try_run(builder, &mut cmd);
-
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             builder.info("fmt check");
             if builder.initial_rustfmt().is_none() {
@@ -1134,6 +1131,11 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
             }
             crate::format::format(&builder, !builder.config.cmd.bless(), &[]);
         }
+
+        builder.info("tidy check");
+        try_run(builder, &mut cmd);
+
+        builder.ensure(ExpandYamlAnchors {});
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
