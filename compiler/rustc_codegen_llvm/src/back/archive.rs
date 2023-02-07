@@ -183,6 +183,12 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             // able to control the *exact* spelling of each of the symbols that are being imported:
             // hence we don't want `dlltool` adding leading underscores automatically.
             let dlltool = find_binutils_dlltool(sess);
+            let temp_prefix = {
+                let mut path = PathBuf::from(&output_path);
+                path.pop();
+                path.push(lib_name);
+                path
+            };
             let result = std::process::Command::new(dlltool)
                 .args([
                     "-d",
@@ -192,6 +198,8 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                     "-l",
                     output_path.to_str().unwrap(),
                     "--no-leading-underscore",
+                    "--temp-prefix",
+                    temp_prefix.to_str().unwrap(),
                 ])
                 .output();
 
