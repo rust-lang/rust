@@ -55,7 +55,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         ty::tls::with_context(|icx| {
             let icx = ty::tls::ImplicitCtxt { task_deps, ..icx.clone() };
 
-            ty::tls::enter_context(&icx, |_| op())
+            ty::tls::enter_context(&icx, op)
         })
     }
 

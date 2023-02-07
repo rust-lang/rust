@@ -748,7 +748,7 @@ impl<'tcx> QueryContext<'tcx> {
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
         let icx = ty::tls::ImplicitCtxt::new(self.gcx);
-        ty::tls::enter_context(&icx, |_| f(icx.tcx))
+        ty::tls::enter_context(&icx, || f(icx.tcx))
     }
 }
 

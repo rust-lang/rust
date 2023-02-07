@@ -110,9 +110,9 @@ unsafe fn downcast<'a, 'tcx>(context: *const ()) -> &'a ImplicitCtxt<'a, 'tcx> {
 #[inline]
 pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>, f: F) -> R
 where
-    F: FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
+    F: FnOnce() -> R,
 {
-    tlv::with_tlv(erase(context), || f(&context))
+    tlv::with_tlv(erase(context), f)
 }
 
 /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
