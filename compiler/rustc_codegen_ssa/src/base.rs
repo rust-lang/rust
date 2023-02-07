@@ -273,6 +273,14 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
         "destination type must be a dyn*"
     );
+    // FIXME(dyn-star): We can remove this when all supported LLVMs use opaque ptrs only.
+    let unit_ptr = bx.cx().type_ptr_to(bx.cx().type_struct(&[], false));
+    let src = match bx.cx().type_kind(bx.cx().backend_type(src_ty_and_layout)) {
+        TypeKind::Pointer => bx.pointercast(src, unit_ptr),
+        TypeKind::Integer => bx.inttoptr(src, unit_ptr),
+        // FIXME(dyn-star): We probably have to do a bitcast first, then inttoptr.
+        kind => bug!("unexpected TypeKind for left-hand side of `dyn*` cast: {kind:?}"),
+    };
     (src, unsized_info(bx, src_ty_and_layout.ty, dst_ty, old_info))
 }
 
