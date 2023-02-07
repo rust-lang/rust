@@ -19,6 +19,7 @@ fn main() {
     array_casts();
     mut_below_shr();
     wide_raw_ptr_in_tuple();
+    not_unpin_not_protected();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -218,4 +219,23 @@ fn wide_raw_ptr_in_tuple() {
     let r = unsafe { &mut *pair.0 };
     // Make sure the fn ptr part of the vtable is still fine.
     r.type_id();
+}
+
+fn not_unpin_not_protected() {
+    // `&mut !Unpin`, at least for now, does not get `noalias` nor `dereferenceable`, so we also
+    // don't add protectors. (We could, but until we have a better idea for where we want to go with
+    // the self-referntial-generator situation, it does not seem worth the potential trouble.)
+    use std::marker::PhantomPinned;
+
+    pub struct NotUnpin(i32, PhantomPinned);
+
+    fn inner(x: &mut NotUnpin, f: fn(&mut NotUnpin)) {
+        // `f` may mutate, but it may not deallocate!
+        f(x)
+    }
+
+    inner(Box::leak(Box::new(NotUnpin(0, PhantomPinned))), |x| {
+        let raw = x as *mut _;
+        drop(unsafe { Box::from_raw(raw) });
+    });
 }
