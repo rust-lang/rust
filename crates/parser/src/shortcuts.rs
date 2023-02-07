@@ -43,18 +43,16 @@ impl<'a> LexedStr<'a> {
                         res.was_joint();
                     }
                     res.push(kind);
-                }
-                if kind == SyntaxKind::FLOAT_NUMBER {
                     // we set jointness for floating point numbers as a hack to inform the
                     // parser about whether we have a `0.` or `0.1` style float
-                    if self.text(i).split_once('.').map_or(false, |(_, it)| it.is_empty()) {
-                        was_joint = false;
-                    } else {
-                        was_joint = true;
+                    if kind == SyntaxKind::FLOAT_NUMBER {
+                        if !self.text(i).split_once('.').map_or(true, |(_, it)| it.is_empty()) {
+                            res.was_joint();
+                        }
                     }
-                } else {
-                    was_joint = true;
                 }
+
+                was_joint = true;
             }
         }
         res
@@ -202,7 +200,7 @@ impl Builder<'_, '_> {
                 (self.sink)(StrStep::Token { kind: SyntaxKind::DOT, text: "." });
 
                 if has_pseudo_dot {
-                    assert!(right.is_empty());
+                    assert!(right.is_empty(), "{left}.{right}");
                     self.state = State::Normal;
                 } else {
                     (self.sink)(StrStep::Enter { kind: SyntaxKind::NAME_REF });
