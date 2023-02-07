@@ -14,7 +14,7 @@ use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
-use vfs::{ChangeKind, FileId};
+use vfs::{AbsPathBuf, ChangeKind, FileId};
 
 use crate::{
     config::Config,
@@ -930,6 +930,30 @@ impl GlobalState {
                         }
                     },
                 );
+
+                Ok(())
+            })?
+            .on::<lsp_types::notification::DidChangeWorkspaceFolders>(|this, params| {
+                let config = Arc::make_mut(&mut this.config);
+
+                for workspace in params.event.removed {
+                    let Ok(path) = workspace.uri.to_file_path() else { continue };
+                    let Ok(path) = AbsPathBuf::try_from(path) else { continue };
+                    let Some(position) = config.workspace_roots.iter().position(|it| it == &path) else { continue };
+                    config.workspace_roots.remove(position);
+                }
+
+                let added = params
+                    .event
+                    .added
+                    .into_iter()
+                    .filter_map(|it| it.uri.to_file_path().ok())
+                    .filter_map(|it| AbsPathBuf::try_from(it).ok());
+                config.workspace_roots.extend(added);
+                    if !config.has_linked_projects() && config.detached_files().is_empty() {
+                        config.rediscover_workspaces();
+                        this.fetch_workspaces_queue.request_op("client workspaces changed".to_string())
+                    }
 
                 Ok(())
             })?
