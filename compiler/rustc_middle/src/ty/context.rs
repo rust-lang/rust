@@ -275,9 +275,6 @@ pub struct CommonLifetimes<'tcx> {
 
     /// Erased region, used outside of type inference.
     pub re_erased: Region<'tcx>,
-
-    /// Error region, used only for error reporting.
-    pub re_error: Region<'tcx>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -327,11 +324,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
             ))
         };
 
-        CommonLifetimes {
-            re_static: mk(ty::ReStatic),
-            re_erased: mk(ty::ReErased),
-            re_error: mk(ty::ReError),
-        }
+        CommonLifetimes { re_static: mk(ty::ReStatic), re_erased: mk(ty::ReErased) }
     }
 }
 
@@ -654,6 +647,27 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_ty(Error(reported))
+    }
+
+    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` to ensure it
+    /// gets used.
+    #[track_caller]
+    pub fn re_error(self) -> Region<'tcx> {
+        self.re_error_with_message(
+            DUMMY_SP,
+            "RegionKind::ReError constructed but no error reported",
+        )
+    }
+
+    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` with the given
+    /// `msg` to ensure it gets used.
+    #[track_caller]
+    pub fn re_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Region<'tcx> {
+        let reported = self.sess.delay_span_bug(span, msg);
+        let r = ty::ReError(reported);
+        Region(Interned::new_unchecked(
+            self.interners.region.intern(r, |r| InternedInSet(self.interners.arena.alloc(r))).0,
+        ))
     }
 
     /// Like [TyCtxt::ty_error] but for constants, with current `ErrorGuaranteed`

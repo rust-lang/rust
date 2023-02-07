@@ -31,7 +31,7 @@ impl<'a> DescriptionCtx<'a> {
 
             ty::RePlaceholder(_) => return None,
 
-            ty::ReError => return None,
+            ty::ReError(_) => return None,
 
             // FIXME(#13998) RePlaceholder should probably print like
             // ReFree rather than dumping Debug output on the user.

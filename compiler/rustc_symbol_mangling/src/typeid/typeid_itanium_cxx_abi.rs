@@ -299,7 +299,7 @@ fn encode_region<'tcx>(
         RegionKind::ReEarlyBound(..)
         | RegionKind::ReFree(..)
         | RegionKind::ReStatic
-        | RegionKind::ReError
+        | RegionKind::ReError(_)
         | RegionKind::ReVar(..)
         | RegionKind::RePlaceholder(..) => {
             bug!("encode_region: unexpected `{:?}`", region.kind());

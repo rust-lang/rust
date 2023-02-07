@@ -134,7 +134,7 @@ pub(super) fn note_and_explain_region<'tcx>(
 
         ty::RePlaceholder(_) => return,
 
-        ty::ReError => return,
+        ty::ReError(_) => return,
 
         // FIXME(#13998) RePlaceholder should probably print like
         // ReFree rather than dumping Debug output on the user.
@@ -315,7 +315,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
                 )
             }
         }
-        ty::ReError => {
+        ty::ReError(_) => {
             err.delay_as_bug();
         }
         _ => {

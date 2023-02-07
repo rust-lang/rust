@@ -170,7 +170,7 @@ fn is_free_region(region: Region<'_>) -> bool {
         // ignore it. We can't put it on the struct header anyway.
         ty::ReLateBound(..) => false,
 
-        ty::ReError => false,
+        ty::ReError(_) => false,
 
         // These regions don't appear in types from type declarations:
         ty::ReErased | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReFree(..) => {

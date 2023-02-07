@@ -109,7 +109,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             // them.
             ty::ReErased => return r,
 
-            ty::ReError => return r,
+            ty::ReError(_) => return r,
 
             // The regions that we expect from borrow checking.
             ty::ReEarlyBound(_) | ty::ReFree(_) => {}
@@ -140,7 +140,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().lifetimes.re_error
+                self.tcx().re_error()
             }
         }
     }

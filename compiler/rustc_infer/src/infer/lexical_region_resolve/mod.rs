@@ -216,7 +216,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 Ok(self.tcx().lifetimes.re_static)
             }
 
-            ReError => Ok(self.tcx().lifetimes.re_error),
+            ReError(_) => Ok(self.tcx().re_error()),
 
             ReEarlyBound(_) | ReFree(_) => {
                 // All empty regions are less than early-bound, free,
@@ -438,7 +438,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Value(a), VarValue::Empty(_)) => {
                 match *a {
-                    ReLateBound(..) | ReErased | ReError => {
+                    ReLateBound(..) | ReErased | ReError(_) => {
                         bug!("cannot relate region: {:?}", a);
                     }
 
@@ -467,7 +467,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Empty(a_ui), VarValue::Value(b)) => {
                 match *b {
-                    ReLateBound(..) | ReErased | ReError => {
+                    ReLateBound(..) | ReErased | ReError(_) => {
                         bug!("cannot relate region: {:?}", b);
                     }
 
@@ -548,7 +548,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 );
             }
 
-            (ReError, _) | (_, ReError) => self.tcx().lifetimes.re_error,
+            (ReError(_), _) | (_, ReError(_)) => self.tcx().re_error(),
 
             (ReStatic, _) | (_, ReStatic) => {
                 // nothing lives longer than `'static`
@@ -1044,7 +1044,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
             ty::ReVar(rid) => match self.values[rid] {
                 VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
-                VarValue::ErrorValue => tcx.lifetimes.re_error,
+                VarValue::ErrorValue => tcx.re_error(),
             },
             _ => r,
         };

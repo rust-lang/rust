@@ -1623,13 +1623,13 @@ impl<'tcx> Region<'tcx> {
             ty::ReVar(..) => false,
             ty::RePlaceholder(placeholder) => placeholder.name.is_named(),
             ty::ReErased => false,
-            ty::ReError => false,
+            ty::ReError(_) => false,
         }
     }
 
     #[inline]
     pub fn is_error(self) -> bool {
-        matches!(*self, ty::ReError)
+        matches!(*self, ty::ReError(_))
     }
 
     #[inline]
@@ -1692,7 +1692,7 @@ impl<'tcx> Region<'tcx> {
             ty::ReErased => {
                 flags = flags | TypeFlags::HAS_RE_ERASED;
             }
-            ty::ReError => {}
+            ty::ReError(_) => {}
         }
 
         debug!("type_flags({:?}) = {:?}", self, flags);

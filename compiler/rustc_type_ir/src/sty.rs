@@ -962,7 +962,7 @@ pub enum RegionKind<I: Interner> {
     ReErased,
 
     /// A region that resulted from some other error. Used exclusively for diagnostics.
-    ReError,
+    ReError(I::ErrorGuaranteed),
 }
 
 // This is manually implemented for `RegionKind` because `std::mem::discriminant`
@@ -977,7 +977,7 @@ const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
         ReVar(_) => 4,
         RePlaceholder(_) => 5,
         ReErased => 6,
-        ReError => 7,
+        ReError(_) => 7,
     }
 }
 
@@ -989,6 +989,7 @@ where
     I::FreeRegion: Copy,
     I::RegionVid: Copy,
     I::PlaceholderRegion: Copy,
+    I::ErrorGuaranteed: Copy,
 {
 }
 
@@ -1003,7 +1004,7 @@ impl<I: Interner> Clone for RegionKind<I> {
             ReVar(r) => ReVar(r.clone()),
             RePlaceholder(r) => RePlaceholder(r.clone()),
             ReErased => ReErased,
-            ReError => ReError,
+            ReError(r) => ReError(r.clone()),
         }
     }
 }
@@ -1082,7 +1083,7 @@ impl<I: Interner> hash::Hash for RegionKind<I> {
             ReVar(r) => r.hash(state),
             RePlaceholder(r) => r.hash(state),
             ReErased => (),
-            ReError => (),
+            ReError(_) => (),
         }
     }
 }
@@ -1107,7 +1108,7 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 
             ReErased => f.write_str("ReErased"),
 
-            ReError => f.write_str("ReError"),
+            ReError(_) => f.write_str("ReError"),
         }
     }
 }
@@ -1142,7 +1143,7 @@ where
                 a.encode(e);
             }),
             ReErased => e.emit_enum_variant(disc, |_| {}),
-            ReError => e.emit_enum_variant(disc, |_| {}),
+            ReError(_) => e.emit_enum_variant(disc, |_| {}),
         }
     }
 }
@@ -1155,6 +1156,7 @@ where
     I::FreeRegion: Decodable<D>,
     I::RegionVid: Decodable<D>,
     I::PlaceholderRegion: Decodable<D>,
+    I::ErrorGuaranteed: Decodable<D>,
 {
     fn decode(d: &mut D) -> Self {
         match Decoder::read_usize(d) {
@@ -1165,7 +1167,7 @@ where
             4 => ReVar(Decodable::decode(d)),
             5 => RePlaceholder(Decodable::decode(d)),
             6 => ReErased,
-            7 => ReError,
+            7 => ReError(Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
@@ -1194,7 +1196,7 @@ where
     ) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            ReErased | ReStatic | ReError => {
+            ReErased | ReStatic | ReError(_) => {
                 // No variant fields to hash for these ...
             }
             ReLateBound(d, r) => {

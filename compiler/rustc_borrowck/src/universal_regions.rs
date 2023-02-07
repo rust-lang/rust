@@ -821,7 +821,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         if let ty::ReVar(..) = *r {
             r.to_region_vid()
-        } else if let ty::ReError = *r {
+        } else if let ty::ReError(_) = *r {
             RegionVid::new(0)
         } else {
             *self

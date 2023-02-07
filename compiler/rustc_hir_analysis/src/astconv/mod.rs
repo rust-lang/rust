@@ -263,8 +263,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // elision. `resolve_lifetime` should have
                     // reported an error in this case -- but if
                     // not, let's error out.
-                    tcx.sess.delay_span_bug(lifetime.ident.span, "unelided lifetime in signature");
-                    tcx.lifetimes.re_error
+                    tcx.re_error_with_message(lifetime.ident.span, "unelided lifetime in signature")
                 })
             }
         }
@@ -478,8 +477,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             debug!(?param, "unelided lifetime in signature");
 
                             // This indicates an illegal lifetime in a non-assoc-trait position
-                            tcx.sess.delay_span_bug(self.span, "unelided lifetime in signature");
-                            tcx.lifetimes.re_error
+                            tcx.re_error_with_message(self.span, "unelided lifetime in signature")
                         })
                         .into(),
                     GenericParamDefKind::Type { has_default, .. } => {
@@ -1623,7 +1621,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         } else {
                             err.emit();
                         }
-                        tcx.lifetimes.re_error
+                        tcx.re_error()
                     })
                 }
             })
