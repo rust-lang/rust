@@ -46,7 +46,7 @@ pub struct CpuidResult {
 ///   System Instructions][amd64_ref].
 ///
 /// [wiki_cpuid]: https://en.wikipedia.org/wiki/CPUID
-/// [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+/// [intel64_ref]: https://cdrdv2-public.intel.com/671110/325383-sdm-vol-2abcd.pdf
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 #[inline]
 #[cfg_attr(test, assert_instr(cpuid))]
