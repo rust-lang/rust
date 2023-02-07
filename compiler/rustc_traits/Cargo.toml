@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 tracing = "0.1"
-rustc_attr = { path = "../rustc_attr" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir" }

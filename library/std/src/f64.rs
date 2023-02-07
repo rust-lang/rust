@@ -69,8 +69,8 @@ impl f64 {
         unsafe { intrinsics::ceilf64(self) }
     }
 
-    /// Returns the nearest integer to `self`. Round half-way cases away from
-    /// `0.0`.
+    /// Returns the nearest integer to `self`. If a value is half-way between two
+    /// integers, round away from `0.0`.
     ///
     /// # Examples
     ///
