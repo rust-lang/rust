@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
     if_chain! {
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
-        if is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id), sym::PathBuf);
+        if is_type_diagnostic_item(cx, cx.tcx.bound_type_of(impl_id).subst_identity(), sym::PathBuf);
         if let ExprKind::Lit(ref lit) = arg.kind;
         if let LitKind::Str(ref path_lit, _) = lit.node;
         if let pushed_path = Path::new(path_lit.as_str());

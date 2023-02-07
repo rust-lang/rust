@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
             return;
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
-            let ty = cx.tcx.type_of(item.owner_id);
+            let ty = cx.tcx.bound_type_of(item.owner_id).subst_identity();
             let Adt(adt, subst) = ty.kind() else {
                 panic!("already checked whether this is an enum")
             };

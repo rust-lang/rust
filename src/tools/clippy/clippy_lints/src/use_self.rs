@@ -218,7 +218,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             } else {
                 hir_ty_to_ty(cx.tcx, hir_ty)
             };
-            if same_type_and_consts(ty, cx.tcx.type_of(impl_id));
+            if same_type_and_consts(ty, cx.tcx.bound_type_of(impl_id).subst_identity());
             then {
                 span_lint(cx, hir_ty.span);
             }
@@ -230,7 +230,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !expr.span.from_expansion();
             if self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
-            if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id);
+            if cx.typeck_results().expr_ty(expr) == cx.tcx.bound_type_of(impl_id).subst_identity();
             then {} else { return; }
         }
         match expr.kind {
@@ -254,7 +254,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if let PatKind::Path(QPath::Resolved(_, path))
                  | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
                  | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind;
-            if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id);
+            if cx.typeck_results().pat_ty(pat) == cx.tcx.bound_type_of(impl_id).subst_identity();
             then {
                 check_path(cx, path);
             }

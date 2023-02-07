@@ -1130,7 +1130,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(false);
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty = self.handle_raw_ty(span, tcx.at(span).type_of(impl_def_id));
+            let ty =
+                self.handle_raw_ty(span, tcx.at(span).bound_type_of(impl_def_id).subst_identity());
             match ty.normalized.ty_adt_def() {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
@@ -1226,7 +1227,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         let tcx = self.fcx.tcx();
-                        self.fcx.ct_infer(tcx.type_of(param.def_id), Some(param), inf.span).into()
+                        self.fcx
+                            .ct_infer(
+                                tcx.bound_type_of(param.def_id).subst_identity(),
+                                Some(param),
+                                inf.span,
+                            )
+                            .into()
                     }
                     _ => unreachable!(),
                 }

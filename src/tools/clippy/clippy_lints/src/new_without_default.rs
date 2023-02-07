@@ -98,14 +98,15 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             if name == sym::new;
                             if cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id);
                             let self_def_id = cx.tcx.hir().get_parent_item(id.into());
-                            let self_ty = cx.tcx.type_of(self_def_id);
+                            let self_ty = cx.tcx.bound_type_of(self_def_id).subst_identity();
                             if self_ty == return_ty(cx, id);
                             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
                             then {
                                 if self.impling_types.is_none() {
                                     let mut impls = HirIdSet::default();
                                     cx.tcx.for_each_impl(default_trait_id, |d| {
-                                        if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
+                                        let ty = cx.tcx.bound_type_of(d).subst_identity();
+                                        if let Some(ty_def) = ty.ty_adt_def() {
                                             if let Some(local_def_id) = ty_def.did().as_local() {
                                                 impls.insert(cx.tcx.hir().local_def_id_to_hir_id(local_def_id));
                                             }
@@ -118,7 +119,8 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                 // generics
                                 if_chain! {
                                     if let Some(ref impling_types) = self.impling_types;
-                                    if let Some(self_def) = cx.tcx.type_of(self_def_id).ty_adt_def();
+                                    let self_def = cx.tcx.bound_type_of(self_def_id).subst_identity();
+                                    if let Some(self_def) = self_def.ty_adt_def();
                                     if let Some(self_local_did) = self_def.did().as_local();
                                     let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did);
                                     if impling_types.contains(&self_id);

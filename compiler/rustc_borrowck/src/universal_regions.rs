@@ -529,7 +529,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         match tcx.hir().body_owner_kind(self.mir_def.did) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
                 let defining_ty = if self.mir_def.did.to_def_id() == typeck_root_def_id {
-                    tcx.type_of(typeck_root_def_id)
+                    tcx.bound_type_of(typeck_root_def_id).subst_identity()
                 } else {
                     let tables = tcx.typeck(self.mir_def.did);
                     tables.node_type(self.mir_hir_id)
@@ -675,7 +675,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // For a constant body, there are no inputs, and one
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
-                let ty = tcx.type_of(self.mir_def.def_id_for_type_of());
+                let ty = tcx.bound_type_of(self.mir_def.def_id_for_type_of()).subst_identity();
                 let ty = indices.fold_to_region_vids(tcx, ty);
                 ty::Binder::dummy(tcx.intern_type_list(&[ty]))
             }

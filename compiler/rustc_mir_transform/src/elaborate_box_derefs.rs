@@ -93,7 +93,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
         if let Some(def_id) = tcx.lang_items().owned_box() {
             let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[0].did;
 
-            let Some(nonnull_def) = tcx.type_of(unique_did).ty_adt_def() else {
+            let Some(nonnull_def) = tcx.bound_type_of(unique_did).subst_identity().ty_adt_def() else {
                 span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
             };
 

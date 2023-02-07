@@ -1166,7 +1166,9 @@ impl<'tcx> InferCtxt<'tcx> {
                         origin,
                         val: ConstVariableValue::Unknown { universe: self.universe() },
                     });
-                self.tcx.mk_const(const_var_id, self.tcx.type_of(param.def_id)).into()
+                self.tcx
+                    .mk_const(const_var_id, self.tcx.bound_type_of(param.def_id).subst_identity())
+                    .into()
             }
         }
     }

@@ -99,12 +99,10 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
     }
     let def = tcx.adt_def(def_id);
 
-    let result = tcx.mk_type_list(
-        def.variants()
-            .iter()
-            .flat_map(|v| v.fields.last())
-            .flat_map(|f| sized_constraint_for_ty(tcx, def, tcx.type_of(f.did))),
-    );
+    let result =
+        tcx.mk_type_list(def.variants().iter().flat_map(|v| v.fields.last()).flat_map(|f| {
+            sized_constraint_for_ty(tcx, def, tcx.bound_type_of(f.did).subst_identity())
+        }));
 
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
 
@@ -299,7 +297,7 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
         // In an inherent impl, we assume that the receiver type and all its
         // constituents are well-formed.
         NodeKind::InherentImpl => {
-            let self_ty = tcx.type_of(def_id);
+            let self_ty = tcx.bound_type_of(def_id).subst_identity();
             inputs.extend(self_ty.walk());
         }
 

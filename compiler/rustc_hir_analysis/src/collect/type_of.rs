@@ -377,7 +377,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Ctor(def) | Node::Variant(Variant { data: def, .. }) => match def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
-                tcx.type_of(tcx.hir().get_parent_item(hir_id))
+                tcx.bound_type_of(tcx.hir().get_parent_item(hir_id)).subst_identity()
             }
             VariantData::Tuple(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -394,7 +394,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::AnonConst(_) if let Some(param) = tcx.opt_const_param_of(def_id) => {
             // We defer to `type_of` of the corresponding parameter
             // for generic arguments.
-            tcx.type_of(param)
+            tcx.bound_type_of(param).subst_identity()
         }
 
         Node::AnonConst(_) => {
@@ -456,7 +456,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         def_id.to_def_id(),
                     );
                     if let Some(assoc_item) = assoc_item {
-                        tcx.type_of(assoc_item.def_id)
+                        tcx.bound_type_of(assoc_item.def_id).subst_identity()
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -501,7 +501,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     if let Some(param)
                         = assoc_item.map(|item| &tcx.generics_of(item.def_id).params[idx]).filter(|param| param.kind.is_ty_or_const())
                     {
-                        tcx.type_of(param.def_id)
+                        tcx.bound_type_of(param.def_id).subst_identity()
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -515,7 +515,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     def_id: param_def_id,
                     kind: GenericParamKind::Const { default: Some(ct), .. },
                     ..
-                }) if ct.hir_id == hir_id => tcx.type_of(param_def_id),
+                }) if ct.hir_id == hir_id => tcx.bound_type_of(param_def_id).subst_identity(),
 
                 x => tcx.ty_error_with_message(
                     DUMMY_SP,

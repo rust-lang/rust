@@ -850,7 +850,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         };
 
         let found = tcx
-            .any_free_region_meets(&tcx.type_of(region_parent), |r| *r == ty::ReEarlyBound(region));
+            .any_free_region_meets(&tcx.bound_type_of(region_parent).subst_identity(), |r| {
+                *r == ty::ReEarlyBound(region)
+            });
 
         Some(RegionName {
             name: self.synthesize_region_name(),

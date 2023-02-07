@@ -43,7 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for CopyIterator {
                 of_trait: Some(ref trait_ref),
                 ..
             }) = item.kind;
-            let ty = cx.tcx.type_of(item.owner_id);
+            let ty = cx.tcx.bound_type_of(item.owner_id).subst_identity();
             if is_copy(cx, ty);
             if let Some(trait_id) = trait_ref.trait_def_id();
             if cx.tcx.is_diagnostic_item(sym::Iterator, trait_id);

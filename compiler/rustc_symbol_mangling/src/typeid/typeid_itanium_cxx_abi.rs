@@ -696,7 +696,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let variant = adt_def.non_enum_variant();
                 let param_env = tcx.param_env(variant.def_id);
                 let field = variant.fields.iter().find(|field| {
-                    let ty = tcx.type_of(field.did);
+                    let ty = tcx.bound_type_of(field.did).subst_identity();
                     let is_zst =
                         tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.is_zst());
                     !is_zst

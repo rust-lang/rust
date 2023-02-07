@@ -3349,7 +3349,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let name = impl_item.ident.name.as_str();
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
         let item = cx.tcx.hir().expect_item(parent);
-        let self_ty = cx.tcx.type_of(item.owner_id);
+        let self_ty = cx.tcx.bound_type_of(item.owner_id).subst_identity();
 
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {

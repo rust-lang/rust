@@ -1149,7 +1149,7 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => return None,
         }
 
-        let ret_ty = self.type_of(scope_def_id);
+        let ret_ty = self.bound_type_of(scope_def_id).subst_identity();
         match ret_ty.kind() {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(self);
@@ -2002,7 +2002,7 @@ impl<'tcx> TyCtxt<'tcx> {
             GenericParamDefKind::Const { .. } => self
                 .mk_const(
                     ParamConst { index: param.index, name: param.name },
-                    self.type_of(param.def_id),
+                    self.bound_type_of(param.def_id).subst_identity(),
                 )
                 .into(),
         }

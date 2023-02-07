@@ -66,7 +66,7 @@ fn is_used_as_unaligned(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             if matches!(name.ident.as_str(), "read_unaligned" | "write_unaligned")
                 && let Some(def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
                 && let Some(def_id) = cx.tcx.impl_of_method(def_id)
-                && cx.tcx.type_of(def_id).is_unsafe_ptr()
+                && cx.tcx.bound_type_of(def_id).subst_identity().is_unsafe_ptr()
             {
                 true
             } else {

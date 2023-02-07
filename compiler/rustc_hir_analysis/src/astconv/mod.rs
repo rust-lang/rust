@@ -30,9 +30,9 @@ use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::DynKind;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeVisitable};
-use rustc_middle::ty::{DynKind, EarlyBinder};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -450,7 +450,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .into()
                     }
                     (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
-                        let ty = tcx.at(self.span).type_of(param.def_id);
+                        let ty = tcx.at(self.span).bound_type_of(param.def_id).subst_identity();
                         if self.astconv.allow_ty_infer() {
                             self.astconv.ct_infer(ty, Some(param), inf.span).into()
                         } else {
@@ -503,7 +503,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                     }
                     GenericParamDefKind::Const { has_default } => {
-                        let ty = tcx.at(self.span).type_of(param.def_id);
+                        let ty = tcx.at(self.span).bound_type_of(param.def_id).subst_identity();
                         if ty.references_error() {
                             return tcx.const_error(ty).into();
                         }
@@ -2688,7 +2688,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 // Try to evaluate any array length constants.
-                let ty = tcx.at(span).type_of(def_id);
+                let ty = tcx.at(span).bound_type_of(def_id).subst_identity();
                 let span_of_impl = tcx.span_of_impl(def_id);
                 self.prohibit_generics(path.segments.iter(), |err| {
                     let def_id = match *ty.kind() {
@@ -2922,7 +2922,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     None,
                     ty::BoundConstness::NotConst,
                 );
-                EarlyBinder(tcx.at(span).type_of(def_id)).subst(tcx, substs)
+                tcx.at(span).bound_type_of(def_id).subst(tcx, substs)
             }
             hir::TyKind::Array(ty, length) => {
                 let length = match length {
@@ -2935,7 +2935,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_array_with_const_len(self.ast_ty_to_ty(ty), length)
             }
             hir::TyKind::Typeof(e) => {
-                let ty_erased = tcx.type_of(e.def_id);
+                let ty_erased = tcx.bound_type_of(e.def_id).subst_identity();
                 let ty = tcx.fold_regions(ty_erased, |r, _| {
                     if r.is_erased() { tcx.lifetimes.re_static } else { r }
                 });

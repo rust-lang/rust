@@ -557,7 +557,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                         ty::INNERMOST,
                                         ty::BoundVar::from_usize(bound_vars.len() - 1),
                                     ),
-                                    tcx.type_of(param.def_id),
+                                    tcx.bound_type_of(param.def_id).subst_identity(),
                                 )
                                 .into()
                             }

@@ -1958,7 +1958,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     kind: ConstVariableOriginKind::SubstitutionPlaceholder,
                     span,
                 };
-                self.next_const_var(self.tcx.type_of(param.def_id), origin).into()
+                self.next_const_var(self.tcx.bound_type_of(param.def_id).subst_identity(), origin)
+                    .into()
             }
         })
     }
