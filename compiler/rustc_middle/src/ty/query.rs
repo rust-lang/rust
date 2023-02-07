@@ -71,10 +71,22 @@ use std::sync::Arc;
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 
-#[derive(Default)]
 pub struct QuerySystem<'tcx> {
+    pub local_providers: Box<Providers>,
+    pub extern_providers: Box<ExternProviders>,
     pub arenas: QueryArenas<'tcx>,
     pub caches: QueryCaches<'tcx>,
+}
+
+impl<'tcx> QuerySystem<'tcx> {
+    pub fn new(local_providers: Providers, extern_providers: ExternProviders) -> Self {
+        QuerySystem {
+            local_providers: Box::new(local_providers),
+            extern_providers: Box::new(extern_providers),
+            arenas: Default::default(),
+            caches: Default::default(),
+        }
+    }
 }
 
 #[derive(Copy, Clone)]

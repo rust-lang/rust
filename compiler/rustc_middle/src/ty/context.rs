@@ -78,6 +78,8 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 
+use super::query::QuerySystem;
+
 const TINY_CONST_EVAL_LIMIT: Limit = Limit(20);
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
@@ -681,6 +683,7 @@ impl<'tcx> TyCtxt<'tcx> {
         untracked: Untracked,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
+        query_system: QuerySystem<'tcx>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
     ) -> GlobalCtxt<'tcx> {
@@ -706,7 +709,7 @@ impl<'tcx> TyCtxt<'tcx> {
             untracked,
             on_disk_cache,
             queries,
-            query_system: Default::default(),
+            query_system,
             query_kinds,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),

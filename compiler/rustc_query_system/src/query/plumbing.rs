@@ -420,7 +420,9 @@ where
         }
 
         let prof_timer = qcx.dep_context().profiler().query_provider();
-        let result = qcx.start_query(job_id, query.depth_limit(), None, || query.compute(qcx, key));
+        let result = qcx.start_query(job_id, query.depth_limit(), None, || {
+            query.compute(*qcx.dep_context(), key)
+        });
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -458,7 +460,7 @@ where
         qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
             if query.anon() {
                 return dep_graph.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
-                    query.compute(qcx, key)
+                    query.compute(*qcx.dep_context(), key)
                 });
             }
 
@@ -468,9 +470,9 @@ where
 
             dep_graph.with_task(
                 dep_node,
-                (qcx, query),
+                (*qcx.dep_context(), query),
                 key,
-                |(qcx, query), key| query.compute(qcx, key),
+                |(tcx, query), key| query.compute(tcx, key),
                 query.hash_result(),
             )
         });
@@ -565,7 +567,7 @@ where
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = dep_graph.with_ignore(|| query.compute(qcx, *key));
+    let result = dep_graph.with_ignore(|| query.compute(*qcx.dep_context(), *key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 

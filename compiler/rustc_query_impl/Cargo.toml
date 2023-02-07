@@ -7,6 +7,7 @@ edition = "2021"
 
 
 [dependencies]
+memoffset = { version = "0.8.0", features = ["unstable_const"] }
 measureme = "10.0.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }

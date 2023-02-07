@@ -108,7 +108,9 @@ impl<K: DepKind> fmt::Debug for DepNode<K> {
     }
 }
 
-pub trait DepNodeParams<Tcx: DepContext>: fmt::Debug + Sized {
+pub trait DepNodeParams<Tcx: DepContext>:
+    fmt::Debug + Sized + for<'a> HashStable<StableHashingContext<'a>>
+{
     fn fingerprint_style() -> FingerprintStyle;
 
     /// This method turns the parameters of a DepNodeConstructor into an opaque
