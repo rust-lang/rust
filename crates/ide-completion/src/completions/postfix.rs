@@ -541,6 +541,26 @@ fn main() {
             r#"fn main() { loop { foo }.$0 }"#,
             r#"fn main() { unsafe { loop { foo } } }"#,
         );
+        check_edit(
+            "unsafe",
+            r#"fn main() { if true {}.$0 }"#,
+            r#"fn main() { unsafe { if true {} } }"#,
+        );
+        check_edit(
+            "unsafe",
+            r#"fn main() { while true {}.$0 }"#,
+            r#"fn main() { unsafe { while true {} } }"#,
+        );
+        check_edit(
+            "unsafe",
+            r#"fn main() { for i in 0..10 {}.$0 }"#,
+            r#"fn main() { unsafe { for i in 0..10 {} } }"#,
+        );
+        check_edit(
+            "unsafe",
+            r#"fn main() { let x = if true {1} else {2}.$0 }"#,
+            r#"fn main() { let x = unsafe { if true {1} else {2} } }"#,
+        );
     }
 
     #[test]
