@@ -234,21 +234,17 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
 
         let predecessors = &self.body.basic_blocks.predecessors()[bb];
         if let &[pred] = &predecessors[..] && bb != START_BLOCK {
-            match &self.body.basic_blocks[pred].terminator().kind {
-                TerminatorKind::Goto { .. } => self.find_opportunity(pred, state, cost, depth),
-                TerminatorKind::SwitchInt { discr, targets } => {
-                    self.process_switch_int(state, discr, targets, bb);
+            let term = self.body.basic_blocks[pred].terminator();
+            match term.kind {
+                TerminatorKind::SwitchInt { ref discr, ref targets } => {
+                    self.process_switch_int(discr, targets, bb, &mut state);
+                    self.find_opportunity(pred, state, cost, depth + 1);
                 }
-                _ => {}
+                _ => self.recurse_through_terminator(pred, &state, &cost, depth),
             }
         } else {
             for &pred in predecessors {
-                if matches!(
-                    self.body.basic_blocks[pred].terminator().kind,
-                    TerminatorKind::Goto { .. }
-                ) {
-                    self.find_opportunity(pred, state.clone(), cost.clone(), depth + 1);
-                }
+                self.recurse_through_terminator(pred, &state, &cost, depth);
             }
         }
 
@@ -464,35 +460,89 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         None
     }
 
+    #[instrument(level = "trace", skip(self, cost))]
+    fn recurse_through_terminator(
+        &mut self,
+        bb: BasicBlock,
+        state: &State<ConditionSet<'a>>,
+        cost: &CostChecker<'_, 'tcx>,
+        depth: usize,
+    ) {
+        let register_opportunity = |c: Condition| {
+            debug!(?bb, ?c.target, "register");
+            self.opportunities.push(ThreadingOpportunity { chain: vec![bb], target: c.target })
+        };
+
+        let term = self.body.basic_blocks[bb].terminator();
+        let place_to_flood = match term.kind {
+            // We come from a target, so those are not possible.
+            TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate(_)
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::CoroutineDrop => bug!("{term:?} has no terminators"),
+            // Disallowed during optimizations.
+            TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::Yield { .. } => bug!("{term:?} invalid"),
+            // Cannot reason about inline asm.
+            TerminatorKind::InlineAsm { .. } => return,
+            // `SwitchInt` is handled specially.
+            TerminatorKind::SwitchInt { .. } => return,
+            // We can recurse, no thing particular to do.
+            TerminatorKind::Goto { .. } => None,
+            // Flood the overwritten place, and progress through.
+            TerminatorKind::Drop { place: destination, .. }
+            | TerminatorKind::Call { destination, .. } => Some(destination),
+            // Treat as an `assume(cond == expected)`.
+            TerminatorKind::Assert { ref cond, expected, .. } => {
+                if let Some(place) = cond.place()
+                    && let Some(conditions) = state.try_get(place.as_ref(), self.map)
+                {
+                    let expected = if expected { ScalarInt::TRUE } else { ScalarInt::FALSE };
+                    conditions.iter_matches(expected).for_each(register_opportunity);
+                }
+                None
+            }
+        };
+
+        // We can recurse through this terminator.
+        let mut state = state.clone();
+        if let Some(place_to_flood) = place_to_flood {
+            state.flood_with(place_to_flood.as_ref(), self.map, ConditionSet::default());
+        }
+        self.find_opportunity(bb, state, cost.clone(), depth + 1);
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn process_switch_int(
         &mut self,
-        state: State<ConditionSet<'a>>,
         discr: &Operand<'tcx>,
         targets: &SwitchTargets,
-        bb: BasicBlock,
+        target_bb: BasicBlock,
+        state: &mut State<ConditionSet<'a>>,
     ) -> Option<!> {
-        debug_assert_ne!(bb, START_BLOCK);
-        debug_assert_eq!(self.body.basic_blocks.predecessors()[bb].len(), 1);
+        debug_assert_ne!(target_bb, START_BLOCK);
+        debug_assert_eq!(self.body.basic_blocks.predecessors()[target_bb].len(), 1);
 
         let discr = discr.place()?;
         let discr_ty = discr.ty(self.body, self.tcx).ty;
         let discr_layout = self.tcx.layout_of(self.param_env.and(discr_ty)).ok()?;
         let conditions = state.try_get(discr.as_ref(), self.map)?;
 
-        if let Some((value, _)) = targets.iter().find(|&(_, target)| target == bb) {
+        if let Some((value, _)) = targets.iter().find(|&(_, target)| target == target_bb) {
             let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
-            debug_assert_eq!(targets.iter().filter(|&(_, target)| target == bb).count(), 1);
+            debug_assert_eq!(targets.iter().filter(|&(_, target)| target == target_bb).count(), 1);
 
-            // We are inside `bb`. Since we have a single predecessor, we know we passed
+            // We are inside `target_bb`. Since we have a single predecessor, we know we passed
             // through the `SwitchInt` before arriving here. Therefore, we know that
             // `discr == value`. If one condition can be fulfilled by `discr == value`,
             // that's an opportunity.
             for c in conditions.iter_matches(value) {
-                debug!(?bb, ?c.target, "register");
+                debug!(?target_bb, ?c.target, "register");
                 self.opportunities.push(ThreadingOpportunity { chain: vec![], target: c.target });
             }
-        } else if bb == targets.otherwise() {
+        } else if target_bb == targets.otherwise() {
             let (value, _, _) = targets.as_static_if()?;
             let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
 
@@ -500,7 +550,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             // so we can only match the exact same condition.
             for c in conditions.iter() {
                 if c.value == value && c.polarity == false {
-                    debug!(?bb, ?c.target, "register");
+                    debug!(?target_bb, ?c.target, "register");
                     self.opportunities
                         .push(ThreadingOpportunity { chain: vec![], target: c.target });
                 }

@@ -43,15 +43,20 @@
       }
   
       bb7: {
-          goto -> bb5;
+-         goto -> bb5;
++         goto -> bb10;
       }
   
       bb8: {
-          goto -> bb6;
++         goto -> bb6;
 +     }
 + 
 +     bb9: {
 +         goto -> bb5;
++     }
++ 
++     bb10: {
+          goto -> bb6;
       }
   }
   
