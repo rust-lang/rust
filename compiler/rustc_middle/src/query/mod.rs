@@ -1541,7 +1541,6 @@ rustc_queries! {
     query upstream_monomorphizations_for(def_id: DefId)
         -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>>
     {
-        arena_cache
         desc { |tcx|
             "collecting available upstream monomorphizations for `{}`",
             tcx.def_path_str(def_id),
