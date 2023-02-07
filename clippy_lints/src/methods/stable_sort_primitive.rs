@@ -10,7 +10,7 @@ use super::STABLE_SORT_PRIMITIVE;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
-        && cx.tcx.type_of(impl_id).is_slice()
+        && cx.tcx.bound_type_of(impl_id).subst_identity().is_slice()
         && let Some(slice_type) = is_slice_of_primitives(cx, recv)
     {
         span_lint_and_then(

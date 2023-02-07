@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
                 for item in cx.tcx.module_children(def_id).iter() {
                     if_chain! {
                         if let Res::Def(DefKind::Const, item_def_id) = item.res;
-                        let ty = cx.tcx.type_of(item_def_id);
+                        let ty = cx.tcx.bound_type_of(item_def_id).subst_identity();
                         if match_type(cx, ty, &paths::SYMBOL);
                         if let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id);
                         if let Ok(value) = value.to_u32();

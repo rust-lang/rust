@@ -38,7 +38,8 @@ impl LateLintPass<'_> for MsrvAttrImpl {
             if self_ty_def.is_struct();
             if self_ty_def.all_fields().any(|f| {
                 cx.tcx
-                    .type_of(f.did)
+                    .bound_type_of(f.did)
+                    .subst_identity()
                     .walk()
                     .filter(|t| matches!(t.unpack(), GenericArgKind::Type(_)))
                     .any(|t| match_type(cx, t.expect_ty(), &paths::MSRV))

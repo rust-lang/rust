@@ -122,7 +122,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
     if_chain! {
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
-        if cx.tcx.type_of(impl_id).is_slice();
+        if cx.tcx.bound_type_of(impl_id).subst_identity().is_slice();
         if let ExprKind::Closure(&Closure { body, .. }) = arg.kind;
         if let closure_body = cx.tcx.hir().body(body);
         if let &[

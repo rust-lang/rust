@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(
     if_chain! {
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
-        if is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id), sym::Vec);
+        if is_type_diagnostic_item(cx, cx.tcx.bound_type_of(impl_id).subst_identity(), sym::Vec);
         if let ExprKind::Lit(Spanned { node: LitKind::Int(0, _), .. }) = count_arg.kind;
         if let ExprKind::Lit(Spanned { node: LitKind::Int(..), .. }) = default_arg.kind;
         then {

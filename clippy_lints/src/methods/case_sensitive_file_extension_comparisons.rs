@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
     if_chain! {
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
-        if cx.tcx.type_of(impl_id).is_str();
+        if cx.tcx.bound_type_of(impl_id).subst_identity().is_str();
         if let ExprKind::Lit(Spanned { node: LitKind::Str(ext_literal, ..), ..}) = arg.kind;
         if (2..=6).contains(&ext_literal.as_str().len());
         let ext_str = ext_literal.as_str();

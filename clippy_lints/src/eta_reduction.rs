@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             if check_inputs(cx, body.params, None, args);
             let callee_ty = cx.typeck_results().expr_ty_adjusted(callee);
             let call_ty = cx.typeck_results().type_dependent_def_id(body.value.hir_id)
-                .map_or(callee_ty, |id| cx.tcx.type_of(id));
+                .map_or(callee_ty, |id| cx.tcx.bound_type_of(id).subst_identity());
             if check_sig(cx, closure_ty, call_ty);
             let substs = cx.typeck_results().node_substs(callee.hir_id);
             // This fixes some false positives that I don't entirely understand
@@ -233,7 +233,7 @@ fn get_ufcs_type_name<'tcx>(cx: &LateContext<'tcx>, method_def_id: DefId, substs
     match assoc_item.container {
         ty::TraitContainer => cx.tcx.def_path_str(def_id),
         ty::ImplContainer => {
-            let ty = cx.tcx.type_of(def_id);
+            let ty = cx.tcx.bound_type_of(def_id).skip_binder();
             match ty.kind() {
                 ty::Adt(adt, _) => cx.tcx.def_path_str(adt.did()),
                 ty::Array(..)

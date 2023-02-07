@@ -11,7 +11,7 @@ use super::NONSENSICAL_OPEN_OPTIONS;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
-        && match_type(cx, cx.tcx.type_of(impl_id), &paths::OPEN_OPTIONS)
+        && match_type(cx, cx.tcx.bound_type_of(impl_id).subst_identity(), &paths::OPEN_OPTIONS)
     {
         let mut options = Vec::new();
         get_open_options(cx, recv, &mut options);
