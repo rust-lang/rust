@@ -25,7 +25,7 @@ pub struct Output {
 #[derive(Debug)]
 pub enum Step<'a> {
     Token { kind: SyntaxKind, n_input_tokens: u8 },
-    FloatSplit { has_pseudo_dot: bool },
+    FloatSplit { ends_in_dot: bool },
     Enter { kind: SyntaxKind },
     Exit,
     Error { msg: &'a str },
@@ -70,7 +70,7 @@ impl Output {
                 }
                 Self::EXIT_EVENT => Step::Exit,
                 Self::SPLIT_EVENT => {
-                    Step::FloatSplit { has_pseudo_dot: event & Self::N_INPUT_TOKEN_MASK != 0 }
+                    Step::FloatSplit { ends_in_dot: event & Self::N_INPUT_TOKEN_MASK != 0 }
                 }
                 _ => unreachable!(),
             }
@@ -84,9 +84,9 @@ impl Output {
         self.event.push(e)
     }
 
-    pub(crate) fn float_split_hack(&mut self, has_pseudo_dot: bool) {
+    pub(crate) fn float_split_hack(&mut self, ends_in_dot: bool) {
         let e = (Self::SPLIT_EVENT as u32) << Self::TAG_SHIFT
-            | ((has_pseudo_dot as u32) << Self::N_INPUT_TOKEN_SHIFT)
+            | ((ends_in_dot as u32) << Self::N_INPUT_TOKEN_SHIFT)
             | Self::EVENT_MASK;
         self.event.push(e);
     }

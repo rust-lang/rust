@@ -95,7 +95,9 @@ pub fn token_tree_to_syntax_node(
             parser::Step::Token { kind, n_input_tokens: n_raw_tokens } => {
                 tree_sink.token(kind, n_raw_tokens)
             }
-            parser::Step::FloatSplit { has_pseudo_dot } => tree_sink.float_split(has_pseudo_dot),
+            parser::Step::FloatSplit { ends_in_dot: has_pseudo_dot } => {
+                tree_sink.float_split(has_pseudo_dot)
+            }
             parser::Step::Enter { kind } => tree_sink.start_node(kind),
             parser::Step::Exit => tree_sink.finish_node(),
             parser::Step::Error { msg } => tree_sink.error(msg.to_string()),
@@ -797,6 +799,8 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> Option<&'static str> {
 }
 
 impl<'a> TtTreeSink<'a> {
+    /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
+    /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {
         let (text, _span) = match self.cursor.token_tree() {
             Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Literal(lit), _)) => {

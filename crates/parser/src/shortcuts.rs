@@ -43,10 +43,11 @@ impl<'a> LexedStr<'a> {
                         res.was_joint();
                     }
                     res.push(kind);
-                    // we set jointness for floating point numbers as a hack to inform the
-                    // parser about whether we have a `0.` or `0.1` style float
+                    // Tag the token as joint if it is float with a fractional part
+                    // we use this jointness to inform the parser about what token split
+                    // event to emit when we encounter a float literal in a field access
                     if kind == SyntaxKind::FLOAT_NUMBER {
-                        if !self.text(i).split_once('.').map_or(true, |(_, it)| it.is_empty()) {
+                        if !self.text(i).ends_with('.') {
                             res.was_joint();
                         }
                     }
@@ -71,7 +72,9 @@ impl<'a> LexedStr<'a> {
                 Step::Token { kind, n_input_tokens: n_raw_tokens } => {
                     builder.token(kind, n_raw_tokens)
                 }
-                Step::FloatSplit { has_pseudo_dot } => builder.float_split(has_pseudo_dot),
+                Step::FloatSplit { ends_in_dot: has_pseudo_dot } => {
+                    builder.float_split(has_pseudo_dot)
+                }
                 Step::Enter { kind } => builder.enter(kind),
                 Step::Exit => builder.exit(),
                 Step::Error { msg } => {

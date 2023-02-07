@@ -182,7 +182,7 @@ impl<'t> Parser<'t> {
     }
 
     /// Advances the parser by one token
-    pub(crate) fn split_float(&mut self, marker: Marker) -> (bool, Marker) {
+    pub(crate) fn split_float(&mut self, mut marker: Marker) -> (bool, Marker) {
         assert!(self.at(SyntaxKind::FLOAT_NUMBER));
         // we have parse `<something>.`
         // `<something>`.0.1
@@ -191,26 +191,23 @@ impl<'t> Parser<'t> {
         // `<something>`. 0. 1;
         // here we need to change the follow up parse, the return value will cause us to emulate a dot
         // the actual splitting happens later
-        let has_pseudo_dot = !self.inp.is_joint(self.pos);
-        let marker = if !has_pseudo_dot {
-            let new_pos = self.start();
+        let ends_in_dot = !self.inp.is_joint(self.pos);
+        if !ends_in_dot {
+            let new_marker = self.start();
             let idx = marker.pos as usize;
             match &mut self.events[idx] {
                 Event::Start { forward_parent, kind } => {
                     *kind = SyntaxKind::FIELD_EXPR;
-                    *forward_parent = Some(new_pos.pos - marker.pos);
+                    *forward_parent = Some(new_marker.pos - marker.pos);
                 }
                 _ => unreachable!(),
             }
-            // NOTE: This brings the start / finish pairs out of balance!
-            std::mem::forget(marker);
-            new_pos
-        } else {
-            marker
+            marker.bomb.defuse();
+            marker = new_marker;
         };
         self.pos += 1 as usize;
-        self.push_event(Event::FloatSplitHack { has_pseudo_dot });
-        (has_pseudo_dot, marker)
+        self.push_event(Event::FloatSplitHack { ends_in_dot });
+        (ends_in_dot, marker)
     }
 
     /// Advances the parser by one token, remapping its kind.
