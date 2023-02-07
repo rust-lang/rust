@@ -1,6 +1,8 @@
+use crate::ErasedQuery;
 use crate::QueryCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_data_structures::unord::UnordSet;
@@ -13,7 +15,9 @@ use rustc_middle::mir::{self, interpret};
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
-use rustc_query_system::query::{QueryCache, QueryContext, QuerySideEffects};
+use rustc_query_system::ich::StableHashingContext;
+use rustc_query_system::query::QueryConfig;
+use rustc_query_system::query::{QueryCache, QuerySideEffects, RemapQueryCache};
 use rustc_serialize::{
     opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder},
     Decodable, Decoder, Encodable, Encoder,
@@ -1056,24 +1060,26 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for [u8] {
     }
 }
 
-pub fn encode_query_results<'a, 'tcx, CTX, Q>(
-    tcx: CTX,
+pub(super) fn encode_query_results<'a, 'tcx, E>(
+    query: ErasedQuery<E::Cache>,
+    qcx: QueryCtxt<'tcx>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
-    CTX: QueryContext + 'tcx,
-    Q: super::QueryConfig<CTX>,
-    Q::Value: Encodable<CacheEncoder<'a, 'tcx>>,
+    E: super::QueryErasable<'tcx>,
+    for<'b> <<E::Cache as RemapQueryCache>::Remap<'tcx> as QueryCache>::Key:
+        HashStable<StableHashingContext<'b>>,
+    E::Value: Encodable<CacheEncoder<'a, 'tcx>>,
 {
-    let _timer = tcx
-        .dep_context()
+    let _timer = qcx
+        .tcx
         .profiler()
-        .verbose_generic_activity_with_arg("encode_query_results_for", std::any::type_name::<Q>());
+        .verbose_generic_activity_with_arg("encode_query_results_for", query.name());
 
-    assert!(Q::query_state(tcx).all_inactive());
-    let cache = Q::query_cache(tcx);
+    assert!(query.query_state(&qcx).all_inactive());
+    let cache = query.query_cache(&qcx);
     cache.iter(&mut |key, value, dep_node| {
-        if Q::cache_on_disk(*tcx.dep_context(), &key) {
+        if query.cache_on_disk(qcx.tcx, &key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
             // Record position of the cache entry.
@@ -1081,7 +1087,7 @@ pub fn encode_query_results<'a, 'tcx, CTX, Q>(
 
             // Encode the type check tables with the `SerializedDepNodeIndex`
             // as tag.
-            encoder.encode_tagged(dep_node, value);
+            encoder.encode_tagged(dep_node, &E::restore(*value));
         }
     });
 }

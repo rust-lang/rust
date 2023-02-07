@@ -2,6 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
+use crate::dep_graph::HasDepContext;
 use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
@@ -351,9 +352,8 @@ where
 }
 
 fn try_execute_query<Q, Qcx>(
+    query: Q,
     qcx: Qcx,
-    state: &QueryState<Q::Key, Qcx::DepKind>,
-    cache: &Q::Cache,
     span: Span,
     key: Q::Key,
     dep_node: Option<DepNode<Qcx::DepKind>>,
@@ -362,15 +362,21 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, span, key.clone()) {
+    let state = query.query_state(&qcx);
+    let cache = query.query_cache(&qcx);
+    match JobOwner::<'_, Q::Key, <Qcx as HasDepContext>::DepKind>::try_start(
+        &qcx,
+        state,
+        span,
+        key.clone(),
+    ) {
         TryGetJob::NotYetStarted(job) => {
-            let (result, dep_node_index) =
-                execute_job::<Q, Qcx>(qcx, key.clone(), dep_node, job.id);
-            if Q::FEEDABLE {
+            let (result, dep_node_index) = execute_job(query, qcx, key.clone(), dep_node, job.id);
+            if query.feedable() {
                 // We may have put a value inside the cache from inside the execution.
                 // Verify that it has the same hash as what we have now, to ensure consistency.
                 if let Some((cached_result, _)) = cache.lookup(&key) {
-                    let hasher = Q::HASH_RESULT.expect("feedable forbids no_hash");
+                    let hasher = query.hash_result().expect("feedable forbids no_hash");
 
                     let old_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| {
                         hasher(&mut hcx, cached_result.borrow())
@@ -382,7 +388,7 @@ where
                         old_hash,
                         new_hash,
                         "Computed query value for {:?}({:?}) is inconsistent with fed value,\ncomputed={:#?}\nfed={:#?}",
-                        Q::DEP_KIND,
+                        query.dep_kind(),
                         key,
                         result,
                         cached_result,
@@ -393,7 +399,7 @@ where
             (result, Some(dep_node_index))
         }
         TryGetJob::Cycle(error) => {
-            let result = mk_cycle(qcx, error, Q::HANDLE_CYCLE_ERROR);
+            let result = mk_cycle(qcx, error, query.handle_cycle_error());
             (result, None)
         }
         #[cfg(parallel_compiler)]
@@ -411,6 +417,7 @@ where
 }
 
 fn execute_job<Q, Qcx>(
+    query: Q,
     qcx: Qcx,
     key: Q::Key,
     mut dep_node_opt: Option<DepNode<Qcx::DepKind>>,
@@ -425,22 +432,23 @@ where
     // Fast path for when incr. comp. is off.
     if !dep_graph.is_fully_enabled() {
         let prof_timer = qcx.dep_context().profiler().query_provider();
-        let result =
-            qcx.start_query(job_id, Q::DEPTH_LIMIT, None, || Q::compute(*qcx.dep_context(), key));
+        let result = qcx.start_query(job_id, query.depth_limit(), None, || {
+            query.compute(*qcx.dep_context(), key)
+        });
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
         return (result, dep_node_index);
     }
 
-    if !Q::ANON && !Q::EVAL_ALWAYS {
+    if !query.anon() && !query.eval_always() {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node =
-            dep_node_opt.get_or_insert_with(|| Q::construct_dep_node(*qcx.dep_context(), &key));
+            dep_node_opt.get_or_insert_with(|| query.construct_dep_node(*qcx.dep_context(), &key));
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = qcx.start_query(job_id, false, None, || {
-            try_load_from_disk_and_cache_in_memory::<Q, Qcx>(qcx, &key, &dep_node)
+            try_load_from_disk_and_cache_in_memory(query, qcx, &key, &dep_node)
         }) {
             return ret;
         }
@@ -450,18 +458,24 @@ where
     let diagnostics = Lock::new(ThinVec::new());
 
     let (result, dep_node_index) =
-        qcx.start_query(job_id, Q::DEPTH_LIMIT, Some(&diagnostics), || {
-            if Q::ANON {
-                return dep_graph.with_anon_task(*qcx.dep_context(), Q::DEP_KIND, || {
-                    Q::compute(*qcx.dep_context(), key)
+        qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
+            if query.anon() {
+                return dep_graph.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
+                    query.compute(*qcx.dep_context(), key)
                 });
             }
 
             // `to_dep_node` is expensive for some `DepKind`s.
             let dep_node =
-                dep_node_opt.unwrap_or_else(|| Q::construct_dep_node(*qcx.dep_context(), &key));
+                dep_node_opt.unwrap_or_else(|| query.construct_dep_node(*qcx.dep_context(), &key));
 
-            dep_graph.with_task(dep_node, *qcx.dep_context(), key, Q::compute, Q::HASH_RESULT)
+            dep_graph.with_task(
+                dep_node,
+                *qcx.dep_context(),
+                (key, query),
+                |tcx, (key, query)| query.compute(tcx, key),
+                query.hash_result(),
+            )
         });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -470,7 +484,7 @@ where
     let side_effects = QuerySideEffects { diagnostics };
 
     if std::intrinsics::unlikely(!side_effects.is_empty()) {
-        if Q::ANON {
+        if query.anon() {
             qcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
         } else {
             qcx.store_side_effects(dep_node_index, side_effects);
@@ -481,6 +495,7 @@ where
 }
 
 fn try_load_from_disk_and_cache_in_memory<Q, Qcx>(
+    query: Q,
     qcx: Qcx,
     key: &Q::Key,
     dep_node: &DepNode<Qcx::DepKind>,
@@ -499,7 +514,7 @@ where
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if let Some(try_load_from_disk) = Q::try_load_from_disk(qcx, &key) {
+    if let Some(try_load_from_disk) = query.try_load_from_disk(qcx, &key) {
         let prof_timer = qcx.dep_context().profiler().incr_cache_loading();
 
         // The call to `with_query_deserialization` enforces that no new `DepNodes`
@@ -533,7 +548,7 @@ where
             if std::intrinsics::unlikely(
                 try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
             ) {
-                incremental_verify_ich(*qcx.dep_context(), &result, dep_node, Q::HASH_RESULT);
+                incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query.hash_result());
             }
 
             return Some((result, dep_node_index));
@@ -552,7 +567,7 @@ where
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = dep_graph.with_ignore(|| Q::compute(*qcx.dep_context(), key.clone()));
+    let result = dep_graph.with_ignore(|| query.compute(*qcx.dep_context(), key.clone()));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -565,7 +580,7 @@ where
     //
     // See issue #82920 for an example of a miscompilation that would get turned into
     // an ICE by this check
-    incremental_verify_ich(*qcx.dep_context(), &result, dep_node, Q::HASH_RESULT);
+    incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query.hash_result());
 
     Some((result, dep_node_index))
 }
@@ -685,19 +700,23 @@ fn incremental_verify_ich_failed(sess: &Session, dep_node: DebugArg<'_>, result:
 ///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
-fn ensure_must_run<Q, Qcx>(qcx: Qcx, key: &Q::Key) -> (bool, Option<DepNode<Qcx::DepKind>>)
+fn ensure_must_run<Q, Qcx>(
+    query: Q,
+    qcx: Qcx,
+    key: &Q::Key,
+) -> (bool, Option<DepNode<Qcx::DepKind>>)
 where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    if Q::EVAL_ALWAYS {
+    if query.eval_always() {
         return (true, None);
     }
 
     // Ensuring an anonymous query makes no sense
-    assert!(!Q::ANON);
+    assert!(!query.anon());
 
-    let dep_node = Q::construct_dep_node(*qcx.dep_context(), key);
+    let dep_node = query.construct_dep_node(*qcx.dep_context(), key);
 
     let dep_graph = qcx.dep_context().dep_graph();
     match dep_graph.try_mark_green(qcx, &dep_node) {
@@ -724,15 +743,21 @@ pub enum QueryMode {
     Ensure,
 }
 
-pub fn get_query<Q, Qcx, D>(qcx: Qcx, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Value>
+pub fn get_query<Q, Qcx, D>(
+    query: Q,
+    qcx: Qcx,
+    span: Span,
+    key: Q::Key,
+    mode: QueryMode,
+) -> Option<Q::Value>
 where
     D: DepKind,
     Q: QueryConfig<Qcx>,
-    Q::Value: Value<Qcx::DepContext, D>,
     Qcx: QueryContext,
+    Q::Value: Value<Qcx::DepContext, D>,
 {
     let dep_node = if let QueryMode::Ensure = mode {
-        let (must_run, dep_node) = ensure_must_run::<Q, _>(qcx, &key);
+        let (must_run, dep_node) = ensure_must_run(query, qcx, &key);
         if !must_run {
             return None;
         }
@@ -741,22 +766,19 @@ where
         None
     };
 
-    let (result, dep_node_index) = try_execute_query::<Q, Qcx>(
-        qcx,
-        Q::query_state(qcx),
-        Q::query_cache(qcx),
-        span,
-        key,
-        dep_node,
-    );
+    let (result, dep_node_index) = try_execute_query(query, qcx, span, key, dep_node);
     if let Some(dep_node_index) = dep_node_index {
         qcx.dep_context().dep_graph().read_index(dep_node_index)
     }
     Some(result)
 }
 
-pub fn force_query<Q, Qcx, D>(qcx: Qcx, key: Q::Key, dep_node: DepNode<Qcx::DepKind>)
-where
+pub fn force_query<Q, Qcx, D>(
+    query: Q,
+    qcx: Qcx,
+    key: Q::Key,
+    dep_node: DepNode<<Qcx as HasDepContext>::DepKind>,
+) where
     D: DepKind,
     Q: QueryConfig<Qcx>,
     Q::Value: Value<Qcx::DepContext, D>,
@@ -764,14 +786,12 @@ where
 {
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
-    let cache = Q::query_cache(qcx);
-    if let Some((_, index)) = cache.lookup(&key) {
+    if let Some((_, index)) = query.query_cache(&qcx).lookup(&key) {
         qcx.dep_context().profiler().query_cache_hit(index.into());
         return;
     }
 
-    let state = Q::query_state(qcx);
-    debug_assert!(!Q::ANON);
+    debug_assert!(!query.anon());
 
-    try_execute_query::<Q, _>(qcx, state, cache, DUMMY_SP, key, Some(dep_node));
+    try_execute_query(query, qcx, DUMMY_SP, key, Some(dep_node));
 }

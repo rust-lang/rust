@@ -10,6 +10,7 @@ use crate::SPAN_TRACK;
 use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::remap::Remap;
 
 /// A compressed span.
 ///
@@ -191,6 +192,10 @@ impl Span {
             with_span_interner(|interner| interner.spans[index as usize].ctxt)
         }
     }
+}
+
+impl Remap for Span {
+    type Remap<'a> = Span;
 }
 
 #[derive(Default)]

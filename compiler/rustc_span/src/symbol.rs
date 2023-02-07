@@ -4,6 +4,7 @@
 
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::remap::Remap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
@@ -1708,6 +1709,14 @@ impl Hash for Ident {
         self.name.hash(state);
         self.span.ctxt().hash(state);
     }
+}
+
+impl Remap for Ident {
+    type Remap<'a> = Ident;
+}
+
+impl Remap for Symbol {
+    type Remap<'a> = Symbol;
 }
 
 impl fmt::Debug for Ident {

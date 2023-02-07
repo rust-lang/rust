@@ -1,3 +1,4 @@
+use rustc_data_structures::remap::Remap;
 pub use Integer::*;
 pub use Primitive::*;
 
@@ -79,6 +80,10 @@ impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
     fn deref(&self) -> &&'a LayoutS<VariantIdx> {
         &self.layout.0.0
     }
+}
+
+impl<'a, T: Remap> Remap for TyAndLayout<'a, T> {
+    type Remap<'b> = TyAndLayout<'b, T::Remap<'b>>;
 }
 
 /// Trait that needs to be implemented by the higher-level type representation

@@ -10,6 +10,7 @@ edition = "2021"
 measureme = "10.0.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_erase = { path = "../rustc_erase" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }

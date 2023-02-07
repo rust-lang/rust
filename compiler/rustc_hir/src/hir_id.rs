@@ -1,5 +1,8 @@
 use crate::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_ID};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::{
+    remap::Remap,
+    stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey},
+};
 use rustc_span::{def_id::DefPathHash, HashStableContext};
 use std::fmt::{self, Debug};
 
@@ -7,6 +10,10 @@ use std::fmt::{self, Debug};
 #[derive(Encodable, Decodable)]
 pub struct OwnerId {
     pub def_id: LocalDefId,
+}
+
+impl Remap for OwnerId {
+    type Remap<'a> = OwnerId;
 }
 
 impl Debug for OwnerId {
@@ -73,6 +80,10 @@ impl<CTX: HashStableContext> ToStableHashKey<CTX> for OwnerId {
 pub struct HirId {
     pub owner: OwnerId,
     pub local_id: ItemLocalId,
+}
+
+impl Remap for HirId {
+    type Remap<'a> = HirId;
 }
 
 impl Debug for HirId {

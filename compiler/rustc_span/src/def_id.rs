@@ -1,5 +1,6 @@
 use crate::{HashStableContext, Symbol};
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::remap::Remap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
@@ -35,6 +36,10 @@ impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.as_u32(), f)
     }
+}
+
+impl Remap for CrateNum {
+    type Remap<'a> = CrateNum;
 }
 
 /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
@@ -268,6 +273,10 @@ impl Hash for DefId {
     }
 }
 
+impl Remap for DefId {
+    type Remap<'a> = DefId;
+}
+
 // Implement the same comparison as derived with the other field order.
 #[cfg(all(target_pointer_width = "64", target_endian = "big"))]
 impl Ord for DefId {
@@ -372,6 +381,10 @@ rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefIdMapEntry,
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LocalDefId {
     pub local_def_index: DefIndex,
+}
+
+impl Remap for LocalDefId {
+    type Remap<'a> = LocalDefId;
 }
 
 // To ensure correctness of incremental compilation,

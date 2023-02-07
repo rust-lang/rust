@@ -3984,6 +3984,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_erase"
+version = "0.0.0"
+
+[[package]]
 name = "rustc_error_codes"
 version = "0.0.0"
 
@@ -4373,6 +4377,7 @@ dependencies = [
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
+ "rustc_erase",
  "rustc_error_messages",
  "rustc_errors",
  "rustc_feature",
@@ -4571,6 +4576,7 @@ dependencies = [
  "rustc-rayon-core",
  "rustc_ast",
  "rustc_data_structures",
+ "rustc_erase",
  "rustc_errors",
  "rustc_hir",
  "rustc_index",

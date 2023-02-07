@@ -17,6 +17,7 @@ rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_erase = { path = "../rustc_erase" }
 rustc_errors = { path = "../rustc_errors" }
 # Used for intra-doc links
 rustc_error_messages = { path = "../rustc_error_messages" }

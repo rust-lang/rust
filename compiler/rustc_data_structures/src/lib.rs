@@ -72,6 +72,7 @@ pub mod stable_hasher;
 mod atomic_ref;
 pub mod fingerprint;
 pub mod profiling;
+pub mod remap;
 pub mod sharded;
 pub mod stack;
 pub mod sync;

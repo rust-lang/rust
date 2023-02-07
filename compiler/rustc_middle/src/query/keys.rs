@@ -3,18 +3,21 @@
 use crate::infer::canonical::Canonical;
 use crate::mir;
 use crate::traits;
+use crate::traits::ChalkEnvironmentAndGoal;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
+use rustc_data_structures::remap::Remap;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
+pub use rustc_middle::traits::query::type_op;
 use rustc_query_system::query::{DefaultCacheSelector, VecCacheSelector};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
-pub trait Key: Sized {
+pub trait Key: Sized + Remap {
     // N.B. Most of the keys down below have `type CacheSelector = DefaultCacheSelector<Self>;`,
     //      it would be reasonable to use associated type defaults, to remove the duplication...
     //
@@ -588,7 +591,7 @@ impl Key for Option<Symbol> {
 
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
-impl<'tcx, T> Key for Canonical<'tcx, T> {
+impl<'tcx, T: Remap> Key for Canonical<'tcx, T> {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     #[inline(always)]
@@ -695,4 +698,133 @@ impl Key for HirId {
     fn key_as_def_id(&self) -> Option<DefId> {
         None
     }
+}
+
+// Remap implementations
+
+impl<'tcx, T: Remap> Remap for ty::ParamEnvAnd<'tcx, T> {
+    type Remap<'a> = ty::ParamEnvAnd<'a, T::Remap<'a>>;
+}
+
+impl<'tcx, T: Remap> Remap for ty::Binder<'tcx, T> {
+    type Remap<'a> = ty::Binder<'a, T::Remap<'a>>;
+}
+
+impl<'tcx, T: Remap> Remap for Canonical<'tcx, T> {
+    type Remap<'a> = Canonical<'a, T::Remap<'a>>;
+}
+
+impl<T: Remap> Remap for type_op::Normalize<T> {
+    type Remap<'a> = type_op::Normalize<T::Remap<'a>>;
+}
+
+impl<'tcx> Remap for type_op::AscribeUserType<'tcx> {
+    type Remap<'a> = type_op::AscribeUserType<'a>;
+}
+
+impl<'tcx> Remap for type_op::Subtype<'tcx> {
+    type Remap<'a> = type_op::Subtype<'a>;
+}
+
+impl<'tcx> Remap for type_op::Eq<'tcx> {
+    type Remap<'a> = type_op::Eq<'a>;
+}
+
+impl<'tcx> Remap for type_op::ProvePredicate<'tcx> {
+    type Remap<'a> = type_op::ProvePredicate<'a>;
+}
+
+impl<'tcx> Remap for ty::FnSig<'tcx> {
+    type Remap<'a> = ty::FnSig<'a>;
+}
+
+impl<'tcx> Remap for ty::AliasTy<'tcx> {
+    type Remap<'a> = ty::AliasTy<'a>;
+}
+
+impl<'tcx> Remap for Ty<'tcx> {
+    type Remap<'a> = Ty<'a>;
+}
+
+impl<'tcx> Remap for ty::Predicate<'tcx> {
+    type Remap<'a> = ty::Predicate<'a>;
+}
+
+impl<'tcx> Remap for ChalkEnvironmentAndGoal<'tcx> {
+    type Remap<'a> = ChalkEnvironmentAndGoal<'a>;
+}
+
+impl<'tcx> Remap for ty::Instance<'tcx> {
+    type Remap<'a> = ty::Instance<'a>;
+}
+
+impl<'tcx> Remap for ty::InstanceDef<'tcx> {
+    type Remap<'a> = ty::InstanceDef<'a>;
+}
+
+impl<T: Remap> Remap for ty::WithOptConstParam<T> {
+    type Remap<'a> = ty::WithOptConstParam<T::Remap<'a>>;
+}
+
+impl Remap for SimplifiedType {
+    type Remap<'a> = SimplifiedType;
+}
+
+impl<'tcx> Remap for mir::interpret::GlobalId<'tcx> {
+    type Remap<'a> = mir::interpret::GlobalId<'a>;
+}
+
+impl<'tcx> Remap for mir::interpret::LitToConstInput<'tcx> {
+    type Remap<'a> = mir::interpret::LitToConstInput<'a>;
+}
+
+impl<'tcx> Remap for mir::interpret::ConstAlloc<'tcx> {
+    type Remap<'a> = mir::interpret::ConstAlloc<'a>;
+}
+
+impl<'tcx> Remap for mir::ConstantKind<'tcx> {
+    type Remap<'a> = mir::ConstantKind<'a>;
+}
+
+impl Remap for mir::Field {
+    type Remap<'a> = mir::Field;
+}
+
+impl<'tcx> Remap for ty::ValTree<'tcx> {
+    type Remap<'a> = ty::ValTree<'a>;
+}
+
+impl<'tcx> Remap for ty::ParamEnv<'tcx> {
+    type Remap<'a> = ty::ParamEnv<'a>;
+}
+
+impl<'tcx> Remap for ty::GenericArg<'tcx> {
+    type Remap<'a> = ty::GenericArg<'a>;
+}
+
+impl<'tcx, T: Remap> Remap for &'tcx ty::List<T>
+where
+    for<'a> <T as Remap>::Remap<'a>: 'a,
+{
+    type Remap<'a> = &'a ty::List<T::Remap<'a>>;
+}
+
+impl<'tcx> Remap for ty::ExistentialTraitRef<'tcx> {
+    type Remap<'a> = ty::ExistentialTraitRef<'a>;
+}
+
+impl<'tcx> Remap for ty::Const<'tcx> {
+    type Remap<'a> = ty::Const<'a>;
+}
+
+impl<'tcx> Remap for ty::TraitRef<'tcx> {
+    type Remap<'a> = ty::TraitRef<'a>;
+}
+
+impl<'tcx> Remap for ty::UnevaluatedConst<'tcx> {
+    type Remap<'a> = ty::UnevaluatedConst<'a>;
+}
+
+impl Remap for traits::WellFormedLoc {
+    type Remap<'a> = traits::WellFormedLoc;
 }

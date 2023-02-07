@@ -47,6 +47,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_data_structures::unord::UnordSet;
+use rustc_erase::{erase, restore, Erase};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -55,6 +56,8 @@ use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
+pub(crate) use rustc_query_system::query::QueryJobId;
+use rustc_query_system::query::*;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
@@ -67,9 +70,6 @@ use rustc_target::spec::PanicStrategy;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
-
-pub(crate) use rustc_query_system::query::QueryJobId;
-use rustc_query_system::query::*;
 
 pub struct QuerySystem<'tcx> {
     pub local_providers: Box<Providers>,
@@ -144,10 +144,10 @@ fn query_get_at<'tcx, Cache, K>(
 ) -> Cache::Value
 where
     K: IntoQueryParam<Cache::Key>,
-    Cache::Value: Copy,
     Cache: QueryCache,
 {
     let key = key.into_query_param();
+
     match try_get_cached(tcx, query_cache, &key) {
         Some(value) => value,
         None => execute_query(tcx.queries, tcx, span, key, QueryMode::Get).unwrap(),
@@ -278,11 +278,11 @@ macro_rules! define_callbacks {
                 pub fn $name<'tcx>(
                     _tcx: TyCtxt<'tcx>,
                     value: query_provided::$name<'tcx>,
-                ) -> query_values::$name<'tcx> {
-                    query_if_arena!([$($modifiers)*]
+                ) -> Erase<query_values::$name<'tcx>> {
+                    erase(query_if_arena!([$($modifiers)*]
                         (&*_tcx.query_system.arenas.$name.alloc(value))
                         (value)
-                    )
+                    ))
                 }
             )*
         }
@@ -291,7 +291,7 @@ macro_rules! define_callbacks {
             use super::*;
 
             $(
-                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache;
+                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>>::Cache;
             )*
         }
 
@@ -327,13 +327,15 @@ macro_rules! define_callbacks {
             #[must_use]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                query_get_at(
-                    self,
-                    QueryEngine::$name,
-                    &self.query_system.caches.$name,
-                    DUMMY_SP,
-                    opt_remap_env_constness!([$($modifiers)*][key]),
-                )
+                unsafe {
+                    restore::<$V>(query_get_at(
+                        self,
+                        QueryEngine::$name,
+                        &self.query_system.caches.$name,
+                        DUMMY_SP,
+                        opt_remap_env_constness!([$($modifiers)*][key]),
+                    ))
+                }
             })*
         }
 
@@ -342,13 +344,15 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                query_get_at(
-                    self.tcx,
-                    QueryEngine::$name,
-                    &self.tcx.query_system.caches.$name,
-                    self.span,
-                    opt_remap_env_constness!([$($modifiers)*][key]),
-                )
+                unsafe {
+                    restore::<$V>(query_get_at(
+                        self.tcx,
+                        QueryEngine::$name,
+                        &self.tcx.query_system.caches.$name,
+                        self.span,
+                        opt_remap_env_constness!([$($modifiers)*][key]),
+                    ))
+                }
             })*
         }
 
@@ -411,7 +415,7 @@ macro_rules! define_callbacks {
                 span: Span,
                 key: query_keys::$name<'tcx>,
                 mode: QueryMode,
-            ) -> Option<$V>;)*
+            ) -> Option<Erase<$V>>;)*
         }
     };
 }
@@ -438,7 +442,8 @@ macro_rules! define_feedable {
                 let key = opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;
-                let value = query_provided_to_value::$name(tcx, value);
+                let erased = query_provided_to_value::$name(tcx, value);
+                let value = unsafe { restore::<$V>(erased) };
                 let cache = &tcx.query_system.caches.$name;
 
                 match try_get_cached(tcx, cache, &key) {
@@ -457,7 +462,7 @@ macro_rules! define_feedable {
                             &value,
                             hash_result!([$($modifiers)*]),
                         );
-                        cache.complete(key, value, dep_node_index);
+                        cache.complete(key, erased, dep_node_index);
                         value
                     }
                 }

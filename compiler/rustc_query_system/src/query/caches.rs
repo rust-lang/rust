@@ -1,6 +1,7 @@
 use crate::dep_graph::DepNodeIndex;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::remap::Remap;
 use rustc_data_structures::sharded;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
@@ -17,12 +18,9 @@ pub trait CacheSelector<'tcx, V> {
         V: Copy;
 }
 
-pub trait QueryStorage {
-    type Value: Copy;
-}
-
-pub trait QueryCache: QueryStorage + Sized {
+pub trait QueryCache: Sized {
     type Key: Hash + Eq + Clone + Debug;
+    type Value: Copy + Debug;
 
     /// Checks if the query is already computed and in the cache.
     /// It returns the shard index and a lock guard to the shard,
@@ -33,6 +31,10 @@ pub trait QueryCache: QueryStorage + Sized {
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
+}
+
+pub trait RemapQueryCache {
+    type Remap<'a>: QueryCache;
 }
 
 pub struct DefaultCacheSelector<K>(PhantomData<K>);
@@ -56,8 +58,11 @@ impl<K, V> Default for DefaultCache<K, V> {
     }
 }
 
-impl<K: Eq + Hash, V: Copy + Debug> QueryStorage for DefaultCache<K, V> {
-    type Value = V;
+impl<K: Eq + Hash + Clone + Debug + Remap, V: Copy + Debug> RemapQueryCache for DefaultCache<K, V>
+where
+    for<'a> <K as Remap>::Remap<'a>: Eq + Hash + Clone + Debug,
+{
+    type Remap<'a> = DefaultCache<K::Remap<'a>, V>;
 }
 
 impl<K, V> QueryCache for DefaultCache<K, V>
@@ -66,6 +71,7 @@ where
     V: Copy + Debug,
 {
     type Key = K;
+    type Value = V;
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
@@ -131,8 +137,11 @@ impl<K: Idx, V> Default for VecCache<K, V> {
     }
 }
 
-impl<K: Eq + Idx, V: Copy + Debug> QueryStorage for VecCache<K, V> {
-    type Value = V;
+impl<K: Remap + Idx, V: Copy + Debug> RemapQueryCache for VecCache<K, V>
+where
+    for<'a> <K as Remap>::Remap<'a>: Idx,
+{
+    type Remap<'a> = VecCache<K::Remap<'a>, V>;
 }
 
 impl<K, V> QueryCache for VecCache<K, V>
@@ -141,6 +150,7 @@ where
     V: Copy + Debug,
 {
     type Key = K;
+    type Value = V;
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
