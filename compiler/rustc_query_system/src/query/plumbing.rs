@@ -11,7 +11,6 @@ use crate::query::job::QueryLatch;
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::SerializedDepNodeIndex;
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
-use crate::values::Value;
 use crate::HandleCycleError;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -120,43 +119,45 @@ where
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Qcx, R, D: DepKind>(
+fn mk_cycle<Q, Qcx>(
+    query: Q,
     qcx: Qcx,
-    cycle_error: CycleError<D>,
+    cycle_error: CycleError<Qcx::DepKind>,
     handler: HandleCycleError,
-) -> R
+) -> Q::Value
 where
-    Qcx: QueryContext + HasDepContext<DepKind = D>,
-    R: std::fmt::Debug + Value<Qcx::DepContext, Qcx::DepKind>,
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
-    handle_cycle_error(*qcx.dep_context(), &cycle_error, error, handler)
+    handle_cycle_error(query, qcx, &cycle_error, error, handler)
 }
 
-fn handle_cycle_error<Tcx, V>(
-    tcx: Tcx,
-    cycle_error: &CycleError<Tcx::DepKind>,
+fn handle_cycle_error<Q, Qcx>(
+    query: Q,
+    qcx: Qcx,
+    cycle_error: &CycleError<Qcx::DepKind>,
     mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
     handler: HandleCycleError,
-) -> V
+) -> Q::Value
 where
-    Tcx: DepContext,
-    V: Value<Tcx, Tcx::DepKind>,
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
 {
     use HandleCycleError::*;
     match handler {
         Error => {
             error.emit();
-            Value::from_cycle_error(tcx, &cycle_error.cycle)
+            query.from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
         }
         Fatal => {
             error.emit();
-            tcx.sess().abort_if_errors();
+            qcx.dep_context().sess().abort_if_errors();
             unreachable!()
         }
         DelayBug => {
             error.delay_as_bug();
-            Value::from_cycle_error(tcx, &cycle_error.cycle)
+            query.from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
         }
     }
 }
@@ -269,7 +270,7 @@ where
         &qcx.current_query_job(),
         span,
     );
-    (mk_cycle(qcx, error, query.handle_cycle_error()), None)
+    (mk_cycle(query, qcx, error, query.handle_cycle_error()), None)
 }
 
 #[inline(always)]
@@ -306,7 +307,7 @@ where
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(qcx, cycle, query.handle_cycle_error()), None),
+        Err(cycle) => (mk_cycle(query, qcx, cycle, query.handle_cycle_error()), None),
     }
 }
 

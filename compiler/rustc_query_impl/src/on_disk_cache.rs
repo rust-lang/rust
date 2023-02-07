@@ -13,6 +13,7 @@ use rustc_middle::mir::{self, interpret};
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
+use rustc_query_system::query::QueryConfig;
 use rustc_query_system::query::{QueryCache, QuerySideEffects};
 use rustc_serialize::{
     opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder},
@@ -1064,13 +1065,13 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for [u8] {
     }
 }
 
-pub fn encode_query_results<'a, 'tcx, Q>(
-    query: Q,
+pub(crate) fn encode_query_results<'a, 'tcx, Q>(
+    query: Q::Config,
     qcx: QueryCtxt<'tcx>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
-    Q: super::QueryConfig<QueryCtxt<'tcx>>,
+    Q: super::QueryToConfig<'tcx>,
     Q::Value: Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = qcx
@@ -1089,7 +1090,7 @@ pub fn encode_query_results<'a, 'tcx, Q>(
 
             // Encode the type check tables with the `SerializedDepNodeIndex`
             // as tag.
-            encoder.encode_tagged(dep_node, value);
+            encoder.encode_tagged(dep_node, &Q::restore(*value));
         }
     });
 }

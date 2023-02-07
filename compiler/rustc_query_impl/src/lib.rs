@@ -18,19 +18,21 @@ extern crate rustc_middle;
 
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::{self, DepKindStruct};
+use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};
+use rustc_middle::query::erase::{erase, restore, Erase};
 use rustc_middle::query::AsLocalKey;
 use rustc_middle::ty::query::{
     query_keys, query_provided, query_provided_to_value, query_storage, query_values,
 };
 use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine};
 use rustc_middle::ty::TyCtxt;
+use rustc_query_system::dep_graph::SerializedDepNodeIndex;
+use rustc_query_system::Value;
 use rustc_span::Span;
 
 #[macro_use]
 mod plumbing;
 pub use plumbing::QueryCtxt;
-use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::query::*;
 #[cfg(parallel_compiler)]
 pub use rustc_query_system::query::{deadlock, QueryContext};
@@ -42,6 +44,14 @@ pub use on_disk_cache::OnDiskCache;
 
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
+
+trait QueryToConfig<'tcx>: 'tcx {
+    type Value;
+    type Config: QueryConfig<QueryCtxt<'tcx>>;
+
+    fn config(qcx: QueryCtxt<'tcx>) -> Self::Config;
+    fn restore(value: <Self::Config as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::Value;
+}
 
 rustc_query_append! { define_queries! }
 

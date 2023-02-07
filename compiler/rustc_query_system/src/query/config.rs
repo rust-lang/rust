@@ -4,7 +4,7 @@ use crate::dep_graph::{DepNode, DepNodeParams, SerializedDepNodeIndex};
 use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
-use crate::query::{QueryContext, QueryState};
+use crate::query::{QueryContext, QueryInfo, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use std::fmt::Debug;
@@ -44,6 +44,12 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn try_load_from_disk(self, qcx: Qcx, idx: &Self::Key) -> TryLoadFromDisk<Qcx, Self::Value>;
 
     fn loadable_from_disk(self, qcx: Qcx, key: &Self::Key, idx: SerializedDepNodeIndex) -> bool;
+
+    fn from_cycle_error(
+        self,
+        tcx: Qcx::DepContext,
+        cycle: &[QueryInfo<Qcx::DepKind>],
+    ) -> Self::Value;
 
     fn anon(self) -> bool;
     fn eval_always(self) -> bool;
