@@ -95,7 +95,7 @@ pub fn token_tree_to_syntax_node(
             parser::Step::Token { kind, n_input_tokens: n_raw_tokens } => {
                 tree_sink.token(kind, n_raw_tokens)
             }
-            parser::Step::FloatSplit { .. } => tree_sink.token(SyntaxKind::FLOAT_NUMBER, 1),
+            parser::Step::FloatSplit { has_pseudo_dot } => tree_sink.float_split(has_pseudo_dot),
             parser::Step::Enter { kind } => tree_sink.start_node(kind),
             parser::Step::Exit => tree_sink.finish_node(),
             parser::Step::Error { msg } => tree_sink.error(msg.to_string()),
@@ -797,6 +797,41 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> Option<&'static str> {
 }
 
 impl<'a> TtTreeSink<'a> {
+    fn float_split(&mut self, has_pseudo_dot: bool) {
+        let (text, _span) = match self.cursor.token_tree() {
+            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Literal(lit), _)) => {
+                (lit.text.as_str(), lit.span)
+            }
+            _ => unreachable!(),
+        };
+        match text.split_once('.') {
+            Some((left, right)) => {
+                assert!(!left.is_empty());
+                self.inner.start_node(SyntaxKind::NAME_REF);
+                self.inner.token(SyntaxKind::INT_NUMBER, left);
+                self.inner.finish_node();
+
+                // here we move the exit up, the original exit has been deleted in process
+                self.inner.finish_node();
+
+                self.inner.token(SyntaxKind::DOT, ".");
+
+                if has_pseudo_dot {
+                    assert!(right.is_empty());
+                } else {
+                    self.inner.start_node(SyntaxKind::NAME_REF);
+                    self.inner.token(SyntaxKind::INT_NUMBER, right);
+                    self.inner.finish_node();
+
+                    // the parser creates an unbalanced start node, we are required to close it here
+                    self.inner.finish_node();
+                }
+            }
+            None => unreachable!(),
+        }
+        self.cursor = self.cursor.bump();
+    }
+
     fn token(&mut self, kind: SyntaxKind, mut n_tokens: u8) {
         if kind == LIFETIME_IDENT {
             n_tokens = 2;

@@ -102,10 +102,12 @@ impl TopEntryPoint {
                 match step {
                     Step::Enter { .. } => depth += 1,
                     Step::Exit => depth -= 1,
-                    Step::FloatSplit { .. } | Step::Token { .. } | Step::Error { .. } => (),
+                    Step::FloatSplit { .. } => depth -= 1,
+                    Step::Token { .. } | Step::Error { .. } => (),
                 }
             }
             assert!(!first, "no tree at all");
+            assert_eq!(depth, 0, "unbalanced tree");
         }
 
         res
