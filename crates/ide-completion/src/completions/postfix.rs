@@ -6,7 +6,7 @@ use hir::{Documentation, HasAttrs};
 use ide_db::{imports::insert_use::ImportScope, ty_filter::TryEnum, SnippetCap};
 use syntax::{
     ast::{self, make, AstNode, AstToken},
-    SyntaxKind::{EXPR_STMT, STMT_LIST},
+    SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
     TextRange, TextSize,
 };
 use text_edit::TextEdit;
@@ -123,9 +123,19 @@ pub(crate) fn complete_postfix(
     postfix_snippet("ref", "&expr", &format!("&{receiver_text}")).add_to(acc);
     postfix_snippet("refm", "&mut expr", &format!("&mut {receiver_text}")).add_to(acc);
 
-    let unsafe_completion_string = match dot_receiver {
-        ast::Expr::BlockExpr(_) => format!("unsafe {receiver_text}"),
-        _ => format!("unsafe {{ {receiver_text} }}"),
+    let mut unsafe_should_be_wrapped = true;
+    if dot_receiver.syntax().kind() == BLOCK_EXPR {
+        unsafe_should_be_wrapped = false;
+        if let Some(parent) = dot_receiver.syntax().parent() {
+            if matches!(parent.kind(), IF_EXPR | WHILE_EXPR | LOOP_EXPR | FOR_EXPR) {
+                unsafe_should_be_wrapped = true;
+            }
+        }
+    };
+    let unsafe_completion_string = if unsafe_should_be_wrapped {
+        format!("unsafe {{ {receiver_text} }}")
+    } else {
+        format!("unsafe {receiver_text}")
     };
     postfix_snippet("unsafe", "unsafe {}", &unsafe_completion_string).add_to(acc);
 
