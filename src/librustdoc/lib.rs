@@ -814,9 +814,9 @@ fn main_args(at_args: &[String]) -> MainResult {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess);
+            let mut gcx = abort_on_err(queries.global_ctxt(), sess);
 
-            global_ctxt.enter(|tcx| {
+            gcx.enter(|tcx| {
                 let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
                     core::run_global_ctxt(
                         tcx,
