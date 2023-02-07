@@ -564,58 +564,43 @@ where
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if let Some(try_load_from_disk) = query.try_load_from_disk(qcx, &key) {
-        let prof_timer = qcx.dep_context().profiler().incr_cache_loading();
-
-        // The call to `with_query_deserialization` enforces that no new `DepNodes`
-        // are created during deserialization. See the docs of that method for more
-        // details.
-        let result = qcx
-            .dep_context()
-            .dep_graph()
-            .with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
-
-        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-        if let Some(result) = result {
-            if std::intrinsics::unlikely(
-                qcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
-            ) {
-                dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
-            }
-
-            let prev_fingerprint = dep_graph_data.prev_fingerprint_of(prev_dep_node_index);
-            // If `-Zincremental-verify-ich` is specified, re-hash results from
-            // the cache and make sure that they have the expected fingerprint.
-            //
-            // If not, we still seek to verify a subset of fingerprints loaded
-            // from disk. Re-hashing results is fairly expensive, so we can't
-            // currently afford to verify every hash. This subset should still
-            // give us some coverage of potential bugs though.
-            let try_verify = prev_fingerprint.split().1.as_u64() % 32 == 0;
-            if std::intrinsics::unlikely(
-                try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
-            ) {
-                incremental_verify_ich(
-                    *qcx.dep_context(),
-                    dep_graph_data,
-                    &result,
-                    prev_dep_node_index,
-                    query.hash_result(),
-                    query.format_value(),
-                );
-            }
-
-            return Some((result, dep_node_index));
+    if let Some(result) = query.try_load_from_disk(qcx, key, prev_dep_node_index, dep_node_index) {
+        if std::intrinsics::unlikely(qcx.dep_context().sess().opts.unstable_opts.query_dep_graph) {
+            dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
         }
 
-        // We always expect to find a cached result for things that
-        // can be forced from `DepNode`.
-        debug_assert!(
-            !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
-            "missing on-disk cache entry for reconstructible {dep_node:?}"
-        );
+        let prev_fingerprint = dep_graph_data.prev_fingerprint_of(prev_dep_node_index);
+        // If `-Zincremental-verify-ich` is specified, re-hash results from
+        // the cache and make sure that they have the expected fingerprint.
+        //
+        // If not, we still seek to verify a subset of fingerprints loaded
+        // from disk. Re-hashing results is fairly expensive, so we can't
+        // currently afford to verify every hash. This subset should still
+        // give us some coverage of potential bugs though.
+        let try_verify = prev_fingerprint.split().1.as_u64() % 32 == 0;
+        if std::intrinsics::unlikely(
+            try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
+        ) {
+            incremental_verify_ich(
+                *qcx.dep_context(),
+                dep_graph_data,
+                &result,
+                prev_dep_node_index,
+                query.hash_result(),
+                query.format_value(),
+            );
+        }
+
+        return Some((result, dep_node_index));
     }
+
+    // We always expect to find a cached result for things that
+    // can be forced from `DepNode`.
+    debug_assert!(
+        !query.cache_on_disk(*qcx.dep_context(), key)
+            || !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
+        "missing on-disk cache entry for {dep_node:?}"
+    );
 
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.

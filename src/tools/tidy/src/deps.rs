@@ -135,6 +135,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
+    "field-offset",
     "fixedbitset",
     "flate2",
     "fluent-bundle",
