@@ -1,6 +1,8 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/manually_drop-dropck.rs:34:35
    |
+LL |     let x = x;
+   |         - binding `x` declared here
 LL |     manually_dropped_bad.0 = Some(&x);
    |                                   ^^ borrowed value does not live long enough
 LL |
