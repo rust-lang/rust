@@ -106,6 +106,7 @@ mod handlers {
 
     pub(crate) type Handler = fn(&mut Assists, &AssistContext<'_>) -> Option<()>;
 
+    mod add_braces;
     mod add_explicit_type;
     mod add_label_to_loop;
     mod add_lifetime_to_type;
@@ -209,6 +210,7 @@ mod handlers {
     pub(crate) fn all() -> &'static [Handler] {
         &[
             // These are alphabetic for the foolish consistency
+            add_braces::add_braces,
             add_explicit_type::add_explicit_type,
             add_label_to_loop::add_label_to_loop,
             add_missing_match_arms::add_missing_match_arms,
