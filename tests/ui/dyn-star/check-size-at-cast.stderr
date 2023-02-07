@@ -1,10 +1,10 @@
-error[E0277]: `[i32; 4]` needs to be a pointer-sized type
+error[E0277]: `[i32; 4]` needs to have the same alignment and size as a pointer
   --> $DIR/check-size-at-cast.rs:7:13
    |
 LL |     let i = [1, 2, 3, 4] as dyn* Debug;
-   |             ^^^^^^^^^^^^ `[i32; 4]` needs to be a pointer-sized type
+   |             ^^^^^^^^^^^^ `[i32; 4]` needs to be a pointer-like type
    |
-   = help: the trait `PointerSized` is not implemented for `[i32; 4]`
+   = help: the trait `PointerLike` is not implemented for `[i32; 4]`
 
 error: aborting due to previous error
 

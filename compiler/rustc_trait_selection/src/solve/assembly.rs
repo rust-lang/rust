@@ -128,9 +128,9 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A type is `PointerSized` if we can compute its layout, and that layout
+    // A type is `PointerLike` if we can compute its layout, and that layout
     // matches the layout of `usize`.
-    fn consider_builtin_pointer_sized_candidate(
+    fn consider_builtin_pointer_like_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
@@ -312,8 +312,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             || lang_items.clone_trait() == Some(trait_def_id)
         {
             G::consider_builtin_copy_clone_candidate(self, goal)
-        } else if lang_items.pointer_sized() == Some(trait_def_id) {
-            G::consider_builtin_pointer_sized_candidate(self, goal)
+        } else if lang_items.pointer_like() == Some(trait_def_id) {
+            G::consider_builtin_pointer_like_candidate(self, goal)
         } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
         } else if lang_items.tuple_trait() == Some(trait_def_id) {

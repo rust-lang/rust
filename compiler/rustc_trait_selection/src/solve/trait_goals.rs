@@ -131,7 +131,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         )
     }
 
-    fn consider_builtin_pointer_sized_candidate(
+    fn consider_builtin_pointer_like_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
