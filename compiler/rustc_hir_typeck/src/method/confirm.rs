@@ -262,7 +262,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     let original_poly_trait_ref = principal.with_self_ty(this.tcx, object_ty);
                     let upcast_poly_trait_ref = this.upcast(original_poly_trait_ref, trait_def_id);
                     let upcast_trait_ref =
-                        this.replace_bound_vars_with_fresh_vars(upcast_poly_trait_ref);
+                        this.instantiate_binder_with_fresh_vars(upcast_poly_trait_ref);
                     debug!(
                         "original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
                         original_poly_trait_ref, upcast_trait_ref, trait_def_id
@@ -285,7 +285,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             probe::WhereClausePick(poly_trait_ref) => {
                 // Where clauses can have bound regions in them. We need to instantiate
                 // those to convert from a poly-trait-ref to a trait-ref.
-                self.replace_bound_vars_with_fresh_vars(poly_trait_ref).substs
+                self.instantiate_binder_with_fresh_vars(poly_trait_ref).substs
             }
         }
     }
@@ -506,7 +506,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let sig = self.tcx.fn_sig(def_id).subst(self.tcx, all_substs);
         debug!("type scheme substituted, sig={:?}", sig);
 
-        let sig = self.replace_bound_vars_with_fresh_vars(sig);
+        let sig = self.instantiate_binder_with_fresh_vars(sig);
         debug!("late-bound lifetimes from method instantiated, sig={:?}", sig);
 
         (sig, method_predicates)
@@ -625,10 +625,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         upcast_trait_refs.into_iter().next().unwrap()
     }
 
-    fn replace_bound_vars_with_fresh_vars<T>(&self, value: ty::Binder<'tcx, T>) -> T
+    fn instantiate_binder_with_fresh_vars<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx> + Copy,
     {
-        self.fcx.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, value)
+        self.fcx.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, value)
     }
 }

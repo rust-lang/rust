@@ -72,7 +72,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             // FIXME: Constness and polarity
             ecx.infcx.probe(|_| {
                 let assumption_trait_pred =
-                    ecx.infcx.instantiate_bound_vars_with_infer(poly_trait_pred);
+                    ecx.infcx.instantiate_binder_with_infer(poly_trait_pred);
                 let nested_goals = ecx.infcx.eq(
                     goal.param_env,
                     goal.predicate.trait_ref,

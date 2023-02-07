@@ -323,7 +323,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         {
             ecx.infcx.probe(|_| {
                 let assumption_projection_pred =
-                    ecx.infcx.instantiate_bound_vars_with_infer(poly_projection_pred);
+                    ecx.infcx.instantiate_binder_with_infer(poly_projection_pred);
                 let nested_goals = ecx.infcx.eq(
                     goal.param_env,
                     goal.predicate.projection_ty,
