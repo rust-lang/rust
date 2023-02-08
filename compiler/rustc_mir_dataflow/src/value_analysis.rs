@@ -223,13 +223,13 @@ pub trait ValueAnalysis<'tcx> {
         self.super_terminator(terminator, state)
     }
 
-    fn super_terminator(&self, terminator: &Terminator<'tcx>, _state: &mut State<Self::Value>) {
+    fn super_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<Self::Value>) {
         match &terminator.kind {
             TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
                 // Effect is applied by `handle_call_return`.
             }
-            TerminatorKind::Drop { .. } => {
-                // We don't track dropped places.
+            TerminatorKind::Drop { place, .. } => {
+                state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
             }
             TerminatorKind::DropAndReplace { .. } | TerminatorKind::Yield { .. } => {
                 // They would have an effect, but are not allowed in this phase.
