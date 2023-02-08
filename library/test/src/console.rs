@@ -152,7 +152,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     for test in filter_tests(opts, tests).into_iter() {
         use crate::TestFn::*;
 
-        let TestDescAndFn { desc: TestDesc { name, .. }, testfn } = test;
+        let TestDescAndFn { desc: TestDesc { name, ignore, location_info, .. }, testfn } = test;
 
         let fntype = match testfn {
             StaticTestFn(..) | DynTestFn(..) => {
@@ -165,8 +165,8 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
             }
         };
 
-        writeln!(output, "{name}: {fntype}")?;
-        st.write_log(|| format!("{fntype} {name}\n"))?;
+        writeln!(output, "{name}: {fntype} | {ignore} | {location_info}")?;
+        st.write_log(|| format!("{fntype} {name} {ignore} {location_info}\n"))?;
     }
 
     fn plural(count: u32, s: &str) -> String {

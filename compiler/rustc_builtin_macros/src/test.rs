@@ -280,6 +280,11 @@ pub fn expand_test_or_bench(
                                             cx.expr_none(sp)
                                         },
                                     ),
+                                    // location_info: <relative_path_of_source>:<start_line>:<start_col>: <end_line>:<end_col>
+                                    field(
+                                        "location_info",
+                                        cx.expr_str(sp, item_location_info(cx, &item)),
+                                    ),
                                     // compile_fail: true | false
                                     field("compile_fail", cx.expr_bool(sp, false)),
                                     // no_run: true | false
@@ -394,6 +399,12 @@ fn should_ignore_message(cx: &ExtCtxt<'_>, i: &ast::Item) -> Option<Symbol> {
         }
         None => None,
     }
+}
+
+fn item_location_info(cx: &ExtCtxt<'_>, item: &ast::Item) -> Symbol {
+    let ident_sp = cx.with_def_site_ctxt(item.ident.span);
+    let li = cx.sess.source_map().span_to_location_info_string(ident_sp);
+    Symbol::intern(&li)
 }
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {

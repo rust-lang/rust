@@ -119,6 +119,7 @@ pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
     pub ignore_message: Option<&'static str>,
+    pub location_info: &'static str,
     pub should_panic: options::ShouldPanic,
     pub compile_fail: bool,
     pub no_run: bool,
