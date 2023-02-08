@@ -605,18 +605,26 @@ impl<'a> TraitDef<'a> {
                     let bounds: Vec<_> = self
                         .additional_bounds
                         .iter()
-                        .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                        .map(|p| {
+                            cx.trait_bound(
+                                p.to_path(cx, self.span, type_ident, generics),
+                                self.is_const,
+                            )
+                        })
                         .chain(
                             // Add a bound for the current trait.
                             self.skip_path_as_bound
                                 .not()
-                                .then(|| cx.trait_bound(trait_path.clone())),
+                                .then(|| cx.trait_bound(trait_path.clone(), self.is_const)),
                         )
                         .chain({
                             // Add a `Copy` bound if required.
                             if is_packed && self.needs_copy_as_bound_if_packed {
                                 let p = deriving::path_std!(marker::Copy);
-                                Some(cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                                Some(cx.trait_bound(
+                                    p.to_path(cx, self.span, type_ident, generics),
+                                    self.is_const,
+                                ))
                             } else {
                                 None
                             }
@@ -694,18 +702,24 @@ impl<'a> TraitDef<'a> {
                         let mut bounds: Vec<_> = self
                             .additional_bounds
                             .iter()
-                            .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                            .map(|p| {
+                                cx.trait_bound(
+                                    p.to_path(cx, self.span, type_ident, generics),
+                                    self.is_const,
+                                )
+                            })
                             .collect();
 
                         // Require the current trait.
-                        bounds.push(cx.trait_bound(trait_path.clone()));
+                        bounds.push(cx.trait_bound(trait_path.clone(), self.is_const));
 
                         // Add a `Copy` bound if required.
                         if is_packed && self.needs_copy_as_bound_if_packed {
                             let p = deriving::path_std!(marker::Copy);
-                            bounds.push(
-                                cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)),
-                            );
+                            bounds.push(cx.trait_bound(
+                                p.to_path(cx, self.span, type_ident, generics),
+                                self.is_const,
+                            ));
                         }
 
                         let predicate = ast::WhereBoundPredicate {
