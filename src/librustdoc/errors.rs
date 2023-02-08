@@ -285,3 +285,42 @@ pub enum InvalidCfgError {
         span: Span,
     },
 }
+
+#[derive(LintDiagnostic)]
+#[diag(rustdoc_unclosed_html_tag)]
+pub struct UnclosedHtmlTag<'a> {
+    pub tag: &'a str,
+    #[subdiagnostic]
+    pub mark_source_code: Option<MarkSourceCode>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(rustdoc_mark_source_code, applicability = "maybe-incorrect")]
+pub struct MarkSourceCode {
+    #[suggestion_part(code = "`")]
+    pub left: Span,
+    #[suggestion_part(code = "`")]
+    pub right: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(rustdoc_unclosed_html_comment)]
+pub struct UnclosedHtmlComment;
+
+#[derive(LintDiagnostic)]
+#[diag(rustdoc_unopened_html_tag)]
+pub struct UnopenedHtmlTag {
+    pub tag_name: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(rustdoc_unclosed_quoted_html_attribute)]
+pub struct UnclosedQuotedHtmlAttribute<'a> {
+    pub tag_name: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(rustdoc_invalid_self_closing_html_tag)]
+pub struct InvalidSelfClosingHtmlTag<'a> {
+    pub tag_name: &'a str,
+}

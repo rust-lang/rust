@@ -149,3 +149,21 @@ rustdoc_cfg_expected_one_cfg_pattern =
 
 rustdoc_cfg_invalid_predicate =
     invalid predicate
+
+rustdoc_unclosed_html_tag =
+    unclosed HTML tag `{$tag}`
+
+rustdoc_unclosed_html_comment =
+    Unclosed HTML comment
+
+rustdoc_mark_source_code =
+    try marking as source code
+
+rustdoc_unopened_html_tag =
+    unopened HTML tag `{$tag_name}`
+
+rustdoc_unclosed_quoted_html_attribute =
+    unclosed quoted HTML attribute on tag `{$tag_name}`
+
+rustdoc_invalid_self_closing_html_tag =
+    invalid self-closing HTML tag `{$tag_name}`
