@@ -54,7 +54,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         }
 
         ty::GeneratorWitness(types) => {
-            Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
+            Ok(infcx.instantiate_binder_with_placeholders(types).to_vec())
         }
 
         ty::GeneratorWitnessMIR(..) => todo!(),
@@ -174,7 +174,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         }
 
         ty::GeneratorWitness(types) => {
-            Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
+            Ok(infcx.instantiate_binder_with_placeholders(types).to_vec())
         }
 
         ty::GeneratorWitnessMIR(..) => todo!(),

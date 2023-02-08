@@ -488,7 +488,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             let placeholder_trait_predicate =
-                self.infcx.replace_bound_vars_with_placeholders(poly_trait_predicate);
+                self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
 
             // Count only those upcast versions that match the trait-ref
             // we are looking for. Specifically, do not only check for the

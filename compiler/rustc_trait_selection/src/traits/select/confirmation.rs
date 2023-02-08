@@ -151,7 +151,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let trait_predicate = self.infcx.shallow_resolve(obligation.predicate);
         let placeholder_trait_predicate =
-            self.infcx.replace_bound_vars_with_placeholders(trait_predicate).trait_ref;
+            self.infcx.instantiate_binder_with_placeholders(trait_predicate).trait_ref;
         let placeholder_self_ty = placeholder_trait_predicate.self_ty();
         let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
         let (def_id, substs) = match *placeholder_self_ty.kind() {
@@ -336,7 +336,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-            let trait_ref = self.infcx.replace_bound_vars_with_placeholders(poly_trait_ref);
+            let trait_ref = self.infcx.instantiate_binder_with_placeholders(poly_trait_ref);
             let trait_obligations: Vec<PredicateObligation<'_>> = self.impl_or_trait_obligations(
                 &cause,
                 obligation.recursion_depth + 1,
@@ -427,7 +427,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         debug!(?obligation, ?index, "confirm_object_candidate");
 
-        let trait_predicate = self.infcx.replace_bound_vars_with_placeholders(obligation.predicate);
+        let trait_predicate = self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
         let obligation_trait_ref = ty::Binder::dummy(trait_predicate.trait_ref);
         let ty::Dynamic(data, ..) = *self_ty.kind() else {
@@ -437,7 +437,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let object_trait_ref = data.principal().unwrap_or_else(|| {
             span_bug!(obligation.cause.span, "object candidate with no principal")
         });
-        let object_trait_ref = self.infcx.replace_bound_vars_with_fresh_vars(
+        let object_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
             HigherRankedType,
             object_trait_ref,
@@ -629,7 +629,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
-        let output_ty = self.infcx.replace_bound_vars_with_placeholders(sig.output());
+        let output_ty = self.infcx.instantiate_binder_with_placeholders(sig.output());
         let output_ty = normalize_with_depth_to(
             self,
             obligation.param_env,
@@ -652,7 +652,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?obligation, "confirm_trait_alias_candidate");
 
         let alias_def_id = obligation.predicate.def_id();
-        let predicate = self.infcx.replace_bound_vars_with_placeholders(obligation.predicate);
+        let predicate = self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let trait_ref = predicate.trait_ref;
         let trait_def_id = trait_ref.def_id;
         let substs = trait_ref.substs;
