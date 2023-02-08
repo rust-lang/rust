@@ -220,7 +220,8 @@ bitflags! {
                                           // which is different from how types/const are freshened.
                                           | TypeFlags::HAS_TY_FRESH.bits
                                           | TypeFlags::HAS_CT_FRESH.bits
-                                          | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits;
+                                          | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits
+                                          | TypeFlags::HAS_RE_ERASED.bits;
 
         /// Does this have `Projection`?
         const HAS_TY_PROJECTION           = 1 << 10;
