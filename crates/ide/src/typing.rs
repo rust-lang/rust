@@ -253,6 +253,10 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
         if file.syntax().text().slice(offset..expr_range.start()).contains_char('\n') {
             return None;
         }
+        // Good indicator that we will insert into a bad spot, so bail out.
+        if expr.syntax().descendants().any(|it| it.kind() == SyntaxKind::ERROR) {
+            return None;
+        }
         let offset = let_stmt.syntax().text_range().end();
         Some(TextEdit::insert(offset, ";".to_string()))
     }
@@ -407,15 +411,14 @@ mod tests {
 
     #[test]
     fn test_semi_after_let() {
-        //     do_check(r"
-        // fn foo() {
-        //     let foo =$0
-        // }
-        // ", r"
-        // fn foo() {
-        //     let foo =;
-        // }
-        // ");
+        type_char_noop(
+            '=',
+            r"
+fn foo() {
+    let foo =$0
+}
+",
+        );
         type_char(
             '=',
             r#"
@@ -429,17 +432,25 @@ fn foo() {
 }
 "#,
         );
-        //     do_check(r"
-        // fn foo() {
-        //     let foo =$0
-        //     let bar = 1;
-        // }
-        // ", r"
-        // fn foo() {
-        //     let foo =;
-        //     let bar = 1;
-        // }
-        // ");
+        type_char_noop(
+            '=',
+            r#"
+fn foo() {
+    let difference $0(counts: &HashMap<(char, char), u64>, last: char) -> u64 {
+        // ...
+    }
+}
+"#,
+        );
+        type_char_noop(
+            '=',
+            r"
+fn foo() {
+    let foo =$0
+    let bar = 1;
+}
+",
+        );
     }
 
     #[test]
