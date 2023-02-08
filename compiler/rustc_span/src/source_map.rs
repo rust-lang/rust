@@ -467,11 +467,6 @@ impl SourceMap {
         self.span_to_string(sp, FileNameDisplayPreference::Remapped)
     }
 
-    /// Format the span's location information into string
-    pub fn span_to_location_info_string(&self, sp: Span) -> String {
-        self.span_to_string(sp, FileNameDisplayPreference::Local)
-    }
-
     /// Format the span location suitable for pretty printing anotations with relative line numbers
     pub fn span_to_relative_line_string(&self, sp: Span, relative_to: Span) -> String {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() || relative_to.is_dummy() {

@@ -1064,7 +1064,7 @@ impl Tester for Collector {
                 ignore_message: None,
                 // compiler failures are test failures
                 #[cfg(not(bootstrap))]
-                location_info: "src\\lib.rs:10:10: 10:20",
+                location_info: "",
                 should_panic: test::ShouldPanic::No,
                 compile_fail: config.compile_fail,
                 no_run,

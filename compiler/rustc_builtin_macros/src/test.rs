@@ -402,8 +402,7 @@ fn should_ignore_message(cx: &ExtCtxt<'_>, i: &ast::Item) -> Option<Symbol> {
 }
 
 fn item_location_info(cx: &ExtCtxt<'_>, item: &ast::Item) -> Symbol {
-    let ident_sp = cx.with_def_site_ctxt(item.ident.span);
-    let li = cx.sess.source_map().span_to_location_info_string(ident_sp);
+    let li = cx.sess.source_map().span_to_string(item.ident.span, FileNameDisplayPreference::Local);
     Symbol::intern(&li)
 }
 

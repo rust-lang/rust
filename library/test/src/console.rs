@@ -178,8 +178,10 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         #[cfg(bootstrap)]
         let location_info = "location_info_tbd_during_bootstrap";
 
-        writeln!(output, "{name}: {fntype} | {ignore} | {location_info}")?;
-        st.write_log(|| format!("{fntype} {name} {ignore} {location_info}\n"))?;
+        let state_str = if ignore { "ignored" } else { "active" };
+
+        writeln!(output, "{name}: {fntype} | {state_str} | {location_info}")?;
+        st.write_log(|| format!("{fntype} {name} {state_str} {location_info}\n"))?;
     }
 
     fn plural(count: u32, s: &str) -> String {

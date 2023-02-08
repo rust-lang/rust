@@ -64,7 +64,7 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 ignore: true,
                 ignore_message: None,
                 #[cfg(not(bootstrap))]
-                location_info: "src\\lib.rs:10:10: 10:20",
+                location_info: "",
                 should_panic: ShouldPanic::No,
                 compile_fail: false,
                 no_run: false,
@@ -78,7 +78,7 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 ignore: false,
                 ignore_message: None,
                 #[cfg(not(bootstrap))]
-                location_info: "src\\lib.rs:10:10: 10:20",
+                location_info: "",
                 should_panic: ShouldPanic::No,
                 compile_fail: false,
                 no_run: false,
@@ -100,7 +100,7 @@ pub fn do_not_run_ignored_tests() {
             ignore: true,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::No,
             compile_fail: false,
             no_run: false,
@@ -125,7 +125,7 @@ pub fn ignored_tests_result_in_ignored() {
             ignore: true,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::No,
             compile_fail: false,
             no_run: false,
@@ -152,7 +152,7 @@ fn test_should_panic() {
             ignore: false,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::Yes,
             compile_fail: false,
             no_run: false,
@@ -179,7 +179,7 @@ fn test_should_panic_good_message() {
             ignore: false,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::YesWithMessage("error message"),
             compile_fail: false,
             no_run: false,
@@ -211,7 +211,7 @@ fn test_should_panic_bad_message() {
             ignore: false,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::YesWithMessage(expected),
             compile_fail: false,
             no_run: false,
@@ -247,7 +247,7 @@ fn test_should_panic_non_string_message_type() {
             ignore: false,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::YesWithMessage(expected),
             compile_fail: false,
             no_run: false,
@@ -277,7 +277,7 @@ fn test_should_panic_but_succeeds() {
                 ignore: false,
                 ignore_message: None,
                 #[cfg(not(bootstrap))]
-                location_info: "src\\lib.rs:10:10: 10:20",
+                location_info: "",
                 should_panic,
                 compile_fail: false,
                 no_run: false,
@@ -307,7 +307,7 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
             ignore: false,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::No,
             compile_fail: false,
             no_run: false,
@@ -346,7 +346,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
             ignore: false,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::No,
             compile_fail: false,
             no_run: false,
@@ -387,7 +387,7 @@ fn typed_test_desc(test_type: TestType) -> TestDesc {
         ignore: false,
         ignore_message: None,
         #[cfg(not(bootstrap))]
-        location_info: "src\\lib.rs:10:10: 10:20",
+        location_info: "",
         should_panic: ShouldPanic::No,
         compile_fail: false,
         no_run: false,
@@ -501,7 +501,7 @@ pub fn exclude_should_panic_option() {
             ignore: false,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::Yes,
             compile_fail: false,
             no_run: false,
@@ -527,7 +527,7 @@ pub fn exact_filter_match() {
                     ignore: false,
                     ignore_message: None,
                     #[cfg(not(bootstrap))]
-                    location_info: "src\\lib.rs:10:10: 10:20",
+                    location_info: "",
                     should_panic: ShouldPanic::No,
                     compile_fail: false,
                     no_run: false,
@@ -620,7 +620,7 @@ fn sample_tests() -> Vec<TestDescAndFn> {
                 ignore: false,
                 ignore_message: None,
                 #[cfg(not(bootstrap))]
-                location_info: "src\\lib.rs:10:10: 10:20",
+                location_info: "",
                 should_panic: ShouldPanic::No,
                 compile_fail: false,
                 no_run: false,
@@ -751,7 +751,7 @@ pub fn test_bench_no_iter() {
         ignore: false,
         ignore_message: None,
         #[cfg(not(bootstrap))]
-        location_info: "src\\lib.rs:10:10: 10:20",
+        location_info: "",
         should_panic: ShouldPanic::No,
         compile_fail: false,
         no_run: false,
@@ -776,7 +776,7 @@ pub fn test_bench_iter() {
         ignore: false,
         ignore_message: None,
         #[cfg(not(bootstrap))]
-        location_info: "src\\lib.rs:10:10: 10:20",
+        location_info: "",
         should_panic: ShouldPanic::No,
         compile_fail: false,
         no_run: false,
@@ -794,7 +794,7 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         ignore_message: None,
         #[cfg(not(bootstrap))]
-        location_info: "src\\lib.rs:10:10: 10:20",
+        location_info: "",
         should_panic: ShouldPanic::No,
         compile_fail: false,
         no_run: false,
@@ -806,7 +806,7 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         ignore_message: None,
         #[cfg(not(bootstrap))]
-        location_info: "src\\lib.rs:10:10: 10:20",
+        location_info: "",
         should_panic: ShouldPanic::No,
         compile_fail: false,
         no_run: false,
@@ -855,7 +855,7 @@ fn test_dyn_bench_returning_err_fails_when_run_as_test() {
             ignore: false,
             ignore_message: None,
             #[cfg(not(bootstrap))]
-            location_info: "src\\lib.rs:10:10: 10:20",
+            location_info: "",
             should_panic: ShouldPanic::No,
             compile_fail: false,
             no_run: false,
