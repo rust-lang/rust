@@ -121,20 +121,17 @@ where
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Qcx, V, R, D: DepKind>(
+fn mk_cycle<Qcx, R, D: DepKind>(
     qcx: Qcx,
     cycle_error: CycleError<D>,
     handler: HandleCycleError,
-    cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
 where
     Qcx: QueryContext + crate::query::HasDepContext<DepKind = D>,
-    V: std::fmt::Debug + Value<Qcx::DepContext, Qcx::DepKind>,
-    R: Copy,
+    R: std::fmt::Debug + Value<Qcx::DepContext, Qcx::DepKind>,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
-    let value = handle_cycle_error(*qcx.dep_context(), &cycle_error, error, handler);
-    cache.store_nocache(value)
+    handle_cycle_error(*qcx.dep_context(), &cycle_error, error, handler)
 }
 
 fn handle_cycle_error<Tcx, V>(
@@ -397,7 +394,7 @@ where
             (result, Some(dep_node_index))
         }
         TryGetJob::Cycle(error) => {
-            let result = mk_cycle(qcx, error, Q::HANDLE_CYCLE_ERROR, cache);
+            let result = mk_cycle(qcx, error, Q::HANDLE_CYCLE_ERROR);
             (result, None)
         }
         #[cfg(parallel_compiler)]
