@@ -19,7 +19,7 @@ use la_arena::{Arena, ArenaMap};
 use limit::Limit;
 use profile::Count;
 use rustc_hash::FxHashMap;
-use syntax::{ast, AstPtr, SyntaxNodePtr};
+use syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 use crate::{
     attr::Attrs,
@@ -51,7 +51,8 @@ pub struct Expander {
     def_map: Arc<DefMap>,
     current_file_id: HirFileId,
     module: LocalModuleId,
-    recursion_limit: usize,
+    /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
+    recursion_depth: usize,
 }
 
 impl CfgExpander {
@@ -84,7 +85,7 @@ impl Expander {
             def_map,
             current_file_id,
             module: module.local_id,
-            recursion_limit: 0,
+            recursion_depth: 0,
         }
     }
 
@@ -93,31 +94,37 @@ impl Expander {
         db: &dyn DefDatabase,
         macro_call: ast::MacroCall,
     ) -> Result<ExpandResult<Option<(Mark, T)>>, UnresolvedMacro> {
-        if self.recursion_limit(db).check(self.recursion_limit + 1).is_err() {
-            cov_mark::hit!(your_stack_belongs_to_me);
-            return Ok(ExpandResult::only_err(ExpandError::Other(
-                "reached recursion limit during macro expansion".into(),
-            )));
+        let mut unresolved_macro_err = None;
+
+        let result = self.within_limit(db, |this| {
+            let macro_call = InFile::new(this.current_file_id, &macro_call);
+
+            let resolver =
+                |path| this.resolve_path_as_macro(db, &path).map(|it| macro_id_to_def_id(db, it));
+
+            let mut err = None;
+            let call_id = match macro_call.as_call_id_with_errors(
+                db,
+                this.def_map.krate(),
+                resolver,
+                &mut |e| {
+                    err.get_or_insert(e);
+                },
+            ) {
+                Ok(call_id) => call_id,
+                Err(resolve_err) => {
+                    unresolved_macro_err = Some(resolve_err);
+                    return ExpandResult { value: None, err: None };
+                }
+            };
+            ExpandResult { value: call_id.ok(), err }
+        });
+
+        if let Some(err) = unresolved_macro_err {
+            Err(err)
+        } else {
+            Ok(result)
         }
-
-        let macro_call = InFile::new(self.current_file_id, &macro_call);
-
-        let resolver =
-            |path| self.resolve_path_as_macro(db, &path).map(|it| macro_id_to_def_id(db, it));
-
-        let mut err = None;
-        let call_id =
-            macro_call.as_call_id_with_errors(db, self.def_map.krate(), resolver, &mut |e| {
-                err.get_or_insert(e);
-            })?;
-        let call_id = match call_id {
-            Ok(it) => it,
-            Err(_) => {
-                return Ok(ExpandResult { value: None, err });
-            }
-        };
-
-        Ok(self.enter_expand_inner(db, call_id, err))
     }
 
     pub fn enter_expand_id<T: ast::AstNode>(
@@ -125,15 +132,14 @@ impl Expander {
         db: &dyn DefDatabase,
         call_id: MacroCallId,
     ) -> ExpandResult<Option<(Mark, T)>> {
-        self.enter_expand_inner(db, call_id, None)
+        self.within_limit(db, |_this| ExpandResult::ok(Some(call_id)))
     }
 
-    fn enter_expand_inner<T: ast::AstNode>(
-        &mut self,
+    fn enter_expand_inner(
         db: &dyn DefDatabase,
         call_id: MacroCallId,
         mut err: Option<ExpandError>,
-    ) -> ExpandResult<Option<(Mark, T)>> {
+    ) -> ExpandResult<Option<(HirFileId, SyntaxNode)>> {
         if err.is_none() {
             err = db.macro_expand_error(call_id);
         }
@@ -154,29 +160,21 @@ impl Expander {
             }
         };
 
-        let node = match T::cast(raw_node) {
-            Some(it) => it,
-            None => {
-                // This can happen without being an error, so only forward previous errors.
-                return ExpandResult { value: None, err };
-            }
-        };
-
-        tracing::debug!("macro expansion {:#?}", node.syntax());
-
-        self.recursion_limit += 1;
-        let mark =
-            Mark { file_id: self.current_file_id, bomb: DropBomb::new("expansion mark dropped") };
-        self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
-        self.current_file_id = file_id;
-
-        ExpandResult { value: Some((mark, node)), err }
+        ExpandResult { value: Some((file_id, raw_node)), err }
     }
 
     pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
         self.cfg_expander.hygiene = Hygiene::new(db.upcast(), mark.file_id);
         self.current_file_id = mark.file_id;
-        self.recursion_limit -= 1;
+        if self.recursion_depth == usize::MAX {
+            // Recursion limit has been reached somewhere in the macro expansion tree. Reset the
+            // depth only when we get out of the tree.
+            if !self.current_file_id.is_macro() {
+                self.recursion_depth = 0;
+            }
+        } else {
+            self.recursion_depth -= 1;
+        }
         mark.bomb.defuse();
     }
 
@@ -214,6 +212,50 @@ impl Expander {
         // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
         #[cfg(test)]
         return Limit::new(std::cmp::min(32, limit));
+    }
+
+    fn within_limit<F, T: ast::AstNode>(
+        &mut self,
+        db: &dyn DefDatabase,
+        op: F,
+    ) -> ExpandResult<Option<(Mark, T)>>
+    where
+        F: FnOnce(&mut Self) -> ExpandResult<Option<MacroCallId>>,
+    {
+        if self.recursion_depth == usize::MAX {
+            // Recursion limit has been reached somewhere in the macro expansion tree. We should
+            // stop expanding other macro calls in this tree, or else this may result in
+            // exponential number of macro expansions, leading to a hang.
+            //
+            // The overflow error should have been reported when it occurred (see the next branch),
+            // so don't return overflow error here to avoid diagnostics duplication.
+            cov_mark::hit!(overflow_but_not_me);
+            return ExpandResult::only_err(ExpandError::RecursionOverflowPosioned);
+        } else if self.recursion_limit(db).check(self.recursion_depth + 1).is_err() {
+            self.recursion_depth = usize::MAX;
+            cov_mark::hit!(your_stack_belongs_to_me);
+            return ExpandResult::only_err(ExpandError::Other(
+                "reached recursion limit during macro expansion".into(),
+            ));
+        }
+
+        let ExpandResult { value, err } = op(self);
+        let Some(call_id) = value else {
+            return ExpandResult { value: None, err };
+        };
+
+        Self::enter_expand_inner(db, call_id, err).map(|value| {
+            value.and_then(|(new_file_id, node)| {
+                let node = T::cast(node)?;
+
+                self.recursion_depth += 1;
+                self.cfg_expander.hygiene = Hygiene::new(db.upcast(), new_file_id);
+                let old_file_id = std::mem::replace(&mut self.current_file_id, new_file_id);
+                let mark =
+                    Mark { file_id: old_file_id, bomb: DropBomb::new("expansion mark dropped") };
+                Some((mark, node))
+            })
+        })
     }
 }
 
