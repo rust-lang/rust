@@ -34,6 +34,7 @@
 #![feature(get_mut_unchecked)]
 #![feature(if_let_guard)]
 #![feature(iter_from_generator)]
+#![feature(local_key_cell_methods)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(extern_types)]

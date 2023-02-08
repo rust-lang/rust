@@ -89,9 +89,8 @@ mod tlv {
     /// This is used to set the pointer to the new `ImplicitCtxt`.
     #[inline]
     pub(super) fn with_tlv<F: FnOnce() -> R, R>(value: *const (), f: F) -> R {
-        let old = get_tlv();
-        let _reset = rustc_data_structures::OnDrop(move || TLV.with(|tlv| tlv.set(old)));
-        TLV.with(|tlv| tlv.set(value));
+        let old = TLV.replace(value);
+        let _reset = rustc_data_structures::OnDrop(move || TLV.set(old));
         f()
     }
 }
