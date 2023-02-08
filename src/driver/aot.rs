@@ -324,6 +324,10 @@ fn module_codegen(
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
         cx.profiler.clone().verbose_generic_activity_with_arg("compile functions", &*cgu_name).run(
             || {
+                cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
+                    cx.profiler.clone(),
+                )));
+
                 let mut cached_context = Context::new();
                 for codegened_func in codegened_functions {
                     crate::base::compile_fn(

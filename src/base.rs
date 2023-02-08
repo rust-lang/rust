@@ -172,27 +172,6 @@ pub(crate) fn compile_fn(
     cx.profiler.generic_activity("define function").run(|| {
         context.want_disasm = cx.should_write_ir;
         module.define_function(codegened_func.func_id, context).unwrap();
-
-        if cx.profiler.enabled() {
-            let mut recording_args = false;
-            cx.profiler
-                .generic_activity_with_arg_recorder(
-                    "define function (clif pass timings)",
-                    |recorder| {
-                        let pass_times = cranelift_codegen::timing::take_current();
-                        // Replace newlines with | as measureme doesn't allow control characters like
-                        // newlines inside strings.
-                        recorder.record_arg(format!("{}", pass_times).replace('\n', " | "));
-                        recording_args = true;
-                    },
-                )
-                .run(|| {
-                    if recording_args {
-                        // Wait a tiny bit to ensure chrome's profiler doesn't hide the event
-                        std::thread::sleep(std::time::Duration::from_nanos(2))
-                    }
-                });
-        }
     });
 
     if cx.should_write_ir {
