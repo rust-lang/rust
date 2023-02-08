@@ -243,7 +243,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .chain(&self.cache.external_paths)
                 .map(|(&k, &(ref path, kind))| {
                     (
-                        id_from_item_inner(k.into(), self.tcx, None),
+                        id_from_item_inner(k.into(), self.tcx, None, None),
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path: path.iter().map(|s| s.to_string()).collect(),
