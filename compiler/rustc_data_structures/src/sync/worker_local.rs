@@ -164,6 +164,12 @@ impl<T> WorkerLocal<Vec<T>> {
     }
 }
 
+impl<T: Default> Default for WorkerLocal<T> {
+    fn default() -> Self {
+        WorkerLocal::new(|_| T::default())
+    }
+}
+
 impl<T> Deref for WorkerLocal<T> {
     type Target = T;
 

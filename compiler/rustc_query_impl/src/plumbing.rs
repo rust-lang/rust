@@ -278,13 +278,13 @@ macro_rules! hash_result {
 
 macro_rules! get_provider {
     ([][$tcx:expr, $name:ident, $key:expr]) => {{
-        $tcx.queries.local_providers.$name
+        $tcx.query_system.local_providers.$name
     }};
     ([(separate_provide_extern) $($rest:tt)*][$tcx:expr, $name:ident, $key:expr]) => {{
         if $key.query_crate_is_local() {
-            $tcx.queries.local_providers.$name
+            $tcx.query_system.local_providers.$name
         } else {
-            $tcx.queries.extern_providers.$name
+            $tcx.query_system.extern_providers.$name
         }
     }};
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
@@ -293,14 +293,14 @@ macro_rules! get_provider {
 }
 
 macro_rules! should_ever_cache_on_disk {
-    ([]) => {{
-        None
+    ([]$yes:tt $no:tt) => {{
+        $no
     }};
-    ([(cache) $($rest:tt)*]) => {{
-        Some($crate::plumbing::try_load_from_disk::<Self::Value>)
+    ([(cache) $($rest:tt)*]$yes:tt $no:tt) => {{
+        $yes
     }};
-    ([$other:tt $($modifiers:tt)*]) => {
-        should_ever_cache_on_disk!([$($modifiers)*])
+    ([$other:tt $($modifiers:tt)*]$yes:tt $no:tt) => {
+        should_ever_cache_on_disk!([$($modifiers)*]$yes $no)
     };
 }
 
@@ -472,7 +472,6 @@ macro_rules! define_queries {
         $(impl<'tcx> QueryConfig<QueryCtxt<'tcx>> for queries::$name<'tcx> {
             type Key = query_keys::$name<'tcx>;
             type Value = query_values::$name<'tcx>;
-            type Stored = query_stored::$name<'tcx>;
             const NAME: &'static str = stringify!($name);
 
             #[inline]
@@ -493,24 +492,40 @@ macro_rules! define_queries {
             fn query_cache<'a>(tcx: QueryCtxt<'tcx>) -> &'a Self::Cache
                 where 'tcx:'a
             {
-                &tcx.query_caches.$name
+                &tcx.query_system.caches.$name
             }
 
-            fn execute_query(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Stored {
+            fn execute_query(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
                 tcx.$name(key)
             }
 
             #[inline]
             // key is only sometimes used
             #[allow(unused_variables)]
-            fn compute(qcx: QueryCtxt<'tcx>, key: &Self::Key) -> fn(TyCtxt<'tcx>, Self::Key) -> Self::Value {
-                get_provider!([$($modifiers)*][qcx, $name, key])
+            fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
+                query_provided_to_value::$name(
+                    tcx,
+                    get_provider!([$($modifiers)*][tcx, $name, key])(tcx, key)
+                )
             }
 
             #[inline]
-            fn try_load_from_disk(qcx: QueryCtxt<'tcx>, key: &Self::Key) -> rustc_query_system::query::TryLoadFromDisk<QueryCtxt<'tcx>, Self> {
-                let cache_on_disk = Self::cache_on_disk(qcx.tcx, key);
-                if cache_on_disk { should_ever_cache_on_disk!([$($modifiers)*]) } else { None }
+            fn try_load_from_disk(_qcx: QueryCtxt<'tcx>, _key: &Self::Key) -> rustc_query_system::query::TryLoadFromDisk<QueryCtxt<'tcx>, Self> {
+                should_ever_cache_on_disk!([$($modifiers)*] {
+                    if Self::cache_on_disk(_qcx.tcx, _key) {
+                        Some(|qcx: QueryCtxt<'tcx>, dep_node| {
+                            let value = $crate::plumbing::try_load_from_disk::<query_provided::$name<'tcx>>(
+                                qcx,
+                                dep_node
+                            );
+                            value.map(|value| query_provided_to_value::$name(qcx.tcx, value))
+                        })
+                    } else {
+                        None
+                    }
+                } {
+                    None
+                })
             }
 
             const ANON: bool = is_anon!([$($modifiers)*]);
@@ -633,7 +648,7 @@ macro_rules! define_queries {
                     $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
                         tcx,
                         stringify!($name),
-                        &tcx.query_caches.$name,
+                        &tcx.query_system.caches.$name,
                         string_cache,
                     )
                 },
@@ -649,18 +664,12 @@ macro_rules! define_queries {
     }
 }
 
-use crate::{ExternProviders, OnDiskCache, Providers};
+use crate::OnDiskCache;
 
 impl<'tcx> Queries<'tcx> {
-    pub fn new(
-        local_providers: Providers,
-        extern_providers: ExternProviders,
-        on_disk_cache: Option<OnDiskCache<'tcx>>,
-    ) -> Self {
+    pub fn new(on_disk_cache: Option<OnDiskCache<'tcx>>) -> Self {
         use crate::query_structs;
         Queries {
-            local_providers: Box::new(local_providers),
-            extern_providers: Box::new(extern_providers),
             query_structs: make_dep_kind_array!(query_structs).to_vec(),
             on_disk_cache,
             jobs: AtomicU64::new(1),
@@ -674,8 +683,6 @@ macro_rules! define_queries_struct {
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         #[derive(Default)]
         pub struct Queries<'tcx> {
-            local_providers: Box<Providers>,
-            extern_providers: Box<ExternProviders>,
             query_structs: Vec<$crate::plumbing::QueryStruct<'tcx>>,
             pub on_disk_cache: Option<OnDiskCache<'tcx>>,
             jobs: AtomicU64,
@@ -725,7 +732,7 @@ macro_rules! define_queries_struct {
                 span: Span,
                 key: <queries::$name<'tcx> as QueryConfig<QueryCtxt<'tcx>>>::Key,
                 mode: QueryMode,
-            ) -> Option<query_stored::$name<'tcx>> {
+            ) -> Option<query_values::$name<'tcx>> {
                 let qcx = QueryCtxt { tcx, queries: self };
                 get_query::<queries::$name<'tcx>, _, rustc_middle::dep_graph::DepKind>(qcx, span, key, mode)
             })*

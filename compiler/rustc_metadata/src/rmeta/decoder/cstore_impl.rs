@@ -114,7 +114,7 @@ macro_rules! provide_one {
         fn $name<'tcx>(
             $tcx: TyCtxt<'tcx>,
             def_id_arg: ty::query::query_keys::$name<'tcx>,
-        ) -> ty::query::query_values::$name<'tcx> {
+        ) -> ty::query::query_provided::$name<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 

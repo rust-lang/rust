@@ -781,9 +781,7 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let queries = queries.get_or_init(|| {
-        TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
-    });
+    let queries = queries.get_or_init(|| TcxQueries::new(query_result_on_disk_cache));
 
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(move || {
@@ -795,6 +793,8 @@ pub fn create_global_ctxt<'tcx>(
                 untracked,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
+                local_providers,
+                extern_providers,
                 queries.as_dyn(),
                 rustc_query_impl::query_callbacks(arena),
             )
